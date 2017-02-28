@@ -6,10 +6,10 @@
 using System.Collections;
 //--------------------------------------------------------------------
 public class Timer {
-	private float mInterval = 0;					// interval duration in seconds
+	private long mInterval = 0;						// interval duration in milliseconds
 	private int mTotalCount = 0;					// number of intervals, if count <= 0, timer will repeat forever
 	private int mCurrentCount = 0;					// current interval count
-	private float mStartTime = 0;					// start time for the current interval in seconds
+	private long mStartTime = 0;					// start time for the current interval in milliseconds
 	private bool mRunning = false;					// status of the timer
 	private bool mIsPause = false;					// is timer paused
 	private TimerRunHandler mRunHandler = null;		// called when current count changed
@@ -19,9 +19,9 @@ public class Timer {
 	public delegate void TimerRunHandler(Timer tm, int runCount, System.Object param);
 	public delegate void TimerOverHandler(Timer tm, System.Object param);
 
-	public Timer(float interval, int count, TimerRunHandler runHandler = null, TimerOverHandler overHandler = null, System.Object param = null) {
-		if (interval <= 0.0f) {
-			throw new System.Exception("interval <= 0.0f");
+	public Timer(long interval, int count, TimerRunHandler runHandler = null, TimerOverHandler overHandler = null, System.Object param = null) {
+		if (interval <= 0) {
+			throw new System.Exception("interval <= 0");
 		}
 		mInterval = interval;
 		mTotalCount = count;
@@ -30,7 +30,7 @@ public class Timer {
 		mParam = param;
 	}
 
-	public bool update(float currentTime) {
+	public bool update(long currentTime) {
 		if (!mRunning) {
 			return true;
 		}
@@ -39,7 +39,7 @@ public class Timer {
 			return true;
 		}
 		if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
-			float deltaTime = System.Math.Abs(currentTime - mStartTime);
+			long deltaTime = System.Math.Abs(currentTime - mStartTime);
 			if (deltaTime >= mInterval) {
 				int runCount = (int)System.Math.Floor(deltaTime / mInterval);
 				mCurrentCount += runCount;
@@ -55,7 +55,7 @@ public class Timer {
 		return true;
 	}
 
-	public void start(float currentTime, bool executeFlag = false) {
+	public void start(long currentTime, bool executeFlag = false) {
 		if (mRunning) {
 			return;
 		}
@@ -87,13 +87,13 @@ public class Timer {
 		mIsPause = true;
 	}
 
-	public float getInterval() {
+	public long getInterval() {
 		return mInterval;
 	}
 
-	public void setInterval(float interval) {
-		if (interval <= 0.0f) {
-			throw new System.Exception("interval <= 0.0f");
+	public void setInterval(long interval) {
+		if (interval <= 0) {
+			throw new System.Exception("interval <= 0");
 		}
 		mInterval = interval;
 	}

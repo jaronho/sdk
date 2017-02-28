@@ -1,4 +1,4 @@
-package com.jh.utils;
+package com.yaxon.hudmain.jh.utils;
 
 import android.app.Activity;
 import android.graphics.drawable.AnimationDrawable;
@@ -6,8 +6,8 @@ import android.support.v4.content.ContextCompat;
 import android.view.View;
 import android.widget.ImageView;
 
-import com.jh.library.timer.Timer;
-import com.jh.library.timer.TimerManager;
+import com.yaxon.hudmain.jh.library.timer.Timer;
+import com.yaxon.hudmain.jh.library.timer.TimerManager;
 
 /**
  * Author:  jaron.ho
@@ -70,7 +70,7 @@ public final class Utils {
                 public void onCallback(Timer tm, int runCount, Object param) {
                     boolean showFlag = !(boolean)param;
                     tm.setParam(showFlag);
-                    tm.setInterval((float)(showFlag ? showTime : hideTime)/1000);
+                    tm.setInterval(showFlag ? showTime : hideTime);
                     view.setVisibility(showFlag ? View.VISIBLE : View.INVISIBLE);
                 }
             }, handler, true, "TimerBlink_" + view.getId());

@@ -1,4 +1,4 @@
-package com.jh.library.timer;
+package com.yaxon.hudmain.jh.library.timer;
 
 import android.os.Handler;
 import android.os.Message;
@@ -51,7 +51,7 @@ public class TimerManager {
         }
     };
     private Thread mThread = new Thread(new Runnable() {
-        private void loopUpdate(float currentTime) {
+        private void loopUpdate(long currentTime) {
             Set<Entry<String, Timer>> entrySet = mTimerMap.entrySet();
             for (Entry<String, Timer> entry : entrySet) {
                 Timer tm = entry.getValue();
@@ -64,7 +64,7 @@ public class TimerManager {
         @Override
         public void run() {
             while (!mThread.isInterrupted()) {
-                loopUpdate((float)SystemClock.elapsedRealtime()/1000);
+                loopUpdate(SystemClock.elapsedRealtime());
             }
         }
     });
@@ -95,11 +95,11 @@ public class TimerManager {
         return mInstance;
     }
 
-    public void run(float interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param, final String id) {
+    public void run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param, final String id) {
         if (interval > 0 && id.length() > 0) {
             final RunObject runObj = new RunObject(runHandler);
             final OverObject overObj = new OverObject(overHandler);
-            Timer tm = new Timer(interval/1000, count, new Timer.RunHandler() {
+            Timer tm = new Timer(interval, count, new Timer.RunHandler() {
                 @Override
                 public void onCallback(Timer tm, int runCount, Object param) {
                     Message msg = mRunHandler.obtainMessage();
@@ -116,44 +116,44 @@ public class TimerManager {
                     mOverHandler.sendMessage(msg);
                 }
             }, param);
-            tm.start((float)SystemClock.elapsedRealtime()/1000, false);
+            tm.start(SystemClock.elapsedRealtime(), false);
             runObj.timer = tm;
             overObj.timer = tm;
             mTimerMap.put(id, tm);
         }
     }
 
-    public void run(float interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, String id) {
+    public void run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, String id) {
         run(interval, count, runHandler, overHandler, null, id);
     }
 
-    public void run(float interval, int count, Timer.RunHandler runHandler, String id) {
+    public void run(long interval, int count, Timer.RunHandler runHandler, String id) {
         run(interval, count, runHandler, null, null, id);
     }
 
-    public void run(float interval, int count, Timer.OverHandler overHandler, String id) {
+    public void run(long interval, int count, Timer.OverHandler overHandler, String id) {
         run(interval, count, null, overHandler, null, id);
     }
 
-    public String run(float interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param) {
+    public String run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param) {
         String id = UUID.randomUUID().toString();
         run(interval, count, runHandler, overHandler, param, id);
         return id;
     }
 
-    public String run(float interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler) {
+    public String run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler) {
         String id = UUID.randomUUID().toString();
         run(interval, count, runHandler, overHandler, null, id);
         return id;
     }
 
-    public String run(float interval, int count, Timer.RunHandler runHandler) {
+    public String run(long interval, int count, Timer.RunHandler runHandler) {
         String id = UUID.randomUUID().toString();
         run(interval, count, runHandler, null, null, id);
         return id;
     }
 
-    public String run(float interval, int count, Timer.OverHandler overHandler) {
+    public String run(long interval, int count, Timer.OverHandler overHandler) {
         String id = UUID.randomUUID().toString();
         run(interval, count, null, overHandler, null, id);
         return id;

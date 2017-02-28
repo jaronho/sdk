@@ -1,4 +1,4 @@
-package com.jh.utils.videoplayer;
+package com.yaxon.hudmain.jh.utils.videoplayer;
 
 import android.app.Activity;
 import android.view.SurfaceView;

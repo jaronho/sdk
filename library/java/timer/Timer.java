@@ -1,4 +1,4 @@
-package com.jh.library.timer;
+package com.yaxon.hudmain.jh.library.timer;
 
 /**
  * Author:  jaron.ho
@@ -15,17 +15,17 @@ public class Timer {
         public abstract void onCallback(Timer tm, Object param);
     }
 
-    private float mInterval = 0;				// interval duration in seconds
-    private int mTotalCount = 0;				// number of intervals, if count <= 0, timer will repeat forever
-    private int mCurrentCount = 0;				// current interval count
-    private float mStartTime = 0;				// start time for the current interval in seconds
+    private long mInterval = 0;				    // interval duration in milliseconds
+    private int mTotalCount = 0;				    // number of intervals, if count <= 0, timer will repeat forever
+    private int mCurrentCount = 0;			    // current interval count
+    private long mStartTime = 0;				    // start time for the current interval in milliseconds
     private boolean mRunning = false;			// status of the timer
     private boolean mIsPause = false;			// is timer paused
     private RunHandler mRunHandler = null;		// called when current count changed
-    private OverHandler mOverHandler = null;	// called when timer is complete
-    private Object mParam = null;				// parameter
+    private OverHandler mOverHandler = null;	    // called when timer is complete
+    private Object mParam = null;				    // parameter
 
-    public Timer(float interval, int count, RunHandler runHandler, OverHandler overHandler, Object param) {
+    public Timer(long interval, int count, RunHandler runHandler, OverHandler overHandler, Object param) {
         mInterval = interval;
         mTotalCount = count;
         mRunHandler = runHandler;
@@ -33,7 +33,7 @@ public class Timer {
         mParam = param;
     }
 
-    public boolean update(float currentTime) {
+    public boolean update(long currentTime) {
         if (!mRunning) {
             return true;
         }
@@ -42,7 +42,7 @@ public class Timer {
             return true;
         }
         if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
-            float deltaTime = Math.abs(currentTime - mStartTime);
+            long deltaTime = Math.abs(currentTime - mStartTime);
             if (deltaTime >= mInterval) {
                 int runCount = (int)Math.floor(deltaTime / mInterval);
                 mCurrentCount += runCount;
@@ -58,7 +58,7 @@ public class Timer {
         return true;
     }
 
-    public void start(float currentTime, boolean executeFlag) {
+    public void start(long currentTime, boolean executeFlag) {
         if (mRunning) {
             return;
         }
@@ -90,11 +90,11 @@ public class Timer {
         mIsPause = true;
     }
 
-    public float getInterval() {
+    public long getInterval() {
         return mInterval;
     }
 
-    public void setInterval(float interval) {
+    public void setInterval(long interval) {
         mInterval = interval;
     }
 

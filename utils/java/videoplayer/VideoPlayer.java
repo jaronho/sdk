@@ -1,4 +1,4 @@
-package com.jh.utils.videoplayer;
+package com.yaxon.hudmain.jh.utils.videoplayer;
 
 import android.app.Activity;
 import android.graphics.Point;
@@ -157,7 +157,10 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
             videoWidth = (int)Math.ceil((float)videoWidth/ratio);
             videoHeight = (int)Math.ceil((float)videoHeight/ratio);
             // 设置SurfaceView的布局参数
-            mSurfaceView.setLayoutParams(new ViewGroup.LayoutParams(videoWidth, videoHeight));
+            ViewGroup.LayoutParams params = mSurfaceView.getLayoutParams();
+            params.width = videoWidth;
+            params.height = videoHeight;
+            mSurfaceView.setLayoutParams(params);
         }
         // 开始播放
         mp.seekTo(0);
