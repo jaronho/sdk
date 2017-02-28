@@ -1,4 +1,4 @@
-package com.yaxon.hudmain.jh.utils.videoplayer;
+package com.jh.utils.videoplayer;
 
 import android.app.Activity;
 import android.graphics.Point;

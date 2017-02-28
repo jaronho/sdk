@@ -1,4 +1,4 @@
-package com.yaxon.hudmain.jh.library.eventdispatcher;
+package com.jh.library.eventdispatcher;
 
 import android.os.Handler;
 import android.os.Message;

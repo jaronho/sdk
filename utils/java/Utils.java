@@ -1,4 +1,4 @@
-package com.yaxon.hudmain.jh.utils;
+package com.jh.utils;
 
 import android.app.Activity;
 import android.graphics.drawable.AnimationDrawable;
@@ -6,8 +6,8 @@ import android.support.v4.content.ContextCompat;
 import android.view.View;
 import android.widget.ImageView;
 
-import com.yaxon.hudmain.jh.library.timer.Timer;
-import com.yaxon.hudmain.jh.library.timer.TimerManager;
+import com.jh.library.timer.Timer;
+import com.jh.library.timer.TimerManager;
 
 /**
  * Author:  jaron.ho

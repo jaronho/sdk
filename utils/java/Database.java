@@ -1,4 +1,4 @@
-package com.yaxon.hudmain.jh.utils;
+package com.jh.utils;
 
 import android.content.ContentValues;
 import android.content.Context;

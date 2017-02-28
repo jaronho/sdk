@@ -1,4 +1,4 @@
-package com.yaxon.hudmain.jh.utils;
+package com.jh.utils;
 
 import android.content.Context;
 import android.net.ConnectivityManager;

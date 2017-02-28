@@ -1,4 +1,4 @@
-package com.yaxon.hudmain.jh.library;
+package com.jh.library;
 
 import java.security.MessageDigest;
 

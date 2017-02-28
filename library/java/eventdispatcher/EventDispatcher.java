@@ -1,4 +1,4 @@
-package com.yaxon.hudmain.jh.library.eventdispatcher;
+package com.jh.library.eventdispatcher;
 
 import java.util.ArrayList;
 import java.util.List;

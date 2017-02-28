@@ -1,4 +1,4 @@
-package com.yaxon.hudmain.jh.utils;
+package com.jh.utils;
 
 import android.content.res.ColorStateList;
 import android.graphics.Canvas;
@@ -9,7 +9,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 
-import com.yaxon.hudmain.jh.library.Formula;
+import com.jh.library.Formula;
 
 /**
  * Author:  jaron.ho
