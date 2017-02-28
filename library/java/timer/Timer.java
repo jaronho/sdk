@@ -1,4 +1,4 @@
-package com.yaxon.hudmain.jh.library.timer;
+package com.jh.library.timer;
 
 /**
  * Author:  jaron.ho
