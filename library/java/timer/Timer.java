@@ -1,4 +1,4 @@
-package com.jh.library.timer;
+package com.yaxon.hudmain.jh.library.timer;
 
 /**
  * Author:  jaron.ho
@@ -34,6 +34,9 @@ public class Timer {
     }
 
     public boolean update(long currentTime) {
+        if (mInterval <= 0) {
+            return true;
+        }
         if (!mRunning) {
             return true;
         }

@@ -31,6 +31,9 @@ public class Timer {
 	}
 
 	public bool update(long currentTime) {
+		if (mInterval <= 0) {
+            return true;
+        }
 		if (!mRunning) {
 			return true;
 		}
