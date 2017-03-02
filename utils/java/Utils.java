@@ -83,7 +83,7 @@ public final class Utils {
      *         showTime - 显示时间(毫秒)
      *         hideTime - 隐藏时间(毫秒)
      *         count - 闪烁次数,<=0 时一直闪烁
-     *         showAtList - 当闪烁次数到达后,是否显示(true:显示,false:隐藏)
+     *         showAtLast - 当闪烁次数到达后,是否显示(true:显示,false:隐藏)
      * 返回值: 无
      */
     public static void startBlink(final View view, final int showTime, final int hideTime, final int count, final boolean showAtLast) {
