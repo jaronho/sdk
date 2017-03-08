@@ -67,7 +67,7 @@ public class Timer {
 		mCurrentCount = 0;
 		mStartTime = currentTime;
 		if (null != mRunHandler && executeFlag) {
-			mRunHandler(this, 1, mParam);
+			mRunHandler(this, 0, mParam);
 		}
 	}
 

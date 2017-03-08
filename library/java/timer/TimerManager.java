@@ -98,7 +98,7 @@ public class TimerManager {
         return mInstance;
     }
 
-    public void run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param, final String id) {
+    public void run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param, boolean doCallback, final String id) {
         if (interval > 0 && id.length() > 0) {
             final RunObject runObj = new RunObject(runHandler);
             final OverObject overObj = new OverObject(overHandler);
@@ -121,7 +121,7 @@ public class TimerManager {
                     mOverHandler.sendMessage(msg);
                 }
             }, param);
-            tm.start(SystemClock.elapsedRealtime(), false);
+            tm.start(SystemClock.elapsedRealtime(), doCallback);
             runObj.timer = tm;
             overObj.timer = tm;
             if (mTimerMap.containsKey(id)) {
@@ -131,39 +131,39 @@ public class TimerManager {
         }
     }
 
-    public void run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, String id) {
-        run(interval, count, runHandler, overHandler, null, id);
+    public void run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, boolean doCallback, String id) {
+        run(interval, count, runHandler, overHandler, null, doCallback, id);
     }
 
-    public void run(long interval, int count, Timer.RunHandler runHandler, String id) {
-        run(interval, count, runHandler, null, null, id);
+    public void run(long interval, int count, Timer.RunHandler runHandler, boolean doCallback, String id) {
+        run(interval, count, runHandler, null, null, doCallback, id);
     }
 
     public void run(long interval, int count, Timer.OverHandler overHandler, String id) {
-        run(interval, count, null, overHandler, null, id);
+        run(interval, count, null, overHandler, null, false, id);
     }
 
-    public String run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param) {
+    public String run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param, boolean doCallback) {
         String id = UUID.randomUUID().toString();
-        run(interval, count, runHandler, overHandler, param, id);
+        run(interval, count, runHandler, overHandler, param, doCallback, id);
         return id;
     }
 
-    public String run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler) {
+    public String run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, boolean doCallback) {
         String id = UUID.randomUUID().toString();
-        run(interval, count, runHandler, overHandler, null, id);
+        run(interval, count, runHandler, overHandler, null, doCallback, id);
         return id;
     }
 
-    public String run(long interval, int count, Timer.RunHandler runHandler) {
+    public String run(long interval, int count, Timer.RunHandler runHandler, boolean doCallback) {
         String id = UUID.randomUUID().toString();
-        run(interval, count, runHandler, null, null, id);
+        run(interval, count, runHandler, null, null, doCallback, id);
         return id;
     }
 
     public String run(long interval, int count, Timer.OverHandler overHandler) {
         String id = UUID.randomUUID().toString();
-        run(interval, count, null, overHandler, null, id);
+        run(interval, count, null, overHandler, null, false, id);
         return id;
     }
 
