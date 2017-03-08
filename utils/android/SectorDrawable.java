@@ -298,6 +298,15 @@ public class SectorDrawable extends Drawable implements Drawable.Callback {
     }
 
     /**
+     * 功  能: 获取开始角度
+     * 参  数: 无
+     * 返回值: float
+     */
+    public float getStartAngle() {
+        return mStartAngle;
+    }
+
+    /**
      * 功  能: 设置开始角度
      * 参  数: startAngle - 开始角度(顺时针),[0, 360)
      * 返回值: 无
@@ -308,6 +317,15 @@ public class SectorDrawable extends Drawable implements Drawable.Callback {
             mStartAngle = startAngle;
             invalidateSelf();
         }
+    }
+
+    /**
+     * 功  能: 获取扫描角度
+     * 参  数: 无
+     * 返回值: float
+     */
+    public float getSweepAngle() {
+        return mSweepAngle;
     }
 
     /**
