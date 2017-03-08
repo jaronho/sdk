@@ -52,11 +52,13 @@ public class TimerManager {
     };
     private Thread mThread = new Thread(new Runnable() {
         private void loopUpdate(long currentTime) {
-            Set<Entry<String, Timer>> entrySet = mTimerMap.entrySet();
-            for (Entry<String, Timer> entry : entrySet) {
-                Timer tm = entry.getValue();
-                if (null != tm) {
-                    tm.update(currentTime);
+            if (!mTimerMap.isEmpty()) {
+                Set<Entry<String, Timer>> entrySet = mTimerMap.entrySet();
+                for (Entry<String, Timer> entry : entrySet) {
+                    Timer tm = entry.getValue();
+                    if (null != tm) {
+                        tm.update(currentTime);
+                    }
                 }
             }
         }
@@ -78,6 +80,7 @@ public class TimerManager {
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
+        mTimerMap.clear();
         if (null != mThread) {
             mThread.interrupt();
             mThread = null;
@@ -110,7 +113,9 @@ public class TimerManager {
             }, new Timer.OverHandler() {
                 @Override
                 public void onCallback(Timer tm, Object param) {
-                    mTimerMap.remove(id);
+                    if (mTimerMap.containsKey(id)) {
+                        mTimerMap.remove(id);
+                    }
                     Message msg = mOverHandler.obtainMessage();
                     msg.obj = overObj;
                     mOverHandler.sendMessage(msg);
@@ -119,6 +124,9 @@ public class TimerManager {
             tm.start(SystemClock.elapsedRealtime(), false);
             runObj.timer = tm;
             overObj.timer = tm;
+            if (mTimerMap.containsKey(id)) {
+                mTimerMap.remove(id);
+            }
             mTimerMap.put(id, tm);
         }
     }
@@ -160,20 +168,24 @@ public class TimerManager {
     }
 
     public void stop(String id, boolean doCallback) {
-        Timer tm = mTimerMap.remove(id);;
-        if (null != tm) {
-            tm.stop(doCallback);
-        }
-    }
-
-    public void clear(boolean doCallback) {
-        Set<Entry<String, Timer>> entrySet = mTimerMap.entrySet();
-        for (Entry<String, Timer> entry : entrySet) {
-            Timer tm = entry.getValue();
+        if (mTimerMap.containsKey(id)) {
+            Timer tm = mTimerMap.remove(id);
             if (null != tm) {
                 tm.stop(doCallback);
             }
         }
-        mTimerMap.clear();
+    }
+
+    public void clear(boolean doCallback) {
+        if (!mTimerMap.isEmpty()) {
+            Set<Entry<String, Timer>> entrySet = mTimerMap.entrySet();
+            for (Entry<String, Timer> entry : entrySet) {
+                Timer tm = entry.getValue();
+                if (null != tm) {
+                    tm.stop(doCallback);
+                }
+            }
+            mTimerMap.clear();
+        }
     }
 }
