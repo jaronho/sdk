@@ -64,19 +64,16 @@ public final class Utils {
             if (View.NO_ID == view.getId()) {
                 view.setId(View.generateViewId());
             }
+            view.setVisibility(View.VISIBLE);
             TimerManager.getInstance().run(showTime, count * 2, new Timer.RunHandler() {
+                private boolean mShowFlag = true;
                 @Override
                 public void onCallback(Timer tm, int runCount, Object param) {
-                    if (0 == runCount) {
-                        view.setVisibility(View.VISIBLE);
-                    } else {
-                        boolean showFlag = !(boolean) param;
-                        tm.setParam(showFlag);
-                        tm.setInterval(showFlag ? showTime : hideTime);
-                        view.setVisibility(showFlag ? View.VISIBLE : View.INVISIBLE);
-                    }
+                    mShowFlag = !mShowFlag;
+                    tm.setInterval(mShowFlag ? showTime : hideTime);
+                    view.setVisibility(mShowFlag ? View.VISIBLE : (hideTime > 0 ? View.INVISIBLE : View.VISIBLE));
                 }
-            }, handler, true, true, "TimerBlink_" + view.getId());
+            }, handler, null, false, "TimerBlink_" + view.getId());
         }
     }
 

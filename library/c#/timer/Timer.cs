@@ -31,9 +31,6 @@ public class Timer {
 	}
 
 	public bool update(long currentTime) {
-		if (mInterval <= 0) {
-			return true;
-		}
 		if (!mRunning) {
 			return true;
 		}
@@ -44,7 +41,7 @@ public class Timer {
 		if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
 			long deltaTime = System.Math.Abs(currentTime - mStartTime);
 			if (deltaTime >= mInterval) {
-				int runCount = (int)System.Math.Floor(deltaTime / mInterval);
+				int runCount = mInterval > 0 ? (int)System.Math.Floor(deltaTime / mInterval) : 1;
 				mCurrentCount += runCount;
 				mStartTime = currentTime;
 				if (null != mRunHandler) {

@@ -34,9 +34,6 @@ public class Timer {
     }
 
     public boolean update(long currentTime) {
-        if (mInterval <= 0) {
-            return true;
-        }
         if (!mRunning) {
             return true;
         }
@@ -47,7 +44,7 @@ public class Timer {
         if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
             long deltaTime = Math.abs(currentTime - mStartTime);
             if (deltaTime >= mInterval) {
-                int runCount = (int)Math.floor(deltaTime / mInterval);
+                int runCount = mInterval > 0 ? (int)Math.floor(deltaTime / mInterval) : 1;
                 mCurrentCount += runCount;
                 mStartTime = currentTime;
                 if (null != mRunHandler) {
