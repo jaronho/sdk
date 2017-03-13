@@ -25,6 +25,7 @@ public class VideoPlayerFactory {
         VideoPlayer player = create(activity, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
         player.setCompleteHandler(completeHandler);
         player.setErrorHandler(errorHandler);
+        player.setFitType(VideoPlayer.FitType.SHOW_ALL);
         return player;
     }
 
