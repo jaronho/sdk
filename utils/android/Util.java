@@ -10,12 +10,24 @@ import android.content.Context;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.provider.Settings.Secure;
 import android.telephony.TelephonyManager;
 
+/**
+ * Author:  jaron.ho
+ * Date:    2017-02-08
+ * Brief:   工具集
+ */
+ 
 public final class Util {
 	
+	/**
+     * 功  能: 杀死应用
+     * 参  数: activity - 活动
+     * 返回值: 无
+     */
 	public static void killApp(Activity activity) {
 		if (null == activity) {
 			return;
@@ -24,6 +36,12 @@ public final class Util {
 		android.os.Process.killProcess(android.os.Process.myPid());
 	}
 	
+	/**
+     * 功  能: 复制字符串到剪贴板
+     * 参  数: activity - 活动
+	 *		   str - 字符串
+     * 返回值: 无
+     */
 	public static void copyString(final Activity activity, final String str) {
 		if (null == activity) {
 			return;
@@ -43,6 +61,11 @@ public final class Util {
 		});
 	}
 	
+	/**
+     * 功  能: 是否有网络
+     * 参  数: activity - 活动
+     * 返回值: boolean
+     */
 	public static boolean isNetworkAvailable(Activity activity) {
 		if (null == activity) {
 			return false;
@@ -62,6 +85,11 @@ public final class Util {
 		return false;
 	}
 	
+	/**
+     * 功  能: 是否为wifi网络
+     * 参  数: activity - 活动
+     * 返回值: boolean
+     */
 	public static boolean isNetworkWifi(Activity activity) {
 		if (null == activity) {
 			return false;
@@ -71,6 +99,11 @@ public final class Util {
 		return null != networkInfo && ConnectivityManager.TYPE_WIFI == networkInfo.getType();
     }
 	
+	/**
+     * 功  能: 是否有移动网络
+     * 参  数: activity - 活动
+     * 返回值: boolean
+     */
 	public static boolean isNetworkMobile(Activity activity) {
 		if (null == activity) {
 			return false;
@@ -80,12 +113,25 @@ public final class Util {
 		return null != networkInfo && ConnectivityManager.TYPE_MOBILE == networkInfo.getType();
     }
 	
-	public static boolean isGpsEnabled(Activity activity) {
+	/**
+     * 功  能: GPS是否打开
+     * 参  数: activity - 活动
+     * 返回值: boolean
+     */
+	public static boolean isGpsEnabled(Activity activity) 
+		if (null == activity) {
+			return false;
+		}
 		LocationManager lm = ((LocationManager)activity.getSystemService(Context.LOCATION_SERVICE));
 		List<String> accessibleProviders = lm.getProviders(true);
 		return null != accessibleProviders && accessibleProviders.size() > 0;
     }
 	
+	/**
+     * 功  能: 应用是否在前台运行
+     * 参  数: activity - 活动
+     * 返回值: boolean
+     */
 	public static boolean isAppOnForeground(Activity activity) {
 		if (null == activity) {
 			return false;
@@ -103,6 +149,11 @@ public final class Util {
         return false;
 	}
 	
+	/**
+     * 功  能: 获取MAC地址
+     * 参  数: activity - 活动
+     * 返回值: String
+     */
 	public static String getMacAddress(Activity activity) {
 		if (null == activity) {
 			return "";
@@ -113,7 +164,27 @@ public final class Util {
 		}
 		return macAddress;
 	}
+
+	/**
+     * 功  能: 获取主机IP地址
+     * 参  数: activity - 活动
+     * 返回值: String
+     */
+	public static String getHostIpAddress(Activity activity) {
+		if (null == activity) {
+			return "";
+		}
+        WifiManager wifiMgr = (WifiManager)activity.getSystemService(Context.WIFI_SERVICE);
+        WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
+        int ip = wifiInfo.getIpAddress();
+        return ((ip & 0xFF) + "." + ((ip >>>= 8) & 0xFF) + "." + ((ip >>>= 8) & 0xFF) + "." + ((ip >>>= 8) & 0xFF));
+    }
 	
+	/**
+     * 功  能: 获取设备id
+     * 参  数: activity - 活动
+     * 返回值: String
+     */
 	public static String getDeviceId(Activity activity) {
 		if (null == activity) {
 			return "";
@@ -121,7 +192,12 @@ public final class Util {
 		return Secure.getString(activity.getContentResolver(), Secure.ANDROID_ID);
 	}
 	
-	public static String getBundleVersion(Activity activity) {
+	/**
+     * 功  能: 获取版本名称
+     * 参  数: activity - 活动
+     * 返回值: String
+     */
+	public static String getVersionName(Activity activity) {
 		if (null == activity) {
 			return "";
 		}
@@ -133,7 +209,12 @@ public final class Util {
 		return "";
 	}
 	
-	public static String getSimState(Activity activity) {
+	/**
+     * 功  能: 获取SIM卡类型
+     * 参  数: activity - 活动
+     * 返回值: String
+     */
+	public static String getSIM(Activity activity) {
 		if (null == activity) {
 			return "";
 		}

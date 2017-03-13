@@ -12,10 +12,10 @@ import com.yaxon.hudmain.jh.library.timer.TimerManager;
 /**
  * Author:  jaron.ho
  * Date:    2017-02-08
- * Brief:   工具集
+ * Brief:   视图工具集
  */
 
-public final class Utils {
+public final class ViewUtil {
     /**
      * 功  能: 创建帧动画
      * 参  数: activity - 活动
