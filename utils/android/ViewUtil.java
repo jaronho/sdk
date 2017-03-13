@@ -41,7 +41,7 @@ public final class ViewUtil {
             deltaTime = currentTime - mStartTime;
             mStartTime = resetFlag ? 0 : currentTime;
             if (null != tag && tag.length() > 0 && null != header && header.length() > 0) {
-                Log.d(tag, "[" + header + "] cost time = " + deltaTime + " millisconds");
+                Log.d(tag, "[" + header + "] cost time " + deltaTime + " millisconds");
             }
         }
         return deltaTime;
