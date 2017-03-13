@@ -16,6 +16,37 @@ import com.yaxon.hudmain.jh.library.timer.TimerManager;
  */
 
 public final class ViewUtil {
+    private static long mStartTime = 0;     // 时间消耗(毫秒)
+
+    /**
+     * 功  能: 耗时开始,与接口costTimeCalc配对使用
+     * 参  数: 无
+     * 返回值: 无
+     */
+    public static void costTimeBegin() {
+        mStartTime = SystemClock.elapsedRealtime();
+    }
+
+    /**
+     * 功  能: 耗时计算,与接口costTimeBegin配对使用
+     * 参  数: resetFlag - 耗时是否复位
+     *         tag - 打印信息的标签,当为null或为空字符串时,不打印
+     *         header - 打印信息的头部,当为null或为空字符串时,不打印
+     * 返回值: long,耗时(毫秒)
+     */
+    public static long costTimeCalc(boolean resetFlag, String tag, String header) {
+        long deltaTime = 0;
+        if (mStartTime > 0) {
+            long currentTime = SystemClock.elapsedRealtime();
+            deltaTime = currentTime - mStartTime;
+            mStartTime = resetFlag ? 0 : currentTime;
+            if (null != tag && tag.length() > 0 && null != header && header.length() > 0) {
+                Log.d(tag, "[" + header + "] cost time = " + deltaTime + " millisconds");
+            }
+        }
+        return deltaTime;
+    }
+
     /**
      * 功  能: 创建帧动画
      * 参  数: activity - 活动
@@ -59,6 +90,7 @@ public final class ViewUtil {
      *         handler - 闪烁结束回调
      * 返回值: 无
      */
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
     public static void startBlink(final View view, final int showTime, final int hideTime, final int count, final Timer.OverHandler handler) {
         if (null != view) {
             if (View.NO_ID == view.getId()) {
@@ -98,11 +130,13 @@ public final class ViewUtil {
     /**
      * 功  能: 停止闪烁
      * 参  数: view - 视图
+     *         showAtLast - 是否显示(true:显示,false:隐藏)
      * 返回值: 无
      */
-    public static void stopBlink(View view) {
+    public static void stopBlink(View view, boolean showAtLast) {
         if (null != view) {
-            TimerManager.getInstance().stop("TimerBlink_" + view.getId(), true);
+            TimerManager.getInstance().stop("TimerBlink_" + view.getId(), false);
+            view.setVisibility(showAtLast ? View.VISIBLE : View.INVISIBLE);
         }
     }
 
