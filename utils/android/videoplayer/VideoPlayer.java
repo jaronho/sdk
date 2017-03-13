@@ -25,6 +25,12 @@ import java.io.IOException;
 
 public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListener, OnErrorListener,
         OnInfoListener, OnPreparedListener, OnSeekCompleteListener, OnVideoSizeChangedListener, SurfaceHolder.Callback {
+    public static abstract class SurfaceCreatedHandler {
+        public abstract void onCallback(VideoPlayer vp);
+    }
+    public static abstract class SurfaceDestroyedHandler {
+        public abstract void onCallback(VideoPlayer vp);
+    }
     public static abstract class CompleteHandler {
         public abstract void onCallback(VideoPlayer vp);
     }
@@ -38,14 +44,16 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
         EXACT_FIT       // 拉伸变形,使铺满屏幕
     }
 
-    private static final String TAG = "VideoPlayer";
     private Activity mActivity = null;
     private SurfaceView mSurfaceView = null;
     private MediaPlayer mPlayer = null;
     private int mCurrentPosition = 0;
+    private SurfaceCreatedHandler mSurfaceCreatedHandler = null;
+    private SurfaceDestroyedHandler mSurfaceDestroyedHandler = null;
     private CompleteHandler mCompleteHandler = null;
     private ErrorHandler mErrorHandler = null;
     private FitType mFitType = FitType.NONE;
+    private String mLogTag = "";
 
     public VideoPlayer(Activity activity, SurfaceView surfaceView, boolean screenOn) {
         mActivity = activity;
@@ -63,14 +71,20 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
         mPlayer.setScreenOnWhilePlaying(screenOn);
     }
 
+    private void showLog(String msg) {
+        if (mLogTag.length() > 0) {
+           Log.d(mLogTag, msg);
+        }
+    }
+
     @Override
     public void onBufferingUpdate(MediaPlayer mp, int percent) {
-        Log.d(TAG, "onBufferingUpdate, percent = " + percent);
+        showLog("onBufferingUpdate, percent = " + percent);
     }
 
     @Override
     public void onCompletion(MediaPlayer mp) {
-        Log.d(TAG, "onCompletion");
+        showLog("onCompletion");
         if (null != mCompleteHandler) {
             mCompleteHandler.onCallback(this);
         }
@@ -100,7 +114,7 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
-        Log.d(TAG, "onError, what = " + errorString(what) + ", extra = " + errorString(extra));
+        showLog("onError, what = " + errorString(what) + ", extra = " + errorString(extra));
         if (null != mErrorHandler) {
             mErrorHandler.onCallback(this, what, extra);
         }
@@ -143,13 +157,13 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
 
     @Override
     public boolean onInfo(MediaPlayer mp, int what, int extra) {
-        Log.d(TAG, "onInfo, what = " + infoString(what) + ", extra = " + infoString(extra));
+        showLog("onInfo, what = " + infoString(what) + ", extra = " + infoString(extra));
         return false;
     }
 
     @Override
     public void onPrepared(MediaPlayer mp) {
-        Log.d(TAG, "onPrepared");
+        showLog("onPrepared");
         if (FitType.NONE != mFitType) {
             Point displaySize = new Point();
             mActivity.getWindowManager().getDefaultDisplay().getSize(displaySize);
@@ -186,46 +200,51 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
 
     @Override
     public void onSeekComplete(MediaPlayer mp) {
-        Log.d(TAG, "onSeekComplete");
+        showLog("onSeekComplete");
     }
 
     @Override
     public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
-        Log.d(TAG, "onVideoSizeChanged, width = " + width + ", height = " + height);
+        showLog("onVideoSizeChanged, width = " + width + ", height = " + height);
     }
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        Log.d(TAG, "surfaceCreated");
+        showLog("surfaceCreated");
         if (null != mPlayer) {
             mPlayer.setDisplay(holder);
             // 创建SurfaceHolder的时候,如果存在上次播放的位置,则按照上次播放位置进行播放
             if (mCurrentPosition > 0) {
                 mPlayer.seekTo(mCurrentPosition);
-                mPlayer.start();
                 mCurrentPosition = 0;
             }
+        }
+        if (null != mSurfaceCreatedHandler) {
+            mSurfaceCreatedHandler.onCallback(this);
         }
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        Log.d(TAG, "surfaceChanged, format = " + format + ", width = " + width + ", height = " + height);
+        showLog("surfaceChanged, format = " + format + ", width = " + width + ", height = " + height);
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        Log.d(TAG, "surfaceDestroyed");
+        showLog("surfaceDestroyed");
         // 销毁SurfaceHolder的时候记录当前的播放位置并停止播放
         if (null != mPlayer && mPlayer.isPlaying()) {
             mCurrentPosition = mPlayer.getCurrentPosition();
             mPlayer.pause();
         }
+        if (null != mSurfaceDestroyedHandler) {
+            mSurfaceDestroyedHandler.onCallback(this);
+        }
     }
 
     // 播放
     public void play(String path, boolean isLoop) {
-        Log.d(TAG, "play, path = " + path + ", isLoop = " + String.valueOf(isLoop));
+        showLog("play, path = " + path + ", isLoop = " + String.valueOf(isLoop));
         try {
             if (null != mPlayer) {
                 mPlayer.reset();
@@ -234,14 +253,14 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
                 mPlayer.prepareAsync();
             }
         } catch (IOException e) {
-            Log.e(TAG, "play, " + e.toString());
+            showLog("play, " + e.toString());
             e.printStackTrace();
         }
     }
 
     // 重播
     public void replay() {
-        Log.d(TAG, "replay");
+        showLog("replay");
         if (null != mPlayer) {
             mPlayer.seekTo(0);
             mPlayer.start();
@@ -250,7 +269,7 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
 
     // 快进,position(毫秒)
     public void seekTo(int position) {
-        Log.d(TAG, "seekTo, position = " + position);
+        showLog("seekTo, position = " + position);
         if (null != mPlayer) {
             mPlayer.seekTo(position);
         }
@@ -258,7 +277,7 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
 
     // 暂停
     public void pause() {
-        Log.d(TAG, "pause");
+        showLog("pause");
         if (null != mPlayer && mPlayer.isPlaying()) {
             mPlayer.pause();
         }
@@ -266,7 +285,7 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
 
     // 继续
     public void resume() {
-        Log.d(TAG, "resume");
+        showLog("resume");
         if (null != mPlayer && !mPlayer.isPlaying()) {
             mPlayer.start();
         }
@@ -274,7 +293,7 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
 
     // 停止
     public void stop(boolean isRelease) {
-        Log.d(TAG, "stop, isRelease = " + String.valueOf(isRelease));
+        showLog("stop, isRelease = " + String.valueOf(isRelease));
         if (null != mPlayer) {
             mPlayer.stop();
             if (isRelease) {
@@ -311,6 +330,16 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
         return mSurfaceView;
     }
 
+    // 设置表层被创建处理器(当播放器被创建,或从后台切换到前台时触发)
+    public void setSurfaceCreatedHandler(SurfaceCreatedHandler handler) {
+        mSurfaceCreatedHandler = handler;
+    }
+
+    // 设置表层被销毁处理器(当播放器被销毁,或从前台进入到后台时触发)
+    public void setSurfaceDestroyedHandler(SurfaceDestroyedHandler handler) {
+        mSurfaceDestroyedHandler = handler;
+    }
+
     // 设置结束处理器(当不循环播放时才可被触发)
     public void setCompleteHandler(CompleteHandler handler) {
         mCompleteHandler = handler;
@@ -324,5 +353,10 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
     // 设置适配类型
     public void setFitType(FitType fitType) {
         mFitType = fitType;
+    }
+
+    // 设置日志标签
+    public void setLogTag(String tag) {
+        mLogTag = tag;
     }
 }
