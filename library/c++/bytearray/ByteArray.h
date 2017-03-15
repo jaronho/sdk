@@ -1,7 +1,7 @@
 /**********************************************************************
-* Author£ºjaron.ho
-* Date£º2009-9-23 19:00
-* Brief£º×Ö½ÚÁ÷Àà(ÍøÂçĞ­ÒéĞòÁĞ»¯)
+* Authorï¼šjaron.ho
+* Dateï¼š2009-9-23
+* Briefï¼šå­—èŠ‚æµç±»(ç½‘ç»œåè®®åºåˆ—åŒ–)
 **********************************************************************/
 #ifndef _BYTE_ARRAY_H_
 #define _BYTE_ARRAY_H_
@@ -10,85 +10,87 @@
 
 class ByteArray {
 public:
-	ByteArray();
+	ByteArray(int size = 0);
 	virtual ~ByteArray();
 
 public:
-	static short swab16(short x);											// ´óĞ¡¶Ë×ª»»(¶ÌÕûĞÍÊı×Ö×ªÎª¶ÌÕûĞÍÊı×Ö)
-	static short swab16_array(char* pBuf);									// ´óĞ¡¶Ë×ª»»(×Ö½ÚÁ÷×ªÎª¶ÌÕûĞÍÊı×Ö)
+	static short swab16(short x);											// å¤§å°ç«¯è½¬æ¢(çŸ­æ•´å‹æ•°å­—è½¬ä¸ºçŸ­æ•´å‹æ•°å­—)
+	static short swab16_array(char* pBuf);									// å¤§å°ç«¯è½¬æ¢(å­—èŠ‚æµè½¬ä¸ºçŸ­æ•´å‹æ•°å­—)
 
-	static int swab32(int x);												// ´óĞ¡¶Ë×ª»»(ÕûĞÍÊı×Ö×ªÎªÕûĞÍÊı×Ö)
-	static int swab32_array(char* pBuf);									// ´óĞ¡¶Ë×ª»»(×Ö½ÚÁ÷×ªÎªÕûĞÍÊı×Ö)
+	static int swab32(int x);												// å¤§å°ç«¯è½¬æ¢(æ•´å‹æ•°å­—è½¬ä¸ºæ•´å‹æ•°å­—)
+	static int swab32_array(char* pBuf);									// å¤§å°ç«¯è½¬æ¢(å­—èŠ‚æµè½¬ä¸ºæ•´å‹æ•°å­—)
 
-	static int max_size(void);												// ÍøÂçÏûÏ¢×î´ó³¤¶È
+	static int max_size(void);												// ç½‘ç»œæ¶ˆæ¯æœ€å¤§é•¿åº¦
 
 public:
-	void print(void);														// ´òÓ¡µ±Ç°ÄÚÈİ
-	void reuse(void);														// Çå¿Õ,ÖØĞÂÊ¹ÓÃµ±Ç°×Ö½ÚÁ÷
-	int getCurLength(void);													// »ñÈ¡×Ö½ÚÁ÷µ±Ç°³¤¶È
-	const char* getContent(void);											// »ñÈ¡×Ö½ÚÁ÷ÄÚÈİ
-	bool setContent(const char* content, int len);							// ÉèÖÃ×Ö½ÚÁ÷ÄÚÈİ
-	int space(void);														// Ê£Óà¿ÉĞ´¿Õ¼ä
-	bool copy(const char* buf, int n);										// ¿½±´
+	void print(void);														// æ‰“å°å½“å‰å†…å®¹
+	void reuse(void);														// æ¸…ç©º,é‡æ–°ä½¿ç”¨å½“å‰å­—èŠ‚æµ
+	int getTotalLength(void);												// è·å–å­—èŠ‚æµæ€»é•¿åº¦
+	int getCurrentLength(void);												// è·å–å­—èŠ‚æµå½“å‰é•¿åº¦
+	int getSpaceLength(void);												// è·å–å­—èŠ‚æµå‰©ä½™å¯å†™é•¿åº¦
+	const char* getContent(void);											// è·å–å­—èŠ‚æµå†…å®¹
+	bool setContent(const char* content, int len);							// è®¾ç½®å­—èŠ‚æµå†…å®¹
 	
 public:
-	short read_int16(void);													// ´Ó×Ö½ÚÁ÷¶ÁÈ¡16Î»ÕûĞÍ
-	bool write_int16(short value);											// Ïò×Ö½ÚÁ÷Ğ´16Î»ÕûĞÍ
+	short read_int16(void);													// ä»å­—èŠ‚æµè¯»å–16ä½æ•´å‹
+	bool write_int16(short value);											// å‘å­—èŠ‚æµå†™16ä½æ•´å‹
 	
-	unsigned short read_uint16(void);										// ´Ó×Ö½ÚÁ÷¶ÁÈ¡16Î»ÎŞ·ûºÅÕûĞÍ
-	bool write_uint16(unsigned short value);								// Ïò×Ö½ÚÁ÷Ğ´16Î»ÎŞ·ûºÅÕûĞÍ
+	unsigned short read_uint16(void);										// ä»å­—èŠ‚æµè¯»å–16ä½æ— ç¬¦å·æ•´å‹
+	bool write_uint16(unsigned short value);								// å‘å­—èŠ‚æµå†™16ä½æ— ç¬¦å·æ•´å‹
 	
-	int read_int(void);														// ´Ó×Ö½ÚÁ÷¶ÁÈ¡32Î»ÕûĞÍ
-	bool write_int(int value);												// Ïò×Ö½ÚÁ÷Ğ´32Î»ÕûĞÍ
+	int read_int(void);														// ä»å­—èŠ‚æµè¯»å–32ä½æ•´å‹
+	bool write_int(int value);												// å‘å­—èŠ‚æµå†™32ä½æ•´å‹
 	
-	unsigned int read_uint(void);											// ´Ó×Ö½ÚÁ÷¶ÁÈ¡32Î»ÕûĞÍ
-	bool write_uint(unsigned int value);									// Ïò×Ö½ÚÁ÷Ğ´32Î»ÎŞ·ûºÅÕûĞÍ
+	unsigned int read_uint(void);											// ä»å­—èŠ‚æµè¯»å–32ä½æ•´å‹
+	bool write_uint(unsigned int value);									// å‘å­—èŠ‚æµå†™32ä½æ— ç¬¦å·æ•´å‹
 
-	long read_long(void);													// ´Ó×Ö½ÚÁ÷¶ÁÈ¡³¤ÕûĞÍ
-	bool write_long(long value);											// Ïò×Ö½ÚÁ÷Ğ´³¤ÕûĞÍ
+	long read_long(void);													// ä»å­—èŠ‚æµè¯»å–é•¿æ•´å‹
+	bool write_long(long value);											// å‘å­—èŠ‚æµå†™é•¿æ•´å‹
 	
-	unsigned long read_ulong(void);											// ´Ó×Ö½ÚÁ÷¶ÁÈ¡ÎŞ·ûºÅ³¤ÕûĞÍ
-	bool write_ulong(unsigned long value);									// Ïò×Ö½ÚÁ÷Ğ´ÎŞ·ûºÅ³¤ÕûĞÍ
+	unsigned long read_ulong(void);											// ä»å­—èŠ‚æµè¯»å–æ— ç¬¦å·é•¿æ•´å‹
+	bool write_ulong(unsigned long value);									// å‘å­—èŠ‚æµå†™æ— ç¬¦å·é•¿æ•´å‹
 
-	long long read_int64(void);												// ´Ó×Ö½ÚÁ÷¶ÁÈ¡64Î»ÕûĞÍ
-	bool write_int64(long long value);										// Ïò×Ö½ÚÁ÷Ğ´64Î»ÕûĞÍ
+	long long read_int64(void);												// ä»å­—èŠ‚æµè¯»å–64ä½æ•´å‹
+	bool write_int64(long long value);										// å‘å­—èŠ‚æµå†™64ä½æ•´å‹
 	
-	unsigned long long read_uint64(void);									// ´Ó×Ö½ÚÁ÷¶ÁÈ¡64Î»ÎŞ·ûºÅÕûĞÍ
-	bool write_uint64(unsigned long long value);							// Ïò×Ö½ÚÁ÷Ğ´64Î»ÎŞ·ûºÅÕûĞÍ
+	unsigned long long read_uint64(void);									// ä»å­—èŠ‚æµè¯»å–64ä½æ— ç¬¦å·æ•´å‹
+	bool write_uint64(unsigned long long value);							// å‘å­—èŠ‚æµå†™64ä½æ— ç¬¦å·æ•´å‹
 
-	float read_float(void);													// ´Ó×Ö½ÚÁ÷¶ÁÈ¡¸¡µãÊı
-	bool write_float(float value);											// Ïò×Ö½ÚÁ÷Ğ´¸¡µãÊı
+	float read_float(void);													// ä»å­—èŠ‚æµè¯»å–æµ®ç‚¹æ•°
+	bool write_float(float value);											// å‘å­—èŠ‚æµå†™æµ®ç‚¹æ•°
 	
-	double read_double(void);												// ´Ó×Ö½ÚÁ÷¶ÁÈ¡Ë«¾«¶ÈÊı
-	bool write_double(double value);										// Ïò×Ö½ÚÁ÷Ğ´Ë«¾«¶ÈÊı
+	double read_double(void);												// ä»å­—èŠ‚æµè¯»å–åŒç²¾åº¦æ•°
+	bool write_double(double value);										// å‘å­—èŠ‚æµå†™åŒç²¾åº¦æ•°
 
-	bool read_bool(void);													// ´Ó×Ö½ÚÁ÷¶ÁÈ¡BoolÖµ
-	bool write_bool(bool value);											// Ïò×Ö½ÚÁ÷Ğ´²¼¶ûĞÍ
+	bool read_bool(void);													// ä»å­—èŠ‚æµè¯»å–Boolå€¼
+	bool write_bool(bool value);											// å‘å­—èŠ‚æµå†™å¸ƒå°”å‹
 
-	char read_char(void);													// ´Ó×Ö½ÚÁ÷¶ÁÈ¡×Ö·û
-	bool write_char(char value);											// Ïò×Ö½ÚÁ÷Ğ´×Ö·ûĞÍ
+	char read_char(void);													// ä»å­—èŠ‚æµè¯»å–å­—ç¬¦
+	bool write_char(char value);											// å‘å­—èŠ‚æµå†™å­—ç¬¦å‹
 	
-	unsigned char read_uchar(void);											// ´Ó×Ö½ÚÁ÷¶ÁÈ¡ÎŞ·ûºÅ×Ö·ûÕûÊı
-	bool write_uchar(unsigned char value);									// Ïò×Ö½ÚÁ÷Ğ´ÎŞ·ûºÅ×Ö·ûĞÍÕûÊı
+	unsigned char read_uchar(void);											// ä»å­—èŠ‚æµè¯»å–æ— ç¬¦å·å­—ç¬¦æ•´æ•°
+	bool write_uchar(unsigned char value);									// å‘å­—èŠ‚æµå†™æ— ç¬¦å·å­—ç¬¦å‹æ•´æ•°
 
-	unsigned char* read_string(unsigned char* info, unsigned int len);		// ´Ó×Ö½ÚÁ÷¶ÁÈ¡×Ö·û´®
-	bool write_string(const char* str);										// Ïò×Ö½ÚÁ÷Ğ´×Ö·û´®
+	unsigned char* read_string(unsigned char* info, unsigned int len);		// ä»å­—èŠ‚æµè¯»å–å­—ç¬¦ä¸²
+	bool write_string(const char* str);										// å‘å­—èŠ‚æµå†™å­—ç¬¦ä¸²
 	
-	std::string read_string(void);											// ´Ó×Ö½ÚÁ÷¶ÁÈ¡×Ö·û´®
-	bool write_string(const std::string& str);								// Ïò×Ö½ÚÁ÷Ğ´×Ö·û´®
-
-private:
-	char* rd_ptr(void);
-	char* wr_ptr(void);
-	
-	bool rd_ptr(int n);
-	bool wr_ptr(int n);
+	std::string read_string(void);											// ä»å­—èŠ‚æµè¯»å–å­—ç¬¦ä¸²
+	bool write_string(const std::string& str);								// å‘å­—èŠ‚æµå†™å­—ç¬¦ä¸²
 
 private:
-	char* m_pContent;			// ×Ö½ÚÁ÷ÄÚÈİÖ¸Õë
-	int m_nTotalSize;			// ×Ö½ÚÁ÷ÔÊĞí´óĞ¡
-	int m_nRdptr;				// ¶ÁÈ¡Î»ÖÃ
-	int m_nWrPtr;				// Ğ´ÈëÎ»ÖÃ
+	bool copy(const char* buf, int n);
+	
+	char* read(void);
+	bool read(int n);
+	
+	char* write(void);
+	bool write(int n);
+
+private:
+	char* mContent;				// å­—èŠ‚æµå†…å®¹æŒ‡é’ˆ
+	int mTotalSize;				// å­—èŠ‚æµå…è®¸å¤§å°
+	int mReadIndex;				// è¯»å–ä½ç½®
+	int mWriteIndex;			// å†™å…¥ä½ç½®
 };
 
 #endif	// _BYTE_ARRAY_H_
