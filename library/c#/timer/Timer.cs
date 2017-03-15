@@ -30,19 +30,22 @@ public class Timer {
 		mParam = param;
 	}
 
-	public bool update(long currentTime) {
+	public void update(long currentTime) {
 		if (!mRunning) {
-			return true;
+			return;
 		}
 		if (mIsPause || currentTime < mStartTime) {
 			mStartTime = currentTime;
-			return true;
+			return;
 		}
 		if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
 			long deltaTime = System.Math.Abs(currentTime - mStartTime);
 			if (deltaTime >= mInterval) {
-				int runCount = mInterval > 0 ? (int)System.Math.Floor(deltaTime / mInterval) : 1;
-				mCurrentCount += runCount;
+				int runCount = 1;
+				if (mInterval > 0) {
+					runCount = (int)System.Math.Floor(deltaTime / mInterval);
+				}
+				mCurrentCount = mCurrentCount + runCount;
 				mStartTime = currentTime;
 				if (null != mRunHandler) {
 					mRunHandler(this, runCount, mParam);
@@ -50,9 +53,7 @@ public class Timer {
 			}
 		} else {
 			stop(true);
-			return false;
 		}
-		return true;
 	}
 
 	public void start(long currentTime, bool executeFlag = false) {
