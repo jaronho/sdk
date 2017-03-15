@@ -90,165 +90,259 @@ bool ByteArray::setContent(const char* content, int len) {
 }
 //----------------------------------------------------------------------
 short ByteArray::read_int16(void) {
-	short w = *((short*)read());
-	read(sizeof(short));
-	return w;
+	char* p = read(sizeof(short));
+	if (NULL == p) {
+		return 0;
+	}
+	short r = *((short*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_int16(short value) {
-	short* pV = (short*)write();
-    *pV = value;
-	return write(sizeof(short));
+	char* p = write(sizeof(short));
+	if (NULL == p) {
+		return false;
+	}
+	short* w = (short*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 unsigned short ByteArray::read_uint16(void) {
-	unsigned short w = *((unsigned short*)read());
-	read(sizeof(unsigned short));
-	return w;
+	char* p = read(sizeof(unsigned short));
+	if (NULL == p) {
+		return 0;
+	}
+	unsigned short r = *((unsigned short*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_uint16(unsigned short value) {
-	unsigned short* pV = (unsigned short*)write();
-    *pV = value;
-	return write(sizeof(unsigned short));
+	char* p = write(sizeof(unsigned short));
+	if (NULL == p) {
+		return false;
+	}
+	unsigned short* w = (unsigned short*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 int ByteArray::read_int(void) {
-	int w = *((int*)read());
-	read(sizeof(int));
-	return w;
+	char* p = read(sizeof(int));
+	if (NULL == p) {
+		return 0;
+	}
+	int r = *((int*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_int(int value) {
-	int* pV = (int*)write();
-    *pV = value;
-	return write(sizeof(int));
+	char* p = write(sizeof(int));
+	if (NULL == p) {
+		return false;
+	}
+	int* w = (int*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 unsigned int ByteArray::read_uint(void) {
-	unsigned int w = *((unsigned int*)read());
-	read(sizeof(unsigned int));
-	return w;
+	char* p = read(sizeof(unsigned int));
+	if (NULL == p) {
+		return 0;
+	}
+	unsigned int r = *((unsigned int*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_uint(unsigned int value) {
-	unsigned int *pV = (unsigned int*)write();
-    *pV = value;
-	return write(sizeof(unsigned int));
+	char* p = write(sizeof(unsigned int));
+	if (NULL == p) {
+		return false;
+	}
+	unsigned int* w = (unsigned int*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 long ByteArray::read_long(void) {
-	long w = *((long*)read());
-	read(sizeof(long));
-	return w;
+	char* p = read(sizeof(long));
+	if (NULL == p) {
+		return 0;
+	}
+	long r = *((long*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_long(long value) {
-	long* pV = (long*)write();
-    *pV = value;
-	return write(sizeof(long));
+	char* p = write(sizeof(long));
+	if (NULL == p) {
+		return false;
+	}
+	long* w = (long*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 unsigned long ByteArray::read_ulong(void) {
-	unsigned long w = *((unsigned long*)read());
-	read(sizeof(unsigned long));
-	return w;
+	char* p = read(sizeof(unsigned long));
+	if (NULL == p) {
+		return 0;
+	}
+	unsigned long r = *((unsigned long*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_ulong(unsigned long value) {
-	unsigned long* pV = (unsigned long*)write();
-    *pV = value;
-	return write(sizeof(unsigned long));
+	char* p = write(sizeof(unsigned long));
+	if (NULL == p) {
+		return false;
+	}
+	unsigned long* w = (unsigned long*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 long long ByteArray::read_int64(void) {
-	long long w = *((long long*)read());
-	read(sizeof(long long));
-	return w;
+	char* p = read(sizeof(long long));
+	if (NULL == p) {
+		return 0;
+	}
+	long long r = *((long long*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_int64(long long value) {
-	long long* pV = (long long*)write();
-    *pV = value;
-	return write(sizeof(long long));
+	char* p = write(sizeof(long long));
+	if (NULL == p) {
+		return false;
+	}
+	long long* w = (long long*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 unsigned long long ByteArray::read_uint64(void) {
-	unsigned long long w = *((unsigned long long*)read());
-	read(sizeof(unsigned long long));
-	return w;
+	char* p = read(sizeof(unsigned long long));
+	if (NULL == p) {
+		return 0;
+	}
+	unsigned long long r = *((unsigned long long*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_uint64(unsigned long long value) {
-	unsigned long long* pV = (unsigned long long*)write();
-    *pV = value;
-	return write(sizeof(unsigned long long));
+	char* p = write(sizeof(unsigned long long));
+	if (NULL == p) {
+		return false;
+	}
+	unsigned long long* w = (unsigned long long*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 float ByteArray::read_float(void) {
-	float w = *((float*)read());
-	read(sizeof(float));
-	return w;
+	char* p = read(sizeof(float));
+	if (NULL == p) {
+		return 0;
+	}
+	float r = *((float*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_float(float value) {
-	float* pV = (float*)write();
-    *pV = value;
-	return write(sizeof(float));
+	char* p = write(sizeof(float));
+	if (NULL == p) {
+		return false;
+	}
+	float* w = (float*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 double ByteArray::read_double(void) {
-	double w = *((double*)read());
-	read(sizeof(double));
-	return w;
+	char* p = read(sizeof(double));
+	if (NULL == p) {
+		return 0;
+	}
+	double r = *((double*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_double(double value) {
-	double* pV = (double*)write();
-    *pV = value;
-	return write(sizeof(double));
+	char* p = write(sizeof(double));
+	if (NULL == p) {
+		return false;
+	}
+	double* w = (double*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 bool ByteArray::read_bool(void) {
-	bool w = *((bool*)read());
-	read(sizeof(bool));
-	return w;
+	char* p = read(sizeof(bool));
+	if (NULL == p) {
+		return false;
+	}
+	bool r = *((bool*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_bool(bool value) {
-	bool* pV = (bool*)write();
-    *pV = value;
-	return write(sizeof(bool));
+	char* p = write(sizeof(bool));
+	if (NULL == p) {
+		return false;
+	}
+	bool* w = (bool*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 char ByteArray::read_char(void) {
-	char w = *((char*)read());
-	read(sizeof(char));
-	return w;
+	char* p = read(sizeof(char));
+	if (NULL == p) {
+		return false;
+	}
+	char r = *((char*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_char(char value) {
-	char* pV = (char*)write();
-    *pV = value;
-	return write(sizeof(char));
+	char* p = write(sizeof(char));
+	if (NULL == p) {
+		return false;
+	}
+	char* w = (char*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 unsigned char ByteArray::read_uchar(void) {
-	unsigned char w = *((unsigned char*)read());
-	read(sizeof(unsigned char));
-	return w;
+	char* p = read(sizeof(unsigned char));
+	if (NULL == p) {
+		return false;
+	}
+	unsigned char r = *((unsigned char*)p);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_uchar(unsigned char value) {
-	unsigned char* pV = (unsigned char*)write();
-    *pV = value;
-	return write(sizeof(unsigned char));
+	char* p = write(sizeof(unsigned char));
+	if (NULL == p) {
+		return false;
+	}
+	unsigned char* w = (unsigned char*)p;
+	*w = value
+	return true;
 }
 //----------------------------------------------------------------------
 unsigned char* ByteArray::read_string(unsigned char* info, unsigned int len) {
-	unsigned char* result = (unsigned char*)memcpy(info, read(), len);
-	read(len);
-	return result;
+	char* p = read(len);
+	if (NULL == p) {
+		return "";
+	}
+	unsigned char* r = (unsigned char*)memcpy(info, p, len);
+	return r;
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_string(const char* str) {
@@ -257,8 +351,14 @@ bool ByteArray::write_string(const char* str) {
 //----------------------------------------------------------------------
 std::string ByteArray::read_string(void) {
 	unsigned int len = read_uint();
-	std::string strValue(read(), len);
-	read(len);
+	if (0 == len) {
+		return "";
+	}
+	char* p = read(len);
+	if (NULL == p) {
+		return "";
+	}
+	std::string strValue(p, len);
 	return strValue;
 }
 //----------------------------------------------------------------------
@@ -273,32 +373,29 @@ bool ByteArray::copy(const char* buf, int n) {
 	if (getSpaceLength() < n) {
 		return false;
 	}
-	memcpy(write(), buf, n);
-	write(n);
+	char* p = write(n);
+	if (NULL == p) {
+		return false;
+	}
+	memcpy(p, buf, n);
 	return true;
 }
 //----------------------------------------------------------------------
-char* ByteArray::read(void) {
-	return mContent + mReadIndex;
-}
-//----------------------------------------------------------------------
-bool ByteArray::read(int n) {
+char* ByteArray::read(int n) {
 	if (mReadIndex + n > mTotalSize) {
-		return false;
+		return NULL;
 	}
+	char* p = mContent + mReadIndex;
 	mReadIndex += n;
-	return true;
+	return p;
 }
 //----------------------------------------------------------------------
-char* ByteArray::write(void) {
-	return mContent + mWriteIndex;
-}
-//----------------------------------------------------------------------
-bool ByteArray::write(int n) {
+char* ByteArray::write(int n) {
 	if (mWriteIndex + n > mTotalSize) {
-		return false;
+		return NULL;
 	}
+	char* p = mContent + mWriteIndex;
 	mWriteIndex += n;
-	return true;
+	return p;
 }
 //----------------------------------------------------------------------

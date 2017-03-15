@@ -79,11 +79,7 @@ public:
 
 private:
 	bool copy(const char* buf, int n);
-	
-	char* read(void);
 	bool read(int n);
-	
-	char* write(void);
 	bool write(int n);
 
 private:
