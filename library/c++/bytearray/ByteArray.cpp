@@ -24,7 +24,7 @@ ByteArray::~ByteArray() {
 }
 //----------------------------------------------------------------------
 short ByteArray::swab16(short x)  {
-	return (((x&0x00ff) << 8) | ((x&0x00ff00) >> 8));
+	return (((x & 0x00FF) << 8) | ((x & 0xFF00) >> 8));
 }
 //----------------------------------------------------------------------
 short ByteArray::swab16_array(char* pBuf) {
@@ -34,7 +34,7 @@ short ByteArray::swab16_array(char* pBuf) {
 }
 //----------------------------------------------------------------------
 int ByteArray::swab32(int x) {
-	return (((x&0x000000ff) << 24) | ((x&0x0000ff00) << 8) | ((x&0x00ff0000) >> 8) | ((x&0xff000000) >> 24));
+	return (((x & 0x000000FF) << 24) | ((x & 0x0000FF00) << 8) | ((x & 0x00FF0000) >> 8) | ((x & 0xFF000000) >> 24));
 }
 //----------------------------------------------------------------------
 int ByteArray::swab32_array(char* pBuf) {
@@ -49,12 +49,7 @@ int ByteArray::max_size(void) {
 //----------------------------------------------------------------------
 void ByteArray::print(void) {
 	printf("==================== ByteArray: max=%d, length=%d, space=%d\n", mTotalSize, strlen(mContent), getSpaceLength());
-	printf("===== s:%s\n", mContent);		// 字符串
-	printf("===== o:%o\n", mContent);		// 无符号8进制
-	printf("===== d:%d\n", mContent);		// 有符号10进制
-	printf("===== u:%u\n", mContent);		// 无符号10进制
-	printf("===== x:%x\n", mContent);		// 无符号16进制
-	printf("===== p:%p\n", mContent);		// 以16进制形式输出指针
+	printf("%s\n", mContent);		// 字符串
 	printf("========================================\n");
 }
 //----------------------------------------------------------------------
@@ -86,6 +81,63 @@ bool ByteArray::setContent(const char* content, int len) {
 	}
 	memcpy(mContent, content, len);
 	mWriteIndex = len;
+	return true;
+}
+//----------------------------------------------------------------------
+bool ByteArray::read_bool(void) {
+	char* p = read(sizeof(bool));
+	if (NULL == p) {
+		return false;
+	}
+	bool r = *((bool*)p);
+	return r;
+}
+//----------------------------------------------------------------------
+bool ByteArray::write_bool(bool value) {
+	char* p = write(sizeof(bool));
+	if (NULL == p) {
+		return false;
+	}
+	bool* w = (bool*)p;
+	*w = value
+	return true;
+}
+//----------------------------------------------------------------------
+char ByteArray::read_char(void) {
+	char* p = read(sizeof(char));
+	if (NULL == p) {
+		return false;
+	}
+	char r = *((char*)p);
+	return r;
+}
+//----------------------------------------------------------------------
+bool ByteArray::write_char(char value) {
+	char* p = write(sizeof(char));
+	if (NULL == p) {
+		return false;
+	}
+	char* w = (char*)p;
+	*w = value
+	return true;
+}
+//----------------------------------------------------------------------
+unsigned char ByteArray::read_uchar(void) {
+	char* p = read(sizeof(unsigned char));
+	if (NULL == p) {
+		return false;
+	}
+	unsigned char r = *((unsigned char*)p);
+	return r;
+}
+//----------------------------------------------------------------------
+bool ByteArray::write_uchar(unsigned char value) {
+	char* p = write(sizeof(unsigned char));
+	if (NULL == p) {
+		return false;
+	}
+	unsigned char* w = (unsigned char*)p;
+	*w = value
 	return true;
 }
 //----------------------------------------------------------------------
@@ -277,76 +329,6 @@ bool ByteArray::write_double(double value) {
 	double* w = (double*)p;
 	*w = value
 	return true;
-}
-//----------------------------------------------------------------------
-bool ByteArray::read_bool(void) {
-	char* p = read(sizeof(bool));
-	if (NULL == p) {
-		return false;
-	}
-	bool r = *((bool*)p);
-	return r;
-}
-//----------------------------------------------------------------------
-bool ByteArray::write_bool(bool value) {
-	char* p = write(sizeof(bool));
-	if (NULL == p) {
-		return false;
-	}
-	bool* w = (bool*)p;
-	*w = value
-	return true;
-}
-//----------------------------------------------------------------------
-char ByteArray::read_char(void) {
-	char* p = read(sizeof(char));
-	if (NULL == p) {
-		return false;
-	}
-	char r = *((char*)p);
-	return r;
-}
-//----------------------------------------------------------------------
-bool ByteArray::write_char(char value) {
-	char* p = write(sizeof(char));
-	if (NULL == p) {
-		return false;
-	}
-	char* w = (char*)p;
-	*w = value
-	return true;
-}
-//----------------------------------------------------------------------
-unsigned char ByteArray::read_uchar(void) {
-	char* p = read(sizeof(unsigned char));
-	if (NULL == p) {
-		return false;
-	}
-	unsigned char r = *((unsigned char*)p);
-	return r;
-}
-//----------------------------------------------------------------------
-bool ByteArray::write_uchar(unsigned char value) {
-	char* p = write(sizeof(unsigned char));
-	if (NULL == p) {
-		return false;
-	}
-	unsigned char* w = (unsigned char*)p;
-	*w = value
-	return true;
-}
-//----------------------------------------------------------------------
-unsigned char* ByteArray::read_string(unsigned char* info, unsigned int len) {
-	char* p = read(len);
-	if (NULL == p) {
-		return "";
-	}
-	unsigned char* r = (unsigned char*)memcpy(info, p, len);
-	return r;
-}
-//----------------------------------------------------------------------
-bool ByteArray::write_string(const char* str) {
-	return write_string(std::string(str));
 }
 //----------------------------------------------------------------------
 std::string ByteArray::read_string(void) {

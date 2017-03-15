@@ -32,50 +32,47 @@ public:
 	bool setContent(const char* content, int len);							// 设置字节流内容
 	
 public:
+	bool read_bool(void);													// 从字节流读取布尔型
+	bool write_bool(bool value);											// 向字节流写入布尔型
+	
+	char read_char(void);													// 从字节流读取字符型
+	bool write_char(char value);											// 向字节流写入字符型
+	
+	unsigned char read_uchar(void);											// 从字节流读取无符号字符整型
+	bool write_uchar(unsigned char value);									// 向字节流写入无符号字符整型
+	
 	short read_int16(void);													// 从字节流读取16位整型
-	bool write_int16(short value);											// 向字节流写16位整型
+	bool write_int16(short value);											// 向字节流写入16位整型
 	
 	unsigned short read_uint16(void);										// 从字节流读取16位无符号整型
-	bool write_uint16(unsigned short value);								// 向字节流写16位无符号整型
+	bool write_uint16(unsigned short value);								// 向字节流写入16位无符号整型
 	
 	int read_int(void);														// 从字节流读取32位整型
-	bool write_int(int value);												// 向字节流写32位整型
+	bool write_int(int value);												// 向字节流写入32位整型
 	
-	unsigned int read_uint(void);											// 从字节流读取32位整型
-	bool write_uint(unsigned int value);									// 向字节流写32位无符号整型
-
+	unsigned int read_uint(void);											// 从字节流读取32位无符号整型
+	bool write_uint(unsigned int value);									// 向字节流写入32位无符号整型
+	
 	long read_long(void);													// 从字节流读取长整型
-	bool write_long(long value);											// 向字节流写长整型
+	bool write_long(long value);											// 向字节流写入长整型
 	
 	unsigned long read_ulong(void);											// 从字节流读取无符号长整型
-	bool write_ulong(unsigned long value);									// 向字节流写无符号长整型
-
+	bool write_ulong(unsigned long value);									// 向字节流写入无符号长整型
+	
 	long long read_int64(void);												// 从字节流读取64位整型
-	bool write_int64(long long value);										// 向字节流写64位整型
+	bool write_int64(long long value);										// 向字节流写入64位整型
 	
 	unsigned long long read_uint64(void);									// 从字节流读取64位无符号整型
-	bool write_uint64(unsigned long long value);							// 向字节流写64位无符号整型
-
-	float read_float(void);													// 从字节流读取浮点数
-	bool write_float(float value);											// 向字节流写浮点数
+	bool write_uint64(unsigned long long value);							// 向字节流写入64位无符号整型
 	
-	double read_double(void);												// 从字节流读取双精度数
-	bool write_double(double value);										// 向字节流写双精度数
-
-	bool read_bool(void);													// 从字节流读取Bool值
-	bool write_bool(bool value);											// 向字节流写布尔型
-
-	char read_char(void);													// 从字节流读取字符
-	bool write_char(char value);											// 向字节流写字符型
+	float read_float(void);													// 从字节流读取浮点型
+	bool write_float(float value);											// 向字节流写入浮点型
 	
-	unsigned char read_uchar(void);											// 从字节流读取无符号字符整数
-	bool write_uchar(unsigned char value);									// 向字节流写无符号字符型整数
-
-	unsigned char* read_string(unsigned char* info, unsigned int len);		// 从字节流读取字符串
-	bool write_string(const char* str);										// 向字节流写字符串
+	double read_double(void);												// 从字节流读取双精度浮点型
+	bool write_double(double value);										// 向字节流写入双精度浮点型
 	
 	std::string read_string(void);											// 从字节流读取字符串
-	bool write_string(const std::string& str);								// 向字节流写字符串
+	bool write_string(const std::string& str);								// 向字节流写入字符串
 
 private:
 	bool copy(const char* buf, int n);
