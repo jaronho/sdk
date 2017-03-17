@@ -1,8 +1,12 @@
 package com.jh.utils;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.graphics.drawable.AnimationDrawable;
+import android.os.Build;
+import android.os.SystemClock;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 
@@ -12,7 +16,7 @@ import com.yaxon.hudmain.jh.library.timer.TimerManager;
 /**
  * Author:  jaron.ho
  * Date:    2017-02-08
- * Brief:   视图工具集
+ * Brief:   工具集
  */
 
 public final class ViewUtil {
@@ -143,16 +147,16 @@ public final class ViewUtil {
     /**
      * 功  能: 创建环形进度条
      * 参  数: image - 图片
-     *         startAngle - 开始角度(顺时针),[0, 360)
-     *         sweepAngle - 扫描角度(顺时针),[0, 360]
+     *         startAngle - 开始角度,[0, 360)
+     *         sweepAngle - 扫描角度,[0, 360]
+     *         clockwise - true:顺时针,false:逆时针
      * 返回值: SectorDrawable
      */
-    public static SectorDrawable createCircleProgress(ImageView image, float startAngle, float sweepAngle) {
+    public static SectorDrawable createCircleProgress(ImageView image, float startAngle, float sweepAngle, boolean clockwise) {
         SectorDrawable sectorDrawable = null;
         if (null != image) {
-            sectorDrawable = new SectorDrawable(image.getDrawable(), startAngle);
+            sectorDrawable = new SectorDrawable(image.getDrawable(), startAngle, sweepAngle, clockwise);
             image.setImageDrawable(sectorDrawable);
-            sectorDrawable.setSweepAngle(sweepAngle);
         }
         return sectorDrawable;
     }
