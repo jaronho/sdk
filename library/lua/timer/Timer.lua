@@ -35,6 +35,7 @@ end
 -- create a timer
 function CreateTimer(interval, count, runCF, overCF, target, param)
 	-- private member variables
+	assert(interval > 0, "interval <= 0")
 	local mInterval = interval			-- interval duration in milliseconds
 	local mTotalCount = count			-- number of intervals, if count <= 0, timer will repeat forever
 	local mCurrentCount = 0				-- current interval count
@@ -58,10 +59,7 @@ function CreateTimer(interval, count, runCF, overCF, target, param)
 		if mTotalCount <= 0 or mCurrentCount < mTotalCount then
 			local deltaTime = math.abs(currentTime - mStartTime)
 			if deltaTime >= mInterval then
-				local runCount = 1
-				if (mInterval > 0) then
-					math.floor(deltaTime/mInterval)
-				end
+				local runCount = math.floor(deltaTime/mInterval)
 				mCurrentCount = mCurrentCount + runCount
 				mStartTime = currentTime
 				if "function" == type(mRunCallFunc) then
@@ -114,11 +112,18 @@ function CreateTimer(interval, count, runCF, overCF, target, param)
 	function tm:pause()
 		mIsPause = true
 	end
-	function tm:setTotalCount(count)
-		mTotalCount = count
+	function tm:getInterval()
+		return mInterval
+	end
+	function tm:setInterval(interval)
+		assert(interval > 0, "interval <= 0")
+		mInterval = interval
 	end
 	function tm:getTotalCount()
 		return mTotalCount
+	end
+	function tm:setTotalCount(count)
+		mTotalCount = count
 	end
 	function tm:getCurrentCount()
 		return mCurrentCount
@@ -126,11 +131,17 @@ function CreateTimer(interval, count, runCF, overCF, target, param)
 	function tm:isRunning()
 		return mRunning
 	end
-	function tm:setParam(param)
-		mParam = param
+	function tm:setRunHandler(runCF)
+		mRunCallFunc = runCF
+	end
+	function tm:setOverHandler(overCF)
+		mOverCallFunc = overCF
 	end
 	function tm:getParam()
 		return mParam
+	end
+	function tm:setParam(param)
+		mParam = param
 	end
 	return tm
 end

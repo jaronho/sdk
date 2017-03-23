@@ -6,7 +6,7 @@
 using System.Collections;
 //--------------------------------------------------------------------
 public class Timer {
-	private long mInterval = 0;						// interval duration in milliseconds
+	private long mInterval = 1;						// interval duration in milliseconds
 	private int mTotalCount = 0;					// number of intervals, if count <= 0, timer will repeat forever
 	private int mCurrentCount = 0;					// current interval count
 	private long mStartTime = 0;					// start time for the current interval in milliseconds
@@ -41,10 +41,7 @@ public class Timer {
 		if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
 			long deltaTime = System.Math.Abs(currentTime - mStartTime);
 			if (deltaTime >= mInterval) {
-				int runCount = 1;
-				if (mInterval > 0) {
-					runCount = (int)System.Math.Floor(deltaTime / mInterval);
-				}
+				int runCount = (int)System.Math.Floor(deltaTime / mInterval);
 				mCurrentCount = mCurrentCount + runCount;
 				mStartTime = currentTime;
 				if (null != mRunHandler) {

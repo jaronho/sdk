@@ -15,7 +15,7 @@ public class Timer {
         public abstract void onCallback(Timer tm, Object param);
     }
 
-    private long mInterval = 0;				    // interval duration in milliseconds
+    private long mInterval = 1;				    // interval duration in milliseconds
     private int mTotalCount = 0;				    // number of intervals, if count <= 0, timer will repeat forever
     private int mCurrentCount = 0;			    // current interval count
     private long mStartTime = 0;				    // start time for the current interval in milliseconds
@@ -26,6 +26,9 @@ public class Timer {
     private Object mParam = null;				    // parameter
 
     public Timer(long interval, int count, RunHandler runHandler, OverHandler overHandler, Object param) {
+        if (interval <= 0) {
+            throw new AssertionError("interval <= 0");
+        }
         mInterval = interval;
         mTotalCount = count;
         mRunHandler = runHandler;
@@ -44,10 +47,7 @@ public class Timer {
         if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
             long deltaTime = Math.abs(currentTime - mStartTime);
             if (deltaTime >= mInterval) {
-                int runCount = 1;
-                if (mInterval > 0) {
-                    runCount = (int)Math.floor(deltaTime / mInterval);
-                }
+                int runCount = (int)Math.floor(deltaTime / mInterval);
                 mCurrentCount = mCurrentCount + runCount;
                 mStartTime = currentTime;
                 if (null != mRunHandler) {
@@ -96,6 +96,9 @@ public class Timer {
     }
 
     public void setInterval(long interval) {
+        if (interval <= 0) {
+            throw new AssertionError("interval <= 0");
+        }
         mInterval = interval;
     }
 

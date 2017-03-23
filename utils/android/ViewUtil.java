@@ -97,19 +97,27 @@ public final class ViewUtil {
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
     public static void startBlink(final View view, final int showTime, final int hideTime, final int count, final Timer.OverHandler handler) {
         if (null != view) {
+            if (showTime <= 0) {
+                view.setVisibility(View.INVISIBLE);
+                return;
+            }
             if (View.NO_ID == view.getId()) {
                 view.setId(View.generateViewId());
             }
             view.setVisibility(View.VISIBLE);
-            TimerManager.getInstance().run(showTime, count * 2, new Timer.RunHandler() {
-                private boolean mShowFlag = true;
-                @Override
-                public void onCallback(Timer tm, int runCount, Object param) {
-                    mShowFlag = !mShowFlag;
-                    tm.setInterval(mShowFlag ? showTime : hideTime);
-                    view.setVisibility(mShowFlag ? View.VISIBLE : (hideTime > 0 ? View.INVISIBLE : View.VISIBLE));
-                }
-            }, handler, null, false, "TimerBlink_" + view.getId());
+            if (hideTime > 0) {
+                TimerManager.getInstance().run(showTime, count * 2, new Timer.RunHandler() {
+                    private boolean mShowFlag = true;
+                    @Override
+                    public void onCallback(Timer tm, int runCount, Object param) {
+                        mShowFlag = !mShowFlag;
+                        tm.setInterval(mShowFlag ? showTime : hideTime);
+                        view.setVisibility(mShowFlag ? View.VISIBLE : (hideTime > 0 ? View.INVISIBLE : View.VISIBLE));
+                    }
+                }, handler, null, false, "TimerBlink_" + view.getId());
+            } else if (count > 0) {
+                TimerManager.getInstance().run(showTime * count, 1, handler, "TimerBlink_" + view.getId());
+            }
         }
     }
 
@@ -139,7 +147,9 @@ public final class ViewUtil {
      */
     public static void stopBlink(View view, boolean showAtLast) {
         if (null != view) {
-            TimerManager.getInstance().stop("TimerBlink_" + view.getId(), false);
+            if (View.NO_ID != view.getId()) {
+                TimerManager.getInstance().stop("TimerBlink_" + view.getId(), false);
+            }
             view.setVisibility(showAtLast ? View.VISIBLE : View.INVISIBLE);
         }
     }

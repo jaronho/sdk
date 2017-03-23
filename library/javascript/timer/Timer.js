@@ -36,6 +36,9 @@ function ClearTimer() {
 // create a timer
 function CreateTimer(interval, count, runCF, overCF, target, param) {
 	// private member variables
+	if (interval <= 0) {
+		throw new Error("interval <= 0");
+	}
 	var mInterval = interval;			// interval duration in milliseconds
 	var mTotalCount = count;			// number of intervals, if count <= 0, timer will repeat forever
 	var mCurrentCount = 0;				// current interval count
@@ -59,10 +62,7 @@ function CreateTimer(interval, count, runCF, overCF, target, param) {
 		if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
 			var deltaTime = Math.abs(currentTime - mStartTime);
 			if (deltaTime >= mInterval) {
-				var runCount = 1;
-				if (mInterval > 0) {
-					runCount = Math.floor(deltaTime / mInterval);
-				}
+				var runCount = Math.floor(deltaTime / mInterval);
 				mCurrentCount = mCurrentCount + runCount;
 				mStartTime = currentTime;
 				if ('function' == typeof(mRunCallFunc)) {
@@ -103,8 +103,20 @@ function CreateTimer(interval, count, runCF, overCF, target, param) {
 	tm.pause = function() {
 		mIsPause = true;
 	};
+	tm.getInterval = function() {
+		return mInterval;
+	};
+	tm.setInterval = function(interval) {
+		if (interval <= 0) {
+			throw new Error("interval <= 0");
+		}
+		mInterval = interval;
+	};
 	tm.getTotalCount = function() {
 		return mTotalCount;
+	};
+	tm.setTotalCount = function(count) {
+		mTotalCount = count;
 	};
 	tm.getCurrentCount = function() {
 		return mCurrentCount;
@@ -112,11 +124,17 @@ function CreateTimer(interval, count, runCF, overCF, target, param) {
 	tm.isRunning = function() {
 		return mRunning;
 	};
-	tm.setParam = function(param) {
-		mParam = param;
+	tm.setRunHandler = function(runCF) {
+		mRunCallFunc = runCF;
+	};
+	tm.setOverHandler = function(overCF) {
+		mOverCallFunc = overCF;
 	};
 	tm.getParam = function() {
 		return mParam;
+	};
+	tm.setParam = function(param) {
+		mParam = param;
 	};
 	return tm;
 }
