@@ -1,4 +1,4 @@
-package com.jh.utils;
+package com.jaronho.sdk.utils;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -10,7 +10,7 @@ import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.util.Log;
 
 public class Database {
-	
+	private static String TAG = "Database";
 	// SQLite
 	private static class SQLiteHelper extends SQLiteOpenHelper {
 		public SQLiteHelper(Context context, String name, CursorFactory factory, int version) {
@@ -41,7 +41,7 @@ public class Database {
 		try {
 			mSQLiteHelper = new SQLiteHelper(context, name, factory, version);
 		} catch (SQLiteException e) {
-			Log.e("Database", "create -> name: " + name + ", version: " + version + "\n" + e.toString());
+			Log.e(TAG, "create -> name: " + name + ", version: " + version + "\n" + e.toString());
 		}
 		return mSQLiteHelper;
 	}

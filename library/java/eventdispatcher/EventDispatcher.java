@@ -1,4 +1,4 @@
-package com.jh.library.eventdispatcher;
+package com.jaronho.sdk.library.eventdispatcher;
 
 import java.util.ArrayList;
 import java.util.List;

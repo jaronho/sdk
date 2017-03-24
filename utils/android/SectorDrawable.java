@@ -1,4 +1,4 @@
-package com.jh.utils;
+package com.jaronho.sdk.utils;
 
 import android.annotation.TargetApi;
 import android.content.res.ColorStateList;
@@ -12,7 +12,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.annotation.NonNull;
 
-import com.jh.library.Formula;
+import com.jaronho.sdk.library.Formula;
 
 /**
  * Author:  jaron.ho

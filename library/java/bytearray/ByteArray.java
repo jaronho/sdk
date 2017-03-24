@@ -1,12 +1,11 @@
-package com.jh.library;
+package com.jaronho.sdk.library.bytearray;
 
-import android.os.Debug;
 import android.util.Log;
 
 import java.util.Arrays;
 
 /**
- * Author:  jaron.ho
+ * Author:  jaron.hoq
  * Date:    2017-03-15
  * Brief:   字节流类(网络协议序列化)
  */

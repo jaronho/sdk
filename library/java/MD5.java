@@ -1,4 +1,4 @@
-package com.jh.library;
+package com.jaronho.sdk.library;
 
 import java.security.MessageDigest;
 
@@ -13,8 +13,7 @@ public class MD5 {
 			int j = md.length;
 			char str[] = new char[j * 2];
 			int k = 0;
-			for (int i = 0; i < j; i++) {
-				byte byte0 = md[i];
+			for (byte byte0 : md) {
 				str[k++] = hexDigits[byte0 >>> 4 & 0xf];
 				str[k++] = hexDigits[byte0 & 0xf];
 			}

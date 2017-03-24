@@ -1,4 +1,4 @@
-package com.jh.utils;
+package com.jaronho.sdk.utils;
 
 import java.util.List;
 
@@ -52,11 +52,7 @@ public final class Util {
 			@Override
 			public void run() {
 				Object obj = activity.getSystemService(Activity.CLIPBOARD_SERVICE);
-				if (android.os.Build.VERSION.SDK_INT > 11) {
-					((android.content.ClipboardManager)obj).setText(str);
-				} else {
-					((android.text.ClipboardManager)obj).setText(str);
-				}
+				((android.content.ClipboardManager)obj).setText(str);
 			}
 		});
 	}
@@ -76,11 +72,11 @@ public final class Util {
 		}
 		NetworkInfo[] networkInfoList = cm.getAllNetworkInfo();
 		if (null != networkInfoList && networkInfoList.length > 0) {
-            for (int i = 0; i < networkInfoList.length; i++) {
-                if (NetworkInfo.State.CONNECTED == networkInfoList[i].getState()) {
-                    return true;
-                }
-            }
+			for (NetworkInfo aNetworkInfoList : networkInfoList) {
+				if (NetworkInfo.State.CONNECTED == aNetworkInfoList.getState()) {
+					return true;
+				}
+			}
         }
 		return false;
 	}
@@ -118,7 +114,7 @@ public final class Util {
      * 参  数: activity - 活动
      * 返回值: boolean
      */
-	public static boolean isGpsEnabled(Activity activity) 
+	public static boolean isGpsEnabled(Activity activity) {
 		if (null == activity) {
 			return false;
 		}
@@ -223,13 +219,18 @@ public final class Util {
 			return "SIM_NULL";		// Null
 		}
         String operator = tm.getSimOperator();
-    	if (operator.equals("46000") || operator.equals("46002") || operator.equals("46007")) {
-    		return "SIM_YD";		// China Mobile
-		} else if (operator.equals("46001") || operator.equals("46006")) {
-			return "SIM_LT";		// China Unicom
-    	} else if (operator.equals("46003") || operator.equals("46005")) {
-    		return "SIM_DX";		// China Telecom
-    	}
+		switch (operator) {
+			case "46000":
+			case "46002":
+			case "46007":
+				return "SIM_YD";        // China Mobile
+			case "46001":
+			case "46006":
+				return "SIM_LT";        // China Unicom
+			case "46003":
+			case "46005":
+				return "SIM_DX";        // China Telecom
+		}
     	return "SIM_UNKNOWN";		// Unknown
 	}
 }

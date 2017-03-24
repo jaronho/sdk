@@ -1,4 +1,4 @@
-package com.jh.library.timer;
+package com.jaronho.sdk.library.timer;
 
 import android.os.Handler;
 import android.os.Message;

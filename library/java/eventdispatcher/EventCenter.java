@@ -1,4 +1,4 @@
-package com.jh.library.eventdispatcher;
+package com.jaronho.sdk.library.eventdispatcher;
 
 import android.os.Handler;
 import android.os.Message;

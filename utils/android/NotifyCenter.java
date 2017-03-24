@@ -1,4 +1,4 @@
-package com.jh.utils;
+package com.jaronho.sdk.utils;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.util.Log;
 
 public class NotifyCenter {
+	private static String TAG = "NotifyCenter";
 	private static Activity mActivity = null;
 	private static Class<?> mClass = null;
 	private static ArrayList<PendingInfo> mPendingList = new ArrayList<PendingInfo>();
@@ -21,10 +22,10 @@ public class NotifyCenter {
 	
 	public static void add(int type, int key, String title, String text, long delay) {
 		if (null == mActivity || null == mClass) {
-			Log.e("cocos2d", "NotifyCenter -> add -> must do regist first");
+			Log.e(TAG, "add -> must do regist first");
 			return;
 		}
-		Log.e("cocos2d", "NotifyCenter -> add -> type: " + type + ", key: " + key + ", title: " + title + ", text: " + text + ", delay: " + delay);
+		Log.e(TAG, "add -> type: " + type + ", key: " + key + ", title: " + title + ", text: " + text + ", delay: " + delay);
 		Intent intent = new Intent(mActivity, mClass);
 		intent.putExtra("type", type);
 		intent.putExtra("key", key);
@@ -37,7 +38,7 @@ public class NotifyCenter {
 		}
 		switch (type) {
 		case 1:		// delay from current time
-			Log.e("cocos2d", "NotifyCenter -> add -> delay from current time");
+			Log.e(TAG, "add -> delay from current time");
 			alarmMgr.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + delay*1000, pi);
 			break;
 		case 2:		// every day fixed time
@@ -55,7 +56,7 @@ public class NotifyCenter {
 			if (seconds > 60) {
 				seconds = 60;
 			}
-			Log.e("cocos2d", "NotifyCenter -> add -> every day fixed time: " + hour + ":" + minute + ":" + seconds);
+			Log.e(TAG, "add -> every day fixed time: " + hour + ":" + minute + ":" + seconds);
 			Calendar calendar = Calendar.getInstance();
 			calendar.setTimeInMillis(System.currentTimeMillis());
 			calendar.set(Calendar.HOUR_OF_DAY, hour);
@@ -74,10 +75,10 @@ public class NotifyCenter {
 	
 	public static void removeType(int type) {
 		if (null == mActivity || null == mClass) {
-			Log.e("cocos2d", "NotifyCenter -> removeType -> must do regist first");
+			Log.e(TAG, "removeType -> must do regist first");
 			return;
 		}
-		Log.e("cocos2d", "NotifyCenter -> removeType -> type: " + type);
+		Log.e(TAG, "removeType -> type: " + type);
 		AlarmManager alarmMgr = (AlarmManager)mActivity.getSystemService(Activity.ALARM_SERVICE);
 		for (PendingInfo info : mPendingList) {
 			if (type == info.type && null != info.pi) {
@@ -89,10 +90,10 @@ public class NotifyCenter {
 	
 	public static void removeKey(int key) {
 		if (null == mActivity || null == mClass) {
-			Log.e("cocos2d", "NotifyCenter -> removeKey -> must do regist first");
+			Log.e(TAG, "removeKey -> must do regist first");
 			return;
 		}
-		Log.e("cocos2d", "NotifyCenter -> removeKey -> key: " + key);
+		Log.e(TAG, "removeKey -> key: " + key);
 		AlarmManager alarmMgr = (AlarmManager)mActivity.getSystemService(Activity.ALARM_SERVICE);
 		for (PendingInfo info : mPendingList) {
 			if (key == info.key && null != info.pi) {
@@ -104,10 +105,10 @@ public class NotifyCenter {
 	
 	public static void clear() {
 		if (null == mActivity || null == mClass) {
-			Log.e("cocos2d", "NotifyCenter -> clear -> must do regist first");
+			Log.e(TAG, "clear -> must do regist first");
 			return;
 		}
-		Log.e("cocos2d", "NotifyCenter -> clear");
+		Log.e(TAG, "clear");
 		AlarmManager alarmMgr = (AlarmManager)mActivity.getSystemService(Activity.ALARM_SERVICE);
 		for (PendingInfo info : mPendingList) {
 			if (null != info.pi) {

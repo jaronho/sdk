@@ -1,4 +1,4 @@
-package com.jh.utils;
+package com.jaronho.sdk.utils;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -10,8 +10,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 
-import com.yaxon.hudmain.jh.library.timer.Timer;
-import com.yaxon.hudmain.jh.library.timer.TimerManager;
+import com.jaronho.sdk.library.timer.Timer;
+import com.jaronho.sdk.library.timer.TimerManager;
 
 /**
  * Author:  jaron.ho
