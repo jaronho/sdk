@@ -3,7 +3,7 @@
  ** Date:	2015-08-12
  ** Brief:	database for native
  ***********************************************************************/
-function CreateDataBase(name, isForceCreate, errorFunc, readFunc, writeFunc, destroyFunc, cryptoFunc, target) {
+function CreateDatabase(name, isForceCreate, errorFunc, readFunc, writeFunc, destroyFunc, cryptoFunc, target) {
 	if ('string' != typeof(name)) {
 		throw new Error("database name not support type '" + typeof(name) + "'");
 	}

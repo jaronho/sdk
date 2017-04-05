@@ -146,7 +146,7 @@ local function isEqualCheckValue(checkValue1, checkValue2)
 end
 ----------------------------------------------------------------------
 -- create database object
-function CreateDataBase(name, isForceCreate, errorFunc, readFunc, writeFunc, destroyFunc, cryptoFunc, target)
+function CreateDatabase(name, isForceCreate, errorFunc, readFunc, writeFunc, destroyFunc, cryptoFunc, target)
 	assert("string" == type(name) and string.len(name) > 0, "data file name \""..tostring(name).."\" is error")
 	-- private member variables
 	local mDB = {}							-- database table
