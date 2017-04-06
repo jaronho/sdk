@@ -2,6 +2,7 @@ package com.jaronho.sdk.utils;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.drawable.AnimationDrawable;
 import android.os.Build;
 import android.os.SystemClock;
@@ -9,6 +10,7 @@ import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.jaronho.sdk.library.timer.Timer;
 import com.jaronho.sdk.library.timer.TimerManager;
@@ -20,7 +22,8 @@ import com.jaronho.sdk.library.timer.TimerManager;
  */
 
 public final class ViewUtil {
-    private static long mStartTime = 0;     // 时间消耗(毫秒)
+    private static long mCostStartTime = 0;         // 耗时计算开始时间(毫秒)
+    private static Toast mToast = null;             // 提示组件
 
     /**
      * 功  能: 耗时开始,与接口costTimeCalc配对使用
@@ -28,7 +31,7 @@ public final class ViewUtil {
      * 返回值: 无
      */
     public static void costTimeBegin() {
-        mStartTime = SystemClock.elapsedRealtime();
+        mCostStartTime = SystemClock.elapsedRealtime();
     }
 
     /**
@@ -40,10 +43,10 @@ public final class ViewUtil {
      */
     public static long costTimeCalc(boolean resetFlag, String tag, String header) {
         long deltaTime = 0;
-        if (mStartTime > 0) {
+        if (mCostStartTime > 0) {
             long currentTime = SystemClock.elapsedRealtime();
-            deltaTime = currentTime - mStartTime;
-            mStartTime = resetFlag ? 0 : currentTime;
+            deltaTime = currentTime - mCostStartTime;
+            mCostStartTime = resetFlag ? 0 : currentTime;
             if (null != tag && tag.length() > 0 && null != header && header.length() > 0) {
                 Log.d(tag, "[" + header + "] cost time " + deltaTime + " millisconds");
             }
@@ -169,5 +172,35 @@ public final class ViewUtil {
             image.setImageDrawable(sectorDrawable);
         }
         return sectorDrawable;
+    }
+
+    /**
+     * 功  能: 显示提示文本
+     * 参  数: context - 上下文
+     *         msg - 提示信息
+     * 返回值: 无
+     */
+    public static void showToast(Context context, String msg) {
+        if (null == context || null == msg || msg.isEmpty()) {
+            return;
+        }
+        if (null == mToast) {
+            mToast = Toast.makeText(context, msg, Toast.LENGTH_SHORT);
+        } else {
+            mToast.setText(msg);
+        }
+        mToast.show();
+    }
+
+    /**
+     * 功  能: 显示提示文本
+     * 参  数: context - 上下文
+     *         resId - 资源id
+     * 返回值: 无
+     */
+    public static void showToast(Context context, int resId) {
+        if (null != context) {
+            showToast(context, context.getString(resId));
+        }
     }
 }

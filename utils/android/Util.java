@@ -1,5 +1,6 @@
 package com.jaronho.sdk.utils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import android.annotation.SuppressLint;
@@ -14,6 +15,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.provider.Settings.Secure;
 import android.telephony.TelephonyManager;
+import android.util.DisplayMetrics;
 
 /**
  * Author:  jaron.ho
@@ -22,20 +24,73 @@ import android.telephony.TelephonyManager;
  */
  
 public final class Util {
-	
-	/**
-     * 功  能: 杀死应用
-     * 参  数: activity - 活动
-     * 返回值: 无
+
+    /**
+     * 功  能: 将px值转换为dip或dp值,保证尺寸大小不变
+     * 参  数: context - 上下文
+     *         pxValue - 像素值
+     * 返回值: int
      */
-	public static void killApp(Activity activity) {
-		if (null == activity) {
-			return;
-		}
-		activity.finish();
-		android.os.Process.killProcess(android.os.Process.myPid());
-	}
-	
+    public static int px2dp(Context context, float pxValue) {
+        final float scale = context.getResources().getDisplayMetrics().density;
+        return (int)(pxValue / scale + 0.5f);
+    }
+
+    /**
+     * 功  能: 将dip或dp值转换为px值,保证尺寸大小不变
+     * 参  数: context - 上下文
+     *         dpValue - dp值
+     * 返回值: int
+     */
+    public static int dp2px(Context context, float dpValue) {
+        final float scale = context.getResources().getDisplayMetrics().density;
+        return (int)(dpValue * scale + 0.5f);
+    }
+
+    /**
+     * 功  能: 将px值转换为sp值,保证尺寸大小不变
+     * 参  数: context - 上下文
+     *         pxValue - 像素值
+     * 返回值: int
+     */
+    public static int px2sp(Context context, float pxValue) {
+        final float fontScale = context.getResources().getDisplayMetrics().scaledDensity;
+        return (int)(pxValue / fontScale + 0.5f);
+    }
+
+    /**
+     * 功  能: 将sp值转换为px值,保证尺寸大小不变
+     * 参  数: context - 上下文
+     *         spValue - sp值
+     * 返回值: int
+     */
+    public static int sp2px(Context context, float spValue) {
+        final float fontScale = context.getResources().getDisplayMetrics().scaledDensity;
+        return (int)(spValue * fontScale + 0.5f);
+    }
+
+    /**
+     * 功  能: 获取屏幕像素x
+     * 参  数: activity - 活动
+     * 返回值: int
+     */
+    public static int getXScreenPx(Activity activity) {
+        DisplayMetrics dm = new DisplayMetrics();
+        activity.getWindowManager().getDefaultDisplay().getMetrics(dm);
+        return dm.widthPixels;
+    }
+
+    /**
+     * 功  能: 获取屏幕像素y
+     * 参  数: activity - 活动
+     * 返回值: int
+     */
+    public static int getYScreenPx(Activity activity) {
+        DisplayMetrics dm = new DisplayMetrics();
+        activity.getWindowManager().getDefaultDisplay().getMetrics(dm);
+        return dm.heightPixels;
+    }
+
 	/**
      * 功  能: 复制字符串到剪贴板
      * 参  数: activity - 活动
