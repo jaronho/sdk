@@ -14,7 +14,7 @@ import java.util.List;
  */
 
 public abstract class BaseActivity extends AppCompatActivity {
-    private static List<BaseActivity> mActivities = new ArrayList<>();
+    private static final List<BaseActivity> mActivities = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
