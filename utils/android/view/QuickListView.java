@@ -1,4 +1,4 @@
-package com.jaronho.sdk.utils;
+package com.jaronho.sdk.utils.view;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -7,19 +7,19 @@ import android.widget.ListView;
 /**
  * Author:  jaron.ho
  * Date:    2017-04-06
- * Brief:   ListViewEx
+ * Brief:   QuickListView
  */
 
-public class ListViewEx extends ListView {
-    public ListViewEx(Context context, AttributeSet attrs) {
-        super(context, attrs);
-    }
-
-    public ListViewEx(Context context) {
+public class QuickListView extends ListView {
+    public QuickListView(Context context) {
         super(context);
     }
 
-    public ListViewEx(Context context, AttributeSet attrs, int defStyle) {
+    public QuickListView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+    }
+
+    public QuickListView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
     }
 

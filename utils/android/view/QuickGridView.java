@@ -1,4 +1,4 @@
-package com.jaronho.sdk.utils;
+package com.jaronho.sdk.utils.view;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -7,11 +7,11 @@ import android.widget.GridView;
 /**
  * Author:  jaron.ho
  * Date:    2017-04-06
- * Brief:   GridViewEx
+ * Brief:   QuickGridView
  */
 
-public class GridViewEx extends GridView {
-    public GridViewEx(Context context, AttributeSet attrs) {
+public class QuickGridView extends GridView {
+    public QuickGridView(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 
