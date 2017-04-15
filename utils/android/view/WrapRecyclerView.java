@@ -92,15 +92,15 @@ public class WrapRecyclerView extends RecyclerView {
             case MotionEvent.ACTION_MOVE:
                 int distance = (int)(((mIsHorizontal ? e.getRawX() : e.getRawY()) - mTouchPos) * mDragResistance);  // 获取手指触摸拖拽的距离
                 if (isScrollToHead()) {
-                    if (null != mHeadView) {
-                        scrollToPosition(0);    // 解决自动滚动问题
-                    }
                     if (STATUS_REFRESHING == mCurrentHeadStatus) {
                         if (distance < 0) {
                             mCurrentHeadStatus = STATUS_NORMAL;
                             restoreHeadView();
                         }
                     } else {
+                        if (STATUS_PULL == mCurrentHeadStatus || STATUS_READY == mCurrentHeadStatus) {
+                            scrollToPosition(0);    // 解决自动滚动问题
+                        }
                         int margin = distance - mHeadViewSize;
                         setHeadViewMargin(margin);
                         updateHeadStatus(margin);
@@ -108,9 +108,6 @@ public class WrapRecyclerView extends RecyclerView {
                     }
                 }
                 if (isScrollToFoot()) {
-                    if (null != mFootView) {
-                        scrollToPosition(getAdapter().getItemCount() - 1);  // 解决底部刷新自动滚动问题
-                    }
                     if (null != mFootView && mFootViewSize <= 0) {
                         mFootViewSize = mIsHorizontal ? mFootView.getMeasuredWidth() : mFootView.getMeasuredHeight();
                     }
@@ -120,6 +117,9 @@ public class WrapRecyclerView extends RecyclerView {
                             restoreFootView();
                         }
                     } else {
+                        if (STATUS_PULL == mCurrentFootStatus || STATUS_READY == mCurrentFootStatus) {
+                            scrollToPosition(getAdapter().getItemCount() - 1);  // 解决底部刷新自动滚动问题
+                        }
                         if (distance < 0) {
                             setFootViewMargin(-distance);
                             updateFootStatus(-distance);
