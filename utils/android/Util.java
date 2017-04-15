@@ -1,6 +1,5 @@
 package com.jaronho.sdk.utils;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import android.annotation.SuppressLint;

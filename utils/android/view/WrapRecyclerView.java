@@ -118,7 +118,9 @@ public class WrapRecyclerView extends RecyclerView {
                         }
                     } else {
                         if (STATUS_PULL == mCurrentFootStatus || STATUS_READY == mCurrentFootStatus) {
-                            scrollToPosition(getAdapter().getItemCount() - 1);  // 解决底部刷新自动滚动问题
+                            if (distance < 0) {
+                                scrollToPosition(getAdapter().getItemCount() - 1);  // 解决底部刷新自动滚动问题
+                            }
                         }
                         if (distance < 0) {
                             setFootViewMargin(-distance);
