@@ -19,11 +19,11 @@ function removeTimer(tm) {
 }
 //----------------------------------------------------------------------
 // called every frame
-function UpdateTimer() {
+function UpdateTimer(currentTime) {
 	for (var i = 0, len = mTimerList.length; i < len; ++i) {
 		var timer = mTimerList[i];
 		if (timer && 'object' == typeof(timer) && 'function' == typeof(timer.update)) {
-			timer.update();
+			timer.update(currentTime);
 		}
 	}
 }
