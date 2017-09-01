@@ -19,10 +19,10 @@ local function removeTimer(tm)
 end
 ----------------------------------------------------------------------
 -- called every frame
-function UpdateTimer()
+function UpdateTimer(currentTime)
 	for _, val in pairs(mTimerList) do
 		if ("table" == type(val) or "userdata" == type(val)) and "function" == type(val.update) then
-			val:update()
+			val:update(currentTime)
 		end
 	end
 end
