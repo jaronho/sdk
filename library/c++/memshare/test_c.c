@@ -5,8 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 
-void msg_callback(const char* proc, int msg_type, int msg_len, const void* data) {
-	printf("receive [%s], msg_type => %d, msg_len => %d \n", proc, msg_type, msg_len);
+void msg_callback(const char* proc, int msg_type, long msg_len, const void* data) {
+	printf("receive [%s], msg_type => %d, msg_len => %ld \n", proc, msg_type, msg_len);
 }
 
 int main(int argc, char *argv[]) {
@@ -22,8 +22,8 @@ int main(int argc, char *argv[]) {
 	
 	while (1) {
 		sleep(1);
-		send_msg("test_a", 5, 0, NULL);
-		send_msg("test_b", 6, 0, NULL);
+		send_msg("test_a", 5, 0L, NULL);
+		send_msg("test_b", 6, 0L, NULL);
 	}
 
 	return 0;

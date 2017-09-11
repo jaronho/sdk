@@ -41,7 +41,7 @@ union semun {
 typedef struct {
 	char proc_name[PROC_NAME_SIZE];	/* orginating proc */
 	char msg_type;
-	int msg_len;
+	long msg_len;
 	long seq;
 } header;
 #define SIZEOF_HEADER sizeof(header)
@@ -61,7 +61,7 @@ typedef struct {
 typedef struct {
 	int size;		/* size of this struct?  */
 	int key_shm;		/* key = index (in ctrl area) * 4 + 43 */
-	int size_shm;		/* size of the shared memory allocated */
+	long size_shm;		/* size of the shared memory allocated */
 	int key_rlock;		/* key to hold the read lock for the shared mem */
 	int key_wlock;		/* key to hold the write lock for the shared mem */
 	int key_active;		/* key which will go zero if process terminates */
@@ -103,8 +103,8 @@ static int try_lock1(int sem);
 
 static void init_mem_proc(int num);
 static void populate_mem_proc(void);
-static int clear_shm(int key, int size);
-static void* get_shm(int key, int size, int* mode);
+static int clear_shm(int key, long size);
+static void* get_shm(int key, long size, int* mode);
 
 static proc_entry* get_proc_at(int index);
 static int clear_proc_entry(int index);
@@ -235,7 +235,7 @@ static void populate_mem_proc(void) {
 }
 
 /********** the shared memory functions ***********/
-static int clear_shm(int key, int size) {
+static int clear_shm(int key, long size) {
 	int shmid;
 	if ((shmid = shmget(key, size, IPC_CREAT | 0666)) < 0) {
 		print(LOG_ERR, "Unable get shared mem for key %d, errno %d\n", key, errno);
@@ -252,7 +252,7 @@ static int clear_shm(int key, int size) {
 /* not has been done before.                                      */
 /* With mode = 0 the function will fail if the index has been     */
 /* created before                                                 */
-static void* get_shm(int key, int size, int* mode) {
+static void* get_shm(int key, long size, int* mode) {
 	int shmid;
 	void* data;
 	if (*mode) {
@@ -448,7 +448,7 @@ static void clear_active(int sem) {
 
 /* This function will serach for a free entry in the ctrl area        */
 /* there it will fill all the keys that can be used to map shared mem */
-static int add_proc(const char* proc_name, int size) {
+static int add_proc(const char* proc_name, long size) {
 	proc_entry* entry;
 	int index;
 	int key_base = 0;
@@ -467,7 +467,7 @@ static int add_proc(const char* proc_name, int size) {
 	entry->sent = 0;
 	entry->received = 0;
 	my_index = index;
-	print(LOG_DEBUG, "Allocating shared memory for key %d size %d\n", entry->key_shm, entry->size_shm);
+	print(LOG_DEBUG, "Allocating shared memory for key %d size %ld\n", entry->key_shm, entry->size_shm);
 	/* Map up yourself in the local memory map with pointers instead */
 	/* of keys                                                       */
 	if (0 == (mem_entry[index].shm = get_shm(entry->key_shm, entry->size_shm, &mode))) {
@@ -537,7 +537,7 @@ int get_proc_index(const char* proc_name) {
 	return -1;
 }
 
-int get_proc_info(int index, long* send_count, long* rec_count, int* data_size, char** proc_name) {
+int get_proc_info(int index, long* send_count, long* rec_count, long* data_size, char** proc_name) {
 	proc_entry* entry;
 	/* this call will not check if the entry is active */
 	entry = get_proc_at(index);
@@ -560,7 +560,7 @@ int check_proc_entry(int index) {
 	return 0;
 }
 
-int init_memshare(const char* proc_name, int proc_num, int shm_key, int shm_size, int queue_size) {
+int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size) {
 	int ctrl_mode = 1;
 	if (initialized) {
 		return 1;
@@ -615,7 +615,7 @@ void register_logfunction(callback_logfunction cblf) {
 	callbacklogfunction = cblf;
 }
 
-int send_msg(const char* proc_name, int msg_type, int msg_len, const void* data) {
+int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data) {
 	int index;
 	header hdr;
 	if (!initialized) {
