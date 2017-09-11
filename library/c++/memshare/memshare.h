@@ -6,6 +6,11 @@
 #ifndef _MEMSHARE_H_
 #define _MEMSHARE_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef void (*callback_msg)(const char*, int, long, const void*);
 typedef void (*callback_logfunction)(int, const char*, ...);
 
@@ -14,9 +19,9 @@ typedef void (*callback_logfunction)(int, const char*, ...);
 #define DEF_SHM_SIZE		10*1024*1024L
 #define DEF_QUEUE_SIZE		1024
 
-int get_proc_index(const char* proc_name);
-int get_proc_info(int index, long* send_count, long* rec_count, long* data_size, char** proc_name);
-int check_proc_entry(int index);
+extern int get_proc_index(const char* proc_name);
+extern int get_proc_info(int index, long* send_count, long* rec_count, long* data_size, char** proc_name);
+extern int check_proc_entry(int index);
 
 /*****************************************************************************/
 /* Description        : This function initialises the memshare lib           */
@@ -32,7 +37,7 @@ int check_proc_entry(int index);
 /*                      2 register a proc without allocation size            */
 /*                      3 A NULL pointer as a proc name                      */
 /*****************************************************************************/
-int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size);
+extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size);
 
 /*****************************************************************************/
 /* Description        : This function registers a function that will be      */
@@ -41,7 +46,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 /* Output(s)          : None.                                                */
 /* Return Value(s)    : None.                                                */
 /*****************************************************************************/
-void register_msg(callback_msg cbm);
+extern void register_msg(callback_msg cbm);
 
 /*****************************************************************************/
 /* Description        : Add a function to be called when logging             */
@@ -49,7 +54,7 @@ void register_msg(callback_msg cbm);
 /* Output(s)          : None.                                                */
 /* Return Value(s)    : None.                                                */
 /*****************************************************************************/
-void register_logfunction(callback_logfunction cblf);
+extern void register_logfunction(callback_logfunction cblf);
 
 /*****************************************************************************/
 /* Description        : This functionsn will send a msg block to a specific  */
@@ -61,7 +66,7 @@ void register_logfunction(callback_logfunction cblf);
 /*                      1 No dest process process available                  */
 /*                      2 Memshare not initialized                           */
 /*****************************************************************************/
-int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data);
+extern int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data);
 
 /*****************************************************************************/
 /* Description        : This function ask for the size of data a process     */
@@ -71,7 +76,7 @@ int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data
 /* Return Value(s)    : 0 No such process                                    */
 /*                      n The max size in bytes that can be sent with data   */
 /*****************************************************************************/
-int get_datasize(const char* proc_name);
+extern int get_datasize(const char* proc_name);
 
 /*****************************************************************************/
 /* Description        : Sets the verbose level for output, every thing below */
@@ -84,6 +89,10 @@ int get_datasize(const char* proc_name);
 /* Output(s)          : None.                                                */
 /* Return Value(s)    : 0 ok                                                 */
 /*****************************************************************************/
-int set_print_level(int level);
+extern int set_print_level(int level);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	// _MEMSHARE_H_

@@ -6,13 +6,18 @@
 #ifndef _QUEUE_H_
 #define _QUEUE_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /*****************************************************************************/
 /* Description        : This function initialises the queue seize env        */
 /* Input(s)           : num of queues                                        */
 /* Output(s)          : None.                                                */
 /* Return Value(s)    : None.                                                */
 /*****************************************************************************/
-void init_queues(int num);
+extern void init_queues(int num);
 
 /*****************************************************************************/
 /* Description        : This function reserves a queue by a key and sets     */
@@ -26,7 +31,7 @@ void init_queues(int num);
 /*                      3 no queues avaliable                                */
 /*                      4 sanity check of parameters failed                  */
 /*****************************************************************************/
-int seize_queue(int* index, int key, int size);
+extern int seize_queue(int* index, int key, int size);
 
 /*****************************************************************************/
 /* Description        : This function adds a pointer to a low prio queue     */
@@ -35,7 +40,7 @@ int seize_queue(int* index, int key, int size);
 /*                      1 entry has to be a pointer                          */
 /*                      2 queue full, the enty is dropped                    */
 /*****************************************************************************/
-int lo_qadd(int index, void** entry);
+extern int lo_qadd(int index, void** entry);
 
 /*****************************************************************************/
 /* Description        : This function adds a pointer to a high prio queue    */
@@ -44,7 +49,7 @@ int lo_qadd(int index, void** entry);
 /*                      1 entry has to be a pointer                          */
 /*                      2 queue full, the enty is dropped                    */
 /*****************************************************************************/
-int hi_qadd(int index, void** entry);
+extern int hi_qadd(int index, void** entry);
 
 /*****************************************************************************/
 /* Description        : This function picks the next entry in the indexed    */
@@ -53,7 +58,7 @@ int hi_qadd(int index, void** entry);
 /* Input(s)           : index                                                */
 /* Return Value(s)    : A pointer to a buffer                                */
 /*****************************************************************************/
-void* qget(int index);
+extern void* qget(int index);
 
 /*****************************************************************************/
 /* Description        : This function peeks for the next entry in the        */
@@ -62,6 +67,10 @@ void* qget(int index);
 /* Return Value(s)    : 0 no entry available in any (hi or lo) queue         */
 /*                      1 An entry returned in buff                          */
 /*****************************************************************************/
-int qpeek(int index, void** buff);
+extern int qpeek(int index, void** buff);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	// _QUEUE_H_
