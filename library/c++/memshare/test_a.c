@@ -11,7 +11,7 @@ typedef struct {
 	long b;
 	float c;
 	double d;
-	char s[128];
+	char s[64];
 } Info;
 
 void msg_callback(const char* proc, int msg_type, long msg_len, const void* data) {
