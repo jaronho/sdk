@@ -479,7 +479,6 @@ static int add_proc(const char* proc_name, long size) {
 static void* write_thread_func(void* arg) {
 	header* hdr;
 	char* msg;
-	proc_entry* entry;
 	for (;;) {
 		/* Add check for prio, TODO */
 		print(LOG_DEBUG, "write thread going to lock\n");
@@ -492,7 +491,6 @@ static void* write_thread_func(void* arg) {
 		/* check return of allocation TODO */
 		msg = malloc(SIZEOF_HEADER + hdr->msg_len);
 		memcpy(msg, mem_entry[my_index].shm, SIZEOF_HEADER + hdr->msg_len);
-		entry = get_proc_at(my_index);
 		if (lo_qadd(queue_index, (void**)&msg)) {
 			/* Failed to put in queue, msg lost */
 			print(LOG_ERR, "Failed to put msg in queue, msg with seq %ld - %ld is lost!\n", hdr->major_seq, hdr->minor_seq);
