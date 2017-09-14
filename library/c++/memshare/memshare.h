@@ -82,8 +82,8 @@ extern int get_datasize(const char* proc_name);
 /* Description        : Sets the verbose level for output, every thing below */
 /*                    : will be printed.                                     */
 /* Input(s)           : From 0 to 7, syslog levels can be used (int):        */
-/*                      LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR, LOG_WARNING */
-/*                      LOG_NOTICE, LOG_INFO, LOG_DEBUG                      */
+/*                      0.LOG_EMERG, 1.LOG_ALERT, 2.LOG_CRIT, 3.LOG_ERR,     */
+/*                      4.LOG_WARNING, 5.LOG_NOTICE, 6.LOG_INFO, 7.LOG_DEBUG */
 /*                    : If an external logfunction is used this level is     */
 /*                    : bypassed                                             */
 /* Output(s)          : None.                                                */
