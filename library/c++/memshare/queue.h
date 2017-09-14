@@ -38,7 +38,6 @@ extern int seize_queue(int* index, int key, int size);
 /* Input(s)           : index and a pointer to a pointer                     */
 /* Return Value(s)    : 0 ok                                                 */
 /*                      1 entry has to be a pointer                          */
-/*                      2 queue full, the enty is dropped                    */
 /*****************************************************************************/
 extern int lo_qadd(int index, void** entry);
 
@@ -47,7 +46,6 @@ extern int lo_qadd(int index, void** entry);
 /* Input(s)           : index and a pointer to a pointer                     */
 /* Return Value(s)    : 0 ok                                                 */
 /*                      1 entry has to be a pointer                          */
-/*                      2 queue full, the enty is dropped                    */
 /*****************************************************************************/
 extern int hi_qadd(int index, void** entry);
 

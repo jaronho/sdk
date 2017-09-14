@@ -15,13 +15,13 @@ typedef void (*callback_msg)(const char*, int, long, const void*);
 typedef void (*callback_logfunction)(int, const char*, ...);
 
 #define DEF_PROC_NUM		10
-#define DEF_SHM_KEY			0xF216C5
+#define DEF_SHM_KEY			0x058E
 #define DEF_SHM_SIZE		10*1024*1024L
 #define DEF_QUEUE_SIZE		1024
 
-extern int get_proc_index(const char* proc_name);
-extern int get_proc_info(int index, long* send_count, long* rec_count, long* data_size, char** proc_name);
 extern int check_proc_entry(int index);
+extern int get_proc_index(const char* proc_name);
+extern void get_proc_info(int index, char** proc_name, long* data_size, long* long_max, long* major_send_count, long* minor_send_count, long* major_rec_count, long* minor_rec_count);
 
 /*****************************************************************************/
 /* Description        : This function initialises the memshare lib           */

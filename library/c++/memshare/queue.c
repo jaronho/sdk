@@ -22,6 +22,10 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#ifndef NULL
+#define NULL	0
+#endif
+
 #define EMPTY	0
 #define NORMAL	1
 #define FULL	2
@@ -98,6 +102,7 @@ static int hi_qinit(int index, int size) {
 static void* getloq(int index) {
 	void* retval;
 	retval = low_queuebase[index][low_bottom[index]];
+	low_queuebase[index][low_bottom[index]] = NULL;
 	++low_bottom[index];
 	if (low_bottom[index] == low_totalsize[index]) {
 		low_bottom[index] = 0;
@@ -116,6 +121,7 @@ static void* getloq(int index) {
 static void* gethiq(int index) {
 	void* retval;
 	retval = hi_queuebase[index][hi_bottom[index]];
+	hi_queuebase[index][hi_bottom[index]] = NULL;
 	++hi_bottom[index];
 	if (hi_bottom[index] == hi_totalsize[index]) {
 		hi_bottom[index] = 0;
@@ -207,17 +213,19 @@ int seize_queue(int* index, int key, int size) {
 /* Input(s)           : index and a pointer to a pointer                     */
 /* Return Value(s)    : 0 ok                                                 */
 /*                      1 entry has to be a pointer                          */
-/*                      2 queue full, the enty is dropped                    */
 /*****************************************************************************/
 int lo_qadd(int index, void** entry) {
+	void* retval = NULL;
 	if (NULL == entry) {
 		return 1;
 	}
 	sem_wait(&qlock[index]);
 	int prev_state = low_state[index];
 	if (FULL == low_state[index]) {
-		sem_post(&qlock[index]);
-		return 2;
+		retval = getloq(index);
+		if (NULL != retval) {
+			free(retval);
+		}
 	}
 	low_queuebase[index][low_top[index]] = (void*)*entry;
 	++low_top[index];
@@ -242,17 +250,19 @@ int lo_qadd(int index, void** entry) {
 /* Input(s)           : index and a pointer to a pointer                     */
 /* Return Value(s)    : 0 ok                                                 */
 /*                      1 entry has to be a pointer                          */
-/*                      2 queue full, the enty is dropped                    */
 /*****************************************************************************/
 int hi_qadd(int index, void** entry) {
+	void* retval = NULL;
 	if (NULL == entry) {
 		return 1;
 	}
 	sem_wait(&qlock[index]);
 	int prev_state = hi_state[index];
 	if (FULL == hi_state[index]) {
-		sem_post(&qlock[index]);
-		return 2;
+		retval = gethiq(index);
+		if (NULL != retval) {
+			free(retval);
+		}
 	}
 	hi_queuebase[index][hi_top[index]] = (void*)*entry;
 	++hi_top[index];
