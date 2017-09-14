@@ -65,6 +65,7 @@ extern void register_logfunction(callback_logfunction cblf);
 /* Return Value(s)    : 0 ok                                                 */
 /*                      1 No dest process process available                  */
 /*                      2 Memshare not initialized                           */
+/*                      3 data size large shm size                           */
 /*****************************************************************************/
 extern int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data);
 

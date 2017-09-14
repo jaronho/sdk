@@ -651,12 +651,18 @@ void register_logfunction(callback_logfunction cblf) {
 int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data) {
 	int index;
 	header hdr;
+	proc_entry* entry;
 	if (!initialized) {
 		return 2;
 	}
 	if ((index = get_proc_index(proc_name)) < 0) {
 		print(LOG_NOTICE, "No such process %s\n", proc_name);
 		return 1;
+	}
+	entry = get_proc_at(index);
+	if (SIZEOF_HEADER + msg_len > entry->size_shm) {
+		print(LOG_NOTICE, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
+		return 3;
 	}
 	print(LOG_DEBUG, "Sending data to %s at index %d\n", proc_name, index);
 	if (LONG_MAX_VALUE == minor_sequence) {
