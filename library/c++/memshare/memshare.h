@@ -14,7 +14,7 @@ extern "C"
 typedef void (*callback_msg)(const char*, int, long, const void*);
 typedef void (*callback_logfunction)(int, const char*, ...);
 
-#define DEF_PROC_NUM		10
+#define DEF_PROC_NUM		2
 #define DEF_SHM_KEY			0x058E
 #define DEF_SHM_SIZE		1024*1024L
 #define DEF_QUEUE_SIZE		1024
