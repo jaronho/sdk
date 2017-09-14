@@ -110,7 +110,7 @@ static int try_lock1(int sem);
 
 static void init_mem_proc(int num);
 static void populate_mem_proc(void);
-static int clear_shm(int key, long size);
+static int clear_shm(int key, long size, void* data);
 static int get_shm(int key, long size, int mode, void** data);
 
 static proc_entry* get_proc_at(int index);
@@ -242,11 +242,14 @@ static void populate_mem_proc(void) {
 }
 
 /********** the shared memory functions ***********/
-static int clear_shm(int key, long size) {
+static int clear_shm(int key, long size, void* data) {
 	int shmid;
 	if ((shmid = shmget(key, size, IPC_CREAT | 0666)) < 0) {
 		print(LOG_ERR, "Unable get shared mem for key %d, errno %d\n", key, errno);
 		return 1;
+	}
+	if (NULL != data) {
+		shmdt(data);
 	}
 	shmctl(shmid, IPC_RMID, NULL);
 	return 0;
@@ -260,6 +263,9 @@ static int clear_shm(int key, long size) {
 /* With mode = 0 the function will fail if the index has been     */
 /* created before                                                 */
 static int get_shm(int key, long size, int mode, void** data) {
+	if (NULL != *data) {
+		return 0;
+	}
 	int shmid;
 	if (mode) {
 		if ((shmid = shmget(key, size, IPC_CREAT | IPC_EXCL | 0666)) < 0) {
@@ -276,10 +282,6 @@ static int get_shm(int key, long size, int mode, void** data) {
 		} else {
 			print(LOG_DEBUG, "Get shared mem for key %d with% d\n", key, shmid);
 		}
-	}
-	if (NULL != *data) {
-		shmdt(*data);
-		*data = NULL;
 	}
 	if ((void*)-1 == (*data = shmat(shmid, NULL, 0))) {
 		*data = NULL;
@@ -301,7 +303,7 @@ static int clear_proc_entry(int index) {
 	proc_entry* entry;
 	print(LOG_DEBUG, "Removes proc from entry and memlist\n");
 	entry = (proc_entry*)get_proc_at(index);
-	clear_shm(entry->key_shm, entry->size_shm);
+	clear_shm(entry->key_shm, entry->size_shm, mem_entry[index].shm);
 	entry->key_shm = 0;
 	entry->size_shm = 0;
 	mem_entry[index].shm = NULL;
