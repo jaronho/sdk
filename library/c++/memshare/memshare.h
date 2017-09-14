@@ -16,7 +16,7 @@ typedef void (*callback_logfunction)(int, const char*, ...);
 
 #define DEF_PROC_NUM		10
 #define DEF_SHM_KEY			0x058E
-#define DEF_SHM_SIZE		10*1024*1024L
+#define DEF_SHM_SIZE		1024*1024L
 #define DEF_QUEUE_SIZE		1024
 
 extern int check_proc_entry(int index);

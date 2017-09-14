@@ -45,7 +45,7 @@ union semun {
 /* struct that is passed along with the data/signal between procs */
 typedef struct {
 	char proc_name[PROC_NAME_SIZE];	/* orginating proc */
-	char msg_type;
+	int msg_type;
 	long msg_len;
 	long major_seq;
 	long minor_seq;
@@ -79,11 +79,11 @@ typedef struct {
 } proc_entry;
 #define SIZEOF_PROC_ENTRY sizeof(proc_entry)
 
-static pthread_t send_thread_t;
-static pthread_t receive_thread_t;
+static pthread_t write_thread_t;
+static pthread_t read_thread_t;
 
 /* global pointer to the ctrl area, initialized by get_shm() */
-char* shm_ctrl_ptr = NULL;
+void* shm_ctrl_ptr = NULL;
 /* global mutex protecting the ctrl area */
 int lock_ctrl_sem = 0;
 /* internal memory view of the ctrl area */
@@ -111,7 +111,7 @@ static int try_lock1(int sem);
 static void init_mem_proc(int num);
 static void populate_mem_proc(void);
 static int clear_shm(int key, long size);
-static void* get_shm(int key, long size, int* mode);
+static int get_shm(int key, long size, int mode, void** data);
 
 static proc_entry* get_proc_at(int index);
 static int clear_proc_entry(int index);
@@ -259,33 +259,38 @@ static int clear_shm(int key, long size) {
 /* not has been done before.                                      */
 /* With mode = 0 the function will fail if the index has been     */
 /* created before                                                 */
-static void* get_shm(int key, long size, int* mode) {
+static int get_shm(int key, long size, int mode, void** data) {
 	int shmid;
-	void* data;
-	if (*mode) {
+	if (mode) {
 		if ((shmid = shmget(key, size, IPC_CREAT | IPC_EXCL | 0666)) < 0) {
 			/* already open */
-			*mode = 0;
+			mode = 0;
 		} else {
-			print(LOG_DEBUG, "Creating shared mem for key%d\n", key);
+			print(LOG_DEBUG, "Creating shared mem for key %d with% d\n", key, shmid);
 		}
 	}
-	if (0 == *mode) {
+	if (0 == mode) {
 		if ((shmid = shmget(key, size, IPC_CREAT | 0666)) < 0) {
 			print(LOG_ERR, "Unable get shared mem for key %d, errno %d\n", key, errno);
-			return NULL;
+			return 1;
+		} else {
+			print(LOG_DEBUG, "Get shared mem for key %d with% d\n", key, shmid);
 		}
 	}
-	print(LOG_DEBUG, "Key %d allocated with shmid %d\n", key, shmid);
-	if ((char*)-1 == (char*)(data = shmat(shmid, NULL, 0))) {
-		print(LOG_ERR, "Unable to alloc shared mem for key %d, errno %d\n", key, errno);
-		return NULL;
+	if (NULL != *data) {
+		shmdt(*data);
+		*data = NULL;
 	}
-	return data;
+	if ((void*)-1 == (*data = shmat(shmid, NULL, 0))) {
+		*data = NULL;
+		print(LOG_ERR, "Unable to alloc shared mem for key %d, errno %d\n", key, errno);
+		return 1;
+	}
+	return 0;
 }
 
 static proc_entry* get_proc_at(int index) {
-	char* tmp_ptr;
+	void* tmp_ptr;
 	proc_entry* entry;
 	tmp_ptr = shm_ctrl_ptr + (SIZEOF_PROC_ENTRY * index);
 	entry = (proc_entry*)tmp_ptr;
@@ -316,7 +321,7 @@ static int clear_proc_entry(int index) {
 static int get_next_free_index() {
 	int i;
 	for (i = 0; i < num_of_procs; ++i) {
-		if (0 == check_proc_entry(i)) {
+		if (2 == check_proc_entry(i)) {
 			return i;
 		}
 	}
@@ -328,7 +333,6 @@ static int get_next_free_index() {
 static void populate_mem_proc_single(int index) {
 	proc_entry* entry;
 	int sem;
-	int mode = 0;
 	entry = (proc_entry*)get_proc_at(index);
 	if (entry->active) {
 		/* this entry should be active, if not it has crached and should be garbage collected */
@@ -337,7 +341,7 @@ static void populate_mem_proc_single(int index) {
 				print(LOG_DEBUG, "Index %d is active by %s\n", index, entry->proc_name);
 				/* active lets store the data */
 				mem_entry[index].active = sem;
-				if (NULL == (mem_entry[index].shm = get_shm(entry->key_shm, entry->size_shm, &mode))) {
+				if (1 == get_shm(entry->key_shm, entry->size_shm, 0, &mem_entry[index].shm)) {
 					/* garbage collect, they should have valid keys */
 					print(LOG_ERR, "Unable to alloc shared mem\n");
 					clear_proc_entry(index);
@@ -420,7 +424,6 @@ static int add_proc(const char* proc_name, long size) {
 	proc_entry* entry;
 	int index;
 	int key_base = 0;
-	int mode = 0;
 	if (num_of_procs == (index = get_next_free_index())) {
 		return 1;
 	}
@@ -439,7 +442,7 @@ static int add_proc(const char* proc_name, long size) {
 	my_index = index;
 	print(LOG_DEBUG, "Allocating shared memory for key %d size %ld\n", entry->key_shm, entry->size_shm);
 	/* Map up yourself in the local memory map with pointers instead of keys */
-	if (NULL == (mem_entry[index].shm = get_shm(entry->key_shm, entry->size_shm, &mode))) {
+	if (1 == get_shm(entry->key_shm, entry->size_shm, 0, &mem_entry[index].shm)) {
 		print(LOG_ERR, "Unable to alloc shared mem\n");
 		clear_proc_entry(index);
 		return 1;
@@ -471,13 +474,13 @@ static int add_proc(const char* proc_name, long size) {
 	return 0;
 }
 
-
-static void* send_thread_func(void* arg) {
+static void* write_thread_func(void* arg) {
 	header* hdr;
 	char* msg;
+	proc_entry* entry;
 	for (;;) {
 		/* Add check for prio, TODO */
-		print(LOG_DEBUG, "recthread going to lock\n");
+		print(LOG_DEBUG, "write thread going to lock\n");
 		lock(mem_entry[my_index].rlock);
 		print(LOG_DEBUG, "Entry inserted in shm for my process\n");
 		hdr = (header*)mem_entry[my_index].shm;
@@ -485,8 +488,9 @@ static void* send_thread_func(void* arg) {
 			continue;
 		}
 		/* check return of allocation TODO */
-		msg = malloc(hdr->msg_len + SIZEOF_HEADER);
-		memcpy(msg, mem_entry[my_index].shm, (hdr->msg_len + SIZEOF_HEADER));
+		msg = malloc(SIZEOF_HEADER + hdr->msg_len);
+		memcpy(msg, mem_entry[my_index].shm, SIZEOF_HEADER + hdr->msg_len);
+		entry = get_proc_at(my_index);
 		if (lo_qadd(queue_index, (void**)&msg)) {
 			/* Failed to put in queue, msg lost */
 			print(LOG_ERR, "Failed to put msg in queue, msg with seq %ld - %ld is lost!\n", hdr->major_seq, hdr->minor_seq);
@@ -500,7 +504,7 @@ static void* send_thread_func(void* arg) {
 	return (void*)0;
 }
 
-static void* receive_thread_func(void* arg) {
+static void* read_thread_func(void* arg) {
 	char* msg;
 	header* hdr;
 	for (;;) {
@@ -536,12 +540,12 @@ static int start_listen_thread(void) {
 		print(LOG_ERR, "Unable to set inherit scheduling, errno %d\n", errno);
 		return 1;
 	}
-	if (0 != pthread_create(&send_thread_t, &tattr, send_thread_func, (void*)NULL)) {
-		print(LOG_ERR, "Unable to create worker thread for send, errno %d\n", errno);
+	if (0 != pthread_create(&write_thread_t, &tattr, write_thread_func, (void*)NULL)) {
+		print(LOG_ERR, "Unable to create worker thread for write, errno %d\n", errno);
 		return 1;
 	}
-	if (0 != pthread_create(&receive_thread_t, &tattr, receive_thread_func, (void*)NULL)) {
-		print(LOG_ERR, "Unable to create worker thread for receive, errno %d\n", errno);
+	if (0 != pthread_create(&read_thread_t, &tattr, read_thread_func, (void*)NULL)) {
+		print(LOG_ERR, "Unable to create worker thread for read, errno %d\n", errno);
 		return 1;
 	}
 	return 0;
@@ -556,16 +560,17 @@ int check_proc_entry(int index) {
 	if (NULL == entry) {
 		return 1;
 	}
+	populate_mem_proc_single(index);
 	if (try_lock1(mem_entry[index].active) && (!memcmp(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE)) && entry->active) {
-		return 2;
+		return 0;
 	}
-	return 0;
+	return 2;
 }
 
 int get_proc_index(const char* proc_name) {
 	int i;
 	for (i = 0; i < num_of_procs; ++i) {
-		if (2 == check_proc_entry(i)) {
+		if (0 == check_proc_entry(i)) {
 			if (!strcmp(mem_entry[i].proc_name, proc_name)) {
 				return i;
 			}
@@ -590,7 +595,6 @@ void get_proc_info(int index, char** proc_name, long* data_size, long* long_max,
 }
 
 int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size) {
-	int ctrl_mode = 1;
 	if (initialized) {
 		return 1;
 	}
@@ -621,7 +625,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	lock(lock_ctrl_sem);
 	print(LOG_DEBUG, "Init_memshare ctrl\n");
 	/* map up the ctrl area */
-	if (0 == (shm_ctrl_ptr = get_shm(shm_ctrl_key, SIZEOF_PROC_ENTRY * proc_num, &ctrl_mode))) {
+	if (1 == get_shm(shm_ctrl_key, SIZEOF_PROC_ENTRY * proc_num, 1, &shm_ctrl_ptr)) {
 		print(LOG_ERR, "Unable to alloc shared mem\n");
 		return 3;
 	}
