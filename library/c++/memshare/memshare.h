@@ -11,8 +11,8 @@ extern "C"
 {
 #endif
 
-typedef void (*callback_msg)(const char*, int, long, const void*);
-typedef void (*callback_logfunction)(int, const char*, ...);
+typedef void (*shm_callback_msg)(const char*, int, long, const void*);
+typedef void (*shm_callback_log)(int, const char*, ...);
 
 #define DEF_PROC_NUM		2
 #define DEF_SHM_KEY			0x058E
@@ -40,7 +40,7 @@ extern long get_long_max();
 /*                      2 register a proc without allocation size            */
 /*                      3 A NULL pointer as a proc name                      */
 /*****************************************************************************/
-extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size, callback_msg cbm, callback_logfunction cblf);
+extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size, shm_callback_msg scbm, shm_callback_log scbl);
 
 /*****************************************************************************/
 /* Description        : This functionsn set the worker frequency, default is */

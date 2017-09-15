@@ -102,8 +102,8 @@ long minor_sequence = 0;
 int num_of_procs = 0;
 int shm_ctrl_key;
 int sem_ctrl_key;
-callback_msg callbackmsg = NULL;
-callback_logfunction callbacklogfunction = NULL;
+shm_callback_msg callbackmsg = NULL;
+shm_callback_log callbacklog = NULL;
 int freq_microsecond = DEF_FREQ_MILLISECOND * 1000;
 
 static int print(int level, const char* format, ...);
@@ -133,8 +133,8 @@ static int print(int level, const char* format, ...) {
 	int retval = 0;
 	/* add syslog and user specific TODO */
 	va_start(ap, format);
-	if (callbacklogfunction) {
-		callbacklogfunction(level, format, ap);
+	if (callbacklog) {
+		callbacklog(level, format, ap);
 	} else {
 		if (level <= current_level) {
 			retval = vprintf(format, ap);
@@ -600,7 +600,7 @@ long get_long_max() {
 	return LONG_MAX_VALUE;
 }
 
-int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size, callback_msg cbm, callback_logfunction cblf) {
+int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size, shm_callback_msg scbm, shm_callback_log scbl) {
 	if (initialized) {
 		return 1;
 	}
@@ -620,8 +620,8 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	sem_ctrl_key = shm_key + 1;
 	init_queues(1);
 	seize_queue(&queue_index, 0xFF, queue_size);
-	callbackmsg = cbm;
-	callbacklogfunction = cblf;
+	callbackmsg = scbm;
+	callbacklog = scbl;
 	/* clear the memory view */
 	init_mem_proc(proc_num);
 	/* start off by locking the ctrl lock */
