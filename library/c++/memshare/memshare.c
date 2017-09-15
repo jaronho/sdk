@@ -579,14 +579,13 @@ int get_proc_index(const char* proc_name) {
 	return -1;
 }
 
-void get_proc_info(int index, char** proc_name, long* data_size, long* long_max, long* major_send_count, long* minor_send_count, long* major_rec_count, long* minor_rec_count) {
+void get_proc_info(int index, char** proc_name, long* data_size, long* major_send_count, long* minor_send_count, long* major_rec_count, long* minor_rec_count) {
 	proc_entry* entry;
 	/* this call will not check if the entry is active */
 	entry = get_proc_at(index);
 	if (NULL != entry) {
 		*proc_name = entry->proc_name;
 		*data_size = entry->size_shm;
-		*long_max = LONG_MAX_VALUE;
 		*major_send_count = entry->major_sent;
 		*minor_send_count = entry->minor_sent;
 		*major_rec_count = entry->major_received;
@@ -594,7 +593,11 @@ void get_proc_info(int index, char** proc_name, long* data_size, long* long_max,
 	}
 }
 
-int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size) {
+long get_long_max() {
+	return LONG_MAX_VALUE;
+}
+
+int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size, callback_msg cbm, callback_logfunction cblf) {
 	if (initialized) {
 		return 1;
 	}
@@ -608,12 +611,14 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 		print(LOG_ERR, "proc name '%s' length > %d\n", proc_name, PROC_NAME_SIZE);
 		return 2;
 	}
+	memcpy(my_proc_name, proc_name, PROC_NAME_SIZE);
 	proc_num = proc_num >= 2 ? proc_num : 2;
 	shm_ctrl_key = shm_key;
 	sem_ctrl_key = shm_key + 1;
-	memcpy(my_proc_name, proc_name, PROC_NAME_SIZE);
 	init_queues(1);
 	seize_queue(&queue_index, 0xFF, queue_size);
+	callbackmsg = cbm;
+	callbacklogfunction = cblf;
 	/* clear the memory view */
 	init_mem_proc(proc_num);
 	/* start off by locking the ctrl lock */
@@ -638,14 +643,6 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	print(LOG_DEBUG, "Init_memshare done\n");
 	initialized = 1;
 	return 0;
-}
-
-void register_msg(callback_msg cbm) {
-	callbackmsg = cbm;
-}
-
-void register_logfunction(callback_logfunction cblf) {
-	callbacklogfunction = cblf;
 }
 
 int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data) {

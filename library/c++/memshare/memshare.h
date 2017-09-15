@@ -21,40 +21,26 @@ typedef void (*callback_logfunction)(int, const char*, ...);
 
 extern int check_proc_entry(int index);
 extern int get_proc_index(const char* proc_name);
-extern void get_proc_info(int index, char** proc_name, long* data_size, long* long_max, long* major_send_count, long* minor_send_count, long* major_rec_count, long* minor_rec_count);
+extern void get_proc_info(int index, char** proc_name, long* data_size, long* major_send_count, long* minor_send_count, long* major_rec_count, long* minor_rec_count);
+extern long get_long_max();
 
 /*****************************************************************************/
 /* Description        : This function initialises the memshare lib           */
-/* Input(s)           : proc name(string 64 char)                            */
-/*                      num of procs                                         */
-/*                      key of share memory                                  */
+/* Input(s)           : Proc name(string 64 char)                            */
+/*                      Number of procs                                      */
+/*                      Key of share memory ctrl area                        */
 /*                      Size of memory for receiving buffer, null means that */
 /*                      the proccess will not register for receive(long byte)*/
 /*                      The queue size as buffer for receiving (int entries) */
+/*                      A Function will be called whenever a msg is received */
+/*                      A Function will be called whenever logging           */
 /* Output(s)          : None.                                                */
 /* Return Value(s)    : 0 ok                                                 */
 /*                      1 meaning semaphore allocation failure               */
 /*                      2 register a proc without allocation size            */
 /*                      3 A NULL pointer as a proc name                      */
 /*****************************************************************************/
-extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size);
-
-/*****************************************************************************/
-/* Description        : This function registers a function that will be      */
-/*                      called whenever a msg is received.                   */
-/* Input(s)           : a function func(const char*, int, long, const void*) */
-/* Output(s)          : None.                                                */
-/* Return Value(s)    : None.                                                */
-/*****************************************************************************/
-extern void register_msg(callback_msg cbm);
-
-/*****************************************************************************/
-/* Description        : Add a function to be called when logging             */
-/* Input(s)           : a function func(int, const char*, ...)               */
-/* Output(s)          : None.                                                */
-/* Return Value(s)    : None.                                                */
-/*****************************************************************************/
-extern void register_logfunction(callback_logfunction cblf);
+extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size, callback_msg cbm, callback_logfunction cblf);
 
 /*****************************************************************************/
 /* Description        : This functionsn will send a msg block to a specific  */
