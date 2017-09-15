@@ -43,6 +43,14 @@ extern long get_long_max();
 extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size, callback_msg cbm, callback_logfunction cblf);
 
 /*****************************************************************************/
+/* Description        : This functionsn set the worker frequency             */
+/* Input(s)           : millisecond (float), minimum value is 0f             */
+/* Output(s)          : None.                                                */
+/* Return Value(s)    : 0 ok                                                 */
+/*****************************************************************************/
+extern int set_freq(float millisecond);
+
+/*****************************************************************************/
 /* Description        : This functionsn will send a msg block to a specific  */
 /*                      dest proc                                            */
 /* Input(s)           : destination proc(const char*), msg_type of msg(int)  */

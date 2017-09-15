@@ -23,6 +23,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 #include <syslog.h>
 #include <sys/shm.h>
 #include <sys/types.h>
@@ -35,6 +36,7 @@
 
 #define LONG_MAX_VALUE	2147483647L
 #define PROC_NAME_SIZE	64
+#define DEF_FREQ_MILLISECOND	16
 
 union semun {
 	int val;
@@ -100,6 +102,9 @@ long minor_sequence = 0;
 int num_of_procs = 0;
 int shm_ctrl_key;
 int sem_ctrl_key;
+callback_msg callbackmsg = NULL;
+callback_logfunction callbacklogfunction = NULL;
+int freq_microsecond = DEF_FREQ_MILLISECOND * 1000;
 
 static int print(int level, const char* format, ...);
 
@@ -119,9 +124,6 @@ static int get_next_free_index(void);
 static void populate_mem_proc_single(int index);
 static int inc_sent(void);
 static int inc_received(void);
-
-callback_msg callbackmsg = NULL;
-callback_logfunction callbacklogfunction = NULL;
 
 /* print functions either syslog, printf of user specific */
 int current_level = LOG_ERR;
@@ -480,6 +482,7 @@ static void* write_thread_func(void* arg) {
 	header* hdr;
 	char* msg;
 	for (;;) {
+		usleep(freq_microsecond);
 		/* Add check for prio, TODO */
 		print(LOG_DEBUG, "write thread going to lock\n");
 		lock(mem_entry[my_index].rlock);
@@ -643,6 +646,14 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	print(LOG_DEBUG, "Init_memshare done\n");
 	initialized = 1;
 	return 0;
+}
+
+int set_freq(float millisecond) {
+	if (millisecond >= 0) {
+		freq_microsecond = (int)(millisecond * 1000);
+		return 0;
+	}
+	return 1;
 }
 
 int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data) {
