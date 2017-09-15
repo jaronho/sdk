@@ -43,7 +43,8 @@ extern long get_long_max();
 extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size, callback_msg cbm, callback_logfunction cblf);
 
 /*****************************************************************************/
-/* Description        : This functionsn set the worker frequency             */
+/* Description        : This functionsn set the worker frequency, default is */
+/*                      16 millisecond (60 FPS)                              */
 /* Input(s)           : millisecond (float), minimum value is 0f             */
 /* Output(s)          : None.                                                */
 /* Return Value(s)    : 0 ok                                                 */
