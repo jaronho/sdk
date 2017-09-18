@@ -187,9 +187,9 @@ int hashmap_clear(hashmap_st* hasht, int free_data) {
 	const char* k = hashmap_iterate_keys(&it);
 	while (NULL != k) {
 		if (free_data) {
-			free(ht_remove(hasht, k));
+			free(hashmap_remove(hasht, k));
 		} else {
-			ht_remove(hasht, k);
+			hashmap_remove(hasht, k);
 		}
 		k = hashmap_iterate_keys(&it);
 	}
