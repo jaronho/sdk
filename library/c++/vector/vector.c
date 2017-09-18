@@ -1,46 +1,43 @@
-#include "cvector.h"
+#include "vector_t.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <memory.h>
 
-const static size_t DEFAULT_CVECTOR_SIZE = 16;
-const static size_t CVECTOR_GROW_SIZE = 8;
-
-
-cvector* cvector_new() {
+vector_t* vector_new(unsigned long default_size, unsigned long grow_size) {
 	unsigned int i = 0;
-	cvector* new_cvector = (cvector*)malloc(sizeof(cvector));
-	new_cvector->current_size = 0;
-	new_cvector->total_size = DEFAULT_CVECTOR_SIZE;
-	new_cvector->container = (void**)malloc(sizeof(void*) * DEFAULT_CVECTOR_SIZE);
-	for (i = 0; i < new_cvector->total_size; ++i) {
-		new_cvector->container[i] = NULL;
+	vector_t* new_vector = (vector_t*)malloc(sizeof(vector_t));
+	new_vector->current_size = 0;
+	new_vector->total_size = default_size;
+	new_vector->grow_size = grow_size;
+	new_vector->container = (void**)malloc(sizeof(void*) * default_size);
+	for (i = 0; i < new_vector->total_size; ++i) {
+		new_vector->container[i] = NULL;
 	}
-	return new_cvector;
+	return new_vector;
 }
 
-cvector* cvector_copy(cvector* v) {
-	cvector* new_cvector = NULL;
+vector_t* vector_copy(vector_t* v) {
+	vector_t* new_vector = NULL;
 	unsigned long i = 0;
 	if (NULL == v) {
 		return NULL;
 	}
-	new_cvector = cvector_new();
+	new_vector = vector_new();
 	for (i = 0; i < v->current_size; ++i) {
-		void* src = cvector_at(v, i);
+		void* src = vector_at(v, i);
 		void* dest = (void*)malloc(sizeof(void*));
 		memcpy(dest, src, sizeof(src));
-		cvector_push_back(new_cvector, dest);
+		vector_push_back(new_vector, dest);
 	}
-	return new_cvector;
+	return new_vector;
 }
 
-void cvector_free(cvector* v, void freeFunc(void*)) {
+void vector_free(vector_t* v, void freeFunc(void*)) {
 	unsigned int i = 0;
 	if (NULL == v) {
 		return;
 	}
-	// if no function was supplied, call free on each ptr contained in our cvector.
+	// if no function was supplied, call free on each ptr contained in our vector_t.
 	if (NULL == freeFunc) {
 		for (i = 0; i < v->current_size; ++i) {
 			free(v->container[i]);
@@ -57,7 +54,7 @@ void cvector_free(cvector* v, void freeFunc(void*)) {
 	v = NULL;
 }
 
-void realloc_container(cvector* v, unsigned long new_size) {
+void realloc_container(vector_t* v, unsigned long new_size) {
 	void** ptr = NULL;
 	unsigned long i = 0;
 	unsigned long old_total_size = 0;
@@ -71,7 +68,7 @@ void realloc_container(cvector* v, unsigned long new_size) {
 				v->container[i] = NULL;
 			}
 		}
-		if (v->total_size - new_size < CVECTOR_GROW_SIZE) {
+		if (v->total_size - new_size < v->grow_size) {
 			return;
 		}
 	}
@@ -88,17 +85,17 @@ void realloc_container(cvector* v, unsigned long new_size) {
 	}
 }
 
-void cvector_push_back(cvector* v, void* element) {
+void vector_push_back(vector_t* v, void* element) {
 	if (NULL == v || NULL == element) {
 		return;
 	}
 	if (v->current_size == v->total_size) {
-		realloc_container(v, v->total_size + CVECTOR_GROW_SIZE);
+		realloc_container(v, v->total_size + v->grow_size);
 	}
 	v->container[v->current_size++] = element;
 }
 
-void cvector_set_at(cvector* v, unsigned long index, void* element) {
+void vector_insert(vector_t* v, unsigned long index, void* element) {
 	if (NULL == v || index >= v->total_size ||  NULL == element) {
 		return;
 	}
@@ -111,7 +108,7 @@ void cvector_set_at(cvector* v, unsigned long index, void* element) {
 	v->container[index] = element;
 }
 
-void cvector_erase(cvector* v, unsigned long index) {
+void vector_erase(vector_t* v, unsigned long index) {
 	void* temp = NULL;
 	unsigned long i = 0;
 	if (NULL == v || index >= v->total_size) {
@@ -129,42 +126,52 @@ void cvector_erase(cvector* v, unsigned long index) {
 	realloc_container(v, v->total_size - 1);
 }
 
-void* cvector_at(cvector* v, unsigned long index) {
+void* vector_at(vector_t* v, unsigned long index) {
 	if (NULL == v || index >= v->total_size) {
 		return NULL;
 	}
 	return v->container[index];
 }
 
-void* cvector_front(cvector* v) {
+void* vector_front(vector_t* v) {
 	if (NULL == v) {
 		return NULL;
 	}
 	return v->container[0];
 }
 
-void* cvector_back(cvector* v) {
+void* vector_back(vector_t* v) {
 	if (NULL == v) {
 		return NULL;
 	}
 	return v->container[v->current_size - 1];
 }
 
-unsigned long cvector_size(cvector* v) {
+extern void vector_swap(vector_t* v, unsigned long i, unsigned long j) {
+	void* tmp;
+	if (NULL == v || i >= v->current_size || j >= v->current_size) {
+		return;
+	}
+	tmp = v->container[i];
+	v->container[i] = v->container[j];
+	v->container[j] = tmp;
+}
+
+unsigned long vector_size(vector_t* v) {
 	if (NULL == v) {
 		return 0;
 	}
 	return v->current_size;
 }
 
-unsigned long cvector_capacity(cvector* v) {
+unsigned long vector_capacity(vector_t* v) {
 	if (NULL == v) {
 		return 0;
 	}
 	return v->total_size;
 }
 
-void cvector_reserve(cvector* v, unsigned long length) {
+void vector_reserve(vector_t* v, unsigned long length) {
 	if (NULL == v || length <= v->total_size) {
 		return;
 	}
