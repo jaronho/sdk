@@ -96,7 +96,7 @@ int initialized = 0;
 char my_proc_name[PROC_NAME_SIZE];
 
 int my_index;
-int queue_index;
+queue_t* my_queue;
 long major_sequence = 0;
 long minor_sequence = 0;
 int num_of_procs = 0;
@@ -494,7 +494,7 @@ static void* write_thread_func(void* arg) {
 		/* check return of allocation TODO */
 		msg = malloc(SIZEOF_HEADER + hdr->msg_len);
 		memcpy(msg, mem_entry[my_index].shm, SIZEOF_HEADER + hdr->msg_len);
-		if (lo_qadd(queue_index, (void**)&msg)) {
+		if (queue_put(my_queue, (void*)msg)) {
 			/* Failed to put in queue, msg lost */
 			print(LOG_ERR, "Failed to put msg in queue, msg with seq %ld - %ld is lost!\n", hdr->major_seq, hdr->minor_seq);
 			free(msg);
@@ -508,10 +508,10 @@ static void* write_thread_func(void* arg) {
 }
 
 static void* read_thread_func(void* arg) {
-	char* msg;
+	void* msg;
 	header* hdr;
 	for (;;) {
-		msg = qget(queue_index);
+		msg = queue_get(my_queue);
 		hdr = (header*)msg;
 		if (NULL == hdr) {
 			if (NULL != msg) {
@@ -618,8 +618,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	proc_num = proc_num >= 2 ? proc_num : 2;
 	shm_ctrl_key = shm_key;
 	sem_ctrl_key = shm_key + 1;
-	init_queues(1);
-	seize_queue(&queue_index, 0xFF, queue_size);
+	my_queue = queue_create(queue_size, 0);
 	callbackmsg = scbm;
 	callbacklog = scbl;
 	/* clear the memory view */
