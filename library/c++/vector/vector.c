@@ -32,10 +32,10 @@ vector_t* vector_copy(vector_t* v) {
 	return new_vector;
 }
 
-void vector_free(vector_t* v, void freeFunc(void*)) {
+int vector_free(vector_t* v, void freeFunc(void*)) {
 	unsigned int i = 0;
 	if (NULL == v) {
-		return;
+		return 1;
 	}
 	// if no function was supplied, call free on each ptr contained in our vector_t.
 	if (NULL == freeFunc) {
@@ -52,14 +52,15 @@ void vector_free(vector_t* v, void freeFunc(void*)) {
 	v->container = NULL;
 	free(v);
 	v = NULL;
+	return 0;
 }
 
-void realloc_container(vector_t* v, unsigned long new_size) {
+int realloc_container(vector_t* v, unsigned long new_size) {
 	void** ptr = NULL;
 	unsigned long i = 0;
 	unsigned long old_total_size = 0;
 	if (NULL == v || new_size == v->total_size) {
-		return;
+		return 1;
 	}
 	if (new_size < v->total_size) {
 		for (i = new_size; i < v->total_size; ++i) {
@@ -69,7 +70,7 @@ void realloc_container(vector_t* v, unsigned long new_size) {
 			}
 		}
 		if (v->total_size - new_size < v->grow_size) {
-			return;
+			return 2;
 		}
 	}
 	old_total_size = v->total_size;
@@ -77,27 +78,31 @@ void realloc_container(vector_t* v, unsigned long new_size) {
 	ptr = (void**)realloc(v->container, sizeof(void*) * new_size);
 	if (NULL == ptr) {
 		printf("call to realloc failed.");
-		return;
+		return 3;
 	}
 	v->container = ptr;
 	for (i=old_total_size; i<new_size; ++i) {
 		v->container[i] = NULL;
 	}
+	return 0;
 }
 
-void vector_push_back(vector_t* v, void* element) {
+int vector_push_back(vector_t* v, void* element) {
 	if (NULL == v || NULL == element) {
-		return;
+		return 1;
 	}
 	if (v->current_size == v->total_size) {
-		realloc_container(v, v->total_size + v->grow_size);
+		if (realloc_container(v, v->total_size + v->grow_size)) {
+			return 2;
+		}
 	}
 	v->container[v->current_size++] = element;
+	return 0;
 }
 
-void vector_insert(vector_t* v, unsigned long index, void* element) {
+int vector_insert(vector_t* v, unsigned long index, void* element) {
 	if (NULL == v || index >= v->total_size ||  NULL == element) {
-		return;
+		return 1;
 	}
 	if (v->container[index]) {
 		free(v->container[index]);
@@ -106,13 +111,14 @@ void vector_insert(vector_t* v, unsigned long index, void* element) {
 		v->current_size++;
 	}
 	v->container[index] = element;
+	return 0;
 }
 
-void vector_erase(vector_t* v, unsigned long index) {
+int vector_erase(vector_t* v, unsigned long index) {
 	void* temp = NULL;
 	unsigned long i = 0;
 	if (NULL == v || index >= v->total_size) {
-		return;
+		return 1;
 	}
 	temp = v->container[index];
 	for (i = index; i < v->total_size; ++i) {
@@ -123,7 +129,10 @@ void vector_erase(vector_t* v, unsigned long index) {
 		}
 	}
 	v->current_size--;
-	realloc_container(v, v->total_size - 1);
+	if (realloc_container(v, v->total_size - 1)) {
+		return 2;
+	}
+	return 0;
 }
 
 void* vector_at(vector_t* v, unsigned long index) {
@@ -147,14 +156,15 @@ void* vector_back(vector_t* v) {
 	return v->container[v->current_size - 1];
 }
 
-extern void vector_swap(vector_t* v, unsigned long i, unsigned long j) {
+extern int vector_swap(vector_t* v, unsigned long i, unsigned long j) {
 	void* tmp;
 	if (NULL == v || i >= v->current_size || j >= v->current_size) {
-		return;
+		return 1;
 	}
 	tmp = v->container[i];
 	v->container[i] = v->container[j];
 	v->container[j] = tmp;
+	return 0;
 }
 
 unsigned long vector_size(vector_t* v) {
@@ -171,9 +181,12 @@ unsigned long vector_capacity(vector_t* v) {
 	return v->total_size;
 }
 
-void vector_reserve(vector_t* v, unsigned long length) {
+int vector_reserve(vector_t* v, unsigned long length) {
 	if (NULL == v || length <= v->total_size) {
-		return;
+		return 1;
 	}
-	realloc_container(v, length);
+	if (realloc_container(v, length)) {
+		return 2;
+	}
+	return 0;
 }

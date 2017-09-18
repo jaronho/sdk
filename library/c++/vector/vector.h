@@ -20,13 +20,13 @@ extern vector_t* vector_new(unsigned long default_size, unsigned long grow_size)
 
 extern vector_t* vector_copy(vector_t* v);
 
-extern void vector_free(vector_t* v, void freeFunc(void*));
+extern int vector_free(vector_t* v, void freeFunc(void*));
 
-extern void vector_push_back(vector_t* v, void* element);
+extern int vector_push_back(vector_t* v, void* element);
 
-extern void vector_insert(vector_t* v, unsigned long index, void* element);
+extern int vector_insert(vector_t* v, unsigned long index, void* element);
 
-extern void vector_erase(vector_t* v, unsigned long index);
+extern int vector_erase(vector_t* v, unsigned long index);
 
 extern void* vector_at(vector_t* v, unsigned long index);
 
@@ -34,13 +34,13 @@ extern void* vector_front(vector_t* v);
 
 extern void* vector_back(vector_t* v);
 
-extern void vector_swap(vector_t* v, unsigned long i, unsigned long j);
+extern int vector_swap(vector_t* v, unsigned long i, unsigned long j);
 
 extern unsigned long vector_size(vector_t* v);
 
 extern unsigned long vector_capacity(vector_t* v);
 
-extern void vector_reserve(vector_t* v, unsigned long length);
+extern int vector_reserve(vector_t* v, unsigned long length);
 
 #ifdef __cplusplus
 }
