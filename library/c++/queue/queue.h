@@ -20,19 +20,19 @@ typedef struct {
 	sem_t lock;
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
-} queue_t;
+} queue_st;
 
-extern queue_t* queue_create(unsigned long capacity, int block);
+extern queue_st* queue_create(unsigned long capacity, int block);
 
-extern int queue_destroy(queue_t* q);
+extern int queue_destroy(queue_st* q);
 
-extern unsigned long queue_capacity(queue_t* q);
+extern unsigned long queue_capacity(queue_st* q);
 
-extern unsigned long queue_length(queue_t* q);
+extern unsigned long queue_length(queue_st* q);
 
-extern int queue_put(queue_t* q, void* data);
+extern int queue_put(queue_st* q, void* data);
 
-extern void* queue_get(queue_t* q);
+extern void* queue_get(queue_st* q);
 
 #ifdef __cplusplus
 }

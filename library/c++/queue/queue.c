@@ -6,7 +6,7 @@
 #define NORMAL	1
 #define FULL	2
 
-static void* getqueue(queue_t* q) {
+static void* getqueue(queue_st* q) {
 	void* retval;
 	if (NULL == q) {
 		return NULL;
@@ -24,12 +24,12 @@ static void* getqueue(queue_t* q) {
 	return retval;
 }
 
-queue_t* queue_create(unsigned long capacity, int block) {
-    queue_t* q;
+queue_st* queue_create(unsigned long capacity, int block) {
+    queue_st* q;
 	if (capacity <= 0) {
 		return NULL;
 	}
-    q = (queue_t*)malloc(sizeof(*q));
+    q = (queue_st*)malloc(sizeof(*q));
 	q->capacity = capacity;
     q->bottom = 0;
     q->top = 0;
@@ -42,7 +42,7 @@ queue_t* queue_create(unsigned long capacity, int block) {
     return q;
 }
 
-int queue_destroy(queue_t* q) {
+int queue_destroy(queue_st* q) {
 	if (NULL == q) {
 		return 1;
 	}
@@ -54,14 +54,14 @@ int queue_destroy(queue_t* q) {
 	return 0;
 }
 
-unsigned long queue_capacity(queue_t* q) {
+unsigned long queue_capacity(queue_st* q) {
 	if (NULL == q) {
 		return 0;
 	}
     return q->capacity;
 }
 
-unsigned long queue_length(queue_t* q) {
+unsigned long queue_length(queue_st* q) {
 	unsigned long length;
 	if (NULL == q) {
 		return 0;
@@ -72,7 +72,7 @@ unsigned long queue_length(queue_t* q) {
     return length;
 }
 
-int queue_put(queue_t* q, void* data) {
+int queue_put(queue_st* q, void* data) {
 	void* retval = NULL;
 	if (NULL == q || NULL == data) {
 		return 1;
@@ -107,7 +107,7 @@ int queue_put(queue_t* q, void* data) {
 	return 0;
 }
 
-void* queue_get(queue_t* q) {
+void* queue_get(queue_st* q) {
     void* retval;
 	if (NULL == q) {
 		return NULL;
