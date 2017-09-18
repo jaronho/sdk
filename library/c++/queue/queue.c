@@ -1,116 +1,124 @@
 #include "queue.h"
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-queue_t* queue_create(unsigned int capacity, int auto_top_off) {
-    queue_t* queue;
-    int errno;
-    assert(capacity > 0);
-    queue = malloc(sizeof(*queue));
-    assert(queue);
-    queue->pos = 0;
-    queue->length = 0;
-    queue->capacity = capacity;
-    queue->closed = 0;
-	queue->auto_top_off = auto_top_off;
-    queue->buf = malloc(capacity * sizeof(*queue->buf));
-    assert(queue->buf);
-    if (0 != (errno = pthread_mutex_init(&queue->mutate, NULL))) {
-        fprintf(stderr, "Could not create mutex. Errno: %d\n", errno);
-        exit(1);
-    }
-    if (0 != (errno = pthread_cond_init(&queue->cond_length, NULL))) {
-        fprintf(stderr, "Could not create cond var. Errno: %d\n", errno);
-        exit(1);
-    }
-    return queue;
+#define EMPTY	0
+#define NORMAL	1
+#define FULL	2
+
+static void* getqueue(queue_t* q) {
+	void* retval;
+	if (NULL == q) {
+		return NULL;
+	}
+	retval = q->buf[q->bottom];
+	q->buf[q->bottom] = NULL;
+	++q->bottom;
+	--q->length;
+	if (q->bottom == q->capacity) {
+		q->bottom = 0;
+	}
+	if (q->bottom == q->top) {
+		q->state = EMPTY;
+	}
+	return retval;
 }
 
-void queue_destroy(queue_t* queue) {
-    int errno;
-	assert(queue);
-    if (0 != (errno = pthread_mutex_destroy(&queue->mutate))) {
-        fprintf(stderr, "Could not destroy mutex. Errno: %d\n", errno);
-        exit(1);
-    }
-    if (0 != (errno = pthread_cond_destroy(&queue->cond_length))) {
-        fprintf(stderr, "Could not destroy cond var. Errno: %d\n", errno);
-        exit(1);
-    }
-    free(queue->buf);
-    free(queue);
+queue_t* queue_create(unsigned long capacity, int block) {
+    queue_t* q;
+	if (capacity <= 0) {
+		return NULL;
+	}
+    q = (queue_t*)malloc(sizeof(*q));
+	q->capacity = capacity;
+    q->bottom = 0;
+    q->top = 0;
+    q->state = EMPTY;
+	q->block = block;
+    q->buf = malloc(capacity * sizeof(void*));
+	sem_init(&q->lock, 0, 1);
+    pthread_mutex_init(&q->mutex, NULL);
+	pthread_cond_init(&q->cond, NULL);
+    return q;
 }
 
-int queue_length(queue_t* queue) {
-    int len;
-	assert(queue);
-    pthread_mutex_lock(&queue->mutate);
-    len = queue->length;
-    pthread_mutex_unlock(&queue->mutate);
-    return len;
+int queue_destroy(queue_t* q) {
+	if (NULL == q) {
+		return 1;
+	}
+	sem_destroy(&q->lock);
+    pthread_mutex_destroy(&q->mutex);
+	pthread_cond_destroy(&q->cond);
+    free(q->buf);
+    free(q);
+	return 0;
 }
 
-int queue_capacity(queue_t* queue) {
-	assert(queue);
-    return queue->capacity;
+unsigned long queue_capacity(queue_t* q) {
+	if (NULL == q) {
+		return 0;
+	}
+    return q->capacity;
 }
 
-void queue_close(queue_t* queue) {
-	assert(queue);
-    pthread_mutex_lock(&queue->mutate);
-    queue->closed = 1;
-    pthread_cond_broadcast(&queue->cond_length);
-    pthread_mutex_unlock(&queue->mutate);
+unsigned long queue_length(queue_t* q) {
+	unsigned long length;
+	if (NULL == q) {
+		return 0;
+	}
+    pthread_mutex_lock(&q->mutex);
+    length = q->length;
+    pthread_mutex_unlock(&q->mutex);
+    return length;
 }
 
-void queue_put(queue_t* queue, void* item) {
-	void* tmp;
-	assert(queue);
-	assert(item);
-    pthread_mutex_lock(&queue->mutate);
-    assert(!queue->closed);
-    while (queue->length == queue->capacity) {
-		if (queue->auto_top_off) {
-			tmp = queue->buf[queue->pos];
-			queue->buf[queue->pos] = NULL;
-			queue->pos = (queue->pos + 1) % queue->capacity;
-			queue->length--;
-			free(tmp);
-		} else {
-			pthread_cond_wait(&queue->cond_length, &queue->mutate);
+int queue_put(queue_t* q, void* data) {
+	void* retval = NULL;
+	if (NULL == q || NULL == data) {
+		return 1;
+	}
+	sem_wait(&q->lock);
+	int prev_state = q->state;
+	if (FULL == prev_state) {
+		if (q->block) {
+			return 2;
+		}
+		retval = getqueue(q);
+		if (NULL != retval) {
+			free(retval);
 		}
 	}
-    assert(!queue->closed);
-    assert(queue->length < queue->capacity);
-    queue->buf[(queue->pos + queue->length) % queue->capacity] = item;
-    queue->length++;
-    pthread_cond_broadcast(&queue->cond_length);
-    pthread_mutex_unlock(&queue->mutate);
+	q->buf[q->top] = data;
+	++q->top;
+	++q->length;
+	q->state = NORMAL;
+	if (q->top == q->capacity) {
+		q->top = 0;
+	}
+	if (q->top == q->bottom) {
+		q->state = FULL;
+	}
+	pthread_mutex_lock(&q->mutex);
+	if (EMPTY == prev_state) {
+		pthread_cond_signal(&q->cond);
+	}
+	pthread_mutex_unlock(&q->mutex);
+	sem_post(&q->lock);
+	return 0;
 }
 
-void* queue_get(queue_t* queue) {
-    void* item;
-	assert(queue);
-    pthread_mutex_lock(&queue->mutate);
-    while (0 == queue->length) {
-        /* This is a bit tricky. It is possible that the queue has been closed
-         * *and* has become empty while `pthread_cond_wait` is blocking.
-         * Therefore, it is necessary to always check if the queue has been
-         * closed when the queue is empty, otherwise we will deadlock. */
-        if (queue->closed) {
-            pthread_mutex_unlock(&queue->mutate);
-            return NULL;
-        }
-        pthread_cond_wait(&queue->cond_length, &queue->mutate);
-    }
-    assert(queue->length <= queue->capacity);
-    assert(queue->length > 0);
-    item = queue->buf[queue->pos];
-    queue->buf[queue->pos] = NULL;
-    queue->pos = (queue->pos + 1) % queue->capacity;
-    queue->length--;
-    pthread_cond_broadcast(&queue->cond_length);
-    pthread_mutex_unlock(&queue->mutate);
-    return item;
+void* queue_get(queue_t* q) {
+    void* retval;
+	if (NULL == q) {
+		return NULL;
+	}
+	pthread_mutex_lock(&q->mutex);
+	if (EMPTY == q->state) {
+		pthread_cond_wait(&q->cond, &q->mutex);
+	}
+	pthread_mutex_unlock(&q->mutex);
+	sem_wait(&q->lock);
+	retval = getqueue(q);
+	sem_post(&q->lock);
+	return retval;
 }
