@@ -18,12 +18,12 @@ static unsigned int ht_calc_hash(const char* key) {
 
 /* Create a hashmap with capacity 'capacity'
 	and return a pointer to it*/
-hashmap_t* hashmap_create(unsigned long capacity) {
-	hashmap_t* hasht = malloc(sizeof(hashmap_t));
+hashmap_st* hashmap_create(unsigned long capacity) {
+	hashmap_st* hasht = malloc(sizeof(hashmap_st));
 	if (!hasht) {
 		return NULL;
 	}
-	if (NULL == (hasht->map = malloc(capacity * sizeof(hashmap_element_t*)))) {
+	if (NULL == (hasht->map = malloc(capacity * sizeof(hashmap_element_st*)))) {
 		free(hasht->map);
 		return NULL;
 	}
@@ -37,12 +37,12 @@ hashmap_t* hashmap_create(unsigned long capacity) {
 }
 
 /* Store data in the hashmap. If data with the same key are already stored return */
-int hashmap_put(hashmap_t* hasht, const char* key, void* data) {
+int hashmap_put(hashmap_st* hasht, const char* key, void* data) {
 	if (NULL == hasht || NULL == key || NULL == data) {
 		return 1;
 	}
 	unsigned int h = ht_calc_hash(key) % hasht->capacity;
-	hashmap_element_t* e = hasht->map[h];
+	hashmap_element_st* e = hasht->map[h];
 	while (NULL != e) {
 		if (!strcmp(e->key, key)) {	/* same key */
 			return 2;
@@ -50,7 +50,7 @@ int hashmap_put(hashmap_t* hasht, const char* key, void* data) {
 		e = e->next;
 	}
 	// Getting here means the key doesn't already exist
-	if (NULL == (e = malloc(sizeof(hashmap_element_t) + strlen(key) + 1))) {
+	if (NULL == (e = malloc(sizeof(hashmap_element_st) + strlen(key) + 1))) {
 		return 3;
 	}
 	strcpy(e->key, key);
@@ -63,12 +63,12 @@ int hashmap_put(hashmap_t* hasht, const char* key, void* data) {
 }
 
 /* Retrieve data from the hashmap */
-void* hashmap_get(hashmap_t* hasht, const char* key) {
+void* hashmap_get(hashmap_st* hasht, const char* key) {
 	if (NULL == hasht || NULL == key) {
 		return NULL;
 	}
 	unsigned int h = ht_calc_hash(key) % hasht->capacity;
-	hashmap_element_t* e = hasht->map[h];
+	hashmap_element_st* e = hasht->map[h];
 	while (NULL != e) {
 		if (!strcmp(e->key, key)) {
 			return e->data;
@@ -80,13 +80,13 @@ void* hashmap_get(hashmap_t* hasht, const char* key) {
 
 /* Remove data from the hashmap. Return the data removed from the map
 	so that we can free memory if needed */
-void* ht_remove(hashmap_t* hasht, const char* key) {
+void* ht_remove(hashmap_st* hasht, const char* key) {
 	if (NULL == hasht || NULL == key) {
 		return NULL;
 	}
 	unsigned int h = ht_calc_hash(key) % hasht->capacity;
-	hashmap_element_t* e = hasht->map[h];
-	hashmap_element_t* prev = NULL;
+	hashmap_element_st* e = hasht->map[h];
+	hashmap_element_st* prev = NULL;
 	while (NULL != e) {
 		if (!strcmp(e->key, key)) {
 			void* ret = e->data;
@@ -107,14 +107,14 @@ void* ht_remove(hashmap_t* hasht, const char* key) {
 }
 
 /* List keys. keys should have length equals or greater than the number of keys */
-int hashmap_list_keys(hashmap_t* hasht, unsigned long keys_len, char** keys) {
+int hashmap_list_keys(hashmap_st* hasht, unsigned long keys_len, char** keys) {
 	if (NULL == hasht || keys_len < hasht->count || NULL == keys) {
 		return 1;
 	}
 	long ki = 0; //Index to the current string in **keys
 	long i = hasht->capacity;
 	while (--i >= 0) {
-		hashmap_element_t* e = hasht->map[i];
+		hashmap_element_st* e = hasht->map[i];
 		while (e) {
 			keys[ki++] = e->key;
 			e = e->next;
@@ -124,14 +124,14 @@ int hashmap_list_keys(hashmap_t* hasht, unsigned long keys_len, char** keys) {
 }
 
 /* List values. values should have length equals or greater than the number of stored elements */
-int hashmap_list_values(hashmap_t* hasht, unsigned long values_len, void** values) {
+int hashmap_list_values(hashmap_st* hasht, unsigned long values_len, void** values) {
 	if (NULL == hasht || values_len < hasht->count || NULL == values) {
 		return 1;
 	}
 	long vi = 0; //Index to the current string in **values
 	long i = hasht->capacity;
 	while (--i >= 0) {
-		hashmap_element_t* e = hasht->map[i];
+		hashmap_element_st* e = hasht->map[i];
 		while (e) {
 			values[vi++] = e->data;
 			e = e->next;
@@ -141,7 +141,7 @@ int hashmap_list_values(hashmap_t* hasht, unsigned long values_len, void** value
 }
 
 /* Iterate through map's elements. */
-hashmap_element_t* hashmap_iterate(hashmap_element_iterator_t* iterator) {
+hashmap_element_st* hashmap_iterate(hashmap_element_iterator_st* iterator) {
 	if (NULL == iterator) {
 		return NULL;
 	}
@@ -153,7 +153,7 @@ hashmap_element_t* hashmap_iterate(hashmap_element_iterator_t* iterator) {
 			return NULL;
 		}
 	}
-	hashmap_element_t* e = iterator->elem;
+	hashmap_element_st* e = iterator->elem;
 	if (e) {
 		iterator->elem = e->next;
 	}
@@ -161,29 +161,29 @@ hashmap_element_t* hashmap_iterate(hashmap_element_iterator_t* iterator) {
 }
 
 /* Iterate through keys. */
-const char* hashmap_iterate_keys(hashmap_element_iterator_t* iterator) {
+const char* hashmap_iterate_keys(hashmap_element_iterator_st* iterator) {
 	if (NULL == iterator) {
 		return NULL;
 	}
-	hashmap_element_t* e = hashmap_iterate(iterator);
+	hashmap_element_st* e = hashmap_iterate(iterator);
 	return (NULL == e ? NULL : e->key);
 }
 
 /* Iterate through values. */
-void* ht_iterate_values(hashmap_element_iterator_t* iterator) {
+void* ht_iterate_values(hashmap_element_iterator_st* iterator) {
 	if (NULL == iterator) {
 		return NULL;
 	}
-	hashmap_element_t* e = hashmap_iterate(iterator);
+	hashmap_element_st* e = hashmap_iterate(iterator);
 	return (NULL == e ? NULL : e->data);
 }
 
 /* Removes all elements stored in the hashmap. if free_data, all stored datas are also freed.*/
-int hashmap_clear(hashmap_t* hasht, int free_data) {
+int hashmap_clear(hashmap_st* hasht, int free_data) {
 	if (NULL == hasht) {
 		return 1;
 	}
-	hashmap_element_iterator_t it = HT_ITERATOR(hasht);
+	hashmap_element_iterator_st it = HT_ITERATOR(hasht);
 	const char* k = hashmap_iterate_keys(&it);
 	while (NULL != k) {
 		if (free_data) {
@@ -197,7 +197,7 @@ int hashmap_clear(hashmap_t* hasht, int free_data) {
 }
 
 /* Destroy the hash map, and free memory. Data still stored are freed*/
-int hashmap_destroy(hashmap_t* hasht) {
+int hashmap_destroy(hashmap_st* hasht) {
 	if (NULL == hasht) {
 		return 1;
 	}
