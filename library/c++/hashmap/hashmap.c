@@ -183,7 +183,7 @@ int hashmap_clear(hashmap_st* hasht, int free_data) {
 	if (NULL == hasht) {
 		return 1;
 	}
-	hashmap_element_iterator_st it = HT_ITERATOR(hasht);
+	hashmap_element_iterator_st it = HASHMAP_ITERATOR(hasht);
 	const char* k = hashmap_iterate_keys(&it);
 	while (NULL != k) {
 		if (free_data) {
