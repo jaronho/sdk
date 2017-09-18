@@ -11,11 +11,11 @@
 #define NULL	0
 #endif
 
-timer_st* create_timer(long interval, long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param) {
+timer_t* create_timer(long interval, long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param) {
 	if (interval <= 0) {
 		return NULL;
 	}
-	timer_st* tm = (timer_st*)malloc(sizeof(timer_st));
+	timer_t* tm = (timer_t*)malloc(sizeof(timer_t));
 	tm->interval = interval;
 	tm->total_count = count;
 	tm->current_count = 0;
@@ -28,7 +28,7 @@ timer_st* create_timer(long interval, long count, tm_callback_run run_handler, t
 	return tm;
 }
 
-void update_timer(timer_st* tm, long current_time) {
+void update_timer(timer_t* tm, long current_time) {
 	if (NULL == tm || !tm->running) {
 		return;
 	}
@@ -51,7 +51,7 @@ void update_timer(timer_st* tm, long current_time) {
 	}
 }
 
-void start_timer(timer_st* tm, long current_time, int execute_flag) {
+void start_timer(timer_t* tm, long current_time, int execute_flag) {
 	if (NULL == tm || tm->running) {
 		return;
 	}
@@ -64,7 +64,7 @@ void start_timer(timer_st* tm, long current_time, int execute_flag) {
 	}
 }
 
-void stop_timer(timer_st* tm, int execute_flag) {
+void stop_timer(timer_t* tm, int execute_flag) {
 	if (NULL == tm || !tm->running) {
 		return;
 	}
@@ -75,84 +75,84 @@ void stop_timer(timer_st* tm, int execute_flag) {
 	}
 }
 
-void resume_timer(timer_st* tm) {
+void resume_timer(timer_t* tm) {
 	if (NULL == tm) {
 		return;
 	}
 	tm->is_pause = 0;
 }
 
-void pause_timer(timer_st* tm) {
+void pause_timer(timer_t* tm) {
 	if (NULL == tm) {
 		return;
 	}
 	tm->is_pause = 1;
 }
 
-long get_timer_interval(timer_st* tm) {
+long get_timer_interval(timer_t* tm) {
 	if (NULL == tm) {
 		return 0;
 	}
 	return tm->interval;
 }
 
-void set_timer_interval(timer_st* tm, long interval) {
+void set_timer_interval(timer_t* tm, long interval) {
 	if (NULL == tm) {
 		return;
 	}
 	tm->interval = interval;
 }
 
-long get_timer_total_count(timer_st* tm) {
+long get_timer_total_count(timer_t* tm) {
 	if (NULL == tm) {
 		return 0;
 	}
 	return tm->total_count;
 }
 
-void set_timer_total_count(timer_st* tm, long count) {
+void set_timer_total_count(timer_t* tm, long count) {
 	if (NULL == tm) {
 		return;
 	}
 	tm->total_count = count;
 }
 
-long get_timer_current_count(timer_st* tm) {
+long get_timer_current_count(timer_t* tm) {
 	if (NULL == tm) {
 		return 0;
 	}
 	return tm->current_count;
 }
 
-int is_timer_running(timer_st* tm) {
+int is_timer_running(timer_t* tm) {
 	if (NULL == tm) {
 		return 0;
 	}
 	return tm->running;
 }
 
-void set_timer_run_handler(timer_st* tm, tm_callback_run run_handler) {
+void set_timer_run_handler(timer_t* tm, tm_callback_run run_handler) {
 	if (NULL == tm) {
 		return;
 	}
 	tm->run_handler = run_handler;
 }
 
-void set_timer_over_handler(timer_st* tm, tm_callback_over over_handler) {
+void set_timer_over_handler(timer_t* tm, tm_callback_over over_handler) {
 	if (NULL == tm) {
 		return;
 	}
 	tm->over_handler = over_handler;
 }
 
-void* get_timer_param(timer_st* tm) {
+void* get_timer_param(timer_t* tm) {
 	if (NULL == tm) {
 		return NULL;
 	}
 	return tm->param;
 }
 
-void set_timer_param(timer_st* tm, void* param) {
+void set_timer_param(timer_t* tm, void* param) {
 	if (NULL == tm) {
 		return;
 	}
