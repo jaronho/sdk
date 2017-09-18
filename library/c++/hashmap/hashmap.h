@@ -34,23 +34,23 @@ typedef struct hashmap_t {
 
 extern hashmap_t* hashmap_create(unsigned long capacity);
 
-extern void* hashmap_put(hashmap_t* hasht, const char* key, void* data);
+extern int hashmap_put(hashmap_t* hasht, const char* key, void* data);
 
 extern void* hashmap_get(hashmap_t* hasht, const char* key);
 
 extern void* hashmap_remove(hashmap_t* hasht, const char* key);
 
-extern void hashmap_list_keys(hashmap_t* hasht, unsigned long keys_len, char** keys);
+extern int hashmap_list_keys(hashmap_t* hasht, unsigned long keys_len, char** keys);
 
-extern void hashmap_list_values(hashmap_t* hasht, unsigned long values_len, void** values);
+extern int hashmap_list_values(hashmap_t* hasht, unsigned long values_len, void** values);
 
 extern hashmap_element_t* hashmap_iterate(hashmap_element_iterator_t* iterator);
 
 extern const char* hashmap_iterate_keys(hashmap_element_iterator_t* iterator);
 
-extern void hashmap_clear(hashmap_t* hasht, int free_data);
+extern int hashmap_clear(hashmap_t* hasht, int free_data);
 
-extern void hashmap_destroy(hashmap_t* hasht);
+extern int hashmap_destroy(hashmap_t* hasht);
 
 #ifdef __cplusplus
 }

@@ -36,26 +36,22 @@ hashmap_t* hashmap_create(unsigned long capacity) {
 	return hasht;
 }
 
-/* Store data in the hashmap. If data with the same key are already stored,
-	they are overwritten, and return by the function. Else it return NULL.
-	Return HT_ERROR if there are memory alloc error*/
-void* hashmap_put(hashmap_t* hasht, const char* key, void* data) {
+/* Store data in the hashmap. If data with the same key are already stored return */
+int hashmap_put(hashmap_t* hasht, const char* key, void* data) {
 	if (NULL == hasht || NULL == key || NULL == data) {
-		return NULL;
+		return 1;
 	}
 	unsigned int h = ht_calc_hash(key) % hasht->capacity;
 	hashmap_element_t* e = hasht->map[h];
 	while (NULL != e) {
-		if (!strcmp(e->key, key)) {
-			void* ret = e->data;
-			e->data = data;
-			return ret;
+		if (!strcmp(e->key, key)) {	/* same key */
+			return 2;
 		}
 		e = e->next;
 	}
 	// Getting here means the key doesn't already exist
 	if (NULL == (e = malloc(sizeof(hashmap_element_t) + strlen(key) + 1))) {
-		return HT_ERROR;
+		return 3;
 	}
 	strcpy(e->key, key);
 	e->data = data;
@@ -63,7 +59,7 @@ void* hashmap_put(hashmap_t* hasht, const char* key, void* data) {
 	e->next = hasht->map[h];
 	hasht->map[h] = e;
 	hasht->count ++;
-	return NULL;
+	return 0;
 }
 
 /* Retrieve data from the hashmap */
@@ -111,9 +107,9 @@ void* ht_remove(hashmap_t* hasht, const char* key) {
 }
 
 /* List keys. keys should have length equals or greater than the number of keys */
-void hashmap_list_keys(hashmap_t* hasht, unsigned long keys_len, char** keys) {
+int hashmap_list_keys(hashmap_t* hasht, unsigned long keys_len, char** keys) {
 	if (NULL == hasht || keys_len < hasht->count || NULL == keys) {
-		return;
+		return 1;
 	}
 	long ki = 0; //Index to the current string in **keys
 	long i = hasht->capacity;
@@ -124,12 +120,13 @@ void hashmap_list_keys(hashmap_t* hasht, unsigned long keys_len, char** keys) {
 			e = e->next;
 		}
 	}
+	return 0;
 }
 
 /* List values. values should have length equals or greater than the number of stored elements */
-void hashmap_list_values(hashmap_t* hasht, unsigned long values_len, void** values) {
+int hashmap_list_values(hashmap_t* hasht, unsigned long values_len, void** values) {
 	if (NULL == hasht || values_len < hasht->count || NULL == values) {
-		return;
+		return 1;
 	}
 	long vi = 0; //Index to the current string in **values
 	long i = hasht->capacity;
@@ -140,6 +137,7 @@ void hashmap_list_values(hashmap_t* hasht, unsigned long values_len, void** valu
 			e = e->next;
 		}
 	}
+	return 0;
 }
 
 /* Iterate through map's elements. */
@@ -181,9 +179,9 @@ void* ht_iterate_values(hashmap_element_iterator_t* iterator) {
 }
 
 /* Removes all elements stored in the hashmap. if free_data, all stored datas are also freed.*/
-void hashmap_clear(hashmap_t* hasht, int free_data) {
+int hashmap_clear(hashmap_t* hasht, int free_data) {
 	if (NULL == hasht) {
-		return;
+		return 1;
 	}
 	hashmap_element_iterator_t it = HT_ITERATOR(hasht);
 	const char* k = hashmap_iterate_keys(&it);
@@ -195,14 +193,16 @@ void hashmap_clear(hashmap_t* hasht, int free_data) {
 		}
 		k = hashmap_iterate_keys(&it);
 	}
+	return 0;
 }
 
 /* Destroy the hash map, and free memory. Data still stored are freed*/
-void hashmap_destroy(hashmap_t* hasht) {
+int hashmap_destroy(hashmap_t* hasht) {
 	if (NULL == hasht) {
-		return;
+		return 1;
 	}
 	hashmap_clear(hasht, 1); // Delete and free all.
 	free(hasht->map);
 	free(hasht);
+	return 0;
 }
