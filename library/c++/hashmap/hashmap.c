@@ -80,7 +80,7 @@ void* hashmap_get(hashmap_st* hasht, const char* key) {
 
 /* Remove data from the hashmap. Return the data removed from the map
 	so that we can free memory if needed */
-void* ht_remove(hashmap_st* hasht, const char* key) {
+void* hashmap_remove(hashmap_st* hasht, const char* key) {
 	if (NULL == hasht || NULL == key) {
 		return NULL;
 	}
@@ -170,7 +170,7 @@ const char* hashmap_iterate_keys(hashmap_element_iterator_st* iterator) {
 }
 
 /* Iterate through values. */
-void* ht_iterate_values(hashmap_element_iterator_st* iterator) {
+void* hashmap_iterate_values(hashmap_element_iterator_st* iterator) {
 	if (NULL == iterator) {
 		return NULL;
 	}

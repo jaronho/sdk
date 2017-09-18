@@ -48,6 +48,8 @@ extern hashmap_element_st* hashmap_iterate(hashmap_element_iterator_st* iterator
 
 extern const char* hashmap_iterate_keys(hashmap_element_iterator_st* iterator);
 
+extern void* hashmap_iterate_values(hashmap_element_iterator_st* iterator);
+
 extern int hashmap_clear(hashmap_st* hasht, int free_data);
 
 extern int hashmap_destroy(hashmap_st* hasht);
