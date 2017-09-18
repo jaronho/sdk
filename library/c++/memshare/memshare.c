@@ -96,7 +96,7 @@ int initialized = 0;
 char my_proc_name[PROC_NAME_SIZE];
 
 int my_index;
-queue_t* my_queue;
+queue_st* my_queue;
 long major_sequence = 0;
 long minor_sequence = 0;
 int num_of_procs = 0;
