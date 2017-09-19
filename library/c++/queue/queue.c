@@ -65,10 +65,18 @@ unsigned long queue_capacity(queue_st* q) {
 }
 
 unsigned long queue_length(queue_st* q) {
+	unsigned long length;
 	if (NULL == q) {
 		return 0;
 	}
-    return q->length;
+#if QUEUE_THREAD_SAFETY
+	pthread_mutex_lock(&q->mutex);
+#endif
+    length = q->length;
+#if QUEUE_THREAD_SAFETY
+	pthread_mutex_unlock(&q->mutex);
+#endif
+	return length;
 }
 
 int queue_put(queue_st* q, void* data) {
