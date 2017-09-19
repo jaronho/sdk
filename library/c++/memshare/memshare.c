@@ -618,7 +618,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	proc_num = proc_num >= 2 ? proc_num : 2;
 	shm_ctrl_key = shm_key;
 	sem_ctrl_key = shm_key + 1;
-	my_queue = queue_create(queue_size, 0);
+	my_queue = queue_create(queue_size, 1, 1);
 	callbackmsg = scbm;
 	callbacklog = scbl;
 	/* clear the memory view */
