@@ -4,15 +4,12 @@
 * Brief:	timer manager
 **********************************************************************/
 #include "timer_manager.h"
-#include "hashmap.h"
+#include "../hashmap/hashmap.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <memory.h>
-#include <time.h>
 #include <pthread.h>
-
-#define MAX_TIMER_COUNT	1024
 
 static hashmap_st* timer_hashmap = NULL;
 static pthread_t update_thread_t;
@@ -28,6 +25,9 @@ static void* update_thread_func(void* arg) {
 	timer_st* tm;
 	int ret;
 	for (;;) {
+		if (NULL == timer_hashmap) {
+			continue;
+		}
 		curr_millseconds = get_milliseconds();
 		hashmap_element_iterator_st iter = HASHMAP_ITERATOR(timer_hashmap);
 		tm = (timer_st*)hashmap_iterate_value( &iter);
@@ -61,14 +61,23 @@ static void start_update_thread() {
 	}
 }
 
+void timermanager_init(int timer_capacity) {
+    if (timer_capacity <= 0) {
+        return;
+    }
+    if (NULL == timer_hashmap) {
+        timer_hashmap = hashmap_create(timer_capacity);
+        start_update_thread();
+    }
+}
+
 void timermanager_run(const char* id, long interval, long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param) {
 	timer_st* tm;
 	if (NULL == id || 0 == strlen(id)) {
 		return;
 	}
 	if (NULL == timer_hashmap) {
-		timer_hashmap = hashmap_create(MAX_TIMER_COUNT);
-		start_update_thread();
+        return;
 	}
 	tm = (timer_st*)hashmap_remove(timer_hashmap, id);
 	if (NULL != tm) {
@@ -85,15 +94,11 @@ void timermanager_run(const char* id, long interval, long count, tm_callback_run
 	start_timer(tm, get_milliseconds(), 0);
 }
 
-void timermanager_run_loop(long interval, tm_callback_run run_handler) {
-	char id[64] = {0};
-	sprintf(id, "%ld", get_milliseconds() + rand()%1000);
+void timermanager_run_loop(const char* id, long interval, tm_callback_run run_handler) {
 	timermanager_run(id, interval, 0, run_handler, NULL, NULL);
 }
 
-void timermanager_run_once(long interval, tm_callback_over over_handler) {
-	char id[64] = {0};
-	sprintf(id, "%ld", get_milliseconds() + rand()%1000);
+void timermanager_run_once(const char* id, long interval, tm_callback_over over_handler) {
 	timermanager_run(id, interval, 1, NULL, over_handler, NULL);
 }
 
@@ -111,4 +116,11 @@ void timermanager_stop(const char* id) {
 	}
 	stop_timer(tm, 1);
 	free(tm);
+}
+
+void timermanager_clear() {
+    if (NULL == timer_hashmap) {
+        return;
+    }
+    hashmap_clear(timer_hashmap, 1);
 }
