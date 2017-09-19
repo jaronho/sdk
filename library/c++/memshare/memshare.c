@@ -16,7 +16,7 @@
 /* along with Memshare.  If not, see <http://www.gnu.org/licenses/>.               */
 
 #include "memshare.h"
-#include "queue.h"
+#include "../queue/queue.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
