@@ -28,13 +28,16 @@ timer_st* create_timer(long interval, long count, tm_callback_run run_handler, t
 	return tm;
 }
 
-void update_timer(timer_st* tm, long current_time) {
-	if (NULL == tm || !tm->running) {
-		return;
+int update_timer(timer_st* tm, long current_time) {
+	if (NULL == tm) {
+		return 1;
+	}
+	if (!tm->running) {
+		return 2;
 	}
 	if (tm->is_pause || current_time < tm->start_time) {
 		tm->start_time = current_time;
-		return;
+		return 3;
 	}
 	if (tm->total_count <= 0 || tm->current_count < tm->total_count) {
 		long deltaTime = abs(current_time - tm->start_time);
@@ -48,7 +51,9 @@ void update_timer(timer_st* tm, long current_time) {
 		}
 	} else {
 		stop_timer(tm, 1);
+		return 4;
 	}
+	return 0;
 }
 
 void start_timer(timer_st* tm, long current_time, int execute_flag) {

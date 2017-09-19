@@ -43,9 +43,9 @@ extern timer_st* create_timer(long interval, long count, tm_callback_run run_han
  * Brief:	update a timer
  * Param:	tm - timer
  *			current_time - current time in milliseconds
- * Return:	void
+ * Return:	int, 0.running, 1.tm is null, 2.tm not running, 3.tm is pause or not trigger, 4.tm is over
  */
-extern void update_timer(timer_st* tm, long current_time);
+extern int update_timer(timer_st* tm, long current_time);
 
 /*
  * Brief:	start a timer
