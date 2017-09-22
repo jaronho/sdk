@@ -349,14 +349,14 @@ public:
 	static double getTime(void);
 
 	/*
-	Brief:	get current date
-	Param:	void
+	Brief:	time to date
+	Param:	seconds - seconds, if = 0, get current date
 	Return:	tm
 	*/
-	static struct tm getDate(void);
+	static struct tm timeToDate(long seconds = 0);
 
 	/*
-	Brief:	date to seconds
+	Brief:	date to time
 	Param:	y - year, must > 1970
 			m - month , [1, 12]
 			d - day, [1, 31]
@@ -365,7 +365,7 @@ public:
 			s - second, [0, 59]
 	Return:	long (seconds)
 	*/
-	static long dateToSeconds(int y = 1970, int m = 1, int d = 1, int h = 0, int n = 0, int s = 0);
+	static long dateToTime(int y = 1970, int m = 1, int d = 1, int h = 8, int n = 0, int s = 0);
 
 	//--------------------------------------------------------------------------
 	// other functions

@@ -627,16 +627,19 @@ double Common::getTime(void) {
 #endif
 }
 //--------------------------------------------------------------------------
-struct tm Common::getDate(void) {
-	time_t nowtime;
-	time(&nowtime);
+struct tm Common::timeToDate(long seconds /*= 0*/) {
+	time_t nowtime = seconds > 0 ? seconds : time(NULL);
 	struct tm* timeinfo = localtime(&nowtime);
-	timeinfo->tm_year += 1900;	// [1900, ...)
-	timeinfo->tm_mon += 1;		// [1, 12]
+	timeinfo->tm_year += 1900;      /* [1900, ...) */
+	timeinfo->tm_mon += 1;          /* [1, 12] */
+	if (0 == timeinfo->tm_wday) {   /* [1, 7] */
+		timeinfo->tm_wday = 7;
+	}
+	timeinfo->tm_yday += 1;         /* [1, 366] */
 	return *timeinfo;
 }
 //--------------------------------------------------------------------------
-long Common::dateToSeconds(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*= 0*/, int n /*= 0*/, int s /*= 0*/) {
+long Common::dateToTime(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*= 8*/, int n /*= 0*/, int s /*= 0*/) {
 	if (y < 1900 || m > 12 || m < 1 || d > 31 || d < 1 || h > 23 || h < 0 || n > 59 || n < 0 || s > 59 || s < 0) {
 		return 0;
 	}
@@ -647,7 +650,7 @@ long Common::dateToSeconds(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h
 	date.tm_hour = h;
 	date.tm_min = n;
 	date.tm_sec = s;
-	return (long)::mktime(&date);
+	return (long)mktime(&date);
 }
 //--------------------------------------------------------------------------
 unsigned char* Common::simpleXOR(unsigned char* data, const unsigned char* key) {
