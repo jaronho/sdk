@@ -6,7 +6,7 @@
 #ifndef _XML_HELPER_H_
 #define _XML_HELPER_H_
 
-#include <string.h>
+#include <string>
 #include <vector>
 #include "../pugixml/pugixml.hpp"
 
@@ -15,43 +15,43 @@ class XmlHelper {
  **************************** class methods ***************************
  **********************************************************************/
 public:
-    static pugi::xml_document* createXmlFile(const std::string& fileName, const std::string& rooName = "root");
+    static pugi::xml_document* createFile(const std::string& fileName, const std::string& rooName = "root");
 
-    static pugi::xml_document* loadXmlFile(const std::string& fileName);
+    static pugi::xml_document* loadFile(const std::string& fileName);
 
-    static pugi::xml_document* loadXmlString(const std::string& content);
+    static pugi::xml_document* loadString(const std::string& content);
 
-    static bool saveXmlFile(pugi::xml_document* doc, const std::string& fileName);
+    static bool saveFile(pugi::xml_document* doc, const std::string& fileName);
 
-    static bool removeXmlChildren(pugi::xml_node& parent);
+    static bool removeChildren(pugi::xml_node& parent);
 
-    static bool removeXmlNode(pugi::xml_node& parent, const std::string& key);
+    static bool removeNode(pugi::xml_node& parent, const std::string& key);
 
-    static bool removeXmlNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec);
+    static bool removeNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec);
 
-    static pugi::xml_node getXmlNode(pugi::xml_node& parent, const std::string& key);
+    static pugi::xml_node getNode(pugi::xml_node& parent, const std::string& key);
 
-    static pugi::xml_node getXmlNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec);
+    static pugi::xml_node getNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec);
 
-    static pugi::xml_text getXmlNodeText(pugi::xml_node& parent, const std::string& key);
+    static pugi::xml_text getNodeText(pugi::xml_node& parent, const std::string& key);
 
-    static pugi::xml_text getXmlNodeText(pugi::xml_node& parent, const std::vector<std::string>& keyVec);
+    static pugi::xml_text getNodeText(pugi::xml_node& parent, const std::vector<std::string>& keyVec);
 
-    static bool setXmlNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& value);
+    static std::string getNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& defaultValue = "");
 
-    static bool setXmlNodeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& value);
+    static std::string getNodeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& defaultValue = "");
 
-    static std::string getXmlNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& defaultValue = "");
+    static bool setNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& value);
 
-    static std::string getXmlNodeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& defaultValue = "");
+    static bool setNodeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& value);
 
-    static bool setXmlNodeAttribute(pugi::xml_node& parent, const std::string& key, const std::string& attribute, const std::string& attributeValue);
+    static std::string getAttributeValue(pugi::xml_node& parent, const std::string& key, const std::string& attribute, const std::string& defaultValue = "");
 
-    static bool setXmlNodeAttribute(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& attribute, const std::string& attributeValue);
+    static std::string getAttributeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& attribute, const std::string& defaultValue = "");
 
-    static std::string getXmlNodeAttribute(pugi::xml_node& parent, const std::string& key, const std::string& attribute, const std::string& defaultValue = "");
+    static bool setAttributeValue(pugi::xml_node& parent, const std::string& key, const std::string& attribute, const std::string& attributeValue);
 
-    static std::string getXmlNodeAttribute(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& attribute, const std::string& defaultValue = "");
+    static bool setAttributeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& attribute, const std::string& attributeValue);
 
 /**********************************************************************
  ************************** instance methods **************************
@@ -209,9 +209,9 @@ public:
     bool remove(const std::string& key);
 
 private:
-    std::string mXmlFileName;       /* file name */
-    pugi::xml_document* mXmlDoc;    /* document */
-    pugi::xml_node mXmlRoot;        /* root node */
+    pugi::xml_document* mDocument;  /* document */
+    pugi::xml_node mRoot;           /* root node */
+    std::string mFileName;          /* file name */
 };
 
 #endif	// _XML_HELPER_H_

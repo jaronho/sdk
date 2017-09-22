@@ -4,15 +4,13 @@
 * Brief:	xml helper
 **********************************************************************/
 #include "XmlHelper.h"
-#include <memory.h>
 #include <fstream>
-#include <unistd.h>
 
 /**********************************************************************
  **************************** class methods ***************************
  **********************************************************************/
 
-pugi::xml_document* XmlHelper::createXmlFile(const std::string& fileName, const std::string& rootName /*= "root"*/) {
+pugi::xml_document* XmlHelper::createFile(const std::string& fileName, const std::string& rootName /*= "root"*/) {
     if (fileName.empty()) {
         return NULL;
     }
@@ -31,7 +29,7 @@ pugi::xml_document* XmlHelper::createXmlFile(const std::string& fileName, const 
     return doc;
 }
 
-pugi::xml_document* XmlHelper::loadXmlFile(const std::string& fileName) {
+pugi::xml_document* XmlHelper::loadFile(const std::string& fileName) {
     if (fileName.empty()) {
         return NULL;
     }
@@ -48,7 +46,7 @@ pugi::xml_document* XmlHelper::loadXmlFile(const std::string& fileName) {
     return doc;
 }
 
-pugi::xml_document* XmlHelper::loadXmlString(const std::string& content) {
+pugi::xml_document* XmlHelper::loadString(const std::string& content) {
     if (content.empty()) {
         return NULL;
     }
@@ -65,14 +63,14 @@ pugi::xml_document* XmlHelper::loadXmlString(const std::string& content) {
     return doc;
 }
 
-bool XmlHelper::saveXmlFile(pugi::xml_document* doc, const std::string& fileName) {
+bool XmlHelper::saveFile(pugi::xml_document* doc, const std::string& fileName) {
     if (NULL == doc || fileName.empty()) {
         return false;
     }
     return doc->save_file(fileName.c_str());
 }
 
-bool XmlHelper::removeXmlChildren(pugi::xml_node& parent) {
+bool XmlHelper::removeChildren(pugi::xml_node& parent) {
     if (parent.empty()) {
         return false;
     }
@@ -84,14 +82,14 @@ bool XmlHelper::removeXmlChildren(pugi::xml_node& parent) {
     return true;
 }
 
-bool XmlHelper::removeXmlNode(pugi::xml_node& parent, const std::string& key) {
+bool XmlHelper::removeNode(pugi::xml_node& parent, const std::string& key) {
     if (parent.empty() || key.empty()) {
         return false;
     }
     return parent.remove_child(key.c_str());
 }
 
-bool XmlHelper::removeXmlNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec) {
+bool XmlHelper::removeNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec) {
     if (parent.empty() || keyVec.empty()) {
         return false;
     }
@@ -108,7 +106,7 @@ bool XmlHelper::removeXmlNode(pugi::xml_node& parent, const std::vector<std::str
     return node.parent().remove_child(node);
 }
 
-pugi::xml_node XmlHelper::getXmlNode(pugi::xml_node& parent, const std::string& key) {
+pugi::xml_node XmlHelper::getNode(pugi::xml_node& parent, const std::string& key) {
     if (parent.empty() || key.empty()) {
         return pugi::xml_node();
     }
@@ -119,7 +117,7 @@ pugi::xml_node XmlHelper::getXmlNode(pugi::xml_node& parent, const std::string& 
     return node;
 }
 
-pugi::xml_node XmlHelper::getXmlNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec) {
+pugi::xml_node XmlHelper::getNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec) {
     if (parent.empty() || keyVec.empty()) {
         return pugi::xml_node();
     }
@@ -139,99 +137,51 @@ pugi::xml_node XmlHelper::getXmlNode(pugi::xml_node& parent, const std::vector<s
     return node;
 }
 
-pugi::xml_text XmlHelper::getXmlNodeText(pugi::xml_node& parent, const std::string& key) {
-    return getXmlNode(parent, key).text();
+pugi::xml_text XmlHelper::getNodeText(pugi::xml_node& parent, const std::string& key) {
+    return getNode(parent, key).text();
 }
 
-pugi::xml_text XmlHelper::getXmlNodeText(pugi::xml_node& parent, const std::vector<std::string>& keyVec) {
-    return getXmlNode(parent, keyVec).text();
+pugi::xml_text XmlHelper::getNodeText(pugi::xml_node& parent, const std::vector<std::string>& keyVec) {
+    return getNode(parent, keyVec).text();
 }
 
-bool XmlHelper::setXmlNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& value) {
-    if (parent.empty() || key.empty() || value.empty()) {
-        return false;
+std::string XmlHelper::getNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& defaultValue /*= ""*/) {
+    pugi::xml_text text = getNodeText(parent, key);
+    if (text.empty()) {
+        return defaultValue;
     }
-    pugi::xml_node node = getXmlNode(parent, key);
+    return text.get();
+}
+
+std::string XmlHelper::getNodeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& defaultValue /*= ""*/) {
+    pugi::xml_text text = getNodeText(parent, keyVec);
+    if (text.empty()) {
+        return defaultValue;
+    }
+    return text.get();
+}
+
+bool XmlHelper::setNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& value) {
+    pugi::xml_node node = getNode(parent, key);
     if (node.empty()) {
         return false;
     }
     return node.text().set(value.c_str());
 }
 
-bool XmlHelper::setXmlNodeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& value) {
-    if (parent.empty() || keyVec.empty() || value.empty()) {
-        return false;
-    }
-    pugi::xml_node node = getXmlNode(parent, keyVec);
+bool XmlHelper::setNodeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& value) {
+    pugi::xml_node node = getNode(parent, keyVec);
     if (node.empty()) {
         return false;
     }
     return node.text().set(value.c_str());
 }
 
-std::string XmlHelper::getXmlNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& defaultValue /*= ""*/) {
-    if (parent.empty() || key.empty()) {
-        return defaultValue;
-    }
-    pugi::xml_node node = getXmlNode(parent, key);
-    if (node.empty()) {
-        return defaultValue;
-    }
-    return node.text().get();
-}
-
-std::string XmlHelper::getXmlNodeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& defaultValue /*= ""*/) {
-    if (parent.empty() || keyVec.empty()) {
-        return defaultValue;
-    }
-    pugi::xml_node node = getXmlNode(parent, keyVec);
-    if (node.empty()) {
-        return defaultValue;
-    }
-    return node.text().get();
-}
-
-bool XmlHelper::setXmlNodeAttribute(pugi::xml_node& parent, const std::string& key, const std::string& attribute, const std::string& attributeValue) {
-    if (parent.empty() || key.empty() || attribute.empty() || attributeValue.empty()) {
-        return false;
-    }
-    pugi::xml_node node = getXmlNode(parent, key);
-    if (node.empty()) {
-        return false;
-    }
-    pugi::xml_attribute attr = node.attribute(attribute.c_str());
-    if (attr.empty()) {
-        attr = node.append_attribute(attribute.c_str());
-        if (attr.empty()) {
-            return false;
-        }
-    }
-    return attr.set_value(attributeValue.c_str());
-}
-
-bool XmlHelper::setXmlNodeAttribute(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& attribute, const std::string& attributeValue) {
-    if (parent.empty() || keyVec.empty() || attribute.empty() || attributeValue.empty()) {
-        return false;
-    }
-    pugi::xml_node node = getXmlNode(parent, keyVec);
-    if (node.empty()) {
-        return false;
-    }
-    pugi::xml_attribute attr = node.attribute(attribute.c_str());
-    if (attr.empty()) {
-        attr = node.append_attribute(attribute.c_str());
-        if (attr.empty()) {
-            return false;
-        }
-    }
-    return attr.set_value(attributeValue.c_str());
-}
-
-std::string XmlHelper::getXmlNodeAttribute(pugi::xml_node& parent, const std::string& key, const std::string& attribute, const std::string& defaultValue /*= ""*/) {
+std::string XmlHelper::getAttributeValue(pugi::xml_node& parent, const std::string& key, const std::string& attribute, const std::string& defaultValue /*= ""*/) {
     if (parent.empty() || key.empty() || attribute.empty()) {
         return defaultValue;
     }
-    pugi::xml_node node = getXmlNode(parent, key);
+    pugi::xml_node node = getNode(parent, key);
     if (node.empty()) {
         return defaultValue;
     }
@@ -242,11 +192,11 @@ std::string XmlHelper::getXmlNodeAttribute(pugi::xml_node& parent, const std::st
     return attr.value();
 }
 
-std::string XmlHelper::getXmlNodeAttribute(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& attribute, const std::string& defaultValue /*= ""*/) {
+std::string XmlHelper::getAttributeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& attribute, const std::string& defaultValue /*= ""*/) {
     if (parent.empty() || keyVec.empty() || attribute.empty()) {
         return defaultValue;
     }
-    pugi::xml_node node = getXmlNode(parent, keyVec);
+    pugi::xml_node node = getNode(parent, keyVec);
     if (node.empty()) {
         return defaultValue;
     }
@@ -255,6 +205,42 @@ std::string XmlHelper::getXmlNodeAttribute(pugi::xml_node& parent, const std::ve
         return defaultValue;
     }
     return attr.value();
+}
+
+bool XmlHelper::setAttributeValue(pugi::xml_node& parent, const std::string& key, const std::string& attribute, const std::string& attributeValue) {
+    if (parent.empty() || key.empty() || attribute.empty()) {
+        return false;
+    }
+    pugi::xml_node node = getNode(parent, key);
+    if (node.empty()) {
+        return false;
+    }
+    pugi::xml_attribute attr = node.attribute(attribute.c_str());
+    if (attr.empty()) {
+        attr = node.append_attribute(attribute.c_str());
+        if (attr.empty()) {
+            return false;
+        }
+    }
+    return attr.set_value(attributeValue.c_str());
+}
+
+bool XmlHelper::setAttributeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& attribute, const std::string& attributeValue) {
+    if (parent.empty() || keyVec.empty() || attribute.empty()) {
+        return false;
+    }
+    pugi::xml_node node = getNode(parent, keyVec);
+    if (node.empty()) {
+        return false;
+    }
+    pugi::xml_attribute attr = node.attribute(attribute.c_str());
+    if (attr.empty()) {
+        attr = node.append_attribute(attribute.c_str());
+        if (attr.empty()) {
+            return false;
+        }
+    }
+    return attr.set_value(attributeValue.c_str());
 }
 
 /**********************************************************************
@@ -262,95 +248,93 @@ std::string XmlHelper::getXmlNodeAttribute(pugi::xml_node& parent, const std::ve
  **********************************************************************/
 
 XmlHelper::XmlHelper(void) {
-    mXmlDoc = NULL;
-    mXmlRoot = pugi::xml_node();
-    mXmlFileName = "";
+    mDocument = NULL;
+    mRoot = pugi::xml_node();
+    mFileName = "";
 }
 
 XmlHelper::~XmlHelper(void) {
-	if (mXmlDoc) {
-        delete mXmlDoc;
+    if (mDocument) {
+        delete mDocument;
 	}
 }
 
 pugi::xml_document* XmlHelper::getDocument(void) {
-    return mXmlDoc;
+    return mDocument;
 }
 
 pugi::xml_node& XmlHelper::getRoot(void) {
-    return mXmlRoot;
+    return mRoot;
 }
 
 std::string XmlHelper::getFileName(void) {
-    return mXmlFileName;
+    return mFileName;
 }
 
 bool XmlHelper::open(const std::string& fileName, const std::string& rootName /*= "root"*/) {
-    if (mXmlDoc) {
-        delete mXmlDoc;
-        mXmlDoc = NULL;
-        mXmlRoot = pugi::xml_node();
-        mXmlFileName = "";
+    if (mDocument) {
+        delete mDocument;
+        mDocument = NULL;
+        mRoot = pugi::xml_node();
+        mFileName = "";
     }
     if (fileName.empty()) {
         return false;
     }
     FILE* fp = fopen(fileName.c_str(), "r");
     if (NULL == fp) {		/* file is not exist */
-        mXmlDoc = createXmlFile(fileName, rootName);
-        if (NULL == mXmlDoc) {
+        mDocument = createFile(fileName, rootName);
+        if (NULL == mDocument) {
             return false;
         }
     } else {				/* file exist */
         fclose(fp);
-        mXmlDoc = loadXmlFile(fileName);
-        if (NULL == mXmlDoc) {
+        mDocument = loadFile(fileName);
+        if (NULL == mDocument) {
             return false;
         }
     }
-    mXmlRoot = getXmlNode(*mXmlDoc, rootName);
-    mXmlFileName = fileName;
+    mRoot = getNode(*mDocument, rootName);
+    mFileName = fileName;
     return true;
 }
 
 bool XmlHelper::save(const std::string& fileName /*= ""*/) {
-	if (NULL == mXmlDoc) {
+    if (NULL == mDocument) {
 		return false;
 	}
-    return saveXmlFile(mXmlDoc, fileName.empty() ? mXmlFileName : fileName);
+    return saveFile(mDocument, fileName.empty() ? mFileName : fileName);
 }
 
 bool XmlHelper::clear(void) {
-    if (NULL == mXmlDoc) {
+    if (NULL == mDocument) {
         return false;
     }
-    return removeXmlChildren(mXmlRoot);
+    return removeChildren(mRoot);
 }
 
 int XmlHelper::getInt(const std::string& key, int defaultValue /*= 0*/) {
-    return getXmlNodeText(mXmlRoot, key).as_int(defaultValue);
+    return getNodeText(mRoot, key).as_int(defaultValue);
 }
 
 bool XmlHelper::setInt(const std::string& key, int value) {
-    char str[32];
-    memset(str, 0, sizeof(str));
+    char str[32] = {0};
     sprintf(str, "%d", value);
-    return setXmlNodeValue(mXmlRoot, key, str);
+    return setNodeValue(mRoot, key, str);
 }
 
 long XmlHelper::getLong(const std::string& key, long defaultValue /*= 0*/) {
-    return getXmlNodeText(mXmlRoot, key).as_llong(defaultValue);
+    return getNodeText(mRoot, key).as_llong(defaultValue);
 }
 
 bool XmlHelper::setLong(const std::string& key, long value) {
-    char str[64];
-    memset(str, 0, sizeof(str));
+    char str[64] = {0};
     sprintf(str, "%ld", value);
-    return setXmlNodeValue(mXmlRoot, key, str);
+    return setNodeValue(mRoot, key, str);
 }
 
 float XmlHelper::getFloat(const std::string& key, float defaultValue /*= 0.0f*/) {
-    return getXmlNodeText(mXmlRoot, key).as_float(defaultValue);
+    return getNodeText(mRoot, key).as_float(defaultValue);
 }
 
 bool XmlHelper::setFloat(const std::string& key, float value) {
@@ -358,32 +342,31 @@ bool XmlHelper::setFloat(const std::string& key, float value) {
 }
 
 double XmlHelper::getDouble(const std::string& key, double defaultValue /*= 0.0*/) {
-    return getXmlNodeText(mXmlRoot, key).as_double(defaultValue);
+    return getNodeText(mRoot, key).as_double(defaultValue);
 }
 
 bool XmlHelper::setDouble(const std::string& key, double value) {
-    char str[64];
-    memset(str, 0, sizeof(str));
+    char str[64] = {0};
     sprintf(str, "%f", value);
-    return setXmlNodeValue(mXmlRoot, key, str);
+    return setNodeValue(mRoot, key, str);
 }
 
 bool XmlHelper::getBool(const std::string& key, bool defaultValue /*= false*/) {
-    return getXmlNodeText(mXmlRoot, key).as_bool(defaultValue);
+    return getNodeText(mRoot, key).as_bool(defaultValue);
 }
 
 bool XmlHelper::setBool(const std::string& key, bool value) {
-    return setXmlNodeValue(mXmlRoot, key, value ? "true" : "false");
+    return setNodeValue(mRoot, key, value ? "true" : "false");
 }
 
 std::string XmlHelper::getString(const std::string& key, const std::string& defaultValue /*= ""*/) {
-    return getXmlNodeText(mXmlRoot, key).as_string(defaultValue.c_str());
+    return getNodeText(mRoot, key).as_string(defaultValue.c_str());
 }
 
 bool XmlHelper::setString(const std::string& key, const std::string& value) {
-    return setXmlNodeValue(mXmlRoot, key, value);
+    return setNodeValue(mRoot, key, value);
 }
 
 bool XmlHelper::remove(const std::string& key) {
-    return removeXmlNode(mXmlRoot, key);
+    return removeNode(mRoot, key);
 }
