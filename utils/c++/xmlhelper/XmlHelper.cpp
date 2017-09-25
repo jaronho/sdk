@@ -106,18 +106,20 @@ bool XmlHelper::removeNode(pugi::xml_node& parent, const std::vector<std::string
     return node.parent().remove_child(node);
 }
 
-pugi::xml_node XmlHelper::getNode(pugi::xml_node& parent, const std::string& key) {
+pugi::xml_node XmlHelper::getNode(pugi::xml_node& parent, const std::string& key, bool createIfNotExist /*= false*/) {
     if (parent.empty() || key.empty()) {
         return pugi::xml_node();
     }
     pugi::xml_node node = parent.child(key.c_str());
     if (node.empty()) {
-        node = parent.append_child(key.c_str());
+        if (createIfNotExist) {
+            node = parent.append_child(key.c_str());
+        }
     }
     return node;
 }
 
-pugi::xml_node XmlHelper::getNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec) {
+pugi::xml_node XmlHelper::getNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec, bool createIfNotExist /*= false*/) {
     if (parent.empty() || keyVec.empty()) {
         return pugi::xml_node();
     }
@@ -127,7 +129,9 @@ pugi::xml_node XmlHelper::getNode(pugi::xml_node& parent, const std::vector<std:
         const std::string& key = keyVec[i];
         node = parentTmp.child(key.c_str());
         if (node.empty()) {
-            node = parentTmp.append_child(key.c_str());
+            if (createIfNotExist) {
+                node = parentTmp.append_child(key.c_str());
+            }
             if (node.empty()) {
                 return pugi::xml_node();
             }
@@ -138,11 +142,11 @@ pugi::xml_node XmlHelper::getNode(pugi::xml_node& parent, const std::vector<std:
 }
 
 pugi::xml_text XmlHelper::getNodeText(pugi::xml_node& parent, const std::string& key) {
-    return getNode(parent, key).text();
+    return getNode(parent, key, false).text();
 }
 
 pugi::xml_text XmlHelper::getNodeText(pugi::xml_node& parent, const std::vector<std::string>& keyVec) {
-    return getNode(parent, keyVec).text();
+    return getNode(parent, keyVec, false).text();
 }
 
 std::string XmlHelper::getNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& defaultValue /*= ""*/) {
@@ -162,7 +166,7 @@ std::string XmlHelper::getNodeValue(pugi::xml_node& parent, const std::vector<st
 }
 
 bool XmlHelper::setNodeValue(pugi::xml_node& parent, const std::string& key, const std::string& value) {
-    pugi::xml_node node = getNode(parent, key);
+    pugi::xml_node node = getNode(parent, key, true);
     if (node.empty()) {
         return false;
     }
@@ -170,7 +174,7 @@ bool XmlHelper::setNodeValue(pugi::xml_node& parent, const std::string& key, con
 }
 
 bool XmlHelper::setNodeValue(pugi::xml_node& parent, const std::vector<std::string>& keyVec, const std::string& value) {
-    pugi::xml_node node = getNode(parent, keyVec);
+    pugi::xml_node node = getNode(parent, keyVec, true);
     if (node.empty()) {
         return false;
     }
@@ -181,7 +185,7 @@ std::string XmlHelper::getAttributeValue(pugi::xml_node& parent, const std::stri
     if (parent.empty() || key.empty() || attribute.empty()) {
         return defaultValue;
     }
-    pugi::xml_node node = getNode(parent, key);
+    pugi::xml_node node = getNode(parent, key, false);
     if (node.empty()) {
         return defaultValue;
     }
@@ -196,7 +200,7 @@ std::string XmlHelper::getAttributeValue(pugi::xml_node& parent, const std::vect
     if (parent.empty() || keyVec.empty() || attribute.empty()) {
         return defaultValue;
     }
-    pugi::xml_node node = getNode(parent, keyVec);
+    pugi::xml_node node = getNode(parent, keyVec, false);
     if (node.empty()) {
         return defaultValue;
     }
@@ -211,7 +215,7 @@ bool XmlHelper::setAttributeValue(pugi::xml_node& parent, const std::string& key
     if (parent.empty() || key.empty() || attribute.empty()) {
         return false;
     }
-    pugi::xml_node node = getNode(parent, key);
+    pugi::xml_node node = getNode(parent, key, true);
     if (node.empty()) {
         return false;
     }
@@ -229,7 +233,7 @@ bool XmlHelper::setAttributeValue(pugi::xml_node& parent, const std::vector<std:
     if (parent.empty() || keyVec.empty() || attribute.empty()) {
         return false;
     }
-    pugi::xml_node node = getNode(parent, keyVec);
+    pugi::xml_node node = getNode(parent, keyVec, true);
     if (node.empty()) {
         return false;
     }
@@ -294,7 +298,7 @@ bool XmlHelper::open(const std::string& fileName, const std::string& rootName /*
             return false;
         }
     }
-    mRoot = getNode(*mDocument, rootName);
+    mRoot = getNode(*mDocument, rootName, true);
     mFileName = fileName;
     return true;
 }
