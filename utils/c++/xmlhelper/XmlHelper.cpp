@@ -289,12 +289,14 @@ bool XmlHelper::open(const std::string& fileName, const std::string& rootName /*
     if (NULL == fp) {		/* file is not exist */
         mDocument = createFile(fileName, rootName);
         if (NULL == mDocument) {
+			mFileName = "";
             return false;
         }
     } else {				/* file exist */
         fclose(fp);
         mDocument = loadFile(fileName);
         if (NULL == mDocument) {
+			mFileName = "";
             return false;
         }
     }
