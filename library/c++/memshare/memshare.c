@@ -72,7 +72,7 @@ typedef struct {
 	int key_rlock;		/* key to hold the read lock for the shared mem */
 	int key_wlock;		/* key to hold the write lock for the shared mem */
 	int key_active;		/* key which will go zero if process terminates */
-	int active;		/* flagg for the process to signal active */
+	int active;		/* flag for the process to signal active */
 	char proc_name[PROC_NAME_SIZE];	/* process name */
 	long major_sent;		/* counter for major sent data/signals */
 	long minor_sent;		/* counter for minor sent data/signals */
@@ -81,6 +81,7 @@ typedef struct {
 } proc_entry;
 #define SIZEOF_PROC_ENTRY sizeof(proc_entry)
 
+static pthread_attr_t thread_attr_t;
 static pthread_t write_thread_t;
 static pthread_t read_thread_t;
 
@@ -96,7 +97,7 @@ int initialized = 0;
 char my_proc_name[PROC_NAME_SIZE];
 
 int my_index;
-queue_st* my_queue;
+queue_st* my_queue = NULL;
 long major_sequence = 0;
 long minor_sequence = 0;
 int num_of_procs = 0;
@@ -115,8 +116,8 @@ static int try_lock1(int sem);
 
 static void init_mem_proc(int num);
 static void populate_mem_proc(void);
-static int clear_shm(int key, long size, void* data);
-static int get_shm(int key, long size, int mode, void** data);
+static int clear_shm(int key, long size, void** shm);
+static int get_shm(int key, long size, int mode, void** shm);
 
 static proc_entry* get_proc_at(int index);
 static int clear_proc_entry(int index);
@@ -226,7 +227,7 @@ static int try_lock1(int sem) {
 static void init_mem_proc(int num) {
 	int i;
 	num_of_procs = num;
-	mem_entry = (mem_proc_entry*)malloc(num * sizeof(mem_proc_entry));
+	mem_entry = (mem_proc_entry*)malloc(num * SIZEOF_MEM_PROC_ENTRY);
 	for (i = 0; i < num; ++i) {
 		mem_entry[i].shm = NULL;
 		mem_entry[i].rlock = 0;
@@ -244,14 +245,15 @@ static void populate_mem_proc(void) {
 }
 
 /********** the shared memory functions ***********/
-static int clear_shm(int key, long size, void* data) {
+static int clear_shm(int key, long size, void** shm) {
 	int shmid;
 	if ((shmid = shmget(key, size, IPC_CREAT | 0666)) < 0) {
 		print(LOG_ERR, "Unable get shared mem for key %d, errno %d\n", key, errno);
 		return 1;
 	}
-	if (NULL != data) {
-		shmdt(data);
+	if (NULL != *shm) {
+		shmdt(*shm);
+		*shm = NULL;
 	}
 	shmctl(shmid, IPC_RMID, NULL);
 	return 0;
@@ -264,10 +266,7 @@ static int clear_shm(int key, long size, void* data) {
 /* not has been done before.                                      */
 /* With mode = 0 the function will fail if the index has been     */
 /* created before                                                 */
-static int get_shm(int key, long size, int mode, void** data) {
-	if (NULL != *data) {
-		return 0;
-	}
+static int get_shm(int key, long size, int mode, void** shm) {
 	int shmid;
 	if (mode) {
 		if ((shmid = shmget(key, size, IPC_CREAT | IPC_EXCL | 0666)) < 0) {
@@ -285,8 +284,12 @@ static int get_shm(int key, long size, int mode, void** data) {
 			print(LOG_DEBUG, "Get shared mem for key %d with% d\n", key, shmid);
 		}
 	}
-	if ((void*)-1 == (*data = shmat(shmid, NULL, 0))) {
-		*data = NULL;
+	if (NULL != *shm) {
+		shmdt(*shm);
+		*shm = NULL;
+	}
+	if ((void*)-1 == (*shm = shmat(shmid, NULL, 0))) {
+		*shm = NULL;
 		print(LOG_ERR, "Unable to alloc shared mem for key %d, errno %d\n", key, errno);
 		return 1;
 	}
@@ -303,9 +306,12 @@ static proc_entry* get_proc_at(int index) {
 
 static int clear_proc_entry(int index) {
 	proc_entry* entry;
-	print(LOG_DEBUG, "Removes proc from entry and memlist\n");
+	print(LOG_DEBUG, "Removes proc from entry[%d] and memlist\n", index);
 	entry = (proc_entry*)get_proc_at(index);
-	clear_shm(entry->key_shm, entry->size_shm, mem_entry[index].shm);
+	if (NULL == entry) {
+		return 1;
+	}
+	clear_shm(entry->key_shm, entry->size_shm, &mem_entry[index].shm);
 	entry->key_shm = 0;
 	entry->size_shm = 0;
 	mem_entry[index].shm = NULL;
@@ -380,7 +386,7 @@ static int inc_sent(void) {
 	/* The locks might not be needed TODO */
 	/* lock(lock_ctrl_sem); */
 	entry = (proc_entry*)get_proc_at(my_index);
-	if (LONG_MAX_VALUE == entry->minor_sent) {
+	if (entry->minor_sent >= LONG_MAX_VALUE) {
 		entry->major_sent++;
 		entry->minor_sent = 0;
 	}
@@ -394,7 +400,7 @@ static int inc_received(void) {
 	/* The locks might not be needed TODO */
 	/* lock(lock_ctrl_sem); */
 	entry = (proc_entry*)get_proc_at(my_index);
-	if (LONG_MAX_VALUE == entry->minor_received) {
+	if (entry->minor_received >= LONG_MAX_VALUE) {
 		entry->major_received++;
 		entry->minor_received = 0;
 	}
@@ -530,24 +536,23 @@ static void* read_thread_func(void* arg) {
 }
 
 static int start_listen_thread(void) {
-	pthread_attr_t tattr;
-	if (0 != pthread_attr_init(&tattr)) {
+	if (0 != pthread_attr_init(&thread_attr_t)) {
 		print(LOG_ERR, "Unable to init thread attribute, errno %d\n", errno);
 		return 1;
 	}
-	if (0 != pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED)) {
+	if (0 != pthread_attr_setdetachstate(&thread_attr_t, PTHREAD_CREATE_DETACHED)) {
 		print(LOG_ERR, "Unable to set detached state to thread, errno %d\n", errno);
 		return 1;
 	}
-	if (0 != pthread_attr_setinheritsched(&tattr, PTHREAD_INHERIT_SCHED)) {
+	if (0 != pthread_attr_setinheritsched(&thread_attr_t, PTHREAD_INHERIT_SCHED)) {
 		print(LOG_ERR, "Unable to set inherit scheduling, errno %d\n", errno);
 		return 1;
 	}
-	if (0 != pthread_create(&write_thread_t, &tattr, write_thread_func, (void*)NULL)) {
+	if (0 != pthread_create(&write_thread_t, &thread_attr_t, write_thread_func, (void*)NULL)) {
 		print(LOG_ERR, "Unable to create worker thread for write, errno %d\n", errno);
 		return 1;
 	}
-	if (0 != pthread_create(&read_thread_t, &tattr, read_thread_func, (void*)NULL)) {
+	if (0 != pthread_create(&read_thread_t, &thread_attr_t, read_thread_func, (void*)NULL)) {
 		print(LOG_ERR, "Unable to create worker thread for read, errno %d\n", errno);
 		return 1;
 	}
@@ -672,12 +677,12 @@ int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data
 		return 3;
 	}
 	print(LOG_DEBUG, "Sending data to %s at index %d\n", proc_name, index);
-	if (LONG_MAX_VALUE == minor_sequence) {
+	lock(mem_entry[index].wlock);
+	if (minor_sequence >= LONG_MAX_VALUE) {
 		major_sequence++;
 		minor_sequence = 0;
 	}
 	minor_sequence++;
-	lock(mem_entry[index].wlock);
 	hdr.msg_type = msg_type;
 	hdr.msg_len = msg_len;
 	hdr.major_seq = major_sequence;
@@ -695,6 +700,9 @@ int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data
 int get_datasize(const char* proc_name) {
 	int index;
 	proc_entry* entry;
+	if (!initialized) {
+		return 0;
+	}
 	if ((index = get_proc_index(proc_name)) < 0) {
 		print(LOG_NOTICE, "No such process %s\n", proc_name);
 		return 0;
