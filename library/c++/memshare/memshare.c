@@ -200,7 +200,7 @@ static void lock(int sem) {
 	struct sembuf op[1];
 	op[0].sem_num = 0;
 	op[0].sem_op = -1;
-	op[0].sem_flg = SEM_UNDO;
+	op[0].sem_flg = 0;
 	semop(sem, op, 1);
 }
 
