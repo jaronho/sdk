@@ -212,6 +212,25 @@ static void unlock(int sem) {
 	semop(sem, op, 1);
 }
 
+static void set_active(int sem) {
+	struct sembuf op[1];
+	op[0].sem_num = 0;
+	op[0].sem_op = 1;
+	op[0].sem_flg = SEM_UNDO;
+	semop(sem, op, 1);
+}
+
+/* Should be used when leaving gracefully */
+/*
+static void clear_active(int sem) {
+	struct sembuf op[1];
+	op[0].sem_num = 0;
+	op[0].sem_op = -1;
+	op[0].sem_flg = 0;
+	semop(sem, op, 1);
+}
+*/
+
 static int try_lock1(int sem) {
 	struct sembuf op[1];
 	op[0].sem_num = 0;
@@ -241,6 +260,48 @@ static void populate_mem_proc(void) {
 	int i;
 	for (i = 0; i < num_of_procs; ++i) {
 		populate_mem_proc_single(i);
+	}
+}
+
+/* Check a specific index int the ctrl area and copy to local memory  */
+static void populate_mem_proc_single(int index) {
+	proc_entry* entry;
+	int sem;
+	entry = (proc_entry*)get_proc_at(index);
+	if (entry->active) {
+		/* this entry should be active, if not it has crached and should be garbage collected */
+		if (-1 != (sem = create_lock(entry->key_active, 0))) {
+			if (try_lock1(sem)) {
+				print(LOG_DEBUG, "Index %d is active by %s\n", index, entry->proc_name);
+				/* active lets store the data */
+				mem_entry[index].active = sem;
+				if (1 == get_shm(entry->key_shm, entry->size_shm, 0, &mem_entry[index].shm)) {
+					/* garbage collect, they should have valid keys */
+					print(LOG_ERR, "Unable to alloc shared mem\n");
+					clear_proc_entry(index);
+					return;
+				}
+				if (-1 == (mem_entry[index].rlock = create_lock(entry->key_rlock, 0))) {
+					/* garbage collect, they should have valid keys */
+					print(LOG_ERR, "Unable to create rlock\n");
+					clear_proc_entry(index);
+					return;
+				}
+				if (-1 == (mem_entry[index].wlock = create_lock(entry->key_wlock, 0))) {
+					/* garbage collect, they should have valid keys */
+					print(LOG_ERR, "Unable to create wlock\n");
+					clear_proc_entry(index);
+					return;
+				}
+			} else {
+				print(LOG_DEBUG, "Index %d is active in shared mem but has no process\n", index);
+				clear_proc_entry(index);
+				/* garbage collect */
+			}
+			memcpy(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE);
+		}
+	} else {
+		print(LOG_DEBUG, "Index %d is not active\n", index);
 	}
 }
 
@@ -308,9 +369,6 @@ static int clear_proc_entry(int index) {
 	proc_entry* entry;
 	print(LOG_DEBUG, "Removes proc from entry[%d] and memlist\n", index);
 	entry = (proc_entry*)get_proc_at(index);
-	if (NULL == entry) {
-		return 1;
-	}
 	clear_shm(entry->key_shm, entry->size_shm, &mem_entry[index].shm);
 	entry->key_shm = 0;
 	entry->size_shm = 0;
@@ -331,54 +389,11 @@ static int clear_proc_entry(int index) {
 static int get_next_free_index() {
 	int i;
 	for (i = 0; i < num_of_procs; ++i) {
-		if (2 == check_proc_entry(i)) {
+		if (!check_proc_entry(i)) {
 			return i;
 		}
 	}
 	return num_of_procs;
-}
-
-/* Check a specific index int the ctrl area and copy to local memory  */
-
-static void populate_mem_proc_single(int index) {
-	proc_entry* entry;
-	int sem;
-	entry = (proc_entry*)get_proc_at(index);
-	if (entry->active) {
-		/* this entry should be active, if not it has crached and should be garbage collected */
-		if (-1 != (sem = create_lock(entry->key_active, 0))) {
-			if (try_lock1(sem)) {
-				print(LOG_DEBUG, "Index %d is active by %s\n", index, entry->proc_name);
-				/* active lets store the data */
-				mem_entry[index].active = sem;
-				if (1 == get_shm(entry->key_shm, entry->size_shm, 0, &mem_entry[index].shm)) {
-					/* garbage collect, they should have valid keys */
-					print(LOG_ERR, "Unable to alloc shared mem\n");
-					clear_proc_entry(index);
-					return;
-				}
-				if (-1 == (mem_entry[index].rlock = create_lock(entry->key_rlock, 0))) {
-					/* garbage collect, they should have valid keys */
-					print(LOG_ERR, "Unable to create rlock\n");
-					clear_proc_entry(index);
-					return;
-				}
-				if (-1 == (mem_entry[index].wlock = create_lock(entry->key_wlock, 0))) {
-					/* garbage collect, they should have valid keys */
-					print(LOG_ERR, "Unable to create wlock\n");
-					clear_proc_entry(index);
-					return;
-				}
-			} else {
-				print(LOG_DEBUG, "Index %d is active in shared mem but has no process\n", index);
-				clear_proc_entry(index);
-				/* garbage collect */
-			}
-			memcpy(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE);
-		}
-	} else {
-		print(LOG_DEBUG, "Index %d is not active\n", index);
-	}
 }
 
 static int inc_sent(void) {
@@ -408,25 +423,6 @@ static int inc_received(void) {
 	/* unlock(lock_ctrl_sem); */
 	return 0;
 }
-
-static void set_active(int sem) {
-	struct sembuf op[1];
-	op[0].sem_num = 0;
-	op[0].sem_op = 1;
-	op[0].sem_flg = SEM_UNDO;
-	semop(sem, op, 1);
-}
-
-/* Should be used when leaving gracefully */
-/*
-static void clear_active(int sem) {
-	struct sembuf op[1];
-	op[0].sem_num = 0;
-	op[0].sem_op = -1;
-	op[0].sem_flg = 0;
-	semop(sem, op, 1);
-}
-*/
 
 /* This function will serach for a free entry in the ctrl area        */
 /* there it will fill all the keys that can be used to map shared mem */
@@ -565,20 +561,17 @@ int check_proc_entry(int index) {
 	/* compare mem_entry with shared memory and se if process is active */
 	proc_entry* entry;
 	entry = get_proc_at(index);
-	if (NULL == entry) {
-		return 1;
-	}
 	populate_mem_proc_single(index);
 	if (try_lock1(mem_entry[index].active) && (!memcmp(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE)) && entry->active) {
-		return 0;
+		return 1;
 	}
-	return 2;
+	return 0;
 }
 
 int get_proc_index(const char* proc_name) {
 	int i;
 	for (i = 0; i < num_of_procs; ++i) {
-		if (0 == check_proc_entry(i)) {
+		if (check_proc_entry(i)) {
 			if (!strcmp(mem_entry[i].proc_name, proc_name)) {
 				return i;
 			}
