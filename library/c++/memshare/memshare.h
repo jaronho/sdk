@@ -11,8 +11,8 @@ extern "C"
 {
 #endif
 
-typedef void (*shm_callback_msg)(const char*, int, long, const void*);
-typedef void (*shm_callback_log)(int, const char*, ...);
+typedef void (*shm_callback_msg)(const char* proc_name, int msg_type, long msg_len, const void* data);
+typedef void (*shm_callback_log)(int level, const char* format, ...);
 
 #define DEF_PROC_NUM		2
 #define DEF_SHM_KEY			0x058E
