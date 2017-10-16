@@ -16,7 +16,6 @@
 /* along with Memshare.  If not, see <http://www.gnu.org/licenses/>.               */
 
 #include "memshare.h"
-#include "../queue/queue.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,9 +33,21 @@
 #define NULL	0
 #endif
 
-#define LONG_MAX_VALUE	2147483647L
+#define QUEUE_EMPTY		0
+#define QUEUE_NORMAL	1
+#define QUEUE_FULL		2
 #define PROC_NAME_SIZE	64
-#define DEF_FREQ_MILLISECOND	16
+
+typedef struct queue_st {
+	unsigned long capacity;
+	unsigned long bottom;
+	unsigned long top;
+	int state;
+	int loop;
+	void** buf;
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+} queue_st;
 
 union semun {
 	int val;
@@ -49,8 +60,7 @@ typedef struct {
 	char proc_name[PROC_NAME_SIZE];	/* orginating proc */
 	int msg_type;
 	long msg_len;
-	long major_seq;
-	long minor_seq;
+	long msg_seq;
 } header;
 #define SIZEOF_HEADER sizeof(header)
 
@@ -72,12 +82,10 @@ typedef struct {
 	int key_rlock;		/* key to hold the read lock for the shared mem */
 	int key_wlock;		/* key to hold the write lock for the shared mem */
 	int key_active;		/* key which will go zero if process terminates */
-	int active;		/* flag for the process to signal active */
+	int active;			/* flag for the process to signal active */
 	char proc_name[PROC_NAME_SIZE];	/* process name */
-	long major_sent;		/* counter for major sent data/signals */
-	long minor_sent;		/* counter for minor sent data/signals */
-	long major_received;		/* counter for major received data/signals */
-	long minor_received;		/* counter for minor received data/signals */
+	long send_count;	/* counter for sent data/signals */
+	long recv_count;	/* counter for received data/signals */
 } proc_entry;
 #define SIZEOF_PROC_ENTRY sizeof(proc_entry)
 
@@ -85,29 +93,41 @@ static pthread_attr_t thread_attr_t;
 static pthread_t write_thread_t;
 static pthread_t read_thread_t;
 
-/* global pointer to the ctrl area, initialized by get_shm() */
+/* global pointer to the ctrl area */
 void* shm_ctrl_ptr = NULL;
 /* global mutex protecting the ctrl area */
 int lock_ctrl_sem = 0;
 /* internal memory view of the ctrl area */
 mem_proc_entry* mem_entry = NULL;
-/* initialized flag */
+/* initialize flag */
 int initialized = 0;
-/* My own process name */
+/* my own process name */
 char my_proc_name[PROC_NAME_SIZE];
-
-int my_index;
-queue_st* my_queue = NULL;
-long major_sequence = 0;
-long minor_sequence = 0;
+/* my own process index */
+int my_proc_index;
+/* msg receive queue */
+queue_st* recv_queue = NULL;
+/* msg sent sequence */
+long msg_sequence = 0;
+/* number of process */
 int num_of_procs = 0;
+/* key for shm ctrl */
 int shm_ctrl_key;
+/* key for sem ctrl */
 int sem_ctrl_key;
+/* msg handle callback */
 shm_callback_msg callbackmsg = NULL;
+/* log handle callback */
 shm_callback_log callbacklog = NULL;
-int freq_microsecond = DEF_FREQ_MILLISECOND * 1000;
+/* print functions either syslog, printf of user specific */
+int current_level = LOG_ERR;
 
 static int print(int level, const char* format, ...);
+
+static void* getqueue(queue_st* q);
+static queue_st* queue_create(unsigned long capacity, int loop);
+static int queue_put(queue_st* q, void* data);
+static void* queue_get(queue_st* q);
 
 static int create_lock(int key, int value);
 static void lock(int sem);
@@ -123,11 +143,8 @@ static proc_entry* get_proc_at(int index);
 static int clear_proc_entry(int index);
 static int get_next_free_index(void);
 static void populate_mem_proc_single(int index);
-static int inc_sent(void);
-static int inc_received(void);
-
-/* print functions either syslog, printf of user specific */
-int current_level = LOG_ERR;
+static int inc_send_count(void);
+static int inc_recv_count(void);
 
 static int print(int level, const char* format, ...) {
 	va_list ap;
@@ -142,6 +159,86 @@ static int print(int level, const char* format, ...) {
 		}
 	}
 	va_end(ap);
+	return retval;
+}
+
+/********** msg queue functions ***********/
+
+static void* getqueue(queue_st* q) {
+	void* retval;
+	if (NULL == q || QUEUE_EMPTY == q->state) {
+		return NULL;
+	}
+	retval = q->buf[q->bottom];
+	q->buf[q->bottom] = NULL;
+	++q->bottom;
+	if (q->bottom == q->capacity) {
+		q->bottom = 0;
+	}
+	if (q->bottom == q->top) {
+		q->state = QUEUE_EMPTY;
+	}
+	return retval;
+}
+
+static queue_st* queue_create(unsigned long capacity, int loop) {
+	queue_st* q;
+	if (capacity <= 0) {
+		return NULL;
+	}
+    q = (queue_st*)malloc(sizeof(*q));
+	q->capacity = capacity;
+    q->bottom = 0;
+    q->top = 0;
+    q->state = QUEUE_EMPTY;
+	q->loop = loop;
+    q->buf = malloc(capacity * sizeof(void*));
+    pthread_mutex_init(&q->mutex, NULL);
+	pthread_cond_init(&q->cond, NULL);
+    return q;
+}
+
+static int queue_put(queue_st* q, void* data) {
+	void* retval = NULL;
+	if (NULL == q || NULL == data) {
+		return 1;
+	}
+	pthread_mutex_lock(&q->mutex);
+	int prev_state = q->state;
+	if (QUEUE_FULL == prev_state) {
+		if (!q->loop) {
+			return 2;
+		}
+		retval = getqueue(q);
+		if (NULL != retval) {
+			free(retval);
+		}
+	}
+	q->buf[q->top] = data;
+	++q->top;
+	q->state = QUEUE_NORMAL;
+	if (q->top == q->capacity) {
+		q->top = 0;
+	}
+	if (q->top == q->bottom) {
+		q->state = QUEUE_FULL;
+	}
+	pthread_cond_signal(&q->cond);
+	pthread_mutex_unlock(&q->mutex);
+	return 0;
+}
+
+static void* queue_get(queue_st* q) {
+	void* retval;
+	if (NULL == q) {
+		return NULL;
+	}
+	pthread_mutex_lock(&q->mutex);
+	if (QUEUE_EMPTY == q->state) {
+		pthread_cond_wait(&q->cond, &q->mutex);
+	}
+	retval = getqueue(q);
+	pthread_mutex_unlock(&q->mutex);
 	return retval;
 }
 
@@ -360,6 +457,9 @@ static int get_shm(int key, long size, int mode, void** shm) {
 static proc_entry* get_proc_at(int index) {
 	void* tmp_ptr;
 	proc_entry* entry;
+	if (index < 0 || index >= num_of_procs) {
+		return NULL;
+	}
 	tmp_ptr = shm_ctrl_ptr + (SIZEOF_PROC_ENTRY * index);
 	entry = (proc_entry*)tmp_ptr;
 	return entry;
@@ -389,37 +489,29 @@ static int clear_proc_entry(int index) {
 static int get_next_free_index() {
 	int i;
 	for (i = 0; i < num_of_procs; ++i) {
-		if (!check_proc_entry(i)) {
+		if (0 != check_proc_entry(i)) {
 			return i;
 		}
 	}
 	return num_of_procs;
 }
 
-static int inc_sent(void) {
+static int inc_send_count(void) {
 	proc_entry* entry;
 	/* The locks might not be needed TODO */
 	/* lock(lock_ctrl_sem); */
-	entry = (proc_entry*)get_proc_at(my_index);
-	if (entry->minor_sent >= LONG_MAX_VALUE) {
-		entry->major_sent++;
-		entry->minor_sent = 0;
-	}
-	entry->minor_sent++;
+	entry = (proc_entry*)get_proc_at(my_proc_index);
+	entry->send_count++;
 	/* unlock(lock_ctrl_sem); */
 	return 0;
 }
 
-static int inc_received(void) {
+static int inc_recv_count(void) {
 	proc_entry* entry;
 	/* The locks might not be needed TODO */
 	/* lock(lock_ctrl_sem); */
-	entry = (proc_entry*)get_proc_at(my_index);
-	if (entry->minor_received >= LONG_MAX_VALUE) {
-		entry->major_received++;
-		entry->minor_received = 0;
-	}
-	entry->minor_received++;
+	entry = (proc_entry*)get_proc_at(my_proc_index);
+	entry->recv_count++;
 	/* unlock(lock_ctrl_sem); */
 	return 0;
 }
@@ -441,11 +533,9 @@ static int add_proc(const char* proc_name, long size) {
 	entry->key_wlock = key_base + 3;
 	entry->key_active = key_base + 4;
 	entry->size_shm = size;
-	entry->major_sent = 0;
-	entry->minor_sent = 0;
-	entry->major_received = 0;
-	entry->minor_received = 0;
-	my_index = index;
+	entry->send_count = 0;
+	entry->recv_count = 0;
+	my_proc_index = index;
 	print(LOG_DEBUG, "Allocating shared memory for key %d size %ld\n", entry->key_shm, entry->size_shm);
 	/* Map up yourself in the local memory map with pointers instead of keys */
 	if (1 == get_shm(entry->key_shm, entry->size_shm, 0, &mem_entry[index].shm)) {
@@ -484,27 +574,22 @@ static void* write_thread_func(void* arg) {
 	header* hdr;
 	char* msg;
 	for (;;) {
-		usleep(freq_microsecond);
-		/* Add check for prio, TODO */
-		print(LOG_DEBUG, "write thread going to lock\n");
-		lock(mem_entry[my_index].rlock);
-		print(LOG_DEBUG, "Entry inserted in shm for my process\n");
-		hdr = (header*)mem_entry[my_index].shm;
+		lock(mem_entry[my_proc_index].rlock);
+		hdr = (header*)mem_entry[my_proc_index].shm;
 		if (NULL == hdr) {
 			continue;
 		}
-		/* check return of allocation TODO */
 		msg = malloc(SIZEOF_HEADER + hdr->msg_len);
-		memcpy(msg, mem_entry[my_index].shm, SIZEOF_HEADER + hdr->msg_len);
-		if (queue_put(my_queue, (void*)msg)) {
+		memcpy(msg, mem_entry[my_proc_index].shm, SIZEOF_HEADER + hdr->msg_len);
+		if (queue_put(recv_queue, (void*)msg)) {
 			/* Failed to put in queue, msg lost */
-			print(LOG_ERR, "Failed to put msg in queue, msg with seq %ld - %ld is lost!\n", hdr->major_seq, hdr->minor_seq);
+			print(LOG_ERR, "Failed to put msg in queue, msg with type %d, seq %ld is lost!\n", hdr->msg_type, hdr->msg_seq);
 			free(msg);
 		} else {
 			/* msg concidered received */
-			inc_received();
+			inc_recv_count();
 		}
-		unlock(mem_entry[my_index].wlock);
+		unlock(mem_entry[my_proc_index].wlock);
 	}
 	return (void*)0;
 }
@@ -513,7 +598,7 @@ static void* read_thread_func(void* arg) {
 	void* msg;
 	header* hdr;
 	for (;;) {
-		msg = queue_get(my_queue);
+		msg = queue_get(recv_queue);
 		hdr = (header*)msg;
 		if (NULL == hdr) {
 			if (NULL != msg) {
@@ -557,48 +642,15 @@ static int start_listen_thread(void) {
 
 /****************************** API ******************************/
 
-int check_proc_entry(int index) {
-	/* compare mem_entry with shared memory and se if process is active */
-	proc_entry* entry;
-	entry = get_proc_at(index);
-	populate_mem_proc_single(index);
-	if (try_lock1(mem_entry[index].active) && (!memcmp(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE)) && entry->active) {
-		return 1;
+int set_print_level(int level) {
+	if (level >= LOG_EMERG && level <= LOG_DEBUG) {
+		current_level = level;
+		return 0;
 	}
-	return 0;
+	return 1;
 }
 
-int get_proc_index(const char* proc_name) {
-	int i;
-	for (i = 0; i < num_of_procs; ++i) {
-		if (check_proc_entry(i)) {
-			if (!strcmp(mem_entry[i].proc_name, proc_name)) {
-				return i;
-			}
-		}
-	}
-	return -1;
-}
-
-void get_proc_info(int index, char** proc_name, long* data_size, long* major_send_count, long* minor_send_count, long* major_rec_count, long* minor_rec_count) {
-	proc_entry* entry;
-	/* this call will not check if the entry is active */
-	entry = get_proc_at(index);
-	if (NULL != entry) {
-		*proc_name = entry->proc_name;
-		*data_size = entry->size_shm;
-		*major_send_count = entry->major_sent;
-		*minor_send_count = entry->minor_sent;
-		*major_rec_count = entry->major_received;
-		*minor_rec_count = entry->minor_received;
-	}
-}
-
-long get_long_max() {
-	return LONG_MAX_VALUE;
-}
-
-int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_size, shm_callback_msg scbm, shm_callback_log scbl) {
+int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_capacity, shm_callback_msg scbm, shm_callback_log scbl) {
 	if (initialized) {
 		return 1;
 	}
@@ -616,7 +668,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	proc_num = proc_num >= 2 ? proc_num : 2;
 	shm_ctrl_key = shm_key;
 	sem_ctrl_key = shm_key + 1;
-	my_queue = queue_create(queue_size, 1, 1);
+	recv_queue = queue_create(queue_capacity, 1);
 	callbackmsg = scbm;
 	callbacklog = scbl;
 	/* clear the memory view */
@@ -624,7 +676,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	/* start off by locking the ctrl lock */
 	if (-1 == (lock_ctrl_sem = create_lock(sem_ctrl_key, 1))) {
 		print(LOG_ERR, "Unable to create semaphore\n");
-		return 1;
+		return 3;
 	}
 	print(LOG_DEBUG, "Created ctrl lock\n");
 	lock(lock_ctrl_sem);
@@ -632,7 +684,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	/* map up the ctrl area */
 	if (1 == get_shm(shm_ctrl_key, SIZEOF_PROC_ENTRY * proc_num, 1, &shm_ctrl_ptr)) {
 		print(LOG_ERR, "Unable to alloc shared mem\n");
-		return 3;
+		return 4;
 	}
 	print(LOG_DEBUG, "Init_memshare populate memproc\n");
 	populate_mem_proc();
@@ -645,21 +697,10 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	return 0;
 }
 
-int set_freq(float millisecond) {
-	if (millisecond >= 0) {
-		freq_microsecond = (int)(millisecond * 1000);
-		return 0;
-	}
-	return 1;
-}
-
 int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data) {
 	int index;
 	header hdr;
 	proc_entry* entry;
-	if (!initialized) {
-		return 2;
-	}
 	if ((index = get_proc_index(proc_name)) < 0) {
 		print(LOG_NOTICE, "No such process %s\n", proc_name);
 		return 1;
@@ -667,47 +708,59 @@ int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data
 	entry = get_proc_at(index);
 	if (SIZEOF_HEADER + msg_len > entry->size_shm) {
 		print(LOG_NOTICE, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
-		return 3;
+		return 2;
 	}
 	print(LOG_DEBUG, "Sending data to %s at index %d\n", proc_name, index);
 	lock(mem_entry[index].wlock);
-	if (minor_sequence >= LONG_MAX_VALUE) {
-		major_sequence++;
-		minor_sequence = 0;
-	}
-	minor_sequence++;
 	hdr.msg_type = msg_type;
 	hdr.msg_len = msg_len;
-	hdr.major_seq = major_sequence;
-	hdr.minor_seq = minor_sequence;
+	hdr.msg_seq = msg_sequence++;
 	memcpy(hdr.proc_name, my_proc_name, PROC_NAME_SIZE);
 	memcpy(mem_entry[index].shm, &hdr, SIZEOF_HEADER);
 	if (msg_len > 0 && NULL != data) {
 		memcpy(mem_entry[index].shm + SIZEOF_HEADER, data, msg_len);
 	}
-	inc_sent();
+	inc_send_count();
 	unlock(mem_entry[index].rlock);
 	return 0;
 }
 
-int get_datasize(const char* proc_name) {
-	int index;
+int check_proc_entry(int index) {
+	/* compare mem_entry with shared memory and see if process is active */
 	proc_entry* entry;
-	if (!initialized) {
-		return 0;
-	}
-	if ((index = get_proc_index(proc_name)) < 0) {
-		print(LOG_NOTICE, "No such process %s\n", proc_name);
-		return 0;
-	}
 	entry = get_proc_at(index);
-	return entry->size_shm;
+	if (NULL == entry) {
+		return 1;
+	}
+	populate_mem_proc_single(index);
+	if (try_lock1(mem_entry[index].active) && (!memcmp(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE)) && entry->active) {
+		return 0;
+	}
+	return 2;
 }
 
-int set_print_level(int level) {
-	if (level >= LOG_EMERG && level <= LOG_DEBUG) {
-		current_level = level;
-		return 0;
+int get_proc_index(const char* proc_name) {
+	int i;
+	for (i = 0; i < num_of_procs; ++i) {
+		if (0 == check_proc_entry(i)) {
+			if (!strcmp(mem_entry[i].proc_name, proc_name)) {
+				return i;
+			}
+		}
 	}
-	return 1;
+	return -1;
+}
+
+int get_proc_info(int index, char** proc_name, long* data_size, long* send_count, long* recv_count) {
+	proc_entry* entry;
+	/* this call will not check if the entry is active */
+	entry = get_proc_at(index);
+	if (NULL == entry) {
+		return 1;
+	}
+	*proc_name = entry->proc_name;
+	*data_size = entry->size_shm;
+	*send_count = entry->send_count;
+	*recv_count = entry->recv_count;
+	return 0;
 }
