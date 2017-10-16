@@ -576,11 +576,12 @@ static void* recv_thread_func(void* arg) {
 	for (;;) {
 		lock(mem_entry[my_proc_index].rlock);
 		hdr = (header*)mem_entry[my_proc_index].shm;
-		if (NULL == hdr) {
+		if (NULL == hdr || (0 == strlen(hdr->proc_name) && 0 == hdr->msg_type && 0 == hdr->msg_len && 0 == hdr->msg_seq)) {
 			continue;
 		}
 		msg = malloc(SIZEOF_HEADER + hdr->msg_len);
 		memcpy(msg, mem_entry[my_proc_index].shm, SIZEOF_HEADER + hdr->msg_len);
+		memset(mem_entry[my_proc_index].shm, 0, SIZEOF_HEADER + hdr->msg_len);
 		if (queue_put(recv_queue, (void*)msg)) {
 			/* Failed to put in queue, msg lost */
 			print(LOG_ERR, "Failed to put msg in queue, msg with type %d, seq %ld is lost!\n", hdr->msg_type, hdr->msg_seq);
@@ -599,11 +600,12 @@ static void* read_thread_func(void* arg) {
 	header* hdr;
 	for (;;) {
 		msg = queue_get(recv_queue);
+		if (NULL == msg) {
+			continue;
+		}
 		hdr = (header*)msg;
 		if (NULL == hdr) {
-			if (NULL != msg) {
-				free(msg);
-			}
+			free(msg);
 			continue;
 		}
 		if (NULL != callbackmsg) {
