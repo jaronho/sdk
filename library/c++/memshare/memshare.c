@@ -90,7 +90,7 @@ typedef struct {
 #define SIZEOF_PROC_ENTRY sizeof(proc_entry)
 
 static pthread_attr_t thread_attr_t;
-static pthread_t write_thread_t;
+static pthread_t recv_thread_t;
 static pthread_t read_thread_t;
 
 /* global pointer to the ctrl area */
@@ -570,7 +570,7 @@ static int add_proc(const char* proc_name, long size) {
 	return 0;
 }
 
-static void* write_thread_func(void* arg) {
+static void* recv_thread_func(void* arg) {
 	header* hdr;
 	char* msg;
 	for (;;) {
@@ -629,8 +629,8 @@ static int start_listen_thread(void) {
 		print(LOG_ERR, "Unable to set inherit scheduling, errno %d\n", errno);
 		return 1;
 	}
-	if (0 != pthread_create(&write_thread_t, &thread_attr_t, write_thread_func, (void*)NULL)) {
-		print(LOG_ERR, "Unable to create worker thread for write, errno %d\n", errno);
+	if (0 != pthread_create(&recv_thread_t, &thread_attr_t, recv_thread_func, (void*)NULL)) {
+		print(LOG_ERR, "Unable to create worker thread for recv, errno %d\n", errno);
 		return 1;
 	}
 	if (0 != pthread_create(&read_thread_t, &thread_attr_t, read_thread_func, (void*)NULL)) {
