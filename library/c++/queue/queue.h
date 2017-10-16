@@ -18,7 +18,7 @@ typedef struct queue_st {
 	unsigned long bottom;
 	unsigned long top;
 	int state;
-	int closed_loop;
+	int loop;
 	int block;
 	void** buf;
 #if QUEUE_THREAD_SAFETY
@@ -30,11 +30,11 @@ typedef struct queue_st {
 /*
  * Brief:	create a queue
  * Param:	capacity - the max size of the queue
- *			closed_loop - 1.if queue is full, put operate will replace and start from index 0
+ *			loop - 1.if queue is full, put operate will replace and start from index 0
  *			block - 1.if in thread safe, get operate will wait until queue is not empty
  * Return:	queue_st*
  */
-extern queue_st* queue_create(unsigned long capacity, int closed_loop, int block);
+extern queue_st* queue_create(unsigned long capacity, int loop, int block);
 
 /*
  * Brief:	destroy a queue
@@ -61,7 +61,7 @@ extern unsigned long queue_length(queue_st* q);
  * Brief:	put data to a queue
  * Param:	q - a queue
  *			data - data
- * Return:	int, 0.ok, 1.fail
+ * Return:	int, 0.ok, 1.fail, 2.queue is full
  */
 extern int queue_put(queue_st* q, void* data);
 
