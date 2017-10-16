@@ -11,7 +11,7 @@ extern "C"
 {
 #endif
 
-typedef void (*shm_callback_msg)(const char* proc_name, int msg_type, long msg_len, const void* data);
+typedef void (*shm_callback_msg)(const char* proc_name_send, int msg_type, long msg_len, const void* data);
 typedef void (*shm_callback_log)(int level, const char* format, ...);
 
 #define DEF_PROC_NUM		2
@@ -47,22 +47,37 @@ extern int set_print_level(int level);
 /* Return Value(s)    : 0.ok                                                 */
 /*                      1.module has been initialized                        */
 /*                      2.proc name is error                                 */
-/*                      3.unable to create semaphore                         */
-/*                      4.unable to alloc shared memory                      */
+/*                      3.proc num must >= 2                                 */
+/*                      4.shm key must >= 0                                  */
+/*                      5.shm size must > 0                                  */
+/*                      6.queue capacity must > 0                            */
+/*                      7.unable to create semaphore                         */
+/*                      8.unable to alloc shared memory                      */
 /*****************************************************************************/
 extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_capacity, shm_callback_msg scbm, shm_callback_log scbl);
 
 /*****************************************************************************/
 /* Description        : This functionsn will send a msg block to a specific  */
-/*                      dest proc                                            */
+/*                      dest proc with thread blocking                       */
 /* Input(s)           : Destination proc(const char*), msg_type of msg(int)  */
 /*						msg block(const void*), length of msg block(long)    */
-/* Output(s)          : None.                                                */
+/* Output(s)          : None                                                 */
 /* Return Value(s)    : 0.ok                                                 */
-/*                      1.no dest process process available                  */
-/*                      2.data size large shm size                           */
+/*                      1.proc name is error                                 */
+/*                      2.no dest process process available                  */
+/*                      3.data size large shm size                           */
 /*****************************************************************************/
-extern int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data);
+extern int shm_send(const char* proc_name_recv, int msg_type, long msg_len, const void* data);
+
+/*****************************************************************************/
+/* Description        : This functionsn will send a msg block to a specific  */
+/*                      dest proc with thread Non-blocking IO                */
+/* Input(s)           : Destination proc(const char*), msg_type of msg(int)  */
+/*						msg block(const void*), length of msg block(long)    */
+/* Output(s)          : None                                                 */
+/* Return Value(s)    : None                                                 */
+/*****************************************************************************/
+extern void shm_send_nio(const char* proc_name_recv, int msg_type, long msg_len, const void* data);
 
 /*****************************************************************************/
 /* Description        : This function check if proc is active at index       */

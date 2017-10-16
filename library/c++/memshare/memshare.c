@@ -57,7 +57,8 @@ union semun {
 
 /* struct that is passed along with the data/signal between procs */
 typedef struct {
-	char proc_name[PROC_NAME_SIZE];	/* orginating proc */
+	char proc_name_send[PROC_NAME_SIZE];	/* send proc name */
+	char proc_name_recv[PROC_NAME_SIZE];	/* recv proc name */
 	int msg_type;
 	long msg_len;
 	long msg_seq;
@@ -92,6 +93,7 @@ typedef struct {
 static pthread_attr_t thread_attr_t;
 static pthread_t recv_thread_t;
 static pthread_t read_thread_t;
+static pthread_t send_thread_t;
 
 /* global pointer to the ctrl area */
 void* shm_ctrl_ptr = NULL;
@@ -107,6 +109,8 @@ char my_proc_name[PROC_NAME_SIZE];
 int my_proc_index;
 /* msg receive queue */
 queue_st* recv_queue = NULL;
+/* msg send queue */
+queue_st* send_queue = NULL;
 /* msg sent sequence */
 long msg_sequence = 0;
 /* number of process */
@@ -572,11 +576,11 @@ static int add_proc(const char* proc_name, long size) {
 
 static void* recv_thread_func(void* arg) {
 	header* hdr;
-	char* msg;
+	void* msg;
 	for (;;) {
 		lock(mem_entry[my_proc_index].rlock);
 		hdr = (header*)mem_entry[my_proc_index].shm;
-		if (NULL == hdr || (0 == strlen(hdr->proc_name) && 0 == hdr->msg_type && 0 == hdr->msg_len && 0 == hdr->msg_seq)) {
+		if (NULL == hdr || (0 == strlen(hdr->proc_name_send) && 0 == hdr->msg_type && 0 == hdr->msg_len && 0 == hdr->msg_seq)) {
 			continue;
 		}
 		msg = malloc(SIZEOF_HEADER + hdr->msg_len);
@@ -609,10 +613,29 @@ static void* read_thread_func(void* arg) {
 			continue;
 		}
 		if (NULL != callbackmsg) {
-			callbackmsg(hdr->proc_name, hdr->msg_type, hdr->msg_len, hdr->msg_len > 0 ? (msg + SIZEOF_HEADER) : NULL);
+			callbackmsg(hdr->proc_name_send, hdr->msg_type, hdr->msg_len, hdr->msg_len > 0 ? (msg + SIZEOF_HEADER) : NULL);
 		} else {
 			print(LOG_WARNING, "No callback\n");
 		}
+		free(msg);
+	}
+	return (void*)0;
+}
+
+static void* send_thread_func(void* arg) {
+	void* msg;
+	header* hdr;
+	for (;;) {
+		msg = queue_get(send_queue);
+		if (NULL == msg) {
+			continue;
+		}
+		hdr = (header*)msg;
+		if (NULL == hdr) {
+			free(msg);
+			continue;
+		}
+		shm_send(hdr->proc_name_recv, hdr->msg_type, hdr->msg_len, hdr->msg_len > 0 ? (msg + SIZEOF_HEADER) : NULL);
 		free(msg);
 	}
 	return (void*)0;
@@ -637,6 +660,10 @@ static int start_listen_thread(void) {
 	}
 	if (0 != pthread_create(&read_thread_t, &thread_attr_t, read_thread_func, (void*)NULL)) {
 		print(LOG_ERR, "Unable to create worker thread for read, errno %d\n", errno);
+		return 1;
+	}
+	if (0 != pthread_create(&send_thread_t, &thread_attr_t, send_thread_func, (void*)NULL)) {
+		print(LOG_ERR, "Unable to create worker thread for send, errno %d\n", errno);
 		return 1;
 	}
 	return 0;
@@ -666,11 +693,27 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 		print(LOG_ERR, "proc name '%s' length > %d\n", proc_name, PROC_NAME_SIZE);
 		return 2;
 	}
+	if (proc_num < 2) {
+		print(LOG_ERR, "proc num '%d' must >= 2\n", proc_num);
+		return 3;
+	}
+	if (shm_key < 0) {
+		print(LOG_ERR, "shm key '%d' must >= 0\n", shm_key);
+		return 4;
+	}
+	if (shm_size <= 0) {
+		print(LOG_ERR, "shm size '%ld' must > 0\n", shm_size);
+		return 5;
+	}
+	if (queue_capacity <= 0) {
+		print(LOG_ERR, "queue capacity '%d' must > 0\n", queue_capacity);
+		return 6;
+	}
 	memcpy(my_proc_name, proc_name, PROC_NAME_SIZE);
-	proc_num = proc_num >= 2 ? proc_num : 2;
 	shm_ctrl_key = shm_key;
 	sem_ctrl_key = shm_key + 1;
 	recv_queue = queue_create(queue_capacity, 1);
+	send_queue = queue_create(queue_capacity, 1);
 	callbackmsg = scbm;
 	callbacklog = scbl;
 	/* clear the memory view */
@@ -678,7 +721,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	/* start off by locking the ctrl lock */
 	if (-1 == (lock_ctrl_sem = create_lock(sem_ctrl_key, 1))) {
 		print(LOG_ERR, "Unable to create semaphore\n");
-		return 3;
+		return 7;
 	}
 	print(LOG_DEBUG, "Created ctrl lock\n");
 	lock(lock_ctrl_sem);
@@ -686,7 +729,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	/* map up the ctrl area */
 	if (1 == get_shm(shm_ctrl_key, SIZEOF_PROC_ENTRY * proc_num, 1, &shm_ctrl_ptr)) {
 		print(LOG_ERR, "Unable to alloc shared mem\n");
-		return 4;
+		return 8;
 	}
 	print(LOG_DEBUG, "Init_memshare populate memproc\n");
 	populate_mem_proc();
@@ -699,25 +742,35 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	return 0;
 }
 
-int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data) {
+int shm_send(const char* proc_name_recv, int msg_type, long msg_len, const void* data) {
 	int index;
 	header hdr;
 	proc_entry* entry;
-	if ((index = get_proc_index(proc_name)) < 0) {
-		print(LOG_NOTICE, "No such process %s\n", proc_name);
+	if (NULL == proc_name_recv || 0 == strlen(proc_name_recv)) {
+		print(LOG_ERR, "Recv proc name is NULL\n");
 		return 1;
 	}
+	if (strlen(proc_name_recv) > PROC_NAME_SIZE) {
+		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name_recv, PROC_NAME_SIZE);
+		return 1;
+	}
+	if ((index = get_proc_index(proc_name_recv)) < 0) {
+		print(LOG_NOTICE, "No such process %s\n", proc_name_recv);
+		return 2;
+	}
+	msg_len = msg_len >= 0 ? msg_len : 0;
 	entry = get_proc_at(index);
 	if (SIZEOF_HEADER + msg_len > entry->size_shm) {
 		print(LOG_NOTICE, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
-		return 2;
+		return 3;
 	}
-	print(LOG_DEBUG, "Sending data to %s at index %d\n", proc_name, index);
+	print(LOG_DEBUG, "Sending data to %s at index %d\n", proc_name_recv, index);
 	lock(mem_entry[index].wlock);
+	memcpy(hdr.proc_name_send, my_proc_name, PROC_NAME_SIZE);
+	memcpy(hdr.proc_name_recv, proc_name_recv, PROC_NAME_SIZE);
 	hdr.msg_type = msg_type;
 	hdr.msg_len = msg_len;
 	hdr.msg_seq = msg_sequence++;
-	memcpy(hdr.proc_name, my_proc_name, PROC_NAME_SIZE);
 	memcpy(mem_entry[index].shm, &hdr, SIZEOF_HEADER);
 	if (msg_len > 0 && NULL != data) {
 		memcpy(mem_entry[index].shm + SIZEOF_HEADER, data, msg_len);
@@ -725,6 +778,29 @@ int send_msg(const char* proc_name, int msg_type, long msg_len, const void* data
 	inc_send_count();
 	unlock(mem_entry[index].rlock);
 	return 0;
+}
+
+void shm_send_nio(const char* proc_name_recv, int msg_type, long msg_len, const void* data) {
+	header hdr;
+	void* msg;
+	if (NULL == proc_name_recv || 0 == strlen(proc_name_recv)) {
+		print(LOG_ERR, "Recv proc name is NULL\n");
+		return;
+	}
+	if (strlen(proc_name_recv) > PROC_NAME_SIZE) {
+		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name_recv, PROC_NAME_SIZE);
+		return;
+	}
+	msg_len = msg_len >= 0 ? msg_len : 0;
+	memcpy(hdr.proc_name_recv, proc_name_recv, PROC_NAME_SIZE);
+	hdr.msg_type = msg_type;
+	hdr.msg_len = msg_len;
+	msg = malloc(SIZEOF_HEADER + hdr.msg_len);
+	memcpy(msg, &hdr, SIZEOF_HEADER);
+	if (msg_len > 0 && NULL != data) {
+		memcpy(msg + SIZEOF_HEADER, data, msg_len);
+	}
+	queue_put(send_queue, msg);
 }
 
 int check_proc_entry(int index) {
@@ -743,6 +819,9 @@ int check_proc_entry(int index) {
 
 int get_proc_index(const char* proc_name) {
 	int i;
+	if (NULL == proc_name || 0 == strlen(proc_name)) {
+		return -1;
+	}
 	for (i = 0; i < num_of_procs; ++i) {
 		if (0 == check_proc_entry(i)) {
 			if (!strcmp(mem_entry[i].proc_name, proc_name)) {
