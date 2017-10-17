@@ -55,15 +55,22 @@ union semun {
 	ushort* array;
 };
 
-/* struct that is passed along with the data/signal between procs */
+/* struct that is passed along with the data between procs */
 typedef struct {
-	char proc_name_send[PROC_NAME_SIZE];	/* send proc name */
-	char proc_name_recv[PROC_NAME_SIZE];	/* recv proc name */
+	char proc_name[PROC_NAME_SIZE];	/* send proc name */
 	int msg_type;
 	long msg_len;
 	long msg_seq;
 } header;
 #define SIZEOF_HEADER sizeof(header)
+
+/* struct that is passed along with the data between thread */
+typedef struct {
+	char proc_name[PROC_NAME_SIZE];	/* recv proc name */
+	int msg_type;
+	long msg_len;
+} header_nio;
+#define SIZEOF_HEADER_NIO sizeof(header_nio)
 
 /* Every process will scan the ctrl area and map every proc entry */
 /* to a mem_proc_entry for quick access to that process */
@@ -580,7 +587,7 @@ static void* recv_thread_func(void* arg) {
 	for (;;) {
 		lock(mem_entry[my_proc_index].rlock);
 		hdr = (header*)mem_entry[my_proc_index].shm;
-		if (NULL == hdr || (0 == strlen(hdr->proc_name_send) && 0 == hdr->msg_type && 0 == hdr->msg_len && 0 == hdr->msg_seq)) {
+		if (NULL == hdr || 0 == strlen(hdr->proc_name)) {
 			continue;
 		}
 		msg = malloc(SIZEOF_HEADER + hdr->msg_len);
@@ -613,7 +620,7 @@ static void* read_thread_func(void* arg) {
 			continue;
 		}
 		if (NULL != callbackmsg) {
-			callbackmsg(hdr->proc_name_send, hdr->msg_type, hdr->msg_len, hdr->msg_len > 0 ? (msg + SIZEOF_HEADER) : NULL);
+			callbackmsg(hdr->proc_name, hdr->msg_type, hdr->msg_len, hdr->msg_len > 0 ? (msg + SIZEOF_HEADER) : NULL);
 		} else {
 			print(LOG_WARNING, "No callback\n");
 		}
@@ -624,18 +631,18 @@ static void* read_thread_func(void* arg) {
 
 static void* send_thread_func(void* arg) {
 	void* msg;
-	header* hdr;
+	header_nio* hdr_nio;
 	for (;;) {
 		msg = queue_get(send_queue);
 		if (NULL == msg) {
 			continue;
 		}
-		hdr = (header*)msg;
-		if (NULL == hdr) {
+		hdr_nio = (header_nio*)msg;
+		if (NULL == hdr_nio) {
 			free(msg);
 			continue;
 		}
-		shm_send(hdr->proc_name_recv, hdr->msg_type, hdr->msg_len, hdr->msg_len > 0 ? (msg + SIZEOF_HEADER) : NULL);
+		shm_send(hdr_nio->proc_name, hdr_nio->msg_type, hdr_nio->msg_len, hdr_nio->msg_len > 0 ? (msg + SIZEOF_HEADER_NIO) : NULL);
 		free(msg);
 	}
 	return (void*)0;
@@ -742,20 +749,20 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	return 0;
 }
 
-int shm_send(const char* proc_name_recv, int msg_type, long msg_len, const void* data) {
+int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data) {
 	int index;
 	header hdr;
 	proc_entry* entry;
-	if (NULL == proc_name_recv || 0 == strlen(proc_name_recv)) {
+	if (NULL == proc_name || 0 == strlen(proc_name)) {
 		print(LOG_ERR, "Recv proc name is NULL\n");
 		return 1;
 	}
-	if (strlen(proc_name_recv) > PROC_NAME_SIZE) {
-		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name_recv, PROC_NAME_SIZE);
+	if (strlen(proc_name) > PROC_NAME_SIZE) {
+		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name, PROC_NAME_SIZE);
 		return 1;
 	}
-	if ((index = get_proc_index(proc_name_recv)) < 0) {
-		print(LOG_NOTICE, "No such process %s\n", proc_name_recv);
+	if ((index = get_proc_index(proc_name)) < 0) {
+		print(LOG_NOTICE, "No such process %s\n", proc_name);
 		return 2;
 	}
 	msg_len = msg_len >= 0 ? msg_len : 0;
@@ -764,10 +771,9 @@ int shm_send(const char* proc_name_recv, int msg_type, long msg_len, const void*
 		print(LOG_NOTICE, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
 		return 3;
 	}
-	print(LOG_DEBUG, "Sending data to %s at index %d\n", proc_name_recv, index);
+	print(LOG_DEBUG, "Sending data to %s at index %d\n", proc_name, index);
 	lock(mem_entry[index].wlock);
-	memcpy(hdr.proc_name_send, my_proc_name, PROC_NAME_SIZE);
-	memcpy(hdr.proc_name_recv, proc_name_recv, PROC_NAME_SIZE);
+	memcpy(hdr.proc_name, my_proc_name, PROC_NAME_SIZE);
 	hdr.msg_type = msg_type;
 	hdr.msg_len = msg_len;
 	hdr.msg_seq = msg_sequence++;
@@ -780,25 +786,25 @@ int shm_send(const char* proc_name_recv, int msg_type, long msg_len, const void*
 	return 0;
 }
 
-void shm_send_nio(const char* proc_name_recv, int msg_type, long msg_len, const void* data) {
-	header hdr;
+void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void* data) {
+	header_nio hdr_nio;
 	void* msg;
-	if (NULL == proc_name_recv || 0 == strlen(proc_name_recv)) {
+	if (NULL == proc_name || 0 == strlen(proc_name)) {
 		print(LOG_ERR, "Recv proc name is NULL\n");
 		return;
 	}
-	if (strlen(proc_name_recv) > PROC_NAME_SIZE) {
-		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name_recv, PROC_NAME_SIZE);
+	if (strlen(proc_name) > PROC_NAME_SIZE) {
+		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name, PROC_NAME_SIZE);
 		return;
 	}
 	msg_len = msg_len >= 0 ? msg_len : 0;
-	memcpy(hdr.proc_name_recv, proc_name_recv, PROC_NAME_SIZE);
-	hdr.msg_type = msg_type;
-	hdr.msg_len = msg_len;
-	msg = malloc(SIZEOF_HEADER + hdr.msg_len);
-	memcpy(msg, &hdr, SIZEOF_HEADER);
+	memcpy(hdr_nio.proc_name, proc_name, PROC_NAME_SIZE);
+	hdr_nio.msg_type = msg_type;
+	hdr_nio.msg_len = msg_len;
+	msg = malloc(SIZEOF_HEADER_NIO + msg_len);
+	memcpy(msg, &hdr_nio, SIZEOF_HEADER_NIO);
 	if (msg_len > 0 && NULL != data) {
-		memcpy(msg + SIZEOF_HEADER, data, msg_len);
+		memcpy(msg + SIZEOF_HEADER_NIO, data, msg_len);
 	}
 	queue_put(send_queue, msg);
 }

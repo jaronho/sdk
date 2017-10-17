@@ -11,7 +11,7 @@ extern "C"
 {
 #endif
 
-typedef void (*shm_callback_msg)(const char* proc_name_send, int msg_type, long msg_len, const void* data);
+typedef void (*shm_callback_msg)(const char* proc_name, int msg_type, long msg_len, const void* data);
 typedef void (*shm_callback_log)(int level, const char* format, ...);
 
 #define DEF_PROC_NUM		2
@@ -67,7 +67,7 @@ extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long 
 /*                      2.no dest process process available                  */
 /*                      3.data size large shm size                           */
 /*****************************************************************************/
-extern int shm_send(const char* proc_name_recv, int msg_type, long msg_len, const void* data);
+extern int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data);
 
 /*****************************************************************************/
 /* Description        : This functionsn will send a msg block to a specific  */
@@ -77,7 +77,7 @@ extern int shm_send(const char* proc_name_recv, int msg_type, long msg_len, cons
 /* Output(s)          : None                                                 */
 /* Return Value(s)    : None                                                 */
 /*****************************************************************************/
-extern void shm_send_nio(const char* proc_name_recv, int msg_type, long msg_len, const void* data);
+extern void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void* data);
 
 /*****************************************************************************/
 /* Description        : This function check if proc is active at index       */
