@@ -91,7 +91,7 @@ function CreateLog(showRegion, printFunc, level) {
 		// remove record
 		for (var x = 0, y = parentArr.length; x < y; ++x) {
 			if (obj == parentArr[x]) {
-				parentArr.slice(x, 1);
+				parentArr.splice(x, 1);
 				return;
 			}
 		}
