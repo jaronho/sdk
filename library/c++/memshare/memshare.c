@@ -101,15 +101,18 @@ static pthread_attr_t thread_attr_t;
 static pthread_t recv_thread_t;
 static pthread_t read_thread_t;
 static pthread_t send_thread_t;
+static pthread_mutex_t send_mutex_t;
+static pthread_mutex_t index_mutex_t;
+static pthread_mutex_t info_mutex_t;
 
+/* initialize flag */
+static int initialized = 0;
 /* global pointer to the ctrl area */
 void* shm_ctrl_ptr = NULL;
 /* global mutex protecting the ctrl area */
 int lock_ctrl_sem = 0;
 /* internal memory view of the ctrl area */
 mem_proc_entry* mem_entry = NULL;
-/* initialize flag */
-int initialized = 0;
 /* my own process name */
 char my_proc_name[PROC_NAME_SIZE];
 /* my own process index */
@@ -151,6 +154,7 @@ static int clear_shm(int key, long size, void** shm);
 static int get_shm(int key, long size, int mode, void** shm);
 
 static proc_entry* get_proc_at(int index);
+static int check_proc_entry(int index);
 static int clear_proc_entry(int index);
 static int get_next_free_index(void);
 static void populate_mem_proc_single(int index);
@@ -476,10 +480,27 @@ static proc_entry* get_proc_at(int index) {
 	return entry;
 }
 
+static int check_proc_entry(int index) {
+	/* compare mem_entry with shared memory and see if process is active */
+	proc_entry* entry;
+	entry = get_proc_at(index);
+	if (NULL == entry) {
+		return 1;
+	}
+	populate_mem_proc_single(index);
+	if (try_lock1(mem_entry[index].active) && (!memcmp(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE)) && entry->active) {
+		return 0;
+	}
+	return 2;
+}
+
 static int clear_proc_entry(int index) {
 	proc_entry* entry;
 	print(LOG_DEBUG, "Removes proc from entry[%d] and memlist\n", index);
 	entry = (proc_entry*)get_proc_at(index);
+	if (NULL == entry) {
+		return 1;
+	}
 	clear_shm(entry->key_shm, entry->size_shm, &mem_entry[index].shm);
 	entry->key_shm = 0;
 	entry->size_shm = 0;
@@ -673,6 +694,9 @@ static int start_listen_thread(void) {
 		print(LOG_ERR, "Unable to create worker thread for send, errno %d\n", errno);
 		return 1;
 	}
+	pthread_mutex_init(&send_mutex_t, NULL);
+	pthread_mutex_init(&index_mutex_t, NULL);
+	pthread_mutex_init(&info_mutex_t, NULL);
 	return 0;
 }
 
@@ -688,6 +712,7 @@ int set_print_level(int level) {
 
 int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_capacity, shm_callback_msg scbm, shm_callback_log scbl) {
 	if (initialized) {
+		print(LOG_NOTICE, "Module has been initialized\n");
 		return 1;
 	}
 	print(LOG_DEBUG, "Init_memshare start\n");
@@ -753,23 +778,30 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
 	int index;
 	header hdr;
 	proc_entry* entry;
+	if (!initialized) {
+		print(LOG_ERR, "Module has not been initialized\n");
+		return 1;
+	}
 	if (NULL == proc_name || 0 == strlen(proc_name)) {
 		print(LOG_ERR, "Recv proc name is NULL\n");
-		return 1;
+		return 2;
 	}
 	if (strlen(proc_name) > PROC_NAME_SIZE) {
 		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name, PROC_NAME_SIZE);
-		return 1;
-	}
-	if ((index = get_proc_index(proc_name)) < 0) {
-		print(LOG_NOTICE, "No such process %s\n", proc_name);
 		return 2;
+	}
+	pthread_mutex_lock(&send_mutex_t);
+	if ((index = get_proc_index(proc_name)) < 0) {
+		pthread_mutex_unlock(&send_mutex_t);
+		print(LOG_ERR, "No such process %s\n", proc_name);
+		return 3;
 	}
 	msg_len = msg_len >= 0 ? msg_len : 0;
 	entry = get_proc_at(index);
 	if (SIZEOF_HEADER + msg_len > entry->size_shm) {
-		print(LOG_NOTICE, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
-		return 3;
+		pthread_mutex_unlock(&send_mutex_t);
+		print(LOG_ERR, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
+		return 4;
 	}
 	print(LOG_DEBUG, "Sending data to %s at index %d\n", proc_name, index);
 	lock(mem_entry[index].wlock);
@@ -783,12 +815,17 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
 	}
 	inc_send_count();
 	unlock(mem_entry[index].rlock);
+	pthread_mutex_unlock(&send_mutex_t);
 	return 0;
 }
 
 void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void* data) {
 	header_nio hdr_nio;
 	void* msg;
+	if (!initialized) {
+		print(LOG_ERR, "Module has not been initialized\n");
+		return;
+	}
 	if (NULL == proc_name || 0 == strlen(proc_name)) {
 		print(LOG_ERR, "Recv proc name is NULL\n");
 		return;
@@ -809,45 +846,45 @@ void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void*
 	queue_put(send_queue, msg);
 }
 
-int check_proc_entry(int index) {
-	/* compare mem_entry with shared memory and see if process is active */
-	proc_entry* entry;
-	entry = get_proc_at(index);
-	if (NULL == entry) {
-		return 1;
-	}
-	populate_mem_proc_single(index);
-	if (try_lock1(mem_entry[index].active) && (!memcmp(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE)) && entry->active) {
-		return 0;
-	}
-	return 2;
-}
-
 int get_proc_index(const char* proc_name) {
 	int i;
-	if (NULL == proc_name || 0 == strlen(proc_name)) {
+	if (!initialized) {
+		print(LOG_ERR, "Module has not been initialized\n");
 		return -1;
 	}
+	if (NULL == proc_name || 0 == strlen(proc_name)) {
+		return -2;
+	}
+	pthread_mutex_lock(&index_mutex_t);
 	for (i = 0; i < num_of_procs; ++i) {
 		if (0 == check_proc_entry(i)) {
 			if (!strcmp(mem_entry[i].proc_name, proc_name)) {
+				pthread_mutex_unlock(&index_mutex_t);
 				return i;
 			}
 		}
 	}
-	return -1;
+	pthread_mutex_unlock(&index_mutex_t);
+	return -3;
 }
 
 int get_proc_info(int index, char** proc_name, long* data_size, long* send_count, long* recv_count) {
 	proc_entry* entry;
+	if (!initialized) {
+		print(LOG_ERR, "Module has not been initialized\n");
+		return 1;
+	}
 	/* this call will not check if the entry is active */
+	pthread_mutex_lock(&info_mutex_t);
 	entry = get_proc_at(index);
 	if (NULL == entry) {
-		return 1;
+		pthread_mutex_unlock(&info_mutex_t);
+		return 2;
 	}
 	*proc_name = entry->proc_name;
 	*data_size = entry->size_shm;
 	*send_count = entry->send_count;
 	*recv_count = entry->recv_count;
+	pthread_mutex_unlock(&info_mutex_t);
 	return 0;
 }

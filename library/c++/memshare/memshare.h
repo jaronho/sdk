@@ -63,9 +63,10 @@ extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long 
 /*						msg block(const void*), length of msg block(long)    */
 /* Output(s)          : None                                                 */
 /* Return Value(s)    : 0.ok                                                 */
-/*                      1.proc name is error                                 */
-/*                      2.no dest process process available                  */
-/*                      3.data size large shm size                           */
+/*                      1.module has not been initialized                    */
+/*                      2.proc name is error                                 */
+/*                      3.no dest process process available                  */
+/*                      4.data size large shm size                           */
 /*****************************************************************************/
 extern int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data);
 
@@ -80,20 +81,12 @@ extern int shm_send(const char* proc_name, int msg_type, long msg_len, const voi
 extern void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void* data);
 
 /*****************************************************************************/
-/* Description        : This function check if proc is active at index       */
-/* Input(s)           : Index of proc                                        */
-/* Output(s)          : None                                                 */
-/* Return Value(s)    : 0.proc is active                                     */
-/*                      1.no such process                                    */
-/*                      2.proc not active                                    */
-/*****************************************************************************/
-extern int check_proc_entry(int index);
-
-/*****************************************************************************/
 /* Description        : This function get the index of proc                  */
 /* Input(s)           : Proc name(const char*)                               */
 /* Output(s)          : None                                                 */
-/* Return Value(s)    : -1.no such process                                   */
+/* Return Value(s)    : -1.module has not been initialized                   */
+/*                      -2.proc name is error                                */
+/*                      -3.no such process                                   */
 /*                      >=0.index                                            */
 /*****************************************************************************/
 extern int get_proc_index(const char* proc_name);
@@ -104,7 +97,8 @@ extern int get_proc_index(const char* proc_name);
 /* Output(s)          : Address of proc name(char*), address of data size,   */
 /*                      address of send count, address of recv count         */
 /* Return Value(s)    : 0.ok                                                 */
-/*                      1.no such process                                    */
+/*                      1.module has not been initialized                    */
+/*                      2.no such process                                    */
 /*****************************************************************************/
 extern int get_proc_info(int index, char** proc_name, long* data_size, long* send_count, long* recv_count);
 
