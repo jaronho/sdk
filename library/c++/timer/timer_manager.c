@@ -12,53 +12,12 @@
 #include <pthread.h>
 
 static hashmap_st* timer_hashmap = NULL;
-static pthread_t update_thread_t;
+static pthread_mutex_t hashmap_mutex;
 
 static long get_milliseconds() {
 	static struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return tv.tv_sec*1000 + tv.tv_usec/1000;
-}
-
-static void* update_thread_func(void* arg) {
-	long curr_millseconds;
-	timer_st* tm;
-	int ret;
-	for (;;) {
-		if (NULL == timer_hashmap) {
-			continue;
-		}
-		curr_millseconds = get_milliseconds();
-		hashmap_element_iterator_st iter = HASHMAP_ITERATOR(timer_hashmap);
-		tm = (timer_st*)hashmap_iterate_value( &iter);
-		while (NULL != tm) {
-			ret = update_timer(tm, curr_millseconds);
-			if (1 == ret || 3 == ret) {
-				tm = (timer_st*)hashmap_remove(timer_hashmap, hashmap_iterate_key(&iter));
-				if (NULL != tm) {
-					free(tm);
-				}
-			}
-			tm = (timer_st*)hashmap_iterate_value(&iter);
-		}
-	}
-	return (void*)0;
-}
-
-static void start_update_thread() {
-	pthread_attr_t tattr;
-	if (0 != pthread_attr_init(&tattr)) {
-		return;
-	}
-	if (0 != pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED)) {
-		return;
-	}
-	if (0 != pthread_attr_setinheritsched(&tattr, PTHREAD_INHERIT_SCHED)) {
-		return;
-	}
-	if (0 != pthread_create(&update_thread_t, &tattr, update_thread_func, (void*)NULL)) {
-		return;
-	}
 }
 
 void timermanager_init(int timer_capacity) {
@@ -67,8 +26,32 @@ void timermanager_init(int timer_capacity) {
     }
     if (NULL == timer_hashmap) {
         timer_hashmap = hashmap_create(timer_capacity);
-        start_update_thread();
+		pthread_mutex_init(&hashmap_mutex, NULL);
     }
+}
+
+void timermanager_update(void) {
+	long curr_millseconds;
+	timer_st* tm;
+	int ret;
+	if (NULL == timer_hashmap) {
+		return;
+	}
+	pthread_mutex_lock(&hashmap_mutex);
+	curr_millseconds = get_milliseconds();
+	hashmap_element_iterator_st iter = HASHMAP_ITERATOR(timer_hashmap);
+	tm = (timer_st*)hashmap_iterate_value( &iter);
+	while (NULL != tm) {
+		ret = update_timer(tm, curr_millseconds);
+		if (1 == ret || 3 == ret) {
+			tm = (timer_st*)hashmap_remove(timer_hashmap, hashmap_iterate_key(&iter));
+			if (NULL != tm) {
+				free(tm);
+			}
+		}
+		tm = (timer_st*)hashmap_iterate_value(&iter);
+	}
+	pthread_mutex_unlock(&hashmap_mutex);
 }
 
 void timermanager_run(const char* id, long interval, long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param) {
@@ -79,6 +62,7 @@ void timermanager_run(const char* id, long interval, long count, tm_callback_run
 	if (NULL == timer_hashmap) {
         return;
 	}
+	pthread_mutex_lock(&hashmap_mutex);
 	tm = (timer_st*)hashmap_remove(timer_hashmap, id);
 	if (NULL != tm) {
 		free(tm);
@@ -92,6 +76,7 @@ void timermanager_run(const char* id, long interval, long count, tm_callback_run
 		return;
 	}
 	start_timer(tm, get_milliseconds(), 0);
+	pthread_mutex_unlock(&hashmap_mutex);
 }
 
 void timermanager_run_loop(const char* id, long interval, tm_callback_run run_handler) {
@@ -110,17 +95,21 @@ void timermanager_stop(const char* id) {
 	if (NULL == timer_hashmap) {
 		return;
 	}
+	pthread_mutex_lock(&hashmap_mutex);
 	tm = (timer_st*)hashmap_remove(timer_hashmap, id);
 	if (NULL == tm) {
 		return;
 	}
 	stop_timer(tm, 1);
 	free(tm);
+	pthread_mutex_unlock(&hashmap_mutex);
 }
 
-void timermanager_clear() {
+void timermanager_clear(void) {
     if (NULL == timer_hashmap) {
         return;
     }
+	pthread_mutex_lock(&hashmap_mutex);
     hashmap_clear(timer_hashmap, 1);
+	pthread_mutex_unlock(&hashmap_mutex);
 }
