@@ -57,20 +57,12 @@ union semun {
 
 /* struct that is passed along with the data between procs */
 typedef struct {
-	char proc_name[PROC_NAME_SIZE];	/* send proc name */
+	char proc_name[PROC_NAME_SIZE];	/* proc name */
 	int msg_type;
 	long msg_len;
 	long msg_seq;
 } header;
 #define SIZEOF_HEADER sizeof(header)
-
-/* struct that is passed along with the data between thread */
-typedef struct {
-	char proc_name[PROC_NAME_SIZE];	/* recv proc name */
-	int msg_type;
-	long msg_len;
-} header_nio;
-#define SIZEOF_HEADER_NIO sizeof(header_nio)
 
 /* Every process will scan the ctrl area and map every proc entry */
 /* to a mem_proc_entry for quick access to that process */
@@ -97,13 +89,9 @@ typedef struct {
 } proc_entry;
 #define SIZEOF_PROC_ENTRY sizeof(proc_entry)
 
-static pthread_attr_t thread_attr_t;
 static pthread_t recv_thread_t;
 static pthread_t read_thread_t;
-static pthread_t send_thread_t;
-static pthread_mutex_t send_mutex_t;
-static pthread_mutex_t index_mutex_t;
-static pthread_mutex_t info_mutex_t;
+static pthread_t send_nio_thread_t;
 
 /* initialize flag */
 static int initialized = 0;
@@ -119,8 +107,8 @@ char my_proc_name[PROC_NAME_SIZE];
 int my_proc_index;
 /* msg receive queue */
 queue_st* recv_queue = NULL;
-/* msg send queue */
-queue_st* send_queue = NULL;
+/* msg Non-blocking send queue */
+queue_st* send_nio_queue = NULL;
 /* msg sent sequence */
 long msg_sequence = 0;
 /* number of process */
@@ -609,6 +597,7 @@ static void* recv_thread_func(void* arg) {
 		lock(mem_entry[my_proc_index].rlock);
 		hdr = (header*)mem_entry[my_proc_index].shm;
 		if (NULL == hdr || 0 == strlen(hdr->proc_name)) {
+			unlock(mem_entry[my_proc_index].wlock);
 			continue;
 		}
 		msg = malloc(SIZEOF_HEADER + hdr->msg_len);
@@ -650,26 +639,27 @@ static void* read_thread_func(void* arg) {
 	return (void*)0;
 }
 
-static void* send_thread_func(void* arg) {
+static void* send_nio_thread_func(void* arg) {
 	void* msg;
-	header_nio* hdr_nio;
+	header* hdr;
 	for (;;) {
-		msg = queue_get(send_queue);
+		msg = queue_get(send_nio_queue);
 		if (NULL == msg) {
 			continue;
 		}
-		hdr_nio = (header_nio*)msg;
-		if (NULL == hdr_nio) {
+		hdr = (header*)msg;
+		if (NULL == hdr) {
 			free(msg);
 			continue;
 		}
-		shm_send(hdr_nio->proc_name, hdr_nio->msg_type, hdr_nio->msg_len, hdr_nio->msg_len > 0 ? (msg + SIZEOF_HEADER_NIO) : NULL);
+		shm_send(hdr->proc_name, hdr->msg_type, hdr->msg_len, hdr->msg_len > 0 ? (msg + SIZEOF_HEADER) : NULL);
 		free(msg);
 	}
 	return (void*)0;
 }
 
 static int start_listen_thread(void) {
+	pthread_attr_t thread_attr_t;
 	if (0 != pthread_attr_init(&thread_attr_t)) {
 		print(LOG_ERR, "Unable to init thread attribute, errno %d\n", errno);
 		return 1;
@@ -690,13 +680,10 @@ static int start_listen_thread(void) {
 		print(LOG_ERR, "Unable to create worker thread for read, errno %d\n", errno);
 		return 1;
 	}
-	if (0 != pthread_create(&send_thread_t, &thread_attr_t, send_thread_func, (void*)NULL)) {
-		print(LOG_ERR, "Unable to create worker thread for send, errno %d\n", errno);
+	if (0 != pthread_create(&send_nio_thread_t, &thread_attr_t, send_nio_thread_func, (void*)NULL)) {
+		print(LOG_ERR, "Unable to create worker thread for send Non-blocking, errno %d\n", errno);
 		return 1;
 	}
-	pthread_mutex_init(&send_mutex_t, NULL);
-	pthread_mutex_init(&index_mutex_t, NULL);
-	pthread_mutex_init(&info_mutex_t, NULL);
 	return 0;
 }
 
@@ -745,7 +732,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	shm_ctrl_key = shm_key;
 	sem_ctrl_key = shm_key + 1;
 	recv_queue = queue_create(queue_capacity, 1);
-	send_queue = queue_create(queue_capacity, 1);
+	send_nio_queue = queue_create(queue_capacity, 1);
 	callbackmsg = scbm;
 	callbacklog = scbl;
 	/* clear the memory view */
@@ -790,16 +777,13 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
 		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name, PROC_NAME_SIZE);
 		return 2;
 	}
-	pthread_mutex_lock(&send_mutex_t);
 	if ((index = get_proc_index(proc_name)) < 0) {
-		pthread_mutex_unlock(&send_mutex_t);
 		print(LOG_ERR, "No such process %s\n", proc_name);
 		return 3;
 	}
 	msg_len = msg_len >= 0 ? msg_len : 0;
 	entry = get_proc_at(index);
 	if (SIZEOF_HEADER + msg_len > entry->size_shm) {
-		pthread_mutex_unlock(&send_mutex_t);
 		print(LOG_ERR, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
 		return 4;
 	}
@@ -815,12 +799,11 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
 	}
 	inc_send_count();
 	unlock(mem_entry[index].rlock);
-	pthread_mutex_unlock(&send_mutex_t);
 	return 0;
 }
 
 void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void* data) {
-	header_nio hdr_nio;
+	header hdr;
 	void* msg;
 	if (!initialized) {
 		print(LOG_ERR, "Module has not been initialized\n");
@@ -835,15 +818,15 @@ void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void*
 		return;
 	}
 	msg_len = msg_len >= 0 ? msg_len : 0;
-	memcpy(hdr_nio.proc_name, proc_name, PROC_NAME_SIZE);
-	hdr_nio.msg_type = msg_type;
-	hdr_nio.msg_len = msg_len;
-	msg = malloc(SIZEOF_HEADER_NIO + msg_len);
-	memcpy(msg, &hdr_nio, SIZEOF_HEADER_NIO);
+	memcpy(hdr.proc_name, proc_name, PROC_NAME_SIZE);
+	hdr.msg_type = msg_type;
+	hdr.msg_len = msg_len;
+	msg = malloc(SIZEOF_HEADER + msg_len);
+	memcpy(msg, &hdr, SIZEOF_HEADER);
 	if (msg_len > 0 && NULL != data) {
-		memcpy(msg + SIZEOF_HEADER_NIO, data, msg_len);
+		memcpy(msg + SIZEOF_HEADER, data, msg_len);
 	}
-	queue_put(send_queue, msg);
+	queue_put(send_nio_queue, msg);
 }
 
 int get_proc_index(const char* proc_name) {
@@ -855,16 +838,13 @@ int get_proc_index(const char* proc_name) {
 	if (NULL == proc_name || 0 == strlen(proc_name)) {
 		return -2;
 	}
-	pthread_mutex_lock(&index_mutex_t);
 	for (i = 0; i < num_of_procs; ++i) {
 		if (0 == check_proc_entry(i)) {
 			if (!strcmp(mem_entry[i].proc_name, proc_name)) {
-				pthread_mutex_unlock(&index_mutex_t);
 				return i;
 			}
 		}
 	}
-	pthread_mutex_unlock(&index_mutex_t);
 	return -3;
 }
 
@@ -875,16 +855,13 @@ int get_proc_info(int index, char** proc_name, long* data_size, long* send_count
 		return 1;
 	}
 	/* this call will not check if the entry is active */
-	pthread_mutex_lock(&info_mutex_t);
 	entry = get_proc_at(index);
 	if (NULL == entry) {
-		pthread_mutex_unlock(&info_mutex_t);
 		return 2;
 	}
 	*proc_name = entry->proc_name;
 	*data_size = entry->size_shm;
 	*send_count = entry->send_count;
 	*recv_count = entry->recv_count;
-	pthread_mutex_unlock(&info_mutex_t);
 	return 0;
 }
