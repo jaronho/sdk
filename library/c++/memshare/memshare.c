@@ -86,6 +86,7 @@ typedef struct {
 } proc_entry;
 #define SIZEOF_PROC_ENTRY sizeof(proc_entry)
 
+static pthread_mutex_t send_mutex_t;
 static pthread_t recv_thread_t;
 static pthread_t read_thread_t;
 static pthread_t send_nio_thread_t;
@@ -293,7 +294,7 @@ static void lock(int sem) {
 	struct sembuf op[1];
 	op[0].sem_num = 0;
 	op[0].sem_op = -1;
-	op[0].sem_flg = 0;
+	op[0].sem_flg = SEM_UNDO;
 	semop(sem, op, 1);
 }
 
@@ -469,7 +470,7 @@ static int check_proc_entry(int index) {
 		return 1;
 	}
 	populate_mem_proc_single(index);
-	if (try_lock1(mem_entry[index].active) && (!memcmp(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE)) && entry->active) {
+	if (entry->active && !strcmp(mem_entry[index].proc_name, entry->proc_name) && try_lock1(mem_entry[index].active)) {
 		return 0;
 	}
 	return 2;
@@ -699,6 +700,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
 	memcpy(my_proc_name, proc_name, PROC_NAME_SIZE);
 	shm_ctrl_key = shm_key;
 	sem_ctrl_key = shm_key + 1;
+	pthread_mutex_init(&send_mutex_t, NULL);
 	recv_queue = queue_create(queue_capacity, 1);
 	send_nio_queue = queue_create(queue_capacity, 1);
 	callbackmsg = scbm;
@@ -745,14 +747,17 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
 		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name, PROC_NAME_SIZE);
 		return 2;
 	}
+	pthread_mutex_lock(&send_mutex_t);
 	if ((index = get_proc_index(proc_name)) < 0) {
 		print(LOG_ERR, "No such process %s\n", proc_name);
+		pthread_mutex_unlock(&send_mutex_t);
 		return 3;
 	}
 	msg_len = msg_len >= 0 ? msg_len : 0;
 	entry = get_proc_at(index);
 	if (SIZEOF_HEADER + msg_len > entry->size_shm) {
 		print(LOG_ERR, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
+		pthread_mutex_unlock(&send_mutex_t);
 		return 4;
 	}
 	print(LOG_DEBUG, "Sending data to %s at index %d\n", proc_name, index);
@@ -765,6 +770,7 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
 		memcpy(mem_entry[index].shm + SIZEOF_HEADER, data, msg_len);
 	}
 	unlock(mem_entry[index].rlock);
+	pthread_mutex_unlock(&send_mutex_t);
 	return 0;
 }
 
@@ -805,8 +811,8 @@ int get_proc_index(const char* proc_name) {
 		return -2;
 	}
 	for (i = 0; i < num_of_procs; ++i) {
-		if (0 == check_proc_entry(i)) {
-			if (!strcmp(mem_entry[i].proc_name, proc_name)) {
+		if (!strcmp(mem_entry[i].proc_name, proc_name)) {
+			if (0 == check_proc_entry(i)) {
 				return i;
 			}
 		}
