@@ -34,10 +34,11 @@
 #define NULL	0
 #endif
 
-#define QUEUE_EMPTY		0
-#define QUEUE_NORMAL	1
-#define QUEUE_FULL		2
-#define PROC_NAME_SIZE	64
+#define QUEUE_EMPTY				0
+#define QUEUE_NORMAL			1
+#define QUEUE_FULL				2
+#define PROC_NAME_SIZE			64
+#define DEF_FREQ_MILLISECOND	16
 
 typedef struct queue_st {
 	unsigned long capacity;
@@ -121,6 +122,8 @@ shm_callback_msg callbackmsg = NULL;
 shm_callback_log callbacklog = NULL;
 /* print functions either syslog, printf of user specific */
 int current_level = LOG_ERR;
+/* worker freq in microsecond */
+long freq_microsecond = DEF_FREQ_MILLISECOND * 1000;
 
 static int print(int level, const char* format, ...);
 
@@ -576,7 +579,7 @@ static void* recv_thread_func(void* arg) {
 	header* hdr;
 	void* msg;
 	for (;;) {
-		usleep(1);
+		usleep(freq_microsecond);
 		lock(mem_entry[my_proc_index].rlock);
 		hdr = (header*)mem_entry[my_proc_index].shm;
 		if (NULL == hdr || 0 == strlen(hdr->proc_name)) {
@@ -677,6 +680,14 @@ int set_print_level(int level) {
 	return 1;
 }
 
+int set_freq(float millisecond) {
+	if (millisecond >= 0.001f) {
+		freq_microsecond = (long)(millisecond * 1000);
+		return 0;
+	}
+	return 1;
+}
+
 int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_capacity, shm_callback_msg scbm, shm_callback_log scbl) {
 	if (initialized) {
 		print(LOG_NOTICE, "Module has been initialized\n");
@@ -760,7 +771,7 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
 	}
 	pthread_mutex_lock(&send_mutex_t);
 	if ((index = get_proc_index(proc_name)) < 0) {
-		print(LOG_ERR, "No such process %s\n", proc_name);
+		print(LOG_ERR, "No such process %s, ret %d\n", proc_name, index);
 		pthread_mutex_unlock(&send_mutex_t);
 		return 3;
 	}
@@ -800,6 +811,7 @@ void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void*
 		print(LOG_ERR, "Recv proc name '%s' length > %d\n", proc_name, PROC_NAME_SIZE);
 		return;
 	}
+	usleep(freq_microsecond);
 	msg_len = msg_len >= 0 ? msg_len : 0;
 	memcpy(hdr.proc_name, proc_name, PROC_NAME_SIZE);
 	hdr.msg_type = msg_type;
@@ -809,7 +821,6 @@ void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void*
 	if (msg_len > 0 && NULL != data) {
 		memcpy(msg + SIZEOF_HEADER, data, msg_len);
 	}
-	usleep(1);
 	queue_put(send_nio_queue, msg);
 }
 

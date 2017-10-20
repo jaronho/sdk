@@ -34,6 +34,15 @@ typedef void (*shm_callback_log)(int level, const char* format, ...);
 extern int set_print_level(int level);
 
 /*****************************************************************************/
+/* Description        : This functionsn set the worker frequency, default is */
+/*                      16 millisecond (60 FPS)                              */
+/* Input(s)           : millisecond, minimum value is 0.001f                 */
+/* Output(s)          : None.                                                */
+/* Return Value(s)    : 0 ok                                                 */
+/*****************************************************************************/
+extern int set_freq(float millisecond);
+
+/*****************************************************************************/
 /* Description        : This function initialises the memshare lib           */
 /* Input(s)           : Proc name(string, max char count is 64)              */
 /*                      Number of procs                                      */
