@@ -809,6 +809,7 @@ void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void*
 	if (msg_len > 0 && NULL != data) {
 		memcpy(msg + SIZEOF_HEADER, data, msg_len);
 	}
+	usleep(1);
 	queue_put(send_nio_queue, msg);
 }
 
