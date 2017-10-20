@@ -60,7 +60,6 @@ typedef struct {
 	char proc_name[PROC_NAME_SIZE];	/* proc name */
 	int msg_type;
 	long msg_len;
-	long msg_seq;
 } header;
 #define SIZEOF_HEADER sizeof(header)
 
@@ -84,8 +83,6 @@ typedef struct {
 	int key_active;		/* key which will go zero if process terminates */
 	int active;			/* flag for the process to signal active */
 	char proc_name[PROC_NAME_SIZE];	/* process name */
-	long send_count;	/* counter for sent data/signals */
-	long recv_count;	/* counter for received data/signals */
 } proc_entry;
 #define SIZEOF_PROC_ENTRY sizeof(proc_entry)
 
@@ -109,8 +106,6 @@ int my_proc_index;
 queue_st* recv_queue = NULL;
 /* msg Non-blocking send queue */
 queue_st* send_nio_queue = NULL;
-/* msg sent sequence */
-long msg_sequence = 0;
 /* number of process */
 int num_of_procs = 0;
 /* key for shm ctrl */
@@ -146,8 +141,6 @@ static int check_proc_entry(int index);
 static int clear_proc_entry(int index);
 static int get_next_free_index(void);
 static void populate_mem_proc_single(int index);
-static int inc_send_count(void);
-static int inc_recv_count(void);
 
 static int print(int level, const char* format, ...) {
 	va_list ap;
@@ -516,26 +509,6 @@ static int get_next_free_index() {
 	return num_of_procs;
 }
 
-static int inc_send_count(void) {
-	proc_entry* entry;
-	/* The locks might not be needed TODO */
-	/* lock(lock_ctrl_sem); */
-	entry = (proc_entry*)get_proc_at(my_proc_index);
-	entry->send_count++;
-	/* unlock(lock_ctrl_sem); */
-	return 0;
-}
-
-static int inc_recv_count(void) {
-	proc_entry* entry;
-	/* The locks might not be needed TODO */
-	/* lock(lock_ctrl_sem); */
-	entry = (proc_entry*)get_proc_at(my_proc_index);
-	entry->recv_count++;
-	/* unlock(lock_ctrl_sem); */
-	return 0;
-}
-
 /* This function will serach for a free entry in the ctrl area        */
 /* there it will fill all the keys that can be used to map shared mem */
 static int add_proc(const char* proc_name, long size) {
@@ -553,8 +526,6 @@ static int add_proc(const char* proc_name, long size) {
 	entry->key_wlock = key_base + 3;
 	entry->key_active = key_base + 4;
 	entry->size_shm = size;
-	entry->send_count = 0;
-	entry->recv_count = 0;
 	my_proc_index = index;
 	print(LOG_DEBUG, "Allocating shared memory for key %d size %ld\n", entry->key_shm, entry->size_shm);
 	/* Map up yourself in the local memory map with pointers instead of keys */
@@ -605,11 +576,8 @@ static void* recv_thread_func(void* arg) {
 		memset(mem_entry[my_proc_index].shm, 0, SIZEOF_HEADER + hdr->msg_len);
 		if (queue_put(recv_queue, (void*)msg)) {
 			/* Failed to put in queue, msg lost */
-			print(LOG_ERR, "Failed to put msg in queue, msg with type %d, seq %ld is lost!\n", hdr->msg_type, hdr->msg_seq);
+			print(LOG_ERR, "Failed to put msg in queue, msg with type %d is lost!\n", hdr->msg_type);
 			free(msg);
-		} else {
-			/* msg concidered received */
-			inc_recv_count();
 		}
 		unlock(mem_entry[my_proc_index].wlock);
 	}
@@ -792,12 +760,10 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
 	memcpy(hdr.proc_name, my_proc_name, PROC_NAME_SIZE);
 	hdr.msg_type = msg_type;
 	hdr.msg_len = msg_len;
-	hdr.msg_seq = msg_sequence++;
 	memcpy(mem_entry[index].shm, &hdr, SIZEOF_HEADER);
 	if (msg_len > 0 && NULL != data) {
 		memcpy(mem_entry[index].shm + SIZEOF_HEADER, data, msg_len);
 	}
-	inc_send_count();
 	unlock(mem_entry[index].rlock);
 	return 0;
 }
@@ -848,7 +814,7 @@ int get_proc_index(const char* proc_name) {
 	return -3;
 }
 
-int get_proc_info(int index, char** proc_name, long* data_size, long* send_count, long* recv_count) {
+int get_proc_info(int index, char** proc_name, long* data_size) {
 	proc_entry* entry;
 	if (!initialized) {
 		print(LOG_ERR, "Module has not been initialized\n");
@@ -861,7 +827,5 @@ int get_proc_info(int index, char** proc_name, long* data_size, long* send_count
 	}
 	*proc_name = entry->proc_name;
 	*data_size = entry->size_shm;
-	*send_count = entry->send_count;
-	*recv_count = entry->recv_count;
 	return 0;
 }

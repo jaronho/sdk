@@ -94,13 +94,12 @@ extern int get_proc_index(const char* proc_name);
 /*****************************************************************************/
 /* Description        : This function get the proc info at index             */
 /* Input(s)           : Proc index                                           */
-/* Output(s)          : Address of proc name(char*), address of data size,   */
-/*                      address of send count, address of recv count         */
+/* Output(s)          : Address of proc name(char*), address of data size    */
 /* Return Value(s)    : 0.ok                                                 */
 /*                      1.module has not been initialized                    */
 /*                      2.no such process                                    */
 /*****************************************************************************/
-extern int get_proc_info(int index, char** proc_name, long* data_size, long* send_count, long* recv_count);
+extern int get_proc_info(int index, char** proc_name, long* data_size);
 
 #ifdef __cplusplus
 }
