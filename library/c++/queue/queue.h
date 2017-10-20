@@ -23,7 +23,7 @@ typedef struct queue_st {
 	int block;
 	void** buf;
 #if QUEUE_THREAD_SAFETY
-	sem_t lock;
+	sem_t sem;
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
 #endif

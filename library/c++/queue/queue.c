@@ -38,7 +38,7 @@ queue_st* queue_create(unsigned long capacity, int loop, int block) {
 	q->block = block;
     q->buf = malloc(capacity * sizeof(void*));
 #if QUEUE_THREAD_SAFETY
-	sem_init(&q->lock, 0, 1);
+	sem_init(&q->sem, 0, 1);
     pthread_mutex_init(&q->mutex, NULL);
 	pthread_cond_init(&q->cond, NULL);
 #endif
@@ -50,7 +50,7 @@ int queue_destroy(queue_st* q) {
 		return 1;
 	}
 #if QUEUE_THREAD_SAFETY
-	sem_destroy(&q->lock);
+	sem_destroy(&q->sem);
     pthread_mutex_destroy(&q->mutex);
 	pthread_cond_destroy(&q->cond);
 #endif
@@ -87,13 +87,13 @@ int queue_put(queue_st* q, void* data) {
 		return 1;
 	}
 #if QUEUE_THREAD_SAFETY
-	sem_wait(&q->lock);
+	sem_wait(&q->sem);
 #endif
 	int prev_state = q->state;
 	if (QUEUE_FULL == prev_state) {
 		if (!q->loop) {
 		#if QUEUE_THREAD_SAFETY
-			sem_post(&q->lock);
+			sem_post(&q->sem);
 		#endif
 			return 2;
 		}
@@ -120,7 +120,7 @@ int queue_put(queue_st* q, void* data) {
 	pthread_mutex_unlock(&q->mutex);
 #endif
 #if QUEUE_THREAD_SAFETY
-	sem_post(&q->lock);
+	sem_post(&q->sem);
 #endif
 	return 0;
 }
@@ -138,11 +138,11 @@ void* queue_get(queue_st* q) {
 	pthread_mutex_unlock(&q->mutex);
 #endif
 #if QUEUE_THREAD_SAFETY
-	sem_wait(&q->lock);
+	sem_wait(&q->sem);
 #endif
 	retval = getqueue(q);
 #if QUEUE_THREAD_SAFETY
-	sem_post(&q->lock);
+	sem_post(&q->sem);
 #endif
 	return retval;
 }
