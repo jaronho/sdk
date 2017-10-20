@@ -5,6 +5,7 @@
 
 #if QUEUE_THREAD_SAFETY
 #include <pthread.h>
+#include <semaphore.h>
 #endif
 
 #ifdef __cplusplus
@@ -22,6 +23,7 @@ typedef struct queue_st {
 	int block;
 	void** buf;
 #if QUEUE_THREAD_SAFETY
+	sem_t lock;
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
 #endif
