@@ -17,6 +17,7 @@
 
 #include "memshare.h"
 #include <pthread.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -45,6 +46,7 @@ typedef struct queue_st {
 	int state;
 	int loop;
 	void** buf;
+	sem_t sem;
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
 } queue_st;
@@ -190,6 +192,7 @@ static queue_st* queue_create(unsigned long capacity, int loop) {
     q->state = QUEUE_EMPTY;
 	q->loop = loop;
     q->buf = malloc(capacity * sizeof(void*));
+	sem_init(&q->sem, 0, 1);
     pthread_mutex_init(&q->mutex, NULL);
 	pthread_cond_init(&q->cond, NULL);
     return q;
@@ -200,10 +203,11 @@ static int queue_put(queue_st* q, void* data) {
 	if (NULL == q || NULL == data) {
 		return 1;
 	}
-	pthread_mutex_lock(&q->mutex);
+	sem_wait(&q->sem);
 	int prev_state = q->state;
 	if (QUEUE_FULL == prev_state) {
 		if (!q->loop) {
+			sem_post(&q->sem);
 			return 2;
 		}
 		retval = getqueue(q);
@@ -220,8 +224,12 @@ static int queue_put(queue_st* q, void* data) {
 	if (q->top == q->bottom) {
 		q->state = QUEUE_FULL;
 	}
-	pthread_cond_signal(&q->cond);
+	pthread_mutex_lock(&q->mutex);
+	if (QUEUE_EMPTY == prev_state) {
+		pthread_cond_signal(&q->cond);
+	}
 	pthread_mutex_unlock(&q->mutex);
+	sem_post(&q->sem);
 	return 0;
 }
 
@@ -234,8 +242,10 @@ static void* queue_get(queue_st* q) {
 	if (QUEUE_EMPTY == q->state) {
 		pthread_cond_wait(&q->cond, &q->mutex);
 	}
-	retval = getqueue(q);
 	pthread_mutex_unlock(&q->mutex);
+	sem_wait(&q->sem);
+	retval = getqueue(q);
+	sem_post(&q->sem);
 	return retval;
 }
 
@@ -294,7 +304,7 @@ static void lock(int sem) {
 	struct sembuf op[1];
 	op[0].sem_num = 0;
 	op[0].sem_op = -1;
-	op[0].sem_flg = SEM_UNDO;
+	op[0].sem_flg = 0;
 	semop(sem, op, 1);
 }
 
@@ -566,6 +576,7 @@ static void* recv_thread_func(void* arg) {
 	header* hdr;
 	void* msg;
 	for (;;) {
+		usleep(1);
 		lock(mem_entry[my_proc_index].rlock);
 		hdr = (header*)mem_entry[my_proc_index].shm;
 		if (NULL == hdr || 0 == strlen(hdr->proc_name)) {
