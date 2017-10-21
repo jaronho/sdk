@@ -482,11 +482,17 @@ static int check_proc_entry(int index) {
 	if (NULL == entry) {
 		return 1;
 	}
+	if (!entry->active) {
+		return 2;
+	}
+	if (!strcmp(entry->proc_name, my_proc_name)) {
+		return 3;
+	}
 	populate_mem_proc_single(index);
-	if (entry->active && !strcmp(mem_entry[index].proc_name, entry->proc_name) && try_lock1(mem_entry[index].active)) {
+	if (!strcmp(mem_entry[index].proc_name, entry->proc_name) && try_lock1(mem_entry[index].active)) {
 		return 0;
 	}
-	return 2;
+	return 4;
 }
 
 static int clear_proc_entry(int index) {
@@ -833,9 +839,12 @@ int get_proc_index(const char* proc_name) {
 	if (NULL == proc_name || 0 == strlen(proc_name)) {
 		return -2;
 	}
+	if (!strcmp(proc_name, my_proc_name)) {
+		return my_proc_index;
+	}
 	for (i = 0; i < num_of_procs; ++i) {
-		if (!strcmp(mem_entry[i].proc_name, proc_name)) {
-			if (0 == check_proc_entry(i)) {
+		if (0 == check_proc_entry(i)) {
+			if (!strcmp(mem_entry[i].proc_name, proc_name)) {
 				return i;
 			}
 		}
