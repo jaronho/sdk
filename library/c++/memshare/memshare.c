@@ -105,7 +105,7 @@ mem_proc_entry* mem_entry = NULL;
 /* my own process name */
 char my_proc_name[PROC_NAME_SIZE];
 /* my own process index */
-int my_proc_index;
+int my_proc_index = -1;
 /* msg receive queue */
 queue_st* recv_queue = NULL;
 /* msg Non-blocking send queue */
@@ -485,14 +485,14 @@ static int check_proc_entry(int index) {
 	if (!entry->active) {
 		return 2;
 	}
-	if (!strcmp(entry->proc_name, my_proc_name)) {
-		return 3;
+	if (!strcmp(entry->proc_name, my_proc_name) && my_proc_index >= 0) {
+		return 0;
 	}
 	populate_mem_proc_single(index);
 	if (!strcmp(mem_entry[index].proc_name, entry->proc_name) && try_lock1(mem_entry[index].active)) {
 		return 0;
 	}
-	return 4;
+	return 3;
 }
 
 static int clear_proc_entry(int index) {
@@ -839,7 +839,7 @@ int get_proc_index(const char* proc_name) {
 	if (NULL == proc_name || 0 == strlen(proc_name)) {
 		return -2;
 	}
-	if (!strcmp(proc_name, my_proc_name)) {
+	if (!strcmp(proc_name, my_proc_name) && my_proc_index >= 0) {
 		return my_proc_index;
 	}
 	for (i = 0; i < num_of_procs; ++i) {
