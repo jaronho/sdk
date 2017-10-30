@@ -121,7 +121,7 @@ shm_callback_msg callbackmsg = NULL;
 /* log handle callback */
 shm_callback_log callbacklog = NULL;
 /* print functions either syslog, printf of user specific */
-int current_level = LOG_ERR;
+int current_level = LOG_EMERG;
 /* worker freq in microsecond */
 long freq_microsecond = DEF_FREQ_MILLISECOND * 1000;
 
