@@ -15,6 +15,10 @@ class XmlHelper {
  **************************** class methods ***************************
  **********************************************************************/
 public:
+    static bool isXmlFile(const std::string& fileName);
+
+    static bool isXmlString(const std::string& content);
+
     static pugi::xml_document* createFile(const std::string& fileName, const std::string& rooName = "root");
 
     static pugi::xml_document* loadFile(const std::string& fileName);

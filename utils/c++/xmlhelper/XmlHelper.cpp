@@ -9,6 +9,19 @@
 /**********************************************************************
  **************************** class methods ***************************
  **********************************************************************/
+bool XmlHelper::isXmlFile(const std::string& fileName) {
+    if (fileName.empty()) {
+        return false;
+    }
+    return pugi::status_ok == pugi::xml_document().load_file(fileName.c_str()).status;
+}
+
+bool XmlHelper::isXmlString(const std::string& content) {
+    if (content.empty()) {
+        return false;
+    }
+    return pugi::status_ok == pugi::xml_document().load_string(content.c_str()).status;
+}
 
 pugi::xml_document* XmlHelper::createFile(const std::string& fileName, const std::string& rootName /*= "root"*/) {
     if (fileName.empty()) {
@@ -260,7 +273,7 @@ XmlHelper::XmlHelper(void) {
 XmlHelper::~XmlHelper(void) {
     if (mDocument) {
         delete mDocument;
-	}
+    }
 }
 
 pugi::xml_document* XmlHelper::getDocument(void) {
@@ -289,14 +302,14 @@ bool XmlHelper::open(const std::string& fileName, const std::string& rootName /*
     if (NULL == fp) {		/* file is not exist */
         mDocument = createFile(fileName, rootName);
         if (NULL == mDocument) {
-			mFileName = "";
+            mFileName = "";
             return false;
         }
     } else {				/* file exist */
         fclose(fp);
         mDocument = loadFile(fileName);
         if (NULL == mDocument) {
-			mFileName = "";
+            mFileName = "";
             return false;
         }
     }
@@ -307,8 +320,8 @@ bool XmlHelper::open(const std::string& fileName, const std::string& rootName /*
 
 bool XmlHelper::save(const std::string& fileName /*= ""*/) {
     if (NULL == mDocument) {
-		return false;
-	}
+        return false;
+    }
     return saveFile(mDocument, fileName.empty() ? mFileName : fileName);
 }
 
