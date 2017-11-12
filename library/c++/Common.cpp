@@ -383,6 +383,9 @@ unsigned char* Common::getFileData(const std::string& filePath, long* fileSize, 
     fseek(fp, 0, SEEK_END);
     *fileSize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
+	if (0 == *fileSize) {
+		return NULL;
+	}
     unsigned char* buffer = new unsigned char[isText ? *fileSize + 1 : *fileSize];
     *fileSize = fread(buffer, sizeof(unsigned char), *fileSize, fp);
 	if (isText) {
@@ -417,6 +420,18 @@ bool Common::writeDataToFile(const unsigned char* data, long dataSize, const std
     fclose(fp);
 	fp = NULL;
 	return true;
+}
+//--------------------------------------------------------------------------
+bool Common::copyFile(const std::string& srcFilePath, const std::string& destFilePath) {
+	if (srcFilePath.empty() || destFilePath.empty() || srcFilePath == destFilePath) {
+		return false;
+	}
+	long fileSize = 0;
+	unsigned char* fileData = getFileData(filePath, &fileSize);
+	if (0 == fileSize || NULL == fileData) {
+		return false;
+	}
+	return writeDataToFile(fileData, fileSize, destFilePath);
 }
 //--------------------------------------------------------------------------
 std::string Common::revisalPath(std::string path) {

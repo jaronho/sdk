@@ -294,6 +294,14 @@ public:
 	Return:	bool
 	*/
 	static bool writeDataToFile(const unsigned char* data, long dataSize, const std::string& filePath);
+	
+	/*
+	Brief:	copy src file to dest file
+	Param:	srcFilePath - src file, can be absolute path (d:/test.txt) or relative path (temp/test.txt)
+			destFilePath - dest file, can be absolute path (d:/test.txt) or relative path (temp/test.txt)
+	Return:	bool
+	*/
+	static bool copyFile(const std::string& srcFilePath, const std::string& destFilePath);
 
 	/*
 	Brief:	revisal path, replace "\\" to "/", make sure end of path is not "/" and "\\"
