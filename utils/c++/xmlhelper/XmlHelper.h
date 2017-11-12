@@ -15,6 +15,8 @@ class XmlHelper {
  **************************** class methods ***************************
  **********************************************************************/
 public:
+    static std::string toString(pugi::xml_document* doc);
+
     static bool isXmlFile(const std::string& fileName);
 
     static bool isXmlString(const std::string& content);

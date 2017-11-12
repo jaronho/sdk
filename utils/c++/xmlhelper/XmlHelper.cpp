@@ -6,9 +6,25 @@
 #include "XmlHelper.h"
 #include <fstream>
 
+struct xml_writer_string : pugi::xml_writer {
+    std::string result;
+    virtual void write(const void* data, size_t size) {
+        result += std::string(static_cast<const char*>(data), size);
+    }
+};
+
 /**********************************************************************
  **************************** class methods ***************************
  **********************************************************************/
+std::string XmlHelper::toString(pugi::xml_document* doc) {
+    if (NULL == doc) {
+        return "";
+    }
+    xml_writer_string writer;
+    doc->save(writer);
+    return writer.result;
+}
+
 bool XmlHelper::isXmlFile(const std::string& fileName) {
     if (fileName.empty()) {
         return false;
