@@ -5,15 +5,49 @@
 **********************************************************************/
 #include "SharePrefs.h"
 
+#define BAK_SUFIX   "_bak"
+
 static XmlHelper* helper = new XmlHelper();
+
+static bool copyFile(const std::string& srcFileName, const std::string& destFileName) {
+    if (srcFileName.empty() || destFileName.empty() || srcFileName == destFileName) {
+        return false;
+    }
+    FILE* fp = fopen(srcFileName.c_str(), "rb");
+    if (NULL == fp) {
+        return false;
+    }
+    long fileSize = 0;
+    fseek(fp, 0, SEEK_END);
+    fileSize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    unsigned char* buffer = new unsigned char[fileSize];
+    fileSize = fread(buffer, sizeof(unsigned char), fileSize, fp);
+    fclose(fp);
+    fp = fopen(destFileName.c_str(), "wb");
+    if (NULL == fp) {
+        delete buffer;
+        return false;
+    }
+    fwrite(buffer, fileSize, sizeof(unsigned char), fp);
+    fclose(fp);
+    delete buffer;
+    return true;
+}
 
 bool SharePrefs::open(const std::string& fileName, bool forceReplace /*= true*/) {
     if (forceReplace) {
         FILE* fp = fopen(fileName.c_str(), "r");
         if (fp) {
             fclose(fp);
-            if (!XmlHelper::isXmlFile(fileName)) {
+            if (XmlHelper::isXmlFile(fileName)) {
+                ::remove((fileName + BAK_SUFIX).c_str());
+            } else {
                 ::remove(fileName.c_str());
+                if (XmlHelper::isXmlFile(fileName + BAK_SUFIX)) {
+                    copyFile(fileName + BAK_SUFIX, fileName);
+                }
+                ::remove((fileName + BAK_SUFIX).c_str());
             }
         }
     }
@@ -21,6 +55,7 @@ bool SharePrefs::open(const std::string& fileName, bool forceReplace /*= true*/)
 }
 
 bool SharePrefs::save(void) {
+    copyFile(helper->getFileName(), helper->getFileName() + BAK_SUFIX);
     return helper->save();
 }
 
