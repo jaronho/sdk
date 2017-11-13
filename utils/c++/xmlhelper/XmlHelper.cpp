@@ -338,7 +338,23 @@ bool XmlHelper::save(const std::string& fileName /*= ""*/) {
     if (NULL == mDocument) {
         return false;
     }
+/*
+    // method(1): not safe, maybe lose data when system outage
     return saveFile(mDocument, fileName.empty() ? mFileName : fileName);
+*/
+    // method(2)
+    const std::string& docString = toString(mDocument);
+    if (docString.empty()) {
+        return false;
+    }
+    FILE* fp = fileName.empty() ? fopen(mFileName.c_str(), "wb") : fopen(fileName.c_str(), "wb");
+    if (NULL == fp) {
+        return false;
+    }
+    fwrite(docString.c_str(), docString.size(), sizeof(char), fp);
+    fflush(fp); // key operation, to make sure data written into file immediately
+    fclose(fp);
+    return true;
 }
 
 bool XmlHelper::clear(void) {
@@ -346,6 +362,13 @@ bool XmlHelper::clear(void) {
         return false;
     }
     return removeChildren(mRoot);
+}
+
+std::string XmlHelper::toString(void) {
+    if (NULL == mDocument) {
+        return "";
+    }
+    return toString(mDocument);
 }
 
 int XmlHelper::getInt(const std::string& key, int defaultValue /*= 0*/) {

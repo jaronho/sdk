@@ -112,6 +112,13 @@ public:
     bool clear(void);
 
     /*
+     * Brief:	convert to xml string
+     * Param:	void
+     * Return:	std::string
+     */
+    std::string toString(void);
+
+    /*
      * Brief:	get int value
      * Param:	key - key
      *			defaultValue - default int
