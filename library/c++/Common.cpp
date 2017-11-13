@@ -295,13 +295,10 @@ void Common::removeDir(const std::string& dirName) {
 			remove(subName.c_str());
 		} else {
 			closedir(subDir);
-			subDir = NULL;
 			removeDir(subName);
 		}
 	}
 	closedir(dir);
-	dir = NULL;
-	dirp = NULL;
 	rmdir(dirName.c_str());
 #endif
 }
@@ -312,7 +309,6 @@ bool Common::existFile(const std::string& filePath) {
 		return false;
 	}
 	fclose(fp);
-	fp = NULL;
 	return true;
 }
 //--------------------------------------------------------------------------
@@ -322,7 +318,6 @@ bool Common::createFile(const std::string& filePath) {
 		return false;
 	}
 	fclose(fp);
-	fp = NULL;
 	return true;
 }
 //--------------------------------------------------------------------------
@@ -351,7 +346,6 @@ long Common::calcFileSize(const std::string& filePath) {
 	long size = filelength(fileno(fp));
 #endif
 	fclose(fp);
-	fp = NULL;
 	return size;
 }
 //--------------------------------------------------------------------------
@@ -392,7 +386,6 @@ unsigned char* Common::getFileData(const std::string& filePath, long* fileSize, 
 		*(buffer + *fileSize) = '\0';	// set EOF
 	}
     fclose(fp);
-	fp = NULL;
 	return buffer;
 }
 //--------------------------------------------------------------------------
@@ -403,7 +396,6 @@ std::vector<std::string> Common::getFileDataEx(const std::string& filePath) {
 	if (fileData) {
 		fileString = (char*)fileData;
 		delete []fileData;
-		fileData = NULL;
 	}
 	return splitString(fileString, newLineString());
 }
@@ -417,8 +409,8 @@ bool Common::writeDataToFile(const unsigned char* data, long dataSize, const std
 		return false;
 	}
 	fwrite(data, dataSize, sizeof(unsigned char), fp);
+	fflush(fp);
     fclose(fp);
-	fp = NULL;
 	return true;
 }
 //--------------------------------------------------------------------------
@@ -491,7 +483,6 @@ std::string Common::getFullPath(std::string path, OSType os) {
 	}
 	std::string currentPath(buffer);
 	free(buffer);
-	buffer = NULL;
 	return revisalPath(currentPath + '/' + path);
 }
 //--------------------------------------------------------------------------
@@ -570,8 +561,6 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
 		}
 	}
 	closedir(dir);
-	dir = NULL;
-	dirp = NULL;
 #endif
 }
 //--------------------------------------------------------------------------
@@ -620,8 +609,6 @@ void Common::searchDir(std::string dirName, std::vector<std::string>& dirList, b
 		}
 	}
 	closedir(dir);
-	dir = NULL;
-	dirp = NULL;
 #endif
 }
 //--------------------------------------------------------------------------
