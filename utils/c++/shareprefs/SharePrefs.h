@@ -13,10 +13,11 @@ public:
     /*
      * Brief:	打开
      * Param:	fileName - 文件名, 例如:"asdf.xml"，"../asdf.xml"，"temp\\asdf.xml"
-     *          forceReplace - 强制替换, 当文件已存在但不是xml格式时, 强制删除并重新生成
+     *			forceReplace - 强制替换, 当文件已存在但不是xml格式时, 强制删除并重新生成
+     *			fileNameBak - 备份文件名, 当为非空时写文件前进行备份, 例如:"asdf_bak.xml"，"../asdf_bak.xml"，"temp\\asdf_bak.xml"
      * Return:	bool
      */
-    static bool open(const std::string& fileName, bool forceReplace = true);
+    static bool open(const std::string& fileName, bool forceReplace = true, const std::string& fileNameBak = "");
 
     /*
      * Brief:	保存
