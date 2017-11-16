@@ -96,7 +96,19 @@ bool XmlHelper::saveFile(pugi::xml_document* doc, const std::string& fileName) {
     if (NULL == doc || fileName.empty()) {
         return false;
     }
-    return doc->save_file(fileName.c_str());
+    //return doc->save_file(fileName.c_str());  /* not safe, maybe lose data when system outage */
+    const std::string& docString = toString(doc);
+    if (docString.empty()) {
+        return false;
+    }
+    FILE* fp = fopen(fileName.c_str(), "wb");
+    if (NULL == fp) {
+        return false;
+    }
+    fwrite(docString.c_str(), docString.size(), sizeof(char), fp);
+    fflush(fp); /* key operation, to make sure data written into file immediately */
+    fclose(fp);
+    return true;
 }
 
 bool XmlHelper::removeChildren(pugi::xml_node& parent) {
@@ -338,23 +350,7 @@ bool XmlHelper::save(const std::string& fileName /*= ""*/) {
     if (NULL == mDocument) {
         return false;
     }
-/*
-    // method(1): not safe, maybe lose data when system outage
     return saveFile(mDocument, fileName.empty() ? mFileName : fileName);
-*/
-    // method(2)
-    const std::string& docString = toString(mDocument);
-    if (docString.empty()) {
-        return false;
-    }
-    FILE* fp = fileName.empty() ? fopen(mFileName.c_str(), "wb") : fopen(fileName.c_str(), "wb");
-    if (NULL == fp) {
-        return false;
-    }
-    fwrite(docString.c_str(), docString.size(), sizeof(char), fp);
-    fflush(fp); // key operation, to make sure data written into file immediately
-    fclose(fp);
-    return true;
 }
 
 bool XmlHelper::clear(void) {
