@@ -9,6 +9,11 @@ function CreateTimerManager() {
 	var timerManager = {};
 	// insert to timer list
 	function insertTimer(tm) {
+		for (var i = 0, len = mTimerList.length; i < len; ++i) {
+			if (tm == mTimerList[i]) {
+				return;
+			}
+		}
 		mTimerList.push(tm);
 	}
 	// remove from timer list
@@ -90,12 +95,12 @@ function CreateTimerManager() {
 			if (!mRunning) {
 				return;
 			}
+			removeTimer(this);
 			mRunning = false;
 			mIsPause = true;
 			if ('function' == typeof(mOverCallFunc) && executeFlag) {
 				mOverCallFunc.apply(mTarget, [this]);
 			}
-			removeTimer(this);
 		};
 		tm.resume = function() {
 			mIsPause = false;
