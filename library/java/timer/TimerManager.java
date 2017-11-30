@@ -52,13 +52,11 @@ public class TimerManager {
     };
     private Thread mThread = new Thread(new Runnable() {
         private void loopUpdate(long currentTime) {
-            if (!mTimerMap.isEmpty()) {
-                Set<Entry<String, Timer>> entrySet = mTimerMap.entrySet();
-                for (Entry<String, Timer> entry : entrySet) {
-                    Timer tm = entry.getValue();
-                    if (null != tm) {
-                        tm.update(currentTime);
-                    }
+            Set<Entry<String, Timer>> entrySet = mTimerMap.entrySet();
+            for (Entry<String, Timer> entry : entrySet) {
+                Timer tm = entry.getValue();
+                if (null != tm) {
+                    tm.update(currentTime);
                 }
             }
         }

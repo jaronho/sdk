@@ -1,4 +1,4 @@
-package com.jaronho.sdk.utils.videoplayer;
+package com.jaronho.sdk.utils.view;
 
 import android.app.Activity;
 import android.graphics.Point;
@@ -31,6 +31,12 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
     public static abstract class SurfaceDestroyedHandler {
         public abstract void onCallback(VideoPlayer vp);
     }
+    public static abstract class PreparedHandler {
+        public abstract boolean onCallback(VideoPlayer vp); // 返回true:自动播放,false:不自动播放
+    }
+    public static abstract class SeekCompleteHandler {
+        public abstract void onCallback(VideoPlayer vp);
+    }
     public static abstract class CompleteHandler {
         public abstract void onCallback(VideoPlayer vp);
     }
@@ -38,10 +44,11 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
         public abstract void onCallback(VideoPlayer vp, int what, int extra);
     }
     public enum FitType {
-        NONE,            // 原始大小
-        SHOW_ALL,       // 按比例放缩,全部展示不裁剪
-        SIDE_FIT,       // 按比例缩放,适配其中一边(宽或高)
-        EXACT_FIT       // 拉伸变形,使铺满屏幕
+        FIXED_SIZE,     // 固定宽高
+        VIDEO_SIZE,     // 视频宽高
+        SHOW_ALL,       // 全屏显示,全部展示不裁剪,宽高中大的铺满屏幕,小的留有黑边
+        SIDE_FIT,       // 全屏显示,全屏展示不留黑边,宽高中小的铺满屏幕,大的超出屏幕
+        FULL_FIT        // 全屏显示,拉伸变形,使铺满屏幕
     }
 
     private Activity mActivity = null;
@@ -50,10 +57,14 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
     private int mCurrentPosition = 0;
     private SurfaceCreatedHandler mSurfaceCreatedHandler = null;
     private SurfaceDestroyedHandler mSurfaceDestroyedHandler = null;
+    private PreparedHandler mPreparedHandler = null;
+    private SeekCompleteHandler mSeekCompleteHandler = null;
     private CompleteHandler mCompleteHandler = null;
     private ErrorHandler mErrorHandler = null;
-    private FitType mFitType = FitType.NONE;
+    private FitType mFitType = FitType.VIDEO_SIZE;
     private String mLogTag = "";
+    private boolean mSeekFlag = false;
+    private boolean mPlayFlag = false;
 
     public VideoPlayer(Activity activity, SurfaceView surfaceView, boolean screenOn) {
         mActivity = activity;
@@ -164,43 +175,54 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
     @Override
     public void onPrepared(MediaPlayer mp) {
         showLog("onPrepared");
-        if (FitType.NONE != mFitType) {
-            Point displaySize = new Point();
-            mActivity.getWindowManager().getDefaultDisplay().getSize(displaySize);
+        if (FitType.FIXED_SIZE != mFitType) {
             // 获取video的宽和高
             int videoWidth = mp.getVideoWidth();
             int videoHeight = mp.getVideoHeight();
-            // 如果video的宽或者高超出了当前屏幕的大小，则要进行缩放
-            if (videoWidth > displaySize.x || videoHeight > displaySize.y) {
-                float wRatio = (float)videoWidth / (float)displaySize.x;
-                float hRatio = (float)videoHeight / (float)displaySize.y;
+            if (FitType.VIDEO_SIZE != mFitType) {
+                Point displaySize = new Point();
+                mActivity.getWindowManager().getDefaultDisplay().getSize(displaySize);
+                float wRatio = (float) videoWidth / (float) displaySize.x;
+                float hRatio = (float) videoHeight / (float) displaySize.y;
                 // 进行缩放
                 if (FitType.SHOW_ALL == mFitType) {
                     float ratioMax = Math.max(wRatio, hRatio);
-                    wRatio = ratioMax;
-                    hRatio = ratioMax;
+                    videoWidth = (int) Math.ceil((float) videoWidth / ratioMax);
+                    videoHeight = (int) Math.ceil((float) videoHeight / ratioMax);
                 } else if (FitType.SIDE_FIT == mFitType) {
                     float ratioMin = Math.min(wRatio, hRatio);
-                    wRatio = ratioMin;
-                    hRatio = ratioMin;
+                    videoWidth = (int) Math.ceil((float) videoWidth / ratioMin);
+                    videoHeight = (int) Math.ceil((float) videoHeight / ratioMin);
+                } else if (FitType.FULL_FIT == mFitType) {
+                    videoWidth = (int) Math.ceil((float) videoWidth / wRatio);
+                    videoHeight = (int) Math.ceil((float) videoHeight / hRatio);
                 }
-                videoWidth = (int)Math.ceil((float)videoWidth / wRatio);
-                videoHeight = (int)Math.ceil((float)videoHeight / hRatio);
-                // 设置SurfaceView的布局参数
-                ViewGroup.LayoutParams params = mSurfaceView.getLayoutParams();
-                params.width = videoWidth;
-                params.height = videoHeight;
-                mSurfaceView.setLayoutParams(params);
             }
+            // 设置SurfaceView的布局参数
+            ViewGroup.LayoutParams params = mSurfaceView.getLayoutParams();
+            params.width = videoWidth;
+            params.height = videoHeight;
+            mSurfaceView.setLayoutParams(params);
         }
-        // 开始播放
         mp.seekTo(0);
-        mp.start();
+        boolean doStart = true;
+        if (null != mPreparedHandler) {
+            doStart = mPreparedHandler.onCallback(this);
+        }
+        if (doStart) {
+            mp.start();
+        }
     }
 
     @Override
     public void onSeekComplete(MediaPlayer mp) {
-        showLog("onSeekComplete");
+        if (mSeekFlag) {
+            showLog("onSeekComplete");
+            if (null != mSeekCompleteHandler) {
+                mSeekCompleteHandler.onCallback(this);
+            }
+        }
+        mSeekFlag = false;
     }
 
     @Override
@@ -218,7 +240,11 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
                 mPlayer.seekTo(mCurrentPosition);
                 mCurrentPosition = 0;
             }
+            if (mPlayFlag) {
+                mPlayer.start();
+            }
         }
+        mPlayFlag = false;
         if (null != mSurfaceCreatedHandler) {
             mSurfaceCreatedHandler.onCallback(this);
         }
@@ -233,9 +259,12 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
     public void surfaceDestroyed(SurfaceHolder holder) {
         showLog("surfaceDestroyed");
         // 销毁SurfaceHolder的时候记录当前的播放位置并停止播放
-        if (null != mPlayer && mPlayer.isPlaying()) {
+        if (null != mPlayer) {
+            if (mPlayer.isPlaying()) {
+                mPlayer.pause();
+                mPlayFlag = true;
+            }
             mCurrentPosition = mPlayer.getCurrentPosition();
-            mPlayer.pause();
         }
         if (null != mSurfaceDestroyedHandler) {
             mSurfaceDestroyedHandler.onCallback(this);
@@ -267,9 +296,10 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
         }
     }
 
-    // 快进,position(毫秒)
+    // 指定播放位置,position(毫秒)
     public void seekTo(int position) {
         showLog("seekTo, position = " + position);
+        mSeekFlag = true;
         if (null != mPlayer) {
             mPlayer.seekTo(position);
         }
@@ -299,8 +329,6 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
             if (isRelease) {
                 mPlayer.release();
                 mPlayer = null;
-                mCompleteHandler = null;
-                mErrorHandler = null;
             }
         }
     }
@@ -318,6 +346,11 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
     // 是否已销毁
     public boolean isDestroyed() {
         return null == mPlayer;
+    }
+
+    // 是否在播放
+    public boolean isPlaying() {
+        return (null != mPlayer) && mPlayer.isPlaying();
     }
 
     // 获取播放器
@@ -338,6 +371,16 @@ public class VideoPlayer implements OnBufferingUpdateListener, OnCompletionListe
     // 设置表层被销毁处理器(当播放器被销毁,或从前台进入到后台时触发)
     public void setSurfaceDestroyedHandler(SurfaceDestroyedHandler handler) {
         mSurfaceDestroyedHandler = handler;
+    }
+
+    // 设置准备完成处理器(当就绪可以立马播放时触发)
+    public void setPreparedHandler(PreparedHandler handler) {
+        mPreparedHandler = handler;
+    }
+
+    // 设置指定播放位置完成处理器
+    public void setSeekCompleteHandler(SeekCompleteHandler handler) {
+        mSeekCompleteHandler = handler;
     }
 
     // 设置结束处理器(当不循环播放时才可被触发)

@@ -1,127 +1,47 @@
-package com.jaronho.sdk.utils;
+package com.jaronho.sdk.utils.view;
 
-import android.annotation.TargetApi;
-import android.content.res.ColorStateList;
+import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.ColorFilter;
 import android.graphics.Path;
-import android.graphics.PorterDuff;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
-import android.support.annotation.NonNull;
-
-import com.jaronho.sdk.library.Formula;
+import android.support.v7.widget.AppCompatImageView;
+import android.util.AttributeSet;
 
 /**
- * Author:  jaron.ho
- * Date:    2017-02-15
- * Brief:   扇形视图
+ * Author:  Administrator
+ * Date:    2017/5/22
+ * Brief:   扇形图片
  */
 
-public class SectorDrawable extends Drawable implements Drawable.Callback {
-    private Drawable mDrawable = null;
+public class SectorImageView extends AppCompatImageView {
     private Path mPath = new Path();
     private float mStartAngle = 0;
-    private float mSweepAngle = 0;
+    private float mSweepAngle = 360;
     private boolean mClockwise = true;
     private float mAnchorX = 0.5f;
     private float mAnchorY = 0.5f;
 
-    public SectorDrawable(Drawable drawable, float startAngle, float sweepAngle, boolean clockwise) {
-        this.mDrawable = drawable;
-        drawable.setCallback(this);
-        mStartAngle = startAngle;
-        mSweepAngle = sweepAngle;
-        mClockwise = clockwise;
+    public SectorImageView(Context context) {
+        super(context);
+    }
+
+    public SectorImageView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+    }
+
+    public SectorImageView(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
     }
 
     @Override
-    public int getChangingConfigurations() {
-        return super.getChangingConfigurations() | mDrawable.getChangingConfigurations();
-    }
-
-    @Override
-    public void setAlpha(int alpha) {
-        mDrawable.setAlpha(alpha);
-    }
-
-    @TargetApi(Build.VERSION_CODES.KITKAT)
-    @Override
-    public int getAlpha() {
-        return mDrawable.getAlpha();
-    }
-
-    @Override
-    public void setColorFilter(ColorFilter cf) {
-        mDrawable.setColorFilter(cf);
-    }
-
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    @Override
-    public void setTintList(ColorStateList tint) {
-        mDrawable.setTintList(tint);
-    }
-
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    @Override
-    public void setTintMode(@NonNull PorterDuff.Mode tintMode) {
-        mDrawable.setTintMode(tintMode);
-    }
-
-    @Override
-    public boolean isStateful() {
-        return mDrawable.isStateful();
-    }
-
-    @Override
-    public boolean setVisible(boolean visible, boolean restart) {
-        mDrawable.setVisible(visible, restart);
-        return super.setVisible(visible, restart);
-    }
-
-    @Override
-    public int getOpacity() {
-        return mDrawable.getOpacity();
-    }
-
-    @Override
-    protected boolean onStateChange(int[] state) {
-        return mDrawable.setState(state);
-    }
-
-    @Override
-    protected boolean onLevelChange(int level) {
-        mDrawable.setLevel(level);
-        invalidateSelf();
-        return true;
-    }
-
-    @Override
-    protected void onBoundsChange(Rect bounds) {
-        mDrawable.setBounds(bounds);
-    }
-
-    @Override
-    public int getIntrinsicWidth() {
-        return mDrawable.getIntrinsicWidth();
-    }
-
-    @Override
-    public int getIntrinsicHeight() {
-        return mDrawable.getIntrinsicHeight();
-    }
-
-    @Override
-    public boolean getPadding(@NonNull Rect padding) {
-        return mDrawable.getPadding(padding);
-    }
-
-    @Override
-    public void draw(@NonNull Canvas canvas) {
+    protected void onDraw(Canvas canvas) {
+        Drawable drawable = getDrawable();
+        if (null == drawable) {
+            return;
+        }
         canvas.save();
-        RectF rectF = new RectF(getBounds());
+        RectF rectF = new RectF(drawable.getBounds());
         float left = Math.min(rectF.left, rectF.right);
         float right = Math.max(rectF.left, rectF.right);
         float top = Math.max(rectF.top, rectF.bottom);
@@ -130,8 +50,83 @@ public class SectorDrawable extends Drawable implements Drawable.Callback {
         float aY = top - (top - bottom) * mAnchorY;
         calcSectorPath(mPath, left, right, top, bottom, aX, aY, mStartAngle, mSweepAngle, mClockwise);
         canvas.clipPath(mPath);
-        mDrawable.draw(canvas);
+        drawable.draw(canvas);
         canvas.restore();
+    }
+
+    /**
+     * 功  能: 计算矩形上的点坐标(坐标系:x轴向右递增,y轴向上递增)
+     * 参  数: aX - 矩形锚点的x坐标
+     *         aY - 矩形锚点的y坐标
+     *         w1 - 矩形以锚点分割,左部宽度
+     *         w2 - 矩形以锚点分割,右部宽度
+     *         h1 - 矩形以锚点分割,上部高度
+     *         h2 - 矩形以锚点分割,下部高度
+     *         angle - 角度
+     * 返回值: float[]
+     */
+    public static float[] calcPointOnRectangleByAngle(float aX, float aY, float w1, float w2, float h1, float h2, float angle) {
+        angle = angle % 360;
+        angle = angle >= 0 ? angle : 0;
+        float tmpAngle1 = (float)(Math.atan(h1 / w2) * 180 / Math.PI);
+        float tmpAngle2 = (float)(Math.atan(h1 / w1) * 180 / Math.PI);
+        float tmpAngle3 = (float)(Math.atan(h2 / w1) * 180 / Math.PI);
+        float tmpAngle4 = (float)(Math.atan(h2 / w2) * 180 / Math.PI);
+        float x = 0;
+        float y = 0;
+        if (0 == angle || 360 == angle) {
+            x = aX + w2;
+            y = aY;
+        } else if (angle > 0 && angle < tmpAngle1) {
+            x = aX + w2;
+            y = aY + (float)(Math.tan(angle * Math.PI / 180) * w2);
+        } else if (angle == tmpAngle1) {
+            x = aX + w2;
+            y = aY + h1;
+        } else if (angle > tmpAngle1 && angle < 90) {
+            x = aX + (float)(Math.tan((90 - angle) * Math.PI / 180) * h1);
+            y = aY + h1;
+        } else if (90 == angle) {
+            x = aX;
+            y = aY + h1;
+        } else if (angle > 90 && angle < 180 - tmpAngle2) {
+            x = aX - (float)(Math.tan((angle - 90) * Math.PI / 180) * h1);
+            y = aY + h1;
+        } else if (180 - tmpAngle2 == angle) {
+            x = aX - w1;
+            y = aY + h1;
+        } else if (angle > 180 - tmpAngle2 && angle < 180) {
+            x = aX - w1;
+            y = aY + (float)(Math.tan((180 - angle) * Math.PI / 180) * w1);
+        } else if (180 == angle) {
+            x = aX - w1;
+            y = aY;
+        } else if (angle > 180 && angle < 180 + tmpAngle3) {
+            x = aX - w1;
+            y = aY - (float)(Math.tan((angle - 180) * Math.PI / 180) * w1);
+        } else if (180 + tmpAngle3 == angle) {
+            x = aX - w1;
+            y = aY - h2;
+        } else if (angle > 180 + tmpAngle3 && angle < 270) {
+            x = aX - (float)(Math.tan((270 - angle) * Math.PI / 180) * h2);
+            y = aY - h2;
+        } else if (270 == angle) {
+            x = aX;
+            y = aY - h2;
+        } else if (angle > 270 && angle < 360 - tmpAngle4) {
+            x = aX + (float)(Math.tan((angle - 270) * Math.PI / 180) * h2);
+            y = aY - h2;
+        } else if (360 - tmpAngle4 == angle) {
+            x = aX + w2;
+            y = aY - h2;
+        } else if (angle > 360 - tmpAngle4 && angle < 360) {
+            x = aX + w2;
+            y = aY - (float)(Math.tan((360 - angle) * Math.PI / 180) * w2);
+        }
+        float[] point = new float[2];
+        point[0] = x;
+        point[1] = y;
+        return point;
     }
 
     /**
@@ -166,9 +161,9 @@ public class SectorDrawable extends Drawable implements Drawable.Callback {
                 endAngle = startAngle - sweepAngle;
                 endAngle = endAngle >= 0 ? endAngle : 360 + endAngle;
             }
-            float[] sXY = Formula.calcPointOnRectangleByAngle(aX, aY, w1, w2, h1, h2, startAngle);
+            float[] sXY = calcPointOnRectangleByAngle(aX, aY, w1, w2, h1, h2, startAngle);
             int startQuad = calcQuad(aX, aY, w1, w2, h1, h2, sXY[0], sXY[1]);   // 开始象限
-            float[] eXY = Formula.calcPointOnRectangleByAngle(aX, aY, w1, w2, h1, h2, endAngle);
+            float[] eXY = calcPointOnRectangleByAngle(aX, aY, w1, w2, h1, h2, endAngle);
             int endQuad = calcQuad(aX, aY, w1, w2, h1, h2, eXY[0], eXY[1]);     // 结束象限
             // 下面是获得剪裁区
             path.moveTo(aX, aY);
@@ -468,30 +463,6 @@ public class SectorDrawable extends Drawable implements Drawable.Callback {
         return 0;
     }
 
-    @Override
-    public void invalidateDrawable(@NonNull Drawable who) {
-        Callback callback = getCallback();
-        if (null != callback) {
-            callback.invalidateDrawable(this);
-        }
-    }
-
-    @Override
-    public void scheduleDrawable(@NonNull Drawable who, @NonNull Runnable what, long when) {
-        Callback callback = getCallback();
-        if (null != callback) {
-            callback.scheduleDrawable(this, what, when);
-        }
-    }
-
-    @Override
-    public void unscheduleDrawable(@NonNull Drawable who, @NonNull Runnable what) {
-        Callback callback = getCallback();
-        if (null != callback) {
-            callback.unscheduleDrawable(this, what);
-        }
-    }
-
     /**
      * 功  能: 获取开始角度
      * 参  数: 无
@@ -510,7 +481,10 @@ public class SectorDrawable extends Drawable implements Drawable.Callback {
         startAngle = (startAngle >= 0 && startAngle < 360) ? startAngle : 0;
         if (startAngle != mStartAngle) {
             mStartAngle = startAngle;
-            invalidateSelf();
+            Drawable drawable = getDrawable();
+            if (null != drawable) {
+                drawable.invalidateSelf();
+            }
         }
     }
 
@@ -532,7 +506,10 @@ public class SectorDrawable extends Drawable implements Drawable.Callback {
         sweepAngle = (sweepAngle >= 0 && sweepAngle <= 360) ? sweepAngle : 0;
         if (sweepAngle != mSweepAngle) {
             mSweepAngle = sweepAngle;
-            invalidateSelf();
+            Drawable drawable = getDrawable();
+            if (null != drawable) {
+                drawable.invalidateSelf();
+            }
         }
     }
 

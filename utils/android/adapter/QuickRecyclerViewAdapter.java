@@ -17,7 +17,7 @@ import java.util.List;
 /**
  * Author:  jaron.ho
  * Date:    2017-04-12
- * Brief:   QuickRecyclerViewAdapter
+ * Brief:   QuickRecyclerViewAdapter(support multiple item layout)
  */
 
 public abstract class QuickRecyclerViewAdapter<T> extends Adapter<QuickRecyclerViewAdapter.QuickViewHolder> {

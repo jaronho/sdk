@@ -3,25 +3,42 @@ package com.jaronho.sdk.utils;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.graphics.Color;
 import android.graphics.drawable.AnimationDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.SystemClock;
+import android.provider.Browser;
 import android.support.v4.content.ContextCompat;
+import android.text.Html;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.TextPaint;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
+import android.text.style.URLSpan;
 import android.util.Log;
+import android.view.SurfaceView;
 import android.view.View;
-import android.widget.ImageView;
+import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.jaronho.sdk.library.timer.Timer;
 import com.jaronho.sdk.library.timer.TimerManager;
+import com.jaronho.sdk.utils.view.VideoPlayer;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Author:  jaron.ho
  * Date:    2017-02-08
- * Brief:   工具集
+ * Brief:   视图工具集
  */
 
-public final class ViewUtil {
+public final class UtilView {
     private static long mCostStartTime = 0;         // 耗时计算开始时间(毫秒)
     private static Toast mToast = null;             // 提示组件
 
@@ -117,9 +134,9 @@ public final class ViewUtil {
                         tm.setInterval(mShowFlag ? showTime : hideTime);
                         view.setVisibility(mShowFlag ? View.VISIBLE : (hideTime > 0 ? View.INVISIBLE : View.VISIBLE));
                     }
-                }, handler, null, false, "TimerBlink_" + view.getId());
+                }, handler, null, false, "DefaultTimerBlink_" + view.getId());
             } else if (count > 0) {
-                TimerManager.getInstance().run(showTime * count, 1, handler, "TimerBlink_" + view.getId());
+                TimerManager.getInstance().run(showTime * count, 1, handler, "DefaultTimerBlink_" + view.getId());
             }
         }
     }
@@ -151,27 +168,10 @@ public final class ViewUtil {
     public static void stopBlink(View view, boolean showAtLast) {
         if (null != view) {
             if (View.NO_ID != view.getId()) {
-                TimerManager.getInstance().stop("TimerBlink_" + view.getId(), false);
+                TimerManager.getInstance().stop("DefaultTimerBlink_" + view.getId(), false);
             }
             view.setVisibility(showAtLast ? View.VISIBLE : View.INVISIBLE);
         }
-    }
-
-    /**
-     * 功  能: 创建环形进度条
-     * 参  数: image - 图片
-     *         startAngle - 开始角度,[0, 360)
-     *         sweepAngle - 扫描角度,[0, 360]
-     *         clockwise - true:顺时针,false:逆时针
-     * 返回值: SectorDrawable
-     */
-    public static SectorDrawable createCircleProgress(ImageView image, float startAngle, float sweepAngle, boolean clockwise) {
-        SectorDrawable sectorDrawable = null;
-        if (null != image) {
-            sectorDrawable = new SectorDrawable(image.getDrawable(), startAngle, sweepAngle, clockwise);
-            image.setImageDrawable(sectorDrawable);
-        }
-        return sectorDrawable;
     }
 
     /**
@@ -202,5 +202,101 @@ public final class ViewUtil {
         if (null != context) {
             showToast(context, context.getString(resId));
         }
+    }
+
+    /**
+     * 功  能: 设置链接跳转与高亮样式
+     * 参  数: url - 链接
+     *         color - 链接颜色
+     *         underline - 是否显示下划线
+     * 返回值: ClickableSpan
+     */
+    public static ClickableSpan createClickableSpan(final String url, final int color, final boolean underline) {
+        return new ClickableSpan() {
+            @Override
+            public void onClick(View widget) {
+                Uri uri = Uri.parse(url);
+                Context context = widget.getContext();
+                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                intent.putExtra(Browser.EXTRA_APPLICATION_ID, context.getPackageName());
+                context.startActivity(intent);
+            }
+
+            @Override
+            public void updateDrawState(TextPaint ds) {
+                ds.setColor(color);
+                ds.setUnderlineText(underline);
+            }
+        };
+    }
+
+    /**
+     * 功  能: 让TextView自动解析URL并高亮设置点击链接(链接不支持中文)
+     * 参  数: tv - 文本控件
+     *         content - 内容
+     * 返回值: TextView
+     */
+    public static TextView setTextViewContent(TextView tv, String content) {
+        SpannableStringBuilder sp = new SpannableStringBuilder(content);
+        // 又碰上一个坑,Android居然还不支持POSIX字符,在Android中的\p{Alnum}和Java中的\p{Alnum}不是同一个值,非得要换成[a-zA-Z0-9]才行
+        Pattern pattern = Pattern.compile("(http|https|ftp|svn)://([a-zA-Z0-9]+[/?.?])" + "+[a-zA-Z0-9]*\\??([a-zA-Z0-9]*=[a-zA-Z0-9]*&?)*");
+        Matcher matcher = pattern.matcher(content);
+        while (matcher.find()) {
+            String url = matcher.group();
+            int start = content.indexOf(url);
+            if (start >= 0) {
+                int end = start + url.length();
+                sp.setSpan(new URLSpan(url), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sp.setSpan(createClickableSpan(url, Color.BLUE, false), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        tv.setText(sp);
+        tv.setMovementMethod(LinkMovementMethod.getInstance());
+        return tv;
+    }
+
+    /**
+     * 功  能: 处理html数据的高亮与响应
+     * 参  数: tv - 文本控件
+     *         content - 内容
+     * 返回值: TextView
+     */
+    public static TextView setTextViewHtml(TextView tv, String content) {
+        SpannableStringBuilder sp = new SpannableStringBuilder(Html.fromHtml(content));
+        URLSpan[] urlSpans = sp.getSpans(0, sp.length(), URLSpan.class);
+        for (final URLSpan span : urlSpans) {
+            int start = sp.getSpanStart(span);
+            int end = sp.getSpanEnd(span);
+            sp.setSpan(createClickableSpan(span.getURL(), Color.BLUE, false), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        tv.setText(sp);
+        tv.setMovementMethod(LinkMovementMethod.getInstance());
+        return tv;
+    }
+
+    /**
+     * 功  能: 创建视频播放器(默认大小)
+     * 参  数: activity - 活动
+     * 返回值: VideoPlayer
+     */
+    public static VideoPlayer createVideoPlayer(Activity activity) {
+        SurfaceView surfaceView = new SurfaceView(activity);
+        surfaceView.setZOrderOnTop(true);
+        surfaceView.setZOrderMediaOverlay(true);
+        return new VideoPlayer(activity, surfaceView, true);
+    }
+
+    /**
+     * 功  能: 创建视频播放器(固定宽高)
+     * 参  数: activity - 活动
+     *         width - 宽度
+     *         height - 高度
+     * 返回值: VideoPlayer
+     */
+    public static VideoPlayer createVideoPlayer(Activity activity, int width, int height) {
+        VideoPlayer player = createVideoPlayer(activity);
+        player.setFitType(VideoPlayer.FitType.FIXED_SIZE);
+        player.getView().setLayoutParams(new ViewGroup.LayoutParams(width, height));
+        return player;
     }
 }

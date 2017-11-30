@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Author:  jaron.ho
  * Date:    2017-04-12
- * Brief:   TreeRecyclerViewAdapter
+ * Brief:   TreeRecyclerViewAdapter(support tree item list)
  */
 
 public class TreeRecyclerViewAdapter extends WrapRecyclerViewAdapter {

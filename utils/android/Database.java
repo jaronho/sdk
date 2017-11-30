@@ -3,97 +3,85 @@ package com.jaronho.sdk.utils;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.util.Log;
 
-public class Database {
-	private static String TAG = "Database";
-	// SQLite
-	private static class SQLiteHelper extends SQLiteOpenHelper {
-		public SQLiteHelper(Context context, String name, CursorFactory factory, int version) {
-		    super(context, name, factory, version);
-		}
-		@Override
-		public void onCreate(SQLiteDatabase db) {
-		}
-		@Override
-		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion){
-		}
-	}
-	
-	// 当前使用的用户数据库
-	private static SQLiteOpenHelper mSQLiteHelper = null;
-	
+/**
+ * Author:  jaron.ho
+ * Date:    2017-05-22
+ * Brief:   SQLite数据库操作类
+ */
+
+public class Database extends SQLiteOpenHelper {
+	private static final String TAG = "Database";
+
 	/**
-     * 创建数据库
-     * @param context 上下文
-     * @param name 数据库名
-     * @param factory 游标工厂
-     * @param version 版本号
-     */
-	public static SQLiteOpenHelper create(Context context, String name, CursorFactory factory, int version) {
-		if (null != mSQLiteHelper) {
-			return mSQLiteHelper;
-		}
-		try {
-			mSQLiteHelper = new SQLiteHelper(context, name, factory, version);
-		} catch (SQLiteException e) {
-			Log.e(TAG, "create -> name: " + name + ", version: " + version + "\n" + e.toString());
-		}
-		return mSQLiteHelper;
+	 * 构造函数
+	 * @param context 上下文
+	 * @param name 数据库名
+	 * @param factory 游标工厂
+	 * @param version 版本号
+	 * @param errorHandler 错误处理句柄
+	 */
+	public Database(Context context, String name, CursorFactory factory, int version, DatabaseErrorHandler errorHandler) {
+		super(context, name, factory, version, errorHandler);
 	}
-	
-	/**
+
+	public Database(Context context, String name, CursorFactory factory, int version) {
+		this(context, name, factory, version, null);
+	}
+
+	@Override
+	public void onCreate(SQLiteDatabase db) {
+	}
+
+	@Override
+	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+	}
+
+	 /**
      * 关闭当前使用数据库
      */
-	public static void close() {
-		if (null == mSQLiteHelper) {
-			return;
+	@Override
+	public synchronized void close() {
+		try {
+			getWritableDatabase().close();
+			getReadableDatabase().close();
+			super.close();
+		} catch (Exception e) {
+			Log.e(TAG, "close: " + e.toString());
 		}
-		mSQLiteHelper.getWritableDatabase().close();
-		mSQLiteHelper.getReadableDatabase().close();
-		mSQLiteHelper.close();
-		mSQLiteHelper = null;
 	}
-	
+
 	/**
      * 执行增、删、改操作SQL
      * @param sql SQL语句
      */
-	public static void execute(String sql) {
-		if (null == mSQLiteHelper) {
-			return;
-		}
-		SQLiteDatabase database = null;
+	public void execute(String sql) {
 		try {
-			database = mSQLiteHelper.getWritableDatabase();
+			getWritableDatabase().execSQL(sql);;
+		} catch (SQLiteException e) {
+			Log.e(TAG, "execute -> sql: " + sql + "\n" + e.toString());
 		}
-		catch (SQLiteException e) {
-			return;
-		}
-		database.execSQL(sql);
 	}
 	
 	/**
      * 插入数据
      * @param table 表名
      * @param values 插入的数据内容
-     * @return 返回值 -1 为失败
+     * @return 返回值:-1为失败
      */
-	public static long insert(String table, ContentValues values) {
-		if (null == mSQLiteHelper) {
-			return -1L;
-		}
-		SQLiteDatabase database = null;
+	public long insert(String table, ContentValues values) {
 		try {
-			database = mSQLiteHelper.getWritableDatabase();
+			return getWritableDatabase().insert(table, null, values);
 		} catch (SQLiteException e) {
-			return -1L;
+			Log.e(TAG, "insert -> table: " + table + "\n" + e.toString());
 		}
-		return database.insert(table, null, values);
+		return -1L;
 	}
 	
 	/**
@@ -101,19 +89,15 @@ public class Database {
      * @param table 表名
      * @param whereClause 条件
      * @param whereArgs 条件参数值
-     * @return 返回值 -1 为失败
+     * @return 返回值:-1为失败
      */
-	public static int delete(String table, String whereClause, String[] whereArgs) {
-		if (null == mSQLiteHelper) {
-			return -1;
-		}
-		SQLiteDatabase database = null;
+	public int delete(String table, String whereClause, String[] whereArgs) {
 		try {
-			database = mSQLiteHelper.getWritableDatabase();
+			getWritableDatabase().delete(table, whereClause, whereArgs);
 		} catch (SQLiteException e) {
-			return -1;
+			Log.e(TAG, "delete -> table: " + table + "\n" + e.toString());
 		}
-		return database.delete(table, whereClause, whereArgs);
+		return -1;
 	}
 	
 	/**
@@ -122,19 +106,15 @@ public class Database {
      * @param values 更新数据内容
      * @param whereClause 条件
      * @param whereArgs 条件参数
-     * @return 返回值 -1 为失败
+     * @return 返回值:-1为失败
      */
-	public static int update(String table, ContentValues values, String whereClause, String[] whereArgs) {
-		if (null == mSQLiteHelper) {
-			return -1;
-		}
-		SQLiteDatabase database = null;
+	public int update(String table, ContentValues values, String whereClause, String[] whereArgs) {
 		try {
-			database = mSQLiteHelper.getWritableDatabase();
+			return getWritableDatabase().update(table, values, whereClause, whereArgs);
 		} catch (SQLiteException e) {
-			return -1;
+			Log.e(TAG, "update -> table: " + table + "\n" + e.toString());
 		}
-		return database.update(table, values, whereClause, whereArgs);
+		return -1;
 	}
 	
 	/**
@@ -146,38 +126,30 @@ public class Database {
      * @param groupBy 分组字段(可为空)
      * @param having 分组条件字段(可为空)
      * @param orderBy 排序字段(可为空)  
-     * @return 返回数据库查询Cursor
+     * @return 返回查询的Cursor
      */
-	public static Cursor query(String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy) {
-		if (null == mSQLiteHelper) {
-			return null;
-		}
-		SQLiteDatabase database = null;
+	public Cursor query(String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy) {
 		try {
-			database = mSQLiteHelper.getReadableDatabase();
+			return getReadableDatabase().query(table, columns, selection, selectionArgs, groupBy, having, orderBy);
 		} catch (SQLiteException e) {
-			return null;
+			Log.e(TAG, "query -> table: " + table + "\n" + e.toString());
 		}
-		return database.query(table, columns, selection, selectionArgs, groupBy, having, orderBy);
+		return null;
 	}
 	
 	/**
      * 查询
      * @param sql 查询条件SQL语句
      * @param selectionArgs 查询条件参数
-     * @return 返回查询的  Cursor
+     * @return 返回查询的Cursor
      */
-	public static Cursor query(String sql, String[] selectionArgs) {
-		if (null == mSQLiteHelper) {
-			return null;
-		}
-		SQLiteDatabase database = null;
+	public Cursor query(String sql, String[] selectionArgs) {
 		try {
-			database = mSQLiteHelper.getWritableDatabase();
+			return getWritableDatabase().rawQuery(sql, selectionArgs);
 		} catch (SQLiteException e) {
-			return null;
+			Log.e(TAG, "query -> sql: " + sql + "\n" + e.toString());
 		}
-		return database.rawQuery(sql, selectionArgs);
+		return null;
 	}
 	
 	/**
@@ -190,18 +162,14 @@ public class Database {
      * @param having 分组条件字段(可为空)
      * @param orderBy 排序字段(可为空)
      * @param limit 指定偏移量和获取的记录数(可为空)
-     * @return 返回查询的  Cursor
+     * @return 返回查询的Cursor
      */
-	public static Cursor query(String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit) {
-		if (null == mSQLiteHelper) {
-			return null;
-		}
-		SQLiteDatabase database = null;
+	public Cursor query(String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit) {
 		try {
-			database = mSQLiteHelper.getWritableDatabase();
+			return getWritableDatabase().query(table, columns, selection, selectionArgs, groupBy, having, orderBy, limit);
 		} catch (SQLiteException e) {
-			return null;
+			Log.e(TAG, "query -> table: " + table + "\n" + e.toString());
 		}
-		return database.query(table, columns, selection, selectionArgs, groupBy, having, orderBy, limit);
+		return null;
 	}
 }
