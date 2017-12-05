@@ -9,7 +9,7 @@ function CreateTimerManager() {
 	var timerManager = {};
 	// insert to timer list
 	function insertTimer(tm) {
-		for (var i = 0, len = mTimerList.length; i < len; ++i) {
+		for (var i = 0; i < mTimerList.length; ++i) {
 			if (tm == mTimerList[i]) {
 				return;
 			}
@@ -18,7 +18,7 @@ function CreateTimerManager() {
 	}
 	// remove from timer list
 	function removeTimer(tm) {
-		for (var i = 0, len = mTimerList.length; i < len; ++i) {
+		for (var i = 0; i < mTimerList.length; ++i) {
 			if (tm == mTimerList[i]) {
 				mTimerList.splice(i, 1);
 				return;
@@ -27,7 +27,7 @@ function CreateTimerManager() {
 	}
 	// called every frame
 	timerManager.updateTimer = function(currentTime) {
-		for (var i = 0, len = mTimerList.length; i < len; ++i) {
+		for (var i = 0; i < mTimerList.length; ++i) {
 			var timer = mTimerList[i];
 			if (timer && 'object' == typeof(timer) && 'function' == typeof(timer.update)) {
 				timer.update(currentTime);
