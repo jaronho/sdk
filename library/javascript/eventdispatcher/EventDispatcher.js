@@ -24,7 +24,7 @@ function CreateEventDispatcher() {
 			mEventHandlerMap[eventId] = handlers;
 			return true;
 		}
-		for (var i = 0, len = handlers.length; i < len; ++i) {
+		for (var i = 0; i < handlers.length; ++i) {
 			if (func == handlers[i].func) {
 				return false;
 			}
@@ -51,7 +51,7 @@ function CreateEventDispatcher() {
 			delete mEventHandlerMap[eventId];
 			return;
 		}
-		for (var i = 0, len = handlers.length; i < len; ++i) {
+		for (var i = 0; i < handlers.length; ++i) {
 			if (handlers[i] && 'object' == typeof(handlers[i]) && func == handlers[i].func) {
 				handlers.splice(i, 1);
 				break;
@@ -70,7 +70,7 @@ function CreateEventDispatcher() {
 		if (!(handlers instanceof Array) || 0 == handlers.length) {
 			return false;
 		}
-		for (var i = 0, len = handlers.length; i < len; ++i) {
+		for (var i = 0; i < handlers.length; ++i) {
 			if (handlers[i] && 'object' == typeof(handlers[i]) && 'function' == typeof(handlers[i].func)) {
 				handlers[i].func.apply(handlers[i].target, Array.prototype.slice.call(arguments, 1));
 			}
