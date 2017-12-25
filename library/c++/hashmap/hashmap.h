@@ -1,5 +1,10 @@
-#ifndef _HASH_MAP_H_
-#define _HASH_MAP_H_
+/**********************************************************************
+* Author:	jaron.ho
+* Date:		2017-09-19
+* Brief:	hashmap
+**********************************************************************/
+#ifndef _HASHMAP_H_
+#define _HASHMAP_H_
 
 #define HASHMAP_THREAD_SAFETY	1	/* 1.thread safe, 0.no thread safe */
 
@@ -28,7 +33,7 @@ typedef struct hashmap_element_st {
 typedef struct hashmap_element_iterator_st {
 	struct hashmap_st* hm; 	// The hashmap on which we iterate
 	unsigned long index;	// Current index in the map
-	hashmap_element_st* elem; 	// Curent element in the list
+	hashmap_element_st* elem; 	// Current element in the list
 } hashmap_element_iterator_st;
 
 // Hashtabe structure
@@ -131,4 +136,4 @@ extern void* hashmap_iterate_value(hashmap_element_iterator_st* iterator);
 }
 #endif
 
-#endif	// _HASH_MAP_H_
+#endif	// _HASHMAP_H_
