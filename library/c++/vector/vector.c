@@ -1,4 +1,9 @@
-#include "vector_st.h"
+/**********************************************************************
+* Author:	jaron.ho
+* Date:		2017-09-18
+* Brief:	vector
+**********************************************************************/
+#include "vector.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <memory.h>
