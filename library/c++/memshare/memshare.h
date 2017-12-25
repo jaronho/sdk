@@ -34,11 +34,11 @@ typedef void (*shm_callback_log)(int level, const char* format, ...);
 extern int set_print_level(int level);
 
 /*****************************************************************************/
-/* Description        : This functionsn set the worker frequency, default is */
+/* Description        : This function set the worker frequency, default is   */
 /*                      16 millisecond (60 FPS)                              */
 /* Input(s)           : millisecond, minimum value is 0.001f                 */
 /* Output(s)          : None.                                                */
-/* Return Value(s)    : 0 ok                                                 */
+/* Return Value(s)    : 0.ok                                                 */
 /*****************************************************************************/
 extern int set_freq(float millisecond);
 
@@ -66,7 +66,7 @@ extern int set_freq(float millisecond);
 extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_size, int queue_capacity, shm_callback_msg scbm, shm_callback_log scbl);
 
 /*****************************************************************************/
-/* Description        : This functionsn will send a msg block to a specific  */
+/* Description        : This function will send a msg block to a specific    */
 /*                      dest proc with thread blocking                       */
 /* Input(s)           : Destination proc(const char*), msg_type of msg(int)  */
 /*						msg block(const void*), length of msg block(long)    */
@@ -80,7 +80,7 @@ extern int init_memshare(const char* proc_name, int proc_num, int shm_key, long 
 extern int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data);
 
 /*****************************************************************************/
-/* Description        : This functionsn will send a msg block to a specific  */
+/* Description        : This function will send a msg block to a specific    */
 /*                      dest proc with thread Non-blocking IO                */
 /* Input(s)           : Destination proc(const char*), msg_type of msg(int)  */
 /*						msg block(const void*), length of msg block(long)    */
