@@ -245,14 +245,16 @@ Common.wash = function(arr) {
 	return arr
 };
 //----------------------------------------------------------------------
-// 生成uid,bit:位数(10-24),如:"1447817348611214450"
+// 生成uid,bit:位数(19-24),如:"1447817348611214450"
 Common.createUniqueId = function(bit) {
 	if ('number' == typeof(bit)) {
-		if (bit > 24) {
+        if (bit < 19) {
+            bit = 19
+        } else if (bit > 24) {
 			bit = 24;
 		}
 	} else {
-		bit = 10;
+		bit = 24;
 	}
     var nt = Date.now().toString();
     var offset = bit - nt.length;
