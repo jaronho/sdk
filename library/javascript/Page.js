@@ -3,7 +3,7 @@
  ** Date:	2015-08-11
  ** Brief:	page
  ***********************************************************************/
-Page = {};
+var Page = {};
 //----------------------------------------------------------------------
 // 获取指定数据,beginIndex:从0开始,(数据范围从beginIndex -> beginIndex + numPerPage)
 Page.getData = function(arr, numPerPage, beginIndex) {
