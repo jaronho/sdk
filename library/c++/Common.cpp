@@ -1,8 +1,8 @@
-/******************************************************************************
-* Author: jaron.ho
-* Date:   2012-09-06
-* Brief:  common functions
-******************************************************************************/
+/**********************************************************************
+ * Author:	jaron.ho
+ * Date:    2012-09-06
+ * Brief:	common functions
+ **********************************************************************/
 #if defined(win32) || defined(_win32) || defined(WIN32) || defined(_WIN32) || \
     defined(win64) || defined(_win64) || defined(WIN64) || defined(_WIN64)
     #define _SYSTEM_WINDOWS_
@@ -25,18 +25,18 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #endif
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::isDigit(char c) {
     return c >= '0' && c <= '9';
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::isDigit(const std::string& str) {
     if (str.empty()) {
         return false;
     }
     bool mask = false;
     int decimal = 0;
-    for (size_t i=0; i<str.size(); ++i) {
+    for (size_t i = 0; i < str.size(); ++i) {
         if (0 == i && ('+' == str[i] || '-' == str[i])) {
             mask = true;
             continue;
@@ -58,77 +58,77 @@ bool Common::isDigit(const std::string& str) {
     }
     return true;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 int Common::toInt(const std::string& str) {
     return atoi(str.c_str());
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 long Common::toLong(const std::string& str) {
     return atol(str.c_str());
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 long long Common::toLongLong(const std::string& str) {
     return _atoi64(str.c_str());
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 double Common::toDouble(const std::string& str) {
     return atof(str.c_str());
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::toString(short u) {
     char buf[8];
     sprintf(buf, "%d", u);
     return buf;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::toString(int n) {
     char buf[16];
     sprintf(buf, "%d", n);
     return buf;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::toString(long l) {
     char buf[32];
     sprintf(buf, "%ld", l);
     return buf;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::toString(long long ll) {
     char buf[64];
     sprintf(buf, "%lld", ll);
     return buf;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::toString(float f) {
     char buf[64];
     sprintf(buf, "%f", f);
     return buf;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::toString(double d) {
     char buf[128];
     sprintf(buf, "%f", d);
     return buf;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::toLower(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(), tolower);
     return str;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::toUpper(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(), toupper);
     return str;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::newLineString(void) {
-    return std::string("\r\n");
+    return std::string("\n");
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::stringOfChar(unsigned int n, char ch) {
     return std::string(n, ch);
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::limitStringLength(std::string str, size_t len, const std::string& sufStr, const std::string& defStr) {
     if (str.empty()) {
         return defStr;
@@ -138,7 +138,7 @@ std::string Common::limitStringLength(std::string str, size_t len, const std::st
     }
     return str;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::wstring Common::limitWstringLength(std::wstring wstr, size_t len, const std::wstring& sufWstr, const std::wstring& defWstr) {
     if (wstr.empty()) {
         return defWstr;
@@ -148,7 +148,7 @@ std::wstring Common::limitWstringLength(std::wstring wstr, size_t len, const std
     }
     return wstr;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::vector<std::string> Common::splitString(std::string str, const std::string& pattern) {
     std::vector<std::string> result;
     if (str.empty() || pattern.empty()) {
@@ -156,7 +156,7 @@ std::vector<std::string> Common::splitString(std::string str, const std::string&
     }
     str.append(pattern);
     std::string::size_type pos;
-    for (size_t i=0; i<str.size(); ++i) {
+    for (size_t i = 0; i < str.size(); ++i) {
         pos = str.find(pattern, i);
         if (pos < str.size()) {
             result.push_back(str.substr(i, pos - i));
@@ -165,38 +165,36 @@ std::vector<std::string> Common::splitString(std::string str, const std::string&
     }
     return result;
 }
-//--------------------------------------------------------------------------
-std::string Common::replaceString(std::string str, const std::string& src, const std::string& dest) {
-    if (str.empty() || src.empty()) {
+/*********************************************************************/
+std::string Common::replaceString(std::string str, const std::string& rep, const std::string& dest) {
+    if (str.empty() || rep.empty()) {
         return str;
     }
     std::string::size_type pos = 0;
-    while (std::string::npos != (pos = str.find(src, pos))) {
-        str.replace(pos, src.size(), dest);
+    while (std::string::npos != (pos = str.find(rep, pos))) {
+        str.replace(pos, rep.size(), dest);
         pos += dest.size();
     }
     return str;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::formatString(const char* format, ...) {
     char buf[512];
     memset(buf, 0, sizeof(buf));
-
     va_list args;
     va_start(args, format);
     vsnprintf(buf, sizeof(buf), format, args);
     va_end(args);
-
     return buf;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::wstring2string(const std::wstring& wstr, const char* locale) {
     if (wstr.empty()) {
         return "";
     }
     std::string curLocale = setlocale(LC_ALL, NULL);
     char* localeName = setlocale(LC_ALL, locale);
-    if (NULL == localeName) {
+    if (!localeName) {
         setlocale(LC_ALL, curLocale.c_str());
         return "";
     }
@@ -210,14 +208,14 @@ std::string Common::wstring2string(const std::wstring& wstr, const char* locale)
     setlocale(LC_ALL, curLocale.c_str());
     return result;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::wstring Common::string2wstring(const std::string& str, const char* locale) {
     if (str.empty()) {
         return L"";
     }
     std::string curLocale = setlocale(LC_ALL, NULL);
     char* localeName = setlocale(LC_ALL, locale);
-    if (NULL == localeName) {
+    if (!localeName) {
         setlocale(LC_ALL, curLocale.c_str());
         return L"";
     }
@@ -231,7 +229,7 @@ std::wstring Common::string2wstring(const std::string& str, const char* locale) 
     setlocale(LC_ALL, curLocale.c_str());
     return result;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 size_t Common::characterPlaceholder(unsigned char ch) {
     const unsigned char charsets[] = {0, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc};
     size_t i = sizeof(charsets);
@@ -243,26 +241,29 @@ size_t Common::characterPlaceholder(unsigned char ch) {
     }
     return 1;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::createDir(const std::string& dirName) {
 #ifdef _SYSTEM_WINDOWS_
-    // method 1:
+    /* method 1 */
     return 0 == _mkdir(dirName.c_str());
-    // method 2:
-    /*if (INVALID_FILE_ATTRIBUTES == GetFileAttributesA(dirName.c_str())) {
+    /* method 2 */
+/*
+    if (INVALID_FILE_ATTRIBUTES == GetFileAttributesA(dirName.c_str())) {
         CreateDirectoryA(dirName.c_str(), 0);
         return true;
     }
-    return false;*/
+    return false;
+*/
 #else
     return 0 == mkdir(dirName.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
 #endif
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 void Common::removeDir(const std::string& dirName) {
 #ifdef _SYSTEM_WINDOWS_
-    // method 1:
-    /*struct _finddata_t fileData;
+    /* method 1 */
+/*
+    struct _finddata_t fileData;
     int handle = _findfirst((dirName + "/*.*").c_str(), &fileData);
     if (-1 == handle || !(_A_SUBDIR & fileData.attrib)) {
         return;
@@ -279,23 +280,24 @@ void Common::removeDir(const std::string& dirName) {
         }
     }
     _findclose(handle);
-    rmdir(dirName.c_str());*/
-    // method 2:
+    rmdir(dirName.c_str());
+*/
+    /* method 2 */
     std::string command = "rd /s /q \"" + dirName + "\"";
     system(command.c_str());
 #else
     DIR* dir = opendir(dirName.c_str());
-    if (NULL == dir) {
+    if (!dir) {
         return;
     }
     struct dirent* dirp = NULL;
-    while (NULL != (dirp = readdir(dir))) {
+    while (dirp = readdir(dir)) {
         if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name)) {
             continue;
         }
         std::string subName = dirName + "/" + dirp->d_name;
         DIR* subDir = opendir(subName.c_str());
-        if (NULL == subDir) {
+        if (!subDir) {
             remove(subName.c_str());
         } else {
             closedir(subDir);
@@ -306,29 +308,29 @@ void Common::removeDir(const std::string& dirName) {
     rmdir(dirName.c_str());
 #endif
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::existFile(const std::string& filePath) {
     FILE* fp = fopen(filePath.c_str(), "r");
-    if (NULL == fp) {
+    if (!fp) {
         return false;
     }
     fclose(fp);
     return true;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::createFile(const std::string& filePath) {
     FILE* fp = fopen(filePath.c_str(), "wb");
-    if (NULL == fp) {
+    if (!fp) {
         return false;
     }
     fclose(fp);
     return true;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::removeFile(const std::string& filePath) {
     return 0 == remove(filePath.c_str());
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::renameFile(const std::string& oldFileName, const std::string& newFileName, bool forceRename /*= false*/) {
     if (oldFileName.empty() || newFileName.empty()) {
         return false;
@@ -338,10 +340,10 @@ bool Common::renameFile(const std::string& oldFileName, const std::string& newFi
     }
     return 0 == rename(oldFileName.c_str(), newFileName.c_str());
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 long Common::calcFileSize(const std::string& filePath) {
     FILE* fp = fopen(filePath.c_str(), "r");
-    if (NULL == fp) {
+    if (!fp) {
         return -1;
     }
 #ifdef _SYSTEM_WINDOWS_
@@ -352,7 +354,7 @@ long Common::calcFileSize(const std::string& filePath) {
     fclose(fp);
     return size;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::vector<std::string> Common::stripFileInfo(const std::string& filePath) {
     std::string dirname = "", filename = filePath, basename = "", extname = "";
     size_t pos = filePath.find_last_of("/\\");
@@ -372,10 +374,10 @@ std::vector<std::string> Common::stripFileInfo(const std::string& filePath) {
     infos.push_back(extname);
     return infos;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 unsigned char* Common::getFileData(const std::string& filePath, long* fileSize, bool isText) {
     FILE* fp = fopen(filePath.c_str(), "rb");
-    if (NULL == fp) {
+    if (!fp) {
         return NULL;
     }
     fseek(fp, 0, SEEK_END);
@@ -392,7 +394,7 @@ unsigned char* Common::getFileData(const std::string& filePath, long* fileSize, 
     fclose(fp);
     return buffer;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::vector<std::string> Common::getFileDataEx(const std::string& filePath) {
     std::string fileString = "";
     long fileSize = 0;
@@ -403,13 +405,13 @@ std::vector<std::string> Common::getFileDataEx(const std::string& filePath) {
     }
     return splitString(fileString, newLineString());
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::writeDataToFile(const unsigned char* data, long dataSize, const std::string& filePath) {
-    if (NULL == data || 0 == dataSize) {
+    if (!data || 0 == dataSize) {
         return false;
     }
     FILE* fp = fopen(filePath.c_str(), "wb");
-    if (NULL == fp) {
+    if (!fp) {
         return false;
     }
     fwrite(data, dataSize, sizeof(unsigned char), fp);
@@ -417,19 +419,19 @@ bool Common::writeDataToFile(const unsigned char* data, long dataSize, const std
     fclose(fp);
     return true;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::copyFile(const std::string& srcFilePath, const std::string& destFilePath) {
     if (srcFilePath.empty() || destFilePath.empty() || srcFilePath == destFilePath) {
         return false;
     }
     long fileSize = 0;
     unsigned char* fileData = getFileData(srcFilePath, &fileSize);
-    if (0 == fileSize || NULL == fileData) {
+    if (0 == fileSize || !fileData) {
         return false;
     }
     return writeDataToFile(fileData, fileSize, destFilePath);
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::revisalPath(std::string path) {
     if (path.empty()) {
         return path;
@@ -441,7 +443,7 @@ std::string Common::revisalPath(std::string path) {
     }
     return path;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 bool Common::isAbsolutePath(std::string path, OSType os) {
     switch (os) {
     case OST_WINDOWS: {
@@ -451,10 +453,12 @@ bool Common::isAbsolutePath(std::string path, OSType os) {
         }
         break;
     case OST_ANDORID: {
-            // On Android, there are two situations for full path.
-            // 1.Files in APK, e.g. assets/path/path/file.png
-            // 2.Files not in APK, e.g. /data/data/org.cocos2dx.hellocpp/cache/path/path/file.png, or /sdcard/path/path/file.png.
-            // So these two situations need to be checked on Android.
+            /*
+             * On Android, there are two situations for full path.
+             * 1.Files in APK, e.g. assets/path/path/file.png
+             * 2.Files not in APK, e.g. /data/data/org.cocos2dx.hellocpp/cache/path/path/file.png, or /sdcard/path/path/file.png.
+             * So these two situations need to be checked on Android.
+             */
             if ((path.size() >= 1) && ('/' == path[0] || 0 == path.find("assets/"))) {
                 return true;
             }
@@ -471,25 +475,25 @@ bool Common::isAbsolutePath(std::string path, OSType os) {
     }
     return false;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 std::string Common::getFullPath(std::string path, OSType os) {
     if (isAbsolutePath(path, os)) {
         return path;
     }
-    // get current dir
+    /* get current dir */
 #ifdef _SYSTEM_WINDOWS_
     char* buffer = _getcwd(NULL, 0);
 #else
     char* buffer = getcwd(NULL, 0);
 #endif
-    if (NULL == buffer) {
+    if (!buffer) {
         return path;
     }
     std::string currentPath(buffer);
     free(buffer);
     return revisalPath(currentPath + '/' + path);
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 void Common::searchFile(std::string dirName, const std::vector<std::string>& extList, std::vector<std::string>& fileList, bool recursive /*= true*/) {
 #ifdef _SYSTEM_WINDOWS_
     _finddata_t fileData;
@@ -498,30 +502,30 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
         return;
     }
     dirName = revisalPath(dirName);
-    while (0  == _findnext(handle, &fileData)) {
+    while (0 == _findnext(handle, &fileData)) {
         if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name)) {
             continue;
         }
         std::string subName = dirName + "/" + fileData.name;
-        // is sub directory
+        /* is sub directory */
         if (_A_SUBDIR & fileData.attrib) {
             if (recursive) {
                 searchFile(subName, extList, fileList, true);
             }
             continue;
         }
-        // all file type
+        /* all file type */
         if (extList.empty()) {
             fileList.push_back(subName);
             continue;
         }
-        // specific file type
+        /* specific file type */
         std::string::size_type index = subName.find_last_of(".");
         if (std::string::npos == index) {
             continue;
         }
         std::string ext = subName.substr(index, subName.size() - index);
-        for (size_t i=0; i<extList.size(); ++i) {
+        for (size_t i = 0; i < extList.size(); ++i) {
             if (extList[i] == ext) {
                 fileList.push_back(subName);
             }
@@ -530,12 +534,12 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
     _findclose(handle);
 #else
     DIR* dir = opendir(dirName.c_str());
-    if (NULL == dir) {
+    if (! dir) {
         return;
     }
     dirName = revisalPath(dirName);
     struct dirent* dirp = NULL;
-    while (NULL != (dirp = readdir(dir))) {
+    while (dirp = readdir(dir)) {
         if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name)) {
             continue;
         }
@@ -567,7 +571,7 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
     closedir(dir);
 #endif
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 void Common::searchDir(std::string dirName, std::vector<std::string>& dirList, bool recursive /*= true*/) {
 #ifdef _SYSTEM_WINDOWS_
     _finddata_t fileData;
@@ -580,7 +584,7 @@ void Common::searchDir(std::string dirName, std::vector<std::string>& dirList, b
         if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name)) {
             continue;
         }
-        if (_A_SUBDIR & fileData.attrib) {	// is sub directory
+        if (_A_SUBDIR & fileData.attrib) {	/* is sub directory */
             std::string subDirName = dirName + "/" + fileData.name;
             dirList.push_back(subDirName);
             if (recursive) {
@@ -591,18 +595,18 @@ void Common::searchDir(std::string dirName, std::vector<std::string>& dirList, b
     _findclose(handle);
 #else
     DIR* dir = opendir(dirName.c_str());
-    if (NULL == dir) {
+    if (!dir) {
         return;
     }
     dirName = revisalPath(dirName);
     struct dirent* dirp = NULL;
-    while (NULL != (dirp = readdir(dir))) {
+    while (dirp = readdir(dir)) {
         if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name)) {
             continue;
         }
         std::string subDirName = dirName + "/" + dirp->d_name;
         DIR* subDir = opendir(subDirName.c_str());
-        if (NULL == subDir) {
+        if (!subDir) {
             continue;
         }
         closedir(subDir);
@@ -615,7 +619,7 @@ void Common::searchDir(std::string dirName, std::vector<std::string>& dirList, b
     closedir(dir);
 #endif
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 double Common::getTime(void) {
 #ifdef _SYSTEM_WINDOWS_
     FILETIME ft;
@@ -632,7 +636,7 @@ double Common::getTime(void) {
     return v.tv_sec + v.tv_usec/1.0e6;
 #endif
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 struct tm Common::timeToDate(long seconds /*= 0*/) {
     time_t nowtime = seconds > 0 ? seconds : time(NULL);
     struct tm* timeinfo = localtime(&nowtime);
@@ -644,7 +648,7 @@ struct tm Common::timeToDate(long seconds /*= 0*/) {
     timeinfo->tm_yday += 1;         /* [1, 366] */
     return *timeinfo;
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
 long Common::dateToTime(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*= 8*/, int n /*= 0*/, int s /*= 0*/) {
     if (y < 1900 || m > 12 || m < 1 || d > 31 || d < 1 || h > 23 || h < 0 || n > 59 || n < 0 || s > 59 || s < 0) {
         return 0;
@@ -658,4 +662,4 @@ long Common::dateToTime(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*
     date.tm_sec = s;
     return (long)mktime(&date);
 }
-//--------------------------------------------------------------------------
+/*********************************************************************/
