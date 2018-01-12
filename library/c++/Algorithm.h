@@ -1,8 +1,8 @@
-/******************************************************************************
-* Author:	jaron.ho
-* Date:		2018-01-11
-* Brief:	algorithm
-******************************************************************************/
+/**********************************************************************
+ * Author:	jaron.ho
+ * Date:    2018-01-11
+ * Brief:	algorithm
+ **********************************************************************/
 #ifndef _ALGORITHM_H_
 #define _ALGORITHM_H_
 
@@ -55,4 +55,4 @@ public:
     static bool mathProbability(unsigned int probability);
 };
 
-#endif	// _ALGORITHM_H_
+#endif	/* _ALGORITHM_H_ */
