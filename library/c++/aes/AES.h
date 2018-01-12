@@ -1,65 +1,65 @@
 /**********************************************************************
-* Author:	jaron.ho
-* Date:		2013-11-17
-* Brief:	AES algorithm
-**********************************************************************/
+ * Author:	jaron.ho
+ * Date:    2013-11-17
+ * Brief:	AES algorithm
+ **********************************************************************/
 #ifndef _AES_H_
 #define _AES_H_
 
 class AES {
 public:
-	/*
-	¹¦	ÄÜ£º¹¹Ôìº¯Êı
-	²Î	Êı£ºkey - ÃØÔ¿
-	·µ»ØÖµ£ºÎŞ·µ»ØÖµ
-	*/
+    /*
+     * Brief:	æ„é€ å‡½æ•°
+     * Param:	key - ç§˜é’¥
+     * Return:	void
+     */
 	AES(unsigned char* key);
-	virtual ~AES(void);
 
 public:
-	/*
-	¹¦	ÄÜ£º¼ÓÃÜµ¥Ìõ×Ö·û´®
-	²Î	Êı£ºinput - Òª¼ÓÃÜµÄ×Ö·û´®
-	·µ»ØÖµ£ºunsigned char*
-	*/
+    /*
+     * Brief:	åŠ å¯†å•æ¡å­—ç¬¦ä¸²
+     * Param:	input - è¦åŠ å¯†çš„å­—ç¬¦ä¸²
+     * Return:	unsigned char*
+     */
 	unsigned char* encrypt(unsigned char* input);
 
-	/*
-	¹¦	ÄÜ£º½âÃÜµ¥Ìõ×Ö·û´®
-	²Î	Êı£ºinput - Òª½âÃÜµÄ×Ö·û´®
-	·µ»ØÖµ£ºunsigned char*
-	*/
+    /*
+     * Brief:	è§£å¯†å•æ¡å­—ç¬¦ä¸²
+     * Param:	input - è¦è§£å¯†çš„å­—ç¬¦ä¸²
+     * Return:	unsigned char*
+     */
 	unsigned char* decrypt(unsigned char* input);
 
-	// ÖÁ´ËÒÑ¾­ÊµÏÖÁËAES¼ÓÃÜÓë½âÃÜµÄÔ­ĞÍ,ÔÚÊ¹ÓÃµÄÊ±ºòÒ»°ã´¦ÀíµÄÊÇ×Ö·û´®µÈ,¶ø²»ÊÇÖ±½Ó´«Èë128Î»µÄÊı¾İ,ËùÒÔÒª·â×°Ò»ÏÂ¶ÔÍâ²¿Êı¾İµÄ¼Ó½âÃÜ´¦Àí
+    /* è‡³æ­¤å·²ç»å®ç°äº†AESåŠ å¯†ä¸è§£å¯†çš„åŸå‹,åœ¨ä½¿ç”¨çš„æ—¶å€™ä¸€èˆ¬å¤„ç†çš„æ˜¯å­—ç¬¦ä¸²ç­‰,è€Œä¸æ˜¯ç›´æ¥ä¼ å…¥128ä½çš„æ•°æ®,æ‰€ä»¥è¦å°è£…ä¸€ä¸‹å¯¹å¤–éƒ¨æ•°æ®çš„åŠ è§£å¯†å¤„ç† */
 
-	/*
-	¹¦	ÄÜ£º¼ÓÃÜÊı¾İ£¨Èç¹ûÊÇ¶ÔÕû¸öÎÄ±¾Êı¾İ½øĞĞ¼ÓÃÜ,ÔòÑ¡Ôñ´Ëº¯Êı£©
-	²Î	Êı£ºinput - Òª¼ÓÃÜµÄÊı¾İ,¼ÓÃÜÊ±´«½øµÄÖ¸ÕëÒªÔ¤Áô¹»16ÕûÊı±¶×Ö½ÚµÄ¿Õ¼ä,ÒòÎª¼ÓÃÜ²Ù×÷Ö±½ÓĞŞ¸ÄÔ­Êı¾İ,²»×ã128Î»¿ÉÄÜÔì³ÉÄÚ´æÒç³ö
-			length - Òª¼ÓÃÜµÄÊı¾İ³¤¶È,Èç¹ûÊ¹ÓÃÄ¬ÈÏÖµ,Ôò×÷Îª×Ö·û´®´¦Àí,ÒÔ'\0'Îª½áÎ²¼ÆËã³¤¶È
-	·µ»ØÖµ£ºvoid*
-	*/
+    /*
+     * Brief:	åŠ å¯†æ•°æ®ï¼ˆå¦‚æœæ˜¯å¯¹æ•´ä¸ªæ–‡æœ¬æ•°æ®è¿›è¡ŒåŠ å¯†,åˆ™é€‰æ‹©æ­¤å‡½æ•°ï¼‰
+     * Param:	input - è¦åŠ å¯†çš„æ•°æ®,åŠ å¯†æ—¶ä¼ è¿›çš„æŒ‡é’ˆè¦é¢„ç•™å¤Ÿ16æ•´æ•°å€å­—èŠ‚çš„ç©ºé—´,å› ä¸ºåŠ å¯†æ“ä½œç›´æ¥ä¿®æ”¹åŸæ•°æ®,ä¸è¶³128ä½å¯èƒ½é€ æˆå†…å­˜æº¢å‡º
+     *          length - è¦åŠ å¯†çš„æ•°æ®é•¿åº¦,å¦‚æœä½¿ç”¨é»˜è®¤å€¼,åˆ™ä½œä¸ºå­—ç¬¦ä¸²å¤„ç†,ä»¥'\0'ä¸ºç»“å°¾è®¡ç®—é•¿åº¦
+     * Return:	void*
+     */
 	void* encrypt(void* input, int length = 0);
 
-	/*
-	¹¦	ÄÜ£º½âÃÜÊı¾İ£¨Èç¹ûÊÇ¶ÔÕæ¸öÎÄ±¾Êı¾İ½øĞĞ½âÃÜ,ÔòÑ¡Ôñ´Ëº¯Êı£©
-	²Î	Êı£ºinput - Òª½âÃÜµÄÊı¾İ£»length - 
-	·µ»ØÖµ£ºvoid*
-	*/
+    /*
+     * Brief:	è§£å¯†æ•°æ®ï¼ˆå¦‚æœæ˜¯å¯¹çœŸä¸ªæ–‡æœ¬æ•°æ®è¿›è¡Œè§£å¯†,åˆ™é€‰æ‹©æ­¤å‡½æ•°ï¼‰
+     * Param:	input - è¦è§£å¯†çš„æ•°æ®
+     *          length - è¦è§£å¯†çš„æ•°æ®é•¿åº¦
+     * Return:	void*
+     */
 	void* decrypt(void* input, int length);
 
 private:
-	void keyExpansion(unsigned char* key, unsigned char w[][4][4]);		// ÃÜÔ¿À©Õ¹
-	unsigned char ffMul(unsigned char a, unsigned char b);				// ÓĞÏŞÓòGF(2^8)ÉÏµÄ³Ë·¨
+    void keyExpansion(unsigned char* key, unsigned char w[][4][4]);		/* å¯†é’¥æ‰©å±• */
+    unsigned char ffMul(unsigned char a, unsigned char b);				/* æœ‰é™åŸŸGF(2^8)ä¸Šçš„ä¹˜æ³• */
 
-	void subBytes(unsigned char state[][4]);							// ×Ö½ÚÌæ´ú
-	void shiftRows(unsigned char state[][4]);							// ĞĞÒÆÎ»
-	void mixColumns(unsigned char state[][4]);							// ÁĞ»ìÏı
-	void addRoundKey(unsigned char state[][4], unsigned char k[][4]);	// ÂÖÃÜÔ¿¼Ó
+    void subBytes(unsigned char state[][4]);							/* å­—èŠ‚æ›¿ä»£ */
+    void shiftRows(unsigned char state[][4]);							/* è¡Œç§»ä½ */
+    void mixColumns(unsigned char state[][4]);							/* åˆ—æ··æ·† */
+    void addRoundKey(unsigned char state[][4], unsigned char k[][4]);	/* è½®å¯†é’¥åŠ  */
 
-	void invSubBytes(unsigned char state[][4]);							// Äæ×Ö½ÚÌæ´ú
-	void invShiftRows(unsigned char state[][4]);						// ÄæĞĞÒÆÎ»
-	void invMixColumns(unsigned char state[][4]);						// ÄæÁĞ»ìÏı
+    void invSubBytes(unsigned char state[][4]);							/* é€†å­—èŠ‚æ›¿ä»£ */
+    void invShiftRows(unsigned char state[][4]);						/* é€†è¡Œç§»ä½ */
+    void invMixColumns(unsigned char state[][4]);						/* é€†åˆ—æ··æ·† */
 
 private:
 	unsigned char mSbox[256];
@@ -67,10 +67,10 @@ private:
 	unsigned char mW[11][4][4];
 };
 
-// ¼ÓÃÜ½Ó¿Ú
+/* åŠ å¯†æ¥å£ */
 void* aes_encrypt(void* data, unsigned long length, unsigned char* key);
 
-// ½âÃÜ½Ó¿Ú
+/* è§£å¯†æ¥å£ */
 void* aes_decrypt(void* data, unsigned long length, unsigned char* key);
 
-#endif	// _AES_H_
+#endif	/* _AES_H_ */
