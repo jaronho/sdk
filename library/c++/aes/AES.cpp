@@ -6,11 +6,10 @@
 #include "AES.h"
 #include <string>
 //----------------------------------------------------------------------
-AES::AES(unsigned char* key)
-{
+AES::AES(unsigned char* key) {
 	// 置换表,加密时使用
-	const unsigned char sBox[] =
-	{ /* 0     1     2     3     4     5     6     7     8     9     a     b     c     d     e     f */ 
+	const unsigned char sBox[] = {
+        /* 0     1     2     3     4     5     6     7     8     9     a     b     c     d     e     f */ 
 		0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76, /*0*/  
 		0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, /*1*/
 		0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15, /*2*/ 
@@ -29,8 +28,8 @@ AES::AES(unsigned char* key)
 		0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16  /*f*/
 	};
 	// 逆置换表,解密时使用
-	const unsigned char invsBox[256] = 
-	{ /* 0     1     2     3     4     5     6     7     8     9     a     b     c     d     e     f */  
+	const unsigned char invsBox[256] = {
+        /* 0     1     2     3     4     5     6     7     8     9     a     b     c     d     e     f */  
 		0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb, /*0*/ 
 		0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb, /*1*/
 		0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e, /*2*/ 
@@ -48,49 +47,36 @@ AES::AES(unsigned char* key)
 		0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61, /*e*/ 
 		0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d  /*f*/
 	};
-	
 	memcpy(mSbox, sBox, 256);
 	memcpy(mInvSbox, invsBox, 256);
 	keyExpansion(key, mW);
 }
 //----------------------------------------------------------------------
-AES::~AES()
-{
+AES::~AES(void) {
 }
 //----------------------------------------------------------------------
-unsigned char* AES::encrypt(unsigned char* input)
-{
+unsigned char* AES::encrypt(unsigned char* input) {
 	// 先将输入的明文按列序组合成4*4的矩阵,直接与第0组密钥（即输入的密钥）相加（异或）,作为轮加密的输入
 	// 然后循环10次进行subBytes、shiftRows、mixColumns、addRoundKey运算,最后恢复原序列
 	// 需要注意的是最后一轮并不进行mixColumns（列混淆变换）
 	unsigned char state[4][4];
 	int i, r, c;
-
-	for (r=0; r<4; ++r)
-	{
-		for (c=0; c<4; ++c)
-		{
+	for (r = 0; r < 4; ++r) {
+		for (c = 0; c < 4; ++c) {
 			state[r][c] = input[c*4 + r];
 		}
 	}
-
 	addRoundKey(state, mW[0]);
-
-	for (i=1; i<=10; ++i)
-	{
+	for (i = 1; i <= 10; ++i) {
 		subBytes(state);
 		shiftRows(state);
-		if (10 != i)
-		{
+		if (10 != i) {
 			mixColumns(state);
 		}
 		addRoundKey(state,mW[i]);
 	}
-
-	for (r=0; r<4; ++r)
-	{
-		for (c=0; c<4; ++c)
-		{
+	for (r = 0; r < 4; ++r) {
+		for (c = 0; c < 4; ++c) {
 			input[c*4 + r] = state[r][c];
 		}
 	}
@@ -98,245 +84,187 @@ unsigned char* AES::encrypt(unsigned char* input)
 	return input;
 }
 //----------------------------------------------------------------------
-unsigned char* AES::decrypt(unsigned char* input)
-{
+unsigned char* AES::decrypt(unsigned char* input) {
 	unsigned char state[4][4];
 	int i, r, c;
-
-	for (r=0; r<4; ++r)
-	{
-		for (c=0; c<4; ++c)
-		{
+	for (r = 0; r < 4; ++r) {
+		for (c = 0; c < 4; ++c) {
 			state[r][c] = input[c*4 + r];
 		}
 	}
-
 	addRoundKey(state, mW[10]);
-
-	for (i=9; i>=0; --i)
-	{
+	for (i = 9; i >= 0; --i) {
 		invShiftRows(state);
 		invSubBytes(state);
 		addRoundKey(state, mW[i]);
-		if (i)
-		{
+		if (i) {
 			invMixColumns(state);
 		}
 	}
-	
-	for (r=0; r<4; ++r)
-	{
-		for (c=0; c<4; ++c)
-		{
+	for (r = 0; r < 4; ++r) {
+		for (c = 0; c < 4; ++c) {
 			input[c*4 + r] = state[r][c];
 		}
 	}
-
 	return input;
 }
 //----------------------------------------------------------------------
-void* AES::encrypt(void* input, int length)
-{
-	unsigned char *in = (unsigned char*)input;
-	if (!length)
-	{
+void* AES::encrypt(void* input, int length) {
+	unsigned char* in = (unsigned char*)input;
+	if (!length) {
 		while (*(in + length++));
 		in = (unsigned char*)input;
 	}
 	int num = length / 16;	// 由于不能确定传进的指针是否预留够16整数倍字节的空间,所以这里指对前面的16整数倍数据进行加密
-	for (int i=0; i<num*16; i+=16)
-	{
+	for (int i = 0; i < num*16; i += 16) {
 		encrypt(in + i);
 	}
 	return input;
 }
 //----------------------------------------------------------------------
-void* AES::decrypt(void* input, int length)
-{
-	unsigned char *in = (unsigned char*)input;
+void* AES::decrypt(void* input, int length) {
+	unsigned char* in = (unsigned char*)input;
 	int num = length / 16;	// 由于不能确定已加密的指针是否预留够16整数倍字节的空间,所以这里指对前面的16整数倍数据进行解密
-	for (int i=0; i<num*16; i+=16)
-	{
+	for (int i = 0; i < num*16; i += 16) {
 		decrypt(in + i);
 	}
 	return input;
 }
 //----------------------------------------------------------------------
-void AES::keyExpansion(unsigned char* key, unsigned char w[][4][4])
-{
+void AES::keyExpansion(unsigned char* key, unsigned char w[][4][4]) {
 	// 将输入的密钥扩展为11组128位密钥组,其中第0组为输入密钥本身
 	int i, j, r, c;
 	unsigned char rc[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
-	for (r=0; r<4; ++r)
-	{
-		for (c=0; c<4; ++c)
-		{
+	for (r = 0; r < 4; ++r) {
+		for (c = 0; c < 4; ++c) {
 			w[0][r][c] = key[r + c*4];
 		}
 	}
-	for (i=1; i<=10; ++i)
-	{
-		for (j=0; j<4; ++j)
-		{
+	for (i = 1; i <= 10; ++i) {
+		for (j = 0; j < 4; ++j) {
 			unsigned char t[4];
-			for (r=0; r<4; ++r)
-			{
+			for (r = 0; r < 4; ++r) {
 				t[r] = j ? w[i][r][j-1] : w[i-1][r][3];
 			}
-			if (0 == j)
-			{
+			if (0 == j) {
 				unsigned char temp = t[0];
-				for (r=0; r<3; ++r)
-				{
-					t[r] = mSbox[t[(r+1)%4]];
+				for (r = 0; r < 3; ++r) {
+					t[r] = mSbox[t[(r + 1) % 4]];
 				}
 				t[3] = mSbox[temp];
-				t[0] ^= rc[i-1];
+				t[0] ^= rc[i - 1];
 			}
-			for (r=0; r<4; ++r)
-			{
+			for (r = 0; r < 4; ++r) {
 				w[i][r][j] = w[i-1][r][j] ^ t[r];
 			}
 		}
 	}
 }
 //----------------------------------------------------------------------
-unsigned char AES::ffMul(unsigned char a, unsigned char b)
-{
+unsigned char AES::ffMul(unsigned char a, unsigned char b) {
 	// 标准算法应该是循环8次（b与a的每一位相乘,结果相加）,但这里只用到最低2位,
 	// 解密时用到的逆列混淆也只用了低4位,所以在这里高4位的运算是多余的,只计算低4位
 	unsigned char bw[4];
 	unsigned char res = 0;
 	int i;
 	bw[0] = b;
-	for (i=1; i<4; ++i)
-	{
-		bw[i] = bw[i-1] << 1;
-		if (bw[i-1] & 0x80)
-		{
+	for (i = 1; i < 4; ++i) {
+		bw[i] = bw[i - 1] << 1;
+		if (bw[i - 1] & 0x80) {
 			bw[i] ^= 0x1b;
 		}
 	}
-	for (i=0; i<4; ++i)
-	{
-		if ((a >>i ) & 0x01)
-		{
+	for (i = 0; i < 4; ++i) {
+		if ((a >> i) & 0x01) {
 			res ^= bw[i];
 		}
 	}
 	return res;
 }
 //----------------------------------------------------------------------
-void AES::subBytes(unsigned char state[][4])
-{
-	for (int r=0; r<4; ++r)
-	{
-		for (int c=0; c<4; ++c)
-		{
+void AES::subBytes(unsigned char state[][4]) {
+	for (int r = 0; r < 4; ++r) {
+		for (int c = 0; c < 4; ++c) {
 			state[r][c] = mSbox[state[r][c]];
 		}
 	}
 }
 //----------------------------------------------------------------------
-void AES::shiftRows(unsigned char state[][4])
-{
+void AES::shiftRows(unsigned char state[][4]) {
 	unsigned char t[4];
-	for (int r=1; r<4; ++r)
-	{
+	for (int r = 1; r < 4; ++r) {
 		int c;
-		for (c=0; c<4; ++c)
-		{
-			t[c] = state[r][(c+r)%4];
+		for (c = 0; c < 4; ++c) {
+			t[c] = state[r][(c + r) % 4];
 		}
-		for (c=0; c<4; ++c)
-		{
+		for (c = 0; c < 4; ++c) {
 			state[r][c] = t[c];
 		}
 	}
 }
 //----------------------------------------------------------------------
-void AES::mixColumns(unsigned char state[][4])
-{
+void AES::mixColumns(unsigned char state[][4]) {
 	unsigned char t[4];
-	for (int c=0; c<4; ++c)
-	{
+	for (int c = 0; c < 4; ++c) {
 		int r;
-		for (r=0; r<4; ++r)
-		{
+		for (r = 0; r < 4; ++r) {
 			t[r] = state[r][c];
 		}
-		for (r=0; r<4; ++r)
-		{
-			state[r][c] = ffMul(0x02, t[r]) ^ ffMul(0x03, t[(r+1)%4]) ^ ffMul(0x01, t[(r+2)%4]) ^ ffMul(0x01, t[(r+3)%4]);
+		for (r = 0; r < 4; ++r) {
+			state[r][c] = ffMul(0x02, t[r]) ^ ffMul(0x03, t[(r + 1) % 4]) ^ ffMul(0x01, t[(r + 2) % 4]) ^ ffMul(0x01, t[(r + 3) % 4]);
 		}
 	}
 }
 //----------------------------------------------------------------------
-void AES::addRoundKey(unsigned char state[][4], unsigned char k[][4])
-{
+void AES::addRoundKey(unsigned char state[][4], unsigned char k[][4]) {
 	// 简单来说就是逐字节相加,有限域GF(2^8)上的加法是模2加法,即异或
-	for (int c=0; c<4; ++c)
-	{
-		for (int r=0; r<4; ++r)
-		{
+	for (int c = 0; c < 4; ++c) {
+		for (int r = 0; r < 4; ++r) {
 			state[r][c] ^= k[r][c];
 		}
 	}
 }
 //----------------------------------------------------------------------
-void AES::invSubBytes(unsigned char state[][4])
-{
-	for (int r=0; r<4; ++r)
-	{
-		for (int c=0; c<4; ++c)
-		{
+void AES::invSubBytes(unsigned char state[][4]) {
+	for (int r = 0; r < 4; ++r) {
+		for (int c = 0; c < 4; ++c) {
 			state[r][c] = mInvSbox[state[r][c]];
 		}
 	}
 }
 //----------------------------------------------------------------------
-void AES::invShiftRows(unsigned char state[][4])
-{
+void AES::invShiftRows(unsigned char state[][4]) {
 	unsigned char t[4];
-	for (int r=1; r<4; ++r)
-	{
+	for (int r = 1; r < 4; ++r) {
 		int c;
-		for (c=0; c<4; ++c)
-		{
-			t[c] = state[r][(c-r+4)%4];
+		for (c = 0; c < 4; ++c) {
+			t[c] = state[r][(c - r + 4) % 4];
 		}
-		for (c=0; c<4; ++c)
-		{
+		for (c = 0; c < 4; ++c) {
 			state[r][c] = t[c];
 		}
 	}
 }
 //----------------------------------------------------------------------
-void AES::invMixColumns(unsigned char state[][4])
-{
+void AES::invMixColumns(unsigned char state[][4]) {
 	unsigned char t[4];
-	for (int c=0; c<4; ++c)
-	{
+	for (int c = 0; c < 4; ++c) {
 		int r;
-		for (r=0; r<4; ++r)
-		{
+		for (r = 0; r < 4; ++r) {
 			t[r] = state[r][c];
 		}
-		for (r=0; r<4; ++r)
-		{
-			state[r][c] = ffMul(0x0e, t[r]) ^ ffMul(0x0b, t[(r+1)%4]) ^ ffMul(0x0d, t[(r+2)%4]) ^ ffMul(0x09, t[(r+3)%4]);
+		for (r = 0; r < 4; ++r) {
+			state[r][c] = ffMul(0x0e, t[r]) ^ ffMul(0x0b, t[(r + 1) % 4]) ^ ffMul(0x0d, t[(r + 2) % 4]) ^ ffMul(0x09, t[(r + 3) % 4]);
 		}
 	}
 }
 //----------------------------------------------------------------------
-void* aes_encrypt(void* data, unsigned long length, unsigned char* key)
-{
+void* aes_encrypt(void* data, unsigned long length, unsigned char* key) {
 	AES aesObject(key);
 	return aesObject.encrypt(data, length);
 }
 //----------------------------------------------------------------------
-void* aes_decrypt(void* data, unsigned long length, unsigned char* key)
-{
+void* aes_decrypt(void* data, unsigned long length, unsigned char* key) {
 	AES aesObject(key);
 	return aesObject.decrypt(data, length);
 }

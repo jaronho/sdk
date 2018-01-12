@@ -6,8 +6,7 @@
 #ifndef _AES_H_
 #define _AES_H_
 
-class AES
-{
+class AES {
 public:
 	/*
 	功	能：构造函数
@@ -15,7 +14,7 @@ public:
 	返回值：无返回值
 	*/
 	AES(unsigned char* key);
-	virtual ~AES();
+	virtual ~AES(void);
 
 public:
 	/*
