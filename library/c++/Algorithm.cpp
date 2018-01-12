@@ -14,7 +14,7 @@ unsigned int Algorithm::colorGrayscale(unsigned int red, unsigned int green, uns
     red = red > 255 ? 255 : red;
     green = green > 255 ? 255 : green;
     blue = blue > 255 ? 255 : blue;
-    return (red * 30 + green * 59 + blue * 11) / 100;
+    return (int)(red * 0.299f + green * 0.587f + blue * 0.114f + 0.5f);
 }
 //--------------------------------------------------------------------------
 unsigned char* Algorithm::cryptoXOR(unsigned char* data, const unsigned char* key) {
@@ -23,7 +23,7 @@ unsigned char* Algorithm::cryptoXOR(unsigned char* data, const unsigned char* ke
     }
     unsigned int dataLength = strlen((char*)data);
     unsigned int keyLength = strlen((char*)key);
-    for (unsigned int i=0; i< dataLength; ++i) {
+    for (unsigned int i = 0; i < dataLength; ++i) {
         data[i] = data[i] ^ key[i % keyLength];
     }
     return data;
@@ -52,7 +52,7 @@ double Algorithm::mathRand(double start, double end) {
         seedFlag = false;
         srand(unsigned(time(0)));
     }
-    return start + (end - start)*rand()/(RAND_MAX);
+    return start + (end - start) * rand() / RAND_MAX;
 }
 //--------------------------------------------------------------------------
 bool Algorithm::mathProbability(unsigned int probability) {
