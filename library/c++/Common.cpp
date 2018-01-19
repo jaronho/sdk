@@ -243,20 +243,30 @@ size_t Common::characterPlaceholder(unsigned char ch) {
 }
 /*********************************************************************/
 bool Common::createDir(const std::string& dirName) {
-#ifdef _SYSTEM_WINDOWS_
-    /* method 1 */
-    return 0 == _mkdir(dirName.c_str());
-    /* method 2 */
-/*
-    if (INVALID_FILE_ATTRIBUTES == GetFileAttributesA(dirName.c_str())) {
-        CreateDirectoryA(dirName.c_str(), 0);
-        return true;
+    if (dirName.empty()) {
+        return false;
     }
-    return false;
-*/
+    unsigned int dirLen = dirName.length();
+    char* tmp = new char[dirLen];
+    memset(tmp, 0, dirLen);
+    for (unsigned int i = 0; i < dirLen; ++i) {
+        tmp[i] = dirName[i];
+        if ('/' == tmp[i] || '\\' == tmp[i]) {
+#ifdef _SYSTEM_WINDOWS_
+            if (0 != _access(tmp, 0)) {
+                if (0 != _mkdir(tmp)) {
 #else
-    return 0 == mkdir(dirName.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+            if (0 != access(tmp, F_OK)) {
+                if (0 != mkdir(tmp, S_IRWXU | S_IRWXG | S_IRWXO)) {
 #endif
+                    delete []tmp;
+                    return false;
+                }
+            }
+        }
+    }
+    delete []tmp;
+    return true;
 }
 /*********************************************************************/
 void Common::removeDir(const std::string& dirName) {
@@ -283,8 +293,7 @@ void Common::removeDir(const std::string& dirName) {
     rmdir(dirName.c_str());
 */
     /* method 2 */
-    std::string command = "rd /s /q \"" + dirName + "\"";
-    system(command.c_str());
+    system(("rd /s /q \"" + dirName + "\"").c_str());
 #else
     DIR* dir = opendir(dirName.c_str());
     if (!dir) {
