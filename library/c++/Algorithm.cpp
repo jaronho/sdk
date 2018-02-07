@@ -10,11 +10,24 @@
 #include <stdlib.h>
 #include <time.h>
 /*********************************************************************/
-unsigned int Algorithm::colorGrayscale(unsigned int red, unsigned int green, unsigned int blue) {
-    red = red > 255 ? 255 : red;
-    green = green > 255 ? 255 : green;
-    blue = blue > 255 ? 255 : blue;
-    return (int)(red * 0.299f + green * 0.587f + blue * 0.114f + 0.5f);
+const unsigned int* Algorithm::colorGrayscale(unsigned int r, unsigned int g, unsigned int b) {
+    r = r > 255 ? 255 : r;
+    g = g > 255 ? 255 : g;
+    b = b > 255 ? 255 : b;
+    unsigned int val = (unsigned int)(r*0.299f + g*0.587f + b*0.114f + 0.5f);
+    unsigned int rgb[3] = {val, val, val};
+    return rgb;
+}
+/*********************************************************************/
+const unsigned int* colorOldPhoto(unsigned int r, unsigned int g, unsigned int b) {
+    r = r > 255 ? 255 : r;
+    g = g > 255 ? 255 : g;
+    b = b > 255 ? 255 : b;
+    unsigned int rVal = (unsigned int)(r*0.393f + g*0.769f + b*0.189f + 0.5f);
+    unsigned int gVal = (unsigned int)(r*0.349f + g*0.686f + b*0.168f + 0.5f);
+    unsigned int bVal = (unsigned int)(r*0.272f + g*0.534f + b*0.131f + 0.5f);
+    unsigned int rgb[3] = {rVal, gVal, bVal};
+    return rgb;
 }
 /*********************************************************************/
 unsigned char* Algorithm::cryptoXOR(unsigned char* data, const unsigned char* key) {
