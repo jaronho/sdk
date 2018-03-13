@@ -3,6 +3,7 @@
  ** Date:	2017-08-31
  ** Brief:  util functions
  ***********************************************************************/
+.pragma library
 Qt.include("Common.js")
 Qt.include("Log.js")
 Qt.include("Timer.js")
@@ -210,6 +211,27 @@ function createScaleAnimation(object, from, to, duration, callback) {
     return ani;
 }
 //----------------------------------------------------------------------
+// 创建旋转动画
+function createRotationAnimation(object, from, to, duration, callback) {
+    object.rotation = from;
+    var ani = Qt.createQmlObject('\
+    import QtQuick 2.6;
+    RotationAnimator {
+        property var callback: null;
+        onStopped: function() {
+            if ("function" === typeof(callback)) {
+                callback();
+            }
+        }
+    }', object);
+    ani.target = object;
+    ani.from = from;
+    ani.to = to;
+    ani.duration = duration;
+    ani.callback = callback;
+    return ani;
+}
+//----------------------------------------------------------------------
 // 创建x位移动画
 function createXOffsetAnimation(object, from, to, duration, callback) {
     object.x = from;
@@ -278,6 +300,17 @@ function fadeOut(object, duration, callback) {
 // 缩放
 function scaleFromTo(object, from, to, duration, callback) {
     var ani = createScaleAnimation(object, from, to, duration, function() {
+        ani.destroy();
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+    });
+    ani.start();
+}
+//----------------------------------------------------------------------
+// 旋转
+function rotateFromTo(object, from, to, duration, callback) {
+    var ani = createRotationAnimation(object, from, to, duration, function() {
         ani.destroy();
         if ('function' === typeof(callback)) {
             callback();
