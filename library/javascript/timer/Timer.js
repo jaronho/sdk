@@ -64,19 +64,19 @@ function CreateTimerManager() {
 				mStartTime = currentTime;
 				return;
 			}
-			if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
-				var deltaTime = Math.abs(currentTime - mStartTime);
-				if (deltaTime >= mInterval) {
-					var runCount = Math.floor(deltaTime / mInterval);
-					mCurrentCount = mCurrentCount + runCount;
-					mStartTime = currentTime;
-					if ('function' == typeof(mRunCallFunc)) {
-						mRunCallFunc.apply(mTarget, [this, runCount]);
-					}
-				}
-			} else {
-				this.stop(true);
-			}
+            var deltaTime = Math.abs(currentTime - mStartTime);
+			if (deltaTime >= mInterval) {
+                if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
+                    var runCount = Math.floor(deltaTime / mInterval);
+                    mCurrentCount = mCurrentCount + runCount;
+                    mStartTime = currentTime;
+                    if ('function' == typeof(mRunCallFunc)) {
+                        mRunCallFunc.apply(mTarget, [this, runCount]);
+                    }
+                } else {
+                    this.stop(true);
+                }
+            }
 		};
 		tm.start = function(currentTime, executeFlag) {
 			if (mRunning) {

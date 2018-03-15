@@ -114,7 +114,7 @@ function stopBlink(viewList, immediately, showAtLast, id) {
         setViewListShow(showAtLast);
     } else {
         if (mBlinkMap[id]) {
-            mBlinkMap[id].setParam(["stop",showAtLast]);
+            mBlinkMap[id].setParam(["stop", showAtLast]);
         } else {
             setViewListShow(showAtLast);
         }
