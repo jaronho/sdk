@@ -58,9 +58,9 @@ function CreateTimerManager()
 				mStartTime = currentTime
 				return
 			end
-            local deltaTime = math.abs(currentTime - mStartTime)
-			if deltaTime >= mInterval then
-                if mTotalCount <= 0 or mCurrentCount < mTotalCount then
+            if mTotalCount <= 0 or mCurrentCount < mTotalCount then
+                local deltaTime = math.abs(currentTime - mStartTime)
+                if deltaTime >= mInterval then
                     local runCount = math.floor(deltaTime/mInterval)
                     mCurrentCount = mCurrentCount + runCount
                     mStartTime = currentTime
@@ -71,9 +71,9 @@ function CreateTimerManager()
                             mRunCallFunc(self, runCount)
                         end
                     end
-                else
-                    self:stop(true)
-                end
+                 end
+            else
+                self:stop(true)
             end
 		end
 		function tm:start(currentTime, executeFlag)

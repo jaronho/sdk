@@ -38,18 +38,18 @@ public class Timer {
 			mStartTime = currentTime;
 			return;
 		}
-        long deltaTime = System.Math.Abs(currentTime - mStartTime);
-		if (deltaTime >= mInterval) {
-            if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {	
+        if (mTotalCount <= 0 || mCurrentCount < mTotalCount) {
+            long deltaTime = System.Math.Abs(currentTime - mStartTime);
+            if (deltaTime >= mInterval) {
                 int runCount = (int)System.Math.Floor(deltaTime / mInterval);
                 mCurrentCount = mCurrentCount + runCount;
                 mStartTime = currentTime;
                 if (null != mRunHandler) {
                     mRunHandler(this, runCount, mParam);
                 }
-            } else {
-                stop(true);
             }
+        } else {
+            stop(true);
         }
 	}
 
