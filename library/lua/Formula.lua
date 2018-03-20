@@ -36,3 +36,14 @@ function Formula:isPointInRect(rect, p)
 	return p.x >= xMin and p.x <= xMax and p.y >= yMin and p.y <= yMax
 end
 ----------------------------------------------------------------------
+-- 判断点在线段的哪一侧(0.线段所在直线上,1.线段所在直线的左侧,2.线段所在直线的右侧)
+function Formula:checkPointSideWithSegment(sX, sY, eX, eY, x, y)
+    local factor = (y - sY)*(eX - sX)/(eY - sY) + sY
+    if factor < x then
+        return 2
+    else if factor > x then
+        return 1
+    end
+    return 0
+end
+----------------------------------------------------------------------

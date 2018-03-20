@@ -36,3 +36,14 @@ Formula.isPointInRect = function(rect, p) {
 	return p.x >= xMin && p.x <= xMax && p.y >= yMin && p.y <= yMax;
 };
 //----------------------------------------------------------------------
+// 判断点在线段的哪一侧(0.线段所在直线上,1.线段所在直线的左侧,2.线段所在直线的右侧)
+Formula.checkPointSideWithSegment(sX, sY, eX, eY, x, y) {
+    var factor = (y - sY)*(eX - sX)/(eY - sY) + sY;
+    if (factor < x) {
+        return 2;
+    } else if (factor > x) {
+        return 1;
+    }
+    return 0;
+};
+//----------------------------------------------------------------------
