@@ -377,17 +377,11 @@ void IniFile::setLong(const std::string& section, const std::string& key, long v
 }
 
 float IniFile::getFloat(const std::string& section, const std::string& key, float defaultValue /*= 0.0f*/) {
-    std::string value, comment;
-    if (0 == getValue(section, key, value, comment)) {
-        return atof(value.c_str());
-    }
-    return defaultValue;
+	return (float)getDouble(section, key, (double)defaultValue);
 }
 
 void IniFile::setFloat(const std::string& section, const std::string& key, float value) {
-    char str[32] = {0};
-    sprintf(str, "%f", value);
-    setValue(section, key, str);
+	setDouble(section, key, (double)value);
 }
 
 double IniFile::getDouble(const std::string& section, const std::string& key, double defaultValue /*= 0.0f*/) {
