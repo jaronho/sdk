@@ -6,7 +6,7 @@
 #ifndef _SHARE_PREFS_H_
 #define _SHARE_PREFS_H_
 
-#include "xmlhelper/XmlHelper.h"
+#include "../xmlhelper/XmlHelper.h"
 
 class SharePrefs {
 public:

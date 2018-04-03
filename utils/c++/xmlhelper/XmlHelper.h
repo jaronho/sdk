@@ -91,7 +91,7 @@ public:
 
     /*
      * Brief:	open xml file
-     * Param:	fileName - file name, e.g. "asdf.xml"，"../asdf.xml"，"temp\\asdf.xml"
+     * Param:	fileName - file name, e.g. "asdf.xml","../asdf.xml","temp\\asdf.xml"
      *			rootName - root name
      * Return:	bool
      */
@@ -99,7 +99,7 @@ public:
 
     /*
      * Brief:	save xml file
-     * Param:	fileName - file name, if empty override, or save to new file, e.g. "asdf.xml"，"../asdf.xml"，"temp\\asdf.xml"
+     * Param:	fileName - file name, if empty override, or save to new file, e.g. "asdf.xml","../asdf.xml","temp\\asdf.xml"
      * Return:	bool
      */
     bool save(const std::string& fileName = "");
@@ -172,7 +172,7 @@ public:
      *			defaultValue - default double
      * Return:	double
      */
-    double getDouble(const std::string& key, double defaultValue = 0.0);
+    double getDouble(const std::string& key, double defaultValue = 0.0f);
 
     /*
      * Brief:	set double value
