@@ -74,8 +74,8 @@ static void recvResponse(void) {
     }
     if (responseObj->callback) {
         std::string responseheader(responseObj->responseheader.begin(), responseObj->responseheader.end());
-        std::string responsedata(responseObj->responsedata.begin(), responseObj->responsedata.end());
-        responseObj->callback(responseObj->success, responseObj->curlcode, responseObj->responsecode, responseObj->errorbuffer, responseheader, responsedata);
+        std::string responsebody(responseObj->responsebody.begin(), responseObj->responsebody.end());
+        responseObj->callback(responseObj->success, responseObj->curlcode, responseObj->responsecode, responseObj->errorbuffer, responseheader, responsebody);
     }
     delete responseObj;
 }
@@ -83,14 +83,14 @@ static void recvResponse(void) {
 static unsigned int headerFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
     std::vector<char>* recvBuffer = (std::vector<char>*)stream;
     unsigned int sizes = size * nmemb;
-    recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr+sizes);
+    recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr + sizes);
     return sizes;
 }
 //------------------------------------------------------------------------
-static unsigned int responseFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
+static unsigned int bodyFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
     std::vector<char>* recvBuffer = (std::vector<char>*)stream;
     unsigned int sizes = size * nmemb;
-    recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr+sizes);
+    recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr + sizes);
     return sizes;
 }
 //------------------------------------------------------------------------
@@ -110,21 +110,21 @@ static void* httpNetworkThread() {
         }
         std::transform(requestObj->requesttype.begin(), requestObj->requesttype.end(), requestObj->requesttype.begin(), ::toupper);
         if ("GET" == requestObj->requesttype) {
-            requestObj->success = curlGet(requestObj->requestdata, headerFunc, &(requestObj->responseheader), responseFunc, &(requestObj->responsedata), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+            requestObj->success = curlGet(requestObj->requestdata, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else if ("POST" == requestObj->requesttype) {
-            requestObj->success = curlPost(requestObj->requestdata, headerFunc, &(requestObj->responseheader), responseFunc, &(requestObj->responsedata), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+            requestObj->success = curlPost(requestObj->requestdata, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else if ("PUT" == requestObj->requesttype) {
-            requestObj->success = curlPut(requestObj->requestdata, headerFunc, &(requestObj->responseheader), responseFunc, &(requestObj->responsedata), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+            requestObj->success = curlPut(requestObj->requestdata, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else if ("DELETE" == requestObj->requesttype) {
-            requestObj->success = curlDelete(requestObj->requestdata, headerFunc, &(requestObj->responseheader), responseFunc, &(requestObj->responsedata), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+            requestObj->success = curlDelete(requestObj->requestdata, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else {
             continue;
         }
         if (requestObj->syncresponse) {
             if (requestObj->callback) {
                 std::string responseheader(requestObj->responseheader.begin(), requestObj->responseheader.end());
-                std::string responsedata(requestObj->responsedata.begin(), requestObj->responsedata.end());
-                requestObj->callback(requestObj->success, requestObj->curlcode, requestObj->responsecode, requestObj->errorbuffer, responseheader, responsedata);
+                std::string responsebody(requestObj->responsebody.begin(), requestObj->responsebody.end());
+                requestObj->callback(requestObj->success, requestObj->curlcode, requestObj->responsecode, requestObj->errorbuffer, responseheader, responsebody);
             }
             delete requestObj;
         } else {

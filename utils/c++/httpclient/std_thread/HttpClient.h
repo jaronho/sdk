@@ -18,7 +18,7 @@
 #define HTTP_CALLBACK std::function<void(bool success, int curlcode, int responsecode, \
                                          const std::string& errorbuffer, \
                                          const std::string& responseheader, \
-                                         const std::string& responsedata)>
+                                         const std::string& responsebody)>
 
 // http对象
 class HttpObject {
@@ -38,8 +38,8 @@ public:
     int curlcode;							// 请求返回的curl码
     int responsecode;						// http响应码,[200, 404]
     std::string errorbuffer;				// 错误描述,当responsecode!=200时,此值描述错误信息
-    std::vector<char> responseheader;		// 响应头数据,可以通过std::string str(responseheader->begin(), responseheader->end());返回字符串
-    std::vector<char> responsedata;			// 响应数据,可以通过std::string str(responsedata->begin(), responsedata->end());返回字符串
+    std::vector<char> responseheader;		// 响应头部,可以通过std::string str(responseheader->begin(), responseheader->end());返回字符串
+    std::vector<char> responsebody;			// 响应数据,可以通过std::string str(responsebody->begin(), responsebody->end());返回字符串
 };
 
 // http客户端
@@ -59,14 +59,14 @@ public:
 ************************************************** sample_01
 
 int main() {
-    HttpClient::getInstance()->get("http://www.baidu.com", [](bool success, int curlcode, int responsecode, const std::string& errorbuffer, const std::string& responseheader, const std::string& responsedata)->void {
+    HttpClient::getInstance()->get("http://www.baidu.com", [](bool success, int curlcode, int responsecode, const std::string& errorbuffer, const std::string& responseheader, const std::string& responsebody)->void {
         printf("==================================================\n");
         printf("success = %s\n", success ? "true" : "false");
         printf("curlcode = %d\n", curlcode);
         printf("responsecode = %d\n", responsecode);
         printf("errorbuffer = %s\n", errorbuffer.c_str());
         printf("responseheader = \n%s\n", responseheader.c_str());
-        printf("responsedata = \n%s\n", responsedata.c_str());
+        printf("responsebody = \n%s\n", responsebody.c_str());
     });
     while (true) {}
     return 0;
