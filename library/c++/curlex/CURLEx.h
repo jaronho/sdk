@@ -33,9 +33,8 @@ public:
     CURLcode setOption(CURLoption option, T data) {
 		if (NULL == mCurl) {
 			return CURLE_FAILED_INIT;
-		}
-		CURLcode code = curl_easy_setopt(mCurl, option, data);
-        return code;
+        }
+        return curl_easy_setopt(mCurl, option, data);
     }
 
 public:
@@ -46,12 +45,12 @@ public:
 	bool setCookieFile(const std::string& cookieFile = "");
 
 	// set timeout for connect
-	bool setConnectTimeout(int timeout);
+    bool setConnectTimeout(int connectTimeout = 30);
 
 	// set timeout for read
-	bool setTimeout(int timeout);
+    bool setTimeout(int timeout = 60);
 
-	// set full url to get/put
+    // set full url for request
 	bool setURL(const std::string& url);
 
 	// set headers
@@ -60,12 +59,16 @@ public:
 	// set post fields and field size
 	bool setPostFields(const char* fields, unsigned int fieldsize);
 
-	bool setHeadFunction(CURLEx_callback func, void* userdata);
+    // set header function
+    bool setHeaderFunction(CURLEx_callback func, void* userdata);
 
+    // set write function
 	bool setWriteFunction(CURLEx_callback func, void* userdata);
 
-	bool setReadFunctioin(CURLEx_callback func, void* userdata);
+    // set read function
+    bool setReadFunction(CURLEx_callback func, void* userdata);
 
+    // set process function
 	bool setProgressFunction(CURLEx_progress func, void* userdata);
 
 	//------------------------ multipart/formdata block ------------------------
@@ -105,7 +108,7 @@ public:
 		}
 	}
 
-	const char* getData(void) {
+    const char* getData(void) {
 		if (data.size() > 0) {
 			return &(data.front());
 		}
@@ -131,13 +134,13 @@ private:
 /*
 * curl request interface
 */
-bool curlGet(CurlRequest& request, CURLEx_callback writeFunc, void* writeStream, CURLEx_callback headerCallback, void* headerStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlGet(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback responseFunc, void* responseStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlPost(CurlRequest& request, CURLEx_callback writeFunc, void* writeStream, CURLEx_callback headerCallback, void* headerStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlPost(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback responseFunc, void* responseStreamm, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlPut(CurlRequest& request, CURLEx_callback writeFunc, void* writeStream, CURLEx_callback headerCallback, void* headerStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlPut(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback responseFunc, void* responseStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlDelete(CurlRequest& request, CURLEx_callback writeFunc, void* writeStream, CURLEx_callback headerCallback, void* headerStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlDelete(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback responseFunc, void* responseStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
 #endif	// _CURL_EX_H_
 
