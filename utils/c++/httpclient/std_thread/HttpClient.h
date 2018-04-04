@@ -45,12 +45,30 @@ public:
 // http客户端
 class HttpClient {
 public:
-    static HttpClient* getInstance(void);	// 获取单件
-    static void destroyInstance(void);		// 删除单件
+    static HttpClient* getInstance(void);	// 获取单例
+    static void destroyInstance(void);		// 删除单例
     void send(HttpObject* obj);				// 发送http请求
     void receive(void);						// 每帧循环接收(用于异步响应)
-    void get(const std::string& url, HTTP_CALLBACK callback = 0);
-    void post(const std::string& url, const char* data, HTTP_CALLBACK callback = 0);
+    void get(const std::string& url, HTTP_CALLBACK callback = 0);   // http get 请求(同步响应)
+    void post(const std::string& url, const char* data, HTTP_CALLBACK callback = 0);    // http post 请求(同步响应)
 };
 
 #endif //_HTTP_CLIENT_H_
+
+/*
+************************************************** sample_01
+
+int main() {
+    HttpClient::getInstance()->get("http://www.baidu.com", [](bool success, int curlcode, int responsecode, const std::string& errorbuffer, const std::string& responseheader, const std::string& responsedata)->void {
+        printf("==================================================\n");
+        printf("success = %s\n", success ? "true" : "false");
+        printf("curlcode = %d\n", curlcode);
+        printf("responsecode = %d\n", responsecode);
+        printf("errorbuffer = %s\n", errorbuffer.c_str());
+        printf("responseheader = \n%s\n", responseheader.c_str());
+        printf("responsedata = \n%s\n", responsedata.c_str());
+    });
+    while (true) {}
+    return 0;
+}
+*/
