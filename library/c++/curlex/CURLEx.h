@@ -105,7 +105,7 @@ public:
 		}
 	}
 
-	char* getData(void) {
+	const char* getData(void) {
 		if (data.size() > 0) {
 			return &(data.front());
 		}
@@ -213,26 +213,26 @@ int FileDownload::downloadFile(const std::string& savePath, const std::string& s
 	if (responseCode) {
 		*responseCode = -1;
 	}
-	// ²ÎÊı¼ì²â
+	// å‚æ•°æ£€æµ‹
 	if (savePath.empty() || saveName.empty() || fileURL.empty()) {
 		if (buffer) {
 			*buffer = "parameters is error.";
 		}
 		return 1;
 	}
-	// ´´½¨ÏÂÔØµÄÎÄ¼ş±£´æÂ·¾¶
+	// åˆ›å»ºä¸‹è½½çš„æ–‡ä»¶ä¿å­˜è·¯å¾„
 	std::string backslash = ('/' != savePath.at(savePath.size() - 1) && '\\' != savePath.at(savePath.size() - 1)) ? "/" : "";
 	std::string fullFilePath = savePath + backslash + saveName;
 	FILE* fp = fopen(fullFilePath.c_str(), "wb");
-	if (NULL == fp) {				// ´´½¨±£´æÂ·¾¢Ê§°Ü
+	if (NULL == fp) {				// åˆ›å»ºä¿å­˜è·¯åŠ²å¤±è´¥
 		if (buffer) {
 			*buffer = "create file failed.";
 		}
 		return 2;
 	}
-	// ÏÂÔØÎÄ¼şºËĞÄ²¿·Ö
+	// ä¸‹è½½æ–‡ä»¶æ ¸å¿ƒéƒ¨åˆ†
 	static CURLEx curlObj;
-	if (!curlObj.initialize()) {	// ³õÊ¼curlÊ§°Ü
+	if (!curlObj.initialize()) {	// åˆå§‹curlå¤±è´¥
 		if (buffer) {
 			*buffer = "curl initialize failed.";
 		}
@@ -245,6 +245,6 @@ int FileDownload::downloadFile(const std::string& savePath, const std::string& s
 	curlObj.setProgressFunction(downloadFileProgressFunc, self);
 	bool res = curlObj.perform(curlCode, responseCode, buffer);
 	fclose(fp);
-	return res ? 0 : 4;			// 0-ÎÄ¼şÏÂÔØ³É¹¦;4-ÎÄ¼şÏÂÔØÊ§°Ü
+	return res ? 0 : 4;			// 0-æ–‡ä»¶ä¸‹è½½æˆåŠŸ;4-æ–‡ä»¶ä¸‹è½½å¤±è´¥
 }
 */
