@@ -59,7 +59,7 @@ public:
 ************************************************** sample_01
 
 int main() {
-    HttpClient::getInstance()->get("http://www.baidu.com", [](bool success, int curlcode, int responsecode, const std::string& errorbuffer, const std::string& responseheader, const std::string& responsebody)->void {
+    auto callback = [](bool success, int curlcode, int responsecode, const std::string& errorbuffer, const std::string& responseheader, const std::string& responsebody)->void {
         printf("==================================================\n");
         printf("success = %s\n", success ? "true" : "false");
         printf("curlcode = %d\n", curlcode);
@@ -67,7 +67,8 @@ int main() {
         printf("errorbuffer = %s\n", errorbuffer.c_str());
         printf("responseheader = \n%s\n", responseheader.c_str());
         printf("responsebody = \n%s\n", responsebody.c_str());
-    });
+    };
+    HttpClient::getInstance()->get("http://www.baidu.com", callback);
     while (true) {}
     return 0;
 }
