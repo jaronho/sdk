@@ -45,7 +45,11 @@ static void destroyThreadSemphore(void) {
 }
 //------------------------------------------------------------------------
 static void sendRequest(HttpObject* obj) {
-    if (NULL == obj || !sIsRunning) {
+    if (NULL == obj) {
+        return;
+    }
+    if (!sIsRunning) {
+        delete obj;
         return;
     }
     sRequestListMutex.lock();
@@ -68,19 +72,22 @@ static void recvResponse(void) {
     if (NULL == responseObj) {
         return;
     }
-    responseObj->response();
+    if (responseObj->callback) {
+        std::string responseheader(responseObj->responseheader.begin(), responseObj->responseheader.end());
+        std::string responsedata(responseObj->responsedata.begin(), responseObj->responsedata.end());
+        responseObj->callback(responseObj->success, responseObj->curlcode, responseObj->responsecode, responseObj->errorbuffer, responseheader, responsedata);
+    }
     delete responseObj;
-    responseObj = NULL;
 }
 //------------------------------------------------------------------------
-static unsigned int writeDataFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
+static unsigned int headerFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
     std::vector<char>* recvBuffer = (std::vector<char>*)stream;
     unsigned int sizes = size * nmemb;
     recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr+sizes);
     return sizes;
 }
 //------------------------------------------------------------------------
-static unsigned int writeHeaderDataFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
+static unsigned int responseFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
     std::vector<char>* recvBuffer = (std::vector<char>*)stream;
     unsigned int sizes = size * nmemb;
     recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr+sizes);
@@ -103,20 +110,23 @@ static void* httpNetworkThread() {
         }
         std::transform(requestObj->requesttype.begin(), requestObj->requesttype.end(), requestObj->requesttype.begin(), ::toupper);
         if ("GET" == requestObj->requesttype) {
-            requestObj->success = curlGet(requestObj->requestdata, writeDataFunc, &(requestObj->responsedata), writeHeaderDataFunc, &(requestObj->responseheader), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+            requestObj->success = curlGet(requestObj->requestdata, headerFunc, &(requestObj->responseheader), responseFunc, &(requestObj->responsedata), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else if ("POST" == requestObj->requesttype) {
-            requestObj->success = curlPost(requestObj->requestdata, writeDataFunc, &(requestObj->responsedata), writeHeaderDataFunc, &(requestObj->responseheader), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+            requestObj->success = curlPost(requestObj->requestdata, headerFunc, &(requestObj->responseheader), responseFunc, &(requestObj->responsedata), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else if ("PUT" == requestObj->requesttype) {
-            requestObj->success = curlPut(requestObj->requestdata, writeDataFunc, &(requestObj->responsedata), writeHeaderDataFunc, &(requestObj->responseheader), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+            requestObj->success = curlPut(requestObj->requestdata, headerFunc, &(requestObj->responseheader), responseFunc, &(requestObj->responsedata), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else if ("DELETE" == requestObj->requesttype) {
-            requestObj->success = curlDelete(requestObj->requestdata, writeDataFunc, &(requestObj->responsedata), writeHeaderDataFunc, &(requestObj->responseheader), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+            requestObj->success = curlDelete(requestObj->requestdata, headerFunc, &(requestObj->responseheader), responseFunc, &(requestObj->responsedata), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else {
             continue;
         }
-        if (requestObj->autoresponse) {
-            requestObj->response();
+        if (requestObj->syncresponse) {
+            if (requestObj->callback) {
+                std::string responseheader(requestObj->responseheader.begin(), requestObj->responseheader.end());
+                std::string responsedata(requestObj->responsedata.begin(), requestObj->responsedata.end());
+                requestObj->callback(requestObj->success, requestObj->curlcode, requestObj->responsecode, requestObj->errorbuffer, responseheader, responsedata);
+            }
             delete requestObj;
-            requestObj = NULL;
         } else {
             sResponseListMutex.lock();
             sResponseList->push_back(requestObj);
@@ -152,5 +162,30 @@ void HttpClient::send(HttpObject* obj) {
 //------------------------------------------------------------------------
 void HttpClient::receive(void) {
     recvResponse();
+}
+//------------------------------------------------------------------------
+void HttpClient::get(const std::string& url, HTTP_CALLBACK callback /*= 0*/) {
+    HttpObject* obj = new HttpObject();
+    obj->syncresponse = true;
+    obj->tag = "";
+    obj->requesttype = "GET";
+    obj->requestdata.url = url;
+    obj->requestdata.connecttimeout = 30;
+    obj->requestdata.timeout = 60;
+    obj->callback = callback;
+    sendRequest(obj);
+}
+//------------------------------------------------------------------------
+void HttpClient::post(const std::string& url, const char* data, HTTP_CALLBACK callback /*= 0*/) {
+    HttpObject* obj = new HttpObject();
+    obj->syncresponse = true;
+    obj->tag = "";
+    obj->requesttype = "POST";
+    obj->requestdata.url = url;
+    obj->requestdata.setData(data, NULL == data ? 0 : strlen(data));
+    obj->requestdata.connecttimeout = 30;
+    obj->requestdata.timeout = 60;
+    obj->callback = callback;
+    sendRequest(obj);
 }
 //------------------------------------------------------------------------
