@@ -134,13 +134,13 @@ private:
 /*
 * curl request interface
 */
-bool curlGet(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback responseFunc, void* responseStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlGet(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlPost(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback responseFunc, void* responseStreamm, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlPost(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlPut(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback responseFunc, void* responseStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlPut(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlDelete(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback responseFunc, void* responseStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlDelete(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
 #endif	// _CURL_EX_H_
 
