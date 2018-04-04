@@ -1,7 +1,7 @@
 /**********************************************************************
 * Author:	jaron.ho
 * Date:		2014-06-04
-* Brief:	http ¿Í»§¶Ë
+* Brief:	http å®¢æˆ·ç«¯
 **********************************************************************/
 #ifndef _HTTP_CLIENT_H_
 #define _HTTP_CLIENT_H_
@@ -12,38 +12,36 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include "CURLEx.h"
+#include "../curlex/CURLEx.h"
 
-// http´¦Àí¶ÔÏó
-class HttpObject
-{
+// httpå¤„ç†å¯¹è±¡
+class HttpObject {
 public:
-	HttpObject() : tag(""), requesttype(HRT_POST), success(false), curlcode(-1), responsecode(-1) {}
-	virtual void response(void) {}			//  httpÏûÏ¢´¦Àíº¯Êı
+	HttpObject() : tag(""), requesttype("post"), success(false), curlcode(-1), responsecode(-1) {}
+	virtual void response(void) {}			//  httpæ¶ˆæ¯å¤„ç†å‡½æ•°
 
 public:
-	// ÇëÇó
-	std::string tag;						// ±êÇ©,ÓÃÒÔ±êÊ¶Ã¿¸öÇëÇó
-	std::string requesttype;				// ÇëÇóÀàĞÍ(²»Çø·Ö´óĞ¡Ğ´):"get","post","put","delete"
-	CurlRequest requestdata;				// ÇëÇóÊı¾İ½á¹¹
+	// è¯·æ±‚
+	std::string tag;						// æ ‡ç­¾,ç”¨ä»¥æ ‡è¯†æ¯ä¸ªè¯·æ±‚
+	std::string requesttype;				// è¯·æ±‚ç±»å‹(ä¸åŒºåˆ†å¤§å°å†™):"get","post","put","delete"
+	CurlRequest requestdata;				// è¯·æ±‚æ•°æ®ç»“æ„
 
-	// ÏìÓ¦
-	bool success;							// ÊÇ·ñÇëÇó³É¹¦
-	int curlcode;							// ÇëÇó·µ»ØµÄcurlÂë
-	int responsecode;						// httpÏìÓ¦Âë,[200, 404]
-	std::string errorbuffer;				// ´íÎóÃèÊö,µ±responsecode!=200Ê±,´ËÖµÃèÊö´íÎóĞÅÏ¢
-	std::vector<char> responsedata;			// ÏìÓ¦Êı¾İ,¿ÉÒÔÍ¨¹ıstd::string str(responsedata->begin(), responsedata->end());·µ»Ø×Ö·û´®
-	std::vector<char> responseheader;		// ÏìÓ¦Í·Êı¾İ,¿ÉÒÔÍ¨¹ıstd::string str(responseheader->begin(), responseheader->end());·µ»Ø×Ö·û´®
+	// å“åº”
+	bool success;							// æ˜¯å¦è¯·æ±‚æˆåŠŸ
+	int curlcode;							// è¯·æ±‚è¿”å›çš„curlç 
+	int responsecode;						// httpå“åº”ç ,[200, 404]
+	std::string errorbuffer;				// é”™è¯¯æè¿°,å½“responsecode!=200æ—¶,æ­¤å€¼æè¿°é”™è¯¯ä¿¡æ¯
+	std::vector<char> responsedata;			// å“åº”æ•°æ®,å¯ä»¥é€šè¿‡std::string str(responsedata->begin(), responsedata->end());è¿”å›å­—ç¬¦ä¸²
+	std::vector<char> responseheader;		// å“åº”å¤´æ•°æ®,å¯ä»¥é€šè¿‡std::string str(responseheader->begin(), responseheader->end());è¿”å›å­—ç¬¦ä¸²
 };
 
-// http¿Í»§¶Ë
-class HttpClient
-{
+// httpå®¢æˆ·ç«¯
+class HttpClient {
 public:
-	static HttpClient* getInstance(void);	// »ñÈ¡µ¥¼ş
-	static void destroyInstance(void);		// É¾³ıµ¥¼ş
-	void send(HttpObject* obj);				// ·¢ËÍhttpÇëÇó
-	void receive(void);						// Ã¿Ö¡Ñ­»·½ÓÊÕ
+	static HttpClient* getInstance(void);	// è·å–å•ä»¶
+	static void destroyInstance(void);		// åˆ é™¤å•ä»¶
+	void send(HttpObject* obj);				// å‘é€httpè¯·æ±‚
+	void receive(void);						// æ¯å¸§å¾ªç¯æ¥æ”¶
 };
 
 #endif //_HTTP_CLIENT_H_

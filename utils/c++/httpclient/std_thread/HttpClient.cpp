@@ -1,21 +1,19 @@
 /**********************************************************************
 * Author:	jaron.ho
 * Date:		2014-06-04
-* Brief:	http ¿Í»§¶Ë
+* Brief:	http å®¢æˆ·ç«¯
 **********************************************************************/
 #include "HttpClient.h"
 //------------------------------------------------------------------------
-static bool sIsRunning = false;								// ÊÇ·ñÔÚÔËĞĞ
-static std::list<HttpObject*>* sReuqestList = NULL;			// ÇëÇóÁĞ±í
-static std::list<HttpObject*>* sResponseList = NULL;		// ÏìÓ¦ÁĞ±í
-static std::mutex sRequestListMutex;						// ÇëÇóÁĞ±í»¥³â
-static std::mutex sResponseListMutex;						// ÏìÓ¦ÁĞ±í»¥³â
-static std::condition_variable_any sSleepCondition;			// Ìõ¼ş±äÁ¿
+static bool sIsRunning = false;								// æ˜¯å¦åœ¨è¿è¡Œ
+static std::list<HttpObject*>* sReuqestList = NULL;			// è¯·æ±‚åˆ—è¡¨
+static std::list<HttpObject*>* sResponseList = NULL;		// å“åº”åˆ—è¡¨
+static std::mutex sRequestListMutex;						// è¯·æ±‚åˆ—è¡¨äº’æ–¥
+static std::mutex sResponseListMutex;						// å“åº”åˆ—è¡¨äº’æ–¥
+static std::condition_variable_any sSleepCondition;			// æ¡ä»¶å˜é‡
 //------------------------------------------------------------------------
-static void createThreadSemphore(void)
-{
-	if (sIsRunning || sReuqestList || sResponseList)
-	{
+static void createThreadSemphore(void) {
+	if (sIsRunning || sReuqestList || sResponseList) {
 		return;
 	}
 	sIsRunning = true;
@@ -23,26 +21,22 @@ static void createThreadSemphore(void)
 	sResponseList = new std::list<HttpObject*>();
 }
 //------------------------------------------------------------------------
-static void destroyThreadSemphore(void)
-{
+static void destroyThreadSemphore(void) {
 	sIsRunning = false;
-	if (NULL == sReuqestList || NULL == sResponseList)
-	{
+	if (NULL == sReuqestList || NULL == sResponseList) {
 		return;
 	}
-	// Çå³ıÇëÇóÁĞ±í
+	// æ¸…é™¤è¯·æ±‚åˆ—è¡¨
 	sRequestListMutex.lock();
-	if (sReuqestList)
-	{
+	if (sReuqestList) {
 		sReuqestList->clear();
 		delete sReuqestList;
 		sReuqestList = NULL;
 	}
 	sRequestListMutex.unlock();
-	// Çå³ıÏìÓ¦ÁĞ±í
+	// æ¸…é™¤å“åº”åˆ—è¡¨
 	sResponseListMutex.lock();
-	if (sResponseList)
-	{
+	if (sResponseList) {
 		sResponseList->clear();
 		delete sResponseList;
 		sResponseList = NULL;
@@ -50,10 +44,8 @@ static void destroyThreadSemphore(void)
 	sResponseListMutex.unlock();
 }
 //------------------------------------------------------------------------
-static void sendRequest(HttpObject* obj)
-{
-	if (NULL == obj || !sIsRunning)
-	{
+static void sendRequest(HttpObject* obj) {
+	if (NULL == obj || !sIsRunning) {
 		return;
 	}
 	sRequestListMutex.lock();
@@ -62,22 +54,18 @@ static void sendRequest(HttpObject* obj)
 	sSleepCondition.notify_one();
 }
 //------------------------------------------------------------------------
-static void recvResponse(void)
-{
-	if (!sIsRunning)
-	{
+static void recvResponse(void) {
+	if (!sIsRunning) {
 		return;
 	}
 	HttpObject* responseObj = NULL;
 	sResponseListMutex.lock();
-	if (sResponseList && sResponseList->size() > 0)
-	{
+	if (sResponseList && sResponseList->size() > 0) {
 		responseObj = *(sResponseList->begin());
 		sResponseList->pop_front();
 	}
 	sResponseListMutex.unlock();
-	if (NULL == responseObj)
-	{
+	if (NULL == responseObj) {
 		return;
 	}
 	responseObj->response();
@@ -85,59 +73,44 @@ static void recvResponse(void)
 	responseObj = NULL;
 }
 //------------------------------------------------------------------------
-static unsigned int writeDataFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream)
-{
+static unsigned int writeDataFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
 	std::vector<char>* recvBuffer = (std::vector<char>*)stream;
 	unsigned int sizes = size * nmemb;
 	recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr+sizes);
 	return sizes;
 }
 //------------------------------------------------------------------------
-static unsigned int writeHeaderDataFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream)
-{
+static unsigned int writeHeaderDataFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
 	std::vector<char>* recvBuffer = (std::vector<char>*)stream;
 	unsigned int sizes = size * nmemb;
 	recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr+sizes);
 	return sizes;
 }
 //------------------------------------------------------------------------
-static void* httpNetworkThread()
-{
-	while (sIsRunning)
-	{
+static void* httpNetworkThread() {
+	while (sIsRunning) {
 		HttpObject* requestObj = NULL;
 		sRequestListMutex.lock();
-		if (sReuqestList && sReuqestList->size() > 0)
-		{
+		if (sReuqestList && sReuqestList->size() > 0) {
 			requestObj = *(sReuqestList->begin());
 			sReuqestList->pop_front();
 		}
 		sRequestListMutex.unlock();
-		if (NULL == requestObj)
-		{
+		if (NULL == requestObj) {
 			std::lock_guard<std::mutex> lock(sRequestListMutex);
 			sSleepCondition.wait(sRequestListMutex);
 			continue;
 		}
-		transform(requestObj->requesttype.begin(), requestObj->requesttype.end(), requestObj->requesttype.begin(), ::toupper);
-		if ("GET" == requestObj->requesttype)
-		{
+		std::transform(requestObj->requesttype.begin(), requestObj->requesttype.end(), requestObj->requesttype.begin(), ::toupper);
+		if ("GET" == requestObj->requesttype) {
 			requestObj->success = curlGet(requestObj->requestdata, writeDataFunc, &(requestObj->responsedata), writeHeaderDataFunc, &(requestObj->responseheader), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
-		}
-		else if ("POST" == requestObj->requesttype)
-		{
+		} else if ("POST" == requestObj->requesttype) {
 			requestObj->success = curlPost(requestObj->requestdata, writeDataFunc, &(requestObj->responsedata), writeHeaderDataFunc, &(requestObj->responseheader), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
-		}
-		else if ("PUT" == requestObj->requesttype)
-		{
+		} else if ("PUT" == requestObj->requesttype) {
 			requestObj->success = curlPut(requestObj->requestdata, writeDataFunc, &(requestObj->responsedata), writeHeaderDataFunc, &(requestObj->responseheader), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
-		}
-		else if ("DELETE" == requestObj->requesttype)
-		{
+		} else if ("DELETE" == requestObj->requesttype) {
 			requestObj->success = curlDelete(requestObj->requestdata, writeDataFunc, &(requestObj->responsedata), writeHeaderDataFunc, &(requestObj->responseheader), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
-		}
-		else
-		{
+		} else {
 			continue;
 		}
 		sResponseListMutex.lock();
@@ -147,12 +120,10 @@ static void* httpNetworkThread()
 	return 0;
 }
 //------------------------------------------------------------------------
-static HttpClient *mInstance = NULL;
+static HttpClient* mInstance = NULL;
 //------------------------------------------------------------------------
-HttpClient* HttpClient::getInstance(void)
-{
-	if (NULL == mInstance)
-	{
+HttpClient* HttpClient::getInstance(void) {
+	if (NULL == mInstance) {
 		mInstance = new HttpClient();
 		std::thread httpThread(httpNetworkThread);
 		httpThread.detach();
@@ -161,23 +132,19 @@ HttpClient* HttpClient::getInstance(void)
 	return mInstance;
 }
 //------------------------------------------------------------------------
-void HttpClient::destroyInstance(void)
-{
-	if (mInstance)
-	{
+void HttpClient::destroyInstance(void) {
+	if (mInstance) {
 		destroyThreadSemphore();
 		delete mInstance;
 		mInstance = NULL;
 	}
 }
 //------------------------------------------------------------------------
-void HttpClient::send(HttpObject* obj)
-{
+void HttpClient::send(HttpObject* obj) {
 	sendRequest(obj);
 }
 //------------------------------------------------------------------------
-void HttpClient::receive(void)
-{
+void HttpClient::receive(void) {
 	recvResponse();
 }
 //------------------------------------------------------------------------
