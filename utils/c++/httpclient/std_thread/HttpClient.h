@@ -42,6 +42,15 @@ public:
     std::vector<char> responsebody;			// 响应数据,可以通过std::string str(responsebody->begin(), responsebody->end());返回字符串
 };
 
+// http表单对象
+class HttpObjectForm : public HttpObject {
+public:
+    HttpObjectForm() {}
+
+public:
+    CurlRequestForm requestdataform;        // 请求表单数据结构
+};
+
 // http客户端
 class HttpClient {
 public:
@@ -51,6 +60,10 @@ public:
     void receive(void);						// 每帧循环接收(用于异步响应)
     void get(const std::string& url, HTTP_CALLBACK callback = 0);   // http get 请求(同步响应)
     void post(const std::string& url, const char* data, HTTP_CALLBACK callback = 0);    // http post 请求(同步响应)
+    void postForm(const std::string& url,
+                  const std::map<std::string, std::string>& contentMap,
+                  const std::map<std::string, std::string>& fileMap,
+                  HTTP_CALLBACK callback = 0);    // http post 请求(同步响应)
 };
 
 #endif //_HTTP_CLIENT_H_

@@ -113,6 +113,8 @@ static void* httpNetworkThread() {
             requestObj->success = curlGet(requestObj->requestdata, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else if ("POST" == requestObj->requesttype) {
             requestObj->success = curlPost(requestObj->requestdata, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+        } else if ("POST_FORM" == requestObj->requesttype) {
+            requestObj->success = curlPostForm(((HttpObjectForm*)requestObj)->requestdataform, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else if ("PUT" == requestObj->requesttype) {
             requestObj->success = curlPut(requestObj->requestdata, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else if ("DELETE" == requestObj->requesttype) {
@@ -185,6 +187,29 @@ void HttpClient::post(const std::string& url, const char* data, HTTP_CALLBACK ca
     obj->requestdata.setData(data, NULL == data ? 0 : strlen(data));
     obj->requestdata.connecttimeout = 30;
     obj->requestdata.timeout = 60;
+    obj->callback = callback;
+    sendRequest(obj);
+}
+//------------------------------------------------------------------------
+void HttpClient::postForm(const std::string& url,
+                          const std::map<std::string, std::string>& contentMap,
+                          const std::map<std::string, std::string>& fileMap,
+                          HTTP_CALLBACK callback /*= 0*/) {
+    HttpObjectForm* obj = new HttpObjectForm();
+    obj->syncresponse = true;
+    obj->tag = "";
+    obj->requesttype = "POST_FORM";
+    obj->requestdataform.url = url;
+    std::map<std::string, std::string>::const_iterator contentIter = contentMap.begin();
+    for (; contentMap.end() != contentIter; ++contentIter) {
+        obj->requestdataform.addContent(contentIter->first, contentIter->second);
+    }
+    std::map<std::string, std::string>::const_iterator fileIter = fileMap.begin();
+    for (; fileMap.end() != fileIter; ++fileIter) {
+        obj->requestdataform.addFile(fileIter->first, fileIter->second);
+    }
+    obj->requestdataform.connecttimeout = 30;
+    obj->requestdataform.timeout = 60;
     obj->callback = callback;
     sendRequest(obj);
 }
