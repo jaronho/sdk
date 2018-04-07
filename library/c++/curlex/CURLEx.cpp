@@ -65,7 +65,7 @@ bool CURLEx::initialize(const std::string& sslCaFileName /*= ""*/) {
 			return false;
 		}
     }
-    return true;//CURLE_OK == setOption(CURLOPT_NOSIGNAL, 1L);
+    return CURLE_OK == setOption(CURLOPT_NOSIGNAL, 1L);
 }
 //------------------------------------------------------------------------
 bool CURLEx::setCookieFile(const std::string& cookieFile /*= ""*/) {
