@@ -94,7 +94,7 @@ static unsigned int bodyFunc(void* ptr, unsigned int size, unsigned int nmemb, v
     return sizes;
 }
 //------------------------------------------------------------------------
-static void* httpNetworkThread() {
+static void httpNetworkThread() {
     while (sIsRunning) {
         HttpObject* requestObj = NULL;
         sRequestListMutex.lock();
@@ -135,17 +135,16 @@ static void* httpNetworkThread() {
             sResponseListMutex.unlock();
         }
     }
-    return 0;
 }
 //------------------------------------------------------------------------
 static HttpClient* mInstance = NULL;
 //------------------------------------------------------------------------
 HttpClient* HttpClient::getInstance(void) {
     if (NULL == mInstance) {
+        createThreadSemphore();
         mInstance = new HttpClient();
         std::thread httpThread(httpNetworkThread);
         httpThread.detach();
-        createThreadSemphore();
     }
     return mInstance;
 }
