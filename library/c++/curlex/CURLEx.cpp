@@ -18,7 +18,8 @@ CURLEx::CURLEx(void) {
 	memset(mErrorBuffer, 0, CURL_ERROR_SIZE);
 	mCurl = curl_easy_init();
 	mHeaders = NULL;
-	mPost = NULL;
+    mHttpPost = NULL;
+    mLastPost = NULL;
 }
 //------------------------------------------------------------------------
 CURLEx::~CURLEx(void) {
@@ -26,15 +27,15 @@ CURLEx::~CURLEx(void) {
 		curl_easy_cleanup(mCurl);
 		mCurl = NULL;
 	}
-	// free the linked list for header data
-	if (mHeaders) {
-		curl_slist_free_all(mHeaders);
-		mHeaders = NULL;
-	}
-	if (mPost) {
-		curl_formfree(mPost);
-		mPost = NULL;
-	}
+    if (mHeaders) {
+        curl_slist_free_all(mHeaders);
+        mHeaders = NULL;
+    }
+    if (mHttpPost) {
+        curl_formfree(mHttpPost);
+        mHttpPost = NULL;
+    }
+    mLastPost = NULL;
 	--sObjCount;
 	if (0 == sObjCount) {
 		curl_global_cleanup();
@@ -64,7 +65,7 @@ bool CURLEx::initialize(const std::string& sslCaFileName /*= ""*/) {
 			return false;
 		}
     }
-    return CURLE_OK == setOption(CURLOPT_NOSIGNAL, 1L);
+    return true;//CURLE_OK == setOption(CURLOPT_NOSIGNAL, 1L);
 }
 //------------------------------------------------------------------------
 bool CURLEx::setCookieFile(const std::string& cookieFile /*= ""*/) {
@@ -162,59 +163,38 @@ bool CURLEx::setProgressFunction(CURLEx_progress func, void* userdata) {
     return CURLE_OK == setOption(CURLOPT_PROGRESSDATA, userdata);
 }
 //------------------------------------------------------------------------
-bool CURLEx::addForm(curl_forms forms[], unsigned int length) {
-	// the final element in the array must be a CURLFORM_END
-	if (CURLFORM_END != forms[length-1].option) {
-		return false;
-    }
-    return CURL_FORMADD_OK == curl_formadd(&mPost, NULL, CURLFORM_ARRAY, forms, CURLFORM_END);
-}
-//------------------------------------------------------------------------
-bool CURLEx::addForm(const std::string& name, CURLformoption option, const std::string& value, const std::string& type) {
-	if (name.empty() || value.empty()) {
-		return false;
-	}
-	if (type.empty()) {
-		curl_forms formVec[3];
-		formVec[0].option = CURLFORM_COPYNAME;
-		formVec[0].value = name.c_str();
-		formVec[1].option = option;
-		formVec[1].value = value.c_str();
-		formVec[2].option = CURLFORM_END;
-		return addForm(formVec, 3);
-	} else {
-		curl_forms formVec[4];
-		formVec[0].option = CURLFORM_COPYNAME;
-		formVec[0].value = name.c_str();
-		formVec[1].option = option;
-		formVec[1].value = value.c_str();
-		formVec[2].option = CURLFORM_CONTENTTYPE;
-		formVec[2].value = type.c_str();
-		formVec[3].option = CURLFORM_END;
-		return addForm(formVec, 4);
-	}
-	return false;
-}
-//------------------------------------------------------------------------
-bool CURLEx::addFormContent(const std::string& name, const std::string& content, const std::string& type) {
-	return addForm(name, CURLFORM_COPYCONTENTS, content, type);
-}
-//------------------------------------------------------------------------
-bool CURLEx::addFormFile(const std::string& name, const std::string& file, const std::string& type) {
-	// multipart/formdata reuqest, needn't read file into memory
-	return addForm(name, CURLFORM_FILE, file, type);
-}
-//------------------------------------------------------------------------
-bool CURLEx::setHttpPost(void) {
-    if (NULL == mPost) {
+bool CURLEx::addForm(const char* name, CURLformoption option, const char* value, const char* type /*= NULL*/) {
+    if (NULL == mCurl) {
         return false;
     }
-    return CURLE_OK == setOption(CURLOPT_HTTPPOST, mPost);
+    if (NULL == name || 0 == strlen(name) || NULL == value) {
+		return false;
+    }
+    if (NULL == type || 0 == strlen(type)) {
+        return CURL_FORMADD_OK == curl_formadd(&mHttpPost, &mLastPost, CURLFORM_COPYNAME, name, option, value, CURLFORM_END);
+    }
+    return CURL_FORMADD_OK == curl_formadd(&mHttpPost, &mLastPost, CURLFORM_COPYNAME, name, option, value, CURLFORM_CONTENTTYPE, type, CURLFORM_END);
+}
+//------------------------------------------------------------------------
+bool CURLEx::addFormContent(const std::string& name, const std::string& content, const std::string& type /*= ""*/) {
+    return addForm(name.c_str(), CURLFORM_COPYCONTENTS, content.c_str(), type.c_str());
+}
+//------------------------------------------------------------------------
+bool CURLEx::addFormFile(const std::string& name, const std::string& file, const std::string& type /*= ""*/) {
+    return addForm(name.c_str(), CURLFORM_FILE, file.c_str(), type.c_str());
 }
 //------------------------------------------------------------------------
 bool CURLEx::perform(int* curlCode, int* responseCode, std::string* errorBuffer) {
     if (NULL == mCurl) {
 		return false;
+    }
+    if (mHttpPost) {
+        if (CURLE_OK != setOption(CURLOPT_HTTPPOST, mHttpPost)) {
+            curl_formfree(mHttpPost);
+            mHttpPost = NULL;
+            mLastPost = NULL;
+            return false;
+        }
     }
 	CURLcode code = curl_easy_perform(mCurl);
 	if (NULL != curlCode) {
@@ -226,13 +206,23 @@ bool CURLEx::perform(int* curlCode, int* responseCode, std::string* errorBuffer)
     if (NULL != responseCode) {
 		CURLcode code = curl_easy_getinfo(mCurl, CURLINFO_RESPONSE_CODE, responseCode);
         if (CURLE_OK != code || 200 != *responseCode) {
+            if (mHttpPost) {
+                curl_formfree(mHttpPost);
+                mHttpPost = NULL;
+            }
+            mLastPost = NULL;
 			return false;
         }
     }
+    if (mHttpPost) {
+        curl_formfree(mHttpPost);
+        mHttpPost = NULL;
+    }
+    mLastPost = NULL;
 	return CURLE_OK == code;
 }
 //------------------------------------------------------------------------
-bool curlReuqestConfigure(CURLEx* pCurl, CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream) {
+bool curlReuqestConfigure(CURLEx* pCurl, const CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream) {
     if (NULL == pCurl || request.url.empty() || NULL == headerFunc || NULL == headerStream || NULL == bodyFunc || NULL == bodyStream) {
 		return false;
 	}
@@ -284,6 +274,18 @@ bool curlPost(CurlRequest& request, CURLEx_callback headerFunc, void* headerStre
 	}
     curlObj.setPostFields(request.getData(), request.getDataSize());
 	return curlObj.perform(curlCode, responseCode, errorBuffer);
+}
+//------------------------------------------------------------------------
+bool curlPostForm(CurlRequestForm& requestForm, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode, int* responseCode, std::string* errorBuffer) {
+    CURLEx curlObj;
+    if (!curlReuqestConfigure(&curlObj, requestForm, headerFunc, headerStream, bodyFunc, bodyStream)) {
+        return false;
+    }
+    if (CURLE_OK != curlObj.setOption(CURLOPT_FOLLOWLOCATION, 1)) {
+        return false;
+    }
+    requestForm.transform(&curlObj);
+    return curlObj.perform(curlCode, responseCode, errorBuffer);
 }
 //------------------------------------------------------------------------
 bool curlPut(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode, int* responseCode, std::string* errorBuffer) {

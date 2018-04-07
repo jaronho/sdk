@@ -8,7 +8,8 @@
 
 #include <string>
 #include <vector>
-#include <curl/curl.h>
+#include <map>
+#include "curl/curl.h"
 
 /*
 * write/read callback defined
@@ -72,16 +73,11 @@ public:
 	bool setProgressFunction(CURLEx_progress func, void* userdata);
 
 	//------------------------ multipart/formdata block ------------------------
-	bool addForm(curl_forms forms[], unsigned int length);
+    bool addForm(const char* name, CURLformoption option, const char* value, const char* type = NULL);
 
-	bool addForm(const std::string& name, CURLformoption option, const std::string& value, const std::string& type = "");
+    bool addFormContent(const std::string& name, const std::string& content, const std::string& type = "");
 
-	bool addFormContent(const std::string& name, const std::string& content, const std::string& type = "");
-
-	bool addFormFile(const std::string& name, const std::string& file, const std::string& type = "");
-
-	// called when multipart/formdata, after call addForm
-	bool setHttpPost(void);
+    bool addFormFile(const std::string& name, const std::string& file, const std::string& type = "");
 	//--------------------------------------------------------------------
 
 	// called at last
@@ -90,8 +86,9 @@ public:
 private:
 	char mErrorBuffer[CURL_ERROR_SIZE];		// error buffer
 	CURL* mCurl;							// instance of curl
-    curl_slist* mHeaders;					// keeps custom header data
-	curl_httppost* mPost;					// needed when multipart/formdata request
+    struct curl_slist* mHeaders;			// keeps custom header data
+    struct curl_httppost* mHttpPost;		// needed when multipart/formdata request
+    struct curl_httppost* mLastPost;		// needed when multipart/formdata request
 	static unsigned int sObjCount;			// object count in program
 };
 
@@ -132,11 +129,53 @@ private:
 };
 
 /*
+* struct of curl request
+*/
+class CurlRequestForm : public CurlRequest {
+public:
+    CurlRequestForm(void) {}
+
+    void addContent(const std::string& name, std::string content) {
+        if (name.empty() || content.empty()) {
+            return;
+        }
+        mContentMap[name] = content;
+    }
+
+    void addFile(const std::string& name, const std::string& fileName) {
+        if (name.empty() || fileName.empty()) {
+            return;
+        }
+        mFileMap[name] = fileName;
+    }
+
+    void transform(CURLEx* curlObj) {
+        if (NULL == curlObj) {
+            return;
+        }
+        std::map<std::string, std::string>::iterator contentIter = mContentMap.begin();
+        for (; mContentMap.end() != contentIter; ++contentIter) {
+            curlObj->addFormContent(contentIter->first, contentIter->second);
+        }
+        std::map<std::string, std::string>::iterator fileIter = mFileMap.begin();
+        for (; mFileMap.end() != fileIter; ++fileIter) {
+            curlObj->addFormFile(fileIter->first, fileIter->second);
+        }
+    }
+
+private:
+    std::map<std::string, std::string> mContentMap;         // content form map
+    std::map<std::string, std::string> mFileMap;            // file name form map
+};
+
+/*
 * curl request interface
 */
 bool curlGet(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
 bool curlPost(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+
+bool curlPostForm(CurlRequestForm& requestForm, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
 bool curlPut(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
@@ -166,15 +205,15 @@ std::string Screenshot::uploadScreenshotImage(std::string uploadUrl, std::string
 	if (false == curl.initialize()) {
 		return "";
 	}
+    int curlCode = -1;
 	int responseCode = -1;
 	std::string errorBuffer = "";
 	std::string responseStr = "";
 	curl.setURL(uploadUrl);
 	curl.addFormContent("acct", account);
 	curl.addFormFile("image", localPath);
-	curl.setHttpPost();
 	curl.setWriteFunction(uploadWriteFunc, &responseStr);
-	bool res = curl.perform(&responseCode, &errorBuffer);
+    bool res = curl.perform(&curlCode, &responseCode, &errorBuffer);
 	if (false == res) {
 		return "";
 	}
