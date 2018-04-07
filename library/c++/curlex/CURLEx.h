@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "curl/curl.h"
+#include <curl/curl.h>
 
 /*
 * write/read callback defined
