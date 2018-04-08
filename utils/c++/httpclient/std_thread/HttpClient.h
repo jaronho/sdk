@@ -21,16 +21,15 @@
                                          const std::string& responsebody)>
 
 // http对象
-class HttpObject {
+class HttpObject : public CurlRequest {
 public:
-    HttpObject() : syncresponse(true), requesttype("post"), success(false), curlcode(-1), responsecode(-1) {}
+    HttpObject() : requesttype("post"), syncresponse(true), success(false), curlcode(-1), responsecode(-1) {}
 
 public:
     // 请求
-    bool syncresponse;						// 同步响应
     std::string tag;						// 标签,用以标识每个请求
-    std::string requesttype;				// 请求类型(不区分大小写):"get","post","put","delete"
-    CurlRequest requestdata;				// 请求数据结构
+    std::string requesttype;				// 请求类型(不区分大小写):"GET","POST","POST_FORM","PUT","DELETE"
+    bool syncresponse;						// 同步响应
     HTTP_CALLBACK callback;                 // 回调函数
 
     // 响应
@@ -40,15 +39,6 @@ public:
     std::string errorbuffer;				// 错误描述,当responsecode!=200时,此值描述错误信息
     std::vector<char> responseheader;		// 响应头部,可以通过std::string str(responseheader->begin(), responseheader->end());返回字符串
     std::vector<char> responsebody;			// 响应数据,可以通过std::string str(responsebody->begin(), responsebody->end());返回字符串
-};
-
-// http表单对象
-class HttpObjectForm : public HttpObject {
-public:
-    HttpObjectForm() {}
-
-public:
-    CurlRequestForm requestdataform;        // 请求表单数据结构
 };
 
 // http客户端
@@ -61,8 +51,8 @@ public:
     void get(const std::string& url, HTTP_CALLBACK callback = 0);   // http get 请求(同步响应)
     void post(const std::string& url, const char* data, HTTP_CALLBACK callback = 0);    // http post 请求(同步响应)
     void postForm(const std::string& url,
-                  const std::map<std::string, std::string>& contentMap,
-                  const std::map<std::string, std::string>& fileMap,
+                  const std::map<std::string, std::string>* contents = NULL,
+                  const std::map<std::string, std::string>* files = NULL,
                   HTTP_CALLBACK callback = 0);    // http post 请求(同步响应)
 };
 
