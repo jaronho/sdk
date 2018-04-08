@@ -32,7 +32,7 @@ public:
 public:
 	template <class T>
     CURLcode setOption(CURLoption option, T data) {
-		if (NULL == mCurl) {
+        if (!mCurl) {
 			return CURLE_FAILED_INIT;
         }
         return curl_easy_setopt(mCurl, option, data);
@@ -72,12 +72,10 @@ public:
     // set process function
 	bool setProgressFunction(CURLEx_progress func, void* userdata);
 
-	//------------------------ multipart/formdata block ------------------------
-    bool addForm(const char* name, CURLformoption option, const char* value, const char* type = NULL);
+    //------------------------ multipart/formdata block ------------------------
+    bool addFormContent(const char* name, const char* content, unsigned int length = 0, const char* type = NULL);
 
-    bool addFormContent(const std::string& name, const std::string& content, const std::string& type = "");
-
-    bool addFormFile(const std::string& name, const std::string& file, const std::string& type = "");
+    bool addFormFile(const char* name, const char* file, const char* type = NULL);
 	//--------------------------------------------------------------------
 
 	// called at last
@@ -97,75 +95,134 @@ private:
 */
 class CurlRequest {
 public:
-	CurlRequest(void) : connecttimeout(30), timeout(60) {}
+    class Form {
+    public:
+        Form(void) : value(NULL), length(0) {}
+        ~Form(void) {
+            if (value) {
+                delete []value;
+                value = NULL;
+            }
+        }
+        void setValue(const char* value, unsigned int length) {
+            if (this->value) {
+                delete []this->value;
+                this->value = NULL;
+            }
+            this->length = 0;
+            if (value) {
+                if (length <= 0) {
+                    length = strlen(value);
+                }
+                if (length > 0) {
+                    this->value = new char[length];
+                    memset(this->value, 0, length);
+                    memcpy(this->value, value, length);
+                    this->length = length;
+                }
+            }
+        }
+    public:
+        std::string name;
+        CURLformoption option;
+        char* value;
+        unsigned int length;
+        std::string type;
+    };
 
-	void setData(const char* buffer, unsigned int len) {
-		if (NULL != buffer && len > 0) {
-			data.assign(buffer, buffer + len);
+public:
+    CurlRequest(void) : mData(NULL), mDataSize(0) {
+        clear();
+    }
+
+    ~CurlRequest(void) {
+        clear();
+    }
+
+    void clear(void) {
+        sslcafilename = "";
+        cookiefilename = "";
+        connecttimeout = 30;
+        timeout = 60;
+        url = "";
+        headers.clear();
+        if (mData) {
+            delete []mData;
+            mData = NULL;
+        }
+        mDataSize = 0;
+        std::map<std::string, Form*>::iterator iter = mForms.begin();
+        for (; mForms.end() != iter; ++iter) {
+            delete iter->second;
+        }
+        mForms.clear();
+    }
+
+    void setData(const char* data, unsigned int length) {
+        if (mData) {
+            delete []mData;
+            mData = NULL;
+        }
+        mDataSize = 0;
+        if (data) {
+            if (length <= 0) {
+                length = strlen(data);
+            }
+            if (length > 0) {
+                mData = new char[length];
+                memset(mData, 0, length);
+                memcpy(mData, data, length);
+                mDataSize = length;
+            }
 		}
 	}
 
     const char* getData(void) {
-		if (data.size() > 0) {
-			return &(data.front());
-		}
-		return NULL;
+        return mData;
 	}
 
 	unsigned int getDataSize(void) {
-		return data.size();
+        return mDataSize;
 	}
+
+    void addContent(const std::string& name, const char* content, unsigned int length = 0, const std::string& type = "") {
+        if (!name.empty()) {
+            Form* f = new Form();
+            f->name = name;
+            f->option = CURLFORM_COPYCONTENTS;
+            f->setValue(content, length);
+            f->type = type;
+            mForms[name] = f;
+        }
+    }
+
+    void addFile(const std::string& name, const std::string& file, const std::string& type = "") {
+        if (!name.empty() && !file.empty()) {
+            Form* f = new Form();
+            f->name = name;
+            f->option = CURLFORM_FILE;
+            f->setValue(file.c_str(), file.length());
+            f->type = type;
+            mForms[name] = f;
+        }
+    }
+
+    const std::map<std::string, Form*>& getForms(void) {
+        return mForms;
+    }
 
 public:
 	std::string sslcafilename;				// ssl CA file name
 	std::string cookiefilename;				// cookie file name
+    int connecttimeout;						// connect timeout
+    int timeout;							// read timeout
 	std::string url;						// request url
 	std::vector<std::string> headers;		// header
-	int connecttimeout;						// connect timeout
-	int timeout;							// read timeout
 
 private:
-	std::vector<char> data;					// request data, support binary data
-};
-
-/*
-* struct of curl request
-*/
-class CurlRequestForm : public CurlRequest {
-public:
-    CurlRequestForm(void) {}
-
-    void addContent(const std::string& name, std::string content) {
-        if (name.empty() || content.empty()) {
-            return;
-        }
-        mContentMap[name] = content;
-    }
-
-    void addFile(const std::string& name, const std::string& fileName) {
-        if (name.empty() || fileName.empty()) {
-            return;
-        }
-        mFileMap[name] = fileName;
-    }
-
-    void transform(CURLEx* curlObj) {
-        if (NULL == curlObj) {
-            return;
-        }
-        std::map<std::string, std::string>::iterator contentIter = mContentMap.begin();
-        for (; mContentMap.end() != contentIter; ++contentIter) {
-            curlObj->addFormContent(contentIter->first, contentIter->second);
-        }
-        std::map<std::string, std::string>::iterator fileIter = mFileMap.begin();
-        for (; mFileMap.end() != fileIter; ++fileIter) {
-            curlObj->addFormFile(fileIter->first, fileIter->second);
-        }
-    }
-
-private:
-    std::map<std::string, std::string> mContentMap;         // content form map
-    std::map<std::string, std::string> mFileMap;            // file name form map
+    char* mData;                            // request data, support binary data
+    unsigned int mDataSize;                 // request data size
+    std::map<std::string, Form*> mForms;    // request form
 };
 
 /*
@@ -175,7 +232,7 @@ bool curlGet(CurlRequest& request, CURLEx_callback headerFunc, void* headerStrea
 
 bool curlPost(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlPostForm(CurlRequestForm& requestForm, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlPostForm(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
 bool curlPut(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
@@ -198,7 +255,7 @@ std::string Screenshot::uploadScreenshotImage(std::string uploadUrl, std::string
 		return "";
 	}
 	FILE* fp = fopen(localPath.c_str(), "rb");
-	if (NULL == fp) {
+    if (!fp) {
 		return "";
 	}
 	CURLEx curl;
@@ -218,7 +275,7 @@ std::string Screenshot::uploadScreenshotImage(std::string uploadUrl, std::string
 		return "";
 	}
 	Json* root= Json_create(responseStr.c_str());
-	if (NULL == root) {
+    if (!root) {
 		return "";
 	}
 	unsigned int status= Json_getItem(root, "status")->valueint;
@@ -266,7 +323,7 @@ int FileDownload::downloadFile(const std::string& savePath, const std::string& s
 	std::string backslash = ('/' != savePath.at(savePath.size() - 1) && '\\' != savePath.at(savePath.size() - 1)) ? "/" : "";
 	std::string fullFilePath = savePath + backslash + saveName;
 	FILE* fp = fopen(fullFilePath.c_str(), "wb");
-	if (NULL == fp) {				// 创建保存路劲失败
+    if (!fp) {                       // 创建保存路劲失败
 		if (buffer) {
 			*buffer = "create file failed.";
 		}
