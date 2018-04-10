@@ -41,13 +41,13 @@
 
   @deprecated All functions in this file are by definition deprecated.
  */
-#include "visibility.h"
+#include <event2/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "event-config.h"
+#include <event2/event-config.h>
 #ifdef EVENT__HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -56,7 +56,7 @@ extern "C" {
 #endif
 
 /* For int types. */
-#include "util.h"
+#include <event2/util.h>
 
 /**
   Initialize the event API.

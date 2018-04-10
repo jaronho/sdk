@@ -28,8 +28,8 @@
 #define EVENT2_HTTP_H_INCLUDED_
 
 /* For int types. */
-#include "util.h"
-#include "visibility.h"
+#include <event2/util.h>
+#include <event2/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

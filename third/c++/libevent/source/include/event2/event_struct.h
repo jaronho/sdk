@@ -40,7 +40,7 @@
 extern "C" {
 #endif
 
-#include "event-config.h"
+#include <event2/event-config.h>
 #ifdef EVENT__HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -49,10 +49,10 @@ extern "C" {
 #endif
 
 /* For int types. */
-#include "util.h"
+#include <event2/util.h>
 
 /* For evkeyvalq */
-#include "keyvalq_struct.h"
+#include <event2/keyvalq_struct.h>
 
 #define EVLIST_TIMEOUT	    0x01
 #define EVLIST_INSERTED	    0x02
