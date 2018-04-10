@@ -182,13 +182,13 @@
   Core functions for waiting for and receiving events, and using event bases.
 */
 
-#include <event2/visibility.h>
+#include "visibility.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <event2/event-config.h>
+#include "event-config.h"
 #ifdef EVENT__HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -199,7 +199,7 @@ extern "C" {
 #include <stdio.h>
 
 /* For int types. */
-#include <event2/util.h>
+#include "util.h"
 
 /**
  * Structure to hold information and state for a Libevent dispatch loop.

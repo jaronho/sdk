@@ -37,9 +37,9 @@
   headers.
  */
 
-#include <event.h>
-#include <event2/rpc.h>
-#include <event2/rpc_struct.h>
-#include <event2/rpc_compat.h>
+#include "event.h"
+#include "event2/rpc.h"
+#include "event2/rpc_struct.h"
+#include "event2/rpc_compat.h"
 
 #endif /* EVENT1_EVRPC_H_INCLUDED_ */

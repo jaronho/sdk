@@ -27,13 +27,13 @@
 #ifndef EVENT2_LISTENER_H_INCLUDED_
 #define EVENT2_LISTENER_H_INCLUDED_
 
-#include <event2/visibility.h>
+#include "visibility.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <event2/event.h>
+#include "event.h"
 
 struct sockaddr;
 struct evconnlistener;

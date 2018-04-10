@@ -46,13 +46,13 @@
 
  */
 
-#include <event2/visibility.h>
+#include "visibility.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <event2/event-config.h>
+#include "event-config.h"
 
 /**
    @name Flags passed to lock functions

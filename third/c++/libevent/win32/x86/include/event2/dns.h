@@ -135,14 +135,14 @@
 #ifndef EVENT2_DNS_H_INCLUDED_
 #define EVENT2_DNS_H_INCLUDED_
 
-#include <event2/visibility.h>
+#include "visibility.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* For integer types. */
-#include <event2/util.h>
+#include "util.h"
 
 /** Error codes 0-5 are as described in RFC 1035. */
 #define DNS_ERR_NONE 0
