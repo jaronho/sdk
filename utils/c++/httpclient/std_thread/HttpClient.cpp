@@ -165,7 +165,7 @@ void HttpClient::receive(void) {
     recvResponse();
 }
 //------------------------------------------------------------------------
-void HttpClient::get(const std::string& url, HTTP_CALLBACK callback /*= 0*/) {
+void HttpClient::get(const std::string& url, HTTP_REQUEST_CALLBACK callback /*= 0*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
@@ -177,7 +177,7 @@ void HttpClient::get(const std::string& url, HTTP_CALLBACK callback /*= 0*/) {
     sendRequest(obj);
 }
 //------------------------------------------------------------------------
-void HttpClient::post(const std::string& url, const char* data, HTTP_CALLBACK callback /*= 0*/) {
+void HttpClient::post(const std::string& url, const char* data, HTTP_REQUEST_CALLBACK callback /*= 0*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
@@ -193,7 +193,7 @@ void HttpClient::post(const std::string& url, const char* data, HTTP_CALLBACK ca
 void HttpClient::postForm(const std::string& url,
                           const std::map<std::string, std::string>* contents /*= NULL*/,
                           const std::map<std::string, std::string>* files /*= NULL*/,
-                          HTTP_CALLBACK callback /*= 0*/) {
+                          HTTP_REQUEST_CALLBACK callback /*= 0*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;

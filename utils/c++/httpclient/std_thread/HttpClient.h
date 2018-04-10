@@ -14,8 +14,8 @@
 #include <condition_variable>
 #include "../libcurl/CURLEx.h"
 
-// http回调
-#define HTTP_CALLBACK std::function<void(bool success, int curlcode, int responsecode, \
+// http请求回调
+#define HTTP_REQUEST_CALLBACK std::function<void(bool success, int curlcode, int responsecode, \
                                          const std::string& errorbuffer, \
                                          const std::string& responseheader, \
                                          const std::string& responsebody)>
@@ -30,7 +30,7 @@ public:
     std::string tag;						// 标签,用以标识每个请求
     std::string requesttype;				// 请求类型(不区分大小写):"GET","POST","POST_FORM","PUT","DELETE"
     bool syncresponse;						// 同步响应
-    HTTP_CALLBACK callback;                 // 回调函数
+    HTTP_REQUEST_CALLBACK callback;         // 回调函数
 
     // 响应
     bool success;							// 是否请求成功
@@ -46,14 +46,14 @@ class HttpClient {
 public:
     static HttpClient* getInstance(void);	// 获取单例
     static void destroyInstance(void);		// 删除单例
-    void send(HttpObject* obj);				// 发送http请求
-    void receive(void);						// 每帧循环接收(用于异步响应)
-    void get(const std::string& url, HTTP_CALLBACK callback = 0);   // http get 请求(同步响应)
-    void post(const std::string& url, const char* data, HTTP_CALLBACK callback = 0);    // http post 请求(同步响应)
+    void send(HttpObject* obj);                                                                 // 发送http请求
+    void receive(void);                                                                         // 每帧循环接收(用于异步响应)
+    void get(const std::string& url, HTTP_REQUEST_CALLBACK callback = 0);                       // http get 请求(同步响应)
+    void post(const std::string& url, const char* data, HTTP_REQUEST_CALLBACK callback = 0);    // http post 请求(同步响应)
     void postForm(const std::string& url,
                   const std::map<std::string, std::string>* contents = NULL,
                   const std::map<std::string, std::string>* files = NULL,
-                  HTTP_CALLBACK callback = 0);    // http post 请求(同步响应)
+                  HTTP_REQUEST_CALLBACK callback = 0);                                          // http post 请求(同步响应)
 };
 
 #endif //_HTTP_CLIENT_H_
