@@ -9,7 +9,7 @@
 #include <string>
 #include <list>
 #include <pthread.h>
-#include "CURLEx.h"
+#include "../libcurl/CURLEx.h"
 
 
 // http«Î«Û¿‡–Õ

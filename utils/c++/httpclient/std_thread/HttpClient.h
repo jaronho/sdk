@@ -12,7 +12,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include "../curlex/CURLEx.h"
+#include "../libcurl/CURLEx.h"
 
 // http回调
 #define HTTP_CALLBACK std::function<void(bool success, int curlcode, int responsecode, \
