@@ -102,13 +102,13 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
 }
 //------------------------------------------------------------------------
 static const char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* body) {
-	std::map<std::string, std::string> dataMap;
+	std::map<std::string, std::string> datas;
 	if (0 == strcmp("GET", method)) {
 		struct evkeyvalq params;
 		evhttp_parse_query(uri, &params);
 		struct evkeyval* param = params.tqh_first;
 		for (; param; param = param->next.tqe_next) {
-			dataMap[param->key] = param->value;
+			datas[param->key] = param->value;
 		}
 	} else if (0 == strcmp("POST", method)) {
 		if (headers) {
@@ -130,7 +130,7 @@ static const char* handleHttpRequest(const char* method, const char* uri, const 
 				evhttp_parse_query_str((const char*)body, &params);
 				struct evkeyval* param = params.tqh_first;
 				for (; param; param = param->next.tqe_next) {
-					dataMap[param->key] = param->value;
+					datas[param->key] = param->value;
 				}
 			} else {
 				char buf[128] = { 0 };
@@ -150,8 +150,7 @@ static const char* handleHttpRequest(const char* method, const char* uri, const 
 		printf("%s\n", buf);
 		return buf;
 	}
-	//const char* response = HttpServer::getInstance()->handleRouter(method, uri, NULL);
-	return NULL;
+	return HttpServer::getInstance()->handleRouter(method, uri, datas);
 }
 //------------------------------------------------------------------------
 static HttpServer* mInstance = NULL;
@@ -227,7 +226,7 @@ void HttpServer::addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK call
 	addRouter(uri, router);
 }
 //------------------------------------------------------------------------
-const char* HttpServer::handleRouter(const char* method, const char* uri, void* data) {
+const char* HttpServer::handleRouter(const char* method, const char* uri, const std::map<std::string, std::string>& datas) {
 	if (!method || 0 == strlen(method) || !uri || 0 == strlen(uri)) {
 		return NULL;
 	}
@@ -244,7 +243,7 @@ const char* HttpServer::handleRouter(const char* method, const char* uri, void* 
 		return NULL;
 	}
 	if (mRouterMap[uri]->callback) {
-		return mRouterMap[uri]->callback(data);
+		return mRouterMap[uri]->callback(datas);
 	}
 	return NULL;
 }
