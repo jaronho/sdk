@@ -72,7 +72,7 @@ public:
     // set process function
 	bool setProgressFunction(CURLEx_progress func, void* userdata);
 
-    //------------------------ multipart/formdata block ------------------------
+    //--------------------- multipart/formdata block ---------------------
     bool addFormContent(const char* name, const char* content, unsigned int length = 0, const char* type = NULL);
 
     bool addFormFile(const char* name, const char* file, const char* type = NULL);
