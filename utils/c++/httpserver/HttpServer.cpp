@@ -4,17 +4,17 @@
 * Brief:	http server
 **********************************************************************/
 #include "HttpServer.h"
-static int s_print_client_request_info = 0;
-static bool startHttpServer(const char* ip, unsigned int port, void(*cb)(struct evhttp_request*, void*), void* arg, int pcri);
+static unsigned int s_print_level = 0;	// 0.no print, 1.error, 2.info
+static bool startHttpServer(const char* ip, unsigned int port, void(*cb)(struct evhttp_request*, void*), void* arg, unsigned int printLevel);
 static const char* httpMethodName(evhttp_cmd_type method);
 static void httpServerCallback(struct evhttp_request* req, void* arg);
-static const char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* data);
+static char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* data, int* ret);
 //------------------------------------------------------------------------
-static bool startHttpServer(const char* ip, unsigned int port, void (*cb)(struct evhttp_request*, void*), void* arg, int pcri) {
+static bool startHttpServer(const char* ip, unsigned int port, void (*cb)(struct evhttp_request*, void*), void* arg, unsigned int printLevel) {
     if (!ip || 0 == strlen(ip) || 0 == port) {
         return false;
     }
-	s_print_client_request_info = pcri;
+	s_print_level = printLevel;
     struct event_base* base = event_base_new();
     struct evhttp* http_server = evhttp_new(base);
     if (!http_server) {
@@ -70,15 +70,14 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
 	const unsigned char* body = evbuffer_pullup(buffer, -1);					// client body
 	const char* uri = evhttp_request_get_uri(req);								// server uri
 	// print client request info
-	if (s_print_client_request_info) {
+	if (s_print_level > 1) {
 		printf("--------------------------------------------------[[\n");
 		printf("HTTP / %d.%d\n", major, minor);
 		printf("Receive a %s request from %s:%u\n", method, host, port);
 		printf("Uri: %s\n", uri);
 		printf("Headers:\n");
 		if (headers) {
-			struct evkeyval* header = headers->tqh_first;
-			for (; header; header = header->next.tqe_next) {
+			for (struct evkeyval* header = headers->tqh_first; header; header = header->next.tqe_next) {
 				printf("    %s: %s\n", header->key, header->value);
 			}
 		}
@@ -87,70 +86,94 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
 		printf("--------------------------------------------------]]\n");
 	}
 	// handle request
-	const char* response = handleHttpRequest(method, uri, headers, body);
+	int ret = 0;
+	char* response = handleHttpRequest(method, uri, headers, body, &ret);
 	// reply to client
 	struct evbuffer* buf = evbuffer_new();
 	if (!buf) {
-		evhttp_send_error(req, HTTP_INTERNAL, "REPLY_ERROR");
+		if (response) {
+			free(response);
+		}
+		evhttp_send_error(req, HTTP_INTERNAL, "ERROR_BUFFER_ALLOCATE");
 		return;
 	}
-	if (response && strlen(response) > 0) {
+	if (response) {
 		evbuffer_add_printf(buf, response);
+		free(response);
 	}
-    evhttp_send_reply(req, HTTP_OK, "OK", buf);
+	evhttp_send_reply(req, HTTP_OK, "OK", buf);
     evbuffer_free(buf);
 }
 //------------------------------------------------------------------------
-static const char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* body) {
-	std::map<std::string, std::string> datas;
+static char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* body, int* ret) {
+	std::string realUri = uri;
+	std::map<std::string, std::string> headerMap;
+	std::map<std::string, std::string> bodyMap;
+	char* response = NULL;
+	const unsigned int ERROR_LENGTH = 512;
+	// parse real uri
+	size_t pos = realUri.find_first_of('?');
+	realUri = realUri.substr(0, pos);
+	// parse header into map
+	for (struct evkeyval* header = headers->tqh_first; header; header = header->next.tqe_next) {
+		std::string headerKey = header->key;
+		std::transform(headerKey.begin(), headerKey.end(), headerKey.begin(), ::tolower);
+		headerMap[headerKey] = header->value;
+	}
+	// parse body into map
 	if (0 == strcmp("GET", method)) {
 		struct evkeyvalq params;
 		evhttp_parse_query(uri, &params);
-		struct evkeyval* param = params.tqh_first;
-		for (; param; param = param->next.tqe_next) {
-			datas[param->key] = param->value;
+		for (struct evkeyval* param = params.tqh_first; param; param = param->next.tqe_next) {
+			bodyMap[param->key] = param->value;
 		}
 	} else if (0 == strcmp("POST", method)) {
-		if (headers) {
-			// parse content type
-			std::string headerKey = "";
-			std::string headerValue = "";
-			struct evkeyval* header = headers->tqh_first;
-			for (; header; header = header->next.tqe_next) {
-				headerKey = header->key;
-				std::transform(headerKey.begin(), headerKey.end(), headerKey.begin(), ::tolower);
-				if ("content-type" == headerKey) {
-					headerValue = header->value;
-					std::transform(headerValue.begin(), headerValue.end(), headerValue.begin(), ::tolower);
-					break;
-				}
-			}
-			if ("application/x-www-form-urlencoded" == headerValue) {
+		std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
+		if (headerMap.end() != iter) {
+			if ("application/x-www-form-urlencoded" == iter->second) {
 				struct evkeyvalq params;
 				evhttp_parse_query_str((const char*)body, &params);
-				struct evkeyval* param = params.tqh_first;
-				for (; param; param = param->next.tqe_next) {
-					datas[param->key] = param->value;
+				for (struct evkeyval* param = params.tqh_first; param; param = param->next.tqe_next) {
+					bodyMap[param->key] = param->value;
 				}
 			} else {
-				char buf[128] = { 0 };
-				sprintf_s(buf, "now temporarily does not support multipart/form-data %s request, TODO", method);
-				printf("%s\n", buf);
-				return buf;
+				response = (char*)malloc(ERROR_LENGTH);
+				memset(response, 0, ERROR_LENGTH);
+				sprintf_s(response, ERROR_LENGTH, "ERROR_HANDLE_REQUEST: no support %s request which content-type is \"%s\"", method, iter->second.c_str());
+				if (s_print_level > 0) {
+					printf("%s\n", response);
+				}
+				*ret = 3;
+				return response;
 			}
 		} else {
-			char buf[128] = { 0 };
-			sprintf_s(buf, "now temporarily does not support %s request without header, TODO", method);
-			printf("%s\n", buf);
-			return buf;
+			response = (char*)malloc(ERROR_LENGTH);
+			memset(response, 0, ERROR_LENGTH);
+			sprintf_s(response, ERROR_LENGTH, "ERROR_HANDLE_REQUEST: no support %s request which without content-type", method);
+			if (s_print_level > 0) {
+				printf("%s\n", response);
+			}
+			*ret = 2;
+			return response;
 		}
 	} else {
-		char buf[128] = { 0 };
-		sprintf_s(buf, "now temporarily does not support %s request, TODO", method);
-		printf("%s\n", buf);
-		return buf;
+		response = (char*)malloc(ERROR_LENGTH);
+		memset(response, 0, ERROR_LENGTH);
+		sprintf_s(response, ERROR_LENGTH, "ERROR_HANDLE_REQUEST: no support %s request", method);
+		if (s_print_level > 0) {
+			printf("%s\n", response);
+		}
+		*ret = 1;
+		return response;
 	}
-	return HttpServer::getInstance()->handleRouter(method, uri, datas);
+	std::string result = HttpServer::getInstance()->handleRouter(method, realUri, headerMap, bodyMap);
+	if (!result.empty()) {
+		response = (char*)malloc(result.size() + 1);
+		memcpy(response, result.c_str(), result.size());
+		*(response + result.size()) = '\0';
+	}
+	*ret = 0;
+	return response;
 }
 //------------------------------------------------------------------------
 static HttpServer* mInstance = NULL;
@@ -226,29 +249,32 @@ void HttpServer::addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK call
 	addRouter(uri, router);
 }
 //------------------------------------------------------------------------
-const char* HttpServer::handleRouter(const char* method, const char* uri, const std::map<std::string, std::string>& datas) {
-	if (!method || 0 == strlen(method) || !uri || 0 == strlen(uri)) {
-		return NULL;
+std::string HttpServer::handleRouter(const std::string& method,
+									 const std::string& uri,
+									 const std::map<std::string, std::string>& headers,
+									 const std::map<std::string, std::string>& body) {
+	if (method.empty() || uri.empty()) {
+		return "";
 	}
 	if (!mRouterMap[uri]) {
-		printf("can not find router for \"%s\"\n", uri);
-		return NULL;
+		printf("can not find router for \"%s\"\n", uri.c_str());
+		return "";
 	}
-	if (0 == strcmp("GET", method) && !mRouterMap[uri]->support_get) {
-		printf("can not support GET for \"%s\"\n", uri);
-		return NULL;
+	if ("GET" == method && !mRouterMap[uri]->support_get) {
+		printf("can not support GET for \"%s\"\n", uri.c_str());
+		return "";
 	}
-	if (0 == strcmp("POST", method) && !mRouterMap[uri]->support_post) {
-		printf("can not support POST for \"%s\"\n", uri);
-		return NULL;
+	if ("POST" == method && !mRouterMap[uri]->support_post) {
+		printf("can not support POST for \"%s\"\n", uri.c_str());
+		return "";
 	}
 	if (mRouterMap[uri]->callback) {
-		return mRouterMap[uri]->callback(datas);
+		return mRouterMap[uri]->callback(headers, body);
 	}
-	return NULL;
+	return "";
 }
 //------------------------------------------------------------------------
-void HttpServer::run(const std::string& ip, unsigned int port, bool pcri /*= true*/) {
+void HttpServer::run(const std::string& ip, unsigned int port, unsigned int printLevel /*= 0*/) {
     if (ip.empty() || 0 == port || mIsRunning) {
         return;
     }
@@ -260,7 +286,7 @@ void HttpServer::run(const std::string& ip, unsigned int port, bool pcri /*= tru
 		return;
 	}
 #endif
-	if (!startHttpServer(ip.c_str(), port, httpServerCallback, NULL, pcri ? 1 : 0)) {
+	if (!startHttpServer(ip.c_str(), port, httpServerCallback, NULL, printLevel)) {
 		printf("start http server %s:%d failed ...\n", ip.c_str(), port);
 	}
 #ifdef WIN32
