@@ -8,7 +8,7 @@ static unsigned int s_print_level = 0;	// 0.no print, 1.error, 2.info
 static bool startHttpServer(const char* ip, unsigned int port, void(*cb)(struct evhttp_request*, void*), void* arg, unsigned int printLevel);
 static const char* httpMethodName(evhttp_cmd_type method);
 static void httpServerCallback(struct evhttp_request* req, void* arg);
-static char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* data, int* ret);
+static char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* body, unsigned int bodySize, int* ret);
 //------------------------------------------------------------------------
 static bool startHttpServer(const char* ip, unsigned int port, void (*cb)(struct evhttp_request*, void*), void* arg, unsigned int printLevel) {
     if (!ip || 0 == strlen(ip) || 0 == port) {
@@ -82,12 +82,12 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
 			}
 		}
 		printf("Body:\n");
-		printf("%s\n", body);
+		printf("%s\n", body ? (const char*)body : "");
 		printf("--------------------------------------------------]]\n");
 	}
 	// handle request
 	int ret = 0;
-	char* response = handleHttpRequest(method, uri, headers, body, &ret);
+	char* response = handleHttpRequest(method, uri, headers, body, req->body_size, &ret);
 	// reply to client
 	struct evbuffer* buf = evbuffer_new();
 	if (!buf) {
@@ -105,12 +105,12 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
     evbuffer_free(buf);
 }
 //------------------------------------------------------------------------
-static char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* body, int* ret) {
+static char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* body, unsigned int bodySize, int* ret) {
 	std::string realUri = uri;
 	std::map<std::string, std::string> headerMap;
-	std::map<std::string, std::string> bodyMap;
+	std::map<std::string, HttpField*> bodyMap;
 	char* response = NULL;
-	const unsigned int ERROR_LENGTH = 512;
+	const unsigned int ERROR_LENGTH = 256;
 	// parse real uri
 	size_t pos = realUri.find_first_of('?');
 	realUri = realUri.substr(0, pos);
@@ -125,17 +125,41 @@ static char* handleHttpRequest(const char* method, const char* uri, const struct
 		struct evkeyvalq params;
 		evhttp_parse_query(uri, &params);
 		for (struct evkeyval* param = params.tqh_first; param; param = param->next.tqe_next) {
-			bodyMap[param->key] = param->value;
+			HttpField* field = new HttpField();
+			field->setName(param->key);
+			field->setType(HttpField::TYPE_TEXT);
+			field->setContent(param->value, strlen(param->value));
+			bodyMap[param->key] = field;
 		}
 	} else if (0 == strcmp("POST", method)) {
 		std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
 		if (headerMap.end() != iter) {
 			if ("application/x-www-form-urlencoded" == iter->second) {
-				struct evkeyvalq params;
-				evhttp_parse_query_str((const char*)body, &params);
-				for (struct evkeyval* param = params.tqh_first; param; param = param->next.tqe_next) {
-					bodyMap[param->key] = param->value;
+				if (body) {
+					struct evkeyvalq params;
+					evhttp_parse_query_str((const char*)body, &params);
+					for (struct evkeyval* param = params.tqh_first; param; param = param->next.tqe_next) {
+						HttpField* field = new HttpField();
+						field->setName(param->key);
+						field->setType(HttpField::TYPE_TEXT);
+						field->setContent(param->value, strlen(param->value));
+						bodyMap[param->key] = field;
+					}
 				}
+			} else if (std::string::npos != iter->second.find("multipart/form-data")) {
+				MultipartFormData* forms = new MultipartFormData();
+				if (!forms->parse(iter->second, (const char*)body, bodySize, &bodyMap)) {
+					delete forms;
+					response = (char*)malloc(ERROR_LENGTH);
+					memset(response, 0, ERROR_LENGTH);
+					sprintf_s(response, ERROR_LENGTH, "ERROR_HANDLE_REQUEST: can not parse multipart form-data for uri \"%s\"", realUri.c_str());
+					if (s_print_level > 0) {
+						printf("%s\n", response);
+					}
+					*ret = 4;
+					return response;
+				}
+				delete forms;
 			} else {
 				response = (char*)malloc(ERROR_LENGTH);
 				memset(response, 0, ERROR_LENGTH);
@@ -166,7 +190,13 @@ static char* handleHttpRequest(const char* method, const char* uri, const struct
 		*ret = 1;
 		return response;
 	}
+	// handle router
 	std::string result = HttpServer::getInstance()->handleRouter(method, realUri, headerMap, bodyMap);
+	// release and return response
+	std::map<std::string, HttpField*>::iterator iter = bodyMap.begin();
+	for (; bodyMap.end() != iter; ++iter) {
+		delete iter->second;
+	}
 	if (!result.empty()) {
 		response = (char*)malloc(result.size() + 1);
 		memcpy(response, result.c_str(), result.size());
@@ -174,6 +204,75 @@ static char* handleHttpRequest(const char* method, const char* uri, const struct
 	}
 	*ret = 0;
 	return response;
+}
+//------------------------------------------------------------------------
+HttpField::HttpField(void) {
+	mName = "";
+	mType = 0;
+	mContent = NULL;
+	mContentLength = 0;
+	mFilename = "";
+}
+//------------------------------------------------------------------------
+HttpField::~HttpField(void) {
+	if (mContent) {
+		delete mContent;
+	}
+}
+//------------------------------------------------------------------------
+std::string HttpField::getName(void) {
+	return mName;
+}
+//------------------------------------------------------------------------
+void HttpField::setName(const std::string& name) {
+	mName = name;
+}
+//------------------------------------------------------------------------
+unsigned int HttpField::getType(void) {
+	return mType;
+}
+//------------------------------------------------------------------------
+void HttpField::setType(unsigned int type) {
+	if (TYPE_TEXT == type || TYPE_FILE == type) {
+		mType = type;
+	}
+}
+//------------------------------------------------------------------------
+const char* HttpField::getContent(void) {
+	return mContent;
+}
+//------------------------------------------------------------------------
+void HttpField::setContent(const char* content, size_t length) {
+	if (NULL == mContent) {
+		mContent = new char[length + 1];
+	} else {
+		mContent = (char*)realloc(mContent, mContentLength + length + 1);
+	}
+	memcpy(mContent + mContentLength, content, length);
+	mContentLength += length;
+	if (TYPE_TEXT == mType) {
+		*(mContent + mContentLength) = '\0';
+	}
+}
+//------------------------------------------------------------------------
+size_t HttpField::getContentLength(void) {
+	return mContentLength;
+}
+//------------------------------------------------------------------------
+std::string HttpField::getFilename(void) {
+	return mFilename;
+}
+//------------------------------------------------------------------------
+void HttpField::setFilename(const std::string& filename) {
+	mFilename = filename;
+}
+//------------------------------------------------------------------------
+std::string HttpField::getFileContentType(void) {
+	return mFileContentType;
+}
+//------------------------------------------------------------------------
+void HttpField::setFileContentType(const std::string& fileContentType) {
+	mFileContentType = fileContentType;
 }
 //------------------------------------------------------------------------
 static HttpServer* mInstance = NULL;
@@ -252,7 +351,7 @@ void HttpServer::addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK call
 std::string HttpServer::handleRouter(const std::string& method,
 									 const std::string& uri,
 									 const std::map<std::string, std::string>& headers,
-									 const std::map<std::string, std::string>& body) {
+									 const std::map<std::string, HttpField*>& body) {
 	if (method.empty() || uri.empty()) {
 		return "";
 	}
