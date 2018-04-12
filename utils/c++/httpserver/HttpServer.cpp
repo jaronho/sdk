@@ -4,24 +4,31 @@
 * Brief:	http server
 **********************************************************************/
 #include "HttpServer.h"
-static unsigned int s_print_level = 0;	// 0.no print, 1.error, 2.info
-static bool startHttpServer(const char* ip, unsigned int port, void(*cb)(struct evhttp_request*, void*), void* arg, unsigned int printLevel);
+static bool startHttpServer(const char* ip, unsigned short port, void(*cb)(struct evhttp_request*, void*), void* arg);
 static const char* httpMethodName(evhttp_cmd_type method);
 static void httpServerCallback(struct evhttp_request* req, void* arg);
-static char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* body, unsigned int bodySize, struct evkeyvalq* responseHeaders);
+static char* handleHttpRequest(char major, char minor, const char* method, const char* host, unsigned short port, 
+                               const struct evkeyvalq* headers, const unsigned char* body, unsigned int bodySize, 
+                               const char* uri, struct evkeyvalq* responseHeaders);
 //------------------------------------------------------------------------
-static bool startHttpServer(const char* ip, unsigned int port, void (*cb)(struct evhttp_request*, void*), void* arg, unsigned int printLevel) {
-    if (!ip || 0 == strlen(ip) || 0 == port) {
+static bool startHttpServer(const char* ip, unsigned short port, void (*cb)(struct evhttp_request*, void*), void* arg) {
+    if (!ip || 0 == strlen(ip)) {
+	    printf_s("start http server failed, ip is empty ...\n");
         return false;
     }
-    s_print_level = printLevel;
+    if (0 == port) {
+	    printf_s("start http server failed, port is 0 ...\n");
+	    return false;
+    }
     struct event_base* base = event_base_new();
     struct evhttp* http_server = evhttp_new(base);
     if (!http_server) {
+	    printf_s("start http server failed, evhttp_new error ...\n");
         return false;
     }
     // bind address
-    if (0 != evhttp_bind_socket(http_server, ip, port & 0xFFFF)) {
+    if (0 != evhttp_bind_socket(http_server, ip, port)) {
+	    printf_s("start http server failed, bind socket %s:%u error ...\n", ip, port);
         return false;
     }
     // set http request handle callabck
@@ -29,7 +36,7 @@ static bool startHttpServer(const char* ip, unsigned int port, void (*cb)(struct
         evhttp_set_gencb(http_server, cb, arg);
     }
     // start event loop, it will callback when http request triggered
-    printf("start http server %s:%d ok ...\n", ip, port);
+    printf_s("start http server %s:%u ok ...\n", ip, port);
     event_base_dispatch(base);
     evhttp_free(http_server);
     return true;
@@ -69,25 +76,9 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
     struct evbuffer* buffer = evhttp_request_get_input_buffer(req);             // client buffer
     const unsigned char* body = evbuffer_pullup(buffer, -1);                    // client body
     const char* uri = evhttp_request_get_uri(req);                              // server uri
-    // print client request info
-    if (s_print_level > 1) {
-        printf("--------------------------------------------------[[\n");
-        printf("HTTP / %d.%d\n", major, minor);
-        printf("Receive a %s request from %s:%u\n", method, host, port);
-        printf("Uri: %s\n", uri);
-        printf("Headers:\n");
-        if (headers) {
-            for (struct evkeyval* header = headers->tqh_first; header; header = header->next.tqe_next) {
-                printf("    %s: %s\n", header->key, header->value);
-            }
-        }
-        printf("Body:\n");
-        printf("%s\n", body ? (const char*)body : "");
-        printf("--------------------------------------------------]]\n");
-    }
     // handle request
-    int ret = 0;
-    char* responseBody = handleHttpRequest(method, uri, headers, body, req->body_size, evhttp_request_get_output_headers(req));
+    struct evkeyvalq* responseHeaders = evhttp_request_get_output_headers(req);
+    char* responseBody = handleHttpRequest(major, minor, method, host, port, headers, body, req->body_size, uri, responseHeaders);
     // reply to client
     struct evbuffer* buf = evbuffer_new();
     if (!buf) {
@@ -105,15 +96,15 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
     evbuffer_free(buf);
 }
 //------------------------------------------------------------------------
-static char* handleHttpRequest(const char* method, const char* uri, const struct evkeyvalq* headers, const unsigned char* body, unsigned int bodySize, struct evkeyvalq* responseHeaders) {
-    std::string realUri = uri;
+static char* handleHttpRequest(char major, char minor, const char* method, const char* host, unsigned short port,
+                               const struct evkeyvalq* headers, const unsigned char* body, unsigned int bodySize,
+                               const char* uri, struct evkeyvalq* responseHeaders) {
     std::map<std::string, std::string> headerMap;
     std::map<std::string, HttpField*> bodyMap;
+    std::string realUri = uri;
     char* responseBody = NULL;
-    const unsigned int ERROR_LENGTH = 256;
-    // parse real uri
-    size_t pos = realUri.find_first_of('?');
-    realUri = realUri.substr(0, pos);
+    unsigned int errorCode = 0;
+    char errorBuf[256] = { 0 };
     // parse header into map
     for (struct evkeyval* header = headers->tqh_first; header; header = header->next.tqe_next) {
         std::string headerKey = header->key;
@@ -121,7 +112,7 @@ static char* handleHttpRequest(const char* method, const char* uri, const struct
         headerMap[headerKey] = header->value;
     }
     // parse body into map
-    if (0 == strcmp("GET", method)) {
+    if (0 == strcmp("GET", method)) {               // parse GET body
         struct evkeyvalq params;
         evhttp_parse_query(uri, &params);
         for (struct evkeyval* param = params.tqh_first; param; param = param->next.tqe_next) {
@@ -129,9 +120,13 @@ static char* handleHttpRequest(const char* method, const char* uri, const struct
             field->setName(param->key);
             field->setType(HttpField::TYPE_TEXT);
             field->setContent(param->value, strlen(param->value));
+            if (bodyMap[param->key]) {
+                delete bodyMap[param->key];
+            }
             bodyMap[param->key] = field;
         }
-    } else if (0 == strcmp("POST", method)) {
+        evhttp_clear_headers(&params);
+    } else if (0 == strcmp("POST", method)) {       // parse POST body
         std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
         if (headerMap.end() != iter) {
             if ("application/x-www-form-urlencoded" == iter->second) {
@@ -143,61 +138,58 @@ static char* handleHttpRequest(const char* method, const char* uri, const struct
                         field->setName(param->key);
                         field->setType(HttpField::TYPE_TEXT);
                         field->setContent(param->value, strlen(param->value));
+                        if (bodyMap[param->key]) {
+                            delete bodyMap[param->key];
+                        }
                         bodyMap[param->key] = field;
                     }
+                    evhttp_clear_headers(&params);
                 }
             } else if (std::string::npos != iter->second.find("multipart/form-data")) {
                 MultipartFormData* forms = new MultipartFormData();
                 if (!forms->parse(iter->second, (const char*)body, bodySize, &bodyMap)) {
-                    delete forms;
-                    responseBody = (char*)malloc(ERROR_LENGTH);
-                    memset(responseBody, 0, ERROR_LENGTH);
-                    sprintf_s(responseBody, ERROR_LENGTH, "ERROR_HANDLE_REQUEST: can not parse multipart form-data for uri \"%s\"", realUri.c_str());
-                    if (s_print_level > 0) {
-                        printf("%s\n", responseBody);
-                    }
-                    return responseBody;
+                    errorCode = 4;
+                    sprintf_s(errorBuf, 256, "can not parse multipart form-data for uri '%s'", uri);
                 }
                 delete forms;
             } else {
-                responseBody = (char*)malloc(ERROR_LENGTH);
-                memset(responseBody, 0, ERROR_LENGTH);
-                sprintf_s(responseBody, ERROR_LENGTH, "ERROR_HANDLE_REQUEST: no support %s request which content-type is \"%s\"", method, iter->second.c_str());
-                if (s_print_level > 0) {
-                    printf("%s\n", responseBody);
-                }
-                return responseBody;
+                errorCode = 3;
+                sprintf_s(errorBuf, 256, "no support %s request which content-type is '%s'", method, iter->second.c_str());
             }
         } else {
-            responseBody = (char*)malloc(ERROR_LENGTH);
-            memset(responseBody, 0, ERROR_LENGTH);
-            sprintf_s(responseBody, ERROR_LENGTH, "ERROR_HANDLE_REQUEST: no support %s request which without content-type", method);
-            if (s_print_level > 0) {
-                printf("%s\n", responseBody);
-            }
-            return responseBody;
+            errorCode = 2;
+            sprintf_s(errorBuf, 256, "no support %s request which without content-type", method);
         }
-    } else {
-        responseBody = (char*)malloc(ERROR_LENGTH);
-        memset(responseBody, 0, ERROR_LENGTH);
-        sprintf_s(responseBody, ERROR_LENGTH, "ERROR_HANDLE_REQUEST: no support %s request", method);
-        if (s_print_level > 0) {
-            printf("%s\n", responseBody);
-        }
-        return responseBody;
+    } else {                                        // parse other method
+        errorCode = 1;
+        sprintf_s(errorBuf, 256, "no support %s request", method);
     }
-    // handle router
+    // parse real uri
+    size_t pos = realUri.find_first_of('?');
+    if (std::string::npos != pos) {
+	    realUri = realUri.substr(0, pos);
+    }
+    // handle request
     std::map<std::string, std::string> reponseHeaderMap;
-    std::string result = HttpServer::getInstance()->handleRouter(method, realUri, headerMap, bodyMap, reponseHeaderMap);
-    // handle response headers and body
+    std::string result;
+    if (errorCode) {   // handle error
+        result = HttpServer::getInstance()->handleError(major, minor, method, host, port, headerMap, bodyMap, realUri, errorCode, errorBuf, reponseHeaderMap);
+    } else {           // handle router
+        result = HttpServer::getInstance()->handleRouter(major, minor, method, host, port, headerMap, bodyMap, realUri, reponseHeaderMap);
+    }
+    // handle clear
+    headerMap.clear();
     std::map<std::string, HttpField*>::iterator fieldIter = bodyMap.begin();
     for (; bodyMap.end() != fieldIter; ++fieldIter) {
         delete fieldIter->second;
     }
+    bodyMap.clear();
+    // handle response
     std::map<std::string, std::string>::iterator reponseHeaderIter = reponseHeaderMap.begin();
     for (; reponseHeaderMap.end() != reponseHeaderIter; ++reponseHeaderIter) {
         evhttp_add_header(responseHeaders, reponseHeaderIter->first.c_str(), reponseHeaderIter->second.c_str());
     }
+    reponseHeaderMap.clear();
     if (!result.empty()) {
         responseBody = (char*)malloc(result.size() + 1);
         memcpy(responseBody, result.c_str(), result.size());
@@ -280,7 +272,6 @@ static HttpServer* mInstance = NULL;
 HttpServer* HttpServer::getInstance(void) {
     if (!mInstance) {
         mInstance = new HttpServer();
-        mInstance->mIsRunning = false;
     }
     return mInstance;
 }
@@ -291,8 +282,126 @@ void HttpServer::destroyInstance(void) {
         for (; mInstance->mRouterMap.end() != iter; ++iter) {
             delete iter->second;
         }
+        mInstance->mRouterMap.clear();
         delete mInstance;
         mInstance = NULL;
+    }
+}
+//------------------------------------------------------------------------
+std::string HttpServer::handleError(char major,
+                                    char minor,
+                                    const std::string& method,
+                                    const std::string& host,
+                                    unsigned short port,
+                                    const std::map<std::string, std::string>& headers,
+                                    const std::map<std::string, HttpField*>& body,
+                                    const std::string& uri,
+                                    unsigned int errorCode,
+                                    const std::string& errorBuf,
+                                    std::map<std::string, std::string>& responseHeaders) {
+    if (mIsPrintReceive) {
+        printReceive(major, minor, method, host, port, headers, body, uri);
+    }
+    std::string buf = getErrorResponse(errorCode, errorBuf);
+    if (mIsPrintError) {
+        printf_s("ERROR: %s\n", buf.c_str());
+    }
+    if (mErrorCallback) {
+        mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+    }
+    return buf;
+}
+//------------------------------------------------------------------------
+std::string HttpServer::handleRouter(char major,
+                                     char minor,
+                                     const std::string& method,
+                                     const std::string& host,
+                                     unsigned short port,
+                                     const std::map<std::string, std::string>& headers,
+                                     const std::map<std::string, HttpField*>& body,
+                                     const std::string& uri,
+                                     std::map<std::string, std::string>& responseHeaders) {
+    if (mIsPrintReceive) {
+        printReceive(major, minor, method, host, port, headers, body, uri);
+    }
+    if (method.empty()) {
+        unsigned int errorCode = 101;
+        std::string errorBuf = "method is empty";
+        std::string buf = getErrorResponse(errorCode, errorBuf);
+        if (mIsPrintError) {
+            printf_s("ERROR: %s\n", buf.c_str());
+        }
+        if (mErrorCallback) {
+            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+        }
+        return buf;
+    }
+    if (uri.empty()) {
+        unsigned int errorCode = 102;
+        std::string errorBuf = "uri is empty";
+        std::string buf = getErrorResponse(errorCode, errorBuf);
+        if (mIsPrintError) {
+            printf_s("ERROR: %s\n", buf.c_str());
+        }
+        if (mErrorCallback) {
+            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+        }
+        return buf;
+    }
+    if (!mRouterMap[uri]) {
+        unsigned int errorCode = 103;
+        std::string errorBuf = "can not find router for '" + uri + "'";
+        std::string buf = getErrorResponse(errorCode, errorBuf);
+        if (mIsPrintError) {
+            printf_s("ERROR: %s\n", buf.c_str());
+        }
+        if (mErrorCallback) {
+            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+        }
+        return buf;
+    }
+    if ("GET" == method && !mRouterMap[uri]->support_get) {
+        unsigned int errorCode = 104;
+        std::string errorBuf = "can not support GET request for '" + uri + "'";
+        std::string buf = getErrorResponse(errorCode, errorBuf);
+        if (mIsPrintError) {
+            printf_s("ERROR: %s\n", buf.c_str());
+        }
+        if (mErrorCallback) {
+            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+        }
+        return buf;
+    }
+    if ("POST" == method && !mRouterMap[uri]->support_post) {
+        unsigned int errorCode = 105;
+        std::string errorBuf = "can not support POST request for '" + uri + "'";
+        std::string buf = getErrorResponse(errorCode, errorBuf);
+        if (mIsPrintError) {
+            printf_s("ERROR: %s\n", buf.c_str());
+        }
+        if (mErrorCallback) {
+            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+        }
+        return buf;
+    }
+    if (!mRouterMap[uri]->callback) {
+        unsigned int errorCode = 106;
+        std::string errorBuf = "can not find execute function for '" + uri + "'";
+        std::string buf = getErrorResponse(errorCode, errorBuf);
+        if (mIsPrintError) {
+            printf_s("ERROR: %s\n", buf.c_str());
+        }
+        if (mErrorCallback) {
+            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+        }
+        return buf;
+    }
+    return mRouterMap[uri]->callback(method, host, port, headers, body, responseHeaders);
+}
+//------------------------------------------------------------------------
+void HttpServer::setErrorCallback(HTTP_ERROR_CALLBACK errorCallback) {
+    if (errorCallback && !mErrorCallback) {
+        mErrorCallback = errorCallback;
     }
 }
 //------------------------------------------------------------------------
@@ -302,7 +411,7 @@ void HttpServer::addRouter(const std::string& uri, HttpRouter* router) {
     }
     if (mRouterMap[uri]) {
         delete router;
-        printf("exist router for \"%s\"\n", uri.c_str());
+        printf_s("exist router for \"%s\"\n", uri.c_str());
     } else {
         mRouterMap[uri] = router;
     }
@@ -341,49 +450,73 @@ void HttpServer::addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK call
     addRouter(uri, router);
 }
 //------------------------------------------------------------------------
-std::string HttpServer::handleRouter(const std::string& method,
-                                     const std::string& uri,
-                                     const std::map<std::string, std::string>& headers,
-                                     const std::map<std::string, HttpField*>& body,
-                                     std::map<std::string, std::string>& responseHeaders) {
-    if (method.empty() || uri.empty()) {
-        return "";
+void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive /*= false*/, bool printError /*= true*/) {
+    if (mIsRunning) {
+        printf_s("http server is running aleady ...\n");
+        return;
     }
-    if (!mRouterMap[uri]) {
-        printf("can not find router for \"%s\"\n", uri.c_str());
-        return "";
+    if (ip.empty()) {
+        printf_s("start http server failed, ip is empty ...\n");
+        return;
     }
-    if ("GET" == method && !mRouterMap[uri]->support_get) {
-        printf("can not support GET for \"%s\"\n", uri.c_str());
-        return "";
-    }
-    if ("POST" == method && !mRouterMap[uri]->support_post) {
-        printf("can not support POST for \"%s\"\n", uri.c_str());
-        return "";
-    }
-    if (mRouterMap[uri]->callback) {
-        return mRouterMap[uri]->callback(headers, body, responseHeaders);
-    }
-    return "";
-}
-//------------------------------------------------------------------------
-void HttpServer::run(const std::string& ip, unsigned int port, unsigned int printLevel /*= 0*/) {
-    if (ip.empty() || 0 == port || mIsRunning) {
+    if (0 == port) {
+        printf_s("start http server failed, port is 0 ...\n");
         return;
     }
     mIsRunning = true;
+    mIsPrintReceive = printReceive;
+    mIsPrintError = printError;
 #ifdef WIN32
     WSADATA wsaData;
     if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) {
-        printf("WSA startup failed\n");
+        mIsRunning = false;
+        printf_s("WSA startup failed ...\n");
         return;
     }
 #endif
-    if (!startHttpServer(ip.c_str(), port, httpServerCallback, NULL, printLevel)) {
-        printf("start http server %s:%d failed ...\n", ip.c_str(), port);
-    }
+    startHttpServer(ip.c_str(), port, httpServerCallback, NULL);
 #ifdef WIN32
     WSACleanup();
 #endif
+    mIsRunning = false;
+}
+//------------------------------------------------------------------------
+std::string HttpServer::getErrorResponse(unsigned int errorCode, const std::string& errorBuf) {
+    char buf[256] = { 0 };
+    sprintf_s(buf, 256, "{\"code\":%d,\"msg\":\"%s\"}", errorCode, errorBuf.c_str());
+    return buf;
+}
+//------------------------------------------------------------------------
+void HttpServer::printReceive(char major,
+                              char minor,
+                              const std::string& method,
+                              const std::string& host,
+                              unsigned short port,
+                              const std::map<std::string, std::string>& headers,
+                              const std::map<std::string, HttpField*>& body,
+                              const std::string& uri) {
+    printf_s("--------------------------------------------------[[\n");
+    printf_s("HTTP / %d.%d\n", major, minor);
+    printf_s("Receive a %s request from %s:%u\n", method.c_str(), host.c_str(), port);
+    printf_s("Headers:\n");
+    std::map<std::string, std::string>::const_iterator headerIter = headers.begin();
+    for (; headers.end() != headerIter; ++headerIter) {
+        printf_s("    %s: %s\n", headerIter->first.c_str(), headerIter->second.c_str());
+    }
+    printf_s("Body:\n");
+    std::map<std::string, HttpField*>::const_iterator bodyIter = body.begin();
+    for (; body.end() != bodyIter; ++bodyIter) {
+        if (HttpField::TYPE_TEXT == bodyIter->second->getType()) {
+            printf_s("    [TEXT] %s: %s\n", bodyIter->second->getName().c_str(), bodyIter->second->getContent());
+        } else if (HttpField::TYPE_FILE == bodyIter->second->getType()) {
+            printf_s("    [FILE] %s: filename => %s, file content type => %s, file size => %d\n",
+                bodyIter->second->getName().c_str(), bodyIter->second->getFilename().c_str(),
+                bodyIter->second->getFileContentType().c_str(), bodyIter->second->getContentLength());
+        } else {
+            printf_s("    [%d] can not deal\n", bodyIter->second->getType());
+        }
+    }
+    printf_s("Uri: %s\n", uri.c_str());
+    printf_s("--------------------------------------------------]]\n");
 }
 //------------------------------------------------------------------------

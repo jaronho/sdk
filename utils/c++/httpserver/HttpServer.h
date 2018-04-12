@@ -16,8 +16,21 @@
 
 class HttpField;
 
+// http错误回调
+#define HTTP_ERROR_CALLBACK std::function<std::string(const std::string& method, \
+                                                      const std::string& host, \
+                                                      unsigned short port, \
+                                                      const std::map<std::string, std::string>& headers, \
+                                                      const std::map<std::string, HttpField*>& body, \
+                                                      unsigned int errorCode, \
+                                                      const std::string& errorBuf, \
+                                                      std::map<std::string, std::string>& responseHeaders)>
+
 // http路由回调
-#define HTTP_ROUTER_CALLBACK std::function<std::string(const std::map<std::string, std::string>& headers, \
+#define HTTP_ROUTER_CALLBACK std::function<std::string(const std::string& method, \
+                                                       const std::string& host, \
+                                                       unsigned short port, \
+                                                       const std::map<std::string, std::string>& headers, \
                                                        const std::map<std::string, HttpField*>& body, \
                                                        std::map<std::string, std::string>& responseHeaders)>
 
@@ -70,19 +83,49 @@ class HttpServer {
 public:
     static HttpServer* getInstance(void);   // 获取单例
     static void destroyInstance(void);      // 删除单例
+    std::string handleError(char major,
+                            char minor,
+                            const std::string& method,
+                            const std::string& host,
+                            unsigned short port,
+                            const std::map<std::string, std::string>& headers,
+                            const std::map<std::string, HttpField*>& body,
+                            const std::string& uri,
+                            unsigned int errorCode,
+                            const std::string& errorBuf,
+                            std::map<std::string, std::string>& responseHeaders);       // 处理错误
+    std::string handleRouter(char major,
+                             char minor,
+                             const std::string& method,
+                             const std::string& host,
+                             unsigned short port,
+                             const std::map<std::string, std::string>& headers,
+                             const std::map<std::string, HttpField*>& body,
+                             const std::string& uri,
+                             std::map<std::string, std::string>& responseHeaders);      // 处理路由
+    void setErrorCallback(HTTP_ERROR_CALLBACK errorCallback);                           // 设置错误回调
     void addRouter(const std::string& uri, HttpRouter* router);                         // 添加路由
     void addRouter(const std::string& uri, HTTP_ROUTER_CALLBACK callback);              // 添加路由(支持get和post)
     void addRouterGet(const std::string& uri, HTTP_ROUTER_CALLBACK callback);           // 添加路由(只支持get)
     void addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK callback);          // 添加路由(只支持post)
-    std::string handleRouter(const std::string& method, 
-                             const std::string& uri,
-                             const std::map<std::string, std::string>& headers,
-                             const std::map<std::string, HttpField*>& body,
-                             std::map<std::string, std::string>& responseHeaders);      // 处理路由
-    void run(const std::string& ip, unsigned int port, unsigned int printLevel = 0);    // 运行
+    void run(const std::string& ip, unsigned int port, bool printReceive = false, bool printError = true);    // 运行
 
 private:
-    bool mIsRunning;    // 是否运行中
+    std::string getErrorResponse(unsigned int errorCode, const std::string& errorBuf);  // 获取错误响应
+    void printReceive(char major,
+                      char minor,
+                      const std::string& method,
+                      const std::string& host,
+                      unsigned short port,
+                      const std::map<std::string, std::string>& headers,
+                      const std::map<std::string, HttpField*>& body,
+                      const std::string& uri);                                          // 打印接收到的信息
+
+private:
+    bool mIsRunning;                                // 是否运行中
+    bool mIsPrintReceive;                           // 是否打印接收信息
+    bool mIsPrintError;                             // 是否打印错误信息
+    HTTP_ERROR_CALLBACK mErrorCallback;             // 错误回调
     std::map<std::string, HttpRouter*> mRouterMap;  // 路由映射表
 };
 
