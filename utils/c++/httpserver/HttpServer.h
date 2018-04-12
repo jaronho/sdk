@@ -17,14 +17,15 @@
 class HttpField;
 
 // http错误回调
-#define HTTP_ERROR_CALLBACK std::function<std::string(const std::string& method, \
-                                                      const std::string& host, \
-                                                      unsigned short port, \
-                                                      const std::map<std::string, std::string>& headers, \
-                                                      const std::map<std::string, HttpField*>& body, \
-                                                      unsigned int errorCode, \
-                                                      const std::string& errorBuf, \
-                                                      std::map<std::string, std::string>& responseHeaders)>
+#define HTTP_ERROR_CALLBACK std::function<void(const std::string& method, \
+                                               const std::string& host, \
+                                               unsigned short port, \
+                                               const std::map<std::string, std::string>& headers, \
+                                               const std::map<std::string, HttpField*>& body, \
+                                               const std::string& uri, \
+                                               unsigned int errorCode, \
+                                               const std::string& errorBuf, \
+                                               std::map<std::string, std::string>& responseHeaders)>
 
 // http路由回调
 #define HTTP_ROUTER_CALLBACK std::function<std::string(const std::string& method, \
@@ -32,6 +33,7 @@ class HttpField;
                                                        unsigned short port, \
                                                        const std::map<std::string, std::string>& headers, \
                                                        const std::map<std::string, HttpField*>& body, \
+                                                       const std::string& uri, \
                                                        std::map<std::string, std::string>& responseHeaders)>
 
 // http路由对象
@@ -130,3 +132,49 @@ private:
 };
 
 #endif  //_HTTP_SERVER_H_
+
+/*
+************************************************** sample_01
+
+auto handleError = [](const std::string& method,
+                      const std::string& host,
+                      unsigned short port,
+                      const std::map<std::string, std::string>& headers,
+                      const std::map<std::string, HttpField*>& body,
+                      const std::string& uri,
+                      unsigned int errorCode,
+                      const std::string& errorBuf,
+                      std::map<std::string, std::string>& responseHeaders)->void {
+    printf_s("Error: code => %d, msg => %s\n", errorCode, errorBuf.c_str());
+};
+
+auto handlePost = [](const std::string& method,
+                     const std::string& host,
+                     unsigned short port,
+                     const std::map<std::string, std::string>& headers,
+                     const std::map<std::string, HttpField*>& body,
+                     const std::string& uri,
+                     std::map<std::string, std::string>& responseHeaders)->std::string {
+    std::string response = "{";
+    std::map<std::string, HttpField*>::const_iterator iter = body.begin();
+    for (; body.end() != iter; ++iter) {
+        if (body.begin() != iter) {
+            response += ",";
+        }
+        response += "\"" + iter->first + "\":";
+        if (HttpField::TYPE_TEXT == iter->second->getType()) {
+            response += iter->second->getContent();
+        }
+    }
+    response += "}";
+    return response;
+};
+
+int main() {
+    HttpServer::getInstance()->setErrorCallback(handleError);
+    HttpServer::getInstance()->addRouterPost("/post", handlePost);
+    HttpServer::getInstance()->run("127.0.0.1", 5001, true, true);
+    system("pause");
+    return 0;
+}
+*/

@@ -307,7 +307,7 @@ std::string HttpServer::handleError(char major,
         printf_s("ERROR: %s\n", buf.c_str());
     }
     if (mErrorCallback) {
-        mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+        mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
     }
     return buf;
 }
@@ -332,7 +332,7 @@ std::string HttpServer::handleRouter(char major,
             printf_s("ERROR: %s\n", buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -344,7 +344,7 @@ std::string HttpServer::handleRouter(char major,
             printf_s("ERROR: %s\n", buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -356,7 +356,7 @@ std::string HttpServer::handleRouter(char major,
             printf_s("ERROR: %s\n", buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -368,7 +368,7 @@ std::string HttpServer::handleRouter(char major,
             printf_s("ERROR: %s\n", buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -380,7 +380,7 @@ std::string HttpServer::handleRouter(char major,
             printf_s("ERROR: %s\n", buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -392,11 +392,11 @@ std::string HttpServer::handleRouter(char major,
             printf_s("ERROR: %s\n", buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
-    return mRouterMap[uri]->callback(method, host, port, headers, body, responseHeaders);
+    return mRouterMap[uri]->callback(method, host, port, headers, body, uri, responseHeaders);
 }
 //------------------------------------------------------------------------
 void HttpServer::setErrorCallback(HTTP_ERROR_CALLBACK errorCallback) {
