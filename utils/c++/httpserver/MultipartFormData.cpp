@@ -5,9 +5,8 @@
 **********************************************************************/
 #include "MultipartFormData.h"
 //------------------------------------------------------------------------
-MultipartFormData::MultipartFormData(size_t maxHandledDataSize) {
+MultipartFormData::MultipartFormData(void) {
     mFields = NULL;
-    mMaxHandledDataSize = maxHandledDataSize;
     mData = NULL;
     mDataSize = 0;
     mCurrentProcessStatus = STATUS_LOOKING_FOR_STARTING_BOUNDARY;
@@ -34,16 +33,16 @@ bool MultipartFormData::parse(const std::string& contentType, const char* data, 
     if (mBoundary.empty()) {
         return false;
     }
-    if (NULL == mData) {
+    if (!mData) {
         mData = new char[length];
     } else {
         mData = (char*)realloc(mData, mDataSize + length);
     }
-    memcpy(mData + mDataSize, data, length);
-    mDataSize += length;
-    if (mDataSize > mMaxHandledDataSize) {
+    if (!mData) {
         return false;
     }
+    memcpy(mData + mDataSize, data, length);
+    mDataSize += length;
     mFields = fields;
     processData();
     return true;

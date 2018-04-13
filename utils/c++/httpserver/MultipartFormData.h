@@ -17,7 +17,7 @@ class HttpField;
 // multipart form-data
 class MultipartFormData {
 public:
-    MultipartFormData(size_t maxHandledDataSize = 16 * 1024 * 1024);
+    MultipartFormData(void);
     ~MultipartFormData(void);
 
     bool parse(const std::string& contentType, const char* data, size_t length, std::map<std::string, HttpField*>* fields);
@@ -37,7 +37,6 @@ private:
     static unsigned int const STATUS_PPROCESSING_FIELD_CONTENT = 3;
 
 private:
-    size_t mMaxHandledDataSize;
     std::string mBoundary;
     char* mData;
     size_t mDataSize;

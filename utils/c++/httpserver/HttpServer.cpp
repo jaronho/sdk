@@ -192,8 +192,10 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
     reponseHeaderMap.clear();
     if (!result.empty()) {
         responseBody = (char*)malloc(result.size() + 1);
-        memcpy(responseBody, result.c_str(), result.size());
-        *(responseBody + result.size()) = '\0';
+        if (responseBody) {
+            memcpy(responseBody, result.c_str(), result.size());
+            *(responseBody + result.size()) = '\0';
+        }
     }
     return responseBody;
 }
@@ -235,10 +237,13 @@ const char* HttpField::getContent(void) {
 }
 //------------------------------------------------------------------------
 void HttpField::setContent(const char* content, size_t length) {
-    if (NULL == mContent) {
+    if (!mContent) {
         mContent = new char[length + 1];
     } else {
         mContent = (char*)realloc(mContent, mContentLength + length + 1);
+    }
+    if (!mContent) {
+        return;
     }
     memcpy(mContent + mContentLength, content, length);
     mContentLength += length;
