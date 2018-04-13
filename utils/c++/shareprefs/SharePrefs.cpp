@@ -13,11 +13,11 @@ static bool copyFile(const std::string& srcFileName, const std::string& destFile
         return false;
     }
     FILE* fp_src = fopen(srcFileName.c_str(), "rb");
-    if (NULL == fp_src) {
+    if (!p_src) {
         return false;
     }
 	FILE* fp_dest = fopen(destFileName.c_str(), "wb");
-	if (NULL == fp_dest) {
+	if (!fp_dest) {
 		fclose(fp_src);
         return false;
     }

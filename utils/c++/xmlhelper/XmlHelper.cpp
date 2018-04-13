@@ -17,7 +17,7 @@ struct xml_writer_string : pugi::xml_writer {
  **************************** class methods ***************************
  **********************************************************************/
 std::string XmlHelper::toString(pugi::xml_document* doc) {
-    if (NULL == doc) {
+    if (!doc) {
         return "";
     }
     xml_writer_string writer;
@@ -44,7 +44,7 @@ pugi::xml_document* XmlHelper::createFile(const std::string& fileName, const std
         return NULL;
     }
     pugi::xml_document* doc = new pugi::xml_document();
-    if (NULL == doc) {
+    if (!doc) {
         return NULL;
     }
     if (!doc->append_child(rootName.empty() ? "root" : rootName.c_str())) {
@@ -63,7 +63,7 @@ pugi::xml_document* XmlHelper::loadFile(const std::string& fileName) {
         return NULL;
     }
     pugi::xml_document* doc = new pugi::xml_document();
-    if (NULL == doc) {
+    if (!doc) {
         delete doc;
         return NULL;
     }
@@ -80,7 +80,7 @@ pugi::xml_document* XmlHelper::loadString(const std::string& content) {
         return NULL;
     }
     pugi::xml_document* doc = new pugi::xml_document();
-    if (NULL == doc) {
+    if (!doc) {
         delete doc;
         return NULL;
     }
@@ -93,7 +93,7 @@ pugi::xml_document* XmlHelper::loadString(const std::string& content) {
 }
 
 bool XmlHelper::saveFile(pugi::xml_document* doc, const std::string& fileName) {
-    if (NULL == doc || fileName.empty()) {
+    if (!doc || fileName.empty()) {
         return false;
     }
     //return doc->save_file(fileName.c_str());  /* not safe, maybe lose data when system outage */
@@ -102,7 +102,7 @@ bool XmlHelper::saveFile(pugi::xml_document* doc, const std::string& fileName) {
         return false;
     }
     FILE* fp = fopen(fileName.c_str(), "wb");
-    if (NULL == fp) {
+    if (!fp) {
         return false;
     }
     fwrite(docString.c_str(), docString.size(), sizeof(char), fp);
@@ -327,16 +327,16 @@ bool XmlHelper::open(const std::string& fileName, const std::string& rootName /*
         return false;
     }
     FILE* fp = fopen(fileName.c_str(), "r");
-    if (NULL == fp) {		/* file is not exist */
+    if (!fp) {		/* file is not exist */
         mDocument = createFile(fileName, rootName);
-        if (NULL == mDocument) {
+        if (!mDocument) {
             mFileName = "";
             return false;
         }
-    } else {				/* file exist */
+    } else {        /* file exist */
         fclose(fp);
         mDocument = loadFile(fileName);
-        if (NULL == mDocument) {
+        if (!mDocument) {
             mFileName = "";
             return false;
         }
@@ -347,21 +347,21 @@ bool XmlHelper::open(const std::string& fileName, const std::string& rootName /*
 }
 
 bool XmlHelper::save(const std::string& fileName /*= ""*/) {
-    if (NULL == mDocument) {
+    if (!mDocument) {
         return false;
     }
     return saveFile(mDocument, fileName.empty() ? mFileName : fileName);
 }
 
 bool XmlHelper::clear(void) {
-    if (NULL == mDocument) {
+    if (!mDocument) {
         return false;
     }
     return removeChildren(mRoot);
 }
 
 std::string XmlHelper::toString(void) {
-    if (NULL == mDocument) {
+    if (!mDocument) {
         return "";
     }
     return toString(mDocument);
