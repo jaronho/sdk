@@ -92,10 +92,11 @@ public:
     /*
      * Brief:	open xml file
      * Param:	fileName - file name, e.g. "asdf.xml","../asdf.xml","temp\\asdf.xml"
+     *			forceCreate - if file is not exist, force create it
      *			rootName - root name
      * Return:	bool
      */
-    bool open(const std::string& fileName, const std::string& rootName = "root");
+    bool open(const std::string& fileName, bool forceCreate = false, const std::string& rootName = "root");
 
     /*
      * Brief:	save xml file

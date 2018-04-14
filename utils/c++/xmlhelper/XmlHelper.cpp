@@ -316,7 +316,7 @@ std::string XmlHelper::getFileName(void) {
     return mFileName;
 }
 
-bool XmlHelper::open(const std::string& fileName, const std::string& rootName /*= "root"*/) {
+bool XmlHelper::open(const std::string& fileName, bool forceCreate /*= false*/, const std::string& rootName /*= "root"*/) {
     if (mDocument) {
         delete mDocument;
         mDocument = NULL;
@@ -328,6 +328,9 @@ bool XmlHelper::open(const std::string& fileName, const std::string& rootName /*
     }
     FILE* fp = fopen(fileName.c_str(), "r");
     if (!fp) {		/* file is not exist */
+        if (!forceCreate) {
+            return false;
+        }
         mDocument = createFile(fileName, rootName);
         if (!mDocument) {
             mFileName = "";
