@@ -4597,7 +4597,7 @@ namespace sqlite_orm {
             bool isOpenedForever = false;
             std::map<std::string, collating_function> collatingFunctions;
             
-            using collating_function_pair = typename decltype(collatingFunctions)::value_type;
+            using collating_function_pair = typename std::map<std::string, collating_function>::value_type;
             
             /**
              *  Check whether connection exists and returns it if yes or creates a new one
