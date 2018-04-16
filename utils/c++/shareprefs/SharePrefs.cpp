@@ -49,7 +49,7 @@ bool SharePrefs::open(const std::string& fileName, bool forceReplace /*= true*/,
             }
         }
     }
-    return helper->open(fileName, "root");
+    return helper->open(fileName, true, "root");
 }
 
 bool SharePrefs::save(void) {
