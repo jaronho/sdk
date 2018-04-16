@@ -5,7 +5,6 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
-#include <sqlite3.h>
 #include <stdexcept>
 #include <vector>   //  std::vector
 #include <sstream>  //  std::stringstream
@@ -23,6 +22,7 @@
 #include <locale>
 #include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
 #include <system_error>  // std::error_code, std::system_error
+#include "../sqlite3/sqlite3.h"
 
 #if defined(_MSC_VER)
 # if defined(min)
