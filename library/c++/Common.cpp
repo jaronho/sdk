@@ -247,10 +247,11 @@ bool Common::createDir(const std::string& dirName) {
         return false;
     }
     unsigned int dirLen = dirName.length();
-    char* tmp = new char[dirLen];
-    memset(tmp, 0, dirLen);
+    char* tmp = new char[dirLen + 1];
+    memset(tmp, 0, dirLen + 1);
     for (unsigned int i = 0; i < dirLen; ++i) {
         tmp[i] = dirName[i];
+        tmp[i + 1] = '\0';
         if ('/' == tmp[i] || '\\' == tmp[i]) {
 #ifdef _SYSTEM_WINDOWS_
             if (0 != _access(tmp, 0)) {
