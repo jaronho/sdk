@@ -119,7 +119,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
             HttpField* field = new HttpField();
             field->setName(param->key);
             field->setType(HttpField::TYPE_TEXT);
-            field->setContent(param->value, strlen(param->value));
+            field->setContent(param->value, sizeof(param->value));
             if (bodyMap[param->key]) {
                 delete bodyMap[param->key];
             }
@@ -137,7 +137,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                         HttpField* field = new HttpField();
                         field->setName(param->key);
                         field->setType(HttpField::TYPE_TEXT);
-                        field->setContent(param->value, strlen(param->value));
+                        field->setContent(param->value, sizeof(param->value));
                         if (bodyMap[param->key]) {
                             delete bodyMap[param->key];
                         }

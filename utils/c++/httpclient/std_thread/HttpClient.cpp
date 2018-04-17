@@ -182,7 +182,7 @@ void HttpClient::post(const std::string& url, const char* data, HTTP_REQUEST_CAL
     obj->connecttimeout = 30;
     obj->timeout = 60;
     obj->url = url;
-    obj->setData(data, data ? strlen(data) : 0);
+    obj->setData(data, data ? sizeof(data) : 0);
     obj->tag = "";
     obj->requesttype = "POST";
     obj->syncresponse = true;
