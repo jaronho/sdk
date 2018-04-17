@@ -503,6 +503,11 @@ void HttpServer::printReceive(char major,
     printf_s("--------------------------------------------------[[\n");
     printf_s("HTTP / %d.%d\n", major, minor);
     printf_s("Receive a %s request from %s:%u\n", method.c_str(), host.c_str(), port);
+    time_t timep;
+    time(&timep);
+    char dateBuf[64] = { 0 };
+    strftime(dateBuf, sizeof(dateBuf), "%Y-%m-%d %H:%M:%S", localtime(&timep));
+    printf_s("Date: %s\n", dateBuf);
     printf_s("Headers:\n");
     std::map<std::string, std::string>::const_iterator headerIter = headers.begin();
     for (; headers.end() != headerIter; ++headerIter) {
