@@ -128,8 +128,10 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
         evhttp_clear_headers(&params);
     } else if (0 == strcmp("POST", method)) {       // parse POST body
         std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
+        std::string contentType = iter->second;
+        std::transform(contentType.begin(), contentType.end(), contentType.begin(), ::tolower);
         if (headerMap.end() != iter) {
-            if ("application/x-www-form-urlencoded" == iter->second) {
+            if (std::string::npos != contentType.find("application/x-www-form-urlencoded")) {
                 if (body) {
                     struct evkeyvalq params;
                     evhttp_parse_query_str((const char*)body, &params);
@@ -145,7 +147,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                     }
                     evhttp_clear_headers(&params);
                 }
-            } else if (std::string::npos != iter->second.find("multipart/form-data")) {
+            } else if (std::string::npos != contentType.find("multipart/form-data")) {
                 MultipartFormData* forms = new MultipartFormData();
                 if (!forms->parse(iter->second, (const char*)body, bodySize, &bodyMap)) {
                     errorCode = 4;

@@ -22,10 +22,12 @@ bool MultipartFormData::parse(const std::string& contentType, const char* data, 
     if (!data || 0 == length || !fields) {
         return false;
     }
-    if (std::string::npos == contentType.find("multipart/form-data;")) {
+    std::string contentTypeTmp = contentType;
+    std::transform(contentTypeTmp.begin(), contentTypeTmp.end(), contentTypeTmp.begin(), ::tolower);
+    if (std::string::npos == contentTypeTmp.find("multipart/form-data;")) {
         return false;
     }
-    size_t pos = contentType.find("boundary=");
+    size_t pos = contentTypeTmp.find("boundary=");
     if (std::string::npos == pos) {
         return false;
     }
