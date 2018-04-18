@@ -119,7 +119,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
             HttpField* field = new HttpField();
             field->setName(param->key);
             field->setType(HttpField::TYPE_TEXT);
-            field->setContent(param->value, sizeof(param->value));
+            field->setContent(param->value, strlen(param->value));
             if (bodyMap[param->key]) {
                 delete bodyMap[param->key];
             }
@@ -137,7 +137,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                         HttpField* field = new HttpField();
                         field->setName(param->key);
                         field->setType(HttpField::TYPE_TEXT);
-                        field->setContent(param->value, sizeof(param->value));
+                        field->setContent(param->value, strlen(param->value));
                         if (bodyMap[param->key]) {
                             delete bodyMap[param->key];
                         }
@@ -149,20 +149,20 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                 MultipartFormData* forms = new MultipartFormData();
                 if (!forms->parse(iter->second, (const char*)body, bodySize, &bodyMap)) {
                     errorCode = 4;
-                    sprintf_s(errorBuf, 256, "can not parse multipart form-data for uri '%s'", uri);
+                    sprintf_s(errorBuf, "can not parse multipart form-data for uri '%s'", uri);
                 }
                 delete forms;
             } else {
                 errorCode = 3;
-                sprintf_s(errorBuf, 256, "no support %s request which content-type is '%s'", method, iter->second.c_str());
+                sprintf_s(errorBuf, "no support %s request which content-type is '%s'", method, iter->second.c_str());
             }
         } else {
             errorCode = 2;
-            sprintf_s(errorBuf, 256, "no support %s request which without content-type", method);
+            sprintf_s(errorBuf, "no support %s request which without content-type", method);
         }
     } else {                                        // parse other method
         errorCode = 1;
-        sprintf_s(errorBuf, 256, "no support %s request", method);
+        sprintf_s(errorBuf, "no support %s request", method);
     }
     // parse real uri
     size_t pos = realUri.find_first_of('?');
@@ -238,9 +238,9 @@ const char* HttpField::getContent(void) {
 //------------------------------------------------------------------------
 void HttpField::setContent(const char* content, size_t length) {
     if (!mContent) {
-        mContent = new char[length + 1];
+        mContent = new char[TYPE_TEXT == mType ? length + 1 : length];
     } else {
-        mContent = (char*)realloc(mContent, mContentLength + length + 1);
+        mContent = (char*)realloc(mContent, mContentLength + (TYPE_TEXT == mType ? length + 1 : length));
     }
     if (!mContent) {
         return;
@@ -488,7 +488,7 @@ void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive
 //------------------------------------------------------------------------
 std::string HttpServer::getErrorResponse(unsigned int errorCode, const std::string& errorBuf) {
     char buf[256] = { 0 };
-    sprintf_s(buf, 256, "{\"code\":%d,\"msg\":\"%s\"}", errorCode, errorBuf.c_str());
+    sprintf_s(buf, "{\"code\":%d,\"msg\":\"%s\"}", errorCode, errorBuf.c_str());
     return buf;
 }
 //------------------------------------------------------------------------
