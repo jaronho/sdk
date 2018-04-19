@@ -128,9 +128,9 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
         evhttp_clear_headers(&params);
     } else if (0 == strcmp("POST", method)) {       // parse POST body
         std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
-        std::string contentType = iter->second;
-        std::transform(contentType.begin(), contentType.end(), contentType.begin(), ::tolower);
         if (headerMap.end() != iter) {
+            std::string contentType = iter->second;
+            std::transform(contentType.begin(), contentType.end(), contentType.begin(), ::tolower);
             if (std::string::npos != contentType.find("application/x-www-form-urlencoded")) {
                 if (body) {
                     struct evkeyvalq params;
@@ -503,7 +503,7 @@ void HttpServer::printReceive(char major,
                               const std::map<std::string, HttpField*>& body,
                               const std::string& uri) {
     printf_s("--------------------------------------------------[[\n");
-    printf_s("HTTP / %d.%d\n", major, minor);
+    printf_s("HTTP/%d.%d\n", major, minor);
     printf_s("Receive a %s request from %s:%u\n", method.c_str(), host.c_str(), port);
     time_t timep;
     time(&timep);
