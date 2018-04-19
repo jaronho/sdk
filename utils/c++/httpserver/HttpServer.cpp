@@ -74,12 +74,22 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
     unsigned short port = req->remote_port;                                     // client port
     const struct evkeyvalq* headers = evhttp_request_get_input_headers(req);    // client headers
     struct evbuffer* buffer = evhttp_request_get_input_buffer(req);             // client buffer
-    const unsigned char* body = evbuffer_pullup(buffer, -1);                    // client body
+    unsigned char* body = NULL;                                                 // client body
+    if (req->body_size > 0) {
+        body = (unsigned char*)malloc(req->body_size + 1);
+        if (body) {
+            evbuffer_remove(buffer, body, req->body_size);
+            *(body + req->body_size) = '\0';
+        }
+    }
     const char* uri = evhttp_request_get_uri(req);                              // server uri
     // handle request
     struct evkeyvalq* responseHeaders = evhttp_request_get_output_headers(req);
     char* responseBody = handleHttpRequest(major, minor, method, host, port, headers, body, req->body_size, uri, responseHeaders);
     // reply to client
+    if (body) {
+        free(body);
+    }
     struct evbuffer* buf = evbuffer_new();
     if (!buf) {
         if (responseBody) {
@@ -89,7 +99,7 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
         return;
     }
     if (responseBody) {
-        evbuffer_add_printf(buf, responseBody);
+        evbuffer_add_printf(buf, "%s", responseBody);
         free(responseBody);
     }
     evhttp_send_reply(req, HTTP_OK, "OK", buf);
@@ -132,7 +142,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
             std::string contentType = iter->second;
             std::transform(contentType.begin(), contentType.end(), contentType.begin(), ::tolower);
             if (std::string::npos != contentType.find("application/x-www-form-urlencoded")) {
-                if (body) {
+                if (body && bodySize > 0) {
                     struct evkeyvalq params;
                     evhttp_parse_query_str((const char*)body, &params);
                     for (struct evkeyval* param = params.tqh_first; param; param = param->next.tqe_next) {
@@ -505,10 +515,12 @@ void HttpServer::printReceive(char major,
     printf_s("--------------------------------------------------[[\n");
     printf_s("HTTP/%d.%d\n", major, minor);
     printf_s("Receive a %s request from %s:%u\n", method.c_str(), host.c_str(), port);
-    time_t timep;
-    time(&timep);
-    char dateBuf[64] = { 0 };
-    strftime(dateBuf, sizeof(dateBuf), "%Y-%m-%d %H:%M:%S", localtime(&timep));
+    struct tm t;
+    time_t now;
+    time(&now);
+    localtime_s(&t, &now);
+    char dateBuf[32] = { 0 };
+    strftime(dateBuf, sizeof(dateBuf), "%Y-%m-%d %H:%M:%S", &t);
     printf_s("Date: %s\n", dateBuf);
     printf_s("Headers:\n");
     std::map<std::string, std::string>::const_iterator headerIter = headers.begin();
