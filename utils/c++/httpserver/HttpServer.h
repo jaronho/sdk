@@ -93,7 +93,9 @@ class HttpServer {
 public:
     static HttpServer* getInstance(void);   // 获取单例
     static void destroyInstance(void);      // 删除单例
-    std::string nowdate(void);                                                          // 当前日期
+    static std::string nowdate(void);       // 当前日期
+
+public:
     int handleFilter(char major,
                      char minor,
                      const char* method,
