@@ -4,32 +4,33 @@
 * Brief:	http server
 **********************************************************************/
 #include "HttpServer.h"
-static bool startHttpServer(const char* ip, unsigned short port, void(*cb)(struct evhttp_request*, void*), void* arg);
+static int startHttpServer(const char* ip, unsigned short port, void(*cb)(struct evhttp_request*, void*), void* arg);
 static const char* httpMethodName(evhttp_cmd_type method);
 static void httpServerCallback(struct evhttp_request* req, void* arg);
+static int handleHttpFilter(char major, char minor, const char* method, const char* host, unsigned short port, const char* uri);
 static char* handleHttpRequest(char major, char minor, const char* method, const char* host, unsigned short port, 
                                const struct evkeyvalq* headers, const unsigned char* body, unsigned int bodySize, 
                                const char* uri, struct evkeyvalq* responseHeaders);
 //------------------------------------------------------------------------
-static bool startHttpServer(const char* ip, unsigned short port, void (*cb)(struct evhttp_request*, void*), void* arg) {
+static int startHttpServer(const char* ip, unsigned short port, void (*cb)(struct evhttp_request*, void*), void* arg) {
     if (!ip || 0 == strlen(ip)) {
 	    printf_s("start http server failed, ip is empty ...\n");
-        return false;
+        return 1;
     }
     if (0 == port) {
 	    printf_s("start http server failed, port is 0 ...\n");
-	    return false;
+	    return 2;
     }
     struct event_base* base = event_base_new();
     struct evhttp* http_server = evhttp_new(base);
     if (!http_server) {
 	    printf_s("start http server failed, evhttp_new error ...\n");
-        return false;
+        return 3;
     }
     // bind address
     if (0 != evhttp_bind_socket(http_server, ip, port)) {
 	    printf_s("start http server failed, bind socket %s:%u error ...\n", ip, port);
-        return false;
+        return 4;
     }
     // set http request handle callabck
     if (cb) {
@@ -39,7 +40,7 @@ static bool startHttpServer(const char* ip, unsigned short port, void (*cb)(stru
     printf_s("start http server %s:%u ok ...\n", ip, port);
     event_base_dispatch(base);
     evhttp_free(http_server);
-    return true;
+    return 0;
 }
 //------------------------------------------------------------------------
 static const char* httpMethodName(evhttp_cmd_type method) {
@@ -74,7 +75,13 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
     unsigned short port = req->remote_port;                                     // client port
     const struct evkeyvalq* headers = evhttp_request_get_input_headers(req);    // client headers
     struct evbuffer* buffer = evhttp_request_get_input_buffer(req);             // client buffer
-    unsigned char* body = NULL;                                                 // client body
+    const char* uri = evhttp_request_get_uri(req);                              // server uri
+    // handle filter
+    if (0 != handleHttpFilter(major, minor, method, host, port, uri)) {
+        return;
+    }
+    // handle request
+    unsigned char* body = NULL;
     if (req->body_size > 0) {
         body = (unsigned char*)malloc(req->body_size + 1);
         if (body) {
@@ -82,14 +89,12 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
             *(body + req->body_size) = '\0';
         }
     }
-    const char* uri = evhttp_request_get_uri(req);                              // server uri
-    // handle request
     struct evkeyvalq* responseHeaders = evhttp_request_get_output_headers(req);
     char* responseBody = handleHttpRequest(major, minor, method, host, port, headers, body, req->body_size, uri, responseHeaders);
-    // reply to client
     if (body) {
         free(body);
     }
+    // reply to client
     struct evbuffer* buf = evbuffer_new();
     if (!buf) {
         if (responseBody) {
@@ -104,6 +109,10 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
     }
     evhttp_send_reply(req, HTTP_OK, "OK", buf);
     evbuffer_free(buf);
+}
+//------------------------------------------------------------------------
+static int handleHttpFilter(char major, char minor, const char* method, const char* host, unsigned short port, const char* uri) {
+    return HttpServer::getInstance()->handleFilter(major, minor, method, host, port, uri);
 }
 //------------------------------------------------------------------------
 static char* handleHttpRequest(char major, char minor, const char* method, const char* host, unsigned short port,
@@ -305,6 +314,34 @@ void HttpServer::destroyInstance(void) {
     }
 }
 //------------------------------------------------------------------------
+std::string HttpServer::nowdate(void) {
+    struct tm t;
+    time_t now;
+    time(&now);
+    localtime_s(&t, &now);
+    char buf[32] = { 0 };
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &t);
+    return buf;
+}
+//------------------------------------------------------------------------
+int HttpServer::handleFilter(char major,
+                             char minor,
+                             const char* method,
+                             const char* host,
+                             unsigned short port,
+                             const char* uri) {
+    int ret = 0;
+    if (mFilterCallback) {
+        ret = mFilterCallback(major, minor, method, host, port, uri);
+    }
+    if (0 != ret) {
+        if (mIsPrintFilter) {
+            printf_s("FILTER: [%s] HTTP/%d.%d %s request by %s:%u for %s\n", nowdate().c_str(), major, minor, method, host, port, uri);
+        }
+    }
+    return ret;
+}
+//------------------------------------------------------------------------
 std::string HttpServer::handleError(char major,
                                     char minor,
                                     const std::string& method,
@@ -321,7 +358,7 @@ std::string HttpServer::handleError(char major,
     }
     std::string buf = getErrorResponse(errorCode, errorBuf);
     if (mIsPrintError) {
-        printf_s("ERROR: %s\n", buf.c_str());
+        printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
     }
     if (mErrorCallback) {
         mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -346,7 +383,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "method is empty";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: %s\n", buf.c_str());
+            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -358,7 +395,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "uri is empty";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: %s\n", buf.c_str());
+            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -370,7 +407,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "can not find router for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: %s\n", buf.c_str());
+            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -382,7 +419,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "can not support GET request for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: %s\n", buf.c_str());
+            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -394,7 +431,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "can not support POST request for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: %s\n", buf.c_str());
+            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -406,7 +443,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "can not find execute function for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: %s\n", buf.c_str());
+            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -414,6 +451,12 @@ std::string HttpServer::handleRouter(char major,
         return buf;
     }
     return mRouterMap[uri]->callback(method, host, port, headers, body, uri, responseHeaders);
+}
+//------------------------------------------------------------------------
+void HttpServer::setFilterCallback(HTTP_FILTER_CALLBACK filterCallback) {
+    if (filterCallback && !mFilterCallback) {
+        mFilterCallback = filterCallback;
+    }
 }
 //------------------------------------------------------------------------
 void HttpServer::setErrorCallback(HTTP_ERROR_CALLBACK errorCallback) {
@@ -467,7 +510,7 @@ void HttpServer::addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK call
     addRouter(uri, router);
 }
 //------------------------------------------------------------------------
-void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive /*= false*/, bool printError /*= true*/) {
+void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive /*= false*/, bool printError /*= true*/, bool printFilter /*= true*/) {
     if (mIsRunning) {
         printf_s("http server is running aleady ...\n");
         return;
@@ -483,6 +526,7 @@ void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive
     mIsRunning = true;
     mIsPrintReceive = printReceive;
     mIsPrintError = printError;
+    mIsPrintFilter = printFilter;
 #ifdef WIN32
     WSADATA wsaData;
     if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) {
@@ -513,15 +557,8 @@ void HttpServer::printReceive(char major,
                               const std::map<std::string, HttpField*>& body,
                               const std::string& uri) {
     printf_s("--------------------------------------------------[[\n");
-    printf_s("HTTP/%d.%d\n", major, minor);
-    printf_s("Receive a %s request from %s:%u\n", method.c_str(), host.c_str(), port);
-    struct tm t;
-    time_t now;
-    time(&now);
-    localtime_s(&t, &now);
-    char dateBuf[32] = { 0 };
-    strftime(dateBuf, sizeof(dateBuf), "%Y-%m-%d %H:%M:%S", &t);
-    printf_s("Date: %s\n", dateBuf);
+    printf_s("[%s]\n", nowdate().c_str());
+    printf_s("Receive a HTTP/%d.%d %s request from %s:%u\n", major, minor, method.c_str(), host.c_str(), port);
     printf_s("Headers:\n");
     std::map<std::string, std::string>::const_iterator headerIter = headers.begin();
     for (; headers.end() != headerIter; ++headerIter) {

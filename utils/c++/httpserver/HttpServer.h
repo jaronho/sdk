@@ -16,6 +16,14 @@
 
 class HttpField;
 
+// http过滤回调
+#define HTTP_FILTER_CALLBACK std::function<int(char major, \
+                                               char minor, \
+                                               const char* method, \
+                                               const char* host, \
+                                               unsigned short port, \
+                                               const char* uri)>
+
 // http错误回调
 #define HTTP_ERROR_CALLBACK std::function<void(const std::string& method, \
                                                const std::string& host, \
@@ -85,6 +93,13 @@ class HttpServer {
 public:
     static HttpServer* getInstance(void);   // 获取单例
     static void destroyInstance(void);      // 删除单例
+    std::string nowdate(void);                                                          // 当前日期
+    int handleFilter(char major,
+                     char minor,
+                     const char* method,
+                     const char* host,
+                     unsigned short port,
+                     const char* uri);                                                  // 处理过滤
     std::string handleError(char major,
                             char minor,
                             const std::string& method,
@@ -105,12 +120,13 @@ public:
                              const std::map<std::string, HttpField*>& body,
                              const std::string& uri,
                              std::map<std::string, std::string>& responseHeaders);      // 处理路由
+    void setFilterCallback(HTTP_FILTER_CALLBACK filterCallback);                        // 设置过滤回调
     void setErrorCallback(HTTP_ERROR_CALLBACK errorCallback);                           // 设置错误回调
     void addRouter(const std::string& uri, HttpRouter* router);                         // 添加路由
     void addRouter(const std::string& uri, HTTP_ROUTER_CALLBACK callback);              // 添加路由(支持get和post)
     void addRouterGet(const std::string& uri, HTTP_ROUTER_CALLBACK callback);           // 添加路由(只支持get)
     void addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK callback);          // 添加路由(只支持post)
-    void run(const std::string& ip, unsigned int port, bool printReceive = false, bool printError = true);    // 运行
+    void run(const std::string& ip, unsigned int port, bool printReceive = false, bool printError = true, bool printFilter = true);    // 运行
 
 private:
     std::string getErrorResponse(unsigned int errorCode, const std::string& errorBuf);  // 获取错误响应
@@ -127,6 +143,8 @@ private:
     bool mIsRunning;                                // 是否运行中
     bool mIsPrintReceive;                           // 是否打印接收信息
     bool mIsPrintError;                             // 是否打印错误信息
+    bool mIsPrintFilter;                            // 是否打印过滤信息
+    HTTP_FILTER_CALLBACK mFilterCallback;           // 过滤回调
     HTTP_ERROR_CALLBACK mErrorCallback;             // 错误回调
     std::map<std::string, HttpRouter*> mRouterMap;  // 路由映射表
 };
