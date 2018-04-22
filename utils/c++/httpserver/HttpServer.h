@@ -16,7 +16,7 @@
 
 class HttpField;
 
-// http过滤回调
+// http过滤回调,返回值:0.通过,非0.被过滤
 #define HTTP_FILTER_CALLBACK std::function<int(char major, \
                                                char minor, \
                                                const char* method, \
@@ -24,7 +24,7 @@ class HttpField;
                                                unsigned short port, \
                                                const char* uri)>
 
-// http错误回调
+// http错误回调,返回值:无
 #define HTTP_ERROR_CALLBACK std::function<void(const std::string& method, \
                                                const std::string& host, \
                                                unsigned short port, \
@@ -35,7 +35,7 @@ class HttpField;
                                                const std::string& errorBuf, \
                                                std::map<std::string, std::string>& responseHeaders)>
 
-// http路由回调
+// http路由回调,返回值:响应字符串,格式自定义,一般是json格式
 #define HTTP_ROUTER_CALLBACK std::function<std::string(const std::string& method, \
                                                        const std::string& host, \
                                                        unsigned short port, \
