@@ -17,7 +17,7 @@ extern "C"
 
 /*
  * Brief:	init logfile helper
- * Param:	prefix - file prefix name, e.g. "hud_"
+ * Param:	prefix - file prefix name, e.g. "log_"
  *          maxSize - file max size
  * Return:	void
  */
@@ -41,10 +41,11 @@ extern void logfilehelper_enable(int enable);
 /*
  * Brief:	record log to file
  * Param:	tag - record tag
+ *          withtime - with time, 0.false, 1.true
  *          content - record content
  * Return:	void
  */
-extern void logfilehelper_record(const char* tag, const char* content);
+extern void logfilehelper_record(const char* tag, int withtime, const char* content);
 
 #ifdef __cplusplus
 }

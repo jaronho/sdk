@@ -20,10 +20,10 @@ void logfilehelper_init(const char* prefix, long maxSize) {
     struct timeval tv;
     struct tm tm;
     char* buf;
-    sBaseName = malloc((NULL == prefix ? 0 : strlen(prefix)) + 16);
+    sBaseName = malloc((prefix ? strlen(prefix) : 0) + 16);
     gettimeofday(&tv, NULL);
     tm = *localtime(&tv.tv_sec);
-    sprintf(sBaseName, "%s%04d%02d%02d_%02d%02d%02d", (NULL == prefix ? "" : prefix), tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sprintf(sBaseName, "%s%04d%02d%02d_%02d%02d%02d", prefix ? prefix : "", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     buf = malloc(strlen(sBaseName) + strlen(EXT));
     sprintf(buf, "%s%s", sBaseName, EXT);
     sLogFile = logfile_open(buf, maxSize);
@@ -40,23 +40,27 @@ void logfilehelper_enable(int enable) {
     logfile_enable(sLogFile, enable);
 }
 
-void logfilehelper_record(const char* tag, const char* content) {
+void logfilehelper_record(const char* tag, int withtime, const char* content) {
     if (!sLogFile) {
         return;
     }
     int flag = 0;
     char* buf;
-    if (NULL == tag || 0 == strlen(tag)) {
-        flag = logfile_record_with_time(sLogFile, content);
+    if (!tag || 0 == strlen(tag)) {
+        if (withtime) {
+            flag = logfile_record_with_time(sLogFile, content);
+        } else {
+            flag = logfile_record(sLogFile, content, 0);
+        }
     } else {
-        flag = logfile_record_with_tag(sLogFile, tag, content);
+        flag = logfile_record_with_tag(sLogFile, tag, withtime, content);
     }
     if (5 == flag) {
         logfile_close(sLogFile);
         buf = malloc(strlen(sBaseName) + 4 + strlen(EXT));
         sprintf(buf, "%s-%03d%s", sBaseName, sCount, EXT);
         sLogFile = logfile_open(buf, sMaxSize);
-        if (NULL == sLogFile) {
+        if (sLogFile) {
             free(sBaseName);
             sBaseName = NULL;
             sMaxSize = 0;
@@ -64,10 +68,14 @@ void logfilehelper_record(const char* tag, const char* content) {
             return;
         }
         ++sCount;
-        if (NULL == tag || 0 == strlen(tag)) {
-            logfile_record_with_time(sLogFile, content);
+        if (!tag || 0 == strlen(tag)) {
+            if (withtime) {
+                logfile_record_with_time(sLogFile, content);
+            } else {
+                logfile_record(sLogFile, content, 0);
+            }
         } else {
-            logfile_record_with_tag(sLogFile, tag, content);
+            logfile_record_with_tag(sLogFile, tag, withtime, content);
         }
     }
 }
