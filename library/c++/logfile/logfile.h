@@ -3,10 +3,7 @@
 
 #include <stdio.h>
 
-#define LOGFILE_THREAD_SAFETY	1	/* 1.thread safe, 0.no thread safe */
-#define DEF_LOGFILE_MAXSIZE     1024*1024*4L
-
-#if LOGFILE_THREAD_SAFETY
+#ifdef LOGFILE_THREAD_SAFETY
 #include <pthread.h>
 #endif
 
@@ -20,25 +17,25 @@ typedef struct logfile_st {
     char* filename;
     long maxsize;
     int enable;
-#if LOGFILE_THREAD_SAFETY
+#ifdef LOGFILE_THREAD_SAFETY
     pthread_mutex_t mutex;
 #endif
 } logfile_st;
 
 /*
  * Brief:	open a logfile
- * Param:	fileName - log file name
+ * Param:	filename - log file name
  *			maxSize - file max size
  * Return:	logfile_st*
  */
-extern logfile_st* logfile_open(const char* fileName, long maxSize);
+extern logfile_st* logfile_open(const char* filename, long maxSize);
 
 /*
- * Brief:	open a logfile, default max size = DEF_LOGFILE_MAXSIZE
- * Param:	fileName - log file name
+ * Brief:	open a logfile, default max size = 1024*1024*4L
+ * Param:	filename - log file name
  * Return:	logfile_st*
  */
-extern logfile_st* logfile_open_default(const char* fileName);
+extern logfile_st* logfile_open_default(const char* filename);
 
 /*
  * Brief:	close a logfile
@@ -76,6 +73,7 @@ extern int logfile_enable(logfile_st* lf, int enable);
  * Brief:	record to log file
  * Param:	lf - a log file
  *          content - record content
+ *          newline - whether create a new line, 0.false, 1.true
  * Return:	0.ok
  *          1.lf is NULL
  *          2.lf is disable
@@ -83,7 +81,7 @@ extern int logfile_enable(logfile_st* lf, int enable);
  *          4.content size large max
  *          5.file size reach max
  */
-extern int logfile_record(logfile_st* lf, const char* content);
+extern int logfile_record(logfile_st* lf, const char* content, int newline);
 
 /*
  * Brief:	record to log file with time
@@ -102,6 +100,7 @@ extern int logfile_record_with_time(logfile_st* lf, const char* content);
  * Brief:	record to log file with time and tag
  * Param:	lf - a log file
  *          tag - record tag
+ *          withtime - with time, 0.false, 1.true
  *          content - record content
  * Return:	0.ok
  *          1.lf is NULL
@@ -110,7 +109,7 @@ extern int logfile_record_with_time(logfile_st* lf, const char* content);
  *          4.content size large max
  *          5.file size reach max
  */
-extern int logfile_record_with_tag(logfile_st* lf, const char* tag, const char* content);
+extern int logfile_record_with_tag(logfile_st* lf, const char* tag, int withtime, const char* content);
 
 #ifdef __cplusplus
 }
