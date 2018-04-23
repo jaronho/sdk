@@ -6,9 +6,7 @@
 #ifndef _HASHMAP_H_
 #define _HASHMAP_H_
 
-#define HASHMAP_THREAD_SAFETY	1	/* 1.thread safe, 0.no thread safe */
-
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 #include <pthread.h>
 #endif
 
@@ -41,7 +39,7 @@ typedef struct hashmap_st {
 	unsigned long capacity;	// Hashmap capacity (in terms of hashed keys)
 	unsigned long count;	// Count of element currently stored in the hashmap
 	hashmap_element_st** map;	// The map containaing elements
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_t mutex;
 #endif
 } hashmap_st;

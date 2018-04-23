@@ -34,7 +34,7 @@ hashmap_st* hashmap_create(unsigned long capacity) {
 	for (i = 0; i < capacity; ++i) {
 		hasht->map[i] = NULL;
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
     pthread_mutex_init(&hasht->mutex, NULL);
 #endif
 	return hasht;
@@ -46,7 +46,7 @@ int hashmap_destroy(hashmap_st* hasht) {
 		return 1;
 	}
 	hashmap_clear(hasht, 1); // Delete and free all.
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
     pthread_mutex_destroy(&hasht->mutex);
 #endif
 	free(hasht->map);
@@ -59,7 +59,7 @@ int hashmap_clear(hashmap_st* hasht, int free_data) {
 	if (NULL == hasht) {
 		return 1;
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_lock(&hasht->mutex);
 #endif
 	hashmap_element_iterator_st it = HASHMAP_ITERATOR(hasht);
@@ -72,7 +72,7 @@ int hashmap_clear(hashmap_st* hasht, int free_data) {
 		}
 		k = hashmap_iterate_key(&it);
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_unlock(&hasht->mutex);
 #endif
 	return 0;
@@ -83,7 +83,7 @@ int hashmap_put(hashmap_st* hasht, const char* key, void* data) {
 	if (NULL == hasht || NULL == key || NULL == data) {
 		return 1;
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_lock(&hasht->mutex);
 #endif
 	if (hasht->count >= hasht->capacity) {
@@ -107,7 +107,7 @@ int hashmap_put(hashmap_st* hasht, const char* key, void* data) {
 	e->next = hasht->map[h];
 	hasht->map[h] = e;
 	hasht->count++;
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_unlock(&hasht->mutex);
 #endif
 	return 0;
@@ -118,21 +118,21 @@ void* hashmap_get(hashmap_st* hasht, const char* key) {
 	if (NULL == hasht || NULL == key) {
 		return NULL;
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_lock(&hasht->mutex);
 #endif
 	unsigned int h = ht_calc_hash(key) % hasht->capacity;
 	hashmap_element_st* e = hasht->map[h];
 	while (NULL != e) {
 		if (!strcmp(e->key, key)) {
-		#if HASHMAP_THREAD_SAFETY
+		#ifdef HASHMAP_THREAD_SAFETY
 			pthread_mutex_unlock(&hasht->mutex);
 		#endif
 			return e->data;
 		}
 		e = e->next;
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_unlock(&hasht->mutex);
 #endif
 	return NULL;
@@ -143,7 +143,7 @@ void* hashmap_remove(hashmap_st* hasht, const char* key) {
 	if (NULL == hasht || NULL == key) {
 		return NULL;
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_lock(&hasht->mutex);
 #endif
 	unsigned int h = ht_calc_hash(key) % hasht->capacity;
@@ -160,7 +160,7 @@ void* hashmap_remove(hashmap_st* hasht, const char* key) {
 			free(e);
 			e = NULL;
 			hasht->count--;
-		#if HASHMAP_THREAD_SAFETY
+		#ifdef HASHMAP_THREAD_SAFETY
 			pthread_mutex_unlock(&hasht->mutex);
 		#endif
 			return ret;
@@ -168,7 +168,7 @@ void* hashmap_remove(hashmap_st* hasht, const char* key) {
 		prev = e;
 		e = e->next;
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_unlock(&hasht->mutex);
 #endif
 	return NULL;
@@ -179,7 +179,7 @@ int hashmap_list_keys(hashmap_st* hasht, unsigned long keys_len, char** keys) {
 	if (NULL == hasht || keys_len < hasht->count || NULL == keys) {
 		return 1;
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_lock(&hasht->mutex);
 #endif
 	long ki = 0; //Index to the current string in **keys
@@ -191,7 +191,7 @@ int hashmap_list_keys(hashmap_st* hasht, unsigned long keys_len, char** keys) {
 			e = e->next;
 		}
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_unlock(&hasht->mutex);
 #endif
 	return 0;
@@ -202,7 +202,7 @@ int hashmap_list_values(hashmap_st* hasht, unsigned long values_len, void** valu
 	if (NULL == hasht || values_len < hasht->count || NULL == values) {
 		return 1;
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_lock(&hasht->mutex);
 #endif
 	long vi = 0; //Index to the current string in **values
@@ -214,7 +214,7 @@ int hashmap_list_values(hashmap_st* hasht, unsigned long values_len, void** valu
 			e = e->next;
 		}
 	}
-#if HASHMAP_THREAD_SAFETY
+#ifdef HASHMAP_THREAD_SAFETY
 	pthread_mutex_unlock(&hasht->mutex);
 #endif
 	return 0;
@@ -226,17 +226,17 @@ hashmap_element_st* hashmap_iterate(hashmap_element_iterator_st* iterator) {
 		return NULL;
 	}
 	while (NULL == iterator->elem) {
-		#if HASHMAP_THREAD_SAFETY
+		#ifdef HASHMAP_THREAD_SAFETY
 			pthread_mutex_lock(&iterator->hm->mutex);
 		#endif
 		if (iterator->index < iterator->hm->capacity - 1) {
 			iterator->index++;
 			iterator->elem = iterator->hm->map[iterator->index];
-			#if HASHMAP_THREAD_SAFETY
+			#ifdef HASHMAP_THREAD_SAFETY
 				pthread_mutex_unlock(&iterator->hm->mutex);
 			#endif
 		} else {
-			#if HASHMAP_THREAD_SAFETY
+			#ifdef HASHMAP_THREAD_SAFETY
 				pthread_mutex_unlock(&iterator->hm->mutex);
 			#endif
 			return NULL;
