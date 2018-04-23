@@ -156,6 +156,16 @@ private:
 /*
 ************************************************** sample_01
 
+auto handleFilter = [](char major, char minor, const char* method, const char* host, unsigned short port, const char* uri)->int {
+    if (0 != strcmp("POST", method)) {
+        return 1;
+    }
+    if (0 != strcmp("/post", uri)) {
+        return 2;
+    }
+    return 0;
+};
+
 auto handleError = [](const std::string& method,
                       const std::string& host,
                       unsigned short port,
@@ -191,6 +201,7 @@ auto handlePost = [](const std::string& method,
 };
 
 int main() {
+    HttpServer::getInstance()->setFilterCallback(handleFilter);
     HttpServer::getInstance()->setErrorCallback(handleError);
     HttpServer::getInstance()->addRouterPost("/post", handlePost);
     HttpServer::getInstance()->run("127.0.0.1", 5001, true, true);
