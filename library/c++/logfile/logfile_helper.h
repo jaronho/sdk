@@ -17,11 +17,11 @@ extern "C"
 
 /*
  * Brief:	init logfile helper
- * Param:	prefix - file prefix name, e.g. "log_"
+ * Param:	name - filename or prefix, e.g. "logrecord.log" or "log_"
  *          maxSize - file max size
  * Return:	void
  */
-extern void logfilehelper_init(const char* prefix, long maxSize);
+extern void logfilehelper_init(const char* name, unsigned int maxSize);
 
 /*
  * Brief:	get is logfile helper enable
@@ -29,14 +29,14 @@ extern void logfilehelper_init(const char* prefix, long maxSize);
  * Return:	0.disable
  *          1.enable
  */
-extern int logfilehelper_isenable(void);
+extern unsigned int logfilehelper_isenable(void);
 
 /*
  * Brief:	set logfile helper enable
  * Param:	enable - 0.false, 1.true
  * Return:	void
  */
-extern void logfilehelper_enable(int enable);
+extern void logfilehelper_enable(unsigned int enable);
 
 /*
  * Brief:	record log to file
@@ -45,7 +45,7 @@ extern void logfilehelper_enable(int enable);
  *          content - record content
  * Return:	void
  */
-extern void logfilehelper_record(const char* tag, int withtime, const char* content);
+extern void logfilehelper_record(const char* tag, unsigned int withtime, const char* content);
 
 #ifdef __cplusplus
 }

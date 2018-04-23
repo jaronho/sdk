@@ -15,8 +15,8 @@ extern "C"
 typedef struct logfile_st {
     FILE* fileptr;
     char* filename;
-    long maxsize;
-    int enable;
+    unsigned int maxsize;
+    unsigned int enable;
 #ifdef LOGFILE_THREAD_SAFETY
     pthread_mutex_t mutex;
 #endif
@@ -28,7 +28,7 @@ typedef struct logfile_st {
  *			maxSize - file max size
  * Return:	logfile_st*
  */
-extern logfile_st* logfile_open(const char* filename, long maxSize);
+extern logfile_st* logfile_open(const char* filename, unsigned int maxSize);
 
 /*
  * Brief:	open a logfile, default max size = 1024*1024*4L
@@ -43,7 +43,16 @@ extern logfile_st* logfile_open_default(const char* filename);
  * Return:	0.ok
  *          1.lf is NULL
  */
-extern int logfile_close(logfile_st* lf);
+extern unsigned int logfile_close(logfile_st* lf);
+
+/*
+ * Brief:	clear logfile
+ * Param:	lf - a log file
+ * Return:	0.ok
+ *          1.lf is NULL
+ *          2.clear lf fail
+ */
+extern unsigned int logfile_clear(logfile_st* lf);
 
 /*
  * Brief:	get a logfile name
@@ -58,7 +67,7 @@ extern const char* logfile_name(logfile_st* lf);
  * Return:	0.disable
  *          1.enable
  */
-extern int logfile_isenable(logfile_st* lf);
+extern unsigned int logfile_isenable(logfile_st* lf);
 
 /*
  * Brief:	set logfile enable status
@@ -67,7 +76,7 @@ extern int logfile_isenable(logfile_st* lf);
  * Return:	0.ok
  *          1.lf is NULL
  */
-extern int logfile_enable(logfile_st* lf, int enable);
+extern unsigned int logfile_enable(logfile_st* lf, unsigned int enable);
 
 /*
  * Brief:	record to log file
@@ -81,7 +90,7 @@ extern int logfile_enable(logfile_st* lf, int enable);
  *          4.content size large max
  *          5.file size reach max
  */
-extern int logfile_record(logfile_st* lf, const char* content, int newline);
+extern unsigned int logfile_record(logfile_st* lf, const char* content, unsigned int newline);
 
 /*
  * Brief:	record to log file with time
@@ -94,7 +103,7 @@ extern int logfile_record(logfile_st* lf, const char* content, int newline);
  *          4.content size large max
  *          5.file size reach max
  */
-extern int logfile_record_with_time(logfile_st* lf, const char* content);
+extern unsigned int logfile_record_with_time(logfile_st* lf, const char* content);
 
 /*
  * Brief:	record to log file with time and tag
@@ -109,7 +118,7 @@ extern int logfile_record_with_time(logfile_st* lf, const char* content);
  *          4.content size large max
  *          5.file size reach max
  */
-extern int logfile_record_with_tag(logfile_st* lf, const char* tag, int withtime, const char* content);
+extern unsigned int logfile_record_with_tag(logfile_st* lf, const char* tag, unsigned int withtime, const char* content);
 
 #ifdef __cplusplus
 }

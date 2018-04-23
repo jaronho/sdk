@@ -1,10 +1,12 @@
 #include "logfile.h"
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
-logfile_st* logfile_open(const char* filename, long maxSize) {
-    logfile_st* lf;
-    FILE* fp;
-    long nameLength = filename ? strlen(filename) : 0;
+logfile_st* logfile_open(const char* filename, unsigned int maxSize) {
+    logfile_st* lf = NULL;
+    FILE* fp = NULL;
+    unsigned int nameLength = filename ? strlen(filename) : 0;
     if (0 == nameLength || maxSize <= 0) {
         return NULL;
     }
@@ -37,7 +39,7 @@ logfile_st* logfile_open_default(const char* filename) {
     return logfile_open(filename, 1024*1024*4L);
 }
 
-int logfile_close(logfile_st* lf) {
+unsigned int logfile_close(logfile_st* lf) {
     if (!lf || !lf->fileptr || !lf->filename) {
         return 1;
     }
@@ -52,6 +54,31 @@ int logfile_close(logfile_st* lf) {
     return 0;
 }
 
+unsigned int logfile_clear(logfile_st* lf) {
+    FILE* fp = NULL;
+    if (!lf || !lf->fileptr || !lf->filename) {
+        return 1;
+    }
+#ifdef LOGFILE_THREAD_SAFETY
+    pthread_mutex_lock(&lf->mutex);
+#endif
+    fclose(lf->fileptr);
+    lf->fileptr = NULL;
+    fp = fopen(lf->filename, "w+");
+    if (!fp) {
+        return 2;
+    }
+    fclose(fp);
+    fp = fopen(lf->filename, "a+");
+    if (fp) {
+        lf->fileptr = fp;
+    }
+#ifdef LOGFILE_THREAD_SAFETY
+    pthread_mutex_unlock(&lf->mutex);
+#endif
+    return 0;
+}
+
 const char* logfile_name(logfile_st* lf) {
     if (!lf) {
         return NULL;
@@ -59,14 +86,14 @@ const char* logfile_name(logfile_st* lf) {
     return lf->filename;
 }
 
-int logfile_isenable(logfile_st* lf) {
+unsigned int logfile_isenable(logfile_st* lf) {
     if (!lf || !lf->fileptr || !lf->filename) {
         return 0;
     }
     return lf->enable;
 }
 
-int logfile_enable(logfile_st* lf, int enable) {
+unsigned int logfile_enable(logfile_st* lf, unsigned int enable) {
     if (!lf || !lf->fileptr || !lf->filename) {
         return 1;
     }
@@ -74,14 +101,16 @@ int logfile_enable(logfile_st* lf, int enable) {
     return 0;
 }
 
-int logfile_record(logfile_st* lf, const char* content, int newline) {
+unsigned int logfile_record(logfile_st* lf, const char* content, unsigned int newline) {
+    unsigned int fileSize = 0;
+    unsigned int contentLength = 0;
     if (!lf || !lf->fileptr || !lf->filename) {
         return 1;
     }
     if (!lf->enable) {
         return 2;
     }
-    long contentLength = content ? strlen(content) : 0;
+    contentLength = content ? strlen(content) : 0;
     if (0 == contentLength) {
         return 3;
     }
@@ -89,7 +118,7 @@ int logfile_record(logfile_st* lf, const char* content, int newline) {
     pthread_mutex_lock(&lf->mutex);
 #endif
     fseek(lf->fileptr, 0, SEEK_END);
-    long fileSize = ftell(lf->fileptr);
+    fileSize = ftell(lf->fileptr);
     if (fileSize > 0) {
         if (contentLength > lf->maxsize) {
             return 4;
@@ -107,51 +136,58 @@ int logfile_record(logfile_st* lf, const char* content, int newline) {
     return 0;
 }
 
-int logfile_record_with_time(logfile_st* lf, const char* content) {
+unsigned int logfile_record_with_time(logfile_st* lf, const char* content) {
+    time_t now;
+    struct tm t;
+    char date[32] = { 0 };
+    char* buf = NULL;
+    unsigned int contentLength = 0;
+    unsigned int flag = 0;
     if (!lf || !lf->fileptr || !lf->filename) {
         return 1;
     }
     if (!lf->enable) {
         return 2;
     }
-    long contentLength = content ? strlen(content) : 0;
+    contentLength = content ? strlen(content) : 0;
     if (0 == contentLength) {
         return 3;
     }
-    struct timeval tv;
-    struct tm tm;
-    char* buf = malloc(23 + contentLength);
-    int flag = 0;
-    gettimeofday(&tv, NULL);
-    tm = *localtime(&tv.tv_sec);
-    sprintf(buf, "[%04d-%02d-%02d %02d:%02d:%02d] %s", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, content);
+    time(&now);
+    t = *localtime(&now);
+    strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &t);
+    buf = malloc(strlen(date) + 4 + contentLength);
+    sprintf(buf, "[%s] %s", date, content);
     flag = logfile_record(lf, buf, 1);
     free(buf);
     return flag;
 }
 
-int logfile_record_with_tag(logfile_st* lf, const char* tag, int withtime, const char* content) {
+unsigned int logfile_record_with_tag(logfile_st* lf, const char* tag, unsigned int withtime, const char* content) {
+    unsigned int tagLength = 0;
+    unsigned int contentLength = 0;
+    char* buf = NULL;
+    unsigned int flag = 0;
     if (!lf || !lf->fileptr || !lf->filename) {
         return 1;
     }
     if (!lf->enable) {
         return 2;
     }
-    long tagLength = tag ? strlen(tag) : 0;
+    tagLength = tag ? strlen(tag) : 0;
     if (0 == tagLength) {
         return 3;
     }
-    long contentLength = content ? strlen(content) : 0;
+    contentLength = content ? strlen(content) : 0;
     if (0 == contentLength) {
         return 3;
     }
-    char* buf = malloc(tagLength + 4 + contentLength);
-    int flag = 0;
+    buf = malloc(tagLength + 4 + contentLength);
     sprintf(buf, "[%s] %s", tag, content);
     if (withtime) {
-        flag = logfile_record_with_time(lf, buf, 1);
+        flag = logfile_record_with_time(lf, buf);
     } else {
-        flag = logfile_record(lf, buf, 1)
+        flag = logfile_record(lf, buf, 1);
     }
     free(buf);
     return flag;
