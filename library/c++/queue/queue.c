@@ -42,7 +42,7 @@ queue_st* queue_create(unsigned long capacity, int loop, int block) {
 	q->loop = loop;
 	q->block = block;
     q->buf = malloc(capacity * sizeof(void*));
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	sem_init(&q->sem, 0, 1);
     pthread_mutex_init(&q->mutex, NULL);
 	pthread_cond_init(&q->cond, NULL);
@@ -54,7 +54,7 @@ int queue_destroy(queue_st* q) {
 	if (NULL == q) {
 		return 1;
 	}
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	sem_destroy(&q->sem);
     pthread_mutex_destroy(&q->mutex);
 	pthread_cond_destroy(&q->cond);
@@ -76,11 +76,11 @@ unsigned long queue_length(queue_st* q) {
 	if (NULL == q) {
 		return 0;
 	}
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	pthread_mutex_lock(&q->mutex);
 #endif
     length = q->length;
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	pthread_mutex_unlock(&q->mutex);
 #endif
 	return length;
@@ -91,13 +91,13 @@ int queue_put(queue_st* q, void* data) {
 	if (NULL == q || NULL == data) {
 		return 1;
 	}
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	sem_wait(&q->sem);
 #endif
 	int prev_state = q->state;
 	if (QUEUE_FULL == prev_state) {
 		if (!q->loop) {
-		#if QUEUE_THREAD_SAFETY
+		#ifdef QUEUE_THREAD_SAFETY
 			sem_post(&q->sem);
 		#endif
 			return 2;
@@ -117,14 +117,14 @@ int queue_put(queue_st* q, void* data) {
 	if (q->top == q->bottom) {
 		q->state = QUEUE_FULL;
 	}
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	pthread_mutex_lock(&q->mutex);
 	if (QUEUE_EMPTY == prev_state && q->block) {
 		pthread_cond_signal(&q->cond);
 	}
 	pthread_mutex_unlock(&q->mutex);
 #endif
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	sem_post(&q->sem);
 #endif
 	return 0;
@@ -135,18 +135,18 @@ void* queue_get(queue_st* q) {
 	if (NULL == q) {
 		return NULL;
 	}
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	pthread_mutex_lock(&q->mutex);
 	if (QUEUE_EMPTY == q->state && q->block) {
 		pthread_cond_wait(&q->cond, &q->mutex);
 	}
 	pthread_mutex_unlock(&q->mutex);
 #endif
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	sem_wait(&q->sem);
 #endif
 	retval = getqueue(q);
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	sem_post(&q->sem);
 #endif
 	return retval;

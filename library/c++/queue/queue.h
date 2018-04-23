@@ -6,9 +6,7 @@
 #ifndef _QUEUE_H_
 #define _QUEUE_H_
 
-#define QUEUE_THREAD_SAFETY	1	/* 1.thread safe, 0.no thread safe */
-
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 #include <pthread.h>
 #include <semaphore.h>
 #endif
@@ -27,7 +25,7 @@ typedef struct queue_st {
 	int loop;
 	int block;
 	void** buf;
-#if QUEUE_THREAD_SAFETY
+#ifdef QUEUE_THREAD_SAFETY
 	sem_t sem;
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
