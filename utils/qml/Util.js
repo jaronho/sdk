@@ -13,6 +13,7 @@ var mTimerManager = new CreateTimerManager();
 var mTimerMap = {};
 var mBlinkManager = new CreateTimerManager();
 var mBlinkMap = {};
+var mAnimationMap = {};
 //----------------------------------------------------------------------
 // 监听
 function listen() {
@@ -47,10 +48,20 @@ function destroyTimer(id) {
     }
 }
 //----------------------------------------------------------------------
+// 销毁所有定时器
+function destroyAllTimers() {
+    for (var key in mTimerMap) {
+        if (mTimerMap.hasOwnProperty(key)) {
+            mTimerMap[key].stop(false);
+        }
+    }
+    mTimerMap = {};
+}
+//----------------------------------------------------------------------
 // 延迟调用
 function delayWith(time, callCF, id) {
     if (time <= 0) {
-        if ('function' == typeof(callCF)) {
+        if ('function' === typeof(callCF)) {
             callCF();
         }
         return;
@@ -59,7 +70,7 @@ function delayWith(time, callCF, id) {
 }
 //----------------------------------------------------------------------
 // 开始闪烁
-function startBlink(viewList, showTime, hideTime, count, showAtLast, id) {
+function startBlink(viewList, showTime, hideTime, count, showAtLast, overCF, id) {
     if (0 === viewList.length || showTime <= 0 || hideTime <= 0) {
         return;
     }
@@ -89,7 +100,19 @@ function startBlink(viewList, showTime, hideTime, count, showAtLast, id) {
             }
         }
     }, function(tm) {
-        setViewListShow(showAtLast);
+        if (count > 0 && showFlag !== showAtLast) {
+            delayWith(showFlag ? showTime : hideTime, function() {
+                setViewListShow(showAtLast);
+                if ('function' === typeof(overCF)) {
+                    overCF();
+                }
+            }, id);
+        } else {
+            setViewListShow(showAtLast);
+            if ('function' === typeof(overCF)) {
+                overCF();
+            }
+        }
     }, null, null);
     mBlinkMap[id] = blink;
     blink.start(Date.now(), false);
@@ -186,7 +209,12 @@ function createOpacityAnimation(object, from, to, duration, callback) {
     ani.from = from;
     ani.to = to;
     ani.duration = duration;
-    ani.callback = callback;
+    ani.callback = function() {
+        object.opacity = to;
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+    };
     return ani;
 }
 //----------------------------------------------------------------------
@@ -207,7 +235,12 @@ function createScaleAnimation(object, from, to, duration, callback) {
     ani.from = from;
     ani.to = to;
     ani.duration = duration;
-    ani.callback = callback;
+    ani.callback = function () {
+        object.scale = to;
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+    };
     return ani;
 }
 //----------------------------------------------------------------------
@@ -228,7 +261,12 @@ function createRotationAnimation(object, from, to, duration, callback) {
     ani.from = from;
     ani.to = to;
     ani.duration = duration;
-    ani.callback = callback;
+    ani.callback = function () {
+        object.rotation = to;
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+    };
     return ani;
 }
 //----------------------------------------------------------------------
@@ -250,7 +288,12 @@ function createXOffsetAnimation(object, from, to, duration, callback) {
     ani.from = from;
     ani.to = to;
     ani.duration = duration;
-    ani.callback = callback;
+    ani.callback = function () {
+        object.x = to;
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+    };
     return ani;
 }
 //----------------------------------------------------------------------
@@ -272,89 +315,250 @@ function createYOffsetAnimation(object, from, to, duration, callback) {
     ani.from = from;
     ani.to = to;
     ani.duration = duration;
-    ani.callback = callback;
-    return ani;
-}
-//----------------------------------------------------------------------
-// 透明度
-function opacityFromto(object, from, to, duration, callback) {
-    var ani = createOpacityAnimation(object, from, to, duration, function() {
-        ani.destroy();
+    ani.callback = function () {
+        object.y = to;
         if ('function' === typeof(callback)) {
             callback();
         }
+    };
+    return ani;
+}
+//----------------------------------------------------------------------
+// 完成动画
+function completeAnimation(id) {
+    if ('string' === typeof(id) && id.length > 0) {
+        var ani = mAnimationMap[id];
+        if (undefined !== ani) {
+            mAnimationMap[id] = undefined;
+            ani.stop();
+        } else {
+            var aniX = mAnimationMap[id + "_x"];
+            if (undefined !== aniX) {
+                mAnimationMap[id + "_x"] = undefined;
+                aniX.stop();
+            }
+            var aniY = mAnimationMap[id + "_y"];
+            if (undefined !== aniY) {
+                mAnimationMap[id + "_y"] = undefined;
+                aniY.stop();
+            }
+        }
+    }
+}
+//----------------------------------------------------------------------
+// 动画是否在播放
+function isAnimationPlay(id) {
+    if ('string' === typeof(id) && id.length > 0
+            && (undefined !== mAnimationMap[id]
+                || undefined !== mAnimationMap[id + "_x"]
+                || undefined !== mAnimationMap[id + "_y"])) {
+        return true;
+    }
+    return false;
+}
+//----------------------------------------------------------------------
+// 透明度
+function opacityFromto(object, from, to, duration, callback, id) {
+    if ('string' === typeof(id) && id.length > 0 && undefined !== mAnimationMap[id]) {
+        return;
+    }
+    if (from === to) {
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+        return;
+    }
+    var ani = createOpacityAnimation(object, from, to, duration, function() {
+        ani.destroy();
+        if ('string' === typeof(id) && id.length > 0) {
+            if (undefined !== mAnimationMap[id]) {
+                mAnimationMap[id] = undefined;
+                if ('function' === typeof(callback)) {
+                    callback();
+                }
+            }
+        } else if ('function' === typeof(callback)) {
+            callback();
+        }
     });
+    if ('string' === typeof(id) && id.length > 0) {
+        mAnimationMap[id] = ani;
+    }
     ani.start();
 }
 //----------------------------------------------------------------------
 // 淡入
-function fadeIn(object, duration, callback) {
-    opacityFromto(object, 0, 1, duration, callback);
+function fadeIn(object, duration, callback, id) {
+    if (object.visible && 1 === object.opacity) {
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+        return;
+    }
+    opacityFromto(object, 0, 1, duration, callback, id);
 }
 //----------------------------------------------------------------------
 // 淡出
-function fadeOut(object, duration, callback) {
-    opacityFromto(object, 1, 0, duration, callback);
+function fadeOut(object, duration, callback, id) {
+    if (!object.visible || 0 === object.opacity) {
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+        return;
+    }
+    opacityFromto(object, 1, 0, duration, function() {
+        object.visible = false;
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+    }, id);
 }
 //----------------------------------------------------------------------
 // 缩放
-function scaleFromTo(object, from, to, duration, callback) {
-    var ani = createScaleAnimation(object, from, to, duration, function() {
-        ani.destroy();
+function scaleFromTo(object, from, to, duration, callback, id) {
+    if ('string' === typeof(id) && id.length > 0 && undefined !== mAnimationMap[id]) {
+        return;
+    }
+    if (from === to) {
         if ('function' === typeof(callback)) {
             callback();
         }
+        return;
+    }
+    var ani = createScaleAnimation(object, from, to, duration, function() {
+        ani.destroy();
+        if ('string' === typeof(id) && id.length > 0) {
+            if (undefined !== mAnimationMap[id]) {
+                mAnimationMap[id] = undefined;
+                if ('function' === typeof(callback)) {
+                    callback();
+                }
+            }
+        } else if ('function' === typeof(callback)) {
+            callback();
+        }
     });
+    if ('string' === typeof(id) && id.length > 0) {
+        mAnimationMap[id] = ani;
+    }
     ani.start();
+}
+//----------------------------------------------------------------------
+// 缩放到
+function scaleTo(object, to, duration, callback, id) {
+    scaleFromTo(object, object.scale, to, duration, callback, id);
 }
 //----------------------------------------------------------------------
 // 旋转
-function rotateFromTo(object, from, to, duration, callback) {
-    var ani = createRotationAnimation(object, from, to, duration, function() {
-        ani.destroy();
+function rotateFromTo(object, from, to, duration, callback, id) {
+    if ('string' === typeof(id) && id.length > 0 && undefined !== mAnimationMap[id]) {
+        return;
+    }
+    if (from === to) {
         if ('function' === typeof(callback)) {
             callback();
         }
+        return;
+    }
+    var ani = createRotationAnimation(object, from, to, duration, function() {
+        ani.destroy();
+        if ('string' === typeof(id) && id.length > 0) {
+            if (undefined !== mAnimationMap[id]) {
+                mAnimationMap[id] = undefined;
+                if ('function' === typeof(callback)) {
+                    callback();
+                }
+            }
+        } else if ('function' === typeof(callback)) {
+            callback();
+        }
     });
+    if ('string' === typeof(id) && id.length > 0) {
+        mAnimationMap[id] = ani;
+    }
     ani.start();
 }
 //----------------------------------------------------------------------
+// 旋转到
+function rotateTo(object, to, duration, callback, id) {
+    rotateFromTo(object, object.rotation, to, duration, callback, id);
+}
+//----------------------------------------------------------------------
 // 位移
-function moveBy(object, x, y, duration, callback) {
+function moveBy(object, x, y, duration, callback, id) {
+    if (0 === x && 0 === y) {
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+        return;
+    }
     var xFlag = false;
     if ('number' === typeof(x) && 0 !== x) {
-        xFlag = true;
-        var aniX = createXOffsetAnimation(object, object.x, object.x + x, duration, function() {
-            aniX.destroy();
-            if ('function' === typeof(callback)) {
-                callback();
+        if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_x"]) {
+            xFlag = true;
+            var aniX = createXOffsetAnimation(object, object.x, object.x + x, duration, function() {
+                ani.destroy();
+                if ('string' === typeof(id) && id.length > 0) {
+                    if (undefined !== mAnimationMap[id + "_x"]) {
+                        mAnimationMap[id + "_x"] = undefined;
+                        if ('function' === typeof(callback)) {
+                            callback();
+                        }
+                    }
+                } else if ('function' === typeof(callback)) {
+                    callback();
+                }
+            })
+            if ('string' === typeof(id) && id.length > 0) {
+                mAnimationMap[id + "_x"] = ani;
             }
-        })
-        aniX.start();
+            aniX.start();
+        }
     }
     if ('number' === typeof(y) && 0 !== y) {
-        var aniY = createYOffsetAnimation(object, object.y, object.y + y, duration, function() {
-            aniY.destroy();
-            if (!xFlag && 'function' === typeof(callback)) {
-                callback();
+        if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_y"]) {
+            var aniY = createYOffsetAnimation(object, object.y, object.y + y, duration, function() {
+                aniY.destroy();
+                if (xFlag) {
+                    return;
+                }
+                if ('string' === typeof(id) && id.length > 0) {
+                    if (undefined !== mAnimationMap[id + "_y"]) {
+                        mAnimationMap[id + "_y"] = undefined;
+                        if ('function' === typeof(callback)) {
+                            callback();
+                        }
+                    }
+                } else if ('function' === typeof(callback)) {
+                    callback();
+                }
+            })
+            if ('string' === typeof(id) && id.length > 0) {
+                mAnimationMap[id + "_y"] = ani;
             }
-        })
-        aniY.start();
+            aniY.start();
+        }
     }
 }
 //----------------------------------------------------------------------
 // 位移x
-function moveByX(object, x, duration, callback) {
-    moveBy(object, x, null, duration, callback);
+function moveByX(object, x, duration, callback, id) {
+    moveBy(object, x, null, duration, callback, id);
 }
 //----------------------------------------------------------------------
 // 位移y
-function moveByY(object, y, duration, callback) {
-    moveBy(object, null, y, duration, callback);
+function moveByY(object, y, duration, callback, id) {
+    moveBy(object, null, y, duration, callback, id);
 }
 //----------------------------------------------------------------------
 // 移动
-function moveFromTo(object, fromX, fromY, toX, toY, duration, callback) {
+function moveFromTo(object, fromX, fromY, toX, toY, duration, callback, id) {
+    if (fromX === toX && fromY === toY) {
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+        return;
+    }
     var xFlag = false;
     if ('number' === typeof(fromX) || 'number' === typeof(toX)) {
         if ('number' !== typeof(fromX)) {
@@ -364,14 +568,26 @@ function moveFromTo(object, fromX, fromY, toX, toY, duration, callback) {
             toX = object.x;
         }
         if (fromX !== toX) {
-            xFlag = true;
-            var aniX = createXOffsetAnimation(object, fromX, toX, duration, function() {
-                aniX.destroy();
-                if ('function' === typeof(callback)) {
-                    callback();
+            if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_x"]) {
+                xFlag = true;
+                var aniX = createXOffsetAnimation(object, fromX, toX, duration, function() {
+                    aniX.destroy();
+                    if ('string' === typeof(id) && id.length > 0) {
+                        if (undefined !== mAnimationMap[id + "_x"]) {
+                            mAnimationMap[id + "_x"] = undefined;
+                            if ('function' === typeof(callback)) {
+                                callback();
+                            }
+                        }
+                    } else if ('function' === typeof(callback)) {
+                        callback();
+                    }
+                })
+                if ('string' === typeof(id) && id.length > 0) {
+                    mAnimationMap[id + "_x"] = ani;
                 }
-            })
-            aniX.start();
+                aniX.start();
+            }
         }
     }
     if ('number' === typeof(fromY) || 'number' === typeof(toY)) {
@@ -382,24 +598,54 @@ function moveFromTo(object, fromX, fromY, toX, toY, duration, callback) {
             toY = object.y;
         }
         if (fromY !== toY) {
-            var aniY = createYOffsetAnimation(object, fromY, toY, duration, function() {
-                aniY.destroy();
-                if (!xFlag && 'function' === typeof(callback)) {
-                    callback();
+            if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_y"]) {
+                var aniY = createYOffsetAnimation(object, fromY, toY, duration, function() {
+                    aniY.destroy();
+                    if (xFlag) {
+                        return;
+                    }
+                    if ('string' === typeof(id) && id.length > 0) {
+                        if (undefined !== mAnimationMap[id + "_y"]) {
+                            mAnimationMap[id + "_y"] = undefined;
+                            if ('function' === typeof(callback)) {
+                                callback();
+                            }
+                        }
+                    } else if ('function' === typeof(callback)) {
+                        callback();
+                    }
+                })
+                if ('string' === typeof(id) && id.length > 0) {
+                    mAnimationMap[id + "_y"] = ani;
                 }
-            })
-            aniY.start();
+                aniY.start();
+            }
         }
     }
 }
 //----------------------------------------------------------------------
 // 移动x
-function moveFromToX(object, fromX, toX, duration, callback) {
-    moveFromTo(object, fromX, null, toX, null, duration, callback);
+function moveFromToX(object, fromX, toX, duration, callback, id) {
+    moveFromTo(object, fromX, null, toX, null, duration, callback, id);
 }
 //----------------------------------------------------------------------
 // 移动y
-function moveFromToY(object, fromY, toY, duration, callback) {
-    moveFromTo(object, null, fromY, null, toY, duration, callback);
+function moveFromToY(object, fromY, toY, duration, callback, id) {
+    moveFromTo(object, null, fromY, null, toY, duration, callback, id);
+}
+//----------------------------------------------------------------------
+// 移动到
+function moveTo(object, toX, toY, duration, callback, id) {
+    moveFromTo(object, object.x, object.y, toX, toY, duration, callback, id);
+}
+//----------------------------------------------------------------------
+// 移动x到
+function moveToX(object, toX, duration, callback, id) {
+    moveFromTo(object, object.x, null, toX, null, duration, callback, id);
+}
+//----------------------------------------------------------------------
+// 移动y到
+function moveToY(object, toY, duration, callback, id) {
+    moveFromTo(object, null, object.y, null, toY, duration, callback, id);
 }
 //----------------------------------------------------------------------
