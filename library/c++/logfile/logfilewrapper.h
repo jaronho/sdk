@@ -1,10 +1,10 @@
 /**********************************************************************
 * Author:	jaron.ho
 * Date:		2017-12-25
-* Brief:	logfile helper
+* Brief:	logfile wrapper
 **********************************************************************/
-#ifndef _LOGFILE_HELPER_H_
-#define _LOGFILE_HELPER_H_
+#ifndef _LOGFILE_WRAPPER_H_
+#define _LOGFILE_WRAPPER_H_
 
 #include "logfile.h"
 
@@ -15,43 +15,43 @@ extern "C"
 {
 #endif
 
-typedef struct logrecord_st {
+typedef struct logfilewrapper_st {
     logfile_st* logfile;
     char* basename;
     char* extname;
     unsigned int override;
     unsigned int count;
-} logrecord_st;
+} logfilewrapper_st;
 
 /*
- * Brief:	init logfile helper
+ * Brief:	init logfile wraper
  * Param:	basename - file base name, e.g. "Demo" or "demo_"
  *          extname - file extend name, e.g. ".log" or ".err"
  *          maxSize - file max size
  *          override - when file reach max size, 0.create new file and write, 1. clear file and override
- * Return:	logrecord_st*
+ * Return:	logfilewrapper_st*
  */
-extern logrecord_st* logfilehelper_init(const char* basename, const char* extname, unsigned int maxSize, unsigned int override);
+extern logfilewrapper_st* logfilewrapper_init(const char* basename, const char* extname, unsigned int maxSize, unsigned int override);
 
 /*
- * Brief:	get is logfile helper enable
+ * Brief:	get is logfile wrapper enable
  * Param:	logrecord - a log record
  * Return:	0.disable
  *          1.enable
  */
-extern unsigned int logfilehelper_isenable(logrecord_st* logrecord);
+extern unsigned int logfilewrapper_isenable(logfilewrapper_st* wrapper);
 
 /*
- * Brief:	set logfile helper enable
+ * Brief:	set logfile wrapper enable
  * Param:	logrecord - a log record
  *          enable - 0.false, 1.true
  * Return:	void
  */
-extern void logfilehelper_enable(logrecord_st* logrecord, unsigned int enable);
+extern void logfilewrapper_enable(logfilewrapper_st* wrapper, unsigned int enable);
 
 /*
  * Brief:	record log to file
- * Param:	logrecord - a log record
+ * Param:	logrecord - a logfile wrapper
  *          tag - record tag
  *          withtime - with time, 0.false, 1.true
  *          content - record content
@@ -60,10 +60,10 @@ extern void logfilehelper_enable(logrecord_st* logrecord, unsigned int enable);
  *          2.content is null or empty
  *          3.file reach max size, create new file fail
  */
-extern unsigned int logfilehelper_record(logrecord_st* logrecord, const char* tag, unsigned int withtime, const char* content);
+extern unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, unsigned int withtime, const char* content);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif	// _LOGFILE_HELPER_H_
+#endif	// _LOGFILE_WRAPPER_H_
