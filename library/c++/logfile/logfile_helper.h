@@ -15,37 +15,52 @@ extern "C"
 {
 #endif
 
+typedef struct logrecord_st {
+    logfile_st* logfile;
+    char* basename;
+    char* extname;
+    unsigned int override;
+    unsigned int count;
+} logrecord_st;
+
 /*
  * Brief:	init logfile helper
- * Param:	name - filename or prefix, e.g. "logrecord.log" or "log_"
+ * Param:	basename - file base name, e.g. "Demo" or "demo_"
+ *          extname - file extend name, e.g. ".log" or ".err"
  *          maxSize - file max size
- * Return:	void
+ *          override - when file reach max size, 0.create new file and write, 1. clear file and override
+ * Return:	logrecord_st*
  */
-extern void logfilehelper_init(const char* name, unsigned int maxSize);
+extern logrecord_st* logfilehelper_init(const char* basename, const char* extname, unsigned int maxSize, unsigned int override);
 
 /*
  * Brief:	get is logfile helper enable
- * Param:	void
+ * Param:	logrecord - a log record
  * Return:	0.disable
  *          1.enable
  */
-extern unsigned int logfilehelper_isenable(void);
+extern unsigned int logfilehelper_isenable(logrecord_st* logrecord);
 
 /*
  * Brief:	set logfile helper enable
- * Param:	enable - 0.false, 1.true
+ * Param:	logrecord - a log record
+ *          enable - 0.false, 1.true
  * Return:	void
  */
-extern void logfilehelper_enable(unsigned int enable);
+extern void logfilehelper_enable(logrecord_st* logrecord, unsigned int enable);
 
 /*
  * Brief:	record log to file
- * Param:	tag - record tag
+ * Param:	logrecord - a log record
+ *          tag - record tag
  *          withtime - with time, 0.false, 1.true
  *          content - record content
- * Return:	void
+ * Return:	0.ok
+ *          1.logrecord is invalid
+ *          2.content is null or empty
+ *          3.file reach max size, create new file fail
  */
-extern void logfilehelper_record(const char* tag, unsigned int withtime, const char* content);
+extern unsigned int logfilehelper_record(logrecord_st* logrecord, const char* tag, unsigned int withtime, const char* content);
 
 #ifdef __cplusplus
 }

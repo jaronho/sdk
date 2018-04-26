@@ -8,93 +8,101 @@
 #include <string.h>
 #include <time.h>
 
-#define EXT     ".log"
-
-logfile_st* sLogFile = NULL;
-char* sFilename = NULL;
-unsigned int sOverride = 0;
-unsigned int sMaxSize = 0;
-unsigned int sCount = 1;
-
-void logfilehelper_init(const char* name, unsigned int maxSize) {
-    if (!name || 0 == strlen(name) || maxSize <= 0 || sLogFile) {
-        return;
+logrecord_st* logfilehelper_init(const char* basename, const char* extname, unsigned int maxSize, unsigned int override) {
+    if (!basename || 0 == strlen(basename) || !extname || 0 == strlen(extname) || maxSize <= 0) {
+        return NULL;
     }
-    time_t now;
-    struct tm t;
-    char date[32] = { 0 };
-    char* buf = NULL;
-    if (strstr(name, ".")) {
-        sFilename = malloc(strlen(name));
-        sprintf(sFilename, "%s", name);
-        sLogFile = logfile_open(sFilename, maxSize);
-        sOverride = 1;
+    char* filename = NULL;
+    logrecord_st* logrecord = (logrecord_st*)malloc(sizeof(logrecord_st));
+    logrecord->basename = malloc(strlen(basename));
+    sprintf(logrecord->basename, "%s", basename);
+    if (strstr(extname, ".")) {
+        logrecord->extname = malloc(strlen(extname));
+        sprintf(logrecord->extname, "%s", extname);
+        filename = malloc(strlen(basename) + strlen(extname));
+        sprintf(filename, "%s%s", basename, extname);
     } else {
-        time(&now);
-        t = *localtime(&now);
-        strftime(date, sizeof(date), "%Y%m%d_%H%M%S", &t);
-        sFilename = malloc(strlen(name) + strlen(date));
-        sprintf(sFilename, "%s%s", name, date);
-        buf = malloc(strlen(sFilename) + strlen(EXT));
-        sprintf(buf, "%s%s", sFilename, EXT);
-        sLogFile = logfile_open(buf, maxSize);
-        free(buf);
-        sOverride = 0;
+        logrecord->extname = malloc(strlen(extname) + 1);
+        sprintf(logrecord->extname, ".%s", extname);
+        filename = malloc(strlen(basename) + strlen(extname) + 1);
+        sprintf(filename, "%s.%s", basename, extname);
     }
-    sMaxSize = maxSize;
-    ++sCount;
+    logrecord->logfile = logfile_open(filename, maxSize);
+    free(filename);
+    if (!logrecord->logfile) {
+        free(logrecord);
+        return NULL;
+    }
+    logrecord->override = override;
+    logrecord->count = 1;
+    return logrecord;
 }
 
-unsigned int logfilehelper_isenable(void) {
-    return logfile_isenable(sLogFile);
+unsigned int logfilehelper_isenable(logrecord_st* logrecord) {
+    if (logrecord) {
+        return logfile_isenable(logrecord->logfile);
+    }
+    return 0;
 }
 
-void logfilehelper_enable(unsigned int enable) {
-    logfile_enable(sLogFile, enable);
+void logfilehelper_enable(logrecord_st* logrecord, unsigned int enable) {
+    if (logrecord) {
+        logfile_enable(logrecord->logfile, enable);
+    }
 }
 
-void logfilehelper_record(const char* tag, unsigned int withtime, const char* content) {
-    if (!sLogFile) {
-        return;
+unsigned int logfilehelper_record(logrecord_st* logrecord, const char* tag, unsigned int withtime, const char* content) {
+    if (!logrecord || !logrecord->logfile) {
+        return 1;
+    }
+    if (!content || 0 == strlen(content)) {
+        return 2;
     }
     unsigned int flag = 0;
-    char* buf = NULL;
+    char* filename = NULL;
     if (!tag || 0 == strlen(tag)) {
         if (withtime) {
-            flag = logfile_record_with_time(sLogFile, content);
+            flag = logfile_record_with_time(logrecord->logfile, content);
         } else {
-            flag = logfile_record(sLogFile, content, 0);
+            flag = logfile_record(logrecord->logfile, content, 0);
         }
     } else {
-        flag = logfile_record_with_tag(sLogFile, tag, withtime, content);
+        flag = logfile_record_with_tag(logrecord->logfile, tag, withtime, content);
     }
     if (5 == flag) {
-        if (sOverride) {
-            logfile_clear(sLogFile);
+        if (logrecord->override) {
+            logfile_clear(logrecord->logfile);
         } else {
-            logfile_close(sLogFile);
-            buf = malloc(strlen(sFilename) + 4 + strlen(EXT));
-            sprintf(buf, "%s-%03d%s", sFilename, sCount, EXT);
-            sLogFile = logfile_open(buf, sMaxSize);
-            free(buf);
-            if (!sLogFile) {
-                free(sFilename);
-                sFilename = NULL;
-                sOverride = 0;
-                sMaxSize = 0;
-                sCount = 1;
-                return;
+            logfile_close(logrecord->logfile);
+            if (strstr(logrecord->extname, ".")) {
+                filename = malloc(strlen(logrecord->basename) + strlen(logrecord->extname));
+                sprintf(filename, "%s-%03d%s", logrecord->basename, logrecord->count + 1, logrecord->extname);
+            } else {
+                filename = malloc(strlen(logrecord->basename) + strlen(logrecord->extname) + 1);
+                sprintf(filename, "%s-%03d.%s", logrecord->basename, logrecord->count + 1, logrecord->extname);
+            }
+            logrecord->logfile = logfile_open(filename, logrecord->logfile->maxsize);
+            free(filename);
+            if (!logrecord->logfile) {
+                free(logrecord->basename);
+                logrecord->basename = NULL;
+                free(logrecord->extname);
+                logrecord->extname = NULL;
+                free(logrecord);
+                logrecord = NULL;
+                return 3;
             }
         }
-        ++sCount;
+        ++logrecord->count;
         if (!tag || 0 == strlen(tag)) {
             if (withtime) {
-                logfile_record_with_time(sLogFile, content);
+                logfile_record_with_time(logrecord->logfile, content);
             } else {
-                logfile_record(sLogFile, content, 0);
+                logfile_record(logrecord->logfile, content, 0);
             }
         } else {
-            logfile_record_with_tag(sLogFile, tag, withtime, content);
+            logfile_record_with_tag(logrecord->logfile, tag, withtime, content);
         }
     }
+    return 0;
 }

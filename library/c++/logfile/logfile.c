@@ -35,10 +35,6 @@ logfile_st* logfile_open(const char* filename, unsigned int maxSize) {
     return lf;
 }
 
-logfile_st* logfile_open_default(const char* filename) {
-    return logfile_open(filename, 1024*1024*4L);
-}
-
 unsigned int logfile_close(logfile_st* lf) {
     if (!lf || !lf->fileptr || !lf->filename) {
         return 1;
