@@ -19,10 +19,10 @@ class HttpField;
 // http过滤回调,返回值:0.通过,非0.被过滤
 #define HTTP_FILTER_CALLBACK std::function<int(char major, \
                                                char minor, \
-                                               const char* method, \
-                                               const char* host, \
+                                               const std::string& method, \
+                                               const std::string& host, \
                                                unsigned short port, \
-                                               const char* uri)>
+                                               const std::string& uri)>
 
 // http错误回调,返回值:无
 #define HTTP_ERROR_CALLBACK std::function<void(const std::string& method, \
@@ -156,7 +156,12 @@ private:
 /*
 ************************************************** sample_01
 
-auto handleFilter = [](char major, char minor, const char* method, const char* host, unsigned short port, const char* uri)->int {
+auto handleFilter = [](char major,
+                       char minor,
+                       const std::string& method,
+                       const std::string& host,
+                       unsigned short port,
+                       const std::string& uri)->int {
     if (0 != strcmp("POST", method)) {
         return 1;
     }
