@@ -188,7 +188,29 @@ std::string Common::formatString(const char* format, ...) {
     return buf;
 }
 /*********************************************************************/
-std::string Common::wstring2string(const std::wstring& wstr, const char* locale) {
+char* Common::wchar2char(const wchar_t* wstr) {
+    if (!wstr || 0 == wcslen(wstr)) {
+        return NULL;
+    }
+    int len = WideCharToMultiByte(CP_ACP, 0, wstr, wcslen(wstr), NULL, 0, NULL, NULL);
+    char* buf = (char*)malloc(sizeof(char) * (len + 1));
+    WideCharToMultiByte(CP_ACP, 0, wstr, wcslen(wstr), buf, len, NULL, NULL);
+    buf[len] = '\0';
+    return buf;
+}
+/*********************************************************************/
+static wchar_t* Common::char2wchar(const char* str) {
+    if (!str || 0 == strlen(str)) {
+        return NULL;
+    }
+    int len = MultiByteToWideChar(CP_ACP, 0, str , strlen(str), NULL, 0); 
+    wchar_t* buf= (wchar_t*)malloc(sizeof(wchar_t) * (len + 1)); 
+    MultiByteToWideChar(CP_ACP, 0, str, strlen(str), buf, len); 
+    buf[len]= '\0'; 
+    return buf; 
+}
+/*********************************************************************/
+std::string Common::wstring2string(const std::wstring& wstr, const char* locale = /*""*/) {
     if (wstr.empty()) {
         return "";
     }
@@ -209,7 +231,7 @@ std::string Common::wstring2string(const std::wstring& wstr, const char* locale)
     return result;
 }
 /*********************************************************************/
-std::wstring Common::string2wstring(const std::string& str, const char* locale) {
+std::wstring Common::string2wstring(const std::string& str, const char* locale = /*""*/) {
     if (str.empty()) {
         return L"";
     }

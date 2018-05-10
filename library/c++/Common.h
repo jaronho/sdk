@@ -182,6 +182,20 @@ public:
      * Return:	string
      */
     static std::string formatString(const char* format, ...);
+    
+    /*
+     * Brief:	wchar_t* to char*
+     * Param:	wstr - a wchar_t string
+     * Return:	char*
+     */
+    static char* wchar2char(const wchar_t* wstr);
+    
+    /*
+     * Brief:	char* to wchar_t*
+     * Param:	str - a string
+     * Return:	wchar_t*
+     */
+    static wchar_t* char2wchar(const char* str);
 
     /*
      * Brief:	wstring to string
