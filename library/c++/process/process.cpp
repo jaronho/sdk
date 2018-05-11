@@ -54,6 +54,18 @@ static int isAbsolutePath(const char* path) {
     return 0;
 }
 //--------------------------------------------------------------------------
+static std::string replaceString(std::string str, const std::string& rep, const std::string& dest) {
+    if (str.empty() || rep.empty()) {
+        return str;
+    }
+    std::string::size_type pos = 0;
+    while (std::string::npos != (pos = str.find(rep, pos))) {
+        str.replace(pos, rep.size(), dest);
+        pos += dest.size();
+    }
+    return str;
+}
+//--------------------------------------------------------------------------
 int Process::enablePrivilege(void* process /*= NULL*/, bool enabled /*= true*/) {
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     if (!process) {
@@ -127,16 +139,16 @@ std::string Process::getExePath(unsigned long processId) {
         }
         CloseHandle(moduleSnap);
     } else {
-        if (NTDDI_VERSION >= NTDDI_VISTA) {
-            HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
-            if (process) {
+        HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
+        if (process) {
+            if (NTDDI_VERSION >= NTDDI_VISTA) {
                 TCHAR szExePath[MAX_PATH] = { 0 };
                 DWORD szSize = MAX_PATH;
                 if (QueryFullProcessImageName(process, 0, szExePath, &szSize)) {
                     exePath = wchar2char(szExePath);
                 }
-                CloseHandle(process);
             }
+            CloseHandle(process);
         }
     }
 #endif
@@ -152,12 +164,59 @@ std::string Process::getExePath(unsigned long processId) {
     return processExePath;
 }
 //--------------------------------------------------------------------------
+int Process::kill(unsigned long processId) {
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+    HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
+    if (!process) {
+        return 1;
+    }
+    if (0 == TerminateProcess(process, 0)) {
+        return 2;
+    }
+    CloseHandle(process);
+#endif
+    return 0;
+}
+//--------------------------------------------------------------------------
+void Process::killApp(const char* appName) {
+    if (!appName || 0 == strlen(appName)) {
+        return;
+    }
+    std::string applicationName = appName;
+    bool matchFullName = false;
+    if (isAbsolutePath(appName)) {
+        matchFullName = true;
+        applicationName = replaceString(applicationName, "\\", "/");
+    } else {
+        matchFullName = false;
+        unsigned int pos = applicationName.find_last_of("\\/");
+        if (std::string::npos != pos) {
+            applicationName = applicationName.substr(pos);
+        }
+    }
+    std::vector<Process> ps = getList(NULL);
+    for (unsigned int i = 0, len = ps.size(); i < len; ++i) {
+        if (matchFullName) {
+            if (applicationName == replaceString(ps[i].exePath(), "\\", "/") + ps[i].exeFile) {
+                kill(ps[i].id);
+            }
+        } else {
+            if (applicationName == ps[i].exeFile) {
+                kill(ps[i].id);
+            }
+        }
+    }
+}
+//--------------------------------------------------------------------------
 int Process::runApp(const char* appName, const char* workingDir /*= NULL*/) {
     if (!appName || 0 == strlen(appName)) {
         return 1;
     }
-    if (workingDir && !isAbsolutePath(workingDir)) {
+    if (!isAbsolutePath(appName)) {
         return 2;
+    }
+    if (workingDir && !isAbsolutePath(workingDir)) {
+        return 3;
     }
     std::string appWorkingDir;
     if (workingDir) {
@@ -184,7 +243,7 @@ int Process::runApp(const char* appName, const char* workingDir /*= NULL*/) {
         if (workingDirW) {
             free(workingDirW);
         }
-        return 3;
+        return 4;
     }
     free(appNameW);
     if (workingDirW) {
@@ -196,7 +255,10 @@ int Process::runApp(const char* appName, const char* workingDir /*= NULL*/) {
     return 0;
 }
 //--------------------------------------------------------------------------
-std::string Process::exePath(void) {
-    return getExePath(id);
+const std::string& Process::exePath(void) {
+    if (mExePath.empty()) {
+        mExePath = getExePath(id);
+    }
+    return mExePath;
 }
 //--------------------------------------------------------------------------
