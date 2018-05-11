@@ -147,6 +147,19 @@ bool XmlHelper::removeNode(pugi::xml_node& parent, const std::vector<std::string
     return node.parent().remove_child(node);
 }
 
+std::vector<pugi::xml_node> XmlHelper::getChildren(pugi::xml_node& parent) {
+    std::vector<pugi::xml_node> children;
+    if (parent.empty()) {
+        return children;
+    }
+    pugi::xml_node node = parent.first_child();
+    while (!node.empty()) {
+        children.push_back(node);
+        node = node.next_sibling();
+    }
+    return children;
+}
+
 pugi::xml_node XmlHelper::getNode(pugi::xml_node& parent, const std::string& key, bool createIfNotExist /*= false*/) {
     if (parent.empty() || key.empty()) {
         return pugi::xml_node();

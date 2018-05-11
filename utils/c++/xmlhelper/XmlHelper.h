@@ -34,6 +34,8 @@ public:
     static bool removeNode(pugi::xml_node& parent, const std::string& key);
 
     static bool removeNode(pugi::xml_node& parent, const std::vector<std::string>& keyVec);
+    
+    static std::vector<pugi::xml_node> getChildren(pugi::xml_node& parent);
 
     static pugi::xml_node getNode(pugi::xml_node& parent, const std::string& key, bool createIfNotExist = false);
 
