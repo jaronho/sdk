@@ -189,25 +189,31 @@ std::string Common::formatString(const char* format, ...) {
 }
 /*********************************************************************/
 char* Common::wchar2char(const wchar_t* wstr) {
+    char* buf = NULL;
     if (!wstr || 0 == wcslen(wstr)) {
-        return NULL;
+        return buf;
     }
+#ifdef _SYSTEM_WINDOWS_
     int len = WideCharToMultiByte(CP_ACP, 0, wstr, wcslen(wstr), NULL, 0, NULL, NULL);
-    char* buf = (char*)malloc(sizeof(char) * (len + 1));
+    buf = (char*)malloc(sizeof(char) * (len + 1));
     WideCharToMultiByte(CP_ACP, 0, wstr, wcslen(wstr), buf, len, NULL, NULL);
     buf[len] = '\0';
+#endif
     return buf;
 }
 /*********************************************************************/
 static wchar_t* Common::char2wchar(const char* str) {
+    wchar_t* buf = NULL;
     if (!str || 0 == strlen(str)) {
-        return NULL;
+        return buf;
     }
-    int len = MultiByteToWideChar(CP_ACP, 0, str , strlen(str), NULL, 0); 
-    wchar_t* buf= (wchar_t*)malloc(sizeof(wchar_t) * (len + 1)); 
-    MultiByteToWideChar(CP_ACP, 0, str, strlen(str), buf, len); 
-    buf[len]= '\0'; 
-    return buf; 
+#ifdef _SYSTEM_WINDOWS_
+    int len = MultiByteToWideChar(CP_ACP, 0, str, strlen(str), NULL, 0);
+    buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
+    MultiByteToWideChar(CP_ACP, 0, str, strlen(str), buf, len);
+    buf[len] = '\0';
+#endif
+    return buf;
 }
 /*********************************************************************/
 std::string Common::wstring2string(const std::wstring& wstr, const char* locale = /*""*/) {
@@ -479,7 +485,7 @@ std::string Common::revisalPath(std::string path) {
 bool Common::isAbsolutePath(std::string path, OSType os) {
     switch (os) {
     case OST_WINDOWS: {
-            if ((path.size() >= 2) && ((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z')) && (':' == path[1])) {
+            if (path.size() >= 2 && ((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z')) && (':' == path[1])) {
                 return true;
             }
         }
@@ -491,7 +497,7 @@ bool Common::isAbsolutePath(std::string path, OSType os) {
              * 2.Files not in APK, e.g. /data/data/org.cocos2dx.hellocpp/cache/path/path/file.png, or /sdcard/path/path/file.png.
              * So these two situations need to be checked on Android.
              */
-            if ((path.size() >= 1) && ('/' == path[0] || 0 == path.find("assets/"))) {
+            if (path.size() >= 1 && ('/' == path[0] || 0 == path.find("assets/"))) {
                 return true;
             }
         }
