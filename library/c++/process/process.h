@@ -63,6 +63,15 @@ public:
      */
     static int runApp(const char* appName, const char* workingDir = NULL);
 
+    /*
+     * Brief:	check whether application file is exist
+     * Param:	appName - application name, must be absolute path, e.g. "C:/Program Files/Notepad++/notepad++.exe"
+     * Return:	0.exist
+     *          1.appName is NULL or empty
+     *          2.application file is not exist
+     */
+    static int isAppFileExist(const char* appName);
+
 public:
     /*
      * Brief:	current process exe path

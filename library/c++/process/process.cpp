@@ -255,6 +255,18 @@ int Process::runApp(const char* appName, const char* workingDir /*= NULL*/) {
     return 0;
 }
 //--------------------------------------------------------------------------
+int Process::isAppFileExist(const char* appName) {
+    if (!appName || 0 == strlen(appName)) {
+        return 1;
+    }
+    FILE* fp = fopen(appName, "r");
+    if (!fp) {
+        return 2;
+    }
+    fclose(fp);
+    return 0;
+}
+//--------------------------------------------------------------------------
 const std::string& Process::exePath(void) {
     if (mExePath.empty()) {
         mExePath = getExePath(id);
