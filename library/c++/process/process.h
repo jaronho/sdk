@@ -9,15 +9,15 @@
 #include <stdio.h>
 #include <vector>
 
-class Process {  
+class Process {
 public:
     /*
      * Brief:	enable process privilege
      * Param:	process - process handle, if NULL represent current process
      *           enabled - whether enable process privilege
      * Return:	0.ok
-     *           1.open process token fail
-     *           2.adjust token privileges fail
+     *          1.open process token fail
+     *          2.adjust token privileges fail
      */
     static int enablePrivilege(void* process = NULL, bool enabled = true);
 
@@ -34,6 +34,17 @@ public:
      * Return:	std::string, e.g. "C:/Program Files/"
      */
     static std::string getExePath(unsigned long processId);
+
+    /*
+     * Brief:	create new process to run application
+     * Param:	appName - application name, e.g. "C:/Program Files/Notepad++/notepad++.exe"
+     *          workingDir - application working directory, must be absolute path, e.g. "C:/Program Files/Notepad++/"
+     * Return:	0.ok
+     *          1.appName is NULL or empty
+     *          2.workingDir is not absolute path
+     *          3.create process fail
+     */
+    static int runApp(const char* appName, const char* workingDir = NULL);
 
 public:
     /*

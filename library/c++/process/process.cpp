@@ -10,18 +10,48 @@
 #endif
 #pragma warning(disable: 4996)
 //--------------------------------------------------------------------------
-static char* wchar2char(const wchar_t* wp) {
+static char* wchar2char(const wchar_t* wstr) {
     char* buf = NULL;
-    if (!wp || 0 == wcslen(wp)) {
+    if (!wstr || 0 == wcslen(wstr)) {
         return buf;
     }
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
-    int len = WideCharToMultiByte(CP_ACP, 0, wp, wcslen(wp), NULL, 0, NULL, NULL);
-    buf = (char*)malloc(len + 1);
-    WideCharToMultiByte(CP_ACP, 0, wp, wcslen(wp), buf, len, NULL, NULL);
+    int len = WideCharToMultiByte(CP_ACP, 0, wstr, wcslen(wstr), NULL, 0, NULL, NULL);
+    buf = (char*)malloc(sizeof(char) * (len + 1));
+    WideCharToMultiByte(CP_ACP, 0, wstr, wcslen(wstr), buf, len, NULL, NULL);
     buf[len] = '\0';
 #endif
     return buf;
+}
+//--------------------------------------------------------------------------
+static wchar_t* char2wchar(const char* str) {
+    wchar_t* buf = NULL;
+    if (!str || 0 == strlen(str)) {
+        return buf;
+    }
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+    int len = MultiByteToWideChar(CP_ACP, 0, str, strlen(str), NULL, 0);
+    buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
+    MultiByteToWideChar(CP_ACP, 0, str, strlen(str), buf, len);
+    buf[len] = '\0';
+#endif
+    return buf;
+}
+//--------------------------------------------------------------------------
+static int isAbsolutePath(const char* path) {
+    if (!path || 0 == strlen(path)) {
+        return 0;
+    }
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+    if (strlen(path) >= 2 && ((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z')) && (':' == path[1])) {
+        return 1;
+    }
+#else
+    if (strlen(path) >= 1 && '/' == path[0]) {
+        return 1;
+    }
+#endif
+    return 0;
 }
 //--------------------------------------------------------------------------
 int Process::enablePrivilege(void* process /*= NULL*/, bool enabled /*= true*/) {
@@ -120,6 +150,50 @@ std::string Process::getExePath(unsigned long processId) {
         }
     }
     return processExePath;
+}
+//--------------------------------------------------------------------------
+int Process::runApp(const char* appName, const char* workingDir /*= NULL*/) {
+    if (!appName || 0 == strlen(appName)) {
+        return 1;
+    }
+    if (workingDir && !isAbsolutePath(workingDir)) {
+        return 2;
+    }
+    std::string appWorkingDir;
+    if (workingDir) {
+        appWorkingDir = workingDir;
+    } else {
+        appWorkingDir = appName;
+        unsigned int pos = appWorkingDir.find_last_of("\\/");
+        if (std::string::npos != pos) {
+            appWorkingDir = appWorkingDir.substr(0, pos + 1);
+        }
+    }
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+    wchar_t* appNameW = char2wchar(appName);
+    if (!appNameW) {
+        return 1;
+    }
+    wchar_t* workingDirW = char2wchar(appWorkingDir.c_str());
+    STARTUPINFO si;
+    memset(&si, 0, sizeof(STARTUPINFO));
+    PROCESS_INFORMATION pi;
+    memset(&pi, 0, sizeof(PROCESS_INFORMATION));
+    if (!CreateProcess(appNameW, NULL, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, workingDirW, &si, &pi)) {
+        free(appNameW);
+        if (workingDirW) {
+            free(workingDirW);
+        }
+        return 3;
+    }
+    free(appNameW);
+    if (workingDirW) {
+        free(workingDirW);
+    }
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+#endif
+    return 0;
 }
 //--------------------------------------------------------------------------
 std::string Process::exePath(void) {
