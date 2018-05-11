@@ -13,19 +13,19 @@ extern "C"
 
 struct timer_st;
 
-typedef void (*tm_callback_run)(struct timer_st*, long, void*);
+typedef void (*tm_callback_run)(struct timer_st*, unsigned long, void*);
 typedef void (*tm_callback_over)(struct timer_st*, void*);
 
 typedef struct timer_st {
-	long interval;						// interval duration in milliseconds
-	long total_count;					// number of intervals, if count <= 0, timer will repeat forever
-	long current_count;					// current interval count
-	long start_time;					// start time for the current interval in milliseconds
-	int running;						// status of the timer
-	int is_pause;						// is timer paused
-	tm_callback_run run_handler;		// called when current count changed
-	tm_callback_over over_handler;		// called when timer is complete
-	void* param;						// parameter
+    unsigned long interval;					// interval duration in milliseconds
+    unsigned long total_count;				// number of intervals, if count <= 0, timer will repeat forever
+    unsigned long current_count;			// current interval count
+    unsigned long long start_time;			// start time for the current interval in milliseconds
+    unsigned int running;					// status of the timer
+    unsigned int is_pause;					// is timer paused
+    tm_callback_run run_handler;		    // called when current count changed
+    tm_callback_over over_handler;		    // called when timer is complete
+    void* param;						    // parameter
 } timer_st;
 
 /*
@@ -37,7 +37,7 @@ typedef struct timer_st {
  *			param - parameter
  * Return:	timer_st*
  */
-extern timer_st* create_timer(long interval, long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param);
+extern timer_st* create_timer(unsigned long interval, unsigned long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param);
 
 /*
  * Brief:	update a timer
@@ -45,7 +45,7 @@ extern timer_st* create_timer(long interval, long count, tm_callback_run run_han
  *			current_time - current time in milliseconds
  * Return:	int, 0.running, 1.tm is null, 2.tm not running, 3.tm is pause or not trigger, 4.tm is over
  */
-extern int update_timer(timer_st* tm, long current_time);
+extern int update_timer(timer_st* tm, unsigned long long current_time);
 
 /*
  * Brief:	start a timer
@@ -54,7 +54,7 @@ extern int update_timer(timer_st* tm, long current_time);
  *			execute_flag - if execute run handler immediately
  * Return:	void
  */
-extern void start_timer(timer_st* tm, long current_time, int execute_flag);
+extern void start_timer(timer_st* tm, unsigned long long current_time, unsigned int execute_flag);
 
 /*
  * Brief:	stop a timer
@@ -62,7 +62,7 @@ extern void start_timer(timer_st* tm, long current_time, int execute_flag);
  *			execute_flag - if execute over handler immediately
  * Return:	void
  */
-extern void stop_timer(timer_st* tm, int execute_flag);
+extern void stop_timer(timer_st* tm, unsigned int execute_flag);
 
 /*
  * Brief:	resume a timer
@@ -91,7 +91,7 @@ extern long get_timer_interval(timer_st* tm);
  *			interval - interval duration in milliseconds
  * Return:	void
  */
-extern void set_timer_interval(timer_st* tm, long interval);
+extern void set_timer_interval(timer_st* tm, unsigned long interval);
 
 /*
  * Brief:	get timer total count
@@ -106,7 +106,7 @@ extern long get_timer_total_count(timer_st* tm);
  *			count - total count
  * Return:	void
  */
-extern void set_timer_total_count(timer_st* tm, long count);
+extern void set_timer_total_count(timer_st* tm, unsigned long count);
 
 /*
  * Brief:	get timer current count

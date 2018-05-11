@@ -11,7 +11,7 @@
 #define NULL	0
 #endif
 
-timer_st* create_timer(long interval, long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param) {
+timer_st* create_timer(unsigned long interval, unsigned long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param) {
 	if (interval <= 0) {
 		return NULL;
 	}
@@ -28,7 +28,7 @@ timer_st* create_timer(long interval, long count, tm_callback_run run_handler, t
 	return tm;
 }
 
-int update_timer(timer_st* tm, long current_time) {
+int update_timer(timer_st* tm, unsigned long long current_time) {
 	if (NULL == tm) {
 		return 1;
 	}
@@ -40,9 +40,9 @@ int update_timer(timer_st* tm, long current_time) {
 		return 3;
 	}
     if (tm->total_count <= 0 || tm->current_count < tm->total_count) {
-        long deltaTime = abs(current_time - tm->start_time);
+        unsigned long long deltaTime = (unsigned long long)abs((unsigned int)(current_time - tm->start_time));
         if (deltaTime >= tm->interval) {
-            long runCount = (long)(deltaTime / tm->interval);
+            unsigned int runCount = (unsigned int)(deltaTime / tm->interval);
             tm->current_count = tm->current_count + runCount;
             tm->start_time = current_time;
             if (NULL != tm->run_handler) {
@@ -56,7 +56,7 @@ int update_timer(timer_st* tm, long current_time) {
 	return 0;
 }
 
-void start_timer(timer_st* tm, long current_time, int execute_flag) {
+void start_timer(timer_st* tm, unsigned long long current_time, unsigned int execute_flag) {
 	if (NULL == tm || tm->running) {
 		return;
 	}
@@ -69,7 +69,7 @@ void start_timer(timer_st* tm, long current_time, int execute_flag) {
 	}
 }
 
-void stop_timer(timer_st* tm, int execute_flag) {
+void stop_timer(timer_st* tm, unsigned int execute_flag) {
 	if (NULL == tm || !tm->running) {
 		return;
 	}
@@ -101,7 +101,7 @@ long get_timer_interval(timer_st* tm) {
 	return tm->interval;
 }
 
-void set_timer_interval(timer_st* tm, long interval) {
+void set_timer_interval(timer_st* tm, unsigned long interval) {
 	if (NULL == tm) {
 		return;
 	}
@@ -115,7 +115,7 @@ long get_timer_total_count(timer_st* tm) {
 	return tm->total_count;
 }
 
-void set_timer_total_count(timer_st* tm, long count) {
+void set_timer_total_count(timer_st* tm, unsigned long count) {
 	if (NULL == tm) {
 		return;
 	}
