@@ -11,6 +11,13 @@
 class TimerManager {
 public:
     /*
+     * Brief:	get current system time (current from 1970-01-01 00:00:00)
+     * Param:	void
+     * Return:	double (seconds)
+     */
+    static double getTime(void);
+
+    /*
      * Brief:	initialize
      * Param:	void
      * Return:	void
@@ -33,7 +40,7 @@ public:
      *			over_handler - timer over callback
      * Return:	void
      */
-    void run(const char* id, unsigned long interval, unsigned long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param);
+    void run(const char* id, unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, void* param);
 
     /*
      * Brief:	start a loop timer
@@ -42,7 +49,7 @@ public:
      *			run_handler - timer trigger callback
      * Return:	void
      */
-    void runLoop(const char* id, unsigned long interval, tm_callback_run run_handler);
+    void runLoop(const char* id, unsigned long interval, timer_callback_run run_handler);
 
     /*
      * Brief:	start an once timer
@@ -51,7 +58,7 @@ public:
      *			over_handler - timer over callback
      * Return:	void
      */
-    void runOnce(const char* id, unsigned long interval, tm_callback_over over_handler);
+    void runOnce(const char* id, unsigned long interval, timer_callback_over over_handler);
 
     /*
      * Brief:	stop a timer

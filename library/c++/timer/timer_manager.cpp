@@ -19,7 +19,7 @@ static std::map<std::string, timer_st*> sTimerMap;
 static std::mutex sTimerMapmutex;
 static TimerManager* mInstance = NULL;
 
-double getTime(void) {
+double TimerManager::getTime(void) {
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     FILETIME ft;
     double t;
@@ -49,7 +49,7 @@ void TimerManager::update(void) {
     std::map<std::string, timer_st*>::iterator iter = sTimerMap.begin();
     while (sTimerMap.end() != iter) {
         int ret = update_timer(iter->second, curr_millseconds);
-        if (1 == ret || 3 == ret) {
+        if (1 == ret || 4 == ret) {
             sTimerMap.erase(iter);
             if (iter->second) {
                 free(iter->second);
@@ -61,7 +61,7 @@ void TimerManager::update(void) {
     sTimerMapmutex.unlock();
 }
 
-void TimerManager::run(const char* id, unsigned long interval, unsigned long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param) {
+void TimerManager::run(const char* id, unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, void* param) {
 	if (NULL == id || 0 == strlen(id)) {
 		return;
 	}
@@ -80,11 +80,11 @@ void TimerManager::run(const char* id, unsigned long interval, unsigned long cou
     sTimerMapmutex.unlock();
 }
 
-void TimerManager::runLoop(const char* id, unsigned long interval, tm_callback_run run_handler) {
+void TimerManager::runLoop(const char* id, unsigned long interval, timer_callback_run run_handler) {
 	run(id, interval, 0, run_handler, NULL, NULL);
 }
 
-void TimerManager::runOnce(const char* id, unsigned long interval, tm_callback_over over_handler) {
+void TimerManager::runOnce(const char* id, unsigned long interval, timer_callback_over over_handler) {
 	run(id, interval, 1, NULL, over_handler, NULL);
 }
 
@@ -93,12 +93,12 @@ void TimerManager::stop(const char* id) {
 		return;
 	}
     sTimerMapmutex.lock();
-    std::map<std::string, timer_st*>::iterator iter = sTimerMap.find(id);
-    if (sTimerMap.end() != iter) {
-        sTimerMap.erase(iter);
-        stop_timer(iter->second, 1);
-        free(iter->second);
-    }
+    //std::map<std::string, timer_st*>::iterator iter = sTimerMap.find(id);
+    //if (sTimerMap.end() != iter) {
+    //    sTimerMap.erase(iter);
+    //    stop_timer(iter->second, 1);
+    //    free(iter->second);
+    //}
     sTimerMapmutex.unlock();
 }
 

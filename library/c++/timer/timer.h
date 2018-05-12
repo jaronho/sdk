@@ -13,8 +13,8 @@ extern "C"
 
 struct timer_st;
 
-typedef void (*tm_callback_run)(struct timer_st*, unsigned long, void*);
-typedef void (*tm_callback_over)(struct timer_st*, void*);
+typedef void (*timer_callback_run)(struct timer_st* tm, unsigned long runCount, void* param);
+typedef void (*timer_callback_over)(struct timer_st* tm, void* param);
 
 typedef struct timer_st {
     unsigned long interval;					// interval duration in milliseconds
@@ -23,8 +23,8 @@ typedef struct timer_st {
     unsigned long long start_time;			// start time for the current interval in milliseconds
     unsigned int running;					// status of the timer
     unsigned int is_pause;					// is timer paused
-    tm_callback_run run_handler;		    // called when current count changed
-    tm_callback_over over_handler;		    // called when timer is complete
+    timer_callback_run run_handler;		    // called when current count changed
+    timer_callback_over over_handler;		// called when timer is complete
     void* param;						    // parameter
 } timer_st;
 
@@ -37,7 +37,7 @@ typedef struct timer_st {
  *			param - parameter
  * Return:	timer_st*
  */
-extern timer_st* create_timer(unsigned long interval, unsigned long count, tm_callback_run run_handler, tm_callback_over over_handler, void* param);
+extern timer_st* create_timer(unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, void* param);
 
 /*
  * Brief:	update a timer
@@ -128,7 +128,7 @@ extern int is_timer_running(timer_st* tm);
  *			run_handler - run handler
  * Return:	void
  */
-extern void set_timer_run_handler(timer_st* tm, tm_callback_run run_handler);
+extern void set_timer_run_handler(timer_st* tm, timer_callback_run run_handler);
 
 /*
  * Brief:	set timer over handler
@@ -136,7 +136,7 @@ extern void set_timer_run_handler(timer_st* tm, tm_callback_run run_handler);
  *			over_handler - over handler
  * Return:	void
  */
-extern void set_timer_over_handler(timer_st* tm, tm_callback_over over_handler);
+extern void set_timer_over_handler(timer_st* tm, timer_callback_over over_handler);
 
 /*
  * Brief:	get timer parameter
