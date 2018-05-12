@@ -7,15 +7,13 @@
 #include <stdlib.h>
 #include <math.h>
 
-#ifndef NULL
-#define NULL	0
-#endif
-
 timer_st* create_timer(unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, void* param) {
 	if (interval <= 0) {
 		return NULL;
 	}
+    static unsigned int s_id = 0;
 	timer_st* tm = (timer_st*)malloc(sizeof(timer_st));
+    tm->id = ++s_id;
 	tm->interval = interval;
 	tm->total_count = count;
 	tm->current_count = 0;
@@ -94,7 +92,14 @@ void pause_timer(timer_st* tm) {
 	tm->is_pause = 1;
 }
 
-long get_timer_interval(timer_st* tm) {
+unsigned long get_timer_id(timer_st* tm) {
+    if (!tm) {
+        return 0;
+    }
+    return tm->id;
+}
+
+unsigned long get_timer_interval(timer_st* tm) {
     if (!tm) {
 		return 0;
 	}
@@ -108,7 +113,7 @@ void set_timer_interval(timer_st* tm, unsigned long interval) {
 	tm->interval = interval;
 }
 
-long get_timer_total_count(timer_st* tm) {
+unsigned long get_timer_total_count(timer_st* tm) {
     if (!tm) {
 		return 0;
 	}
@@ -122,14 +127,14 @@ void set_timer_total_count(timer_st* tm, unsigned long count) {
 	tm->total_count = count;
 }
 
-long get_timer_current_count(timer_st* tm) {
+unsigned long get_timer_current_count(timer_st* tm) {
     if (!tm) {
 		return 0;
 	}
 	return tm->current_count;
 }
 
-int is_timer_running(timer_st* tm) {
+unsigned int is_timer_running(timer_st* tm) {
     if (!tm) {
 		return 0;
 	}
