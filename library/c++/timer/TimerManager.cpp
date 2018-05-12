@@ -98,7 +98,7 @@ void TimerManager::update(void) {
         std::map<std::string, TimerWrapper*>::iterator iter = sTimerWrapperMap.find(id);
         if (sTimerWrapperMap.end() != iter) {
             sTimerWrapperMap.erase(iter);
-            free(iter->second);
+            delete iter->second;
         }
         sTimerWrapperMap[id] = wrapper;
         start_timer(wrapper->tm, (unsigned long long)(getTime() * 1000), 0);
@@ -112,7 +112,7 @@ void TimerManager::update(void) {
         std::map<std::string, TimerWrapper*>::iterator iter = sTimerWrapperMap.find(id);
         if (sTimerWrapperMap.end() != iter) {
             sTimerWrapperMap.erase(iter);
-            free(iter->second);
+            delete iter->second;
         }
     }
     sStopIdListMutex.unlock();
@@ -121,7 +121,7 @@ void TimerManager::update(void) {
     if (sClearFlag) {
         std::map<std::string, TimerWrapper*>::iterator iter = sTimerWrapperMap.begin();
         for (; sTimerWrapperMap.end() != iter; ++iter) {
-            free(iter->second);
+            delete iter->second;
         }
         sTimerWrapperMap.clear();
         sClearFlag = false;
@@ -133,7 +133,7 @@ void TimerManager::update(void) {
         int ret = update_timer(iter->second->tm, (unsigned long long)(getTime() * 1000));
         if (1 == ret || 4 == ret) {
             sTimerWrapperMap.erase(iter);
-            free(iter->second);
+            delete iter->second;
         } else {
             ++iter;
         }
@@ -147,7 +147,7 @@ void TimerManager::run(const char* id, unsigned long interval, unsigned long cou
     sAddListMutex.lock();
     timer_st* tm = create_timer(interval, count, timerCallbackRun, timerCallbackOver, param);
     if (tm) {
-        TimerWrapper* wrapper = (TimerWrapper*)malloc(sizeof(TimerWrapper));
+        TimerWrapper* wrapper = new TimerWrapper();
         wrapper->tm = tm;
         wrapper->triggerCallback = triggerCallback;
         wrapper->overCallback = overCallback;

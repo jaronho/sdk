@@ -106,7 +106,9 @@ int main() {
     TimerManager::getInstance()->runLoop("timer_2", 2000, handleTimerTrigger2);
     TimerManager::getInstance()->runOnce("timer_3", 5000, handleTimerOver3);
     while (1) {
+        Sleep(1);
         TimerManager::getInstance()->update();
     }
+    return 0;
 }
 */
