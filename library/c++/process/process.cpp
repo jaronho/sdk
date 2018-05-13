@@ -160,6 +160,7 @@ std::string Process::getExePath(unsigned long processId) {
         if (std::string::npos != pos) {
             processExePath = processExePath.substr(0, pos + 1);
         }
+        processExePath = replaceString(processExePath, "\\", "/");
     }
     return processExePath;
 }
