@@ -157,12 +157,12 @@ void TimerManager::run(const char* id, unsigned long interval, unsigned long cou
     sAddListMutex.unlock();
 }
 
-void TimerManager::runLoop(const char* id, unsigned long interval, TIMER_TRIGGER_CALLBACK triggerCallback) {
-	run(id, interval, 0, triggerCallback, NULL, NULL);
+void TimerManager::runLoop(const char* id, unsigned long interval, TIMER_TRIGGER_CALLBACK triggerCallback, void* param /*= NULL*/) {
+	run(id, interval, 0, triggerCallback, NULL, param);
 }
 
-void TimerManager::runOnce(const char* id, unsigned long interval, TIMER_OVER_CALLBACK overCallback) {
-	run(id, interval, 1, NULL, overCallback, NULL);
+void TimerManager::runOnce(const char* id, unsigned long interval, TIMER_OVER_CALLBACK overCallback, void* param /*= NULL*/) {
+	run(id, interval, 1, NULL, overCallback, param);
 }
 
 void TimerManager::stop(const char* id) {

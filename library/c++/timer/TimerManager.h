@@ -44,6 +44,7 @@ public:
      *			count - timer trigger count, when <=0 it will be in loop
      *			triggerCallback - timer trigger callback
      *			overCallback - timer over callback
+     *          param - param
      * Return:	void
      */
     void run(const char* id, unsigned long interval, unsigned long count, TIMER_TRIGGER_CALLBACK triggerCallback, TIMER_OVER_CALLBACK overCallback, void* param = NULL);
@@ -53,18 +54,20 @@ public:
      * Param:	id - id
      *			interval - timer trigger interval(millisecond)
      *			triggerCallback - timer trigger callback
+     *          param - param
      * Return:	void
      */
-    void runLoop(const char* id, unsigned long interval, TIMER_TRIGGER_CALLBACK triggerCallback);
+    void runLoop(const char* id, unsigned long interval, TIMER_TRIGGER_CALLBACK triggerCallback, void* param = NULL);
 
     /*
      * Brief:	start an once timer
      * Param:	id - id
      *			interval - timer trigger interval(millisecond)
      *			overCallback - timer over callback
+     *          param - param
      * Return:	void
      */
-    void runOnce(const char* id, unsigned long interval, TIMER_OVER_CALLBACK overCallback);
+    void runOnce(const char* id, unsigned long interval, TIMER_OVER_CALLBACK overCallback, void* param = NULL);
 
     /*
      * Brief:	stop a timer
