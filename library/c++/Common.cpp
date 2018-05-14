@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #endif
+#pragma warning(disable: 4996)
 /*********************************************************************/
 bool Common::isDigit(char c) {
     return c >= '0' && c <= '9';
@@ -77,37 +78,37 @@ double Common::toDouble(const std::string& str) {
 /*********************************************************************/
 std::string Common::toString(short u) {
     char buf[8];
-    sprintf(buf, "%d", u);
+    sprintf_s(buf, "%d", u);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(int n) {
     char buf[16];
-    sprintf(buf, "%d", n);
+    sprintf_s(buf, "%d", n);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(long l) {
     char buf[32];
-    sprintf(buf, "%ld", l);
+    sprintf_s(buf, "%ld", l);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(long long ll) {
     char buf[64];
-    sprintf(buf, "%lld", ll);
+    sprintf_s(buf, "%lld", ll);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(float f) {
     char buf[64];
-    sprintf(buf, "%f", f);
+    sprintf_s(buf, "%f", f);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(double d) {
     char buf[128];
-    sprintf(buf, "%f", d);
+    sprintf_s(buf, "%f", d);
     return buf;
 }
 /*********************************************************************/
@@ -202,7 +203,7 @@ char* Common::wchar2char(const wchar_t* wstr) {
     return buf;
 }
 /*********************************************************************/
-static wchar_t* Common::char2wchar(const char* str) {
+wchar_t* Common::char2wchar(const char* str) {
     wchar_t* buf = NULL;
     if (!str || 0 == strlen(str)) {
         return buf;
@@ -216,7 +217,7 @@ static wchar_t* Common::char2wchar(const char* str) {
     return buf;
 }
 /*********************************************************************/
-std::string Common::wstring2string(const std::wstring& wstr, const char* locale = /*""*/) {
+std::string Common::wstring2string(const std::wstring& wstr, const char* locale /*= ""*/) {
     if (wstr.empty()) {
         return "";
     }
@@ -228,16 +229,16 @@ std::string Common::wstring2string(const std::wstring& wstr, const char* locale 
     }
     const wchar_t* src = wstr.c_str();
     size_t destSize = 2 * wstr.size() + 1;
-    char* dest = new char[destSize];
+    char* dest = (char*)malloc(sizeof(char) * destSize);
     memset(dest, 0, destSize);
     wcstombs(dest, src, destSize);
     std::string result = dest;
-    delete []dest;
+    free(dest);
     setlocale(LC_ALL, curLocale.c_str());
     return result;
 }
 /*********************************************************************/
-std::wstring Common::string2wstring(const std::string& str, const char* locale = /*""*/) {
+std::wstring Common::string2wstring(const std::string& str, const char* locale /*= ""*/) {
     if (str.empty()) {
         return L"";
     }
@@ -249,11 +250,11 @@ std::wstring Common::string2wstring(const std::string& str, const char* locale =
     }
     const char* src = str.c_str();
     size_t destSize = str.size() + 1;
-    wchar_t* dest = new wchar_t[destSize];
+    wchar_t* dest = (wchar_t*)malloc(sizeof(wchar_t) * destSize);
     wmemset(dest, 0, destSize);
     mbstowcs(dest, src, destSize);
     std::wstring result = dest;
-    delete []dest;
+    free(dest);
     setlocale(LC_ALL, curLocale.c_str());
     return result;
 }
@@ -275,7 +276,7 @@ bool Common::createDir(const std::string& dirName) {
         return false;
     }
     unsigned int dirLen = dirName.length();
-    char* tmp = new char[dirLen + 1];
+    char* tmp = (char*)malloc(sizeof(char) * (dirLen + 1));
     memset(tmp, 0, dirLen + 1);
     for (unsigned int i = 0; i < dirLen; ++i) {
         tmp[i] = dirName[i];
@@ -284,17 +285,21 @@ bool Common::createDir(const std::string& dirName) {
 #ifdef _SYSTEM_WINDOWS_
             if (0 != _access(tmp, 0)) {
                 if (0 != _mkdir(tmp)) {
-#else
-            if (0 != access(tmp, F_OK)) {
-                if (0 != mkdir(tmp, S_IRWXU | S_IRWXG | S_IRWXO)) {
-#endif
-                    delete []tmp;
+                    free(tmp);
                     return false;
                 }
             }
+#else
+            if (0 != access(tmp, F_OK)) {
+                if (0 != mkdir(tmp, S_IRWXU | S_IRWXG | S_IRWXO)) {
+                    free(tmp);
+                    return false;
+                }
+            }
+#endif
         }
     }
-    delete []tmp;
+    free(tmp);
     return true;
 }
 /*********************************************************************/
@@ -348,7 +353,8 @@ void Common::removeDir(const std::string& dirName) {
 }
 /*********************************************************************/
 bool Common::existFile(const std::string& filePath) {
-    FILE* fp = fopen(filePath.c_str(), "r");
+    FILE* fp = NULL;
+    fopen_s(&fp, filePath.c_str(), "r");
     if (!fp) {
         return false;
     }
@@ -357,7 +363,8 @@ bool Common::existFile(const std::string& filePath) {
 }
 /*********************************************************************/
 bool Common::createFile(const std::string& filePath) {
-    FILE* fp = fopen(filePath.c_str(), "wb");
+    FILE* fp = NULL;
+    fopen_s(&fp, filePath.c_str(), "wb");
     if (!fp) {
         return false;
     }
@@ -380,7 +387,8 @@ bool Common::renameFile(const std::string& oldFileName, const std::string& newFi
 }
 /*********************************************************************/
 long Common::calcFileSize(const std::string& filePath) {
-    FILE* fp = fopen(filePath.c_str(), "r");
+    FILE* fp = NULL;
+    fopen_s(&fp, filePath.c_str(), "r");
     if (!fp) {
         return -1;
     }
@@ -414,7 +422,8 @@ std::vector<std::string> Common::stripFileInfo(const std::string& filePath) {
 }
 /*********************************************************************/
 unsigned char* Common::getFileData(const std::string& filePath, long* fileSize, bool isText) {
-    FILE* fp = fopen(filePath.c_str(), "rb");
+    FILE* fp = NULL;
+    fopen_s(&fp, filePath.c_str(), "rb");
     if (!fp) {
         return NULL;
     }
@@ -424,7 +433,7 @@ unsigned char* Common::getFileData(const std::string& filePath, long* fileSize, 
     if (0 == *fileSize) {
         return NULL;
     }
-    unsigned char* buffer = new unsigned char[isText ? *fileSize + 1 : *fileSize];
+    unsigned char* buffer = (unsigned char*)malloc(sizeof(unsigned char) * (isText ? *fileSize + 1 : *fileSize));
     *fileSize = fread(buffer, sizeof(unsigned char), *fileSize, fp);
     if (isText) {
         *(buffer + *fileSize) = '\0';	// set EOF
@@ -439,7 +448,7 @@ std::vector<std::string> Common::getFileDataEx(const std::string& filePath) {
     unsigned char* fileData = getFileData(filePath, &fileSize);
     if (fileData) {
         fileString = (char*)fileData;
-        delete []fileData;
+        free(fileData);
     }
     return splitString(fileString, newLineString());
 }
@@ -448,7 +457,8 @@ bool Common::writeDataToFile(const unsigned char* data, long dataSize, const std
     if (!data || 0 == dataSize) {
         return false;
     }
-    FILE* fp = fopen(filePath.c_str(), "wb");
+    FILE* fp = NULL;
+    fopen_s(&fp, filePath.c_str(), "wb");
     if (!fp) {
         return false;
     }
@@ -658,6 +668,55 @@ void Common::searchDir(std::string dirName, std::vector<std::string>& dirList, b
 #endif
 }
 /*********************************************************************/
+bool Common::isIpFormat(std::string ip) {
+    std::vector<std::string> arr = splitString(ip, ".");
+    if (4 != arr.size()) {
+        return false;
+    }
+    int a = -1, b = -1, c = -1, d = -1;
+    sscanf_s(ip.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
+    if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255) {
+        return false;
+    }
+    return true;
+}
+/*********************************************************************/
+int Common::isInnerIp(std::string ip, bool* ret) {
+    *ret = false;
+    if ("127.0.0.1" == ip) {
+        *ret = true;
+        return 0;
+    }
+    std::vector<std::string> arr = splitString(ip, ".");
+    if (4 != arr.size()) {
+        return 1;
+    }
+    int a = -1, b = -1, c = -1, d = -1;
+    sscanf_s(ip.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
+    if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255) {
+        return 1;
+    }
+    unsigned long long ipNum = (unsigned long long)a * (256 * 256 * 256) + b * (256 * 256) + c * (256) + d;
+    /*
+     * 私有IP:
+     *      A类  10.0.0.0 - 10.255.255.255
+     *      B类  172.16.0.0 - 172.31.255.255
+     *      C类  192.168.0.0 - 192.168.255.255
+     *      127.0.0.1
+     */
+    static unsigned long long b1 = (unsigned long long)10 * (256 * 256 * 256);  /* 10.0.0.0 */
+    static unsigned long long e1 = (unsigned long long)10 * (256 * 256 * 256) + 255 * (256 * 256) + 255 * (256) + 255;  /* 10.255.255.255 */
+    static unsigned long long b2 = (unsigned long long)172 * (256 * 256 * 256) + 16 * (256 * 256);  /* 172.16.0.0 */
+    static unsigned long long e2 = (unsigned long long)172 * (256 * 256 * 256) + 31 * (256 * 256) + 255 * (256) + 255;  /* 172.31.255.255 */
+    static unsigned long long b3 = (unsigned long long)192 * (256 * 256 * 256) + 168 * (256 * 256); /* 192.168.0.0 */
+    static unsigned long long e3 = (unsigned long long)192 * (256 * 256 * 256) + 168 * (256 * 256) + 255 * (256) + 255; /* 192.168.255.255 */
+    if ((ipNum >= b1 && ipNum <= e1) || (ipNum >= b2 && ipNum <= e2) || (ipNum >= b3 && ipNum <= e3)) {
+        *ret = true;
+        return 0;
+    }
+    return 0;
+}
+/*********************************************************************/
 double Common::getTime(void) {
 #ifdef _SYSTEM_WINDOWS_
     FILETIME ft;
@@ -677,7 +736,8 @@ double Common::getTime(void) {
 /*********************************************************************/
 struct tm Common::timeToDate(long seconds /*= 0*/) {
     time_t nowtime = seconds > 0 ? seconds : time(NULL);
-    struct tm* timeinfo = localtime(&nowtime);
+    struct tm* timeinfo = NULL;
+    localtime_s(timeinfo, &nowtime);
     timeinfo->tm_year += 1900;      /* [1900, ...) */
     timeinfo->tm_mon += 1;          /* [1, 12] */
     if (0 == timeinfo->tm_wday) {   /* [1, 7] */

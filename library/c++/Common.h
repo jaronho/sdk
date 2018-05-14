@@ -358,6 +358,25 @@ public:
     static void searchDir(std::string dirName, std::vector<std::string>& dirList, bool recursive = true);
 
     /**********************************************************************
+    * network functions
+    **********************************************************************/
+
+    /*
+     * Brief:	check whether string is ip format
+     * Param:	str - ip string, e.g. "157.15.3.71"
+     * Return:	bool
+     */
+    static bool isIpFormat(std::string ip);
+
+    /*
+     * Brief:	check whether ip is inner
+     * Param:	str - ip string, e.g. "157.15.3.71"
+     *          ret - check result
+     * Return:	int - 0.check ok, 1.ip format is error
+     */
+    static int isInnerIp(std::string ip, bool* ret);
+
+    /**********************************************************************
      * time functions
      **********************************************************************/
 
