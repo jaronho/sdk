@@ -109,10 +109,10 @@ bool MultipartFormData::processContentOfTheField(void) {
     size_t pos = boundaryPositionInDataCollector();
     size_t contentLength = 0;
     if (pos >= 0) {
-        // 2 is the \r\n before boundary we do not need them
+        /* 2 is the \r\n before boundary we do not need them */
         contentLength = pos - 2;
     } else {
-        // need to save +2 chars for \r\n chars before boundary
+        /* need to save +2 chars for \r\n chars before boundary */
         contentLength = mDataSize - (mBoundary.length() + 2);
     }
     if (contentLength > 0) {
@@ -156,11 +156,11 @@ void MultipartFormData::truncateDataCollectorFromTheBeginning(size_t n) {
 }
 
 bool MultipartFormData::parseHeaders(const std::string& headers) {
-    // check if it is form data
+    /* check if it is form data */
     if (std::string::npos == headers.find("Content-Disposition: form-data;")) {
         return false;
     }
-    // find name
+    /* find name */
     size_t namePos = headers.find("name=\"");
     if (std::string::npos == namePos) {
         return false;
@@ -169,11 +169,11 @@ bool MultipartFormData::parseHeaders(const std::string& headers) {
     if (std::string::npos == nameEndPos) {
         return false;
     }
-    // generate multipart/form-data field
+    /* generate multipart/form-data field */
     mCurrentProcessingFieldName = headers.substr(namePos + 6, nameEndPos - (namePos + 6));
     (*mFields)[mCurrentProcessingFieldName] = new HttpField();
     (*mFields)[mCurrentProcessingFieldName]->setName(mCurrentProcessingFieldName);
-    // find filename if exists
+    /* find filename if exists */
     size_t filenamePos = headers.find("filename=\"");
     if (std::string::npos == filenamePos) {
         (*mFields)[mCurrentProcessingFieldName]->setType(HttpField::TYPE_TEXT);
@@ -185,7 +185,7 @@ bool MultipartFormData::parseHeaders(const std::string& headers) {
         }
         std::string filename = headers.substr(filenamePos + 10, filenameEndPos - (filenamePos + 10));
         (*mFields)[mCurrentProcessingFieldName]->setFilename(filename);
-        // find Content-Type if exists
+        /* find Content-Type if exists */
         size_t contentTypePos = headers.find("Content-Type: ");
         if (contentTypePos != std::string::npos) {
             size_t contentTypeEndPos = 0;

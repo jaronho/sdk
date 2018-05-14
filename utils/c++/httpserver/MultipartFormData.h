@@ -14,7 +14,7 @@
 
 class HttpField;
 
-// multipart form-data
+/* multipart form-data */
 class MultipartFormData {
 public:
     MultipartFormData(void);
@@ -45,4 +45,4 @@ private:
     std::string mCurrentProcessingFieldName;
 };
 
-#endif  // _MULTIPART_FORM_DATA_H_
+#endif  /* _MULTIPART_FORM_DATA_H_ */

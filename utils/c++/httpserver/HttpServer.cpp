@@ -27,16 +27,16 @@ static int startHttpServer(const char* ip, unsigned short port, void (*cb)(struc
 	    printf_s("start http server failed, evhttp_new error ...\n");
         return 3;
     }
-    // bind address
+    /* bind address */
     if (0 != evhttp_bind_socket(http_server, ip, port)) {
 	    printf_s("start http server failed, bind socket %s:%u error ...\n", ip, port);
         return 4;
     }
-    // set http request handle callabck
+    /* set http request handle callabck */
     if (cb) {
         evhttp_set_gencb(http_server, cb, arg);
     }
-    // start event loop, it will callback when http request triggered
+    /* start event loop, it will callback when http request triggered */
     printf_s("start http server %s:%u ok ...\n", ip, port);
     event_base_dispatch(base);
     evhttp_free(http_server);
@@ -67,20 +67,20 @@ static const char* httpMethodName(evhttp_cmd_type method) {
 }
 //------------------------------------------------------------------------
 static void httpServerCallback(struct evhttp_request* req, void* arg) {
-    // cache client request info
-    char major = req->major;                                                    // http major version
-    char minor = req->minor;                                                    // http minor version
-    const char* method = httpMethodName(evhttp_request_get_command(req));       // http method
-    const char* host = evhttp_request_get_host(req);                            // client host
-    unsigned short port = req->remote_port;                                     // client port
-    const struct evkeyvalq* headers = evhttp_request_get_input_headers(req);    // client headers
-    struct evbuffer* buffer = evhttp_request_get_input_buffer(req);             // client buffer
-    const char* uri = evhttp_request_get_uri(req);                              // server uri
-    // handle filter
+    /* cache client request info */
+    char major = req->major;                                                    /* http major version */
+    char minor = req->minor;                                                    /* http minor version */
+    const char* method = httpMethodName(evhttp_request_get_command(req));       /* http method */
+    const char* host = evhttp_request_get_host(req);                            /* client host */
+    unsigned short port = req->remote_port;                                     /* client port */
+    const struct evkeyvalq* headers = evhttp_request_get_input_headers(req);    /* client headers */
+    struct evbuffer* buffer = evhttp_request_get_input_buffer(req);             /* client buffer */
+    const char* uri = evhttp_request_get_uri(req);                              /* server uri */
+    /* handle filter */
     if (0 != handleHttpFilter(major, minor, method, host, port, uri)) {
         return;
     }
-    // handle request
+    /* handle request */
     unsigned char* body = NULL;
     if (req->body_size > 0) {
         body = (unsigned char*)malloc(req->body_size + 1);
@@ -94,7 +94,7 @@ static void httpServerCallback(struct evhttp_request* req, void* arg) {
     if (body) {
         free(body);
     }
-    // reply to client
+    /* reply to client */
     struct evbuffer* buf = evbuffer_new();
     if (!buf) {
         if (responseBody) {
@@ -124,14 +124,14 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
     char* responseBody = NULL;
     unsigned int errorCode = 0;
     char errorBuf[256] = { 0 };
-    // parse header into map
+    /* parse header into map */
     for (struct evkeyval* header = headers->tqh_first; header; header = header->next.tqe_next) {
         std::string headerKey = header->key;
         std::transform(headerKey.begin(), headerKey.end(), headerKey.begin(), ::tolower);
         headerMap[headerKey] = header->value;
     }
-    // parse body into map
-    if (0 == strcmp("GET", method)) {               // parse GET body
+    /* parse body into map */
+    if (0 == strcmp("GET", method)) {               /* parse GET body */
         struct evkeyvalq params;
         evhttp_parse_query(uri, &params);
         for (struct evkeyval* param = params.tqh_first; param; param = param->next.tqe_next) {
@@ -145,7 +145,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
             bodyMap[param->key] = field;
         }
         evhttp_clear_headers(&params);
-    } else if (0 == strcmp("POST", method)) {       // parse POST body
+    } else if (0 == strcmp("POST", method)) {       /* parse POST body */
         std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
         if (headerMap.end() != iter) {
             std::string contentType = iter->second;
@@ -181,31 +181,31 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
             errorCode = 2;
             sprintf_s(errorBuf, "no support %s request which without content-type", method);
         }
-    } else {                                        // parse other method
+    } else {                                        /* parse other method */
         errorCode = 1;
         sprintf_s(errorBuf, "no support %s request", method);
     }
-    // parse real uri
+    /* parse real uri */
     size_t pos = realUri.find_first_of('?');
     if (std::string::npos != pos) {
 	    realUri = realUri.substr(0, pos);
     }
-    // handle request
+    /* handle request */
     std::map<std::string, std::string> reponseHeaderMap;
     std::string result;
-    if (errorCode) {   // handle error
+    if (errorCode) {   /* handle error */
         result = HttpServer::getInstance()->handleError(major, minor, method, host, port, headerMap, bodyMap, realUri, errorCode, errorBuf, reponseHeaderMap);
-    } else {           // handle router
+    } else {           /* handle router */
         result = HttpServer::getInstance()->handleRouter(major, minor, method, host, port, headerMap, bodyMap, realUri, reponseHeaderMap);
     }
-    // handle clear
+    /* handle clear */
     headerMap.clear();
     std::map<std::string, HttpField*>::iterator fieldIter = bodyMap.begin();
     for (; bodyMap.end() != fieldIter; ++fieldIter) {
         delete fieldIter->second;
     }
     bodyMap.clear();
-    // handle response
+    /* handle response */
     std::map<std::string, std::string>::iterator reponseHeaderIter = reponseHeaderMap.begin();
     for (; reponseHeaderMap.end() != reponseHeaderIter; ++reponseHeaderIter) {
         evhttp_add_header(responseHeaders, reponseHeaderIter->first.c_str(), reponseHeaderIter->second.c_str());
@@ -302,18 +302,6 @@ HttpServer* HttpServer::getInstance(void) {
     return mInstance;
 }
 //------------------------------------------------------------------------
-void HttpServer::destroyInstance(void) {
-    if (mInstance) {
-        std::map<std::string, HttpRouter*>::iterator iter = mInstance->mRouterMap.begin();
-        for (; mInstance->mRouterMap.end() != iter; ++iter) {
-            delete iter->second;
-        }
-        mInstance->mRouterMap.clear();
-        delete mInstance;
-        mInstance = NULL;
-    }
-}
-//------------------------------------------------------------------------
 std::string HttpServer::nowdate(void) {
     struct tm t;
     time_t now;
@@ -322,6 +310,40 @@ std::string HttpServer::nowdate(void) {
     char buf[32] = { 0 };
     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &t);
     return buf;
+}
+//------------------------------------------------------------------------
+std::vector<std::string> HttpServer::localhosts(void) {
+    std::vector<std::string> hosts;
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+    WSADATA wsaData;
+    if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) {
+        return hosts;
+    }
+#endif
+    char hostname[256] = { 0 };
+    gethostname(hostname, sizeof(hostname));
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_flags = AI_PASSIVE;
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_IP;
+    struct addrinfo* results;
+    if (0 == getaddrinfo(hostname, NULL, &hints, &results)) {
+        char host[64] = { 0 };
+        for (struct addrinfo* iter = results; iter; iter = iter->ai_next) {
+            struct sockaddr_in* addr = (struct sockaddr_in*)iter->ai_addr;
+            IN_ADDR inAddr = (*addr).sin_addr;
+            memset(host, 0, sizeof(host));
+            sprintf_s(host, "%d.%d.%d.%d", inAddr.S_un.S_un_b.s_b1, inAddr.S_un.S_un_b.s_b2, inAddr.S_un.S_un_b.s_b3, inAddr.S_un.S_un_b.s_b4);
+            hosts.push_back(host);
+        }
+        freeaddrinfo(results);
+    }
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+    WSACleanup();
+#endif
+    return hosts;
 }
 //------------------------------------------------------------------------
 int HttpServer::handleFilter(char major,
@@ -527,7 +549,7 @@ void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive
     mIsPrintReceive = printReceive;
     mIsPrintError = printError;
     mIsPrintFilter = printFilter;
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     WSADATA wsaData;
     if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) {
         mIsRunning = false;
@@ -536,7 +558,7 @@ void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive
     }
 #endif
     startHttpServer(ip.c_str(), port, httpServerCallback, NULL);
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     WSACleanup();
 #endif
     mIsRunning = false;

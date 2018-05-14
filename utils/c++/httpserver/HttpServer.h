@@ -9,6 +9,7 @@
 #include <string>
 #include <algorithm>
 #include <functional>
+#include <vector>
 #include <map>
 #include "../libevent/include/event.h"
 #include "../libevent/include/evhttp.h"
@@ -16,7 +17,7 @@
 
 class HttpField;
 
-// http过滤回调,返回值:0.通过,非0.被过滤
+/* http过滤回调,返回值:0.通过,非0.被过滤 */
 #define HTTP_FILTER_CALLBACK std::function<int(char major, \
                                                char minor, \
                                                const std::string& method, \
@@ -24,7 +25,7 @@ class HttpField;
                                                unsigned short port, \
                                                const std::string& uri)>
 
-// http错误回调,返回值:无
+/* http错误回调,返回值:无 */
 #define HTTP_ERROR_CALLBACK std::function<void(const std::string& method, \
                                                const std::string& host, \
                                                unsigned short port, \
@@ -35,7 +36,7 @@ class HttpField;
                                                const std::string& errorBuf, \
                                                std::map<std::string, std::string>& responseHeaders)>
 
-// http路由回调,返回值:响应字符串,格式自定义,一般是json格式
+/* http路由回调,返回值:响应字符串,格式自定义,一般是json格式 */
 #define HTTP_ROUTER_CALLBACK std::function<std::string(const std::string& method, \
                                                        const std::string& host, \
                                                        unsigned short port, \
@@ -44,18 +45,18 @@ class HttpField;
                                                        const std::string& uri, \
                                                        std::map<std::string, std::string>& responseHeaders)>
 
-// http路由对象
+/* http路由对象 */
 class HttpRouter {
 public:
     HttpRouter() : support_get(true), support_post(true) {}
 
 public:
-    bool support_get;                       // 是否支持get
-    bool support_post;                      // 是否支持post
-    HTTP_ROUTER_CALLBACK callback;          // 回调函数
+    bool support_get;                       /* 是否支持get */
+    bool support_post;                      /* 是否支持post */
+    HTTP_ROUTER_CALLBACK callback;          /* 回调函数 */
 };
 
-// http字段对象
+/* http字段对象 */
 class HttpField {
 public:
     static const unsigned int TYPE_TEXT = 1;
@@ -72,12 +73,12 @@ public:
     const char* getContent(void);
     void setContent(const char* content, size_t length);
     size_t getContentLength(void);
-    //------------------- used when form data is file  -------------------
+    /*------------------- used when form data is file  -------------------*/
     std::string getFilename(void);
     void setFilename(const std::string& filename);
     std::string getFileContentType(void);
     void setFileContentType(const std::string& fileContentType);
-    //--------------------------------------------------------------------
+    /*--------------------------------------------------------------------*/
 
 private:
     std::string mName;
@@ -88,12 +89,12 @@ private:
     std::string mFileContentType;
 };
 
-// http服务端
+/* http服务端 */
 class HttpServer {
 public:
-    static HttpServer* getInstance(void);   // 获取单例
-    static void destroyInstance(void);      // 删除单例
-    static std::string nowdate(void);       // 当前日期
+    static HttpServer* getInstance(void);               /* 获取单例 */
+    static std::string nowdate(void);                   /* 当前日期 */
+    static std::vector<std::string> localhosts(void);   /* 获取本机IP地址 */
 
 public:
     int handleFilter(char major,
@@ -101,7 +102,7 @@ public:
                      const char* method,
                      const char* host,
                      unsigned short port,
-                     const char* uri);                                                  // 处理过滤
+                     const char* uri);                                                  /* 处理过滤 */
     std::string handleError(char major,
                             char minor,
                             const std::string& method,
@@ -112,7 +113,7 @@ public:
                             const std::string& uri,
                             unsigned int errorCode,
                             const std::string& errorBuf,
-                            std::map<std::string, std::string>& responseHeaders);       // 处理错误
+                            std::map<std::string, std::string>& responseHeaders);       /* 处理错误 */
     std::string handleRouter(char major,
                              char minor,
                              const std::string& method,
@@ -121,17 +122,17 @@ public:
                              const std::map<std::string, std::string>& headers,
                              const std::map<std::string, HttpField*>& body,
                              const std::string& uri,
-                             std::map<std::string, std::string>& responseHeaders);      // 处理路由
-    void setFilterCallback(HTTP_FILTER_CALLBACK filterCallback);                        // 设置过滤回调
-    void setErrorCallback(HTTP_ERROR_CALLBACK errorCallback);                           // 设置错误回调
-    void addRouter(const std::string& uri, HttpRouter* router);                         // 添加路由
-    void addRouter(const std::string& uri, HTTP_ROUTER_CALLBACK callback);              // 添加路由(支持get和post)
-    void addRouterGet(const std::string& uri, HTTP_ROUTER_CALLBACK callback);           // 添加路由(只支持get)
-    void addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK callback);          // 添加路由(只支持post)
-    void run(const std::string& ip, unsigned int port, bool printReceive = false, bool printError = true, bool printFilter = true);    // 运行
+                             std::map<std::string, std::string>& responseHeaders);      /* 处理路由 */
+    void setFilterCallback(HTTP_FILTER_CALLBACK filterCallback);                        /* 设置过滤回调 */
+    void setErrorCallback(HTTP_ERROR_CALLBACK errorCallback);                           /* 设置错误回调 */
+    void addRouter(const std::string& uri, HttpRouter* router);                         /* 添加路由 */
+    void addRouter(const std::string& uri, HTTP_ROUTER_CALLBACK callback);              /* 添加路由(支持get和post) */
+    void addRouterGet(const std::string& uri, HTTP_ROUTER_CALLBACK callback);           /* 添加路由(只支持get) */
+    void addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK callback);          /* 添加路由(只支持post) */
+    void run(const std::string& ip, unsigned int port, bool printReceive = false, bool printError = true, bool printFilter = true);    /* 运行 */
 
 private:
-    std::string getErrorResponse(unsigned int errorCode, const std::string& errorBuf);  // 获取错误响应
+    std::string getErrorResponse(unsigned int errorCode, const std::string& errorBuf);  /* 获取错误响应 */
     void printReceive(char major,
                       char minor,
                       const std::string& method,
@@ -139,19 +140,19 @@ private:
                       unsigned short port,
                       const std::map<std::string, std::string>& headers,
                       const std::map<std::string, HttpField*>& body,
-                      const std::string& uri);                                          // 打印接收到的信息
+                      const std::string& uri);                                          /* 打印接收到的信息 */
 
 private:
-    bool mIsRunning;                                // 是否运行中
-    bool mIsPrintReceive;                           // 是否打印接收信息
-    bool mIsPrintError;                             // 是否打印错误信息
-    bool mIsPrintFilter;                            // 是否打印过滤信息
-    HTTP_FILTER_CALLBACK mFilterCallback;           // 过滤回调
-    HTTP_ERROR_CALLBACK mErrorCallback;             // 错误回调
-    std::map<std::string, HttpRouter*> mRouterMap;  // 路由映射表
+    bool mIsRunning;                                /* 是否运行中 */
+    bool mIsPrintReceive;                           /* 是否打印接收信息 */
+    bool mIsPrintError;                             /* 是否打印错误信息 */
+    bool mIsPrintFilter;                            /* 是否打印过滤信息 */
+    HTTP_FILTER_CALLBACK mFilterCallback;           /* 过滤回调 */
+    HTTP_ERROR_CALLBACK mErrorCallback;             /* 错误回调 */
+    std::map<std::string, HttpRouter*> mRouterMap;  /* 路由映射表 */
 };
 
-#endif  //_HTTP_SERVER_H_
+#endif  /* _HTTP_SERVER_H_ */
 
 /*
 ************************************************** sample_01
