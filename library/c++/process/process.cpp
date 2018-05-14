@@ -209,7 +209,7 @@ void Process::killApp(const char* appName) {
     }
 }
 //--------------------------------------------------------------------------
-int Process::runApp(const char* appName, const char* workingDir /*= NULL*/) {
+int Process::runApp(const char* appName, const char* workingDir /*= NULL*/, bool newConsole /*= false*/) {
     if (!appName || 0 == strlen(appName)) {
         return 1;
     }
@@ -239,7 +239,7 @@ int Process::runApp(const char* appName, const char* workingDir /*= NULL*/) {
     memset(&si, 0, sizeof(STARTUPINFO));
     PROCESS_INFORMATION pi;
     memset(&pi, 0, sizeof(PROCESS_INFORMATION));
-    if (!CreateProcess(appNameW, NULL, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, workingDirW, &si, &pi)) {
+    if (!CreateProcess(appNameW, NULL, NULL, NULL, FALSE, newConsole ? CREATE_NEW_CONSOLE : 0, NULL, workingDirW, &si, &pi)) {
         free(appNameW);
         if (workingDirW) {
             free(workingDirW);
