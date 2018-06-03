@@ -31,7 +31,7 @@ typedef struct logfilewrapper_st {
  *          override - when file reach max size, 0.create new file and write, 1. clear file and override
  * Return:	logfilewrapper_st*
  */
-extern logfilewrapper_st* logfilewrapper_init(const char* basename, const char* extname, unsigned int maxSize, unsigned int override);
+extern logfilewrapper_st* logfilewrapper_init(const char* basename, const char* extname, size_t maxSize, unsigned int override);
 
 /*
  * Brief:	get is logfile wrapper enable

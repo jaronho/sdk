@@ -8,10 +8,10 @@
 #include <string.h>
 #include <time.h>
 
-logfile_st* logfile_open(const char* filename, unsigned int maxSize) {
+logfile_st* logfile_open(const char* filename, size_t maxSize) {
     logfile_st* lf = NULL;
     FILE* fp = NULL;
-    unsigned int nameLength = filename ? strlen(filename) : 0;
+    size_t nameLength = filename ? strlen(filename) : 0;
     if (0 == nameLength || maxSize <= 0) {
         return NULL;
     }
@@ -25,13 +25,13 @@ logfile_st* logfile_open(const char* filename, unsigned int maxSize) {
         return NULL;
     }
     lf->fileptr = fp;
-    lf->filename = malloc(nameLength);
+    lf->filename = (char*)malloc(nameLength + 1);
     if (!lf->filename) {
         fclose(fp);
         free(lf);
         return NULL;
     }
-    memcpy(lf->filename, filename, nameLength);
+    sprintf(lf->filename, "%s", filename);
     lf->maxsize = maxSize;
     lf->enable = 1;
 #ifdef LOGFILE_THREAD_SAFETY
@@ -103,8 +103,8 @@ unsigned int logfile_enable(logfile_st* lf, unsigned int enable) {
 }
 
 unsigned int logfile_record(logfile_st* lf, const char* content, unsigned int newline) {
-    unsigned int fileSize = 0;
-    unsigned int contentLength = 0;
+    size_t fileSize = 0;
+    size_t contentLength = 0;
     if (!lf || !lf->fileptr || !lf->filename) {
         return 1;
     }
@@ -142,7 +142,7 @@ unsigned int logfile_record_with_time(logfile_st* lf, const char* content) {
     struct tm t;
     char date[32] = { 0 };
     char* buf = NULL;
-    unsigned int contentLength = 0;
+    size_t contentLength = 0;
     unsigned int flag = 0;
     if (!lf || !lf->fileptr || !lf->filename) {
         return 1;
@@ -157,7 +157,7 @@ unsigned int logfile_record_with_time(logfile_st* lf, const char* content) {
     time(&now);
     t = *localtime(&now);
     strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &t);
-    buf = malloc(strlen(date) + 4 + contentLength);
+    buf = (char*)malloc(1 + strlen(date) + 2 + contentLength + 1);
     sprintf(buf, "[%s] %s", date, content);
     flag = logfile_record(lf, buf, 1);
     free(buf);
@@ -165,8 +165,8 @@ unsigned int logfile_record_with_time(logfile_st* lf, const char* content) {
 }
 
 unsigned int logfile_record_with_tag(logfile_st* lf, const char* tag, unsigned int withtime, const char* content) {
-    unsigned int tagLength = 0;
-    unsigned int contentLength = 0;
+    size_t tagLength = 0;
+    size_t contentLength = 0;
     char* buf = NULL;
     unsigned int flag = 0;
     if (!lf || !lf->fileptr || !lf->filename) {
@@ -183,7 +183,7 @@ unsigned int logfile_record_with_tag(logfile_st* lf, const char* tag, unsigned i
     if (0 == contentLength) {
         return 3;
     }
-    buf = malloc(tagLength + 4 + contentLength);
+    buf = (char*)malloc(1 + tagLength + 2 + contentLength + 1);
     sprintf(buf, "[%s] %s", tag, content);
     if (withtime) {
         flag = logfile_record_with_time(lf, buf);

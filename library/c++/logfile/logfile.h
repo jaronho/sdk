@@ -20,7 +20,7 @@ extern "C"
 typedef struct logfile_st {
     FILE* fileptr;
     char* filename;
-    unsigned int maxsize;
+    size_t maxsize;
     unsigned int enable;
 #ifdef LOGFILE_THREAD_SAFETY
     pthread_mutex_t mutex;
@@ -33,7 +33,7 @@ typedef struct logfile_st {
  *			maxSize - file max size
  * Return:	logfile_st*
  */
-extern logfile_st* logfile_open(const char* filename, unsigned int maxSize);
+extern logfile_st* logfile_open(const char* filename, size_t maxSize);
 
 /*
  * Brief:	close a logfile

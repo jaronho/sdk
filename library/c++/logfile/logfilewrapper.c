@@ -8,23 +8,23 @@
 #include <string.h>
 #include <time.h>
 
-logfilewrapper_st* logfilewrapper_init(const char* basename, const char* extname, unsigned int maxSize, unsigned int override) {
+logfilewrapper_st* logfilewrapper_init(const char* basename, const char* extname, size_t maxSize, unsigned int override) {
     if (!basename || 0 == strlen(basename) || !extname || 0 == strlen(extname) || maxSize <= 0) {
         return NULL;
     }
     char* filename = NULL;
     logfilewrapper_st* wrapper = (logfilewrapper_st*)malloc(sizeof(logfilewrapper_st));
-    wrapper->basename = malloc(strlen(basename));
+    wrapper->basename = (char*)malloc(strlen(basename) + 1);
     sprintf(wrapper->basename, "%s", basename);
     if (strstr(extname, ".")) {
-        wrapper->extname = malloc(strlen(extname));
+        wrapper->extname = (char*)malloc(strlen(extname) + 1);
         sprintf(wrapper->extname, "%s", extname);
-        filename = malloc(strlen(basename) + strlen(extname));
+        filename = (char*)malloc(strlen(basename) + strlen(extname) + 1);
         sprintf(filename, "%s%s", basename, extname);
     } else {
-        wrapper->extname = malloc(strlen(extname) + 1);
+        wrapper->extname = (char*)malloc(1 + strlen(extname) + 1);
         sprintf(wrapper->extname, ".%s", extname);
-        filename = malloc(strlen(basename) + strlen(extname) + 1);
+        filename = (char*)malloc(strlen(basename) + 1 + strlen(extname) + 1);
         sprintf(filename, "%s.%s", basename, extname);
     }
     wrapper->logfile = logfile_open(filename, maxSize);
@@ -75,10 +75,10 @@ unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, 
         } else {
             logfile_close(wrapper->logfile);
             if (strstr(wrapper->extname, ".")) {
-                filename = malloc(strlen(wrapper->basename) + strlen(wrapper->extname));
+                filename = (char*)malloc(strlen(wrapper->basename) + 1 + 3 + strlen(wrapper->extname) + 1);
                 sprintf(filename, "%s-%03d%s", wrapper->basename, wrapper->count + 1, wrapper->extname);
             } else {
-                filename = malloc(strlen(wrapper->basename) + strlen(wrapper->extname) + 1);
+                filename = (char*)malloc(strlen(wrapper->basename) + 1 + 3 + 1 + strlen(wrapper->extname) + 1);
                 sprintf(filename, "%s-%03d.%s", wrapper->basename, wrapper->count + 1, wrapper->extname);
             }
             wrapper->logfile = logfile_open(filename, wrapper->logfile->maxsize);
