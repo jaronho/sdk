@@ -13,7 +13,7 @@ static bool copyFile(const std::string& srcFileName, const std::string& destFile
         return false;
     }
     FILE* fp_src = fopen(srcFileName.c_str(), "rb");
-    if (!p_src) {
+    if (!fp_src) {
         return false;
     }
 	FILE* fp_dest = fopen(destFileName.c_str(), "wb");
