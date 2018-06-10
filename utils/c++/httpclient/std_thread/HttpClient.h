@@ -63,13 +63,13 @@ public:
 
 int main() {
     auto callback = [](bool success, int curlcode, int responsecode, const std::string& errorbuffer, const std::string& responseheader, const std::string& responsebody)->void {
-        printf("==================================================\n");
-        printf("success = %s\n", success ? "true" : "false");
-        printf("curlcode = %d\n", curlcode);
-        printf("responsecode = %d\n", responsecode);
-        printf("errorbuffer = %s\n", errorbuffer.c_str());
-        printf("responseheader = \n%s\n", responseheader.c_str());
-        printf("responsebody = \n%s\n", responsebody.c_str());
+        printf_s("==================================================\n");
+        printf_s("success = %s\n", success ? "true" : "false");
+        printf_s("curlcode = %d\n", curlcode);
+        printf_s("responsecode = %d\n", responsecode);
+        printf_s("errorbuffer = %s\n", errorbuffer.c_str());
+        printf_s("responseheader = \n%s\n", responseheader.c_str());
+        printf_s("responsebody = \n%s\n", responsebody.c_str());
     };
     HttpClient::getInstance()->get("http://www.baidu.com", callback);
     while (true) {}
