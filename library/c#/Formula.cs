@@ -6,13 +6,13 @@
  
 public class Formula {
 	/**
-     * 功  能: 取值范围
+     * 功  能: 夹具
      * 参  数: value - 当前值
      *         min - 最小值
      *         max - 最大值
      * 返回值: float
      */
-	public static float valueRange(float value, float min, float max) {
+	public static float clamp(float value, float min, float max) {
 		value = value > min ? value : min;
 		value = value < max ? value : max;
 		return value;
