@@ -19,7 +19,7 @@ const unsigned int* Algorithm::colorGrayscale(unsigned int r, unsigned int g, un
     return rgb;
 }
 /*********************************************************************/
-const unsigned int* colorOldPhoto(unsigned int r, unsigned int g, unsigned int b) {
+const unsigned int* Algorithm::colorOldPhoto(unsigned int r, unsigned int g, unsigned int b) {
     r = r > 255 ? 255 : r;
     g = g > 255 ? 255 : g;
     b = b > 255 ? 255 : b;
