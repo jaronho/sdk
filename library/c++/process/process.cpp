@@ -268,6 +268,37 @@ int Process::isAppFileExist(const char* appName) {
     return 0;
 }
 //--------------------------------------------------------------------------
+int Process::shellExecute(const char* filename, const char* workingDir /*= NULL*/, int showCmd /*= 1*/) {
+    if (!filename || 0 == strlen(filename)) {
+        return 1;
+    }
+    std::string appWorkingDir;
+    if (workingDir) {
+        appWorkingDir = workingDir;
+    } else {
+        appWorkingDir = filename;
+        unsigned int pos = appWorkingDir.find_last_of("\\/");
+        if (std::string::npos != pos) {
+            appWorkingDir = appWorkingDir.substr(0, pos + 1);
+        }
+    }
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+    wchar_t* filenameW = char2wchar(filename);
+    if (!filenameW) {
+        return 1;
+    }
+    wchar_t* workingDirW = char2wchar(appWorkingDir.c_str());
+    if (showCmd < 0 || showCmd > 11) {
+        showCmd = SW_NORMAL;
+    }
+    int ret = (int)ShellExecute(NULL, L"open", filenameW, NULL, workingDirW, showCmd);
+    if (ret < 32) {
+        return 2;
+    }
+#endif
+    return 0;
+}
+//--------------------------------------------------------------------------
 const std::string& Process::exePath(void) {
     if (mExePath.empty()) {
         mExePath = getExePath(id);

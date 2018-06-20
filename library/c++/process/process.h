@@ -73,6 +73,17 @@ public:
      */
     static int isAppFileExist(const char* appName);
 
+    /*
+     * Brief:	shell execute
+     * Param:	filename - file name, e.g. "calc.exe" or "C:/Program Files/Notepad++/notepad++.exe"
+     *          workingDir - application working directory, must be absolute path, e.g. "C:/Program Files/Notepad++/"
+     *          showCmd - show cmd, [1, 11], refer to SW_NORMAL
+     * Return:	0.ok
+     *          1.filename is NULL or empty
+     *          2.execute failed
+     */
+    static int shellExecute(const char* filename, const char* workingDir = NULL, int showCmd = 1);
+
 public:
     /*
      * Brief:	current process exe path
