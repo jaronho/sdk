@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <functional>
 
 class Common {
 public:
@@ -342,20 +343,31 @@ public:
      * Brief:	recursion search files in the specified directory
      * Param:	dirName - specified directory, can be absolute path (d:) or relative path (temp)
      *          extList - file extension
-     *          fileList - files that is searched
+     *          callback - called when file searched
      *          recursive - if recursive sub dir
      * Return:	void
      */
-    static void searchFile(std::string dirName, const std::vector<std::string>& extList, std::vector<std::string>& fileList, bool recursive = true);
+    static void searchFile(std::string dirName, const std::vector<std::string>& extList, 
+                           std::function<void(const std::string& fileName, 
+                                              unsigned long fileSize, 
+                                              long createTime, 
+                                              long writeTime, 
+                                              long accessTime)> callback, 
+                           bool recursive = true);
 
     /*
      * Brief:	recursion serach directory in the specified directory
      * Param:	dirName - specified directory, can be absolute path (d:) or relative path (temp)
-     *          dirList - directory list that is searched
+     *          callback - called when directory searched
      *          recursive - if recursive sub dir
      * Return:	void
      */
-    static void searchDir(std::string dirName, std::vector<std::string>& dirList, bool recursive = true);
+    static void searchDir(std::string dirName, 
+                          std::function<void(const std::string& dirName, 
+                                             long createTime, 
+                                             long writeTime, 
+                                             long accessTime)> callback, 
+                          bool recursive = true);
 
     /**********************************************************************
     * network functions

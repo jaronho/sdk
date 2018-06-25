@@ -542,14 +542,23 @@ std::string Common::getFullPath(std::string path, OSType os) {
     return revisalPath(currentPath + '/' + path);
 }
 /*********************************************************************/
-void Common::searchFile(std::string dirName, const std::vector<std::string>& extList, std::vector<std::string>& fileList, bool recursive /*= true*/) {
+void Common::searchFile(std::string dirName, const std::vector<std::string>& extList, 
+                        std::function<void(const std::string& fileName, 
+                                           unsigned long fileSize, 
+                                           long createTime, 
+                                           long writeTime, 
+                                           long accessTime)> callback, 
+                        bool recursive /*= true*/) {
+    if (!callback) {
+        return;
+    }
+    dirName = revisalPath(dirName);
 #ifdef _SYSTEM_WINDOWS_
     _finddata_t fileData;
     int handle = _findfirst((dirName + "/*.*").c_str(), &fileData);
     if (-1 == handle || !(_A_SUBDIR & fileData.attrib)) {
         return;
     }
-    dirName = revisalPath(dirName);
     while (0 == _findnext(handle, &fileData)) {
         if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name)) {
             continue;
@@ -558,13 +567,13 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
         /* is sub directory */
         if (_A_SUBDIR & fileData.attrib) {
             if (recursive) {
-                searchFile(subName, extList, fileList, true);
+                searchFile(subName, extList, callback, true);
             }
             continue;
         }
         /* all file type */
         if (extList.empty()) {
-            fileList.push_back(subName);
+            callback(subName, fileData.size, fileData.time_create, fileData.time_write, fileData.time_access);
             continue;
         }
         /* specific file type */
@@ -575,7 +584,7 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
         std::string ext = subName.substr(index, subName.size() - index);
         for (size_t i = 0; i < extList.size(); ++i) {
             if (extList[i] == ext) {
-                fileList.push_back(subName);
+                callback(subName, fileData.size, fileData.time_create, fileData.time_write, fileData.time_access);
             }
         }
     }
@@ -585,7 +594,6 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
     if (! dir) {
         return;
     }
-    dirName = revisalPath(dirName);
     struct dirent* dirp = NULL;
     while (dirp = readdir(dir)) {
         if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name)) {
@@ -594,8 +602,12 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
         std::string subName = dirName + "/" + dirp->d_name;
         DIR* subDir = opendir(subName.c_str());
         if (NULL == subDir) {
+            struct stat fileStat;
+            if (0 != stat(subName.c_str(), &fileStat)) {
+                continue;
+            }
             if (extList.empty()) {
-                fileList.push_back(subName);
+                callback(subName, fileStat.st_size, fileStat.st_ctime, fileStat.st_mtime, fileStat.st_atime);
                 continue;
             }
             std::string::size_type index = subName.find_last_of(".");
@@ -605,22 +617,29 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
             std::string ext = subName.substr(index, subName.size() - index);
             for (size_t i=0; i<extList.size(); ++i) {
                 if (extList[i] == ext) {
-                    fileList.push_back(subName);
+                    callback(subName, fileStat.st_size, fileStat.st_ctime, fileStat.st_mtime, fileStat.st_atime);
                 }
             }
             continue;
         }
         closedir(subDir);
-        subDir = NULL;
         if (recursive) {
-            searchFile(subName, extList, fileList, true);
+            searchFile(subName, extList, callback, true);
         }
     }
     closedir(dir);
 #endif
 }
 /*********************************************************************/
-void Common::searchDir(std::string dirName, std::vector<std::string>& dirList, bool recursive /*= true*/) {
+void Common::searchDir(std::string dirName, 
+                       std::function<void(const std::string& dirName, 
+                                          long createTime, 
+                                          long writeTime, 
+                                          long accessTime)> callback, 
+                       bool recursive /*= true*/) {
+    if (!callback) {
+        return;
+    }
 #ifdef _SYSTEM_WINDOWS_
     _finddata_t fileData;
     int handle = _findfirst((dirName + "/*.*").c_str(), &fileData);
@@ -634,9 +653,9 @@ void Common::searchDir(std::string dirName, std::vector<std::string>& dirList, b
         }
         if (_A_SUBDIR & fileData.attrib) {	/* is sub directory */
             std::string subDirName = dirName + "/" + fileData.name;
-            dirList.push_back(subDirName);
+            callback(subDirName, fileData.time_create, fileData.time_write, fileData.time_access);
             if (recursive) {
-                searchDir(subDirName, dirList, true);
+                searchDir(subDirName, callback, true);
             }
         }
     }
@@ -657,11 +676,15 @@ void Common::searchDir(std::string dirName, std::vector<std::string>& dirList, b
         if (!subDir) {
             continue;
         }
+        struct stat fileStat;
+        if (0 != stat(subDirName.c_str(), &fileStat)) {
+            closedir(subDir);
+            continue;
+        }
         closedir(subDir);
-        subDir = NULL;
-        dirList.push_back(subDirName);
+        callback(subDirName, fileStat.st_ctime, fileStat.st_mtime, fileStat.st_atime);
         if (recursive) {
-            searchDir(subDirName, dirList, true);
+            searchDir(subDirName, callback, true);
         }
     }
     closedir(dir);
@@ -735,16 +758,10 @@ double Common::getTime(void) {
 }
 /*********************************************************************/
 struct tm Common::timeToDate(long seconds /*= 0*/) {
-    time_t nowtime = seconds > 0 ? seconds : time(NULL);
-    struct tm* timeinfo = NULL;
-    localtime_s(timeinfo, &nowtime);
-    timeinfo->tm_year += 1900;      /* [1900, ...) */
-    timeinfo->tm_mon += 1;          /* [1, 12] */
-    if (0 == timeinfo->tm_wday) {   /* [1, 7] */
-        timeinfo->tm_wday = 7;
-    }
-    timeinfo->tm_yday += 1;         /* [1, 366] */
-    return *timeinfo;
+    time_t t = seconds > 0 ? seconds : time(NULL);
+    struct tm date;
+    localtime_s(&date, &t);
+    return date;
 }
 /*********************************************************************/
 long Common::dateToTime(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*= 8*/, int n /*= 0*/, int s /*= 0*/) {
