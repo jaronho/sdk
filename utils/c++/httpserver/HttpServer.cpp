@@ -145,9 +145,13 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
             bodyMap[param->key] = field;
         }
         evhttp_clear_headers(&params);
-        if (std::string::npos != realUri.find_first_of('?') && bodyMap.empty()) {
-            errorCode = 5;
-            sprintf_s(errorBuf, "body format error, must be key=value pair");
+        size_t pos = realUri.find_first_of('?');
+        if (std::string::npos != pos && bodyMap.empty()) {
+            HttpField* field = new HttpField();
+            field->setName("_");
+            field->setType(HttpField::TYPE_TEXT);
+            field->setContent(realUri.substr(pos + 1).c_str(), realUri.length() - pos - 1);
+            bodyMap["_"] = field;
         }
     } else if (0 == strcmp("POST", method)) {       /* parse POST body */
         std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
@@ -170,8 +174,11 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                     }
                     evhttp_clear_headers(&params);
                     if (bodyMap.empty()) {
-                        errorCode = 5;
-                        sprintf_s(errorBuf, "body format error, must be key=value pair");
+                        HttpField* field = new HttpField();
+                        field->setName("_");
+                        field->setType(HttpField::TYPE_TEXT);
+                        field->setContent((const char*)body, bodySize);
+                        bodyMap["_"] = field;
                     }
                 }
             } else if (std::string::npos != contentType.find("multipart/form-data")) {
