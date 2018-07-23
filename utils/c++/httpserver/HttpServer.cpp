@@ -145,6 +145,10 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
             bodyMap[param->key] = field;
         }
         evhttp_clear_headers(&params);
+        if (std::string::npos != realUri.find_first_of('?') && bodyMap.empty()) {
+            errorCode = 5;
+            sprintf_s(errorBuf, "body format error, must be key=value pair");
+        }
     } else if (0 == strcmp("POST", method)) {       /* parse POST body */
         std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
         if (headerMap.end() != iter) {
@@ -165,6 +169,10 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                         bodyMap[param->key] = field;
                     }
                     evhttp_clear_headers(&params);
+                    if (bodyMap.empty()) {
+                        errorCode = 5;
+                        sprintf_s(errorBuf, "body format error, must be key=value pair");
+                    }
                 }
             } else if (std::string::npos != contentType.find("multipart/form-data")) {
                 MultipartFormData* forms = new MultipartFormData();
