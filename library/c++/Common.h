@@ -109,6 +109,14 @@ public:
      * Return:	string
      */
     static std::string toString(double d);
+    
+    /*
+     * Brief:	convert a decimalism number to binary string
+     * Param:	n - a decimalism number
+     *          bit - binary complement
+     * Return:	string
+     */
+    static std::string dec2bin(unsigned int n, unsigned int bit = 32);
 
     /*
      * Brief:	string to lower case
@@ -213,6 +221,20 @@ public:
      * Return:	wstring
      */
     static std::wstring string2wstring(const std::string& str, const char* locale = "");
+    
+    /*
+     * Brief:	check whether string is utf-8
+     * Param:	str - a string
+     * Return:	bool
+     */
+    static bool isStringUTF8(const char* str);
+    
+    /*
+     * Brief:	check whether string is gbk
+     * Param:	str - a string
+     * Return:	bool
+     */
+    static bool isStringGBK(const char* str);
 
     /*
      * Brief:	calculate character placeholder

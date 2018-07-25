@@ -112,6 +112,18 @@ std::string Common::toString(double d) {
     return buf;
 }
 /*********************************************************************/
+std::string dec2bin(unsigned int n, unsigned int bit /*= 32*/) {
+    std::string s;
+    for (unsigned int i = n; i; i = i / 2) {
+        s += i % 2 ? "1" : "0";
+    }
+    while (s.length() < bit) {
+        s += "0";
+    }
+    std::reverse(s.begin(), s.end());
+    return s;
+}
+/*********************************************************************/
 std::string Common::toLower(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(), tolower);
     return str;
@@ -257,6 +269,82 @@ std::wstring Common::string2wstring(const std::string& str, const char* locale /
     free(dest);
     setlocale(LC_ALL, curLocale.c_str());
     return result;
+}
+/*********************************************************************/
+bool Common::isStringUTF8(const char* str) {
+    unsigned int nBytes = 0;    /* utf8可用1-6个字节编码,ASCII用一个字节 */
+    unsigned char chr = *str;
+    bool bAllAscii = true;
+    for (unsigned int i = 0; '\0' != str[i]; ++i) {
+        chr = *(str + i);
+        if (0 == nBytes && 0 != (chr & 0x80)) { /* 判断是否ASCII编码,如果不是,说明有可能是UTF8,ASCII用7位编码,最高位标记为0,0xxxxxxx  */
+            bAllAscii = false;
+        }
+        if (0 == nBytes) {
+            if (chr >= 0x80) {  /* 如果不是ASCII码,应该是多字节符,计算字节数 */
+                if (chr >= 0xFC && chr <= 0xFD) {
+                    nBytes = 6;
+                } else if (chr >= 0xF8) {
+                    nBytes = 5;
+                } else if (chr >= 0xF0) {
+                    nBytes = 4;
+                } else if (chr >= 0xE0) {
+                    nBytes = 3;
+                } else if (chr >= 0xC0) {
+                    nBytes = 2;
+                } else {
+                    return false;
+                }
+                nBytes--;
+            }
+        } else {
+            if (0x80 != (chr & 0xC0)) { /* 多字节符的非首字节,应为 10xxxxxx */
+                return false;
+            }
+            nBytes--;   /* 减到为零为止 */
+        }
+    }
+    if (0 != nBytes) {  /* 违返UTF8编码规则 */
+        return false;
+    }
+    if (bAllAscii) {    /* 如果全部都是ASCII, 也是utf8 */
+        return true;
+    }
+    return true;
+}
+/*********************************************************************/
+bool Common::isStringGBK(const char* str) {
+    unsigned int nBytes = 0;    /* GBK可用1-2个字节编码,中文两个,英文一个 */
+	unsigned char chr = *str;
+	bool bAllAscii = true;  /* 如果全部都是ASCII */
+	for (unsigned int i = 0; '\0' != str[i]; ++i) {
+		chr = *(str + i);
+		if (0 != (chr & 0x80) && 0 == nBytes) {  /* 判断是否ASCII编码,如果不是,说明有可能是GBK */
+			bAllAscii = false;
+		}
+		if (0 == nBytes) {
+			if (chr >= 0x80) {
+				if (chr >= 0x81 && chr <= 0xFE) {
+					nBytes = 2;
+				} else {
+					return false;
+				}
+				nBytes--;
+			}
+		} else{
+			if (chr < 0x40 || chr>0xFE) {
+				return false;
+			}
+			nBytes--;
+		}
+	}
+	if (0 != nBytes) { /* 违返规则 */
+		return false;
+	}
+	if (bAllAscii) { /* 如果全部都是ASCII,也是GBK */
+		return true;
+	}
+	return true;
 }
 /*********************************************************************/
 size_t Common::characterPlaceholder(unsigned char ch) {
