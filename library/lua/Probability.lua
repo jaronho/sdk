@@ -17,7 +17,7 @@ function CreateProbability(weightList, randomFunc)
 	end
 	-- private member variables
 	local mThreshold = 1
-	local mWeightRange = {}
+	local mRangeList = {}
 	local probability = {}
 	-- private methods
 	local function random(min, max)
@@ -40,14 +40,14 @@ function CreateProbability(weightList, randomFunc)
 			end
 		end
 		mThreshold = 1
-		mWeightRange = {}
+		mRangeList = {}
 		for _, factor in pairs(weightList) do
 			assert("table" == type(factor) and "number" == type(factor[2]), "weightList format is error")
 			local value = factor[1]
 			local weight = factor[2]
 			if weight > 0 then
 				local range = {["value"] = value, ["begin"] = mThreshold, ["end"] = mThreshold + weight - 1}
-				table.insert(mWeightRange, range)
+				table.insert(mRangeList, range)
 				mThreshold = mThreshold + weight
 			end
 		end
@@ -58,7 +58,7 @@ function CreateProbability(weightList, randomFunc)
 			return
 		end
 		local index = random(1, mThreshold - 1)
-		for _, range in pairs(mWeightRange) do
+		for _, range in pairs(mRangeList) do
 			if index >= range["begin"] and index <= range["end"] then
 				return range["value"]
 			end

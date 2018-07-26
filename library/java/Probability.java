@@ -13,7 +13,7 @@ public class Probability {
     private List<int[]> mWeightListInit = new ArrayList<>();
     private List<int[]> mWeightList = null;
     private int mThreshold = 1;
-    private List<int[]> mWeightRange = null;
+    private List<int[]> mRangeList = null;
     private RandomHandler mRandomHandler = null;
 
     public abstract static class RandomHandler {
@@ -62,12 +62,12 @@ public class Probability {
             }
         }
         mThreshold = 1;
-        mWeightRange = new ArrayList<>();
+        mRangeList = new ArrayList<>();
         for (int i = 0, len = mWeightList.size(); i < len; ++i) {
             int[] factor = mWeightList.get(i);
             int value = factor[0];
             int weight = factor[1];
-            mWeightRange.add(new int[]{value, mThreshold, mThreshold + weight - 1});    // [0].value,[1].begin,[2].end
+            mRangeList.add(new int[]{value, mThreshold, mThreshold + weight - 1});    // [0].value,[1].begin,[2].end
             mThreshold += weight;
         }
     }
@@ -82,8 +82,8 @@ public class Probability {
             return -1;
         }
         int index = random(1, mThreshold - 1);
-        for (int i = 0, len = mWeightRange.size(); i < len; ++i) {
-            int[] range = mWeightRange.get(i);
+        for (int i = 0, len = mRangeList.size(); i < len; ++i) {
+            int[] range = mRangeList.get(i);
             if (index >= range[1] && index <= range[2]) {
                 return range[0];
             }

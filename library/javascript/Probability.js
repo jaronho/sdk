@@ -27,7 +27,7 @@ function CreateProbability(weightList, randomFunc) {
 	}
 	// private member variables
 	var mThreshold = 1;
-	var mWeightRange = [];
+	var mRangeList = [];
 	var probability = {};
 	// private methods
 	function random(min, max) {
@@ -50,7 +50,7 @@ function CreateProbability(weightList, randomFunc) {
 			}
 		}
 		mThreshold = 1;
-		mWeightRange = [];
+		mRangeList = [];
 		for (var i = 0, len = weightList.length; i < len; ++i) {
 			var factor = weightList[i];
 			if (!(factor instanceof Array) || isNaN(factor[1])) {
@@ -60,7 +60,7 @@ function CreateProbability(weightList, randomFunc) {
 			var weight = factor[1];
 			if (weight > 0) {
 				var range = {value: value, begin: mThreshold, end: mThreshold + weight - 1};
-				mWeightRange.push(range);
+				mRangeList.push(range);
 				mThreshold += weight;
 			}
 		}
@@ -71,8 +71,8 @@ function CreateProbability(weightList, randomFunc) {
 			return;
 		}
 		var index = random(1, mThreshold - 1);
-		for (var i = 0, len = mWeightRange.length; i < len; ++i) {
-			var range = mWeightRange[i];
+		for (var i = 0, len = mRangeList.length; i < len; ++i) {
+			var range = mRangeList[i];
 			if (index >= range.begin && index <= range.end) {
 				return range.value;
 			}
