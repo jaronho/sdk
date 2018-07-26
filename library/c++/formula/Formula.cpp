@@ -132,3 +132,22 @@ float* Formula::pointOnCircle(float cX, float cY, float r, float angle) {
     return point;
 }
 /*********************************************************************/
+int Formula::checkPointSide(float sX, float sY, float eX, float eY, float x, float y) {
+    const static float EPSINON = 0.00001;
+    if ((float)fabs(eY - sY) <= EPSINON) {
+        if ((float)fabs(y - sY) <= EPSINON) {
+            return 0;
+        } else if (y > sY) {
+            return 1;
+        }
+        return 2;
+    }
+    float factor = (y - sY)*(eX - sX)/(eY - sY) + sY;
+    if ((float)fabs(factor - x) <= EPSINON) {
+        return 0;
+    } else if (factor > x) {
+        return 1;
+    }
+    return 2;
+}
+/*********************************************************************/

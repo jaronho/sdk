@@ -98,6 +98,18 @@ public:
      * Return:  float*
      */
     static float* pointOnCircle(float cX, float cY, float r, float angle);
+    
+    /*
+     * Brief:   判断点在线段的哪一边
+     * Param:   sX - 线段起点x坐标
+     *          sY - 线段起点y坐标
+     *          eX - 线段终点x坐标
+     *          eY - 线段终点y坐标
+     *          x - 点x坐标
+     *          y - 点y坐标
+     * Return:  int, 0.点在线段所在直线上,1.点在线段所在直线左边(线段平行于x轴时上边),2.点在线段所在直线右边(线段平行于x轴时下边)
+     */
+    static int checkPointSide(float sX, float sY, float eX, float eY, float x, float y);
 };
 
 #endif	/* _FORMULA_H_ */
