@@ -57,8 +57,8 @@ public:
      * Param:   filename - to be written as a bmp image
      * Return:  int
      *          0.ok
-     *          1.could not open file
-     *          2.bitmap is not a valid image
+     *          1.bitmap is not a valid image
+     *          2.could not open file
      */
     int save(const std::string& filename);
 
@@ -101,6 +101,17 @@ public:
      */
     void fromPixelMatrix(const PixelMatrix& pixels);
 
+    /*
+     * Brief:   Save bitmap data to text file
+     * Param:   filename - to be written as a text file
+     *          isHex - pixel format, true like #FF00FF, false like 255_000_255
+     * Return:  int
+     *          0.ok
+     *          1.bitmap is not a valid image
+     *          2.could not open file
+     */
+    int toFile(const std::string& filename, bool isHex = true);
+
 private:
     PixelMatrix mPixels;
     int mWidth;
@@ -128,6 +139,7 @@ int main() {
         bmp[0][0] = rgb;
         image.fromPixelMatrix(bmp);
         image.save("222.bmp");
+        image.toFile("333.csv", true);
     }
     return 0;
     }

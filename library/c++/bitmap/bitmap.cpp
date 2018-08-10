@@ -110,14 +110,13 @@ int Bitmap::open(const std::string& filename) {
 }
 
 int Bitmap::save(const std::string& filename) {
+    if (!isImage()) {
+        std::cout << "Bitmap cannot be saved. It is not a valid image.\n";
+        return 1;
+    }
 	std::ofstream file(filename.c_str(), std::ios::out | std::ios::binary);
 	if (file.fail()) {
 		std::cout << filename << " could not be opened for editing. Is it already open by another program or is it read-only?\n";
-        return 1;
-	}
-    if (!isImage()) {
-        file.close();
-		std::cout << "Bitmap cannot be saved. It is not a valid image.\n";
         return 2;
 	}
 	/* Write all the header information that the BMP file format requires. */
@@ -207,4 +206,39 @@ void Bitmap::fromPixelMatrix(const PixelMatrix& values) {
     mPixels = values;
     mWidth = 0;
     mHeight = 0;
+}
+
+int Bitmap::toFile(const std::string& filename, bool isHex /*= true*/) {
+    if (!isImage()) {
+        std::cout << "Bitmap is not a valid image.\n";
+        return 1;
+    }
+    std::ofstream file(filename.c_str(), std::ios::out | std::ios::binary);
+    if (file.fail()) {
+        std::cout << filename << " could not be opened for editing. Is it already open by another program or is it read-only?\n";
+        return 2;
+    }
+    for (size_t i = 0; i < mPixels.size(); ++i) {
+        if (i > 0) {
+            file.write("\n", 1);
+        }
+        std::vector<Pixel> row = mPixels[i];
+        for (size_t j = 0; j < row.size(); ++j) {
+            if (j > 0) {
+                file.write(",", 1);
+            }
+            Pixel rgb = row[j];
+            if (isHex) {
+                char hexStr[8] = { 0 };
+                sprintf_s(hexStr, "#%02X%02X%02X", rgb.r, rgb.g, rgb.b);
+                file.write(hexStr, strlen(hexStr));
+            } else {
+                char rgbStr[16] = { 0 };
+                sprintf_s(rgbStr, "%03d_%03d_%03d", rgb.r, rgb.g, rgb.b);
+                file.write(rgbStr, strlen(rgbStr));
+            }
+        }
+    }
+    file.close();
+    return 0;
 }
