@@ -9,6 +9,14 @@
 class Formula {
 public:
     /*
+     * Brief:   check whether two float number equal
+     * Param:   a - float value
+     *          b - float value
+     * Return:  bool
+     */
+    static bool equalF(float a, float b);
+
+    /*
      * Brief:   clamp value
      * Param:   value - current value
      *          min - min value
@@ -16,7 +24,7 @@ public:
      * Return:  float
      */
     static float clamp(float value, float min, float max);
-    
+
     /*
      * Brief:   return the linear blend of x and y
      * Param:   x - x
@@ -39,7 +47,7 @@ public:
      * Return:  float
      */
     static float degrees(float radians);
-    
+
     /*
      * Brief:   return the linear blend of x and y
      * Param:   x1 - x of point1
@@ -98,7 +106,7 @@ public:
      * Return:  float*
      */
     static float* pointOnCircle(float cX, float cY, float r, float angle);
-    
+
     /*
      * Brief:   判断点在线段的哪一边
      * Param:   sX - 线段起点x坐标
