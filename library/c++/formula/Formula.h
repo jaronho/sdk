@@ -14,39 +14,47 @@ public:
      *          b - float value
      * Return:  bool
      */
-    static bool equalF(float a, float b);
+    static bool isequalf(float a, float b);
+
+    /*
+     * Brief:   check whether two double number equal
+     * Param:   a - double value
+     *          b - double value
+     * Return:  bool
+     */
+    static bool isequald(double a, double b);
 
     /*
      * Brief:   clamp value
      * Param:   value - current value
      *          min - min value
      *          max - max value
-     * Return:  float
+     * Return:  double
      */
-    static float clamp(float value, float min, float max);
+    static double clamp(double value, double min, double max);
 
     /*
      * Brief:   return the linear blend of x and y
      * Param:   x - x
      *          y - y
      *          a - a
-     * Return:  float
+     * Return:  double
      */
-    static float mix(float x, float y, float a);
+    static double mix(double x, double y, double a);
 
     /*
      * Brief:   convert degrees to radians e.g. (PI/180)*degrees
      * Param:   degrees - degrees
-     * Return:  float
+     * Return:  double
      */
-    static float radians(float degrees);
+    static double radians(double degrees);
 
     /*
      * Brief:   convert radians to degrees e.g. (180/PI)*radians
      * Param:   degrees - degrees
-     * Return:  float
+     * Return:  double
      */
-    static float degrees(float radians);
+    static double degrees(double radians);
 
     /*
      * Brief:   return the linear blend of x and y
@@ -54,9 +62,9 @@ public:
      *          y1 - y of point1
      *          x2 - x of point2
      *          y2 - y of point2
-     * Return:  float
+     * Return:  double
      */
-    static float distance(float x1, float y1, float x2, float y2);
+    static double distance(double x1, double y1, double x2, double y2);
 
     /*
      * Brief:   calculate angle for vector
@@ -64,9 +72,9 @@ public:
      *          sY - y of vector start point
      *          eX - x of vector end point
      *          eY - y of vector end point
-     * Return:  float
+     * Return:  double
      */
-    static float vectorAngle(float sX, float sY, float eX, float eY);
+    static double vectorAngle(double sX, double sY, double eX, double eY);
 
     /*
      * Brief:   calculate inner angle of triangle
@@ -77,9 +85,9 @@ public:
      *          cX - x of C point
      *          cY - y of C point
      *          type - point type:1.A,2.B,3.C
-     * Return:  float
+     * Return:  double
      */
-    static float triangleInnerAngle(float aX, float aY, float bX, float bY, float cX, float cY, int type);
+    static double triangleInnerAngle(double aX, double aY, double bX, double bY, double cX, double cY, int type);
 
     /*
      * Brief:   calculate cross point between two line segment
@@ -93,9 +101,9 @@ public:
      *          dY - y of segment2 end point
      *          limit - min denominator value, e.g. 0.1
      *          mustIn - whether cross point must on the two line segemnt, 0.not must in,1.must in
-     * Return:  float*
+     * Return:  double*
      */
-    static float* crossPoint(float aX, float aY, float bX, float bY, float cX, float cY, float dX, float dY, float limit, int mustIn);
+    static double* crossPoint(double aX, double aY, double bX, double bY, double cX, double cY, double dX, double dY, double limit, int mustIn);
 
     /*
      * Brief:   calculate point on circle
@@ -103,9 +111,9 @@ public:
      *          cY - y of center point
      *          r - radius or circle
      *          angle - angle, 0-360
-     * Return:  float*
+     * Return:  double*
      */
-    static float* pointOnCircle(float cX, float cY, float r, float angle);
+    static double* pointOnCircle(double cX, double cY, double r, double angle);
 
     /*
      * Brief:   判断点在线段的哪一边
@@ -117,7 +125,19 @@ public:
      *          y - 点y坐标
      * Return:  int, 0.点在线段所在直线上,1.点在线段所在直线左边(线段平行于x轴时上边),2.点在线段所在直线右边(线段平行于x轴时下边)
      */
-    static int checkPointSide(float sX, float sY, float eX, float eY, float x, float y);
+    static int checkPointSide(double sX, double sY, double eX, double eY, double x, double y);
+
+    /*
+     * Brief:   点到线段所在直线的距离
+     * Param:   sX - 线段起点x坐标
+     *          sY - 线段起点y坐标
+     *          eX - 线段终点x坐标
+     *          eY - 线段终点y坐标
+     *          x - 点x坐标
+     *          y - 点y坐标
+     * Return:  double
+     */
+    static double pointToLineDistance(double sX, double sY, double sZ, double eX, double eY, double eZ, double x, double y, double z);
 };
 
 #endif	/* _FORMULA_H_ */
