@@ -7,9 +7,14 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifndef M_PI
+#define M_PI       3.14159265358979323846   /* pi */
+#endif
+
 /*********************************************************************/
 bool Formula::isequalf(float a, float b) {
-    const static float EPSINON = 0.00001;
+    const static float EPSINON = 0.00001f;
     return (float)fabs(a - b) <= EPSINON;
 }
 /*********************************************************************/
@@ -39,7 +44,7 @@ double Formula::degrees(double radians) {
 double Formula::distance(double x1, double y1, double x2, double y2) {
     double x = fabs(x2 - x1);
     double y = fabs(y2 - y1);
-    return sqrtf(x * x + y * y);
+    return sqrt(x * x + y * y);
 }
 /*********************************************************************/
 double Formula::vectorAngle(double sX, double sY, double eX, double eY) {
