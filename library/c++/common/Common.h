@@ -362,6 +362,20 @@ public:
     static std::string getFullPath(std::string path, OSType os = OST_WINDOWS);
 
     /*
+     * Brief:	get current path (absolute path)
+     * Param:	void
+     * Return:	string
+     */
+    static std::string getCurrentDir(void);
+
+    /*
+     * Brief:	get parent path
+     * Param:	dir - directory
+     * Return:	string
+     */
+    static std::string getParentDir(std::string dir = "");
+
+    /*
      * Brief:	recursion search files in the specified directory
      * Param:	dirName - specified directory, can be absolute path (d:) or relative path (temp)
      *          extList - file extension

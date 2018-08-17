@@ -630,6 +630,43 @@ std::string Common::getFullPath(std::string path, OSType os) {
     return revisalPath(currentPath + '/' + path);
 }
 /*********************************************************************/
+std::string Common::getCurrentDir(void) {
+#ifdef _SYSTEM_WINDOWS_
+    char* buffer = _getcwd(NULL, 0);
+#else
+    char* buffer = getcwd(NULL, 0);
+#endif
+    if (!buffer) {
+        return "";
+    }
+    std::string currentDir(buffer);
+    free(buffer);
+    return currentDir + "/";
+}
+/*********************************************************************/
+std::string Common::getParentDir(std::string dir /*= ""*/) {
+    if (dir.empty()) {
+#ifdef _SYSTEM_WINDOWS_
+        char* buffer = _getcwd(NULL, 0);
+#else
+        char* buffer = getcwd(NULL, 0);
+#endif
+        if (!buffer) {
+            return "";
+        }
+        dir = buffer;
+        free(buffer);
+    }
+    if (dir.length() > 0 && '/' == dir[dir.length() - 1]) {
+        dir.pop_back();
+    }
+    std::string::size_type pos = dir.find_last_of('/');
+    if (std::string::npos == pos) {
+        return dir;
+    }
+    return dir.substr(0, pos + 1);
+}
+/*********************************************************************/
 void Common::searchFile(std::string dirName, const std::vector<std::string>& extList, 
                         std::function<void(const std::string& fileName, 
                                            unsigned long fileSize, 
