@@ -47,7 +47,7 @@ public:
         static bool seedFlag = false;
         if (!seedFlag && !randomFunc) {
             seedFlag = true;
-            srand(time(NULL));
+            srand((unsigned int)time(NULL));
         }
         for (size_t i = 0, len = weightList.size(); i < len; ++i) {
             Factor factor = weightList[i];
