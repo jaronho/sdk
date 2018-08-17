@@ -6,6 +6,7 @@
 #ifndef _PROBABILITY_HPP_
 #define _PROBABILITY_HPP_
 
+#include <time.h>
 #include <vector>
 #include <functional>
 
