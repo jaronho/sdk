@@ -1,8 +1,3 @@
-/*
- * Memshare, quick and easy IPC.
- * Copyright (C) 2012  Tommy Wiklund
- */
-
 #ifndef _MEMSHARE_H_
 #define _MEMSHARE_H_
 
