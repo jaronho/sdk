@@ -369,8 +369,15 @@ bool Common::createDir(const std::string& dirName) {
     memset(tmp, 0, dirLen + 1);
     for (unsigned int i = 0; i < dirLen; ++i) {
         tmp[i] = dirName[i];
-        tmp[i + 1] = '\0';
+        int flag = 0;
         if ('/' == tmp[i] || '\\' == tmp[i]) {
+            flag = 1;
+            tmp[i] = '/';
+        } else if (dirLen - 1 == i) {
+            flag = 1;
+        }
+        if (flag) {
+            tmp[i + 1] = '\0';
 #ifdef _SYSTEM_WINDOWS_
             if (0 != _access(tmp, 0)) {
                 if (0 != _mkdir(tmp)) {
