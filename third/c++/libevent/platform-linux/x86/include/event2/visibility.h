@@ -27,7 +27,7 @@
 #ifndef EVENT2_VISIBILITY_H_INCLUDED_
 #define EVENT2_VISIBILITY_H_INCLUDED_
 
-#include <event2/event-config.h>
+#include "event-config.h"
 
 #if defined(event_EXPORTS) || defined(event_extra_EXPORTS) || defined(event_core_EXPORTS)
 # if defined (__SUNPRO_C) && (__SUNPRO_C >= 0x550)
