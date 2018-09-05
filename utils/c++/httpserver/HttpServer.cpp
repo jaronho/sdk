@@ -4,6 +4,11 @@
 * Brief:	http server
 **********************************************************************/
 #include "HttpServer.h"
+#if defined(WIN32) || defined(_WIN32) ||  defined(WIN64) || defined(_WIN64)
+#else
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
 static int startHttpServer(const char* ip, unsigned short port, void(*cb)(struct evhttp_request*, void*), void* arg);
 static const char* httpMethodName(evhttp_cmd_type method);
 static void httpServerCallback(struct evhttp_request* req, void* arg);
@@ -347,10 +352,13 @@ std::vector<std::string> HttpServer::localhosts(void) {
     if (0 == getaddrinfo(hostname, NULL, &hints, &results)) {
         char host[64] = { 0 };
         for (struct addrinfo* iter = results; iter; iter = iter->ai_next) {
-            struct sockaddr_in* addr = (struct sockaddr_in*)iter->ai_addr;
-            IN_ADDR inAddr = (*addr).sin_addr;
-            memset(host, 0, sizeof(host));
+        #if defined(WIN32) || defined(_WIN32) ||  defined(WIN64) || defined(_WIN64)
+            IN_ADDR inAddr = ((struct sockaddr_in*)iter->ai_addr)->sin_addr;
             sprintf(host, "%d.%d.%d.%d", inAddr.S_un.S_un_b.s_b1, inAddr.S_un.S_un_b.s_b2, inAddr.S_un.S_un_b.s_b3, inAddr.S_un.S_un_b.s_b4);
+        #else
+            struct in_addr inAddr = ((struct sockaddr_in*)iter->ai_addr)->sin_addr;
+            sprintf(host, "%s", inet_ntoa(inAddr));
+        #endif
             hosts.push_back(host);
         }
         freeaddrinfo(results);
@@ -609,7 +617,7 @@ void HttpServer::printReceive(char major,
         } else if (HttpField::TYPE_FILE == bodyIter->second->getType()) {
             printf("    [FILE] %s: filename => %s, file content type => %s, file size => %d\n",
                 bodyIter->second->getName().c_str(), bodyIter->second->getFilename().c_str(),
-                bodyIter->second->getFileContentType().c_str(), bodyIter->second->getContentLength());
+                bodyIter->second->getFileContentType().c_str(), (int)bodyIter->second->getContentLength());
         } else {
             printf("    [%d] can not deal\n", bodyIter->second->getType());
         }
