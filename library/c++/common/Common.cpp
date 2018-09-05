@@ -115,7 +115,7 @@ std::string Common::toString(double d) {
     return buf;
 }
 /*********************************************************************/
-std::string dec2bin(unsigned int n, unsigned int bit /*= 32*/) {
+std::string Common::dec2bin(unsigned int n, unsigned int bit /*= 32*/) {
     std::string s;
     for (unsigned int i = n; i; i = i / 2) {
         s += i % 2 ? "1" : "0";
