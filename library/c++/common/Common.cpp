@@ -8,25 +8,27 @@
     #define _SYSTEM_WINDOWS_
 #endif
 #include "Common.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <time.h>
 #include <fcntl.h>
 #include <locale.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #include <algorithm>
 #ifdef _SYSTEM_WINDOWS_
 #include <direct.h>
-#include <windows.h>
 #include <io.h>
+#include <windows.h>
+#pragma warning(disable: 4996)
 #else
 #include <dirent.h>
 #include <unistd.h>
+#include <sys/io.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #endif
-#pragma warning(disable: 4996)
 /*********************************************************************/
 bool Common::isDigit(char c) {
     return c >= '0' && c <= '9';
@@ -70,7 +72,7 @@ long Common::toLong(const std::string& str) {
 }
 /*********************************************************************/
 long long Common::toLongLong(const std::string& str) {
-    return _atoi64(str.c_str());
+    return strtoll(str.c_str(), NULL, 10);
 }
 /*********************************************************************/
 double Common::toDouble(const std::string& str) {
@@ -402,7 +404,7 @@ bool Common::createDir(const std::string& dirName) {
 void Common::removeDir(const std::string& dirName) {
 #ifdef _SYSTEM_WINDOWS_
     /* method 1 */
-/*
+#if 0
     struct _finddata_t fileData;
     int handle = _findfirst((dirName + "/*.*").c_str(), &fileData);
     if (-1 == handle || !(_A_SUBDIR & fileData.attrib)) {
@@ -421,7 +423,7 @@ void Common::removeDir(const std::string& dirName) {
     }
     _findclose(handle);
     rmdir(dirName.c_str());
-*/
+#endif
     /* method 2 */
     system(("rd /s /q \"" + dirName + "\"").c_str());
 #else
@@ -430,7 +432,7 @@ void Common::removeDir(const std::string& dirName) {
         return;
     }
     struct dirent* dirp = NULL;
-    while (dirp = readdir(dir)) {
+    while ((dirp = readdir(dir))) {
         if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name)) {
             continue;
         }
@@ -488,7 +490,10 @@ long Common::calcFileSize(const std::string& filePath) {
 #ifdef _SYSTEM_WINDOWS_
     long size = _filelength(_fileno(fp));
 #else
-    long size = filelength(fileno(fp));
+    long size = 0;
+    fseek(fp, 0, SEEK_END);
+    size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
 #endif
     fclose(fp);
     return size;
@@ -723,7 +728,7 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
         return;
     }
     struct dirent* dirp = NULL;
-    while (dirp = readdir(dir)) {
+    while ((dirp = readdir(dir))) {
         if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name)) {
             continue;
         }
@@ -795,7 +800,7 @@ void Common::searchDir(std::string dirName,
     }
     dirName = revisalPath(dirName);
     struct dirent* dirp = NULL;
-    while (dirp = readdir(dir)) {
+    while ((dirp = readdir(dir))) {
         if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name)) {
             continue;
         }
