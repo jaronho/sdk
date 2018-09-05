@@ -14,22 +14,22 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
 //------------------------------------------------------------------------
 static int startHttpServer(const char* ip, unsigned short port, void (*cb)(struct evhttp_request*, void*), void* arg) {
     if (!ip || 0 == strlen(ip)) {
-	    printf_s("start http server failed, ip is empty ...\n");
+	    printf("start http server failed, ip is empty ...\n");
         return 1;
     }
     if (0 == port) {
-	    printf_s("start http server failed, port is 0 ...\n");
+	    printf("start http server failed, port is 0 ...\n");
 	    return 2;
     }
     struct event_base* base = event_base_new();
     struct evhttp* http_server = evhttp_new(base);
     if (!http_server) {
-	    printf_s("start http server failed, evhttp_new error ...\n");
+	    printf("start http server failed, evhttp_new error ...\n");
         return 3;
     }
     /* bind address */
     if (0 != evhttp_bind_socket(http_server, ip, port)) {
-	    printf_s("start http server failed, bind socket %s:%u error ...\n", ip, port);
+	    printf("start http server failed, bind socket %s:%u error ...\n", ip, port);
         return 4;
     }
     /* set http request handle callabck */
@@ -37,7 +37,7 @@ static int startHttpServer(const char* ip, unsigned short port, void (*cb)(struc
         evhttp_set_gencb(http_server, cb, arg);
     }
     /* start event loop, it will callback when http request triggered */
-    printf_s("start http server %s:%u ok ...\n", ip, port);
+    printf("start http server %s:%u ok ...\n", ip, port);
     event_base_dispatch(base);
     evhttp_free(http_server);
     return 0;
@@ -185,20 +185,20 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                 MultipartFormData* forms = new MultipartFormData();
                 if (!forms->parse(iter->second, (const char*)body, bodySize, &bodyMap)) {
                     errorCode = 4;
-                    sprintf_s(errorBuf, "can not parse multipart form-data for uri '%s'", uri);
+                    sprintf(errorBuf, "can not parse multipart form-data for uri '%s'", uri);
                 }
                 delete forms;
             } else {
                 errorCode = 3;
-                sprintf_s(errorBuf, "no support %s request which content-type is '%s'", method, iter->second.c_str());
+                sprintf(errorBuf, "no support %s request which content-type is '%s'", method, iter->second.c_str());
             }
         } else {
             errorCode = 2;
-            sprintf_s(errorBuf, "no support %s request which without content-type", method);
+            sprintf(errorBuf, "no support %s request which without content-type", method);
         }
     } else {                                        /* parse other method */
         errorCode = 1;
-        sprintf_s(errorBuf, "no support %s request", method);
+        sprintf(errorBuf, "no support %s request", method);
     }
     /* parse real uri */
     size_t pos = realUri.find_first_of('?');
@@ -318,12 +318,12 @@ HttpServer* HttpServer::getInstance(void) {
 }
 //------------------------------------------------------------------------
 std::string HttpServer::nowdate(void) {
-    struct tm t;
+    struct tm* t;
     time_t now;
     time(&now);
-    localtime_s(&t, &now);
+    t = localtime(&now);
     char buf[32] = { 0 };
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &t);
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", t);
     return buf;
 }
 //------------------------------------------------------------------------
@@ -350,7 +350,7 @@ std::vector<std::string> HttpServer::localhosts(void) {
             struct sockaddr_in* addr = (struct sockaddr_in*)iter->ai_addr;
             IN_ADDR inAddr = (*addr).sin_addr;
             memset(host, 0, sizeof(host));
-            sprintf_s(host, "%d.%d.%d.%d", inAddr.S_un.S_un_b.s_b1, inAddr.S_un.S_un_b.s_b2, inAddr.S_un.S_un_b.s_b3, inAddr.S_un.S_un_b.s_b4);
+            sprintf(host, "%d.%d.%d.%d", inAddr.S_un.S_un_b.s_b1, inAddr.S_un.S_un_b.s_b2, inAddr.S_un.S_un_b.s_b3, inAddr.S_un.S_un_b.s_b4);
             hosts.push_back(host);
         }
         freeaddrinfo(results);
@@ -373,7 +373,7 @@ int HttpServer::handleFilter(char major,
     }
     if (0 != ret) {
         if (mIsPrintFilter) {
-            printf_s("FILTER: [%s] HTTP/%d.%d %s request by %s:%u for %s\n", nowdate().c_str(), major, minor, method, host, port, uri);
+            printf("FILTER: [%s] HTTP/%d.%d %s request by %s:%u for %s\n", nowdate().c_str(), major, minor, method, host, port, uri);
         }
     }
     return ret;
@@ -395,7 +395,7 @@ std::string HttpServer::handleError(char major,
     }
     std::string buf = getErrorResponse(errorCode, errorBuf);
     if (mIsPrintError) {
-        printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
+        printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
     }
     if (mErrorCallback) {
         mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -420,7 +420,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "method is empty";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
+            printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -432,7 +432,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "uri is empty";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
+            printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -444,7 +444,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "can not find router for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
+            printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -456,7 +456,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "can not support GET request for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
+            printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -468,7 +468,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "can not support POST request for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
+            printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -480,7 +480,7 @@ std::string HttpServer::handleRouter(char major,
         std::string errorBuf = "can not find execute function for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
-            printf_s("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
+            printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
             mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
@@ -508,7 +508,7 @@ void HttpServer::addRouter(const std::string& uri, HttpRouter* router) {
     }
     if (mRouterMap[uri]) {
         delete router;
-        printf_s("exist router for \"%s\"\n", uri.c_str());
+        printf("exist router for \"%s\"\n", uri.c_str());
     } else {
         mRouterMap[uri] = router;
     }
@@ -549,15 +549,15 @@ void HttpServer::addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK call
 //------------------------------------------------------------------------
 void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive /*= false*/, bool printError /*= true*/, bool printFilter /*= true*/) {
     if (mIsRunning) {
-        printf_s("http server is running aleady ...\n");
+        printf("http server is running aleady ...\n");
         return;
     }
     if (ip.empty()) {
-        printf_s("start http server failed, ip is empty ...\n");
+        printf("start http server failed, ip is empty ...\n");
         return;
     }
     if (0 == port) {
-        printf_s("start http server failed, port is 0 ...\n");
+        printf("start http server failed, port is 0 ...\n");
         return;
     }
     mIsRunning = true;
@@ -568,7 +568,7 @@ void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive
     WSADATA wsaData;
     if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) {
         mIsRunning = false;
-        printf_s("WSA startup failed ...\n");
+        printf("WSA startup failed ...\n");
         return;
     }
 #endif
@@ -581,7 +581,7 @@ void HttpServer::run(const std::string& ip, unsigned int port, bool printReceive
 //------------------------------------------------------------------------
 std::string HttpServer::getErrorResponse(unsigned int errorCode, const std::string& errorBuf) {
     char buf[256] = { 0 };
-    sprintf_s(buf, "{\"code\":%d,\"msg\":\"%s\"}", errorCode, errorBuf.c_str());
+    sprintf(buf, "{\"code\":%d,\"msg\":\"%s\"}", errorCode, errorBuf.c_str());
     return buf;
 }
 //------------------------------------------------------------------------
@@ -593,28 +593,28 @@ void HttpServer::printReceive(char major,
                               const std::map<std::string, std::string>& headers,
                               const std::map<std::string, HttpField*>& body,
                               const std::string& uri) {
-    printf_s("--------------------------------------------------[[\n");
-    printf_s("[%s]\n", nowdate().c_str());
-    printf_s("Receive a HTTP/%d.%d %s request from %s:%u\n", major, minor, method.c_str(), host.c_str(), port);
-    printf_s("Headers:\n");
+    printf("--------------------------------------------------[[\n");
+    printf("[%s]\n", nowdate().c_str());
+    printf("Receive a HTTP/%d.%d %s request from %s:%u\n", major, minor, method.c_str(), host.c_str(), port);
+    printf("Headers:\n");
     std::map<std::string, std::string>::const_iterator headerIter = headers.begin();
     for (; headers.end() != headerIter; ++headerIter) {
-        printf_s("    %s: %s\n", headerIter->first.c_str(), headerIter->second.c_str());
+        printf("    %s: %s\n", headerIter->first.c_str(), headerIter->second.c_str());
     }
-    printf_s("Body:\n");
+    printf("Body:\n");
     std::map<std::string, HttpField*>::const_iterator bodyIter = body.begin();
     for (; body.end() != bodyIter; ++bodyIter) {
         if (HttpField::TYPE_TEXT == bodyIter->second->getType()) {
-            printf_s("    [TEXT] %s: %s\n", bodyIter->second->getName().c_str(), bodyIter->second->getContent());
+            printf("    [TEXT] %s: %s\n", bodyIter->second->getName().c_str(), bodyIter->second->getContent());
         } else if (HttpField::TYPE_FILE == bodyIter->second->getType()) {
-            printf_s("    [FILE] %s: filename => %s, file content type => %s, file size => %d\n",
+            printf("    [FILE] %s: filename => %s, file content type => %s, file size => %d\n",
                 bodyIter->second->getName().c_str(), bodyIter->second->getFilename().c_str(),
                 bodyIter->second->getFileContentType().c_str(), bodyIter->second->getContentLength());
         } else {
-            printf_s("    [%d] can not deal\n", bodyIter->second->getType());
+            printf("    [%d] can not deal\n", bodyIter->second->getType());
         }
     }
-    printf_s("Uri: %s\n", uri.c_str());
-    printf_s("--------------------------------------------------]]\n");
+    printf("Uri: %s\n", uri.c_str());
+    printf("--------------------------------------------------]]\n");
 }
 //------------------------------------------------------------------------

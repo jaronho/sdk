@@ -181,7 +181,7 @@ auto handleError = [](const std::string& method,
                       unsigned int errorCode,
                       const std::string& errorBuf,
                       std::map<std::string, std::string>& responseHeaders)->void {
-    printf_s("Error: code => %d, msg => %s\n", errorCode, errorBuf.c_str());
+    printf("Error: code => %d, msg => %s\n", errorCode, errorBuf.c_str());
 };
 
 auto handlePost = [](const std::string& method,
