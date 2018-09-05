@@ -196,7 +196,7 @@ logfilewrapper_st* s_logWrapper = NULL;
 std::mutex s_logWrapperMutex;
 
 void logRecord(const std::string& str) {
-    printf_s("%s\n", str.c_str());
+    printf("%s\n", str.c_str());
     s_logWrapperMutex.lock();
     if (NULL == s_logWrapper) {
         s_logWrapper = logfilewrapper_init(LOG_FILENAME, LOG_EXTNAME, LOG_FILE_SIZE, false);
