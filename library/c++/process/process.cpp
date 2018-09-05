@@ -7,8 +7,8 @@
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
 #include <Windows.h>
 #include <TlHelp32.h>
-#endif
 #pragma warning(disable: 4996)
+#endif
 //--------------------------------------------------------------------------
 static char* wchar2char(const wchar_t* wstr) {
     char* buf = NULL;
