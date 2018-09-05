@@ -79,37 +79,37 @@ double Common::toDouble(const std::string& str) {
 /*********************************************************************/
 std::string Common::toString(short u) {
     char buf[8];
-    sprintf_s(buf, "%d", u);
+    sprintf(buf, "%d", u);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(int n) {
     char buf[16];
-    sprintf_s(buf, "%d", n);
+    sprintf(buf, "%d", n);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(long l) {
     char buf[32];
-    sprintf_s(buf, "%ld", l);
+    sprintf(buf, "%ld", l);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(long long ll) {
     char buf[64];
-    sprintf_s(buf, "%lld", ll);
+    sprintf(buf, "%lld", ll);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(float f) {
     char buf[64];
-    sprintf_s(buf, "%f", f);
+    sprintf(buf, "%f", f);
     return buf;
 }
 /*********************************************************************/
 std::string Common::toString(double d) {
     char buf[128];
-    sprintf_s(buf, "%f", d);
+    sprintf(buf, "%f", d);
     return buf;
 }
 /*********************************************************************/
@@ -449,8 +449,7 @@ void Common::removeDir(const std::string& dirName) {
 }
 /*********************************************************************/
 bool Common::existFile(const std::string& filePath) {
-    FILE* fp = NULL;
-    fopen_s(&fp, filePath.c_str(), "r");
+    FILE* fp = fopen(filePath.c_str(), "r");
     if (!fp) {
         return false;
     }
@@ -459,8 +458,7 @@ bool Common::existFile(const std::string& filePath) {
 }
 /*********************************************************************/
 bool Common::createFile(const std::string& filePath) {
-    FILE* fp = NULL;
-    fopen_s(&fp, filePath.c_str(), "wb");
+    FILE* fp = fopen(filePath.c_str(), "wb");
     if (!fp) {
         return false;
     }
@@ -483,8 +481,7 @@ bool Common::renameFile(const std::string& oldFileName, const std::string& newFi
 }
 /*********************************************************************/
 long Common::calcFileSize(const std::string& filePath) {
-    FILE* fp = NULL;
-    fopen_s(&fp, filePath.c_str(), "r");
+    FILE* fp = fopen(filePath.c_str(), "r");
     if (!fp) {
         return -1;
     }
@@ -518,8 +515,7 @@ std::vector<std::string> Common::stripFileInfo(const std::string& filePath) {
 }
 /*********************************************************************/
 unsigned char* Common::getFileData(const std::string& filePath, long* fileSize, bool isText) {
-    FILE* fp = NULL;
-    fopen_s(&fp, filePath.c_str(), "rb");
+    FILE* fp = fopen(filePath.c_str(), "rb");
     if (!fp) {
         return NULL;
     }
@@ -553,8 +549,7 @@ bool Common::writeDataToFile(const unsigned char* data, long dataSize, const std
     if (!data || 0 == dataSize) {
         return false;
     }
-    FILE* fp = NULL;
-    fopen_s(&fp, filePath.c_str(), "wb");
+    FILE* fp = fopen(filePath.c_str(), "wb");
     if (!fp) {
         return false;
     }
@@ -706,7 +701,7 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
         }
         /* all file type */
         if (extList.empty()) {
-            callback(subName, fileData.size, fileData.time_create, fileData.time_write, fileData.time_access);
+            callback(subName, fileData.size, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access));
             continue;
         }
         /* specific file type */
@@ -717,7 +712,7 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
         std::string ext = subName.substr(index, subName.size() - index);
         for (size_t i = 0; i < extList.size(); ++i) {
             if (extList[i] == ext) {
-                callback(subName, fileData.size, fileData.time_create, fileData.time_write, fileData.time_access);
+                callback(subName, fileData.size, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access));
             }
         }
     }
@@ -786,7 +781,7 @@ void Common::searchDir(std::string dirName,
         }
         if (_A_SUBDIR & fileData.attrib) {	/* is sub directory */
             std::string subDirName = dirName + "/" + fileData.name;
-            callback(subDirName, fileData.time_create, fileData.time_write, fileData.time_access);
+            callback(subDirName, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access));
             if (recursive) {
                 searchDir(subDirName, callback, true);
             }
@@ -830,7 +825,7 @@ bool Common::isIpFormat(std::string ip) {
         return false;
     }
     int a = -1, b = -1, c = -1, d = -1;
-    sscanf_s(ip.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
+    sscanf(ip.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
     if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255) {
         return false;
     }
@@ -848,7 +843,7 @@ int Common::isInnerIp(std::string ip, bool* ret) {
         return 1;
     }
     int a = -1, b = -1, c = -1, d = -1;
-    sscanf_s(ip.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
+    sscanf(ip.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
     if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255) {
         return 1;
     }
@@ -892,9 +887,9 @@ double Common::getTime(void) {
 /*********************************************************************/
 struct tm Common::timeToDate(long seconds /*= 0*/) {
     time_t t = seconds > 0 ? seconds : time(NULL);
-    struct tm date;
-    localtime_s(&date, &t);
-    return date;
+    struct tm* date;
+    date = localtime(&t);
+    return *date;
 }
 /*********************************************************************/
 long Common::dateToTime(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*= 8*/, int n /*= 0*/, int s /*= 0*/) {
