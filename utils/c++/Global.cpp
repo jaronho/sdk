@@ -5,6 +5,7 @@
 ***************************** Common 接口 ****************************
 **********************************************************************/
 std::string utf8ToString(const std::string& str) {
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     int nwLen = ::MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
     wchar_t* pwBuf = new wchar_t[nwLen + 1];    /* 一定要加1，不然会出现尾巴 */
     memset(pwBuf, 0, nwLen * 2 + 2);
@@ -19,9 +20,13 @@ std::string utf8ToString(const std::string& str) {
     pBuf = NULL;
     pwBuf = NULL;
     return retStr;
+#else
+    return str;
+#endif
 }
 
 std::string stringToUTF8(const std::string& str) {
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     int nwLen = ::MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, NULL, 0);
     wchar_t* pwBuf = new wchar_t[nwLen + 1];    /* 一定要加1，不然会出现尾巴 */
     ZeroMemory(pwBuf, nwLen * 2 + 2);
@@ -36,6 +41,9 @@ std::string stringToUTF8(const std::string& str) {
     pwBuf = NULL;
     pBuf = NULL;
     return retStr;
+#else
+    return str;
+#endif
 }
 
 std::string utf8string(const std::string& str) {
