@@ -75,7 +75,11 @@ int IniFile::getLine(FILE* fp, std::string& line, int lineSize /*= 128*/) {
             break;
         }
     }
-    line = buf;
+    char* tmp = buf;
+    if (strlen(tmp) >= 3 && ('\xEF' == tmp[0] && '\xBB' == tmp[1] && '\xBF' == tmp[2])) { /* skip BOM */
+        tmp = tmp + 3;
+    }
+    line = tmp;
     free(buf);
     buf = NULL;
     return line.length();
@@ -107,7 +111,7 @@ IniFile::~IniFile(void) {
     mFlags.clear();
 }
 
-int IniFile::open(const std::string& fileName) {
+int IniFile::open(const std::string& fileName, int lineLength /*= 128*/) {
     if ("" == fileName) {
         return 1;
     }
@@ -121,7 +125,7 @@ int IniFile::open(const std::string& fileName) {
     mSections[""] = section;
     std::string line;
     std::string comment;
-    while (getLine(fp, line) > 0) {
+    while (getLine(fp, line, lineLength) > 0) {
         trimRight(line, '\r');
         trimRight(line, '\n');
         trimLeftRightSpace(line);

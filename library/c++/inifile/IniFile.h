@@ -39,6 +39,7 @@ public:
     /*
      * Brief:	open ini file
      * Param:	fileName - file name, e.g. "asdf.ini","../asdf.ini","temp\\asdf.ini"
+     *          lineLength - line length
      * Return:	int
      *              0.ok
      *              1.fileName is empty
@@ -48,7 +49,7 @@ public:
      *              5.duplicate section name
      *              6.parse param failed
      */
-    int open(const std::string& fileName);
+    int open(const std::string& fileName, int lineLength = 128);
 
     /*
      * Brief:	save ini file
