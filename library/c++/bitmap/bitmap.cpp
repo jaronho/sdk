@@ -230,11 +230,11 @@ int Bitmap::toFile(const std::string& filename, bool isHex /*= true*/) {
             Pixel rgb = row[j];
             if (isHex) {
                 char hexStr[8] = { 0 };
-                sprintf_s(hexStr, "#%02X%02X%02X", rgb.r, rgb.g, rgb.b);
+                sprintf(hexStr, "#%02X%02X%02X", rgb.r, rgb.g, rgb.b);
                 file.write(hexStr, strlen(hexStr));
             } else {
                 char rgbStr[16] = { 0 };
-                sprintf_s(rgbStr, "%03d_%03d_%03d", rgb.r, rgb.g, rgb.b);
+                sprintf(rgbStr, "%03d_%03d_%03d", rgb.r, rgb.g, rgb.b);
                 file.write(rgbStr, strlen(rgbStr));
             }
         }

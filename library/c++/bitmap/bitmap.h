@@ -6,6 +6,7 @@
 #ifndef _BITMAP_H_
 #define _BITMAP_H_
 
+#include <string.h>
 #include <string>
 #include <vector>
 
