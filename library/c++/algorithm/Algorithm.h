@@ -9,22 +9,22 @@
 class Algorithm {
 public:
     /*
-     * Brief:   calculate grayscale rgb
-     * Param:   r - red channel value
-     *          g - green channel value
-     *          b - blue channel value
-     * Return: unsigned int[3], index 0 = red, 1 = green, 2 = blue
-     */
-    static const unsigned int* colorGrayscale(unsigned int r, unsigned int g, unsigned int b);
+    * Brief:   calculate grayscale rgb
+    * Param:   r - red channel value
+    *          g - green channel value
+    *          b - blue channel value
+    * Return: unsigned int*, index 0 = red, 1 = green, 2 = blue
+    */
+    static unsigned int* colorGrayscale(unsigned int r, unsigned int g, unsigned int b);
 
     /*
-     * Brief:   calculate old photo rgb
-     * Param:   r - red channel value
-     *          g - green channel value
-     *          b - blue channel value
-     * Return: unsigned int[3], index 0 = red, 1 = green, 2 = blue
-     */
-    static const unsigned int* colorOldPhoto(unsigned int r, unsigned int g, unsigned int b);
+    * Brief:   calculate old photo rgb
+    * Param:   r - red channel value
+    *          g - green channel value
+    *          b - blue channel value
+    * Return: unsigned int*, index 0 = red, 1 = green, 2 = blue
+    */
+    static unsigned int* colorOldPhoto(unsigned int r, unsigned int g, unsigned int b);
 
     /*
      * Brief:	XOR crypto
