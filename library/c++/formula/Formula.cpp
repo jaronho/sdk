@@ -149,21 +149,18 @@ double* Formula::pointOnCircle(double cX, double cY, double r, double angle) {
 }
 /*********************************************************************/
 int Formula::checkPointSide(double sX, double sY, double eX, double eY, double x, double y) {
-    if (isequald(sY, eY)) { /* horizontal segment line */
-        if (isequald(sY, y)) {  /* point is on line */
-            return 0;
-        } else if (y > sY) {    /* point is above line */
-            return 1;
-        }
-        return 2;   /* point is under line */
-    }
-    double factor = (y - sY)*(eX - sX)/(eY - sY) + sY;
-    if (isequald(x, factor)) {  /* point is on line */
+    double a = eY - sY;
+    double b = sX - eX;
+    double c = eX * sY - sX * eY;
+    double d = a * x + b * y + c;
+    if (isequald(0, d)) {   /* point is on line */
         return 0;
-    } else if (factor > x) {    /* point is at left side of line */
-        return 1;
     }
-    return 2;   /* point is at right side of line */
+    if (sY > eY) {  /* line like '\' */
+        return d > 0 ? 1 : 2;
+    }
+    /* line like '-','|','/' */
+    return d < 0 ? 1 : 2;
 }
 /*********************************************************************/
 double Formula::pointToLineDistance(double sX, double sY, double sZ, double eX, double eY, double eZ, double x, double y, double z) {
