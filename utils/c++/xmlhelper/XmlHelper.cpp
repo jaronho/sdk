@@ -67,7 +67,7 @@ pugi::xml_document* XmlHelper::loadFile(const std::string& fileName) {
         delete doc;
         return NULL;
     }
-    pugi::xml_parse_result result = doc->load_file(fileName.c_str());
+    pugi::xml_parse_result result = doc->load_file(fileName.c_str(), pugi::parse_full);
     if (pugi::status_ok != result.status) {
         delete doc;
         return NULL;
@@ -84,7 +84,7 @@ pugi::xml_document* XmlHelper::loadString(const std::string& content) {
         delete doc;
         return NULL;
     }
-    pugi::xml_parse_result result = doc->load_string(content.c_str());
+    pugi::xml_parse_result result = doc->load_string(content.c_str(), pugi::parse_full);
     if (pugi::status_ok != result.status) {
         delete doc;
         return NULL;
