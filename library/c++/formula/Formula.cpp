@@ -164,11 +164,11 @@ int Formula::checkPointSide(double sX, double sY, double eX, double eY, double x
 }
 /*********************************************************************/
 double Formula::pointToLineDistance(double sX, double sY, double sZ, double eX, double eY, double eZ, double x, double y, double z) {
-    double se = sqrt(pow(sX - eX, 2) + pow(sY - eY, 2) + pow(sZ - eZ, 2));
-    double sp = sqrt(pow(sX - x, 2) + pow(sY - y, 2) + pow(sZ - z, 2));
-    double ep = sqrt(pow(x - eX, 2) + pow(y - eY, 2) + pow(z - eZ, 2));
-    double cosS = (pow(sp, 2) + pow(se, 2) - pow(ep, 2)) / (2 * se * sp);
+    double es = sqrt(pow(eX - sX, 2) + pow(eY - sY, 2) + pow(eZ - sZ, 2));
+    double ps = sqrt(pow(x - sX, 2) + pow(y - sY, 2) + pow(z - sZ, 2));
+    double pe = sqrt(pow(x - eX, 2) + pow(y - eY, 2) + pow(z - eZ, 2));
+    double cosS = (pow(es, 2) + pow(ps, 2) - pow(pe, 2)) / (2 * es * ps);
     double sinS = sqrt(1 - pow(cosS, 2));
-    return sp * sinS;
+    return ps * sinS;
 }
 /*********************************************************************/
