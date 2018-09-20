@@ -892,8 +892,7 @@ double Common::getTime(void) {
 /*********************************************************************/
 struct tm Common::timeToDate(long seconds /*= 0*/) {
     time_t t = seconds > 0 ? seconds : time(NULL);
-    struct tm* date;
-    date = localtime(&t);
+    struct tm* date = localtime(&t);
     return *date;
 }
 /*********************************************************************/
@@ -909,5 +908,23 @@ long Common::dateToTime(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*
     date.tm_min = n;
     date.tm_sec = s;
     return (long)mktime(&date);
+}
+/*********************************************************************/
+unsigned long long Common::generateUID(void) {
+    time_t t = time(NULL);
+    struct tm* date = localtime(&t);
+    static int s_year = 0, s_mon = 0, s_mday = 0, s_hour = 0, s_min = 0, s_sec = 0, s_index = 1;
+    if (s_year == date->tm_year && s_mon == date->tm_mon && s_mday == date->tm_mday && s_hour == date->tm_hour && s_min == date->tm_min && s_sec == date->tm_sec) {
+        s_index++;
+    } else {
+        s_year = 1900 + date->tm_year, s_mon = 1 + date->tm_mon, s_mday = date->tm_mday, s_hour = date->tm_hour, s_min = date->tm_min, s_sec = date->tm_sec, s_index = 1;
+    }
+    return s_year * 10000000000000 + s_mon * 100000000000 + s_mday * 1000000000 + s_hour * 10000000 + s_min * 100000 + s_sec * 1000 + s_index;
+}
+/*********************************************************************/
+std::string Common::generateFilename(const std::string& extname) {
+    char filename[64] = { 0 };
+    sprintf(filename, "%llu%s", generateUID(), extname.empty() ? "" : ('.' == extname.at(0) ? extname.c_str() : ('.' + extname).c_str()));
+    return filename;
 }
 /*********************************************************************/
