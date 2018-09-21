@@ -913,7 +913,7 @@ long Common::dateToTime(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*
 unsigned long long Common::generateUID(void) {
     time_t t = time(NULL);
     struct tm* date = localtime(&t);
-    static int s_year = 0, s_mon = 0, s_mday = 0, s_hour = 0, s_min = 0, s_sec = 0, s_index = 1;
+    static unsigned long long s_year = 0, s_mon = 0, s_mday = 0, s_hour = 0, s_min = 0, s_sec = 0, s_index = 1;
     if (s_year == date->tm_year && s_mon == date->tm_mon && s_mday == date->tm_mday && s_hour == date->tm_hour && s_min == date->tm_min && s_sec == date->tm_sec) {
         s_index++;
     } else {
