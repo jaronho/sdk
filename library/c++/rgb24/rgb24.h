@@ -35,7 +35,7 @@ extern int* rgb24GrayscaleHistogram(const unsigned char* rgb24, int width, int h
 
 /*
  * 功  能:    计算rgb24二值化阀值(OTSU算法)
- * 参  数:    hist - 灰度直方图
+ * 参  数:    hist - 灰度直方图,必须为256长度
  * 返回值:    int
  */
 extern int rgb24BinarizationThresholdOTSU(const int* hist);

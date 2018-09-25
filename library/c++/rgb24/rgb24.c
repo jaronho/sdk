@@ -56,7 +56,6 @@ int* rgb24GrayscaleHistogram(const unsigned char* rgb24, int width, int height, 
 
 int rgb24BinarizationThresholdOTSU(const int* hist) {
     assert(hist);
-	assert(256 == sizeof(hist));
 	int i = 0, t = 0, maxT = 0;
 	int sum = 0, count = 0;
     float u0 = 0, u1 = 0, w0 = 0, w1 = 0;
