@@ -86,14 +86,7 @@ public:
     * Return:  int
     */
     int height(void);
-
-    /*
-     * Brief:   Provides a vector of vector of pixels representing the bitmap
-     * Param:   void
-     * Return:  PixelMatrix, the bitmap image, represented by a matrix of RGB pixels
-     */
-    PixelMatrix toPixelMatrix(void);
-
+    
     /*
      * Brief:   Overwrites the current bitmap with that represented by a matrix of pixels. 
      *          Does not validate that the new matrix of pixels is a proper image.
@@ -101,6 +94,20 @@ public:
      * Return:  void
      */
     void fromPixelMatrix(const PixelMatrix& pixels);
+
+    /*
+     * Brief:   Provides a vector of vector of pixels representing the bitmap
+     * Param:   void
+     * Return:  PixelMatrix, the bitmap image, represented by a matrix of RGB pixels
+     */
+    PixelMatrix toPixelMatrix(void);
+    
+    /*
+     * Brief:   Convert bitmap to rgb24 data buffer
+     * Param:   void
+     * Return:  unsigned char*, rgb24 data, each pixel place 3 bit(r, g, b)
+     */
+    unsigned char* toRGB24(void);
 
     /*
      * Brief:   Save bitmap data to text file

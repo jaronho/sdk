@@ -195,6 +195,12 @@ int Bitmap::height(void) {
     return mHeight;
 }
 
+void Bitmap::fromPixelMatrix(const PixelMatrix& values) {
+    mPixels = values;
+    mWidth = 0;
+    mHeight = 0;
+}
+
 PixelMatrix Bitmap::toPixelMatrix(void) {
 	if (isImage()) {
 		return mPixels;
@@ -202,10 +208,22 @@ PixelMatrix Bitmap::toPixelMatrix(void) {
 	return PixelMatrix();
 }
 
-void Bitmap::fromPixelMatrix(const PixelMatrix& values) {
-    mPixels = values;
-    mWidth = 0;
-    mHeight = 0;
+unsigned char* Bitmap::toRGB24(void) {
+    if (isImage()) {
+        return nullptr;
+    }
+    unsigned char* rgb24 = (unsigned char*)malloc(sizeof(unsigned char) * width() * height() * 3);
+    memset(rgb24, 0, sizeof(unsigned char) * width() * height() * 3);
+    for (int i = 0; i < height(); ++i) {
+        for (int j = 0; j < width(); ++j) {
+            int index = (i * width() + j) * 3;
+            Pixel rgb = mPixels[i][j];
+            rgb24[index] = rgb.r;
+            rgb24[index + 1] = rgb.g;
+            rgb24[index + 2] = rgb.b;
+        }
+    }
+    return rgb24;
 }
 
 int Bitmap::toFile(const std::string& filename, bool isHex /*= true*/) {
