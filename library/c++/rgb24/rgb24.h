@@ -13,15 +13,16 @@
 extern "C"
 {
 #endif
-	
+
 /*
  * 功  能:    把rgb24灰度化
  * 参  数:    rgb24 - rgb24数据
  *			  width - 图像宽,PS.每1个像素占3个数据位
  *            height - 图像高
+ *            clone - 是否深度拷贝,0.直接修改rgb24,1.新分配内存
  * 返回值:    void
  */
-extern void rgb24Grayscale(unsigned char* rgb24, int width, int height);
+extern unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone);
 
 /*
  * 功  能:    计算rgb24灰度直方图
@@ -46,10 +47,11 @@ extern int rgb24BinarizationThresholdOTSU(const int* hist);
  *            width - 图像宽,PS.每1个像素占3个数据位
  *            height - 图像高
  *            threshold - 阀值:(0, 255)
+ *            clone - 是否深度拷贝,0.直接修改rgb24,1.新分配内存
  *            count - 值为255的数量
  * 返回值:    void
  */
-extern void rgb24Binarization(unsigned char* rgb24, int width, int height, int threshold, int* count);
+extern unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int height, int threshold, int clone, int* count);
 
 #ifdef __cplusplus
 }

@@ -5,12 +5,17 @@
 **********************************************************************/
 #include "rgb24.h"
 
-void rgb24Grayscale(unsigned char* rgb24, int width, int height) {
+unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone) {
 	assert(rgb24);
 	assert(width > 0);
 	assert(height > 0);
 	int i = 0, j = 0, index = 0;
 	int r = 0, g = 0, b = 0, grayvalue = 0;
+    unsigned char* tmp = rgb24;
+    if (clone) {
+        tmp = (unsigned char*)malloc(sizeof(unsigned char) * width * height * 3);
+        memset(tmp, 0, sizeof(unsigned char) * width * height * 3);
+    }
     for (i = 0; i < height; ++i) {
         for (j = 0; j < width; ++j) {
             index = (i * width + j) * 3;	// 每个像素占3位,所以乘以3
@@ -18,9 +23,10 @@ void rgb24Grayscale(unsigned char* rgb24, int width, int height) {
             g = rgb24[index + 1];
             b = rgb24[index + 2];
             grayvalue = (int)(0.299 * r + 0.587 * g + 0.114 * b);	// 灰度值
-            rgb24[index] = rgb24[index + 1] = rgb24[index + 2] = (unsigned char)grayvalue;
+            tmp[index] = tmp[index + 1] = tmp[index + 2] = (unsigned char)grayvalue;
         }
     }
+    return tmp;
 }
 
 int* rgb24GrayscaleHistogram(const unsigned char* rgb24, int width, int height, int grayscaled) {
@@ -91,7 +97,7 @@ int rgb24BinarizationThresholdOTSU(const int* hist) {
 	return maxT;
 }
 
-void rgb24Binarization(unsigned char* rgb24, int width, int height, int threshold, int* count) {
+unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int height, int threshold, int clone, int* count) {
 	assert(rgb24);
 	assert(width);
 	assert(height);
@@ -99,6 +105,11 @@ void rgb24Binarization(unsigned char* rgb24, int width, int height, int threshol
     assert(count);
 	int i = 0, j = 0, index = 0;
 	int r = 0, g = 0, b = 0, value = 0;
+    unsigned char* tmp = rgb24;
+    if (clone) {
+        tmp = (unsigned char*)malloc(sizeof(unsigned char) * width * height * 3);
+        memset(tmp, 0, sizeof(unsigned char) * width * height * 3);
+    }
     for (i = 0; i < height; ++i) {
         for (j = 0; j < width; ++j) {
             index = (i * width + j) * 3;	// 每个像素占3位,所以乘以3
@@ -110,7 +121,8 @@ void rgb24Binarization(unsigned char* rgb24, int width, int height, int threshol
                 value = 255;
                 ++(*count);
             }
-            rgb24[index] = rgb24[index + 1] = rgb24[index + 2] = (unsigned char)value;
+            tmp[index] = tmp[index + 1] = tmp[index + 2] = (unsigned char)value;
         }
     }
+    return tmp;
 }
