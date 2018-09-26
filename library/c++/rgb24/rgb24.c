@@ -5,6 +5,28 @@
 **********************************************************************/
 #include "rgb24.h"
 
+unsigned char* rgb24Clip(const unsigned char* rgb24, int width, int height, int x, int y, int w, int h) {
+    assert(rgb24);
+    assert(width > 0);
+    assert(height > 0);
+    assert(x >= 0 && x < width && y >= 0 && y < height);
+    assert(w > 0 && w <= width && h > 0 && h <= height);
+    assert(x + w <= width && y + h <= height);
+    int i = 0, j = 0, index = 0, idx = 0;
+    unsigned char* clip = (unsigned char*)malloc(sizeof(unsigned char) * w * h * 3);
+    memset(clip, 0, sizeof(unsigned char) * w * h * 3);
+    for (i = 0; i < h; ++i) {
+        for (j = 0; j < w; ++j) {
+            index = (i * w + j) * 3;
+            idx = ((i + y) * width + j + x) * 3;
+            clip[index] = rgb24[idx];
+            clip[index + 1] = rgb24[idx + 1];
+            clip[index + 2] = rgb24[idx + 2];
+        }
+    }
+    return clip;
+}
+
 unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone) {
 	assert(rgb24);
 	assert(width > 0);
@@ -18,10 +40,10 @@ unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int c
     }
     for (i = 0; i < height; ++i) {
         for (j = 0; j < width; ++j) {
-            index = (i * width + j) * 3;	// 每个像素占3位,所以乘以3
-            r = rgb24[index];
-            g = rgb24[index + 1];
-            b = rgb24[index + 2];
+            index = (i * width + j) * 3;
+            r = (int)rgb24[index];
+            g = (int)rgb24[index + 1];
+            b = (int)rgb24[index + 2];
             grayvalue = (int)(0.299 * r + 0.587 * g + 0.114 * b);	// 灰度值
             tmp[index] = tmp[index + 1] = tmp[index + 2] = (unsigned char)grayvalue;
         }
@@ -40,7 +62,7 @@ int* rgb24GrayscaleHistogram(const unsigned char* rgb24, int width, int height, 
 	if (grayscaled) {	// 已灰度化
 		for (i = 0; i < height; ++i) {
 			for (j = 0; j < width; ++j) {
-				index = (i * width + j) * 3;	// 每个像素占3位,所以乘以3
+                index = (i * width + j) * 3;
                 grayvalue = rgb24[index];
 				hist[grayvalue]++;
 			}
@@ -48,10 +70,10 @@ int* rgb24GrayscaleHistogram(const unsigned char* rgb24, int width, int height, 
 	} else {	// 未灰度化
 		for (i = 0; i < height; ++i) {
 			for (j = 0; j < width; ++j) {
-				index = (i * width + j) * 3;	// 每个像素占3位,所以乘以3
-                r = rgb24[index];
-                g = rgb24[index + 1];
-                b = rgb24[index + 2];
+                index = (i * width + j) * 3;
+                r = (int)rgb24[index];
+                g = (int)rgb24[index + 1];
+                b = (int)rgb24[index + 2];
 				grayvalue = (int)(0.299 * r + 0.587 * g + 0.114 * b);	// 灰度值
 				hist[grayvalue]++;
 			}
@@ -112,10 +134,10 @@ unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int height, in
     }
     for (i = 0; i < height; ++i) {
         for (j = 0; j < width; ++j) {
-            index = (i * width + j) * 3;	// 每个像素占3位,所以乘以3
-            r = rgb24[index];
-            g = rgb24[index + 1];
-            b = rgb24[index + 2];
+            index = (i * width + j) * 3;
+            r = (int)rgb24[index];
+            g = (int)rgb24[index + 1];
+            b = (int)rgb24[index + 2];
             value = 0;
             if ((r + g + b) / 3 >= threshold) {
                 value = 255;

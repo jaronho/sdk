@@ -15,6 +15,19 @@ extern "C"
 #endif
 
 /*
+ * 功  能:    裁剪rgb24区域
+ * 参  数:    rgb24 - rgb24数据
+ *			  width - 图像宽,PS.每1个像素占3个数据位
+ *            height - 图像高
+ *            x - 横向起始坐标(原点为左上角)
+ *            y - 竖向起始坐标(原点为左上角)
+ *            w - 需要裁剪的宽
+ *            h - 需要裁剪的高
+ * 返回值:    void
+ */
+extern unsigned char* rgb24Clip(const unsigned char* rgb24, int width, int height, int x, int y, int w, int h);
+
+/*
  * 功  能:    把rgb24灰度化
  * 参  数:    rgb24 - rgb24数据
  *			  width - 图像宽,PS.每1个像素占3个数据位
