@@ -27,12 +27,12 @@ unsigned char* rgb24Clip(const unsigned char* rgb24, int width, int height, int 
     return clip;
 }
 
-unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone) {
+unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone, int* min, int* max) {
 	assert(rgb24);
 	assert(width > 0);
 	assert(height > 0);
 	int i = 0, j = 0, index = 0;
-	int r = 0, g = 0, b = 0, grayvalue = 0;
+    int r = 0, g = 0, b = 0, grayvalue = 0, minValue = -1, maxValue = -1;
     unsigned char* tmp = rgb24;
     if (clone) {
         tmp = (unsigned char*)malloc(sizeof(unsigned char) * width * height * 3);
@@ -46,7 +46,19 @@ unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int c
             b = (int)rgb24[index + 2];
             grayvalue = (int)(0.299 * r + 0.587 * g + 0.114 * b);	// 灰度值
             tmp[index] = tmp[index + 1] = tmp[index + 2] = (unsigned char)grayvalue;
+            if (-1 == minValue || grayvalue < minValue) {
+                minValue = grayvalue;
+            }
+            if (-1 == maxValue || grayvalue > maxValue) {
+                maxValue = grayvalue;
+            }
         }
+    }
+    if (min) {
+        *min = minValue;
+    }
+    if (max) {
+        *max = maxValue;
     }
     return tmp;
 }

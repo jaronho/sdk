@@ -33,9 +33,11 @@ extern unsigned char* rgb24Clip(const unsigned char* rgb24, int width, int heigh
  *			  width - 图像宽,PS.每1个像素占3个数据位
  *            height - 图像高
  *            clone - 是否深度拷贝,0.直接修改rgb24,1.新分配内存
+ *            min - 最小灰度值
+ *            max - 最大灰度值
  * 返回值:    void
  */
-extern unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone);
+extern unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone, int* min, int* max);
 
 /*
  * 功  能:    计算rgb24灰度直方图
