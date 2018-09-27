@@ -27,13 +27,12 @@ unsigned char* rgb24Clip(const unsigned char* rgb24, int width, int height, int 
     return clip;
 }
 
-unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone, int* min, int* max, int* avg) {
+unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone, int* min, int* max) {
 	assert(rgb24);
 	assert(width > 0);
 	assert(height > 0);
 	int i = 0, j = 0, index = 0;
     int r = 0, g = 0, b = 0, grayvalue = 0, minValue = -1, maxValue = -1;
-    unsigned long totalValue = 0;
     unsigned char* tmp = rgb24;
     if (clone) {
         tmp = (unsigned char*)malloc(sizeof(unsigned char) * width * height * 3);
@@ -53,7 +52,6 @@ unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int c
             if (-1 == maxValue || grayvalue > maxValue) {
                 maxValue = grayvalue;
             }
-            totalValue += grayvalue;
         }
     }
     if (min) {
@@ -61,9 +59,6 @@ unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int c
     }
     if (max) {
         *max = maxValue;
-    }
-    if (avg) {
-        *avg = totalValue / (width * height);
     }
     return tmp;
 }
@@ -134,6 +129,13 @@ int rgb24BinarizationThresholdOTSU(const int* hist) {
 		}
 	}
 	return maxT;
+}
+
+int rgb24BinarizationThreshold(int minGray, int maxGray, float t) {
+    assert(minGray >= 0 && minGray <= 255);
+    assert(maxGray >= 0 && maxGray <= 255);
+    assert(t > 0 && t < 1);
+    return (int)(minGray * (1 - t) + maxGray * t);
 }
 
 unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int height, int threshold, int clone, int* count) {

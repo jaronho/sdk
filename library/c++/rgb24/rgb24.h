@@ -35,10 +35,9 @@ extern unsigned char* rgb24Clip(const unsigned char* rgb24, int width, int heigh
  *            clone - 是否深度拷贝,0.直接修改rgb24,1.新分配内存
  *            min - 最小灰度值
  *            max - 最大灰度值
- *            avg - 平均灰度值
  * 返回值:    void
  */
-extern unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone, int* min, int* max, int* avg);
+extern unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone, int* min, int* max);
 
 /*
  * 功  能:    计算rgb24灰度直方图
@@ -56,6 +55,15 @@ extern int* rgb24GrayscaleHistogram(const unsigned char* rgb24, int width, int h
  * 返回值:    int
  */
 extern int rgb24BinarizationThresholdOTSU(const int* hist);
+
+/*
+ * 功  能:    计算rgb24二值化阀值
+ * 参  数:    minGray - 最小灰度值,值范围[0,255]
+ *            maxGray - 最大灰度值,值范围[0,255]
+ *            t -  最大灰度值的权重系数,值范围(0,1),值越大,阀值越靠近maxGray
+ * 返回值:    int
+ */
+extern int rgb24BinarizationThreshold(int minGray, int maxGray, float t);
 
 /*
  * 功  能:    把rgb24二值化
