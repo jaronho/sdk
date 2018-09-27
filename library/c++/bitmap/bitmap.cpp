@@ -209,7 +209,7 @@ PixelMatrix Bitmap::toPixelMatrix(void) {
 }
 
 unsigned char* Bitmap::toRGB24(void) {
-    if (isImage()) {
+    if (!isImage()) {
         return nullptr;
     }
     unsigned char* rgb24 = (unsigned char*)malloc(sizeof(unsigned char) * width() * height() * 3);
