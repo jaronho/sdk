@@ -212,8 +212,7 @@ unsigned char* Bitmap::toRGB24(void) {
     if (!isImage()) {
         return nullptr;
     }
-    unsigned char* rgb24 = (unsigned char*)malloc(sizeof(unsigned char) * width() * height() * 3);
-    memset(rgb24, 0, sizeof(unsigned char) * width() * height() * 3);
+    unsigned char* rgb24 = (unsigned char*)calloc(width() * height() * 3, sizeof(unsigned char));
     for (int i = 0; i < height(); ++i) {
         for (int j = 0; j < width(); ++j) {
             int index = (i * width() + j) * 3;
