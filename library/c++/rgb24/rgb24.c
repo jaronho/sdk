@@ -13,8 +13,7 @@ unsigned char* rgb24Clip(const unsigned char* rgb24, int width, int height, int 
     assert(w > 0 && w <= width && h > 0 && h <= height);
     assert(x + w <= width && y + h <= height);
     int i = 0, j = 0, index = 0, idx = 0;
-    unsigned char* clip = (unsigned char*)malloc(sizeof(unsigned char) * w * h * 3);
-    memset(clip, 0, sizeof(unsigned char) * w * h * 3);
+    unsigned char* clip = (unsigned char*)calloc(w * h * 3, sizeof(unsigned char));
     for (i = 0; i < h; ++i) {
         for (j = 0; j < w; ++j) {
             index = (i * w + j) * 3;
@@ -35,8 +34,7 @@ unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int c
     int r = 0, g = 0, b = 0, grayvalue = 0, minValue = -1, maxValue = -1;
     unsigned char* tmp = rgb24;
     if (clone) {
-        tmp = (unsigned char*)malloc(sizeof(unsigned char) * width * height * 3);
-        memset(tmp, 0, sizeof(unsigned char) * width * height * 3);
+        tmp = (unsigned char*)calloc(width * height * 3, sizeof(unsigned char));
     }
     for (i = 0; i < height; ++i) {
         for (j = 0; j < width; ++j) {
@@ -69,8 +67,7 @@ int* rgb24GrayscaleHistogram(const unsigned char* rgb24, int width, int height, 
 	assert(height > 0);
 	int i = 0, j = 0, index = 0;
 	int r = 0, g = 0, b = 0, grayvalue = 0;
-    int* hist = (int*)malloc(sizeof(int) * 256);
-    memset(hist, 0, sizeof(int) * 256);
+    int* hist = (int*)calloc(256, sizeof(int));
 	if (grayscaled) {	// 已灰度化
 		for (i = 0; i < height; ++i) {
 			for (j = 0; j < width; ++j) {
@@ -148,8 +145,7 @@ unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int height, in
 	int r = 0, g = 0, b = 0, value = 0;
     unsigned char* tmp = rgb24;
     if (clone) {
-        tmp = (unsigned char*)malloc(sizeof(unsigned char) * width * height * 3);
-        memset(tmp, 0, sizeof(unsigned char) * width * height * 3);
+        tmp = (unsigned char*)calloc(width * height * 3, sizeof(unsigned char));
     }
     for (i = 0; i < height; ++i) {
         for (j = 0; j < width; ++j) {
