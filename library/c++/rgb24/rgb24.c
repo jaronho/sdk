@@ -178,15 +178,16 @@ unsigned char* rgb24ByPositions(const int* positions, int count, int coord, int 
     assert(b >= 0 && b <= 255);
     unsigned char* rgb24;
     int i = 0, j = 0, index = 0;
-    int hit = 0, k = 0, x = 0, y = 0;
+    int hit = 0, k = 0, idx = 0, x = 0, y = 0;
     rgb24 = (unsigned char*)calloc(width * height * 3, sizeof(unsigned char));
     for (i = 0; i < height; ++i) {
         for (j = 0; j < width; ++j) {
             index = (i * width + j) * 3;
             hit = 0;
             for (k = 0; k < count; ++k) {
-                x = positions[k * 2];
-                y = positions[k * 2 + 1];
+                idx = k * 2;
+                x = positions[idx];
+                y = positions[idx + 1];
                 if (2 == coord) {
                     y = height - y;
                 }
@@ -195,9 +196,15 @@ unsigned char* rgb24ByPositions(const int* positions, int count, int coord, int 
                     break;
                 }
             }
-            rgb24[index] = (unsigned char)(hit ? r : bgR);
-            rgb24[index + 1] = (unsigned char)(hit ? g : bgG);
-            rgb24[index + 2] = (unsigned char)(hit ? b : bgB);
+            if (hit) {
+                rgb24[index] = (unsigned char)r;
+                rgb24[index + 1] = (unsigned char)g;
+                rgb24[index + 2] = (unsigned char)b;
+            } else {
+                rgb24[index] = (unsigned char)bgR;
+                rgb24[index + 1] = (unsigned char)bgG;
+                rgb24[index + 2] = (unsigned char)bgB;
+            }
         }
     }
     return rgb24;
