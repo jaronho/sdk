@@ -1,7 +1,7 @@
 /**********************************************************************
 * Author:	jaron.ho
 * Date:		2018-09-25
-* Brief:	rgb24数据处理
+* Brief:	rgb24数据处理,PS:rgb24坐标系原点在左上角
 **********************************************************************/
 #ifndef RGB24_H
 #define RGB24_H
@@ -24,7 +24,7 @@ extern "C"
  *            y - 竖向起始坐标(原点为左上角)
  *            w - 需要裁剪的宽
  *            h - 需要裁剪的高
- * 返回值:    void
+ * 返回值:    unsigned char*
  */
 extern unsigned char* rgb24Clip(const unsigned char* rgb24, int width, int height, int x, int y, int w, int h);
 
@@ -36,7 +36,7 @@ extern unsigned char* rgb24Clip(const unsigned char* rgb24, int width, int heigh
  *            clone - 是否深度拷贝,0.直接修改rgb24,1.新分配内存
  *            min - 最小灰度值
  *            max - 最大灰度值
- * 返回值:    void
+ * 返回值:    unsigned char*
  */
 extern unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int clone, int* min, int* max);
 
@@ -74,9 +74,26 @@ extern int rgb24BinarizationThreshold(int minGray, int maxGray, float t);
  *            threshold - 阀值:(0, 255)
  *            clone - 是否深度拷贝,0.直接修改rgb24,1.新分配内存
  *            count - 值为255的数量
- * 返回值:    void
+ * 返回值:    unsigned char*
  */
 extern unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int height, int threshold, int clone, int* count);
+
+/*
+ * 功  能:    根据坐标点生成rgb24数据
+ * 参  数:    positions - 坐标点数组
+ *            count - 坐标个数,PS.每1个坐标占2个数据位
+ *            coord - 坐标系:1.原点在左上角(同rgb24坐标系),2.原点在左下角
+ *            width - 图像宽,PS.每1个像素占3个数据位
+ *            height - 图像高
+ *            bgR - 背景颜色,R分量
+ *            bgG - 背景颜色,G分量
+ *            bgB - 背景颜色,B分量
+ *            r - 坐标点颜色,R分量
+ *            g - 坐标点颜色,G分量
+ *            b - 坐标点颜色,B分量
+ * 返回值:    unsigned char*
+ */
+extern unsigned char* rgb24ByPositions(const int* positions, int count, int coord, int width, int height, int bgR, int bgG, int bgB, int r, int g, int b);
 
 #ifdef __cplusplus
 }

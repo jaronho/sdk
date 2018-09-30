@@ -137,8 +137,8 @@ int rgb24BinarizationThreshold(int minGray, int maxGray, float t) {
 
 unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int height, int threshold, int clone, int* count) {
 	assert(rgb24);
-	assert(width);
-	assert(height);
+    assert(width > 0);
+    assert(height > 0);
     assert(threshold > 0 && threshold < 255);
     assert(count);
 	int i = 0, j = 0, index = 0;
@@ -162,4 +162,43 @@ unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int height, in
         }
     }
     return tmp;
+}
+
+unsigned char* rgb24ByPositions(const int* positions, int count, int coord, int width, int height, int bgR, int bgG, int bgB, int r, int g, int b) {
+    assert(positions);
+    assert(count > 0);
+    assert(1 == coord || 2 == coord);
+    assert(width > 0);
+    assert(height > 0);
+    assert(bgR >= 0 && bgR <= 255);
+    assert(bgG >= 0 && bgG <= 255);
+    assert(bgB >= 0 && bgB <= 255);
+    assert(r >= 0 && r <= 255);
+    assert(g >= 0 && g <= 255);
+    assert(b >= 0 && b <= 255);
+    unsigned char* rgb24;
+    int i = 0, j = 0, index = 0;
+    int hit = 0, k = 0, x = 0, y = 0;
+    rgb24 = (unsigned char*)calloc(width * height * 3, sizeof(unsigned char));
+    for (i = 0; i < height; ++i) {
+        for (j = 0; j < width; ++j) {
+            index = (i * width + j) * 3;
+            hit = 0;
+            for (k = 0; k < count; ++k) {
+                x = positions[k * 2];
+                y = positions[k * 2 + 1];
+                if (2 == coord) {
+                    y = height - y;
+                }
+                if (x == j && y == i) {
+                    hit = 1;
+                    break;
+                }
+            }
+            rgb24[index] = (unsigned char)(hit ? r : bgR);
+            rgb24[index + 1] = (unsigned char)(hit ? g : bgG);
+            rgb24[index + 2] = (unsigned char)(hit ? b : bgB);
+        }
+    }
+    return rgb24;
 }
