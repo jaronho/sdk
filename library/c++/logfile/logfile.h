@@ -38,17 +38,15 @@ extern logfile_st* logfile_open(const char* filename, size_t maxSize);
 /*
  * Brief:	close a logfile
  * Param:	lf - a log file
- * Return:	0.ok
- *          1.lf is NULL
+ * Return:	void
  */
-extern unsigned int logfile_close(logfile_st* lf);
+extern void logfile_close(logfile_st* lf);
 
 /*
  * Brief:	clear logfile
  * Param:	lf - a log file
  * Return:	0.ok
- *          1.lf is NULL
- *          2.clear lf fail
+ *          1.clear lf fail, can not open file
  */
 extern unsigned int logfile_clear(logfile_st* lf);
 
@@ -71,10 +69,9 @@ extern unsigned int logfile_isenable(logfile_st* lf);
  * Brief:	set logfile enable status
  * Param:	lf - a log file
  *          enable - 0.false, 1.true
- * Return:	0.ok
- *          1.lf is NULL
+ * Return:	void
  */
-extern unsigned int logfile_enable(logfile_st* lf, unsigned int enable);
+extern void logfile_enable(logfile_st* lf, unsigned int enable);
 
 /*
  * Brief:	record to log file
@@ -82,11 +79,9 @@ extern unsigned int logfile_enable(logfile_st* lf, unsigned int enable);
  *          content - record content
  *          newline - whether create a new line, 0.false, 1.true
  * Return:	0.ok
- *          1.lf is NULL
- *          2.lf is disable
- *          3.contnet is NULL/empty
- *          4.content size large max
- *          5.file size reach max
+ *          1.lf is disable
+ *          2.content size large max
+ *          3.file size reach max
  */
 extern unsigned int logfile_record(logfile_st* lf, const char* content, unsigned int newline);
 
@@ -95,11 +90,9 @@ extern unsigned int logfile_record(logfile_st* lf, const char* content, unsigned
  * Param:	lf - a log file
  *          content - record content
  * Return:	0.ok
- *          1.lf is NULL
- *          2.lf is disable
- *          3.contnet is NULL/empty
- *          4.content size large max
- *          5.file size reach max
+ *          1.lf is disable
+ *          2.content size large max
+ *          3.file size reach max
  */
 extern unsigned int logfile_record_with_time(logfile_st* lf, const char* content);
 
@@ -110,11 +103,9 @@ extern unsigned int logfile_record_with_time(logfile_st* lf, const char* content
  *          withtime - with time, 0.false, 1.true
  *          content - record content
  * Return:	0.ok
- *          1.lf is NULL
- *          2.lf is disable
- *          3.contnet is NULL/empty
- *          4.content size large max
- *          5.file size reach max
+ *          1.lf is disable
+ *          2.content size large max
+ *          3.file size reach max
  */
 extern unsigned int logfile_record_with_tag(logfile_st* lf, const char* tag, unsigned int withtime, const char* content);
 

@@ -20,7 +20,6 @@ typedef struct logfilewrapper_st {
     char* basename;
     char* extname;
     unsigned int override;
-    unsigned int count;
 } logfilewrapper_st;
 
 /*
@@ -56,8 +55,8 @@ extern void logfilewrapper_enable(logfilewrapper_st* wrapper, unsigned int enabl
  *          withtime - with time, 0.false, 1.true
  *          content - record content
  * Return:	0.ok
- *          1.logrecord is invalid
- *          2.content is null or empty
+ *          1.disabled
+ *          2.content size large max
  *          3.file reach max size, create new file fail
  */
 extern unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, unsigned int withtime, const char* content);
