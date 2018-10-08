@@ -82,7 +82,7 @@ extern unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int hei
  * 功  能:    根据坐标点生成rgb24数据
  * 参  数:    positions - 坐标点数组
  *            count - 坐标个数,PS.每1个坐标占2个数据位
- *            coord - 坐标系:1.原点在左上角(同rgb24坐标系),2.原点在左下角
+ *            csys - 坐标系:1.原点在左上角(同rgb24坐标系),2.原点在左下角
  *            width - 图像宽,PS.每1个像素占3个数据位
  *            height - 图像高
  *            bgR - 背景颜色,R分量
@@ -93,7 +93,7 @@ extern unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int hei
  *            b - 坐标点颜色,B分量
  * 返回值:    unsigned char*
  */
-extern unsigned char* rgb24ByPositions(const int* positions, int count, int coord, int width, int height, int bgR, int bgG, int bgB, int r, int g, int b);
+extern unsigned char* rgb24ByPositions(const int* positions, int count, int csys, int width, int height, int bgR, int bgG, int bgB, int r, int g, int b);
 
 #ifdef __cplusplus
 }

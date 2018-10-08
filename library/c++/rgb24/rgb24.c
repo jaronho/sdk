@@ -164,10 +164,10 @@ unsigned char* rgb24Binarization(unsigned char* rgb24, int width, int height, in
     return tmp;
 }
 
-unsigned char* rgb24ByPositions(const int* positions, int count, int coord, int width, int height, int bgR, int bgG, int bgB, int r, int g, int b) {
+unsigned char* rgb24ByPositions(const int* positions, int count, int csys, int width, int height, int bgR, int bgG, int bgB, int r, int g, int b) {
     assert(positions);
     assert(count > 0);
-    assert(1 == coord || 2 == coord);
+    assert(1 == csys || 2 == csys);
     assert(width > 0);
     assert(height > 0);
     assert(bgR >= 0 && bgR <= 255);
@@ -176,10 +176,9 @@ unsigned char* rgb24ByPositions(const int* positions, int count, int coord, int 
     assert(r >= 0 && r <= 255);
     assert(g >= 0 && g <= 255);
     assert(b >= 0 && b <= 255);
-    unsigned char* rgb24;
     int i = 0, j = 0, index = 0;
     int hit = 0, k = 0, idx = 0, x = 0, y = 0;
-    rgb24 = (unsigned char*)calloc(width * height * 3, sizeof(unsigned char));
+    unsigned char* rgb24 = (unsigned char*)calloc(width * height * 3, sizeof(unsigned char));
     for (i = 0; i < height; ++i) {
         for (j = 0; j < width; ++j) {
             index = (i * width + j) * 3;
@@ -188,7 +187,7 @@ unsigned char* rgb24ByPositions(const int* positions, int count, int coord, int 
                 idx = k * 2;
                 x = positions[idx];
                 y = positions[idx + 1];
-                if (2 == coord) {
+                if (2 == csys) {
                     y = height - y;
                 }
                 if (x == j && y == i) {
