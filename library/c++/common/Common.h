@@ -458,11 +458,11 @@ public:
      * other functions
      **********************************************************************/
      
-     /*
-      * Brief:   generate uid
-      * Param:   void
-      * Return:  unsigned long long
-      */
+    /*
+     * Brief:   generate uid
+     * Param:   void
+     * Return:  unsigned long long
+     */
     static unsigned long long generateUID(void);
     
     /*
