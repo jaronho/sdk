@@ -436,6 +436,20 @@ public:
     static double getTime(void);
 
     /*
+     * Brief:	get current date
+     * Param:	year - current year [1900, )
+     *          mon - current month [1, 12]
+     *          mday - current day in month [1, 31]
+     *          hour - current hour [0, 23]
+     *          min - current minute [0, 59]
+     *          sec - current seconds [0, 60]
+     *          wday - current day in week [1, 7]: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+     *          yday - current day in year [1, 366]
+     * Return:	void
+     */
+    static void getDate(int* year, int* mon, int* mday, int* hour = NULL, int* min = NULL, int* sec = NULL, int* wday = NULL, int* yday = NULL);
+
+    /*
      * Brief:	time to date
      * Param:	seconds - seconds, if = 0, get current date
      * Return:	tm

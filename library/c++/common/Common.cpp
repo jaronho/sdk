@@ -890,6 +890,35 @@ double Common::getTime(void) {
 #endif
 }
 /*********************************************************************/
+void Common::getDate(int* year, int* mon, int* mday, int* hour /*= NULL*/, int* min /*= NULL*/, int* sec /*= NULL*/, int* wday /*= NULL*/, int* yday /*= NULL*/) {
+    time_t t = time(NULL);
+    struct tm* date = localtime(&t);
+    if (year) {
+        *year = 1900 + date->tm_year;
+    }
+    if (mon) {
+        *mon = 1 + date->tm_mon;
+    }
+    if (mday) {
+        *mday = date->tm_mday;
+    }
+    if (hour) {
+        *hour = date->tm_hour;
+    }
+    if (min) {
+        *min = date->tm_min;
+    }
+    if (sec) {
+        *sec = date->tm_sec;
+    }
+    if (wday) {
+        *wday = 0 == date->tm_wday ? 7 : date->tm_wday;
+    }
+    if (yday) {
+        *yday = 1 + date->tm_yday;
+    }
+}
+/*********************************************************************/
 struct tm Common::timeToDate(long seconds /*= 0*/) {
     time_t t = seconds > 0 ? seconds : time(NULL);
     struct tm* date = localtime(&t);
@@ -911,13 +940,13 @@ long Common::dateToTime(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*
 }
 /*********************************************************************/
 unsigned long long Common::generateUID(void) {
-    time_t t = time(NULL);
-    struct tm* date = localtime(&t);
     static unsigned long long s_year = 0, s_mon = 0, s_mday = 0, s_hour = 0, s_min = 0, s_sec = 0, s_index = 1;
-    if (s_year == date->tm_year && s_mon == date->tm_mon && s_mday == date->tm_mday && s_hour == date->tm_hour && s_min == date->tm_min && s_sec == date->tm_sec) {
+    int year = 0, mon = 0, mday = 0, hour = 0, min = 0, sec = 0;
+    getDate(&year, &mon, &mday, &hour, &min, &sec, NULL, NULL);
+    if (year == s_year && mon == s_mon && mday == s_mday && hour == s_hour && min == s_min && sec == s_sec) {
         s_index++;
     } else {
-        s_year = 1900 + date->tm_year, s_mon = 1 + date->tm_mon, s_mday = date->tm_mday, s_hour = date->tm_hour, s_min = date->tm_min, s_sec = date->tm_sec, s_index = 1;
+        s_year = year, s_mon = mon, s_mday = mday, s_hour = hour, s_min = min, s_sec = sec, s_index = 1;
     }
     return s_year * 10000000000000 + s_mon * 100000000000 + s_mday * 1000000000 + s_hour * 10000000 + s_min * 100000 + s_sec * 1000 + s_index;
 }
