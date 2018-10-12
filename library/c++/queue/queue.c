@@ -41,7 +41,7 @@ queue_st* queue_create(unsigned long capacity, int loop, int block) {
     q->state = QUEUE_EMPTY;
 	q->loop = loop;
 	q->block = block;
-    q->buf = malloc(capacity * sizeof(void*));
+    q->buf = (void**)malloc(capacity * sizeof(void*));
 #ifdef QUEUE_THREAD_SAFETY
 	sem_init(&q->sem, 0, 1);
     pthread_mutex_init(&q->mutex, NULL);
