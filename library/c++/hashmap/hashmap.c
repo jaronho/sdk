@@ -20,13 +20,13 @@ static unsigned int ht_calc_hash(const char* key) {
 
 /* Create a hashmap with capacity 'capacity' and return a pointer to it*/
 hashmap_st* hashmap_create(unsigned long capacity) {
-	hashmap_st* hasht = malloc(sizeof(hashmap_st));
+	hashmap_st* hasht = (hashmap_st*)malloc(sizeof(hashmap_st));
 	if (!hasht) {
 		return NULL;
 	}
 	hasht->capacity = capacity;
 	hasht->count = 0;
-	if (NULL == (hasht->map = malloc(capacity * sizeof(hashmap_element_st*)))) {
+	if (NULL == (hasht->map = (hashmap_element_st*)malloc(capacity * sizeof(hashmap_element_st*)))) {
 		free(hasht->map);
 		return NULL;
 	}
@@ -98,7 +98,7 @@ int hashmap_put(hashmap_st* hasht, const char* key, void* data) {
 		e = e->next;
 	}
 	// Getting here means the key doesn't already exist
-	if (NULL == (e = malloc(sizeof(hashmap_element_st) + strlen(key) + 1))) {
+	if (NULL == (e = (hashmap_element_st*)malloc(sizeof(hashmap_element_st) + strlen(key) + 1))) {
 		return 4;
 	}
 	strcpy(e->key, key);
