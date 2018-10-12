@@ -177,7 +177,7 @@ static queue_st* queue_create(unsigned long capacity, int loop) {
     q->top = 0;
     q->state = QUEUE_EMPTY;
 	q->loop = loop;
-    q->buf = malloc(capacity * sizeof(void*));
+    q->buf = (void**)malloc(capacity * sizeof(void*));
 	sem_init(&q->sem, 0, 1);
     pthread_mutex_init(&q->mutex, NULL);
 	pthread_cond_init(&q->cond, NULL);
