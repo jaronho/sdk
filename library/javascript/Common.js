@@ -146,6 +146,18 @@ Common.characterPlaceholder = function(ch, charset) {
     return 4;
 };
 //----------------------------------------------------------------------
+// 判断字符个数
+Common.characterCount = function(str, charset) {
+    if ('string' != typeof(str)) {
+        throw new Error("not support type '" + typeof(str) + "'");
+    }
+    var count = 0;
+    for (var i = 0, len.length; i < len; ++i) {
+        count += this.characterPlaceholder(str.charCodeAt(i), charset);
+    }
+    return count;
+};
+//----------------------------------------------------------------------
 // 截取文件信息
 Common.stripFileInfo = function(fullFileName) {
     if ('string' != typeof(fullFileName)) {
