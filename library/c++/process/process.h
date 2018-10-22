@@ -58,13 +58,14 @@ public:
      * Param:	appName - application name, must be absolute path, e.g. "C:/Program Files/Notepad++/notepad++.exe"
      *          workingDir - application working directory, must be absolute path, e.g. "C:/Program Files/Notepad++/"
      *          newConsole - is application run use it's own console
+     *          pid - if ok, save the app process id
      * Return:	0.ok
      *          1.appName is NULL or empty
      *          2.appName is not absolute path
      *          3.workingDir is not absolute path
      *          4.create process fail
      */
-    static int runApp(const char* appName, const char* workingDir = NULL, bool newConsole = false);
+    static int runApp(const char* appName, const char* workingDir = NULL, bool newConsole = false, unsigned long* pid = NULL);
 
     /*
      * Brief:	check whether application file is exist
