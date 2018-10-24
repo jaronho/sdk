@@ -497,7 +497,7 @@ function moveBy(object, x, y, duration, callback, id) {
         if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_x"]) {
             xFlag = true;
             var aniX = createXOffsetAnimation(object, object.x, object.x + x, duration, function() {
-                ani.destroy();
+                aniX.destroy();
                 if ('string' === typeof(id) && id.length > 0) {
                     if (undefined !== mAnimationMap[id + "_x"]) {
                         mAnimationMap[id + "_x"] = undefined;
@@ -510,7 +510,7 @@ function moveBy(object, x, y, duration, callback, id) {
                 }
             })
             if ('string' === typeof(id) && id.length > 0) {
-                mAnimationMap[id + "_x"] = ani;
+                mAnimationMap[id + "_x"] = aniX;
             }
             aniX.start();
         }
@@ -534,7 +534,7 @@ function moveBy(object, x, y, duration, callback, id) {
                 }
             })
             if ('string' === typeof(id) && id.length > 0) {
-                mAnimationMap[id + "_y"] = ani;
+                mAnimationMap[id + "_y"] = aniY;
             }
             aniY.start();
         }
@@ -584,7 +584,7 @@ function moveFromTo(object, fromX, fromY, toX, toY, duration, callback, id) {
                     }
                 })
                 if ('string' === typeof(id) && id.length > 0) {
-                    mAnimationMap[id + "_x"] = ani;
+                    mAnimationMap[id + "_x"] = aniX;
                 }
                 aniX.start();
             }
@@ -616,7 +616,7 @@ function moveFromTo(object, fromX, fromY, toX, toY, duration, callback, id) {
                     }
                 })
                 if ('string' === typeof(id) && id.length > 0) {
-                    mAnimationMap[id + "_y"] = ani;
+                    mAnimationMap[id + "_y"] = aniY;
                 }
                 aniY.start();
             }
