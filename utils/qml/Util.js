@@ -144,6 +144,27 @@ function stopBlink(viewList, immediately, showAtLast, id) {
     }
 }
 //----------------------------------------------------------------------
+// 播放帧动画
+function playFrameAnimation(image, frameList, duration, callback) {
+    if (frameList.length <= 1 || duration <= 0) {
+        return;
+    }
+    image.source = frameList[0];
+    var index = 1;
+    createTimer(duration, 'function' === typeof(callback) ? frameList.length - 1 : 0, function(tm, runCount) {
+        image.source = frameList[index];
+        if (index === frameList.length - 1) {
+            index = 0;
+        } else {
+            ++index;
+        }
+    }, function(tm) {
+        if ('function' === typeof(callback)) {
+            callback();
+        }
+    });
+}
+//----------------------------------------------------------------------
 // 创建对象,qmlFile:例"Sprite.qml"
 function createObject(qmlFile, parent, callback) {
     if ('function' !== typeof(callback)) {
