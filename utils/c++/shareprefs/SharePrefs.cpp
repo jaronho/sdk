@@ -25,13 +25,13 @@ static bool copyFile(const std::string& srcFileName, const std::string& destFile
     fseek(fp_src, 0, SEEK_END);
     fileSize = ftell(fp_src);
     fseek(fp_src, 0, SEEK_SET);
-    unsigned char* fileData = new unsigned char[fileSize];
+    unsigned char* fileData = (unsigned char*)calloc(fileSize, sizeof(unsigned char));
     fileSize = fread(fileData, sizeof(unsigned char), fileSize, fp_src);
     fclose(fp_src);
     fwrite(fileData, fileSize, sizeof(unsigned char), fp_dest);
 	fflush(fp_dest);
     fclose(fp_dest);
-    delete fileData;
+    free(fileData);
     return true;
 }
 
