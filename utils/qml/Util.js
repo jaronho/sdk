@@ -31,7 +31,14 @@ function createTimer(interval, count, runCF, overCF, id) {
         mTimerMap[id].stop(false);
         delete mTimerMap[id];
     }
-    var timer = mTimerManager.createTimer(interval, count, runCF, overCF, null, null);
+    var timer = mTimerManager.createTimer(interval, count, runCF, function(tm) {
+        if (mTimerMap[id]) {
+            delete mTimerMap[id];
+        }
+        if ('function' === typeof(overCF)) {
+            overCF(tm);
+        }
+    }, null, null);
     mTimerMap[id] = timer;
     timer.start(Date.now(), false);
     return id;
@@ -103,12 +110,18 @@ function startBlink(viewList, showTime, hideTime, count, showAtLast, overCF, id)
         if (count > 0 && showFlag !== showAtLast) {
             delayWith(showFlag ? showTime : hideTime, function() {
                 setViewListShow(showAtLast);
+                if (mBlinkMap[id]) {
+                    delete mBlinkMap[id];
+                }
                 if ('function' === typeof(overCF)) {
                     overCF();
                 }
             }, id);
         } else {
             setViewListShow(showAtLast);
+            if (mBlinkMap[id]) {
+                delete mBlinkMap[id];
+            }
             if ('function' === typeof(overCF)) {
                 overCF();
             }
@@ -348,20 +361,17 @@ function createYOffsetAnimation(object, from, to, duration, callback) {
 // 完成动画
 function completeAnimation(id) {
     if ('string' === typeof(id) && id.length > 0) {
-        var ani = mAnimationMap[id];
-        if (undefined !== ani) {
-            mAnimationMap[id] = undefined;
-            ani.stop();
+        if (mAnimationMap[id]) {
+            mAnimationMap[id].stop();
+            delete mAnimationMap[id];
         } else {
-            var aniX = mAnimationMap[id + "_x"];
-            if (undefined !== aniX) {
-                mAnimationMap[id + "_x"] = undefined;
-                aniX.stop();
+            if (mAnimationMap[id + "_x"]) {
+                mAnimationMap[id + "_x"].stop();
+                delete mAnimationMap[id + "_x"];
             }
-            var aniY = mAnimationMap[id + "_y"];
-            if (undefined !== aniY) {
-                mAnimationMap[id + "_y"] = undefined;
-                aniY.stop();
+            if (mAnimationMap[id + "_y"]) {
+                mAnimationMap[id + "_y"].stop();
+                delete mAnimationMap[id + "_y"];
             }
         }
     }
@@ -369,10 +379,7 @@ function completeAnimation(id) {
 //----------------------------------------------------------------------
 // 动画是否在播放
 function isAnimationPlay(id) {
-    if ('string' === typeof(id) && id.length > 0
-            && (undefined !== mAnimationMap[id]
-                || undefined !== mAnimationMap[id + "_x"]
-                || undefined !== mAnimationMap[id + "_y"])) {
+    if ('string' === typeof(id) && id.length > 0 && (mAnimationMap[id] || mAnimationMap[id + "_x"] || mAnimationMap[id + "_y"])) {
         return true;
     }
     return false;
@@ -380,7 +387,7 @@ function isAnimationPlay(id) {
 //----------------------------------------------------------------------
 // 透明度
 function opacityFromto(object, from, to, duration, callback, id) {
-    if ('string' === typeof(id) && id.length > 0 && undefined !== mAnimationMap[id]) {
+    if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id]) {
         return;
     }
     if (from === to) {
@@ -392,8 +399,8 @@ function opacityFromto(object, from, to, duration, callback, id) {
     var ani = createOpacityAnimation(object, from, to, duration, function() {
         ani.destroy();
         if ('string' === typeof(id) && id.length > 0) {
-            if (undefined !== mAnimationMap[id]) {
-                mAnimationMap[id] = undefined;
+            if (mAnimationMap[id]) {
+                delete mAnimationMap[id];
                 if ('function' === typeof(callback)) {
                     callback();
                 }
@@ -437,7 +444,7 @@ function fadeOut(object, duration, callback, id) {
 //----------------------------------------------------------------------
 // 缩放
 function scaleFromTo(object, from, to, duration, callback, id) {
-    if ('string' === typeof(id) && id.length > 0 && undefined !== mAnimationMap[id]) {
+    if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id]) {
         return;
     }
     if (from === to) {
@@ -449,8 +456,8 @@ function scaleFromTo(object, from, to, duration, callback, id) {
     var ani = createScaleAnimation(object, from, to, duration, function() {
         ani.destroy();
         if ('string' === typeof(id) && id.length > 0) {
-            if (undefined !== mAnimationMap[id]) {
-                mAnimationMap[id] = undefined;
+            if  (mAnimationMap[id]) {
+                delete mAnimationMap[id];
                 if ('function' === typeof(callback)) {
                     callback();
                 }
@@ -472,7 +479,7 @@ function scaleTo(object, to, duration, callback, id) {
 //----------------------------------------------------------------------
 // 旋转
 function rotateFromTo(object, from, to, duration, callback, id) {
-    if ('string' === typeof(id) && id.length > 0 && undefined !== mAnimationMap[id]) {
+    if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id]) {
         return;
     }
     if (from === to) {
@@ -484,8 +491,8 @@ function rotateFromTo(object, from, to, duration, callback, id) {
     var ani = createRotationAnimation(object, from, to, duration, function() {
         ani.destroy();
         if ('string' === typeof(id) && id.length > 0) {
-            if (undefined !== mAnimationMap[id]) {
-                mAnimationMap[id] = undefined;
+            if (mAnimationMap[id]) {
+                delete mAnimationMap[id];
                 if ('function' === typeof(callback)) {
                     callback();
                 }
@@ -515,13 +522,13 @@ function moveBy(object, x, y, duration, callback, id) {
     }
     var xFlag = false;
     if ('number' === typeof(x) && 0 !== x) {
-        if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_x"]) {
+        if ('string' !== typeof(id) || id.length <= 0 || mAnimationMap[id + "_x"]) {
             xFlag = true;
             var aniX = createXOffsetAnimation(object, object.x, object.x + x, duration, function() {
                 aniX.destroy();
                 if ('string' === typeof(id) && id.length > 0) {
-                    if (undefined !== mAnimationMap[id + "_x"]) {
-                        mAnimationMap[id + "_x"] = undefined;
+                    if (mAnimationMap[id + "_x"]) {
+                        delete mAnimationMap[id + "_x"];
                         if ('function' === typeof(callback)) {
                             callback();
                         }
@@ -537,15 +544,15 @@ function moveBy(object, x, y, duration, callback, id) {
         }
     }
     if ('number' === typeof(y) && 0 !== y) {
-        if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_y"]) {
+        if ('string' !== typeof(id) || id.length <= 0 || mAnimationMap[id + "_y"]) {
             var aniY = createYOffsetAnimation(object, object.y, object.y + y, duration, function() {
                 aniY.destroy();
                 if (xFlag) {
                     return;
                 }
                 if ('string' === typeof(id) && id.length > 0) {
-                    if (undefined !== mAnimationMap[id + "_y"]) {
-                        mAnimationMap[id + "_y"] = undefined;
+                    if (mAnimationMap[id + "_y"]) {
+                        delete mAnimationMap[id + "_y"];
                         if ('function' === typeof(callback)) {
                             callback();
                         }
@@ -589,13 +596,13 @@ function moveFromTo(object, fromX, fromY, toX, toY, duration, callback, id) {
             toX = object.x;
         }
         if (fromX !== toX) {
-            if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_x"]) {
+            if ('string' !== typeof(id) || id.length <= 0 || mAnimationMap[id + "_x"]) {
                 xFlag = true;
                 var aniX = createXOffsetAnimation(object, fromX, toX, duration, function() {
                     aniX.destroy();
                     if ('string' === typeof(id) && id.length > 0) {
-                        if (undefined !== mAnimationMap[id + "_x"]) {
-                            mAnimationMap[id + "_x"] = undefined;
+                        if (mAnimationMap[id + "_x"]) {
+                            delete mAnimationMap[id + "_x"];
                             if ('function' === typeof(callback)) {
                                 callback();
                             }
@@ -619,15 +626,15 @@ function moveFromTo(object, fromX, fromY, toX, toY, duration, callback, id) {
             toY = object.y;
         }
         if (fromY !== toY) {
-            if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_y"]) {
+            if ('string' !== typeof(id) || id.length <= 0 || mAnimationMap[id + "_y"]) {
                 var aniY = createYOffsetAnimation(object, fromY, toY, duration, function() {
                     aniY.destroy();
                     if (xFlag) {
                         return;
                     }
                     if ('string' === typeof(id) && id.length > 0) {
-                        if (undefined !== mAnimationMap[id + "_y"]) {
-                            mAnimationMap[id + "_y"] = undefined;
+                        if (mAnimationMap[id + "_y"]) {
+                            delete mAnimationMap[id + "_y"];
                             if ('function' === typeof(callback)) {
                                 callback();
                             }
