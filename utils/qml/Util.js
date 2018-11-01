@@ -200,25 +200,30 @@ function createObject(qmlFile, parent, callback) {
     function finishCreation() {
         if (0 === com.status) {
             console.warn("createObject => no data is available for the component \"" + qmlFile + "\"");
+            com.destroy();
             callback(null);
         } else if (1 === com.status) {
             var obj = com.createObject(parent);
             if (null === obj) {
                 console.warn("createObject => error creating object \"" + qmlFile + "\"");
             }
+            com.destroy();
             callback(obj);
         } else if (3 === com.status) {
             console.warn("createObject => error loading component \"" + qmlFile + "\", " + com.errorString());
+            com.destroy();
             callback(null);
         }
     }
     if (0 === com.status) {
         console.warn("createObject => no data is available for the component \"" + qmlFile + "\"");
+        com.destroy();
         callback(null);
     } else if (1 === com.status) {
         finishCreation();
     } else if (3 === com.status) {
         console.warn("createObject => error loading component \"" + qmlFile + "\", " + com.errorString());
+        com.destroy();
         callback(null);
     } else {
         com.statusChanged.connect(finishCreation);
