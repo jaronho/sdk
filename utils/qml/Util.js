@@ -213,6 +213,9 @@ function createObject(qmlFile, parent, callback) {
             console.warn("createObject => error loading component \"" + qmlFile + "\", " + com.errorString());
             com.destroy();
             callback(null);
+        } else {
+            com.destroy();
+            callback(null);
         }
     }
     if (0 === com.status) {
