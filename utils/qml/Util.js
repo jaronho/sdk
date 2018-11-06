@@ -158,7 +158,7 @@ function stopBlink(viewList, immediately, showAtLast, id) {
 }
 //----------------------------------------------------------------------
 // 播放帧动画
-function playFrameAnimation(image, frameList, duration, callback) {
+function playFrameAnimation(image, frameList, duration, callback, id) {
     if (frameList.length <= 1 || duration <= 0) {
         return;
     }
@@ -175,7 +175,12 @@ function playFrameAnimation(image, frameList, duration, callback) {
         if ('function' === typeof(callback)) {
             callback();
         }
-    });
+    }, id);
+}
+//----------------------------------------------------------------------
+// 停止帧动画
+function stopFrameAnimation(id) {
+    destroyTimer(id);
 }
 //----------------------------------------------------------------------
 // 创建对象,qmlFile:例"Sprite.qml"
