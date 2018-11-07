@@ -164,7 +164,7 @@ function playFrameAnimation(image, frameList, duration, count, callback, id) {
     }
     image.source = frameList[0];
     var index = 1;
-    createTimer(duration, frameList.length * count - 1, function(tm, runCount) {
+    createTimer(duration, frameList.length * count, function(tm, runCount) {
         image.source = frameList[index];
         if (index === frameList.length - 1) {
             index = 0;
