@@ -10,9 +10,9 @@
 #include "timer.h"
 
 /* 定时器触发回调,返回值:无 */
-#define TIMER_TRIGGER_CALLBACK std::function<void(timer_st* tm, unsigned long runCount, void* param)>
+#define TIMER_TRIGGER_CALLBACK std::function<void(timer_st* tm, unsigned long runCount)>
 /* 定时器结束回调,返回值:无 */
-#define TIMER_OVER_CALLBACK std::function<void(timer_st* tm, void* param)>
+#define TIMER_OVER_CALLBACK std::function<void(timer_st* tm)>
 
 class TimerManager {
 public:
@@ -87,19 +87,19 @@ public:
 #endif // _TIMER_MANAGER_H_
 
 /*
-auto handleTimerTrigger1 = [](timer_st* tm, unsigned long runCount, void* param)->void {
+auto handleTimerTrigger1 = [](timer_st* tm, unsigned long runCount)->void {
     printf("------- handleTimerTrigger1 --------- %f\n", TimerManager::getTime());
 };
 
-auto handleTimerTrigger2 = [](timer_st* tm, unsigned long runCount, void* param)->void {
+auto handleTimerTrigger2 = [](timer_st* tm, unsigned long runCount)->void {
     printf("------- handleTimerTrigger2 --------- %f\n", TimerManager::getTime());
 };
 
-auto handleTimerOver1 = [](timer_st* tm, void* param)->void {
+auto handleTimerOver1 = [](timer_st* tm)->void {
     printf("------- handleTimerOver1 --------- %f\n", TimerManager::getTime());
 };
 
-auto handleTimerOver3 = [](timer_st* tm, void* param)->void {
+auto handleTimerOver3 = [](timer_st* tm)->void {
     printf("------- handleTimerOver3 --------- %f\n", TimerManager::getTime());
     TimerManager::getInstance()->stop("timer_2");
 };

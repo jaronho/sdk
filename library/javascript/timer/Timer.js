@@ -39,21 +39,22 @@ function CreateTimerManager() {
 		mTimerList = [];
 	}
 	// create a timer
-	timerManager.createTimer = function(interval, count, runCF, overCF, target, param) {
+	timerManager.createTimer = function(interval, count, runCF, overCF, target, id, param) {
 		// private member variables
 		if (interval <= 0) {
 			throw new Error("interval <= 0");
 		}
-		var mInterval = interval;			// interval duration in milliseconds
-		var mTotalCount = count;			// number of intervals, if count <= 0, timer will repeat forever
-		var mCurrentCount = 0;				// current interval count
-		var mStartTime = 0;					// start time for the current interval in milliseconds
-		var mRunning = false;				// status of the timer
-		var mIsPause = false;				// is timer paused
-		var mRunCallFunc = runCF;			// called when current count changed
-		var mOverCallFunc = overCF;			// called when timer is complete
-		var mTarget = target;				// callback target
-		var mParam = param;					// parameter
+		var mInterval = interval;			        // interval duration in milliseconds
+		var mTotalCount = count;			        // number of intervals, if count <= 0, timer will repeat forever
+		var mCurrentCount = 0;				        // current interval count
+		var mStartTime = 0;					        // start time for the current interval in milliseconds
+		var mRunning = false;				        // status of the timer
+		var mIsPause = false;				        // is timer paused
+		var mRunCallFunc = runCF;			        // called when current count changed
+		var mOverCallFunc = overCF;			        // called when timer is complete
+		var mTarget = target;				        // callback target
+        var mId = 'string' == typeof(id) ? id : ""; // id
+		var mParam = param;					        // parameter
 		var tm = {};
 		// public methods
 		tm.update = function(currentTime) {
@@ -135,6 +136,9 @@ function CreateTimerManager() {
 		tm.setOverHandler = function(overCF) {
 			mOverCallFunc = overCF;
 		};
+        tm.getId = function() {
+            return mId;
+        };
 		tm.getParam = function() {
 			return mParam;
 		};

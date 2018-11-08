@@ -8,24 +8,25 @@ package com.jaronho.sdk.library.timer;
 
 public class Timer {
     public static abstract class RunHandler {
-        public abstract void onCallback(Timer tm, int runCount, Object param);
+        public abstract void onCallback(Timer tm, int runCount);
     }
 
     public static abstract class OverHandler {
-        public abstract void onCallback(Timer tm, Object param);
+        public abstract void onCallback(Timer tm);
     }
 
-    private long mInterval = 1;				    // interval duration in milliseconds
+    private long mInterval = 1;				        // interval duration in milliseconds
     private int mTotalCount = 0;				    // number of intervals, if count <= 0, timer will repeat forever
-    private int mCurrentCount = 0;			    // current interval count
+    private int mCurrentCount = 0;			        // current interval count
     private long mStartTime = 0;				    // start time for the current interval in milliseconds
-    private boolean mRunning = false;			// status of the timer
-    private boolean mIsPause = false;			// is timer paused
-    private RunHandler mRunHandler = null;		// called when current count changed
+    private boolean mRunning = false;			    // status of the timer
+    private boolean mIsPause = false;			    // is timer paused
+    private RunHandler mRunHandler = null;		    // called when current count changed
     private OverHandler mOverHandler = null;	    // called when timer is complete
+    private String mId = "";                        // id
     private Object mParam = null;				    // parameter
 
-    public Timer(long interval, int count, RunHandler runHandler, OverHandler overHandler, Object param) {
+    public Timer(long interval, int count, RunHandler runHandler, OverHandler overHandler, String id, Object param) {
         if (interval <= 0) {
             throw new AssertionError("interval <= 0");
         }
@@ -33,6 +34,7 @@ public class Timer {
         mTotalCount = count;
         mRunHandler = runHandler;
         mOverHandler = overHandler;
+        mId = null == id ? "" : id;
         mParam = param;
     }
 
@@ -51,7 +53,7 @@ public class Timer {
                 mCurrentCount = mCurrentCount + runCount;
                 mStartTime = currentTime;
                 if (null != mRunHandler) {
-                    mRunHandler.onCallback(this, runCount, mParam);
+                    mRunHandler.onCallback(this, runCount);
                 }
             }
         } else {
@@ -68,7 +70,7 @@ public class Timer {
         mCurrentCount = 0;
         mStartTime = currentTime;
         if (null != mRunHandler && executeFlag) {
-            mRunHandler.onCallback(this, 0, mParam);
+            mRunHandler.onCallback(this, 0);
         }
     }
 
@@ -79,7 +81,7 @@ public class Timer {
         mRunning = false;
         mIsPause = true;
         if (null != mOverHandler && executeFlag) {
-            mOverHandler.onCallback(this, mParam);
+            mOverHandler.onCallback(this);
         }
     }
 
@@ -124,6 +126,10 @@ public class Timer {
 
     public void setOverHandler(OverHandler overHandler) {
         mOverHandler = overHandler;
+    }
+    
+    public String getId() {
+        return mId;
     }
 
     public Object getParam() {

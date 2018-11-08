@@ -37,7 +37,7 @@ public class TimerManager {
             RunObject runObj = (RunObject)msg.obj;
             if (null != runObj && null != runObj.handler) {
                 int runCount = msg.arg1;
-                runObj.handler.onCallback(runObj.timer, runCount, runObj.timer.getParam());
+                runObj.handler.onCallback(runObj.timer, runCount);
             }
         }
     };
@@ -46,7 +46,7 @@ public class TimerManager {
         public void handleMessage(Message msg) {
             OverObject overObj = (OverObject)msg.obj;
             if (null != overObj && null != overObj.handler) {
-                overObj.handler.onCallback(overObj.timer, overObj.timer.getParam());
+                overObj.handler.onCallback(overObj.timer);
             }
         }
     };
@@ -118,7 +118,7 @@ public class TimerManager {
                     msg.obj = overObj;
                     mOverHandler.sendMessage(msg);
                 }
-            }, param);
+            }, id, param);
             tm.start(SystemClock.elapsedRealtime(), doStartCB);
             runObj.timer = tm;
             overObj.timer = tm;
