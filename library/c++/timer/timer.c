@@ -74,7 +74,7 @@ void start_timer(timer_st* tm, unsigned long long current_time, unsigned int exe
 	tm->current_count = 0;
 	tm->start_time = current_time;
 	if (tm->run_handler && execute_flag) {
-		tm->run_handler(tm, 0);
+		tm->run_handler(tm, 1);
 	}
 }
 

@@ -70,7 +70,7 @@ public class Timer {
         mCurrentCount = 0;
         mStartTime = currentTime;
         if (null != mRunHandler && executeFlag) {
-            mRunHandler.onCallback(this, 0);
+            mRunHandler.onCallback(this, 1);
         }
     }
 
