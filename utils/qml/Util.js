@@ -32,13 +32,13 @@ function createTimer(interval, count, runCF, overCF, id) {
         delete mTimerMap[id];
     }
     var timer = mTimerManager.createTimer(interval, count, runCF, function(tm) {
-        if (mTimerMap[id]) {
-            delete mTimerMap[id];
+        if (mTimerMap[tm.id]) {
+            delete mTimerMap[tm.id];
         }
         if ('function' === typeof(overCF)) {
             overCF(tm);
         }
-    }, null, null);
+    }, null, id, null);
     mTimerMap[id] = timer;
     timer.start(Date.now(), false);
     return id;
@@ -101,17 +101,17 @@ function startBlink(viewList, showTime, hideTime, count, showAtLast, overCF, id)
         setViewListShow(showFlag);
         var params = tm.getParam();
         if (params instanceof Array && "stop" === params[0] && showFlag === params[1]) {
-            if (mBlinkMap[id]) {
-                mBlinkMap[id].stop(false);
-                delete mBlinkMap[id];
+            if (mBlinkMap[tm.id]) {
+                mBlinkMap[tm.id].stop(false);
+                delete mBlinkMap[tm.id];
             }
         }
     }, function(tm) {
         if (count > 0 && showFlag !== showAtLast) {
             delayWith(showFlag ? showTime : hideTime, function() {
                 setViewListShow(showAtLast);
-                if (mBlinkMap[id]) {
-                    delete mBlinkMap[id];
+                if (mBlinkMap[tm.id]) {
+                    delete mBlinkMap[tm.id];
                 }
                 if ('function' === typeof(overCF)) {
                     overCF();
@@ -119,14 +119,14 @@ function startBlink(viewList, showTime, hideTime, count, showAtLast, overCF, id)
             }, id);
         } else {
             setViewListShow(showAtLast);
-            if (mBlinkMap[id]) {
-                delete mBlinkMap[id];
+            if (mBlinkMap[tm.id]) {
+                delete mBlinkMap[tm.id];
             }
             if ('function' === typeof(overCF)) {
                 overCF();
             }
         }
-    }, null, null);
+    }, null, id, null);
     mBlinkMap[id] = blink;
     blink.start(Date.now(), false);
     return id;
