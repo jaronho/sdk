@@ -45,12 +45,12 @@ function createTimer(interval, count, runCF, overCF, id) {
 }
 //----------------------------------------------------------------------
 // 销毁定时器
-function destroyTimer(id) {
+function destroyTimer(id, execFlag) {
     if ('string' != typeof(id) || 0 === id.length) {
         return;
     }
     if (mTimerMap[id]) {
-        mTimerMap[id].stop(false);
+        mTimerMap[id].stop(execFlag ? true : false);
         delete mTimerMap[id];
     }
 }
