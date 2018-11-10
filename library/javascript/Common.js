@@ -152,7 +152,7 @@ Common.characterCount = function(str, charset) {
         throw new Error("not support type '" + typeof(str) + "'");
     }
     var count = 0;
-    for (var i = 0, len.length; i < len; ++i) {
+    for (var i = 0, len = str.length; i < len; ++i) {
         count += this.characterPlaceholder(str.charCodeAt(i), charset);
     }
     return count;
