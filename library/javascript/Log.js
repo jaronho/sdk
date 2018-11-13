@@ -3,7 +3,7 @@
  ** Date:	2015-09-08
  ** Brief:	log functions
  ***********************************************************************/
-function CreateLog(showRegion, printFunc, level) {
+function createLog(showRegion, printFunc, level) {
     level = 'number' == typeof(level) && !isNaN(level) ? level : 1;
 	var logString = "";
 	function printLocal(str) {

@@ -3,7 +3,7 @@
 ** Date:	2015-08-06
 ** Brief:	event define
 ***********************************************************************/
-function EventDef_enum(tb) {
+function eventDef_enum(tb) {
 	var enumTb = {};
 	for (var i = 0, len = tb.length; i < len; ++i) {
 		if (enumTb.hasOwnProperty(tb[i])) {
@@ -18,5 +18,5 @@ var EventDef = [
 	"ED_LOGIN"				// 登录
 ];
 //----------------------------------------------------------------------
-EventDef = EventDef_enum(EventDef);
+EventDef = eventDef_enum(EventDef);
 //----------------------------------------------------------------------

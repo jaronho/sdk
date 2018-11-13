@@ -96,8 +96,8 @@ public class TimerManager {
         return mInstance;
     }
 
-    public void run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param, boolean doStartCB, final String id) {
-        if (interval > 0 && id.length() > 0) {
+    public void run(final String id, long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param, boolean doStartCB) {
+        if (id.length() > 0 && interval > 0) {
             final RunObject runObj = new RunObject(runHandler);
             final OverObject overObj = new OverObject(overHandler);
             Timer tm = new Timer(interval, count, new Timer.RunHandler() {
@@ -119,71 +119,71 @@ public class TimerManager {
                     mOverHandler.sendMessage(msg);
                 }
             }, id, param);
-            tm.start(SystemClock.elapsedRealtime(), doStartCB);
-            runObj.timer = tm;
-            overObj.timer = tm;
             if (mTimerMap.containsKey(id)) {
                 mTimerMap.remove(id);
             }
             mTimerMap.put(id, tm);
+            runObj.timer = tm;
+            overObj.timer = tm;
+            tm.start(SystemClock.elapsedRealtime(), doStartCB);
         }
     }
 
-    public void run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, boolean doStartCB, String id) {
-        run(interval, count, runHandler, overHandler, null, doStartCB, id);
+    public void run(final String id, long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, boolean doStartCB) {
+        run(id, interval, count, runHandler, overHandler, null, doStartCB);
     }
 
-    public void run(long interval, int count, Timer.RunHandler runHandler, boolean doStartCB, String id) {
-        run(interval, count, runHandler, null, null, doStartCB, id);
+    public void run(final String id, long interval, int count, Timer.RunHandler runHandler, boolean doStartCB) {
+        run(id, interval, count, runHandler, null, null, doStartCB);
     }
 
-    public void run(long interval, int count, Timer.OverHandler overHandler, String id) {
-        run(interval, count, null, overHandler, null, false, id);
+    public void run(final String id, long interval, int count, Timer.OverHandler overHandler) {
+        run(id, interval, count, null, overHandler, null, false);
     }
 
     public String run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, Object param, boolean doStartCB) {
         String id = UUID.randomUUID().toString();
-        run(interval, count, runHandler, overHandler, param, doStartCB, id);
+        run(id, interval, count, runHandler, overHandler, param, doStartCB);
         return id;
     }
 
     public String run(long interval, int count, Timer.RunHandler runHandler, Timer.OverHandler overHandler, boolean doStartCB) {
         String id = UUID.randomUUID().toString();
-        run(interval, count, runHandler, overHandler, null, doStartCB, id);
+        run(id, interval, count, runHandler, overHandler, null, doStartCB);
         return id;
     }
 
     public String run(long interval, int count, Timer.RunHandler runHandler, boolean doStartCB) {
         String id = UUID.randomUUID().toString();
-        run(interval, count, runHandler, null, null, doStartCB, id);
+        run(id, interval, count, runHandler, null, null, doStartCB);
         return id;
     }
 
     public String run(long interval, int count, Timer.OverHandler overHandler) {
         String id = UUID.randomUUID().toString();
-        run(interval, count, null, overHandler, null, false, id);
+        run(id, interval, count, null, overHandler, null, false);
         return id;
     }
 
     public void stop(String id, boolean doStopCB) {
         if (mTimerMap.containsKey(id)) {
             Timer tm = mTimerMap.remove(id);
-            if (null != tm) {
-                tm.stop(doStopCB);
+            if (null != tm && doStopCB) {
+                tm.stop(true);
             }
         }
     }
 
     public void clear(boolean doStopCB) {
-        if (!mTimerMap.isEmpty()) {
-            Set<Entry<String, Timer>> entrySet = mTimerMap.entrySet();
+        Set<Entry<String, Timer>> entrySet = mTimerMap.entrySet();
+        mTimerMap.clear();
+        if (doStopCB) {
             for (Entry<String, Timer> entry : entrySet) {
                 Timer tm = entry.getValue();
                 if (null != tm) {
-                    tm.stop(doStopCB);
+                    tm.stop(true);
                 }
             }
-            mTimerMap.clear();
         }
     }
 }

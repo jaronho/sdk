@@ -77,7 +77,7 @@
  * headerMap				// 请求头,哈希表结构,如:{"Content-Type" : "text/plain;charset=UTF-8"}
  * content					// 发送内容,undefined,null或字符串
 ----------------------------------------------------------------------*/
-function HttpSend(method, url, headerMap, content, callback, target) {
+function httpSend(method, url, headerMap, content, callback, target) {
 	if ('string' != typeof(method)) {
 		throw new Error("not support method type for '" + typeof(method) + "'");
 	}

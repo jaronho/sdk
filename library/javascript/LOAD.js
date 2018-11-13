@@ -9,7 +9,7 @@
  * errorCB			// 失败回调函数.参数:(url, result, method),当1==method时,result=错误信息,当2==method时,reuslt=xhr
  * target			// 目标对象,回调函数的宿主对象,可为null
 ----------------------------------------------------------------------*/
-function LoadFileByFS(url, loadCB, errorCB, target) {
+function loadFileByFS(url, loadCB, errorCB, target) {
 	if ('undefined' === typeof require || !require("fs")) {
 		return false;
 	}
@@ -27,7 +27,7 @@ function LoadFileByFS(url, loadCB, errorCB, target) {
 	});
 	return true;
 }
-function LoadFileByXHR(url, loadCB, errorCB, target) {
+function loadFileByXHR(url, loadCB, errorCB, target) {
 	var xhr = window.XMLHttpRequest ? new window.XMLHttpRequest() : new ActiveXObject("MSXML2.XMLHTTP");
 	xhr.open("GET", url, true);
 	if (/msie/i.test(navigator.userAgent) && !/opera/i.test(navigator.userAgent)) {
@@ -64,9 +64,9 @@ function LoadFileByXHR(url, loadCB, errorCB, target) {
 	}
 	xhr.send(null);
 }
-function LoadFile(url, loadCB, errorCB, target) {
-	if (!LoadFileByFS(url, loadCB, errorCB, target)) {
-		LoadFileByXHR(url, loadCB, errorCB, target);
+function loadFile(url, loadCB, errorCB, target) {
+	if (!loadFileByFS(url, loadCB, errorCB, target)) {
+		loadFileByXHR(url, loadCB, errorCB, target);
 	}
 }
 /***********************************************************************/
@@ -76,7 +76,7 @@ function LoadFile(url, loadCB, errorCB, target) {
  * errorCB			// 失败回调函数.参数:(url)
  * target			// 目标对象,回调函数的宿主对象,可为null
  ----------------------------------------------------------------------*/
-function LoadBinary(url, loadCB, errorCB, target) {
+function loadBinary(url, loadCB, errorCB, target) {
 	function string2Uint8Array(stringData) {
 		if (stringData) {
 			var arrayData = new Uint8Array(stringData.length);
@@ -146,7 +146,7 @@ function LoadBinary(url, loadCB, errorCB, target) {
  * errorCB			// 失败回调函数.参数:(url)
  * target			// 目标对象,回调函数的宿主对象,可为null
  ----------------------------------------------------------------------*/
-function LoadImage(url, isCrossOrigin, loadCB, errorCB, target) {
+function loadImage(url, isCrossOrigin, loadCB, errorCB, target) {
 	var img = new Image();
 	img.src = url;
 	if ((null === isCrossOrigin ? true : isCrossOrigin) && "file://" != location.origin) {
@@ -183,7 +183,7 @@ function LoadImage(url, isCrossOrigin, loadCB, errorCB, target) {
  * errorCB			// 失败回调函数.参数:(url)
  * target			// 目标对象,回调函数的宿主对象,可为null
  ----------------------------------------------------------------------*/
-function LoadScript(url, isAsync, isCache, loadCB, errorCB, target) {
+function loadScript(url, isAsync, isCache, loadCB, errorCB, target) {
 	var scriptElement = document.createElement("script");
 	scriptElement.async = isAsync ? true : false;
 	if (isCache) {
