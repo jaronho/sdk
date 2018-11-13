@@ -175,6 +175,12 @@ function createTimerManager() {
             }
         }
 	}
+    // get a timer
+    timerManager.get = function(id) {
+        if ('string' == typeof(id) && id.length > 0) {
+            return this._timerMap[id];
+        }
+    }
 	return timerManager;
 }
 //----------------------------------------------------------------------
