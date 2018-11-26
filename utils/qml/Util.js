@@ -41,6 +41,11 @@ function clearTimers() {
     mTimerManager.clear(false);
 }
 //----------------------------------------------------------------------
+// 获取定时器数量
+function getTimerCount() {
+    return mTimerManager.count();
+}
+//----------------------------------------------------------------------
 // 延迟调用
 function delayWith(time, callCF, id, param) {
     return startTimer(time, 1, null, callCF, id, param);
@@ -98,6 +103,11 @@ function stopBlink(viewList, immediately, showAtLast, id) {
             setViewVisible(viewList, showAtLast);
         }
     }
+}
+//----------------------------------------------------------------------
+//  获取闪烁数量
+function getBlinkCount() {
+    return mBlinkManager.count();
 }
 //----------------------------------------------------------------------
 // 播放帧动画

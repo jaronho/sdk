@@ -113,10 +113,10 @@ function createTimer(interval, count, runCF, overCF, target, id, param) {
 }
 //----------------------------------------------------------------------
 function createTimerManager() {
-	var timerManager = {};
+    var timerManager = {};
     timerManager._timerMap = {};
-	// update timer manager, need to be called loop
-	timerManager.update = function() {
+    // update timer manager, need to be called loop
+    timerManager.update = function() {
         var nowTime = Date.now();
         for (var key in this._timerMap) {
             if (this._timerMap.hasOwnProperty(key)) {
@@ -126,19 +126,26 @@ function createTimerManager() {
                 }
             }
         }
-	};
-	// start a custom timer
-	timerManager.run = function(id, interval, count, runCF, overCF, target, param, doStartCB) {
+    };
+    // start a custom timer
+    timerManager.run = function(id, interval, count, runCF, overCF, target, param, doStartCB) {
         if ('string' != typeof(id) || 0 == id.length) {
             return;
         }
         if (this._timerMap[id]) {
             delete this._timerMap[id];
         }
-        var timer = createTimer(interval, count, runCF, overCF, target, id, param);
+        var timer = createTimer(interval, count, runCF, function(tm) {
+            if (timerManager._timerMap[id]) {
+                delete timerManager._timerMap[id];
+            }
+            if ('function' == typeof(overCF)) {
+                overCF.apply(target, [tm]);
+            }
+        }, target, id, param);
         this._timerMap[id] = timer;
         timer.start(Date.now(), doStartCB);
-	}
+    }
     // start a loop timer
     timerManager.runLoop = function(id, interval, runCF, target, param, doStartCB) {
         this.run(id, interval, 0, runCF, null, target, param, doStartCB);
@@ -161,8 +168,8 @@ function createTimerManager() {
         }
     }
     // clear all timer
-	timerManager.clear = function(doStopCB) {
-		var tmpMap = this._timerMap;
+    timerManager.clear = function(doStopCB) {
+        var tmpMap = this._timerMap;
         this._timerMap = {};
         if (doStopCB) {
             for (var key in tmpMap) {
@@ -174,21 +181,32 @@ function createTimerManager() {
                 }
             }
         }
-	}
+    }
     // get a timer
     timerManager.get = function(id) {
         if ('string' == typeof(id) && id.length > 0) {
             return this._timerMap[id];
         }
+        return null;
     }
-	return timerManager;
+    // get timer count
+    timerManager.count = function() {
+        var timerCount = 0;
+        for (var key in this._timerMap) {
+            if (this._timerMap.hasOwnProperty(key)) {
+                timerCount++;
+            }
+        }
+        return timerCount;
+    }
+    return timerManager;
 }
 //----------------------------------------------------------------------
 // test code
 /*
 var timerManager = createTimerManager();
 function timer1_CF1(tm, runCount) {
-	tm.setParam("count_" + tm.getCurrentCount());
+    tm.setParam("count_" + tm.getCurrentCount());
 }
 function timer1_CF2(tm) {
 }
