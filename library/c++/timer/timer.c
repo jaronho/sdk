@@ -5,15 +5,15 @@
 **********************************************************************/
 #include "timer.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 
-timer_st* create_timer(unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, void* param) {
-	if (interval <= 0) {
+timer_st* create_timer(unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, const char* id, void* param) {
+    timer_st* tm = NULL;
+    if (interval <= 0) {
 		return NULL;
 	}
-    static unsigned int s_id = 0;
-	timer_st* tm = (timer_st*)malloc(sizeof(timer_st));
-    tm->id = ++s_id;
+	tm = (timer_st*)malloc(sizeof(timer_st));
 	tm->interval = interval;
 	tm->total_count = count;
 	tm->current_count = 0;
@@ -22,11 +22,22 @@ timer_st* create_timer(unsigned long interval, unsigned long count, timer_callba
 	tm->is_pause = 0;
 	tm->run_handler = run_handler;
 	tm->over_handler = over_handler;
+    memset(tm->id, 0, sizeof(tm->id));
+    if (id && strlen(id) > 0) {
+        if (strlen(id) > sizeof(tm->id)) {
+            free(tm);
+            printf("id [%s] length [%d] is greater than the maximum length [%d] \n", id, strlen(id), sizeof(tm->id));
+            return NULL;
+        }
+        sprintf(tm->id, "%s", id);
+    }
 	tm->param = param;
 	return tm;
 }
 
 int update_timer(timer_st* tm, unsigned long long current_time) {
+    unsigned long long deltaTime = 0;
+    unsigned int runCount = 0;
 	if (!tm) {
 		return 1;
 	}
@@ -38,13 +49,13 @@ int update_timer(timer_st* tm, unsigned long long current_time) {
 		return 3;
 	}
     if (tm->total_count <= 0 || tm->current_count < tm->total_count) {
-        unsigned long long deltaTime = (unsigned long long)abs((unsigned int)(current_time - tm->start_time));
+        deltaTime = (unsigned long long)abs((unsigned int)(current_time - tm->start_time));
         if (deltaTime >= tm->interval) {
-            unsigned int runCount = (unsigned int)(deltaTime / tm->interval);
+            runCount = (unsigned int)(deltaTime / tm->interval);
             tm->current_count = tm->current_count + runCount;
             tm->start_time = current_time;
             if (tm->run_handler) {
-                tm->run_handler(tm, runCount, tm->param);
+                tm->run_handler(tm, runCount);
             }
         }
     } else {
@@ -63,7 +74,7 @@ void start_timer(timer_st* tm, unsigned long long current_time, unsigned int exe
 	tm->current_count = 0;
 	tm->start_time = current_time;
 	if (tm->run_handler && execute_flag) {
-		tm->run_handler(tm, 0, tm->param);
+		tm->run_handler(tm, 1);
 	}
 }
 
@@ -74,7 +85,7 @@ void stop_timer(timer_st* tm, unsigned int execute_flag) {
 	tm->running = 0;
 	tm->is_pause = 1;
 	if (tm->over_handler && execute_flag) {
-		tm->over_handler(tm, tm->param);
+		tm->over_handler(tm);
 	}
 }
 
@@ -92,9 +103,9 @@ void pause_timer(timer_st* tm) {
 	tm->is_pause = 1;
 }
 
-unsigned long get_timer_id(timer_st* tm) {
+const char* get_timer_id(timer_st* tm) {
     if (!tm) {
-        return 0;
+        return NULL;
     }
     return tm->id;
 }

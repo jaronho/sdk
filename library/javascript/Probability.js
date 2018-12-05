@@ -4,7 +4,7 @@
  ** Brief:	calculate probability by weight list
  ***********************************************************************/
 // create probability object,weightList:[[1,20],[2,60]],contains two random value: 1.value,20.weight;2.value,60.weight
-function CreateProbability(weightList, randomFunc) {
+function createProbability(weightList, randomFunc) {
 	if (!(weightList instanceof Array)) {
 		throw new Error("weightList is not table, it's type is " + typeof(weightList));
 	}

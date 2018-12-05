@@ -13,11 +13,10 @@ extern "C"
 
 struct timer_st;
 
-typedef void (*timer_callback_run)(struct timer_st* tm, unsigned long runCount, void* param);
-typedef void (*timer_callback_over)(struct timer_st* tm, void* param);
+typedef void (*timer_callback_run)(struct timer_st* tm, unsigned long runCount);
+typedef void (*timer_callback_over)(struct timer_st* tm);
 
 typedef struct timer_st {
-    unsigned long id;                       // unique id
     unsigned long interval;					// interval duration in milliseconds
     unsigned long total_count;				// number of intervals, if count <= 0, timer will repeat forever
     unsigned long current_count;			// current interval count
@@ -26,6 +25,7 @@ typedef struct timer_st {
     unsigned int is_pause;					// is timer paused
     timer_callback_run run_handler;		    // called when current count changed
     timer_callback_over over_handler;		// called when timer is complete
+    char id[128];                           // id
     void* param;						    // parameter
 } timer_st;
 
@@ -35,10 +35,11 @@ typedef struct timer_st {
  *			count - number of intervals, if count <= 0, timer will repeat forever
  *			run_handler - called when current count changed
  *			over_handler - called when timer is complete
+ *          id - id
  *			param - parameter
  * Return:	timer_st*
  */
-extern timer_st* create_timer(unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, void* param);
+extern timer_st* create_timer(unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, const char* id, void* param);
 
 /*
  * Brief:	update a timer
@@ -82,9 +83,9 @@ extern void pause_timer(timer_st* tm);
 /*
  * Brief:	get timer unique id
  * Param:	tm - timer
- * Return:	long
+ * Return:	const char*
  */
-extern unsigned long get_timer_id(timer_st* tm);
+extern const char* get_timer_id(timer_st* tm);
 
 /*
  * Brief:	get timer interval

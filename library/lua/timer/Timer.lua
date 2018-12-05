@@ -35,7 +35,7 @@ function CreateTimerManager()
 	function timerManager:clearTimer()
 		mTimerList = {}
 	end
-	function timerManager:createTimer(interval, count, runCF, overCF, target, param)
+	function timerManager:createTimer(interval, count, runCF, overCF, target, id, param)
 		-- private member variables
 		assert(interval > 0, "interval <= 0")
 		local mInterval = interval			-- interval duration in milliseconds
@@ -47,6 +47,7 @@ function CreateTimerManager()
 		local mRunCallFunc = runCF			-- called when current count changed
 		local mOverCallFunc = overCF		-- called when timer is complete
 		local mTarget = target				-- callback target
+        local mId = id                      -- id
 		local mParam = param				-- parameter
 		local tm = {}
 		-- public methods
@@ -139,6 +140,9 @@ function CreateTimerManager()
 		function tm:setOverHandler(overCF)
 			mOverCallFunc = overCF
 		end
+        function tm:getId()
+            return mId
+        end
 		function tm:getParam()
 			return mParam
 		end

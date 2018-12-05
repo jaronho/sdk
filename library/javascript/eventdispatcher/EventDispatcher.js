@@ -3,9 +3,9 @@
 ** Date:	2015-08-06
 ** Brief:	event dispathcer system
 ***********************************************************************/
-function CreateEventDispatcher() {
-	var mEventHandlerMap = {};
+function createEventDispatcher() {
 	var dispathcer = {};
+    dispathcer._eventHandlerMap = {};
 	// subscribe event handler: eventId(number,string);func(function);target(object);priority(number),1>2>3
 	dispathcer.subscribe = function (eventId, func, target, priority) {
 		if ('string' != typeof(eventId) && 'number' != typeof(eventId)) {
@@ -14,14 +14,14 @@ function CreateEventDispatcher() {
 		if ('function' != typeof(func)) {
 			throw new Error("func is not function, it's type is " + typeof(func));
 		}
-		var handlers = mEventHandlerMap[eventId];
+		var handlers = this._eventHandlerMap[eventId];
 		if (!(handlers instanceof Array)) {
 			handlers = [];
 			if ('number' != typeof(priority)) {
 				priority = handlers.length;
 			}
 			handlers.push({func: func, target: target, priority: priority});
-			mEventHandlerMap[eventId] = handlers;
+			this._eventHandlerMap[eventId] = handlers;
 			return true;
 		}
 		for (var i = 0; i < handlers.length; ++i) {
@@ -32,8 +32,8 @@ function CreateEventDispatcher() {
 		if ('number' != typeof(priority)) {
 			priority = handlers.length;
 		}
-		mEventHandlerMap[eventId].push({func: func, target: target, priority: priority});
-		mEventHandlerMap[eventId].sort(function (a, b) {
+		this._eventHandlerMap[eventId].push({func: func, target: target, priority: priority});
+		this._eventHandlerMap[eventId].sort(function (a, b) {
 			return a.priority - b.priority;
 		});
 		return true;
@@ -43,12 +43,12 @@ function CreateEventDispatcher() {
 		if ('string' != typeof(eventId) && 'number' != typeof(eventId)) {
 			throw new Error("eventId is not number or string, it's type is " + typeof(eventId));
 		}
-		var handlers = mEventHandlerMap[eventId];
+		var handlers = this._eventHandlerMap[eventId];
 		if (!(handlers instanceof Array)) {
 			return;
 		}
 		if ('function' != typeof(func)) {
-			delete mEventHandlerMap[eventId];
+			delete this._eventHandlerMap[eventId];
 			return;
 		}
 		for (var i = 0; i < handlers.length; ++i) {
@@ -58,7 +58,7 @@ function CreateEventDispatcher() {
 			}
 		}
 		if (0 == handlers.length) {
-			delete mEventHandlerMap[eventId];
+			delete this._eventHandlerMap[eventId];
 		}
 	};
 	// post event: eventId(number,string)
@@ -66,7 +66,7 @@ function CreateEventDispatcher() {
 		if ('string' != typeof(eventId) && 'number' != typeof(eventId)) {
 			throw new Error("eventId is not number or string, it's type is " + typeof(eventId));
 		}
-		var handlers = mEventHandlerMap[eventId];
+		var handlers = this._eventHandlerMap[eventId];
 		if (!(handlers instanceof Array) || 0 == handlers.length) {
 			return false;
 		}
@@ -81,20 +81,20 @@ function CreateEventDispatcher() {
 }
 /**********************************************************************/
 var EventCenter = (function () {
-	var mEventDispatcher = CreateEventDispatcher();
-	var mEventCenter = {};
+	var center = {};
+    center._dispathcer = createEventDispatcher();
 	// bind event
-	mEventCenter.bind = function(eventId, func, target, priority) {
-		return mEventDispatcher.subscribe(eventId, func, target, priority);
+	center.bind = function(eventId, func, target, priority) {
+		return this._dispathcer.subscribe(eventId, func, target, priority);
 	};
 	// unbind event
-	mEventCenter.unbind = function(eventId, func) {
-		mEventDispatcher.unsubscribe(eventId, func);
+	center.unbind = function(eventId, func) {
+		this._dispathcer.unsubscribe(eventId, func);
 	};
 	// post event
-	mEventCenter.post = function(eventId) {
-		return mEventDispatcher.post.apply(mEventDispatcher, arguments);
+	center.post = function(eventId) {
+		return this._dispathcer.post.apply(this._dispathcer, arguments);
 	};
-	return mEventCenter;
+	return center;
 })();
 /**********************************************************************/

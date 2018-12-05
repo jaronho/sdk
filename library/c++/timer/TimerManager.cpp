@@ -39,24 +39,24 @@ static bool sClearFlag = false;
 static std::mutex sClearFlagMutex;
 static TimerManager* mInstance = NULL;
 
-static void timerCallbackRun(timer_st* tm, unsigned long runCount, void* param) {
+static void timerCallbackRun(timer_st* tm, unsigned long runCount) {
     std::map<std::string, TimerWrapper*>::iterator iter = sTimerWrapperMap.begin();
     for (; sTimerWrapperMap.end() != iter; ++iter) {
         if (get_timer_id(tm) == get_timer_id(iter->second->tm)) {
             if (iter->second->triggerCallback) {
-                iter->second->triggerCallback(tm, runCount, param);
+                iter->second->triggerCallback(tm, runCount);
             }
             break;
         }
     }
 }
 
-static void timerCallbackOver(timer_st* tm, void* param) {
+static void timerCallbackOver(timer_st* tm) {
     std::map<std::string, TimerWrapper*>::iterator iter = sTimerWrapperMap.begin();
     for (; sTimerWrapperMap.end() != iter; ++iter) {
         if (get_timer_id(tm) == get_timer_id(iter->second->tm)) {
             if (iter->second->overCallback) {
-                iter->second->overCallback(tm, param);
+                iter->second->overCallback(tm);
             }
             break;
         }
@@ -145,7 +145,7 @@ void TimerManager::run(const char* id, unsigned long interval, unsigned long cou
 		return;
 	}
     sAddListMutex.lock();
-    timer_st* tm = create_timer(interval, count, timerCallbackRun, timerCallbackOver, param);
+    timer_st* tm = create_timer(interval, count, timerCallbackRun, timerCallbackOver, id, param);
     if (tm) {
         TimerWrapper* wrapper = new TimerWrapper();
         wrapper->tm = tm;

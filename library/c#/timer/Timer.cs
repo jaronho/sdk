@@ -14,12 +14,13 @@ public class Timer {
 	private bool mIsPause = false;					// is timer paused
 	private TimerRunHandler mRunHandler = null;		// called when current count changed
 	private TimerOverHandler mOverHandler = null;	// called when timer is complete
+    private string mId = "";                        // id
 	private System.Object mParam = null;			// parameter
 
 	public delegate void TimerRunHandler(Timer tm, int runCount, System.Object param);
 	public delegate void TimerOverHandler(Timer tm, System.Object param);
 
-	public Timer(long interval, int count, TimerRunHandler runHandler = null, TimerOverHandler overHandler = null, System.Object param = null) {
+	public Timer(long interval, int count, TimerRunHandler runHandler = null, TimerOverHandler overHandler = null, string id = "", System.Object param = null) {
 		if (interval <= 0) {
 			throw new System.Exception("interval <= 0");
 		}
@@ -27,6 +28,7 @@ public class Timer {
 		mTotalCount = count;
 		mRunHandler = runHandler;
 		mOverHandler = overHandler;
+        mId = id;
 		mParam = param;
 	}
 
@@ -45,7 +47,7 @@ public class Timer {
                 mCurrentCount = mCurrentCount + runCount;
                 mStartTime = currentTime;
                 if (null != mRunHandler) {
-                    mRunHandler(this, runCount, mParam);
+                    mRunHandler(this, runCount);
                 }
             }
         } else {
@@ -62,7 +64,7 @@ public class Timer {
 		mCurrentCount = 0;
 		mStartTime = currentTime;
 		if (null != mRunHandler && executeFlag) {
-			mRunHandler(this, 0, mParam);
+			mRunHandler(this, 1);
 		}
 	}
 
@@ -73,7 +75,7 @@ public class Timer {
 		mRunning = false;
 		mIsPause = true;
 		if (null != mOverHandler && executeFlag) {
-			mOverHandler(this, mParam);
+			mOverHandler(this);
 		}
 	}
 
@@ -119,6 +121,10 @@ public class Timer {
 	public void setOverHandler(TimerOverHandler overHandler) {
 		mOverHandler = overHandler;
 	}
+    
+    private string getId() {
+        return mId;
+    }
 
 	public System.Object getParam() {
 		return mParam;

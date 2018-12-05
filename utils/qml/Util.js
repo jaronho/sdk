@@ -8,65 +8,47 @@ Qt.include("Common.js")
 Qt.include("Log.js")
 Qt.include("Timer.js")
 //----------------------------------------------------------------------
-var log = new CreateLog(true, false, 1);
-var mTimerManager = new CreateTimerManager();
-var mTimerMap = {};
-var mBlinkManager = new CreateTimerManager();
-var mBlinkMap = {};
+var log = createLog(true, false, 1);
+var mTimerManager = createTimerManager();
+var mBlinkManager = createTimerManager();
 var mAnimationMap = {};
 //----------------------------------------------------------------------
 // 监听
 function listen() {
-    var nowTime = Date.now();
-    mTimerManager.updateTimer(nowTime);
-    mBlinkManager.updateTimer(nowTime);
+    mTimerManager.update();
+    mBlinkManager.update();
 }
 //----------------------------------------------------------------------
-// 创建定时器
-function createTimer(interval, count, runCF, overCF, id) {
+// 开始定时器
+function startTimer(interval, count, runCF, overCF, id, param) {
     if ('string' != typeof(id) || 0 === id.length) {
         id = Common.createUniqueId();
     }
-    if (mTimerMap[id]) {
-        mTimerMap[id].stop(false);
-        delete mTimerMap[id];
-    }
-    var timer = mTimerManager.createTimer(interval, count, runCF, overCF, null, null);
-    mTimerMap[id] = timer;
-    timer.start(Date.now(), false);
+    mTimerManager.run(id, interval, count, runCF, overCF, null, param, false);
     return id;
 }
 //----------------------------------------------------------------------
-// 销毁定时器
-function destroyTimer(id) {
+// 停止定时器
+function stopTimer(id, execFlag) {
     if ('string' != typeof(id) || 0 === id.length) {
         return;
     }
-    if (mTimerMap[id]) {
-        mTimerMap[id].stop(false);
-        delete mTimerMap[id];
-    }
+    mTimerManager.stop(id, execFlag);
 }
 //----------------------------------------------------------------------
-// 销毁所有定时器
-function destroyAllTimers() {
-    for (var key in mTimerMap) {
-        if (mTimerMap.hasOwnProperty(key)) {
-            mTimerMap[key].stop(false);
-        }
-    }
-    mTimerMap = {};
+// 清空定时器
+function clearTimers() {
+    mTimerManager.clear(false);
+}
+//----------------------------------------------------------------------
+// 获取定时器数量
+function getTimerCount() {
+    return mTimerManager.count();
 }
 //----------------------------------------------------------------------
 // 延迟调用
-function delayWith(time, callCF, id) {
-    if (time <= 0) {
-        if ('function' === typeof(callCF)) {
-            callCF();
-        }
-        return;
-    }
-    return createTimer(time, 1, null, callCF, id);
+function delayWith(time, callCF, id, param) {
+    return startTimer(time, 1, null, callCF, id, param);
 }
 //----------------------------------------------------------------------
 // 开始闪烁
@@ -77,45 +59,31 @@ function startBlink(viewList, showTime, hideTime, count, showAtLast, overCF, id)
     if ('string' != typeof(id) || 0 === id.length) {
         id = Common.createUniqueId();
     }
-    if (mBlinkMap[id]) {
-        mBlinkMap[id].stop(false);
-        delete mBlinkMap[id];
-    }
-    function setViewListShow(show) {
-        for (var i = 0, len = viewList.length; i < len; ++i) {
-            viewList[i].visible = show ? true : false;
-        }
-    }
-    setViewListShow(true);
+    setViewVisible(viewList, true);
     var showFlag = true;
-    var blink = mBlinkManager.createTimer(showTime, count * 2, function(tm, runCount) {
+    mBlinkManager.run(id, showTime, count * 2, function(tm, runCount) {
         showFlag = !showFlag;
         tm.setInterval(showFlag ? showTime : hideTime);
-        setViewListShow(showFlag);
-        var params = tm.getParam();
-        if (params instanceof Array && "stop" === params[0] && showFlag === params[1]) {
-            if (mBlinkMap[id]) {
-                mBlinkMap[id].stop(false);
-                delete mBlinkMap[id];
-            }
+        setViewVisible(viewList, showFlag);
+        var param = tm.getParam();
+        if (param instanceof Array && param[0] && showFlag === param[1]) {
+            mBlinkManager.stop(false);
         }
     }, function(tm) {
         if (count > 0 && showFlag !== showAtLast) {
-            delayWith(showFlag ? showTime : hideTime, function() {
-                setViewListShow(showAtLast);
+            delayWith(showFlag ? showTime : hideTime, function(tm) {
+                setViewVisible(viewList, showAtLast);
                 if ('function' === typeof(overCF)) {
                     overCF();
                 }
-            }, id);
+            }, id, null);
         } else {
-            setViewListShow(showAtLast);
+            setViewVisible(viewList,showAtLast);
             if ('function' === typeof(overCF)) {
                 overCF();
             }
         }
-    }, null, null);
-    mBlinkMap[id] = blink;
-    blink.start(Date.now(), false);
+    }, null, null, false);
     return id;
 }
 //----------------------------------------------------------------------
@@ -124,23 +92,55 @@ function stopBlink(viewList, immediately, showAtLast, id) {
     if (0 === viewList.length || 'string' !== typeof(id) || 0 === id.length) {
         return;
     }
-    function setViewListShow(show) {
-        for (var i = 0, len = viewList.length; i < len; ++i) {
-            viewList[i].visible = show ? true : false;
+    if (immediately) {
+        mBlinkManager.stop(false);
+        setViewVisible(viewList, showAtLast);
+    } else {
+        var blink = mBlinkManager.get(id);
+        if (blink) {
+            blink.setParam([true, showAtLast]);
+        } else {
+            setViewVisible(viewList, showAtLast);
         }
     }
-    if (immediately) {
-        if (mBlinkMap[id]) {
-            mBlinkMap[id].stop(false);
-            delete mBlinkMap[id];
-        }
-        setViewListShow(showAtLast);
-    } else {
-        if (mBlinkMap[id]) {
-            mBlinkMap[id].setParam(["stop", showAtLast]);
+}
+//----------------------------------------------------------------------
+//  获取闪烁数量
+function getBlinkCount() {
+    return mBlinkManager.count();
+}
+//----------------------------------------------------------------------
+// 播放帧动画
+function playFrameAnimation(image, frameList, duration, count, callback, id) {
+    if (frameList.length <= 1 || duration <= 0) {
+        return;
+    }
+    image.source = frameList[0];
+    var index = 1;
+    startTimer(duration, frameList.length * count, function(tm, runCount) {
+        image.source = frameList[index];
+        if (index === frameList.length - 1) {
+            index = 0;
         } else {
-            setViewListShow(showAtLast);
+            ++index;
         }
+    }, callback, id, null);
+}
+//----------------------------------------------------------------------
+// 停止帧动画
+function stopFrameAnimation(id) {
+    stopTimer(id);
+}
+//----------------------------------------------------------------------
+// 设置视图可见性
+function setViewVisible(viewOrList, visible) {
+    visible = visible ? true : false;
+    if (viewOrList instanceof Array) {
+        for (var i = 0, len = viewOrList.length; i < len; ++i) {
+            viewOrList[i].visible = visible;
+        }
+    } else {
+        viewOrList.visible = visible;
     }
 }
 //----------------------------------------------------------------------
@@ -166,25 +166,33 @@ function createObject(qmlFile, parent, callback) {
     function finishCreation() {
         if (0 === com.status) {
             console.warn("createObject => no data is available for the component \"" + qmlFile + "\"");
+            com.destroy();
             callback(null);
         } else if (1 === com.status) {
             var obj = com.createObject(parent);
             if (null === obj) {
                 console.warn("createObject => error creating object \"" + qmlFile + "\"");
             }
+            com.destroy();
             callback(obj);
         } else if (3 === com.status) {
             console.warn("createObject => error loading component \"" + qmlFile + "\", " + com.errorString());
+            com.destroy();
+            callback(null);
+        } else {
+            com.destroy();
             callback(null);
         }
     }
     if (0 === com.status) {
         console.warn("createObject => no data is available for the component \"" + qmlFile + "\"");
+        com.destroy();
         callback(null);
     } else if (1 === com.status) {
         finishCreation();
     } else if (3 === com.status) {
         console.warn("createObject => error loading component \"" + qmlFile + "\", " + com.errorString());
+        com.destroy();
         callback(null);
     } else {
         com.statusChanged.connect(finishCreation);
@@ -275,9 +283,8 @@ function createXOffsetAnimation(object, from, to, duration, callback) {
     object.x = from;
     var ani = Qt.createQmlObject('\
     import QtQuick 2.6;
-    PropertyAnimation {
+    XAnimator {
         property var callback: null;
-        property: "x";
         onStopped: function() {
             if ("function" === typeof(callback)) {
                 callback();
@@ -302,9 +309,8 @@ function createYOffsetAnimation(object, from, to, duration, callback) {
     object.y = from;
     var ani = Qt.createQmlObject('\
     import QtQuick 2.6;
-    PropertyAnimation {
+    YAnimator {
         property var callback: null;
-        property: "y";
         onStopped: function() {
             if ("function" === typeof(callback)) {
                 callback();
@@ -327,20 +333,17 @@ function createYOffsetAnimation(object, from, to, duration, callback) {
 // 完成动画
 function completeAnimation(id) {
     if ('string' === typeof(id) && id.length > 0) {
-        var ani = mAnimationMap[id];
-        if (undefined !== ani) {
-            mAnimationMap[id] = undefined;
-            ani.stop();
+        if (mAnimationMap[id]) {
+            mAnimationMap[id].stop();
+            delete mAnimationMap[id];
         } else {
-            var aniX = mAnimationMap[id + "_x"];
-            if (undefined !== aniX) {
-                mAnimationMap[id + "_x"] = undefined;
-                aniX.stop();
+            if (mAnimationMap[id + "_x"]) {
+                mAnimationMap[id + "_x"].stop();
+                delete mAnimationMap[id + "_x"];
             }
-            var aniY = mAnimationMap[id + "_y"];
-            if (undefined !== aniY) {
-                mAnimationMap[id + "_y"] = undefined;
-                aniY.stop();
+            if (mAnimationMap[id + "_y"]) {
+                mAnimationMap[id + "_y"].stop();
+                delete mAnimationMap[id + "_y"];
             }
         }
     }
@@ -348,10 +351,7 @@ function completeAnimation(id) {
 //----------------------------------------------------------------------
 // 动画是否在播放
 function isAnimationPlay(id) {
-    if ('string' === typeof(id) && id.length > 0
-            && (undefined !== mAnimationMap[id]
-                || undefined !== mAnimationMap[id + "_x"]
-                || undefined !== mAnimationMap[id + "_y"])) {
+    if ('string' === typeof(id) && id.length > 0 && (mAnimationMap[id] || mAnimationMap[id + "_x"] || mAnimationMap[id + "_y"])) {
         return true;
     }
     return false;
@@ -359,7 +359,7 @@ function isAnimationPlay(id) {
 //----------------------------------------------------------------------
 // 透明度
 function opacityFromto(object, from, to, duration, callback, id) {
-    if ('string' === typeof(id) && id.length > 0 && undefined !== mAnimationMap[id]) {
+    if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id]) {
         return;
     }
     if (from === to) {
@@ -370,14 +370,10 @@ function opacityFromto(object, from, to, duration, callback, id) {
     }
     var ani = createOpacityAnimation(object, from, to, duration, function() {
         ani.destroy();
-        if ('string' === typeof(id) && id.length > 0) {
-            if (undefined !== mAnimationMap[id]) {
-                mAnimationMap[id] = undefined;
-                if ('function' === typeof(callback)) {
-                    callback();
-                }
-            }
-        } else if ('function' === typeof(callback)) {
+        if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id]) {
+            delete mAnimationMap[id];
+        }
+        if ('function' === typeof(callback)) {
             callback();
         }
     });
@@ -416,7 +412,7 @@ function fadeOut(object, duration, callback, id) {
 //----------------------------------------------------------------------
 // 缩放
 function scaleFromTo(object, from, to, duration, callback, id) {
-    if ('string' === typeof(id) && id.length > 0 && undefined !== mAnimationMap[id]) {
+    if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id]) {
         return;
     }
     if (from === to) {
@@ -427,14 +423,10 @@ function scaleFromTo(object, from, to, duration, callback, id) {
     }
     var ani = createScaleAnimation(object, from, to, duration, function() {
         ani.destroy();
-        if ('string' === typeof(id) && id.length > 0) {
-            if (undefined !== mAnimationMap[id]) {
-                mAnimationMap[id] = undefined;
-                if ('function' === typeof(callback)) {
-                    callback();
-                }
-            }
-        } else if ('function' === typeof(callback)) {
+        if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id]) {
+            delete mAnimationMap[id];
+        }
+        if ('function' === typeof(callback)) {
             callback();
         }
     });
@@ -451,7 +443,7 @@ function scaleTo(object, to, duration, callback, id) {
 //----------------------------------------------------------------------
 // 旋转
 function rotateFromTo(object, from, to, duration, callback, id) {
-    if ('string' === typeof(id) && id.length > 0 && undefined !== mAnimationMap[id]) {
+    if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id]) {
         return;
     }
     if (from === to) {
@@ -462,14 +454,10 @@ function rotateFromTo(object, from, to, duration, callback, id) {
     }
     var ani = createRotationAnimation(object, from, to, duration, function() {
         ani.destroy();
-        if ('string' === typeof(id) && id.length > 0) {
-            if (undefined !== mAnimationMap[id]) {
-                mAnimationMap[id] = undefined;
-                if ('function' === typeof(callback)) {
-                    callback();
-                }
-            }
-        } else if ('function' === typeof(callback)) {
+        if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id]) {
+            delete mAnimationMap[id];
+        }
+        if ('function' === typeof(callback)) {
             callback();
         }
     });
@@ -494,18 +482,14 @@ function moveBy(object, x, y, duration, callback, id) {
     }
     var xFlag = false;
     if ('number' === typeof(x) && 0 !== x) {
-        if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_x"]) {
+        if ('string' !== typeof(id) || id.length <= 0 || !mAnimationMap[id + "_x"]) {
             xFlag = true;
             var aniX = createXOffsetAnimation(object, object.x, object.x + x, duration, function() {
                 aniX.destroy();
-                if ('string' === typeof(id) && id.length > 0) {
-                    if (undefined !== mAnimationMap[id + "_x"]) {
-                        mAnimationMap[id + "_x"] = undefined;
-                        if ('function' === typeof(callback)) {
-                            callback();
-                        }
-                    }
-                } else if ('function' === typeof(callback)) {
+                if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id + "_x"]) {
+                    delete mAnimationMap[id + "_x"];
+                }
+                if ('function' === typeof(callback)) {
                     callback();
                 }
             })
@@ -516,20 +500,16 @@ function moveBy(object, x, y, duration, callback, id) {
         }
     }
     if ('number' === typeof(y) && 0 !== y) {
-        if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_y"]) {
+        if ('string' !== typeof(id) || id.length <= 0 || !mAnimationMap[id + "_y"]) {
             var aniY = createYOffsetAnimation(object, object.y, object.y + y, duration, function() {
                 aniY.destroy();
                 if (xFlag) {
                     return;
                 }
-                if ('string' === typeof(id) && id.length > 0) {
-                    if (undefined !== mAnimationMap[id + "_y"]) {
-                        mAnimationMap[id + "_y"] = undefined;
-                        if ('function' === typeof(callback)) {
-                            callback();
-                        }
-                    }
-                } else if ('function' === typeof(callback)) {
+                if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id + "_y"]) {
+                    delete mAnimationMap[id + "_y"];
+                }
+                if ('function' === typeof(callback)) {
                     callback();
                 }
             })
@@ -568,18 +548,14 @@ function moveFromTo(object, fromX, fromY, toX, toY, duration, callback, id) {
             toX = object.x;
         }
         if (fromX !== toX) {
-            if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_x"]) {
+            if ('string' !== typeof(id) || id.length <= 0 || !mAnimationMap[id + "_x"]) {
                 xFlag = true;
                 var aniX = createXOffsetAnimation(object, fromX, toX, duration, function() {
                     aniX.destroy();
-                    if ('string' === typeof(id) && id.length > 0) {
-                        if (undefined !== mAnimationMap[id + "_x"]) {
-                            mAnimationMap[id + "_x"] = undefined;
-                            if ('function' === typeof(callback)) {
-                                callback();
-                            }
-                        }
-                    } else if ('function' === typeof(callback)) {
+                    if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id + "_x"]) {
+                        delete mAnimationMap[id + "_x"];
+                    }
+                    if ('function' === typeof(callback)) {
                         callback();
                     }
                 })
@@ -598,20 +574,16 @@ function moveFromTo(object, fromX, fromY, toX, toY, duration, callback, id) {
             toY = object.y;
         }
         if (fromY !== toY) {
-            if ('string' !== typeof(id) || id.length <= 0 || undefined === mAnimationMap[id + "_y"]) {
+            if ('string' !== typeof(id) || id.length <= 0 || !mAnimationMap[id + "_y"]) {
                 var aniY = createYOffsetAnimation(object, fromY, toY, duration, function() {
                     aniY.destroy();
                     if (xFlag) {
                         return;
                     }
-                    if ('string' === typeof(id) && id.length > 0) {
-                        if (undefined !== mAnimationMap[id + "_y"]) {
-                            mAnimationMap[id + "_y"] = undefined;
-                            if ('function' === typeof(callback)) {
-                                callback();
-                            }
-                        }
-                    } else if ('function' === typeof(callback)) {
+                    if ('string' === typeof(id) && id.length > 0 && mAnimationMap[id + "_y"]) {
+                        delete mAnimationMap[id + "_y"];
+                    }
+                    if ('function' === typeof(callback)) {
                         callback();
                     }
                 })
