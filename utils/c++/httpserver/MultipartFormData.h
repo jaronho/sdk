@@ -12,8 +12,6 @@
 #include <map>
 #include "HttpServer.h"
 
-class HttpField;
-
 /* multipart form-data */
 class MultipartFormData {
 public:

@@ -11,9 +11,13 @@
 #include <functional>
 #include <vector>
 #include <map>
-#include "../libevent/include/event.h"
-#include "../libevent/include/evhttp.h"
-#include "MultipartFormData.h"
+#if defined(WIN32) || defined(_WIN32) ||  defined(WIN64) || defined(_WIN64)
+#include "../libevent/platform-win32/include/event.h"
+#include "../libevent/platform-win32/include/evhttp.h"
+#else
+#include "../libevent/platform-linux/include/event.h"
+#include "../libevent/platform-linux/include/evhttp.h"
+#endif
 
 class HttpField;
 
