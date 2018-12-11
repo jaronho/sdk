@@ -16,14 +16,11 @@
 ***************************** Common 接口 ****************************
 **********************************************************************/
 #include "common/Common.h"
-/* utf8 转 string */
-extern std::string utf8ToString(const std::string& str);
+/* 初始应用程序目录 */
+extern void initAppDirectory(const std::string& dir);
 
-/* string 转 utf8 */
-extern std::string stringToUTF8(const std::string& str);
-
-/* string 转 utf8 */
-extern std::string utf8string(const std::string& str);
+/* 获取应用程序目录 */
+extern std::string getAppDirectory(void);
 #endif
 
 #ifdef GLOBAL_MODULE_INI

@@ -6,6 +6,7 @@
 #ifndef _CURL_EX_H_
 #define _CURL_EX_H_
 
+#include <string.h>
 #include <string>
 #include <vector>
 #include <map>
