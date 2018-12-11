@@ -91,15 +91,33 @@ std::string Common::toString(int n) {
     return buf;
 }
 /*********************************************************************/
+std::string Common::toString(unsigned int un) {
+    char buf[16];
+    sprintf(buf, "%u", un);
+    return buf;
+}
+/*********************************************************************/
 std::string Common::toString(long l) {
     char buf[32];
     sprintf(buf, "%ld", l);
     return buf;
 }
 /*********************************************************************/
+std::string Common::toString(unsigned long ul) {
+    char buf[32];
+    sprintf(buf, "%lu", ul);
+    return buf;
+}
+/*********************************************************************/
 std::string Common::toString(long long ll) {
     char buf[64];
     sprintf(buf, "%lld", ll);
+    return buf;
+}
+/*********************************************************************/
+std::string Common::toString(unsigned long long ull) {
+    char buf[64];
+    sprintf(buf, "%llu", ull);
     return buf;
 }
 /*********************************************************************/

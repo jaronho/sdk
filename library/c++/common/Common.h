@@ -83,6 +83,13 @@ public:
     static std::string toString(int n);
 
     /*
+     * Brief:	unsigned int to string
+     * Param:	un - a unsigned int number
+     * Return:	string
+     */
+    static std::string toString(unsigned int un);
+
+    /*
      * Brief:	long to string
      * Param:	l - a long number
      * Return:	string
@@ -90,11 +97,25 @@ public:
     static std::string toString(long l);
 
     /*
+     * Brief:	unsigned long to string
+     * Param:	ul - a unsigned long number
+     * Return:	string
+     */
+    static std::string toString(unsigned long ul);
+
+    /*
      * Brief:	long long to string
      * Param:	ll - a long long number
      * Return:	string
      */
     static std::string toString(long long ll);
+
+    /*
+     * Brief:	unsigned long long to string
+     * Param:	ull - a unsigned long long number
+     * Return:	string
+     */
+    static std::string toString(unsigned long long ull);
 
     /*
      * Brief:	float to string
