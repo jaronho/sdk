@@ -173,6 +173,22 @@ void logRecord(const std::string& str) {
     logfilewrapper_record(s_logWrapper, nullptr, 1, str.c_str());
     s_logWrapperMutex.unlock();
 }
+
+#define ERR_FILENAME        "client"
+#define ERR_EXTNAME         ".err"
+#define ERR_FILE_SIZE       (1024 * 1024 * 10)
+static logfilewrapper_st* s_errWrapper = nullptr;
+static std::mutex s_errWrapperMutex;
+
+void errRecord(const std::string& str) {
+    printf("%s\n", str.c_str());
+    s_errWrapperMutex.lock();
+    if (!s_errWrapper) {
+        s_errWrapper = logfilewrapper_init((s_app_directory + ERR_FILENAME).c_str(), ERR_EXTNAME, ERR_FILE_SIZE, false);
+    }
+    logfilewrapper_record(s_errWrapper, nullptr, 1, str.c_str());
+    s_errWrapperMutex.unlock();
+}
 #endif
 
 #ifdef GLOBAL_MODULE_HTTP_CLIENT

@@ -2,6 +2,7 @@
 #define _GLOBAL_H_
 
 #include <string>
+#include <map>
 #include <mutex>
 
 #define GLOBAL_MODULE_COMMON            /* 启用 Common 模块 */
@@ -87,6 +88,9 @@ extern void xmlSave(void);
 
 /* 日志记录 */
 extern void logRecord(const std::string& str);
+
+/* 错误记录 */
+extern void errRecord(const std::string& str);
 #endif
 
 #ifdef GLOBAL_MODULE_HTTP_CLIENT
