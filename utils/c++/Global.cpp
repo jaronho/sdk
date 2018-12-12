@@ -1,59 +1,20 @@
 #include "Global.h"
 
+static std::string s_app_directory;
+
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************
 ***************************** Common 接口 ****************************
 **********************************************************************/
-std::string utf8ToString(const std::string& str) {
-#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
-    int nwLen = ::MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
-    wchar_t* pwBuf = new wchar_t[nwLen + 1];    /* 一定要加1，不然会出现尾巴 */
-    memset(pwBuf, 0, nwLen * 2 + 2);
-    ::MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.length(), pwBuf, nwLen);
-    int nLen = ::WideCharToMultiByte(CP_ACP, 0, pwBuf, -1, NULL, NULL, NULL, NULL);
-    char* pBuf = new char[nLen + 1];
-    memset(pBuf, 0, nLen + 1);
-    ::WideCharToMultiByte(CP_ACP, 0, pwBuf, nwLen, pBuf, nLen, NULL, NULL);
-    std::string retStr = pBuf;
-    delete[]pBuf;
-    delete[]pwBuf;
-    pBuf = NULL;
-    pwBuf = NULL;
-    return retStr;
-#else
-    return str;
-#endif
+void initAppDirectory(const std::string& dir) {
+    if (s_app_directory.empty() && dir.size() > 0) {
+        std::string exeFullPath = Common::replaceString(dir, "\\", "/");
+        s_app_directory = exeFullPath.substr(0, exeFullPath.find_last_of('/')) + "/";
+    }
 }
 
-std::string stringToUTF8(const std::string& str) {
-#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
-    int nwLen = ::MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, NULL, 0);
-    wchar_t* pwBuf = new wchar_t[nwLen + 1];    /* 一定要加1，不然会出现尾巴 */
-    ZeroMemory(pwBuf, nwLen * 2 + 2);
-    ::MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.length(), pwBuf, nwLen);
-    int nLen = ::WideCharToMultiByte(CP_UTF8, 0, pwBuf, -1, NULL, NULL, NULL, NULL);
-    char* pBuf = new char[nLen + 1];
-    ZeroMemory(pBuf, nLen + 1);
-    ::WideCharToMultiByte(CP_UTF8, 0, pwBuf, nwLen, pBuf, nLen, NULL, NULL);
-    std::string retStr(pBuf);
-    delete[]pwBuf;
-    delete[]pBuf;
-    pwBuf = NULL;
-    pBuf = NULL;
-    return retStr;
-#else
-    return str;
-#endif
-}
-
-std::string utf8string(const std::string& str) {
-    if (str.empty()) {
-        return str;
-    }
-    if (Common::isStringUTF8(str.c_str())) {
-        return str;
-    }
-    return stringToUTF8(str);
+std::string getAppDirectory(void) {
+    return s_app_directory;
 }
 #endif
 
@@ -63,14 +24,14 @@ std::string utf8string(const std::string& str) {
 **********************************************************************/
 #define INI_FILENAME        "config.ini"
 #define INI_SECTION         "CONFIG"
-IniFile s_ini;
-bool s_iniOpened = false;
+static IniFile s_ini;
+static bool s_iniOpened = false;
 
 bool openIni(void) {
     if (s_iniOpened) {
         return true;
     }
-    if (0 == s_ini.open(INI_FILENAME)) {
+    if (0 == s_ini.open(s_app_directory + INI_FILENAME)) {
         s_iniOpened = true;
         return true;
     }
@@ -131,13 +92,13 @@ void iniSave(void) {
 ****************************** XML 接口 ******************************
 **********************************************************************/
 #define XML_FILENAME        "config.xml"
-bool s_xmlOpened = false;
+static bool s_xmlOpened = false;
 
 bool openXml(void) {
     if (s_xmlOpened) {
         return true;
     }
-    if (SharePrefs::open(XML_FILENAME)) {
+    if (SharePrefs::open(s_app_directory + XML_FILENAME)) {
         s_xmlOpened = true;
         return true;
     }
@@ -199,18 +160,34 @@ void xmlSave(void) {
 **********************************************************************/
 #define LOG_FILENAME        "client"
 #define LOG_EXTNAME         ".log"
-#define LOG_FILE_SIZE       (1024 * 1024 * 4)
-logfilewrapper_st* s_logWrapper = NULL;
-std::mutex s_logWrapperMutex;
+#define LOG_FILE_SIZE       (1024 * 1024 * 10)
+static logfilewrapper_st* s_logWrapper = nullptr;
+static std::mutex s_logWrapperMutex;
 
 void logRecord(const std::string& str) {
     printf("%s\n", str.c_str());
     s_logWrapperMutex.lock();
-    if (NULL == s_logWrapper) {
-        s_logWrapper = logfilewrapper_init(LOG_FILENAME, LOG_EXTNAME, LOG_FILE_SIZE, false);
+    if (!s_logWrapper) {
+        s_logWrapper = logfilewrapper_init((s_app_directory + LOG_FILENAME).c_str(), LOG_EXTNAME, LOG_FILE_SIZE, false);
     }
-    logfilewrapper_record(s_logWrapper, NULL, 1, str.c_str());
+    logfilewrapper_record(s_logWrapper, nullptr, 1, str.c_str());
     s_logWrapperMutex.unlock();
+}
+
+#define ERR_FILENAME        "client"
+#define ERR_EXTNAME         ".err"
+#define ERR_FILE_SIZE       (1024 * 1024 * 10)
+static logfilewrapper_st* s_errWrapper = nullptr;
+static std::mutex s_errWrapperMutex;
+
+void errRecord(const std::string& str) {
+    printf("%s\n", str.c_str());
+    s_errWrapperMutex.lock();
+    if (!s_errWrapper) {
+        s_errWrapper = logfilewrapper_init((s_app_directory + ERR_FILENAME).c_str(), ERR_EXTNAME, ERR_FILE_SIZE, false);
+    }
+    logfilewrapper_record(s_errWrapper, nullptr, 1, str.c_str());
+    s_errWrapperMutex.unlock();
 }
 #endif
 
@@ -223,7 +200,7 @@ void httpGet(const std::string& url, HTTP_REQUEST_CALLBACK callback) {
 }
 
 void httpPost(const std::string& url, const std::string& data, HTTP_REQUEST_CALLBACK callback) {
-    HttpClient::getInstance()->post(url, data.empty() ? NULL : data.c_str(), callback);
+    HttpClient::getInstance()->post(url, data.empty() ? nullptr : data.c_str(), callback);
 }
 
 void httpPostForm(const std::string& url, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback) {
