@@ -133,8 +133,11 @@ extern void serverRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK callba
 /* server运行 */
 extern void serverRun(unsigned int port, bool printReceive, bool printError, bool printFilter);
 
-/* 获取字段 */
-extern std::string serverField(const std::map<std::string, HttpField*>& body, const std::string& name, const std::string& defaultValue);
+/* 获取字段字符串值 */
+extern std::string serverFieldString(const std::map<std::string, HttpField*>& body, const std::string& name, const std::string& defaultValue);
+
+/* 获取字段整型值 */
+extern int serverFieldInt(const std::map<std::string, HttpField*>& body, const std::string& name, int defaultValue);
 #endif
 
 #endif
