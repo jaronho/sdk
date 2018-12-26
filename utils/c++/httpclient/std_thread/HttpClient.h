@@ -9,6 +9,7 @@
 #include <string>
 #include <algorithm>
 #include <list>
+#include <functional>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
