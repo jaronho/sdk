@@ -975,3 +975,28 @@ std::string Common::generateFilename(const std::string& extname) {
     return filename;
 }
 /*********************************************************************/
+std::vector<std::string> Common::shellCmd(const std::string& cmd) {
+    std::vector<std::string> results;
+    if (cmd.empty()) {
+        return results;
+    }
+    FILE* stream;
+#ifdef _SYSTEM_WINDOWS_
+    stream = _popen(cmd.c_str(), "r");
+#else
+    stream = popen(cmd.c_str(), "r");
+#endif
+    if (stream) {
+        char line[64] = { 0 };
+        while (fgets(line, sizeof(line), stream)) {
+            results.push_back(line);
+        }
+    }
+#ifdef _SYSTEM_WINDOWS_
+    _pclose(stream);
+#else
+    pclose(stream);
+#endif
+    return results;
+}
+/*********************************************************************/
