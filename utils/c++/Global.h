@@ -2,6 +2,7 @@
 #define _GLOBAL_H_
 
 #include <string>
+#include <vector>
 #include <map>
 #include <mutex>
 
@@ -11,6 +12,23 @@
 #define GLOBAL_MODULE_LOG               /* 启用 Log 模块 */
 #define GLOBAL_MODULE_HTTP_CLIENT       /* 启用 Htttp Client 模块 */
 #define GLOBAL_MODULE_HTTP_SERVER       /* 启用 Http Server 模块 */
+
+#ifdef __linux
+#include <ifaddrs.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+
+typedef struct network_dev_st {
+    char name[IFNAMSIZ];
+    char mac[32];
+    char ipv4[INET_ADDRSTRLEN];
+    char ipv6[INET6_ADDRSTRLEN];
+} network_dev_st;
+
+extern std::vector<network_dev_st> devGetNetwork(void);
+#endif
 
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************

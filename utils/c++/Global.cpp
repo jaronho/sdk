@@ -2,6 +2,56 @@
 
 static std::string s_app_directory;
 
+#ifdef __linux
+std::vector<network_dev_st> devGetNetwork(void) {
+    std::vector<network_dev_st> networkDevList;
+    struct ifaddrs* ifa_head = NULL;
+    struct ifaddrs* ifa_curr = NULL;
+    getifaddrs(&ifa_head);
+    for (ifa_curr = ifa_head; ifa_curr; ifa_curr = ifa_curr->ifa_next) {
+        if (!ifa_curr->ifa_addr) {
+            continue;
+        }
+        int index = -1;
+        for (size_t i = 0; i < networkDevList.size(); ++i) {
+            if (0 == strcmp(ifa_curr->ifa_name, networkDevList[i].name)) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) {
+            index = 0;
+            network_dev_st networkDev;
+            strcpy(networkDev.name, ifa_curr->ifa_name);
+            /* MAC Address */
+            struct ifreq req;
+            req.ifr_addr.sa_family = AF_INET;
+            strcpy((char*)req.ifr_name, ifa_curr->ifa_name);
+            int fd = socket(AF_INET, SOCK_DGRAM, 0);
+            if (fd) {
+                ioctl(fd, SIOCGIFHWADDR, &req);
+                close(fd);
+                unsigned char* mac = (unsigned char*)req.ifr_hwaddr.sa_data;
+                snprintf(networkDev.mac, sizeof(networkDev.mac), "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+            }
+            networkDevList.push_back(networkDev);
+        }
+        if (AF_INET == ifa_curr->ifa_addr->sa_family) { /* IPv4 Address */
+            void* tmp_addr = &((struct sockaddr_in*)ifa_curr->ifa_addr)->sin_addr;
+            inet_ntop(AF_INET, tmp_addr, networkDevList[index].ipv4, INET_ADDRSTRLEN);
+        } else if (AF_INET6 == ifa_curr->ifa_addr->sa_family) { /* IPv6 Address */
+            void* tmp_addr = &((struct sockaddr_in6*)ifa_curr->ifa_addr)->sin6_addr;
+            inet_ntop(AF_INET6, tmp_addr, networkDevList[index].ipv6, INET6_ADDRSTRLEN);
+        }
+    }
+    /* remove trailing comma */
+    if (ifa_head) {
+        freeifaddrs(ifa_head);
+    }
+    return networkDevList;
+}
+#endif
+
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************
 ***************************** Common 接口 ****************************
