@@ -508,6 +508,13 @@ public:
     static std::string generateFilename(const std::string& extname);
 
     /*
+     * Brief:   execute shell command
+     * Param:   cmd - command, e.g. "ls" or "dir"
+     * Return:  std::vector<std::string>
+     */
+    static std::vector<std::string> shellCmd(const std::string& cmd);
+
+    /*
      * Brief:	get size of array, e.g.
      *              int arr[] = {0, 1, 2, 3};
      *              size_t len = Common::getArrayCount<int>(arr);

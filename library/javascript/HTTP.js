@@ -104,7 +104,7 @@ function httpSend(method, url, headerMap, content, callback, target) {
 		}
 	}
 	if (!xhr) {
-		throw Error("XMLHttpRequest is not supported");
+        throw new Error("XMLHttpRequest is not supported");
 	}
 	xhr.open(method, url, true);
 	xhr.onreadystatechange = function() {
@@ -123,4 +123,39 @@ function httpSend(method, url, headerMap, content, callback, target) {
 	}
 	xhr.send(content);
 }
+//----------------------------------------------------------------------
+// 发送消息给服务端,address:地址,如:http://10.0.0.190/login,token:时效验证
+// contentData:发送内容,{}(哈希表,非数组),contentType:内容类型(1.Json,2.Text,3.FormData),callback:成功回调,target:回调函数宿主对象
+function httpSendEx(method, address, token, contentData, contentType, callback, target) {
+    address = 'string' == typeof(address) ? address : '';
+    contentData = contentData && 'object' == typeof(contentData) ? contentData : {};
+    contentType = 1 == contentType || 2 == contentType || 3 == contentType ? contentType : 1;
+    contentType = 3 == contentType ? ('undefined' == typeof(FormData) ? 2 : contentType) : contentType;
+    var content = 1 == contentType ? {} : (2 == contentType ? '' : (3 == contentType ? new FormData() : {}));
+    for (var key in contentData) {
+        if (contentData.hasOwnProperty(key)) {
+            var value = null;
+            if ('boolean' == typeof(contentData[key])) {
+                value = (contentData[key] ? 1 : 0);
+            } else if ('number' == typeof(contentData[key]) || 'string' == typeof(contentData[key])) {
+                value = contentData[key];
+            } else {
+                value = JSON.stringify(contentData[key]);
+            }
+            if (1 == contentType) {
+                content[key] = value;
+            } else if (2 == contentType) {
+                content += 0 == content.length ? '' : '&';
+                content += key + '=' + value;
+            } else if (3 == contentType) {
+                content.append(key, value);
+            }
+        }
+    }
+    httpSend(method, address, {token: token}, 1 == contentType ? JSON.stringify(content) : content, function (xhr) {
+        if (4 == xhr.readyState && 'function' == typeof(callback)) {
+            callback.apply(target, [xhr]);
+        }
+    }, this);
+};
 //----------------------------------------------------------------------
