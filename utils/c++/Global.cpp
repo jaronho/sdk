@@ -2,9 +2,12 @@
 
 static std::string s_app_directory;
 
-#ifdef __linux
+/*********************************************************************
+***************************** Device 接口 ****************************
+**********************************************************************/
 std::vector<network_dev_st> devGetNetwork(void) {
     std::vector<network_dev_st> networkDevList;
+#ifdef __linux
     struct ifaddrs* ifa_head = NULL;
     struct ifaddrs* ifa_curr = NULL;
     getifaddrs(&ifa_head);
@@ -48,9 +51,9 @@ std::vector<network_dev_st> devGetNetwork(void) {
     if (ifa_head) {
         freeifaddrs(ifa_head);
     }
+#endif
     return networkDevList;
 }
-#endif
 
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************

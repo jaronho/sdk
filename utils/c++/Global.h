@@ -13,12 +13,16 @@
 #define GLOBAL_MODULE_HTTP_CLIENT       /* 启用 Htttp Client 模块 */
 #define GLOBAL_MODULE_HTTP_SERVER       /* 启用 Http Server 模块 */
 
+/*********************************************************************
+***************************** Device 接口 ****************************
+**********************************************************************/
 #ifdef __linux
 #include <ifaddrs.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
+#endif
 
 typedef struct network_dev_st {
     char name[IFNAMSIZ];
@@ -27,8 +31,8 @@ typedef struct network_dev_st {
     char ipv6[INET6_ADDRSTRLEN];
 } network_dev_st;
 
+/* 获取网络设备 */
 extern std::vector<network_dev_st> devGetNetwork(void);
-#endif
 
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************
