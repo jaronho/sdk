@@ -55,6 +55,34 @@ std::vector<network_dev_st> devGetNetwork(void) {
     return networkDevList;
 }
 
+memory_dev_st devGetMemory(void) {
+    memory_dev_st memDev;
+#ifdef __linux
+    static const int TOTAL_LINE = 0; /* 总存储空间所处行数 */
+    static const int FREE_LINE = 1; /* 内存空闲存储空间所处行数 */
+    static const int AVAILABLE_LINE = 2;  /* 应用程序可利用的内存存储空间所处行数 */
+    FILE* stream = fopen("/proc/meminfo", "r");
+    if (stream) {
+        char buffer[256] = { 0 };
+        char name[64] = { 0 };
+        char unit[16] = { 0 };
+        for (int i = 0; i <= AVAILABLE_LINE; ++i) {
+            if (fgets(buffer, sizeof(buffer), stream)) {
+                if (TOTAL_LINE == i) {
+                    sscanf(buffer, "%s%d%s", name, &memDev.total, unit);
+                } else if (FREE_LINE == i) {
+                    sscanf(buffer, "%s%d%s", name, &memDev.free, unit);
+                } else if (AVAILABLE_LINE == i) {
+                    sscanf(buffer, "%s%d%s", name, &memDev.available, unit);
+                }
+            }
+        }
+        fclose(stream);
+    }
+#endif
+    return memDev;
+}
+
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************
 ***************************** Common 接口 ****************************

@@ -31,8 +31,17 @@ typedef struct network_dev_st {
     char ipv6[INET6_ADDRSTRLEN];
 } network_dev_st;
 
+typedef struct memory_dev_st {
+    int total;
+    int free;
+    int available;
+} memory_dev_st;
+
 /* 获取网络设备 */
 extern std::vector<network_dev_st> devGetNetwork(void);
+
+/* 获取内存情况 */
+extern memory_dev_st devGetMemory(void);
 
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************
