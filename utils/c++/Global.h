@@ -22,6 +22,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
+#include <sys/statfs.h>
 #endif
 
 typedef struct network_dev_st {
@@ -47,6 +48,12 @@ typedef struct cpu_dev_st { /* 1 jiffies = 0.01秒 */
     unsigned long softirq;          /* 从系统启动开始累计到当前时刻,软中断时间(单位:jiffies) */
 } cpu_dev_st;
 
+typedef struct disk_dev_st {
+    unsigned long long total;       /* 磁盘总大小(单位:字节B) */
+    unsigned long long free;        /* 空闲磁盘大小(单位:字节B) */
+    unsigned long long available;   /* 非超级用户可用的空闲磁盘大小(单位:字节B) */
+} disk_dev_st;
+
 /* 获取网络设备 */
 extern std::vector<network_dev_st> devGetNetwork(void);
 
@@ -55,6 +62,9 @@ extern memory_dev_st devGetMemory(void);
 
 /* 获取CPU情况 */
 extern cpu_dev_st devGetCPU(void);
+
+/* 获取磁盘情况 */
+extern disk_dev_st devGetDisk(const char* path);
 
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************
