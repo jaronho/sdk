@@ -69,11 +69,11 @@ memory_dev_st devGetMemory(void) {
         for (int i = 0; i <= AVAILABLE_LINE; ++i) {
             if (fgets(buffer, sizeof(buffer), stream)) {
                 if (TOTAL_LINE == i) {
-                    sscanf(buffer, "%s%d%s", name, &memDev.total, unit);
+                    sscanf(buffer, "%s%lu%s", name, &memDev.total, unit);
                 } else if (FREE_LINE == i) {
-                    sscanf(buffer, "%s%d%s", name, &memDev.free, unit);
+                    sscanf(buffer, "%s%lu%s", name, &memDev.free, unit);
                 } else if (AVAILABLE_LINE == i) {
-                    sscanf(buffer, "%s%d%s", name, &memDev.available, unit);
+                    sscanf(buffer, "%s%lu%s", name, &memDev.available, unit);
                 }
             }
         }
@@ -81,6 +81,22 @@ memory_dev_st devGetMemory(void) {
     }
 #endif
     return memDev;
+}
+
+cpu_dev_st devGetCPU(void) {
+    cpu_dev_st cpuDev;
+#ifdef __linux
+    FILE* stream = fopen("/proc/stat", "r");
+    if (stream) {
+        char buffer[256] = { 0 };
+        char name[64] = { 0 };
+        if (fgets(buffer, sizeof(buffer), stream)) {
+            sscanf(buffer, "%s%lu%lu%lu%lu%lu%lu%lu", name, &cpuDev.user, &cpuDev.nice, &cpuDev.system, &cpuDev.idle, &cpuDev.iowait, &cpuDev.irq, &cpuDev.softirq);
+        }
+        fclose(stream);
+    }
+#endif
+    return cpuDev;
 }
 
 #ifdef GLOBAL_MODULE_COMMON
