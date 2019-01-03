@@ -25,14 +25,36 @@
 #endif
 
 typedef struct network_dev_st {
-    char name[IFNAMSIZ];
-    char mac[32];
-    char ipv4[INET_ADDRSTRLEN];
-    char ipv6[INET6_ADDRSTRLEN];
+    char name[IFNAMSIZ];            /* 网络设备名 */
+    char mac[32];                   /* MAC地址 */
+    char ipv4[INET_ADDRSTRLEN];     /* IPv4地址 */
+    char ipv6[INET6_ADDRSTRLEN];    /* IPv6地址 */
 } network_dev_st;
+
+typedef struct memory_dev_st {
+    unsigned long total;            /* 总内存大小 */
+    unsigned long free;             /* 空闲内存大小 */
+    unsigned long available;        /* 可用的内存大小 */
+} memory_dev_st;
+
+typedef struct cpu_dev_st { /* 1 jiffies = 0.01秒 */
+    unsigned long user;             /* 从系统启动开始累计到当前时刻,处于用户态的运行时间,不包含nice值为负的进程(单位:jiffies) */
+    unsigned long nice;             /* 从系统启动开始累计到当前时刻,nice值为负的进程所占用的CPU时间(单位:jiffies) */
+    unsigned long system;           /* 从系统启动开始累计到当前时刻,处于核心态的运行时间(单位:jiffies) */
+    unsigned long idle;             /* 从系统启动开始累计到当前时刻,除IO等待时间以外的其它等待时间(单位:jiffies) */
+    unsigned long iowait;           /* 从系统启动开始累计到当前时刻,IO等待时间(单位:jiffies) */
+    unsigned long irq;              /* 从系统启动开始累计到当前时刻,硬中断时间(单位:jiffies) */
+    unsigned long softirq;          /* 从系统启动开始累计到当前时刻,软中断时间(单位:jiffies) */
+} cpu_dev_st;
 
 /* 获取网络设备 */
 extern std::vector<network_dev_st> devGetNetwork(void);
+
+/* 获取内存情况 */
+extern memory_dev_st devGetMemory(void);
+
+/* 获取CPU情况 */
+extern cpu_dev_st devGetCPU(void);
 
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************
