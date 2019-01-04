@@ -943,18 +943,36 @@ struct tm Common::timeToDate(long seconds /*= 0*/) {
     return *date;
 }
 /*********************************************************************/
-long Common::dateToTime(int y /*= 1970*/, int m /*= 1*/, int d /*= 1*/, int h /*= 8*/, int n /*= 0*/, int s /*= 0*/) {
-    if (y < 1900 || m > 12 || m < 1 || d > 31 || d < 1 || h > 23 || h < 0 || n > 59 || n < 0 || s > 59 || s < 0) {
+long Common::dateToTime(int year /*= 1970*/, int mon /*= 1*/, int mday /*= 1*/, int hour /*= 8*/, int min /*= 0*/, int sec /*= 0*/) {
+    if (year < 1900 || mon > 12 || mon < 1 || mday > 31 || mday < 1 || hour > 23 || hour < 0 || min > 59 || min < 0 || sec > 59 || sec < 0) {
         return 0;
     }
     tm date;
-    date.tm_year = y - 1900;
-    date.tm_mon = m - 1;
-    date.tm_mday = d;
-    date.tm_hour = h;
-    date.tm_min = n;
-    date.tm_sec = s;
+    date.tm_year = year - 1900;
+    date.tm_mon = mon - 1;
+    date.tm_mday = mday;
+    date.tm_hour = hour;
+    date.tm_min = min;
+    date.tm_sec = sec;
     return (long)mktime(&date);
+}
+/*********************************************************************/
+bool Common::setSystemTime(int year, int mon, int mday, int hour, int min, int sec) {
+    if (year < 1900 || mon > 12 || mon < 1 || mday > 31 || mday < 1 || hour > 23 || hour < 0 || min > 59 || min < 0 || sec > 59 || sec < 0) {
+        return false;
+    }
+    tm date;
+    date.tm_year = year - 1900;
+    date.tm_mon = mon - 1;
+    date.tm_mday = mday;
+    date.tm_hour = hour;
+    date.tm_min = min;
+    date.tm_sec = sec;
+    time_t t = mktime(&date);
+    struct timeval tv;
+    tv.tv_sec = t;
+    tv.tv_usec = 0;
+    return 0 == settimeofday(&tv, NULL);
 }
 /*********************************************************************/
 unsigned long long Common::generateUID(void) {
