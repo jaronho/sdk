@@ -51,6 +51,7 @@ void logfile_close(logfile_st* lf) {
     free(lf->filename);
     lf->filename = NULL;
     free(lf);
+    lf = NULL;
 }
 
 unsigned int logfile_clear(logfile_st* lf) {

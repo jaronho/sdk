@@ -29,8 +29,8 @@ typedef struct logfile_st {
 
 /*
  * Brief:	open a logfile
- * Param:	filename - log file name
- *			maxSize - file max size
+ * Param:	filename - log file name, e.g. "demo.log" or "/home/workspace/demo.log"
+ *			maxSize - file max size, e.g. 4M = 1024 * 1024 * 4
  * Return:	logfile_st*
  */
 extern logfile_st* logfile_open(const char* filename, size_t maxSize);

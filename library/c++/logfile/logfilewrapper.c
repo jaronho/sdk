@@ -31,15 +31,22 @@ logfilewrapper_st* logfilewrapper_init(const char* basename, const char* extname
     }
     wrapper->basename = (char*)malloc(strlen(basename) + 1);
     sprintf(wrapper->basename, "%s", basename);
-    if (strstr(extname, ".")) {
-        wrapper->extname = (char*)malloc(strlen(extname) + 1);
-        sprintf(wrapper->extname, "%s", extname);
-    } else {
-        wrapper->extname = (char*)malloc(1 + strlen(extname) + 1);
-        sprintf(wrapper->extname, ".%s", extname);
-    }
+    wrapper->extname = (char*)malloc(strlen(extname) + 1);
+    sprintf(wrapper->extname, "%s", extname);
     wrapper->override = override;
     return wrapper;
+}
+
+void logfilewrapper_close(logfilewrapper_st* wrapper) {
+    assert(wrapper);
+    logfile_close(wrapper->logfile);
+    wrapper->logfile = NULL;
+    free(wrapper->basename);
+    wrapper->basename = NULL;
+    free(wrapper->extname);
+    wrapper->extname = NULL;
+    free(wrapper);
+    wrapper = NULL;
 }
 
 unsigned int logfilewrapper_isenable(logfilewrapper_st* wrapper) {
@@ -78,7 +85,6 @@ unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, 
             filename = (char*)malloc(strlen(wrapper->logfile->filename) + 1);
             sprintf(filename, "%s", wrapper->logfile->filename);
             maxsize = wrapper->logfile->maxsize;
-            logfile_close(wrapper->logfile);
             time(&now);
             t = *localtime(&now);
             strftime(date, sizeof(date), "%Y%m%d%H%M%S", &t);
@@ -91,6 +97,7 @@ unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, 
             }
             rename(filename, oldFilename);
             free(oldFilename);
+            logfile_close(wrapper->logfile);
             wrapper->logfile = logfile_open(filename, maxsize);
             free(filename);
             if (!wrapper->logfile) {
@@ -114,4 +121,22 @@ unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, 
         }
     }
     return flag;
+}
+
+unsigned int logfilewrapper_record_ex(logfilewrapper_st* wrapper, const char* tag, unsigned int withtime, const char* content, const char* basename, const char* extname) {
+    size_t maxsize = 0;
+    unsigned int override = 0;
+    assert(wrapper);
+    assert(content);
+    if (basename && strlen(basename) > 0 && extname && strlen(extname) > 0) {
+        if (0 == strcmp(wrapper->basename, basename) && 0 == strcmp(wrapper->extname, extname)) {
+            return logfilewrapper_record(wrapper, tag, withtime, content);
+        } else {
+            logfilewrapper_close(wrapper);
+            wrapper = logfilewrapper_init(basename, extname, maxsize, override);
+            return logfilewrapper_record(wrapper, tag, withtime, content);
+        }
+    } else {
+        return logfilewrapper_record(wrapper, tag, withtime, content);
+    }
 }
