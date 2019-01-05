@@ -1005,8 +1005,9 @@ std::vector<std::string> Common::shellCmd(const std::string& cmd) {
     stream = popen(cmd.c_str(), "r");
 #endif
     if (stream) {
-        char line[64] = { 0 };
+        char line[1024] = { 0 };
         while (fgets(line, sizeof(line), stream)) {
+            line[strlen(line) - 1] = '\0';
             results.push_back(line);
         }
     }
