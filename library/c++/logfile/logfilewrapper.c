@@ -132,6 +132,8 @@ unsigned int logfilewrapper_record_ex(logfilewrapper_st* wrapper, const char* ta
         if (0 == strcmp(wrapper->basename, basename) && 0 == strcmp(wrapper->extname, extname)) {
             return logfilewrapper_record(wrapper, tag, withtime, content);
         } else {
+            maxsize = wrapper->logfile->maxsize;
+            override = wrapper->override;
             logfilewrapper_close(wrapper);
             wrapper = logfilewrapper_init(basename, extname, maxsize, override);
             return logfilewrapper_record(wrapper, tag, withtime, content);
