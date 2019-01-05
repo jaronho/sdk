@@ -99,6 +99,18 @@ cpu_dev_st devGetCPU(void) {
     return cpuDev;
 }
 
+disk_dev_st devGetDisk(const char* path) {
+    disk_dev_st diskDev;
+#ifdef __linux
+    struct statfs info;
+    statfs(path && strlen(path) > 0 ? path : "/", &info);
+    diskDev.total = info.f_blocks * info.f_bsize;
+    diskDev.free = info.f_bfree * info.f_bsize;
+    diskDev.available = info.f_bavail * info.f_bsize;
+#endif
+    return diskDev;
+}
+
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************
 ***************************** Common 接口 ****************************

@@ -479,15 +479,27 @@ public:
 
     /*
      * Brief:	date to time
-     * Param:	y - year, must > 1970
-     *          m - month , [1, 12]
-     *          d - day, [1, 31]
-     *          h - hour, [0, 23]
-     *          n - minute, [0, 59]
-     *          s - second, [0, 59]
+     * Param:	year - must > 1900
+     *          mon - [1, 12]
+     *          mday - [1, 31]
+     *          hour - [0, 23]
+     *          min - [0, 59]
+     *          sec - [0, 59]
      * Return:	long (seconds)
      */
-    static long dateToTime(int y = 1970, int m = 1, int d = 1, int h = 8, int n = 0, int s = 0);
+    static long dateToTime(int year = 1970, int mon = 1, int mday = 1, int hour = 8, int min = 0, int sec = 0);
+
+    /*
+     * Brief:	set system time
+     * Param:	year - must > 1900
+     *          mon - [1, 12]
+     *          mday - [1, 31]
+     *          hour - [0, 23]
+     *          min - [0, 59]
+     *          sec - [0, 59]
+     * Return:	long (seconds)
+     */
+    static bool setSystemTime(int year, int mon, int mday, int hour, int min, int sec);
 
     /**********************************************************************
      * other functions
