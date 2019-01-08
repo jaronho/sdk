@@ -397,6 +397,25 @@ public:
     static std::string getParentDir(std::string dir = "");
 
     /*
+     * Brief:	traverse search in the specified directory
+     * Param:	dirName - specified directory, can be absolute path (d:) or relative path (temp)
+     *          callback - called when folder or file searched
+     *          recursive - if recursive sub dir
+     * Return:	void
+     */
+    static void traverse(std::string dirName,
+                         std::function<void(const std::string& name,
+                                            long createTime,
+                                            long writeTime,
+                                            long accessTime)> folderCallback,
+                         std::function<void(const std::string& name,
+                                            long createTime,
+                                            long writeTime,
+                                            long accessTime,
+                                            unsigned long size)> fileCallback,
+                         bool recursive = true);
+
+    /*
      * Brief:	recursion search files in the specified directory
      * Param:	dirName - specified directory, can be absolute path (d:) or relative path (temp)
      *          extList - file extension
@@ -404,27 +423,14 @@ public:
      *          recursive - if recursive sub dir
      * Return:	void
      */
-    static void searchFile(std::string dirName, const std::vector<std::string>& extList, 
-                           std::function<void(const std::string& fileName, 
-                                              unsigned long fileSize, 
-                                              long createTime, 
-                                              long writeTime, 
-                                              long accessTime)> callback, 
-                           bool recursive = true);
-
-    /*
-     * Brief:	recursion serach directory in the specified directory
-     * Param:	dirName - specified directory, can be absolute path (d:) or relative path (temp)
-     *          callback - called when directory searched
-     *          recursive - if recursive sub dir
-     * Return:	void
-     */
-    static void searchDir(std::string dirName, 
-                          std::function<void(const std::string& dirName, 
-                                             long createTime, 
-                                             long writeTime, 
-                                             long accessTime)> callback, 
-                          bool recursive = true);
+    static void traverseFile(std::string dirName,
+                             const std::vector<std::string>& extList,
+                             std::function<void(const std::string& name,
+                                                long createTime,
+                                                long writeTime,
+                                                long accessTime,
+                                                unsigned long size)> callback,
+                             bool recursive = true);
 
     /**********************************************************************
     * network functions

@@ -693,16 +693,17 @@ std::string Common::getParentDir(std::string dir /*= ""*/) {
     return dir.substr(0, pos + 1);
 }
 /*********************************************************************/
-void Common::searchFile(std::string dirName, const std::vector<std::string>& extList, 
-                        std::function<void(const std::string& fileName, 
-                                           unsigned long fileSize, 
-                                           long createTime, 
-                                           long writeTime, 
-                                           long accessTime)> callback, 
-                        bool recursive /*= true*/) {
-    if (!callback) {
-        return;
-    }
+void Common::traverse(std::string dirName,
+                      std::function<void(const std::string& name,
+                                         long createTime,
+                                         long writeTime,
+                                         long accessTime)> folderCallback,
+                      std::function<void(const std::string& name,
+                                         long createTime,
+                                         long writeTime,
+                                         long accessTime,
+                                         unsigned long size)> fileCallback,
+                      bool recursive /*= true*/) {
     dirName = revisalPath(dirName);
 #ifdef _SYSTEM_WINDOWS_
     _finddata_t fileData;
@@ -710,104 +711,23 @@ void Common::searchFile(std::string dirName, const std::vector<std::string>& ext
     if (-1 == handle || !(_A_SUBDIR & fileData.attrib)) {
         return;
     }
+    dirName = revisalPath(dirName);
     while (0 == _findnext(handle, &fileData)) {
         if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name)) {
             continue;
         }
         std::string subName = dirName + "/" + fileData.name;
-        /* is sub directory */
-        if (_A_SUBDIR & fileData.attrib) {
-            if (recursive) {
-                searchFile(subName, extList, callback, true);
-            }
-            continue;
-        }
-        /* all file type */
-        if (extList.empty()) {
-            callback(subName, fileData.size, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access));
-            continue;
-        }
-        /* specific file type */
-        std::string::size_type index = subName.find_last_of(".");
-        if (std::string::npos == index) {
-            continue;
-        }
-        std::string ext = subName.substr(index, subName.size() - index);
-        for (size_t i = 0; i < extList.size(); ++i) {
-            if (extList[i] == ext) {
-                callback(subName, fileData.size, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access));
-            }
-        }
-    }
-    _findclose(handle);
-#else
-    DIR* dir = opendir(dirName.c_str());
-    if (! dir) {
-        return;
-    }
-    struct dirent* dirp = NULL;
-    while ((dirp = readdir(dir))) {
-        if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name)) {
-            continue;
-        }
-        std::string subName = dirName + "/" + dirp->d_name;
-        DIR* subDir = opendir(subName.c_str());
-        if (NULL == subDir) {
-            struct stat fileStat;
-            if (0 != stat(subName.c_str(), &fileStat)) {
-                continue;
-            }
-            if (extList.empty()) {
-                callback(subName, fileStat.st_size, fileStat.st_ctime, fileStat.st_mtime, fileStat.st_atime);
-                continue;
-            }
-            std::string::size_type index = subName.find_last_of(".");
-            if (std::string::npos == index) {
-                continue;
-            }
-            std::string ext = subName.substr(index, subName.size() - index);
-            for (size_t i=0; i<extList.size(); ++i) {
-                if (extList[i] == ext) {
-                    callback(subName, fileStat.st_size, fileStat.st_ctime, fileStat.st_mtime, fileStat.st_atime);
-                }
-            }
-            continue;
-        }
-        closedir(subDir);
-        if (recursive) {
-            searchFile(subName, extList, callback, true);
-        }
-    }
-    closedir(dir);
-#endif
-}
-/*********************************************************************/
-void Common::searchDir(std::string dirName, 
-                       std::function<void(const std::string& dirName, 
-                                          long createTime, 
-                                          long writeTime, 
-                                          long accessTime)> callback, 
-                       bool recursive /*= true*/) {
-    if (!callback) {
-        return;
-    }
-#ifdef _SYSTEM_WINDOWS_
-    _finddata_t fileData;
-    int handle = _findfirst((dirName + "/*.*").c_str(), &fileData);
-    if (-1 == handle || !(_A_SUBDIR & fileData.attrib)) {
-        return;
-    }
-    dirName = revisalPath(dirName);
-    while (0 == _findnext(handle, &fileData)) {
-        if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name)) {
-            continue;
-        }
         if (_A_SUBDIR & fileData.attrib) {	/* is sub directory */
-            std::string subDirName = dirName + "/" + fileData.name;
-            callback(subDirName, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access));
-            if (recursive) {
-                searchDir(subDirName, callback, true);
+            if (folderCallback) {
+                folderCallback(subName, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access));
             }
+        } else {
+            if (fileCallback) {
+                fileCallback(subName, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access), fileData.size);
+            }
+        }
+        if (recursive) {
+            traverse(subName, folderCallback, fileCallback, true);
         }
     }
     _findclose(handle);
@@ -816,30 +736,68 @@ void Common::searchDir(std::string dirName,
     if (!dir) {
         return;
     }
-    dirName = revisalPath(dirName);
     struct dirent* dirp = NULL;
     while ((dirp = readdir(dir))) {
         if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name)) {
             continue;
         }
-        std::string subDirName = dirName + "/" + dirp->d_name;
-        DIR* subDir = opendir(subDirName.c_str());
-        if (!subDir) {
+        std::string subName = dirName + "/" + dirp->d_name;
+        struct stat subStat;
+        if (0 != stat(subName.c_str(), &subStat)) {
             continue;
         }
-        struct stat fileStat;
-        if (0 != stat(subDirName.c_str(), &fileStat)) {
+        DIR* subDir = opendir(subName.c_str());
+        if (subDir) {   /* is sub directory */
             closedir(subDir);
-            continue;
+            if (folderCallback) {
+                folderCallback(subName, subStat.st_ctime, subStat.st_mtime, subStat.st_atime);
+            }
+        } else {
+            if (fileCallback) {
+                fileCallback(subName, subStat.st_ctime, subStat.st_mtime, subStat.st_atime, subStat.st_size);
+            }
         }
-        closedir(subDir);
-        callback(subDirName, fileStat.st_ctime, fileStat.st_mtime, fileStat.st_atime);
         if (recursive) {
-            searchDir(subDirName, callback, true);
+            traverse(subName, folderCallback, fileCallback, true);
         }
     }
     closedir(dir);
 #endif
+}
+/*********************************************************************/
+void Common::traverseFile(std::string dirName,
+                          const std::vector<std::string>& extList,
+                          std::function<void(const std::string& name,
+                                             long createTime,
+                                             long writeTime,
+                                             long accessTime,
+                                             unsigned long size)> callback,
+                          bool recursive /*= true*/) {
+    if (!callback) {
+        return;
+    }
+    traverse(dirName,
+             NULL,
+             [&](const std::string& name,
+             long createTime,
+             long writeTime,
+             long accessTime,
+             unsigned long size)->void {
+        if (extList.empty()) {
+            callback(name, createTime, writeTime, accessTime, size);
+            return;
+        }
+        std::string::size_type index = name.find_last_of(".");
+        if (std::string::npos == index) {
+            return;
+        }
+        std::string ext = name.substr(index, name.size() - index);
+        for (size_t i = 0; i < extList.size(); ++i) {
+            if (extList[i] == ext) {
+                callback(name, createTime, writeTime, accessTime, size);
+            }
+        }
+    }, recursive);
 }
 /*********************************************************************/
 bool Common::isIpFormat(std::string ip) {
