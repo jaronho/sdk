@@ -165,11 +165,18 @@ void HttpClient::receive(void) {
     recvResponse();
 }
 //------------------------------------------------------------------------
-void HttpClient::get(const std::string& url, HTTP_REQUEST_CALLBACK callback /*= 0*/) {
+void HttpClient::get(const std::string& url,
+                     const std::vector<std::string>* headers /*= NULL*/,
+                     HTTP_REQUEST_CALLBACK callback /*= 0*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
     obj->url = url;
+    if (headers) {
+        for (size_t i = 0; i < headers->size(); ++i) {
+            obj->headers.push_back((*headers)[i]);
+        }
+    }
     obj->tag = "";
     obj->requesttype = "GET";
     obj->syncresponse = true;
@@ -177,11 +184,19 @@ void HttpClient::get(const std::string& url, HTTP_REQUEST_CALLBACK callback /*= 
     sendRequest(obj);
 }
 //------------------------------------------------------------------------
-void HttpClient::post(const std::string& url, const char* data, HTTP_REQUEST_CALLBACK callback /*= 0*/) {
+void HttpClient::post(const std::string& url,
+                      const std::vector<std::string>* headers,
+                      const char* data,
+                      HTTP_REQUEST_CALLBACK callback /*= 0*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
     obj->url = url;
+    if (headers) {
+        for (size_t i = 0; i < headers->size(); ++i) {
+            obj->headers.push_back((*headers)[i]);
+        }
+    }
     obj->setData(data, data ? strlen(data) : 0);
     obj->tag = "";
     obj->requesttype = "POST";
@@ -191,6 +206,7 @@ void HttpClient::post(const std::string& url, const char* data, HTTP_REQUEST_CAL
 }
 //------------------------------------------------------------------------
 void HttpClient::postForm(const std::string& url,
+                          const std::vector<std::string>* headers /*= NULL*/,
                           const std::map<std::string, std::string>* contents /*= NULL*/,
                           const std::map<std::string, std::string>* files /*= NULL*/,
                           HTTP_REQUEST_CALLBACK callback /*= 0*/) {
@@ -198,6 +214,11 @@ void HttpClient::postForm(const std::string& url,
     obj->connecttimeout = 30;
     obj->timeout = 60;
     obj->url = url;
+    if (headers) {
+        for (size_t i = 0; i < headers->size(); ++i) {
+            obj->headers.push_back((*headers)[i]);
+        }
+    }
     if (contents) {
         std::map<std::string, std::string>::const_iterator contentIter = contents->begin();
         for (; contents->end() != contentIter; ++contentIter) {

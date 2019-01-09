@@ -49,9 +49,15 @@ public:
     static void destroyInstance(void);		// 删除单例
     void send(HttpObject* obj);                                                                 // 发送http请求
     void receive(void);                                                                         // 每帧循环接收(用于异步响应)
-    void get(const std::string& url, HTTP_REQUEST_CALLBACK callback = 0);                       // http get 请求(同步响应)
-    void post(const std::string& url, const char* data, HTTP_REQUEST_CALLBACK callback = 0);    // http post 请求(同步响应)
+    void get(const std::string& url,
+             const std::vector<std::string>* headers = NULL,
+             HTTP_REQUEST_CALLBACK callback = 0);                                               // http get 请求(同步响应)
+    void post(const std::string& url,
+              const std::vector<std::string>* headers,
+              const char* data,
+              HTTP_REQUEST_CALLBACK callback = 0);                                              // http post 请求(同步响应)
     void postForm(const std::string& url,
+                  const std::vector<std::string>* headers = NULL,
                   const std::map<std::string, std::string>* contents = NULL,
                   const std::map<std::string, std::string>* files = NULL,
                   HTTP_REQUEST_CALLBACK callback = 0);                                          // http post 请求(同步响应)

@@ -154,13 +154,13 @@ extern void errRecord(const std::string& str);
 #include "httpclient/HttpClient.h"
 
 /* http请求GET */
-extern void httpGet(const std::string& url, HTTP_REQUEST_CALLBACK callback);
+extern void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback);
 
 /* http请求POST */
-extern void httpPost(const std::string& url, const std::string& data, HTTP_REQUEST_CALLBACK callback);
+extern void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback);
 
 /* http请求POST表单 */
-extern void httpPostForm(const std::string& url, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback);
+extern void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback);
 #endif
 
 #ifdef GLOBAL_MODULE_HTTP_SERVER
