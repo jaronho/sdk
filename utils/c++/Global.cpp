@@ -304,16 +304,16 @@ void errRecord(const std::string& str) {
 /*********************************************************************
 *************************** HTTP CLIENT 接口 *************************
 **********************************************************************/
-void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback) {
-    HttpClient::getInstance()->get(url, headers, callback);
+void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback, const std::string& param) {
+    HttpClient::getInstance()->get(url, headers, callback, param);
 }
 
-void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback) {
-    HttpClient::getInstance()->post(url, headers, data.empty() ? nullptr : data.c_str(), callback);
+void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback, const std::string& param) {
+    HttpClient::getInstance()->post(url, headers, data.empty() ? nullptr : data.c_str(), callback, param);
 }
 
-void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback) {
-    HttpClient::getInstance()->postForm(url, headers, contents, files, callback);
+void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback, const std::string& param) {
+    HttpClient::getInstance()->postForm(url, headers, contents, files, callback, param);
 }
 #endif
 

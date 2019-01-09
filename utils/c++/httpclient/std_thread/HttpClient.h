@@ -16,10 +16,13 @@
 #include "../libcurl/CURLEx.h"
 
 // http请求回调
-#define HTTP_REQUEST_CALLBACK std::function<void(bool success, int curlcode, int responsecode, \
-                                         const std::string& errorbuffer, \
-                                         const std::string& responseheader, \
-                                         const std::string& responsebody)>
+#define HTTP_REQUEST_CALLBACK std::function<void(bool success, \
+                                                 int curlcode, \
+                                                 int responsecode, \
+                                                 const std::string& errorbuffer, \
+                                                 const std::string& responseheader, \
+                                                 const std::string& responsebody, \
+                                                 const std::string& param)>
 
 // http对象
 class HttpObject : public CurlRequest {
@@ -28,10 +31,10 @@ public:
 
 public:
     // 请求
-    std::string tag;						// 标签,用以标识每个请求
     std::string requesttype;				// 请求类型(不区分大小写):"GET","POST","POST_FORM","PUT","DELETE"
     bool syncresponse;						// 同步响应
     HTTP_REQUEST_CALLBACK callback;         // 回调函数
+    std::string param;						// 附加参数
 
     // 响应
     bool success;							// 是否请求成功
@@ -51,16 +54,19 @@ public:
     void receive(void);                                                                         // 每帧循环接收(用于异步响应)
     void get(const std::string& url,
              const std::vector<std::string>* headers = NULL,
-             HTTP_REQUEST_CALLBACK callback = 0);                                               // http get 请求(同步响应)
+             HTTP_REQUEST_CALLBACK callback = 0,
+             const std::string& param = "");                                                    // http get 请求(同步响应)
     void post(const std::string& url,
               const std::vector<std::string>* headers,
               const char* data,
-              HTTP_REQUEST_CALLBACK callback = 0);                                              // http post 请求(同步响应)
+              HTTP_REQUEST_CALLBACK callback = 0,
+              const std::string& param = "");                                                   // http post 请求(同步响应)
     void postForm(const std::string& url,
                   const std::vector<std::string>* headers = NULL,
                   const std::map<std::string, std::string>* contents = NULL,
                   const std::map<std::string, std::string>* files = NULL,
-                  HTTP_REQUEST_CALLBACK callback = 0);                                          // http post 请求(同步响应)
+                  HTTP_REQUEST_CALLBACK callback = 0,
+                  const std::string& param = "");                                               // http post 请求(同步响应)
 };
 
 #endif //_HTTP_CLIENT_H_

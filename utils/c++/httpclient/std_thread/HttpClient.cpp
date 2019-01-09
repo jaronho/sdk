@@ -75,7 +75,7 @@ static void recvResponse(void) {
     if (responseObj->callback) {
         std::string responseheader(responseObj->responseheader.begin(), responseObj->responseheader.end());
         std::string responsebody(responseObj->responsebody.begin(), responseObj->responsebody.end());
-        responseObj->callback(responseObj->success, responseObj->curlcode, responseObj->responsecode, responseObj->errorbuffer, responseheader, responsebody);
+        responseObj->callback(responseObj->success, responseObj->curlcode, responseObj->responsecode, responseObj->errorbuffer, responseheader, responsebody, responseObj->param);
     }
     delete responseObj;
 }
@@ -126,7 +126,7 @@ static void httpNetworkThread() {
             if (requestObj->callback) {
                 std::string responseheader(requestObj->responseheader.begin(), requestObj->responseheader.end());
                 std::string responsebody(requestObj->responsebody.begin(), requestObj->responsebody.end());
-                requestObj->callback(requestObj->success, requestObj->curlcode, requestObj->responsecode, requestObj->errorbuffer, responseheader, responsebody);
+                requestObj->callback(requestObj->success, requestObj->curlcode, requestObj->responsecode, requestObj->errorbuffer, responseheader, responsebody, requestObj->param);
             }
             delete requestObj;
         } else {
@@ -167,7 +167,8 @@ void HttpClient::receive(void) {
 //------------------------------------------------------------------------
 void HttpClient::get(const std::string& url,
                      const std::vector<std::string>* headers /*= NULL*/,
-                     HTTP_REQUEST_CALLBACK callback /*= 0*/) {
+                     HTTP_REQUEST_CALLBACK callback /*= 0*/,
+                     const std::string& param /*= ""*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
@@ -177,17 +178,18 @@ void HttpClient::get(const std::string& url,
             obj->headers.push_back((*headers)[i]);
         }
     }
-    obj->tag = "";
     obj->requesttype = "GET";
     obj->syncresponse = true;
     obj->callback = callback;
+    obj->param = param;
     sendRequest(obj);
 }
 //------------------------------------------------------------------------
 void HttpClient::post(const std::string& url,
                       const std::vector<std::string>* headers,
                       const char* data,
-                      HTTP_REQUEST_CALLBACK callback /*= 0*/) {
+                      HTTP_REQUEST_CALLBACK callback /*= 0*/,
+                      const std::string& param /*= ""*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
@@ -198,10 +200,10 @@ void HttpClient::post(const std::string& url,
         }
     }
     obj->setData(data, data ? strlen(data) : 0);
-    obj->tag = "";
     obj->requesttype = "POST";
     obj->syncresponse = true;
     obj->callback = callback;
+    obj->param = param;
     sendRequest(obj);
 }
 //------------------------------------------------------------------------
@@ -209,7 +211,8 @@ void HttpClient::postForm(const std::string& url,
                           const std::vector<std::string>* headers /*= NULL*/,
                           const std::map<std::string, std::string>* contents /*= NULL*/,
                           const std::map<std::string, std::string>* files /*= NULL*/,
-                          HTTP_REQUEST_CALLBACK callback /*= 0*/) {
+                          HTTP_REQUEST_CALLBACK callback /*= 0*/,
+                          const std::string& param /*= ""*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
@@ -231,10 +234,10 @@ void HttpClient::postForm(const std::string& url,
             obj->addFile(fileIter->first, fileIter->second);
         }
     }
-    obj->tag = "";
     obj->requesttype = "POST_FORM";
     obj->syncresponse = true;
     obj->callback = callback;
+    obj->param = param;
     sendRequest(obj);
 }
 //------------------------------------------------------------------------
