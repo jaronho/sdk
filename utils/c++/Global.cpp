@@ -308,16 +308,16 @@ void httpReceive(void) {
     HttpClient::getInstance()->receive();
 }
 
-void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback, const std::string& param) {
-    HttpClient::getInstance()->get(url, headers, callback, param);
+void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param) {
+    HttpClient::getInstance()->get(url, headers, callback, param, 15, 30, false);
 }
 
-void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback, const std::string& param) {
-    HttpClient::getInstance()->post(url, headers, data.empty() ? nullptr : data.c_str(), callback, param);
+void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback, void* param) {
+    HttpClient::getInstance()->post(url, headers, data.empty() ? nullptr : data.c_str(), callback, param, 15, 30, false);
 }
 
-void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback, const std::string& param) {
-    HttpClient::getInstance()->postForm(url, headers, contents, files, callback, param);
+void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback, void* param) {
+    HttpClient::getInstance()->postForm(url, headers, contents, files, callback, param, 15, 30, false);
 }
 #endif
 
