@@ -120,6 +120,7 @@ static void httpNetworkThread() {
         } else if ("DELETE" == requestObj->requesttype) {
             requestObj->success = curlDelete(*requestObj, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
         } else {
+            delete requestObj;
             continue;
         }
         if (requestObj->syncresponse) {

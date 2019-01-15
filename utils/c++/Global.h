@@ -157,13 +157,13 @@ extern void errRecord(const std::string& str);
 extern void httpReceive(void);
 
 /* http请求GET */
-extern void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param);
+extern void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
 
 /* http请求POST */
-extern void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback, void* param);
+extern void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
 
 /* http请求POST表单 */
-extern void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback, void* param);
+extern void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
 #endif
 
 #ifdef GLOBAL_MODULE_HTTP_SERVER
