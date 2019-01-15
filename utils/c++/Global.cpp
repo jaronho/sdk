@@ -304,6 +304,10 @@ void errRecord(const std::string& str) {
 /*********************************************************************
 *************************** HTTP CLIENT 接口 *************************
 **********************************************************************/
+void httpReceive(void) {
+    HttpClient::getInstance()->receive();
+}
+
 void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback, const std::string& param) {
     HttpClient::getInstance()->get(url, headers, callback, param);
 }

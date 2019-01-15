@@ -153,6 +153,9 @@ extern void errRecord(const std::string& str);
 **********************************************************************/
 #include "httpclient/HttpClient.h"
 
+/* http接收(循环调用) */
+extern void httpReceive(void);
+
 /* http请求GET */
 extern void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback, const std::string& param);
 
