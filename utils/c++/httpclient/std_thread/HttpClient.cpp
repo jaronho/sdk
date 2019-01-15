@@ -168,7 +168,8 @@ void HttpClient::receive(void) {
 void HttpClient::get(const std::string& url,
                      const std::vector<std::string>* headers /*= NULL*/,
                      HTTP_REQUEST_CALLBACK callback /*= 0*/,
-                     const std::string& param /*= ""*/) {
+                     const std::string& param /*= ""*/,
+                     bool syncresponse /*= true*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
@@ -179,7 +180,7 @@ void HttpClient::get(const std::string& url,
         }
     }
     obj->requesttype = "GET";
-    obj->syncresponse = true;
+    obj->syncresponse = syncresponse;
     obj->callback = callback;
     obj->param = param;
     sendRequest(obj);
@@ -189,7 +190,8 @@ void HttpClient::post(const std::string& url,
                       const std::vector<std::string>* headers,
                       const char* data,
                       HTTP_REQUEST_CALLBACK callback /*= 0*/,
-                      const std::string& param /*= ""*/) {
+                      const std::string& param /*= ""*/,
+                      bool syncresponse /*= true*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
@@ -201,7 +203,7 @@ void HttpClient::post(const std::string& url,
     }
     obj->setData(data, data ? strlen(data) : 0);
     obj->requesttype = "POST";
-    obj->syncresponse = true;
+    obj->syncresponse = syncresponse;
     obj->callback = callback;
     obj->param = param;
     sendRequest(obj);
@@ -212,7 +214,8 @@ void HttpClient::postForm(const std::string& url,
                           const std::map<std::string, std::string>* contents /*= NULL*/,
                           const std::map<std::string, std::string>* files /*= NULL*/,
                           HTTP_REQUEST_CALLBACK callback /*= 0*/,
-                          const std::string& param /*= ""*/) {
+                          const std::string& param /*= ""*/,
+                          bool syncresponse /*= true*/) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = 30;
     obj->timeout = 60;
@@ -235,7 +238,7 @@ void HttpClient::postForm(const std::string& url,
         }
     }
     obj->requesttype = "POST_FORM";
-    obj->syncresponse = true;
+    obj->syncresponse = syncresponse;
     obj->callback = callback;
     obj->param = param;
     sendRequest(obj);

@@ -55,18 +55,21 @@ public:
     void get(const std::string& url,
              const std::vector<std::string>* headers = NULL,
              HTTP_REQUEST_CALLBACK callback = 0,
-             const std::string& param = "");                                                    // http get 请求(同步响应)
+             const std::string& param = "",
+             bool syncresponse = true);                                                         // GET请求
     void post(const std::string& url,
               const std::vector<std::string>* headers,
               const char* data,
               HTTP_REQUEST_CALLBACK callback = 0,
-              const std::string& param = "");                                                   // http post 请求(同步响应)
+              const std::string& param = "",
+              bool syncresponse = true);                                                        // POST请求
     void postForm(const std::string& url,
                   const std::vector<std::string>* headers = NULL,
                   const std::map<std::string, std::string>* contents = NULL,
                   const std::map<std::string, std::string>* files = NULL,
                   HTTP_REQUEST_CALLBACK callback = 0,
-                  const std::string& param = "");                                               // http post 请求(同步响应)
+                  const std::string& param = "",
+                  bool syncresponse = true);                                                    // POST请求
 };
 
 #endif //_HTTP_CLIENT_H_
