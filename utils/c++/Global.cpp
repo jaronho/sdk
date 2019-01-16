@@ -25,6 +25,7 @@ std::vector<network_dev_st> devGetNetwork(void) {
         if (index < 0) {
             index = 0;
             network_dev_st networkDev;
+            memset(&networkDev, 0, sizeof(network_dev_st));
             strcpy(networkDev.name, ifa_curr->ifa_name);
             /* MAC Address */
             struct ifreq req;
