@@ -25,12 +25,13 @@ public:
     std::string serialNumber;       /* the device serial number */
 
 public:
+    /* 打开USB设备检测,注意:回调函数将在线程中被调用(回调函数可设置为空) */
     static bool open(LIBUSB_DEVICE_HOTPLUG_CALLBACK arrivedCallback, LIBUSB_DEVICE_HOTPLUG_CALLBACK leftCallback);
 
+    /* 关闭USB设备检测 */
     static void close(void);
 
-    static void listen(void);
-
+    /* 获取当前USB设备列表 */
     static std::vector<UsbDevice> getList(void);
 };
 

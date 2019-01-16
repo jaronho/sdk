@@ -5,15 +5,12 @@
 **********************************************************************/
 #include "UsbDevice.h"
 #include <unistd.h>
-#include <list>
 #include <mutex>
 #include <thread>
 
 static libusb_context* sLibusbContext = NULL;
 static std::mutex sLibusbContextMutex;
 static std::vector<UsbDevice> sUsbList;
-static std::list<UsbDevice> sUsbArrivedList;
-static std::list<UsbDevice> sUsbLeftList;
 static LIBUSB_DEVICE_HOTPLUG_CALLBACK sLibusbDeviceArrivedCallback;
 static LIBUSB_DEVICE_HOTPLUG_CALLBACK sLibusbDeviceLeftCallback;
 
@@ -73,57 +70,67 @@ static std::vector<UsbDevice> getUsbList(libusb_context* ctx) {
     return usbList;
 }
 
-static int LIBUSB_CALL deviceArrivedCallback(struct libusb_context* ctx, struct libusb_device* dev, libusb_hotplug_event event, void* userdata) {
-    if (sLibusbDeviceArrivedCallback) {
-        sLibusbDeviceArrivedCallback(parseDevice(dev));
+static std::vector<UsbDevice>::iterator findInUsbVector(std::vector<UsbDevice>& usbList, UsbDevice usb) {
+    std::vector<UsbDevice>::iterator iter = usbList.begin();
+    for (; usbList.end() != iter; ++iter) {
+        if (usb.address == (*iter).address && usb.busNumber == (*iter).busNumber && usb.portNumber == (*iter).portNumber && usb.vendorId == (*iter).vendorId && usb.productId == (*iter).productId) {
+            break;
+        }
     }
-}
-
-static int LIBUSB_CALL deviceLeftCallback(struct libusb_context* ctx, struct libusb_device* dev, libusb_hotplug_event event, void* userdata) {
-    if (sLibusbDeviceLeftCallback) {
-        sLibusbDeviceLeftCallback(parseDevice(dev));
-    }
+    return iter;
 }
 
 static void detectThreadHandler(void) {
     while (true) {
         sLibusbContextMutex.lock();
         if (!sLibusbContext) {
-            sUsbList.clear();
-            sUsbArrivedList.clear();
-            sUsbLeftList.clear();
+            sLibusbContextMutex.unlock();
             break;
         }
         std::vector<UsbDevice> usbList = getUsbList(sLibusbContext);
+        /* step1: check usb arrived */
+        std::vector<UsbDevice> usbArrivedList;
         for (size_t i = 0; i < usbList.size(); ++i) {
             UsbDevice usb = usbList[i];
-            bool isArrived = true;
-            for (size_t j = 0; j < sUsbList.size(); ++j) {
-                UsbDevice usbTmp = sUsbList[j];
-                if (usb.address == usbTmp.address && usb.busNumber == usbTmp.busNumber && usb.portNumber == usbTmp.portNumber && usb.vendorId == usbTmp.vendorId && usb.productId == usbTmp.productId) {
-                    isArrived = false;
-                    break;
+            std::vector<UsbDevice>::iterator iter = findInUsbVector(sUsbList, usb);
+            if (sUsbList.end() == iter) {
+                usbArrivedList.push_back(usb);
+            } else {
+                if (usb.manufacturer.empty()) {
+                    usbList[i].manufacturer = (*iter).manufacturer;
+                }
+                if (usb.product.empty()) {
+                    usbList[i].product = (*iter).product;
+                }
+                if (usb.serialNumber.empty()) {
+                    usbList[i].serialNumber = (*iter).serialNumber;
                 }
             }
-            if (isArrived) {
-                sUsbArrivedList.push_back(usb);
-            }
         }
+        /* step2: check usb left */
+        std::vector<UsbDevice> usbLeftList;
         for (size_t i = 0; i < sUsbList.size(); ++i) {
             UsbDevice usb = sUsbList[i];
-            bool isLeft = true;
-            for (size_t j = 0; j < usbList.size(); ++j) {
-                UsbDevice usbTmp = usbList[j];
-                if (usb.address == usbTmp.address && usb.busNumber == usbTmp.busNumber && usb.portNumber == usbTmp.portNumber && usb.vendorId == usbTmp.vendorId && usb.productId == usbTmp.productId) {
-                    isLeft = false;
-                    break;
-                }
-            }
-            if (isLeft) {
-                sUsbLeftList.push_back(usb);
+            std::vector<UsbDevice>::iterator iter = findInUsbVector(usbList, usb);
+            if (usbList.end() == iter) {
+                usbLeftList.push_back(usb);
             }
         }
-        sUsbList = usbList;
+        /* step3: update usb list */
+        if (usbArrivedList.size() > 0 || usbLeftList.size() > 0) {
+            sUsbList = usbList;
+        }
+        /* step4: notify detect result */
+        if (sLibusbDeviceArrivedCallback) {
+            for (size_t i = 0; i < usbArrivedList.size(); ++i) {
+                sLibusbDeviceArrivedCallback(usbArrivedList[i]);
+            }
+        }
+        if (sLibusbDeviceLeftCallback) {
+            for (size_t i = 0; i < usbLeftList.size(); ++i) {
+                sLibusbDeviceLeftCallback(usbLeftList[i]);
+            }
+        }
         sLibusbContextMutex.unlock();
         usleep(1000);
     }
@@ -139,11 +146,9 @@ bool UsbDevice::open(LIBUSB_DEVICE_HOTPLUG_CALLBACK arrivedCallback, LIBUSB_DEVI
         sLibusbContextMutex.unlock();
         return false;
     }
-    sUsbList = getUsbList(sLibusbContext);
-    sUsbArrivedList.clear();
-    sUsbLeftList.clear();
     sLibusbDeviceArrivedCallback = arrivedCallback;
     sLibusbDeviceLeftCallback = leftCallback;
+    sUsbList = getUsbList(sLibusbContext);
     std::thread detectThread(detectThreadHandler);
     detectThread.detach();
     sLibusbContextMutex.unlock();
@@ -158,32 +163,14 @@ void UsbDevice::close(void) {
     }
     libusb_exit(sLibusbContext);
     sLibusbContext = NULL;
-    sLibusbContextMutex.unlock();
-}
-
-void UsbDevice::listen(void) {
-    sLibusbContextMutex.lock();
-    while (sUsbArrivedList.size() > 0) {
-        UsbDevice usb = *sUsbArrivedList.begin();
-        sUsbArrivedList.pop_front();
-        if (sLibusbDeviceArrivedCallback) {
-            sLibusbDeviceArrivedCallback(usb);
-        }
-    }
-    while (sUsbLeftList.size() > 0) {
-        UsbDevice usb = *sUsbLeftList.begin();
-        sUsbLeftList.pop_front();
-        if (sLibusbDeviceLeftCallback) {
-            sLibusbDeviceLeftCallback(usb);
-        }
-    }
+    sUsbList.clear();
     sLibusbContextMutex.unlock();
 }
 
 std::vector<UsbDevice> UsbDevice::getList(void) {
     std::vector<UsbDevice> usbList;
     sLibusbContextMutex.lock();
-    usbList = getUsbList(sLibusbContext);
+    usbList = sUsbList;
     sLibusbContextMutex.unlock();
     return usbList;
 }
