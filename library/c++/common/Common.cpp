@@ -133,18 +133,6 @@ std::string Common::toString(double d) {
     return buf;
 }
 /*********************************************************************/
-std::string Common::dec2bin(unsigned int n, unsigned int bit /*= 32*/) {
-    std::string s;
-    for (unsigned int i = n; i; i = i / 2) {
-        s += i % 2 ? "1" : "0";
-    }
-    while (s.length() < bit) {
-        s += "0";
-    }
-    std::reverse(s.begin(), s.end());
-    return s;
-}
-/*********************************************************************/
 std::string Common::toLower(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(), tolower);
     return str;

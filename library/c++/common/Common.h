@@ -130,14 +130,6 @@ public:
      * Return:	string
      */
     static std::string toString(double d);
-    
-    /*
-     * Brief:	convert a decimalism number to binary string
-     * Param:	n - a decimalism number
-     *          bit - binary complement
-     * Return:	string
-     */
-    static std::string dec2bin(unsigned int n, unsigned int bit = 32);
 
     /*
      * Brief:	string to lower case
