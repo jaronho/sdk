@@ -217,7 +217,7 @@ void HttpClient::post(const std::string& url,
 void HttpClient::postForm(const std::string& url,
                           const std::vector<std::string>* headers /*= NULL*/,
                           const std::map<std::string, std::string>* contents /*= NULL*/,
-                          const std::map<std::string, std::string>* files /*= NULL*/,
+                          const std::map<std::string, std::string>* filenames /*= NULL*/,
                           HTTP_REQUEST_CALLBACK callback /*= 0*/,
                           void* param /*= NULL*/,
                           int connecttimeout /*= 30*/,
@@ -238,9 +238,9 @@ void HttpClient::postForm(const std::string& url,
             obj->addContent(contentIter->first, contentIter->second.c_str(), contentIter->second.size());
         }
     }
-    if (files) {
-        std::map<std::string, std::string>::const_iterator fileIter = files->begin();
-        for (; files->end() != fileIter; ++fileIter) {
+    if (filenames) {
+        std::map<std::string, std::string>::const_iterator fileIter = filenames->begin();
+        for (; filenames->end() != fileIter; ++fileIter) {
             obj->addFile(fileIter->first, fileIter->second);
         }
     }

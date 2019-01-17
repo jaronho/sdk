@@ -70,7 +70,7 @@ public:
     void postForm(const std::string& url,
                   const std::vector<std::string>* headers = NULL,
                   const std::map<std::string, std::string>* contents = NULL,
-                  const std::map<std::string, std::string>* files = NULL,
+                  const std::map<std::string, std::string>* filenames = NULL,
                   HTTP_REQUEST_CALLBACK callback = NULL,
                   void* param = NULL,
                   int connecttimeout = 30,
