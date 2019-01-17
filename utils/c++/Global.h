@@ -163,7 +163,7 @@ extern void httpGet(const std::string& url, const std::vector<std::string>* head
 extern void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
 
 /* http请求POST表单 */
-extern void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
+extern void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
 #endif
 
 #ifdef GLOBAL_MODULE_HTTP_SERVER

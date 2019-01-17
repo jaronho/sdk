@@ -317,8 +317,8 @@ void httpPost(const std::string& url, const std::vector<std::string>* headers, c
     HttpClient::getInstance()->post(url, headers, data.empty() ? nullptr : data.c_str(), callback, param, connecttimeout, timeout, false);
 }
 
-void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* files, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout) {
-    HttpClient::getInstance()->postForm(url, headers, contents, files, callback, param, connecttimeout, timeout, false);
+void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout) {
+    HttpClient::getInstance()->postForm(url, headers, contents, filenames, callback, param, connecttimeout, timeout, false);
 }
 #endif
 
