@@ -41,10 +41,10 @@ public:
 
 public:
 	// init CURL options
-	bool initialize(const std::string& sslCaFileName = "");
+    bool initialize(const std::string& sslCaFilename = "");
 
 	// set cookie file
-	bool setCookieFile(const std::string& cookieFile = "");
+    bool setCookieFile(const std::string& cookieFilename = "");
 
 	// set timeout for connect
     bool setConnectTimeout(int connectTimeout = 30);
@@ -76,7 +76,7 @@ public:
     //--------------------- multipart/formdata block ---------------------
     bool addFormContent(const char* name, const char* content, unsigned int length = 0, const char* type = NULL);
 
-    bool addFormFile(const char* name, const char* file, const char* type = NULL);
+    bool addFormFile(const char* name, const char* filename, const char* type = NULL);
 	//--------------------------------------------------------------------
 
 	// called at last
@@ -128,7 +128,7 @@ public:
         CURLformoption option;
         char* value;
         unsigned int length;
-        std::string type;
+        std::string type;           // e.g. "text/html","image/jpeg","image/png"
     };
 
 public:
@@ -197,12 +197,12 @@ public:
         }
     }
 
-    void addFile(const std::string& name, const std::string& file, const std::string& type = "") {
-        if (!name.empty() && !file.empty()) {
+    void addFile(const std::string& name, const std::string& filename, const std::string& type = "") {
+        if (!name.empty() && !filename.empty()) {
             Form* f = new Form();
             f->name = name;
             f->option = CURLFORM_FILE;
-            f->setValue(file.c_str(), file.length());
+            f->setValue(filename.c_str(), filename.length());
             f->type = type;
             mForms[name] = f;
         }
@@ -213,8 +213,8 @@ public:
     }
 
 public:
-	std::string sslcafilename;				// ssl CA file name
-	std::string cookiefilename;				// cookie file name
+    std::string sslcafilename;				// ssl CA filename
+    std::string cookiefilename;				// cookie filename
     int connecttimeout;						// connect timeout
     int timeout;							// read timeout
 	std::string url;						// request url
