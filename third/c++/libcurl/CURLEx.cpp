@@ -163,7 +163,7 @@ bool CURLEx::setProgressFunction(CURLEx_progress func, void* userdata) {
     return CURLE_OK == setOption(CURLOPT_PROGRESSDATA, userdata);
 }
 //------------------------------------------------------------------------
-bool CURLEx::addFormContent(const char* name, const char* content, unsigned int length /*= 0*/, const char* type /*= NULL*/) {
+bool CURLEx::addFormContent(const char* name, const unsigned char* content, unsigned int length /*= 0*/, const char* type /*= NULL*/) {
     if (!mCurl) {
         return false;
     }
@@ -298,7 +298,7 @@ bool curlPostForm(CurlRequest& request, CURLEx_callback headerFunc, void* header
         if (CURLFORM_COPYCONTENTS == f->option) {
             curlObj.addFormContent(f->name.c_str(), f->value, f->length, f->type.c_str());
         } else if (CURLFORM_FILE == f->option) {
-            curlObj.addFormFile(f->name.c_str(), f->value, f->type.c_str());
+            curlObj.addFormFile(f->name.c_str(), (const char*)f->value, f->type.c_str());
         }
     }
     return curlObj.perform(curlCode, responseCode, errorBuffer);

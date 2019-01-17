@@ -235,7 +235,7 @@ void HttpClient::postForm(const std::string& url,
     if (contents) {
         std::map<std::string, std::string>::const_iterator contentIter = contents->begin();
         for (; contents->end() != contentIter; ++contentIter) {
-            obj->addContent(contentIter->first, contentIter->second.c_str(), contentIter->second.size());
+            obj->addContent(contentIter->first, (const unsigned char*)contentIter->second.c_str(), contentIter->second.size());
         }
     }
     if (filenames) {

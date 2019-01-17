@@ -74,7 +74,7 @@ public:
 	bool setProgressFunction(CURLEx_progress func, void* userdata);
 
     //--------------------- multipart/formdata block ---------------------
-    bool addFormContent(const char* name, const char* content, unsigned int length = 0, const char* type = NULL);
+    bool addFormContent(const char* name, const unsigned char* content, unsigned int length = 0, const char* type = NULL);
 
     bool addFormFile(const char* name, const char* filename, const char* type = NULL);
 	//--------------------------------------------------------------------
@@ -105,28 +105,23 @@ public:
                 value = NULL;
             }
         }
-        void setValue(const char* value, unsigned int length) {
+        void setValue(const unsigned char* value, unsigned int length) {
             if (this->value) {
                 delete []this->value;
                 this->value = NULL;
             }
             this->length = 0;
-            if (value) {
-                if (length <= 0) {
-                    length = strlen(value);
-                }
-                if (length > 0) {
-                    this->value = new char[length];
-                    memset(this->value, 0, length);
-                    memcpy(this->value, value, length);
-                    this->length = length;
-                }
+            if (value && length > 0) {
+                this->value = new unsigned char[length];
+                memset(this->value, 0, length);
+                memcpy(this->value, value, length);
+                this->length = length;
             }
         }
     public:
         std::string name;
         CURLformoption option;
-        char* value;
+        unsigned char* value;
         unsigned int length;
         std::string type;           // e.g. "text/html","image/jpeg","image/png"
     };
@@ -186,7 +181,7 @@ public:
         return mDataSize;
 	}
 
-    void addContent(const std::string& name, const char* content, unsigned int length = 0, const std::string& type = "") {
+    void addContent(const std::string& name, const unsigned char* content, unsigned int length = 0, const std::string& type = "") {
         if (!name.empty()) {
             Form* f = new Form();
             f->name = name;
@@ -202,7 +197,7 @@ public:
             Form* f = new Form();
             f->name = name;
             f->option = CURLFORM_FILE;
-            f->setValue(filename.c_str(), filename.length());
+            f->setValue((const unsigned char*)filename.c_str(), filename.length());
             f->type = type;
             mForms[name] = f;
         }
