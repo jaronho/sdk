@@ -125,6 +125,8 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                                const struct evkeyvalq* headers, const unsigned char* body, unsigned int bodySize,
                                const char* uri, struct evkeyvalq* responseHeaders) {
     std::map<std::string, std::string> headerMap;
+    unsigned char* bodyTmp = NULL;
+    unsigned int bodySizeTmp = 0;
     std::map<std::string, HttpField*> bodyMap;
     std::string realUri = uri;
     char* responseBody = NULL;
@@ -144,7 +146,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
             HttpField* field = new HttpField();
             field->setName(param->key);
             field->setType(HttpField::TYPE_TEXT);
-            field->setContent(param->value, strlen(param->value));
+            field->setContent((const unsigned char*)param->value, strlen(param->value));
             if (bodyMap[param->key]) {
                 delete bodyMap[param->key];
             }
@@ -153,11 +155,10 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
         evhttp_clear_headers(&params);
         size_t pos = realUri.find_first_of('?');
         if (std::string::npos != pos && bodyMap.empty()) {
-            HttpField* field = new HttpField();
-            field->setName("_");
-            field->setType(HttpField::TYPE_TEXT);
-            field->setContent(realUri.substr(pos + 1).c_str(), realUri.length() - pos - 1);
-            bodyMap["_"] = field;
+            bodySizeTmp = realUri.length() - pos - 1;
+            bodyTmp = (unsigned char*)malloc(bodySizeTmp + 1);
+            memcpy(bodyTmp, realUri.substr(pos + 1).c_str(), bodySizeTmp);
+            *(bodyTmp + bodySizeTmp) = '\0';
         }
     } else if (0 == strcmp("POST", method)) {       /* parse POST body */
         std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
@@ -172,24 +173,17 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                         HttpField* field = new HttpField();
                         field->setName(param->key);
                         field->setType(HttpField::TYPE_TEXT);
-                        field->setContent(param->value, strlen(param->value));
+                        field->setContent((const unsigned char*)param->value, strlen(param->value));
                         if (bodyMap[param->key]) {
                             delete bodyMap[param->key];
                         }
                         bodyMap[param->key] = field;
                     }
                     evhttp_clear_headers(&params);
-                    if (bodyMap.empty()) {
-                        HttpField* field = new HttpField();
-                        field->setName("_");
-                        field->setType(HttpField::TYPE_TEXT);
-                        field->setContent((const char*)body, bodySize);
-                        bodyMap["_"] = field;
-                    }
                 }
             } else if (std::string::npos != contentType.find("multipart/form-data")) {
                 MultipartFormData* forms = new MultipartFormData();
-                if (!forms->parse(iter->second, (const char*)body, bodySize, &bodyMap)) {
+                if (!forms->parse(iter->second, body, bodySize, &bodyMap)) {
                     errorCode = 4;
                     sprintf(errorBuf, "can not parse multipart form-data for uri '%s'", uri);
                 }
@@ -215,11 +209,14 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
     std::map<std::string, std::string> reponseHeaderMap;
     std::string result;
     if (errorCode) {   /* handle error */
-        result = HttpServer::getInstance()->handleError(major, minor, method, host, port, headerMap, bodyMap, realUri, errorCode, errorBuf, reponseHeaderMap);
+        result = HttpServer::getInstance()->handleError(major, minor, method, host, port, headerMap, bodyTmp ? bodyTmp : body, bodyTmp ? bodySizeTmp : bodySize, bodyMap, realUri, errorCode, errorBuf, reponseHeaderMap);
     } else {           /* handle router */
-        result = HttpServer::getInstance()->handleRouter(major, minor, method, host, port, headerMap, bodyMap, realUri, reponseHeaderMap);
+        result = HttpServer::getInstance()->handleRouter(major, minor, method, host, port, headerMap, bodyTmp ? bodyTmp : body, bodyTmp ? bodySizeTmp : bodySize, bodyMap, realUri, reponseHeaderMap);
     }
     /* handle clear */
+    if (bodyTmp) {
+        free(bodyTmp);
+    }
     headerMap.clear();
     std::map<std::string, HttpField*>::iterator fieldIter = bodyMap.begin();
     for (; bodyMap.end() != fieldIter; ++fieldIter) {
@@ -274,15 +271,15 @@ void HttpField::setType(unsigned int type) {
     }
 }
 //------------------------------------------------------------------------
-const char* HttpField::getContent(void) {
+const unsigned char* HttpField::getContent(void) {
     return mContent;
 }
 //------------------------------------------------------------------------
-void HttpField::setContent(const char* content, size_t length) {
+void HttpField::setContent(const unsigned char* content, size_t length) {
     if (!mContent) {
-        mContent = new char[TYPE_TEXT == mType ? length + 1 : length];
+        mContent = new unsigned char[TYPE_TEXT == mType ? length + 1 : length];
     } else {
-        mContent = (char*)realloc(mContent, mContentLength + (TYPE_TEXT == mType ? length + 1 : length));
+        mContent = (unsigned char*)realloc(mContent, mContentLength + (TYPE_TEXT == mType ? length + 1 : length));
     }
     if (!mContent) {
         return;
@@ -394,20 +391,22 @@ std::string HttpServer::handleError(char major,
                                     const std::string& host,
                                     unsigned short port,
                                     const std::map<std::string, std::string>& headers,
-                                    const std::map<std::string, HttpField*>& body,
+                                    const unsigned char* body,
+                                    unsigned int bodySize,
+                                    const std::map<std::string, HttpField*>& bodyMap,
                                     const std::string& uri,
                                     unsigned int errorCode,
                                     const std::string& errorBuf,
                                     std::map<std::string, std::string>& responseHeaders) {
     if (mIsPrintReceive) {
-        printReceive(major, minor, method, host, port, headers, body, uri);
+        printReceive(major, minor, method, host, port, headers, body, bodySize, bodyMap, uri);
     }
     std::string buf = getErrorResponse(errorCode, errorBuf);
     if (mIsPrintError) {
         printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
     }
     if (mErrorCallback) {
-        mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
+        mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
     }
     return buf;
 }
@@ -418,11 +417,13 @@ std::string HttpServer::handleRouter(char major,
                                      const std::string& host,
                                      unsigned short port,
                                      const std::map<std::string, std::string>& headers,
-                                     const std::map<std::string, HttpField*>& body,
+                                     const unsigned char* body,
+                                     unsigned int bodySize,
+                                     const std::map<std::string, HttpField*>& bodyMap,
                                      const std::string& uri,
                                      std::map<std::string, std::string>& responseHeaders) {
     if (mIsPrintReceive) {
-        printReceive(major, minor, method, host, port, headers, body, uri);
+        printReceive(major, minor, method, host, port, headers, body, bodySize, bodyMap, uri);
     }
     if (method.empty()) {
         unsigned int errorCode = 101;
@@ -432,7 +433,7 @@ std::string HttpServer::handleRouter(char major,
             printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -444,7 +445,7 @@ std::string HttpServer::handleRouter(char major,
             printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -456,7 +457,7 @@ std::string HttpServer::handleRouter(char major,
             printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -468,7 +469,7 @@ std::string HttpServer::handleRouter(char major,
             printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -480,7 +481,7 @@ std::string HttpServer::handleRouter(char major,
             printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
@@ -492,11 +493,11 @@ std::string HttpServer::handleRouter(char major,
             printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
         }
         if (mErrorCallback) {
-            mErrorCallback(method, host, port, headers, body, uri, errorCode, errorBuf, responseHeaders);
+            mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
     }
-    return mRouterMap[uri]->callback(method, host, port, headers, body, uri, responseHeaders);
+    return mRouterMap[uri]->callback(method, host, port, headers, body, bodySize, bodyMap, uri, responseHeaders);
 }
 //------------------------------------------------------------------------
 void HttpServer::setFilterCallback(HTTP_FILTER_CALLBACK filterCallback) {
@@ -600,7 +601,9 @@ void HttpServer::printReceive(char major,
                               const std::string& host,
                               unsigned short port,
                               const std::map<std::string, std::string>& headers,
-                              const std::map<std::string, HttpField*>& body,
+                              const unsigned char* body,
+                              unsigned int bodySize,
+                              const std::map<std::string, HttpField*>& bodyMap,
                               const std::string& uri) {
     printf("--------------------------------------------------[[\n");
     printf("[%s]\n", nowdate().c_str());
@@ -610,17 +613,19 @@ void HttpServer::printReceive(char major,
     for (; headers.end() != headerIter; ++headerIter) {
         printf("    %s: %s\n", headerIter->first.c_str(), headerIter->second.c_str());
     }
-    printf("Body:\n");
-    std::map<std::string, HttpField*>::const_iterator bodyIter = body.begin();
-    for (; body.end() != bodyIter; ++bodyIter) {
-        if (HttpField::TYPE_TEXT == bodyIter->second->getType()) {
-            printf("    [TEXT] %s: %s\n", bodyIter->second->getName().c_str(), bodyIter->second->getContent());
-        } else if (HttpField::TYPE_FILE == bodyIter->second->getType()) {
-            printf("    [FILE] %s: filename => %s, file content type => %s, file size => %d\n",
-                bodyIter->second->getName().c_str(), bodyIter->second->getFilename().c_str(),
-                bodyIter->second->getFileContentType().c_str(), (int)bodyIter->second->getContentLength());
-        } else {
-            printf("    [%d] can not deal\n", bodyIter->second->getType());
+    printf("Body: %dB\n", bodySize);
+    if (bodyMap.empty()) {
+        printf("    [RAW]: %s\n", bodySize > 1024 ? "Too large to display!!!" : (const char*)body);
+    } else {
+        std::map<std::string, HttpField*>::const_iterator bodyIter = bodyMap.begin();
+        for (; bodyMap.end() != bodyIter; ++bodyIter) {
+            if (HttpField::TYPE_TEXT == bodyIter->second->getType()) {
+                printf("    [TEXT] %s: %s\n", bodyIter->second->getName().c_str(), bodyIter->second->getContentLength() > 1024 ? "Too large to display!!!" : (const char*)bodyIter->second->getContent());
+            } else if (HttpField::TYPE_FILE == bodyIter->second->getType()) {
+                printf("    [FILE] %s: filename => %s, file content type => %s, file size => %d\n", bodyIter->second->getName().c_str(), bodyIter->second->getFilename().c_str(), bodyIter->second->getFileContentType().c_str(), (int)bodyIter->second->getContentLength());
+            } else {
+                printf("    [%d] can not deal\n", bodyIter->second->getType());
+            }
         }
     }
     printf("Uri: %s\n", uri.c_str());

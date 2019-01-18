@@ -18,7 +18,7 @@ public:
     MultipartFormData(void);
     ~MultipartFormData(void);
 
-    bool parse(const std::string& contentType, const char* data, size_t length, std::map<std::string, HttpField*>* fields);
+    bool parse(const std::string& contentType, const unsigned char* data, size_t length, std::map<std::string, HttpField*>* fields);
 
 private:
     void processData(void);
@@ -36,7 +36,7 @@ private:
 
 private:
     std::string mBoundary;
-    char* mData;
+    unsigned char* mData;
     size_t mDataSize;
     std::map<std::string, HttpField*>* mFields;
     unsigned int mCurrentProcessStatus;

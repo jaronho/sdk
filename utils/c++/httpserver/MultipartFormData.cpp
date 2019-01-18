@@ -18,7 +18,7 @@ MultipartFormData::~MultipartFormData(void) {
     }
 }
 //------------------------------------------------------------------------
-bool MultipartFormData::parse(const std::string& contentType, const char* data, size_t length, std::map<std::string, HttpField*>* fields) {
+bool MultipartFormData::parse(const std::string& contentType, const unsigned char* data, size_t length, std::map<std::string, HttpField*>* fields) {
     if (!data || 0 == length || !fields) {
         return false;
     }
@@ -36,9 +36,9 @@ bool MultipartFormData::parse(const std::string& contentType, const char* data, 
         return false;
     }
     if (!mData) {
-        mData = new char[length];
+        mData = new unsigned char[length];
     } else {
-        mData = (char*)realloc(mData, mDataSize + length);
+        mData = (unsigned char*)realloc(mData, mDataSize + length);
     }
     if (!mData) {
         return false;
@@ -148,8 +148,8 @@ size_t MultipartFormData::boundaryPositionInDataCollector(void) {
 
 void MultipartFormData::truncateDataCollectorFromTheBeginning(size_t n) {
     size_t truncatedDataCollectorLength = mDataSize - n;
-    char* tmp = mData;
-    mData = new char[truncatedDataCollectorLength];
+    unsigned char* tmp = mData;
+    mData = new unsigned char[truncatedDataCollectorLength];
     memcpy(mData, tmp + n, truncatedDataCollectorLength);
     mDataSize = truncatedDataCollectorLength;
     delete tmp;

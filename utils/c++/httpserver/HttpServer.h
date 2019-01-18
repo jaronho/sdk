@@ -34,7 +34,9 @@ class HttpField;
                                                const std::string& host, \
                                                unsigned short port, \
                                                const std::map<std::string, std::string>& headers, \
-                                               const std::map<std::string, HttpField*>& body, \
+                                               const unsigned char* body, \
+                                               unsigned int bodySize, \
+                                               const std::map<std::string, HttpField*>& bodyMap, \
                                                const std::string& uri, \
                                                unsigned int errorCode, \
                                                const std::string& errorBuf, \
@@ -45,7 +47,9 @@ class HttpField;
                                                        const std::string& host, \
                                                        unsigned short port, \
                                                        const std::map<std::string, std::string>& headers, \
-                                                       const std::map<std::string, HttpField*>& body, \
+                                                       const unsigned char* body, \
+                                                       unsigned int bodySize, \
+                                                       const std::map<std::string, HttpField*>& bodyMap, \
                                                        const std::string& uri, \
                                                        std::map<std::string, std::string>& responseHeaders)>
 
@@ -74,8 +78,8 @@ public:
     void setName(const std::string& name);
     unsigned int getType(void);
     void setType(unsigned int type);
-    const char* getContent(void);
-    void setContent(const char* content, size_t length);
+    const unsigned char* getContent(void);
+    void setContent(const unsigned char* content, size_t length);
     size_t getContentLength(void);
     /*------------------- used when form data is file  -------------------*/
     std::string getFilename(void);
@@ -87,7 +91,7 @@ public:
 private:
     std::string mName;
     unsigned int mType;
-    char* mContent;
+    unsigned char* mContent;
     size_t mContentLength;
     std::string mFilename;
     std::string mFileContentType;
@@ -113,7 +117,9 @@ public:
                             const std::string& host,
                             unsigned short port,
                             const std::map<std::string, std::string>& headers,
-                            const std::map<std::string, HttpField*>& body,
+                            const unsigned char* body,
+                            unsigned int bodySize,
+                            const std::map<std::string, HttpField*>& bodyMap,
                             const std::string& uri,
                             unsigned int errorCode,
                             const std::string& errorBuf,
@@ -124,7 +130,9 @@ public:
                              const std::string& host,
                              unsigned short port,
                              const std::map<std::string, std::string>& headers,
-                             const std::map<std::string, HttpField*>& body,
+                             const unsigned char* body,
+                             unsigned int bodySize,
+                             const std::map<std::string, HttpField*>& bodyMap,
                              const std::string& uri,
                              std::map<std::string, std::string>& responseHeaders);      /* 处理路由 */
     void setFilterCallback(HTTP_FILTER_CALLBACK filterCallback);                        /* 设置过滤回调 */
@@ -143,7 +151,9 @@ private:
                       const std::string& host,
                       unsigned short port,
                       const std::map<std::string, std::string>& headers,
-                      const std::map<std::string, HttpField*>& body,
+                      const unsigned char* body,
+                      unsigned int bodySize,
+                      const std::map<std::string, HttpField*>& bodyMap,
                       const std::string& uri);                                          /* 打印接收到的信息 */
 
 private:

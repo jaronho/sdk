@@ -353,7 +353,7 @@ void serverRun(unsigned int port, bool printReceive, bool printError, bool print
 std::string serverFieldString(const std::map<std::string, HttpField*>& body, const std::string& name, const std::string& defaultValue) {
     std::map<std::string, HttpField*>::const_iterator iter;
     if (body.end() != (iter = body.find(name))) {
-        return iter->second->getContent();
+        return (const char*)iter->second->getContent();
     }
     return defaultValue;
 }
@@ -361,7 +361,7 @@ std::string serverFieldString(const std::map<std::string, HttpField*>& body, con
 int serverFieldInt(const std::map<std::string, HttpField*>& body, const std::string& name, int defaultValue) {
     std::map<std::string, HttpField*>::const_iterator iter;
     if (body.end() != (iter = body.find(name))) {
-        return atoi(iter->second->getContent());
+        return atoi((const char*)iter->second->getContent());
     }
     return defaultValue;
 }
