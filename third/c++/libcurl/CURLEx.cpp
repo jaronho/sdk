@@ -110,7 +110,7 @@ bool CURLEx::setHeaders(const std::vector<std::string>& headers) {
     return CURLE_OK == setOption(CURLOPT_HTTPHEADER, mHeaders);
 }
 //------------------------------------------------------------------------
-bool CURLEx::setPostFields(const char* fields, unsigned int fieldsize) {
+bool CURLEx::setPostFields(const unsigned char* fields, unsigned int fieldsize) {
     if (!fields || 0 == fieldsize) {
 		return false;
     }

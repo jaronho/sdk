@@ -61,7 +61,8 @@ public:
              bool syncresponse = true);                                                         // GET请求
     void post(const std::string& url,
               const std::vector<std::string>* headers,
-              const char* data,
+              const unsigned char* data,
+              unsigned int dataLength,
               HTTP_REQUEST_CALLBACK callback = NULL,
               void* param = NULL,
               int connecttimeout = 30,

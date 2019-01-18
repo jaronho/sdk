@@ -160,7 +160,7 @@ extern void httpReceive(void);
 extern void httpGet(const std::string& url, const std::vector<std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
 
 /* http请求POST */
-extern void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
+extern void httpPost(const std::string& url, const std::vector<std::string>* headers, const unsigned char* data, unsigned int dataLength, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
 
 /* http请求POST表单 */
 extern void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);

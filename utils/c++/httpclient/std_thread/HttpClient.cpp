@@ -191,7 +191,8 @@ void HttpClient::get(const std::string& url,
 //------------------------------------------------------------------------
 void HttpClient::post(const std::string& url,
                       const std::vector<std::string>* headers,
-                      const char* data,
+                      const unsigned char* data,
+                      unsigned int dataLength,
                       HTTP_REQUEST_CALLBACK callback /*= 0*/,
                       void* param /*= NULL*/,
                       int connecttimeout /*= 30*/,
@@ -206,7 +207,7 @@ void HttpClient::post(const std::string& url,
             obj->headers.push_back((*headers)[i]);
         }
     }
-    obj->setData(data, data ? strlen(data) : 0);
+    obj->setData(data, dataLength);
     obj->requesttype = "POST";
     obj->syncresponse = syncresponse;
     obj->callback = callback;

@@ -59,7 +59,7 @@ public:
 	bool setHeaders(const std::vector<std::string>& headers);
 
 	// set post fields and field size
-	bool setPostFields(const char* fields, unsigned int fieldsize);
+	bool setPostFields(const unsigned char* fields, unsigned int fieldsize);
 
     // set header function
     bool setHeaderFunction(CURLEx_callback func, void* userdata);
@@ -154,26 +154,21 @@ public:
         mForms.clear();
     }
 
-    void setData(const char* data, unsigned int length) {
+    void setData(const unsigned char* data, unsigned int length) {
         if (mData) {
             delete []mData;
             mData = NULL;
         }
         mDataSize = 0;
-        if (data) {
-            if (length <= 0) {
-                length = strlen(data);
-            }
-            if (length > 0) {
-                mData = new char[length];
-                memset(mData, 0, length);
-                memcpy(mData, data, length);
-                mDataSize = length;
-            }
+        if (data && length > 0) {
+            mData = new unsigned char[length];
+            memset(mData, 0, length);
+            memcpy(mData, data, length);
+            mDataSize = length;
 		}
 	}
 
-    const char* getData(void) {
+    const unsigned char* getData(void) {
         return mData;
 	}
 
@@ -216,7 +211,7 @@ public:
 	std::vector<std::string> headers;		// header
 
 private:
-    char* mData;                            // request data, support binary data
+    unsigned char* mData;                   // request data, support binary data
     unsigned int mDataSize;                 // request data size
     std::map<std::string, Form*> mForms;    // request form
 };

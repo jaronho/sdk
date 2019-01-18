@@ -313,8 +313,8 @@ void httpGet(const std::string& url, const std::vector<std::string>* headers, HT
     HttpClient::getInstance()->get(url, headers, callback, param, connecttimeout, timeout, false);
 }
 
-void httpPost(const std::string& url, const std::vector<std::string>* headers, const std::string& data, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout) {
-    HttpClient::getInstance()->post(url, headers, data.empty() ? nullptr : data.c_str(), callback, param, connecttimeout, timeout, false);
+void httpPost(const std::string& url, const std::vector<std::string>* headers, const unsigned char* data, unsigned int dataLength, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout) {
+    HttpClient::getInstance()->post(url, headers, data, dataLength, callback, param, connecttimeout, timeout, false);
 }
 
 void httpPostForm(const std::string& url, const std::vector<std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout) {
