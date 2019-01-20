@@ -26,6 +26,19 @@ static UsbDevice parseDevice(libusb_device* dev) {
         struct libusb_device_descriptor desc;
         if (libusb_get_device_descriptor(dev, &desc) >= 0) {
             classCode = desc.bDeviceClass;
+            if (LIBUSB_CLASS_PER_INTERFACE == classCode && desc.bNumConfigurations > 0) {
+                struct libusb_config_descriptor* config;
+                if (LIBUSB_SUCCESS == libusb_get_config_descriptor(dev, 0, &config)) {
+                    if (config->bNumInterfaces > 0) {
+                        struct libusb_interface interface = config->interface[0];
+                        if (interface.num_altsetting > 0) {
+                            struct libusb_interface_descriptor altsetting = interface.altsetting[0];
+                            classCode = altsetting.bInterfaceClass;
+                        }
+                    }
+                    libusb_free_config_descriptor(config);
+                }
+            }
             idVendor = desc.idVendor;
             idProduct = desc.idProduct;
             libusb_device_handle* handle = NULL;
