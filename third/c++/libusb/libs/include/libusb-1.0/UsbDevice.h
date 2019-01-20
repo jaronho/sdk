@@ -18,6 +18,7 @@ public:
     int address;                    /* the usb address for the device */
     int busNumber;                  /* the usb bus number of the device */
     int portNumber;                 /* the usb port number */
+    int classCode;                  /* class code for the device, see libusb_class_code */
     int vendorId;                   /* the device vendor id */
     int productId;                  /* the device product id */
     std::string manufacturer;       /* the manufacturer of the device */

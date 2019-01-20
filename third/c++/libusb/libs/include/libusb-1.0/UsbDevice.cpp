@@ -16,6 +16,7 @@ static LIBUSB_DEVICE_HOTPLUG_CALLBACK sLibusbDeviceLeftCallback;
 
 static UsbDevice parseDevice(libusb_device* dev) {
     uint8_t address = 0, busNumber = 0, portNumber = 0;
+    unsigned char classCode = 0;
     unsigned short idVendor = 0, idProduct = 0;
     char manufacturer[256] = { 0 }, product[256] = { 0 }, serialNumber[256] = { 0 };
     if (dev) {
@@ -24,6 +25,7 @@ static UsbDevice parseDevice(libusb_device* dev) {
         portNumber = libusb_get_port_number(dev);
         struct libusb_device_descriptor desc;
         if (libusb_get_device_descriptor(dev, &desc) >= 0) {
+            classCode = desc.bDeviceClass;
             idVendor = desc.idVendor;
             idProduct = desc.idProduct;
             libusb_device_handle* handle = NULL;
@@ -45,6 +47,7 @@ static UsbDevice parseDevice(libusb_device* dev) {
     usb.address = address;
     usb.busNumber = busNumber;
     usb.portNumber = portNumber;
+    usb.classCode = classCode;
     usb.vendorId = idVendor;
     usb.productId = idProduct;
     usb.manufacturer = manufacturer;
