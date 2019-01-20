@@ -32,7 +32,7 @@ public:
     static void close(void);
 
     /* 获取当前USB设备列表 */
-    static std::vector<UsbDevice> getList(void);
+    static std::vector<UsbDevice> getList(bool sync = false);
 };
 
 #endif // _USB_DEVICE_H_

@@ -167,10 +167,14 @@ void UsbDevice::close(void) {
     sLibusbContextMutex.unlock();
 }
 
-std::vector<UsbDevice> UsbDevice::getList(void) {
+std::vector<UsbDevice> UsbDevice::getList(bool sync) {
     std::vector<UsbDevice> usbList;
     sLibusbContextMutex.lock();
-    usbList = sUsbList;
+    if (sync) {
+        usbList = getUsbList(sLibusbContext);
+    } else {
+        usbList = sUsbList;
+    }
     sLibusbContextMutex.unlock();
     return usbList;
 }
