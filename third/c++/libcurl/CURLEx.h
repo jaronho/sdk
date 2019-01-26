@@ -59,7 +59,7 @@ public:
 	bool setHeaders(const std::vector<std::string>& headers);
 
 	// set post fields and field size
-	bool setPostFields(const unsigned char* fields, unsigned int fieldsize);
+    bool setPostFields(const unsigned char* fields, unsigned int fieldsize);
 
     // set header function
     bool setHeaderFunction(CURLEx_callback func, void* userdata);
@@ -105,18 +105,25 @@ public:
                 value = NULL;
             }
         }
-        void setValue(const unsigned char* value, unsigned int length) {
+        bool setValue(const unsigned char* value, unsigned int length, bool isText) {
             if (this->value) {
-                delete []this->value;
+                free(this->value);
                 this->value = NULL;
             }
             this->length = 0;
-            if (value && length > 0) {
-                this->value = new unsigned char[length];
+            if (0 == length && !isText) {
+                return false;
+            }
+            if (value) {
+                this->value = (unsigned char*)malloc(sizeof(unsigned char) * (isText ? length + 1 : length));
                 memset(this->value, 0, length);
                 memcpy(this->value, value, length);
+                if (isText) {
+                    *(this->value + length) = '\0';
+                }
                 this->length = length;
             }
+            return true;
         }
     public:
         std::string name;
@@ -154,18 +161,23 @@ public:
         mForms.clear();
     }
 
-    void setData(const unsigned char* data, unsigned int length) {
+    bool setData(const unsigned char* data, unsigned int length, bool isText) {
         if (mData) {
-            delete []mData;
+            free(mData);
             mData = NULL;
         }
         mDataSize = 0;
-        if (data && length > 0) {
-            mData = new unsigned char[length];
+        if (0 == length && !isText) {
+            return false;
+        }
+        if (data) {
+            mData = (unsigned char*)malloc(sizeof(unsigned char) * (isText ? length + 1 : length));
             memset(mData, 0, length);
             memcpy(mData, data, length);
+            *(mData + length) = '\0';
             mDataSize = length;
 		}
+        return true;
 	}
 
     const unsigned char* getData(void) {
@@ -176,26 +188,43 @@ public:
         return mDataSize;
 	}
 
-    void addContent(const std::string& name, const unsigned char* content, unsigned int length = 0, const std::string& type = "") {
-        if (!name.empty()) {
-            Form* f = new Form();
-            f->name = name;
-            f->option = CURLFORM_COPYCONTENTS;
-            f->setValue(content, length);
-            f->type = type;
-            mForms[name] = f;
+    bool addBuffer(const std::string& name, const unsigned char* content, unsigned int length, const std::string& type = "") {
+        if (name.empty() || !content || 0 == length) {
+            return false;
         }
+        Form* f = new Form();
+        f->name = name;
+        f->option = CURLFORM_COPYCONTENTS;
+        f->setValue(content, length, false);
+        f->type = type;
+        mForms[name] = f;
+        return true;
     }
 
-    void addFile(const std::string& name, const std::string& filename, const std::string& type = "") {
-        if (!name.empty() && !filename.empty()) {
-            Form* f = new Form();
-            f->name = name;
-            f->option = CURLFORM_FILE;
-            f->setValue((const unsigned char*)filename.c_str(), filename.length());
-            f->type = type;
-            mForms[name] = f;
+    bool addText(const std::string& name, const std::string& text, const std::string& type = "") {
+        if (name.empty()) {
+            return false;
         }
+        Form* f = new Form();
+        f->name = name;
+        f->option = CURLFORM_COPYCONTENTS;
+        f->setValue((const unsigned char*)text.c_str(), text.length(), true);
+        f->type = type;
+        mForms[name] = f;
+        return true;
+    }
+
+    bool addFile(const std::string& name, const std::string& filename, const std::string& type = "") {
+        if (name.empty() || filename.empty()) {
+            return false;
+        }
+        Form* f = new Form();
+        f->name = name;
+        f->option = CURLFORM_FILE;
+        f->setValue((const unsigned char*)filename.c_str(), filename.length(), true);
+        f->type = type;
+        mForms[name] = f;
+        return true;
     }
 
     const std::map<std::string, Form*>& getForms(void) {
@@ -261,8 +290,8 @@ std::string Screenshot::uploadScreenshotImage(std::string uploadUrl, std::string
 	curl.addFormContent("acct", account);
 	curl.addFormFile("image", localPath);
 	curl.setWriteFunction(uploadWriteFunc, &responseStr);
-    bool res = curl.perform(&curlCode, &responseCode, &errorBuffer);
-	if (false == res) {
+    bool ret = curl.perform(&curlCode, &responseCode, &errorBuffer);
+    if (!ret || 200 != responseCode) {
 		return "";
 	}
 	Json* root= Json_create(responseStr.c_str());
@@ -333,8 +362,11 @@ int FileDownload::downloadFile(const std::string& savePath, const std::string& s
 	curlObj.setTimeout(downloadTimeout);
 	curlObj.setWriteFunction(downloadFileWriteFunc, fp);
 	curlObj.setProgressFunction(downloadFileProgressFunc, self);
-	bool res = curlObj.perform(curlCode, responseCode, buffer);
+    bool ret = curlObj.perform(curlCode, responseCode, buffer);
 	fclose(fp);
-	return res ? 0 : 4;			// 0-文件下载成功;4-文件下载失败
+    if (!ret || 200 != *responseCode) {
+        return 4;   // 文件下载失败
+    }
+    return 0;   // 文件下载成功
 }
 */

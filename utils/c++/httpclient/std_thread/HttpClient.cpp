@@ -167,12 +167,12 @@ void HttpClient::receive(void) {
 }
 //------------------------------------------------------------------------
 void HttpClient::get(const std::string& url,
-                     const std::vector<std::string>* headers /*= NULL*/,
-                     HTTP_REQUEST_CALLBACK callback /*= 0*/,
-                     void* param /*= NULL*/,
-                     int connecttimeout /*= 30*/,
-                     int timeout /*= 60*/,
-                     bool syncresponse /*= true*/) {
+                     const std::vector<std::string>* headers,
+                     HTTP_REQUEST_CALLBACK callback,
+                     void* param,
+                     int connecttimeout,
+                     int timeout,
+                     bool syncresponse) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = connecttimeout;
     obj->timeout = timeout;
@@ -193,11 +193,11 @@ void HttpClient::post(const std::string& url,
                       const std::vector<std::string>* headers,
                       const unsigned char* data,
                       unsigned int dataLength,
-                      HTTP_REQUEST_CALLBACK callback /*= 0*/,
-                      void* param /*= NULL*/,
-                      int connecttimeout /*= 30*/,
-                      int timeout /*= 60*/,
-                      bool syncresponse /*= true*/) {
+                      HTTP_REQUEST_CALLBACK callback,
+                      void* param,
+                      int connecttimeout,
+                      int timeout,
+                      bool syncresponse) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = connecttimeout;
     obj->timeout = timeout;
@@ -207,7 +207,7 @@ void HttpClient::post(const std::string& url,
             obj->headers.push_back((*headers)[i]);
         }
     }
-    obj->setData(data, dataLength);
+    obj->setData(data, dataLength, true);
     obj->requesttype = "POST";
     obj->syncresponse = syncresponse;
     obj->callback = callback;
@@ -216,14 +216,14 @@ void HttpClient::post(const std::string& url,
 }
 //------------------------------------------------------------------------
 void HttpClient::postForm(const std::string& url,
-                          const std::vector<std::string>* headers /*= NULL*/,
-                          const std::map<std::string, std::string>* contents /*= NULL*/,
-                          const std::map<std::string, std::string>* filenames /*= NULL*/,
-                          HTTP_REQUEST_CALLBACK callback /*= 0*/,
-                          void* param /*= NULL*/,
-                          int connecttimeout /*= 30*/,
-                          int timeout /*= 60*/,
-                          bool syncresponse /*= true*/) {
+                          const std::vector<std::string>* headers,
+                          const std::map<std::string, std::string>* contents,
+                          const std::map<std::string, std::string>* filenames,
+                          HTTP_REQUEST_CALLBACK callback,
+                          void* param,
+                          int connecttimeout,
+                          int timeout,
+                          bool syncresponse) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = connecttimeout;
     obj->timeout = timeout;
@@ -236,7 +236,7 @@ void HttpClient::postForm(const std::string& url,
     if (contents) {
         std::map<std::string, std::string>::const_iterator contentIter = contents->begin();
         for (; contents->end() != contentIter; ++contentIter) {
-            obj->addContent(contentIter->first, (const unsigned char*)contentIter->second.c_str(), contentIter->second.size());
+            obj->addText(contentIter->first, contentIter->second);
         }
     }
     if (filenames) {
