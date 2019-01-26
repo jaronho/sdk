@@ -557,15 +557,14 @@ std::vector<std::string> Common::getFileDataEx(const std::string& filePath) {
 }
 /*********************************************************************/
 bool Common::writeDataToFile(const unsigned char* data, long dataSize, const std::string& filePath) {
-    if (!data || 0 == dataSize) {
-        return false;
-    }
     FILE* fp = fopen(filePath.c_str(), "wb");
     if (!fp) {
         return false;
     }
-    fwrite(data, dataSize, sizeof(unsigned char), fp);
-    fflush(fp);
+    if (data && dataSize > 0) {
+        fwrite(data, dataSize, sizeof(unsigned char), fp);
+        fflush(fp);
+    }
     fclose(fp);
     return true;
 }
@@ -576,9 +575,6 @@ bool Common::copyFile(const std::string& srcFilePath, const std::string& destFil
     }
     long fileSize = 0;
     unsigned char* fileData = getFileData(srcFilePath, &fileSize);
-    if (0 == fileSize || !fileData) {
-        return false;
-    }
     return writeDataToFile(fileData, fileSize, destFilePath);
 }
 /*********************************************************************/
