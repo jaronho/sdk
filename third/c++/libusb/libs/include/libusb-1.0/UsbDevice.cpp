@@ -13,63 +13,71 @@ static std::mutex sLibusbContextMutex;
 static std::vector<UsbDevice> sUsbList;
 static LIBUSB_DEVICE_HOTPLUG_CALLBACK sLibusbDeviceArrivedCallback;
 static LIBUSB_DEVICE_HOTPLUG_CALLBACK sLibusbDeviceLeftCallback;
+static std::vector<libusb_class_code> sValidClassCodes;
 
-static UsbDevice parseDevice(libusb_device* dev) {
-    uint8_t address = 0, busNumber = 0, portNumber = 0;
-    unsigned char classCode = 0;
-    unsigned short idVendor = 0, idProduct = 0;
-    char manufacturer[256] = { 0 }, product[256] = { 0 }, serialNumber[256] = { 0 };
-    if (dev) {
-        address = libusb_get_device_address(dev);
-        busNumber = libusb_get_bus_number(dev);
-        portNumber = libusb_get_port_number(dev);
-        struct libusb_device_descriptor desc;
-        if (libusb_get_device_descriptor(dev, &desc) >= 0) {
-            classCode = desc.bDeviceClass;
-            if (LIBUSB_CLASS_PER_INTERFACE == classCode && desc.bNumConfigurations > 0) {
-                struct libusb_config_descriptor* config;
-                if (LIBUSB_SUCCESS == libusb_get_config_descriptor(dev, 0, &config)) {
-                    if (config->bNumInterfaces > 0) {
-                        struct libusb_interface interface = config->interface[0];
-                        if (interface.num_altsetting > 0) {
-                            struct libusb_interface_descriptor altsetting = interface.altsetting[0];
-                            classCode = altsetting.bInterfaceClass;
-                        }
-                    }
-                    libusb_free_config_descriptor(config);
+static UsbDevice parseDevice(libusb_device* dev, const std::vector<libusb_class_code>& codes) {
+    struct libusb_device_descriptor desc;
+    if (!dev || libusb_get_device_descriptor(dev, &desc) < 0) {
+        return UsbDevice();
+    }
+    unsigned char classCode = desc.bDeviceClass;
+    if (LIBUSB_CLASS_PER_INTERFACE == classCode && desc.bNumConfigurations > 0) {
+        struct libusb_config_descriptor* config;
+        if (LIBUSB_SUCCESS == libusb_get_config_descriptor(dev, 0, &config)) {
+            if (config->bNumInterfaces > 0) {
+                struct libusb_interface interface = config->interface[0];
+                if (interface.num_altsetting > 0) {
+                    struct libusb_interface_descriptor altsetting = interface.altsetting[0];
+                    classCode = altsetting.bInterfaceClass;
                 }
             }
-            idVendor = desc.idVendor;
-            idProduct = desc.idProduct;
-            libusb_device_handle* handle = NULL;
-            if (LIBUSB_SUCCESS == libusb_open(dev, &handle)) {
-                if (desc.iManufacturer) {
-                    libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, (unsigned char*)manufacturer, sizeof(manufacturer));
-                }
-                if (desc.iProduct) {
-                    libusb_get_string_descriptor_ascii(handle, desc.iProduct, (unsigned char*)product, sizeof(product));
-                }
-                if (desc.iSerialNumber) {
-                    libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, (unsigned char*)serialNumber, sizeof(serialNumber));
-                }
-                libusb_close(handle);
+            libusb_free_config_descriptor(config);
+        }
+    }
+    bool isMatched = false;
+    if (codes.empty()) {
+        isMatched = true;
+    } else {
+        for (size_t i = 0, len = codes.size(); i < len; ++i) {
+            if (classCode == codes[i]) {
+                isMatched = true;
+                break;
             }
         }
     }
+    if (!isMatched) {
+        return UsbDevice();
+    }
     UsbDevice usb;
-    usb.address = address;
-    usb.busNumber = busNumber;
-    usb.portNumber = portNumber;
     usb.classCode = classCode;
-    usb.vendorId = idVendor;
-    usb.productId = idProduct;
-    usb.manufacturer = manufacturer;
-    usb.product = product;
-    usb.serialNumber = serialNumber;
+    usb.vendorId = desc.idVendor;
+    usb.productId = desc.idProduct;
+    usb.busNumber = libusb_get_bus_number(dev);
+    usb.portNumber = libusb_get_port_number(dev);
+    usb.address = libusb_get_device_address(dev);
+    libusb_device_handle* handle = NULL;
+    if (LIBUSB_SUCCESS == libusb_open(dev, &handle)) {
+        if (desc.iManufacturer) {
+            char manufacturer[256] = { 0 };
+            libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, (unsigned char*)manufacturer, sizeof(manufacturer));
+            usb.manufacturer = manufacturer;
+        }
+        if (desc.iProduct) {
+            char product[256] = { 0 };
+            libusb_get_string_descriptor_ascii(handle, desc.iProduct, (unsigned char*)product, sizeof(product));
+            usb.product = product;
+        }
+        if (desc.iSerialNumber) {
+            char serialNumber[256] = { 0 };
+            libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, (unsigned char*)serialNumber, sizeof(serialNumber));
+            usb.serialNumber = serialNumber;
+        }
+        libusb_close(handle);
+    }
     return usb;
 }
 
-static std::vector<UsbDevice> getUsbList(libusb_context* ctx) {
+static std::vector<UsbDevice> getUsbList(libusb_context* ctx, const std::vector<libusb_class_code>& codes) {
     std::vector<UsbDevice> usbList;
     if (ctx) {
         libusb_device** devList = NULL;
@@ -78,7 +86,10 @@ static std::vector<UsbDevice> getUsbList(libusb_context* ctx) {
             libusb_device* dev = NULL;
             int i = 0;
             while ((dev = devList[i++])) {
-                usbList.push_back(parseDevice(dev));
+                UsbDevice usb = parseDevice(dev, codes);
+                if (usb.vendorId > 0 && usb.productId > 0) {
+                    usbList.push_back(usb);
+                }
             }
             libusb_free_device_list(devList, 1);
         }
@@ -103,7 +114,7 @@ static void detectThreadHandler(void) {
             sLibusbContextMutex.unlock();
             break;
         }
-        std::vector<UsbDevice> usbList = getUsbList(sLibusbContext);
+        std::vector<UsbDevice> usbList = getUsbList(sLibusbContext, sValidClassCodes);
         /* step1: check usb arrived */
         std::vector<UsbDevice> usbArrivedList;
         for (size_t i = 0; i < usbList.size(); ++i) {
@@ -152,7 +163,7 @@ static void detectThreadHandler(void) {
     }
 }
 
-bool UsbDevice::open(LIBUSB_DEVICE_HOTPLUG_CALLBACK arrivedCallback, LIBUSB_DEVICE_HOTPLUG_CALLBACK leftCallback) {
+bool UsbDevice::open(LIBUSB_DEVICE_HOTPLUG_CALLBACK arrivedCallback, LIBUSB_DEVICE_HOTPLUG_CALLBACK leftCallback, const std::vector<libusb_class_code>& validClassCodes) {
     sLibusbContextMutex.lock();
     if (sLibusbContext) {
         sLibusbContextMutex.unlock();
@@ -164,7 +175,8 @@ bool UsbDevice::open(LIBUSB_DEVICE_HOTPLUG_CALLBACK arrivedCallback, LIBUSB_DEVI
     }
     sLibusbDeviceArrivedCallback = arrivedCallback;
     sLibusbDeviceLeftCallback = leftCallback;
-    sUsbList = getUsbList(sLibusbContext);
+    sValidClassCodes = validClassCodes;
+    sUsbList = getUsbList(sLibusbContext, validClassCodes);
     std::thread detectThread(detectThreadHandler);
     detectThread.detach();
     sLibusbContextMutex.unlock();
@@ -187,7 +199,7 @@ std::vector<UsbDevice> UsbDevice::getList(bool sync) {
     std::vector<UsbDevice> usbList;
     sLibusbContextMutex.lock();
     if (sync) {
-        usbList = getUsbList(sLibusbContext);
+        usbList = getUsbList(sLibusbContext, sValidClassCodes);
     } else {
         usbList = sUsbList;
     }
