@@ -218,6 +218,11 @@ public:
         if (name.empty() || filename.empty()) {
             return false;
         }
+        FILE* fp = fopen(filename.c_str(), "r");
+        if (!fp) {
+            return false;
+        }
+        fclose(fp);
         Form* f = new Form();
         f->name = name;
         f->option = CURLFORM_FILE;
