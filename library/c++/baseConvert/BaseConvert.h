@@ -42,10 +42,12 @@ public:
     /*
      * Brief:	convert a decimalism number to hexadecimal string
      * Param:	dec - a decimalism number
+     *          bit - binary complement
+     *          prefix - whether show "0x"
      *			isUpper - is letter upper
      * Return:	string, e.g. FF88FF
      */
-    static std::string dec2hex(unsigned int dec, bool prefix = true, bool isUpper = true);
+    static std::string dec2hex(unsigned int dec, unsigned int bit = 0, bool prefix = true, bool isUpper = false);
 
     /*
      * Brief:	convert a hexadecimal string to decimalism number

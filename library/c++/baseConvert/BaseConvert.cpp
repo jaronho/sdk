@@ -73,17 +73,28 @@ unsigned int BaseConvert::bin2dec(const std::string& binStr) {
     return dec;
 }
 /*********************************************************************/
-std::string BaseConvert::dec2hex(unsigned int dec, bool prefix, bool isUpper) {
-    std::string hexStr = prefix ? "0x" : "";
+static std::string dec2hexImpl(unsigned int dec, bool isUpper) {
+    std::string hexStr = "";
     unsigned int temp = dec / 16;
     unsigned int left = dec % 16;
     if (temp > 0) {
-        hexStr += dec2hex(temp, false, isUpper);
+        hexStr += dec2hexImpl(temp, isUpper);
     }
     if (left < 10) {
         hexStr += (static_cast<char>(left) + '0');
     } else {
         hexStr += ((isUpper ? 'A' : 'a') + static_cast<char>(left) - 10);
+    }
+    return hexStr;
+}
+/*********************************************************************/
+std::string BaseConvert::dec2hex(unsigned int dec, unsigned int bit, bool prefix, bool isUpper) {
+    std::string hexStr = dec2hexImpl(dec, isUpper);
+    while (hexStr.size() < bit) {
+        hexStr = '0' + hexStr;
+    }
+    if (prefix) {
+        hexStr = "0x" + hexStr;
     }
     return hexStr;
 }
