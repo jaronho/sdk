@@ -36,15 +36,20 @@ Formula.isPointInRect = function(rect, p) {
 	return p.x >= xMin && p.x <= xMax && p.y >= yMin && p.y <= yMax;
 };
 //----------------------------------------------------------------------
-// 判断点在线段的哪一侧(0.线段所在直线上,1.线段所在直线的左侧,2.线段所在直线的右侧)
-Formula.checkPointSideWithSegment = function(sX, sY, eX, eY, x, y) {
-    var factor = (y - sY) * (eX - sX) / (eY - sY) + sY;
-    if (factor < x) {
-        return 2;
-    } else if (factor > x) {
-        return 1;
+// 判断点在线段的哪一侧,0.点在线段所在直线上,1.点在线段所在直线左边(线段平行于x轴时上边),2.点在线段所在直线右边(线段平行于x轴时下边)
+Formula.checkPointSide = function(sX, sY, eX, eY, x, y) {
+    var a = eY - sY;
+    var b = sX - eX;
+    var c = eX * sY - sX * eY;
+    var d = a * x + b * y + c;
+    if (0 == d) {   /* point is on line */
+        return 0;
     }
-    return 0;
+    if (sY > eY) {  /* line like '\' */
+        return d > 0 ? 1 : 2;
+    }
+    /* line like '-','|','/' */
+    return d < 0 ? 1 : 2;
 };
 //----------------------------------------------------------------------
 // 计算线段上的点,t=[0, 1]
