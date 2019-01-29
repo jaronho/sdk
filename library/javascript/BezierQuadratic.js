@@ -79,17 +79,6 @@ function createBezierQuadratic(x1, y1, x2, y2, x3, y3) {
         }
         return this.getPoint(t);
     };
-    /* 获取步进坐标点 */
-    bq.getStepPoint = function(steps, index) {
-        if (index >= 0 && index <= steps) {
-            var t = index / steps;
-            if (!this._straight && t > 0 && t < 1) {
-                var len = t * this._totalLength;
-                t = this._invertLength(t, len);
-            }
-            return this.getPoint(t);
-        }
-    }
     if ('number' === typeof(x1) && 'number' === typeof(y1) &&
         'number' === typeof(x2) && 'number' === typeof(y2) &&
         'number' === typeof(x3) && 'number' === typeof(y3)) {
