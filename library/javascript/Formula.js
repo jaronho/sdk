@@ -59,3 +59,12 @@ Formula.calcLinearPoint = function(x1, y1, x2, y2, t) {
     return [x, y];
 }
 //----------------------------------------------------------------------
+// 已知直角三角形两点坐标和一边长,求第三点坐标,(bX, bY)为直角点,求点C坐标
+Formula.calcTrianglePoint = function(aX, aY, bX, bY, lenBC) {
+    var x1 = bX + (lenBC * (aY - bY)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
+    var y1 = bY - (lenBC * (aX - bX)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
+    var x2 = bX - (lenBC * (aY - bY)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
+    var y2 = bY + (lenBC * (aX - bX)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
+    return [x1, y1, x2, y2]
+}
+//----------------------------------------------------------------------
