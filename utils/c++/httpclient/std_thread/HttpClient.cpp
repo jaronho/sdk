@@ -167,7 +167,7 @@ void HttpClient::receive(void) {
 }
 //------------------------------------------------------------------------
 void HttpClient::get(const std::string& url,
-                     const std::vector<std::string>* headers,
+                     const std::map<std::string, std::string>* headers,
                      HTTP_REQUEST_CALLBACK callback,
                      void* param,
                      int connecttimeout,
@@ -178,8 +178,9 @@ void HttpClient::get(const std::string& url,
     obj->timeout = timeout;
     obj->url = url;
     if (headers) {
-        for (size_t i = 0; i < headers->size(); ++i) {
-            obj->headers.push_back((*headers)[i]);
+        std::map<std::string, std::string>::const_iterator iter = headers->begin();
+        for (; headers->end() != iter; ++iter) {
+            obj->headers[iter->first] = iter->second;
         }
     }
     obj->requesttype = "GET";
@@ -190,7 +191,7 @@ void HttpClient::get(const std::string& url,
 }
 //------------------------------------------------------------------------
 void HttpClient::post(const std::string& url,
-                      const std::vector<std::string>* headers,
+                      const std::map<std::string, std::string>* headers,
                       const unsigned char* data,
                       unsigned int dataLength,
                       HTTP_REQUEST_CALLBACK callback,
@@ -203,8 +204,9 @@ void HttpClient::post(const std::string& url,
     obj->timeout = timeout;
     obj->url = url;
     if (headers) {
-        for (size_t i = 0; i < headers->size(); ++i) {
-            obj->headers.push_back((*headers)[i]);
+        std::map<std::string, std::string>::const_iterator iter = headers->begin();
+        for (; headers->end() != iter; ++iter) {
+            obj->headers[iter->first] = iter->second;
         }
     }
     obj->setData(data, dataLength, true);
@@ -216,7 +218,7 @@ void HttpClient::post(const std::string& url,
 }
 //------------------------------------------------------------------------
 void HttpClient::postForm(const std::string& url,
-                          const std::vector<std::string>* headers,
+                          const std::map<std::string, std::string>* headers,
                           const std::map<std::string, std::string>* contents,
                           const std::map<std::string, std::string>* filenames,
                           HTTP_REQUEST_CALLBACK callback,
@@ -229,8 +231,9 @@ void HttpClient::postForm(const std::string& url,
     obj->timeout = timeout;
     obj->url = url;
     if (headers) {
-        for (size_t i = 0; i < headers->size(); ++i) {
-            obj->headers.push_back((*headers)[i]);
+        std::map<std::string, std::string>::const_iterator iter = headers->begin();
+        for (; headers->end() != iter; ++iter) {
+            obj->headers[iter->first] = iter->second;
         }
     }
     if (contents) {

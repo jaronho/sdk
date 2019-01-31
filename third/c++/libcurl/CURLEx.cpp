@@ -96,15 +96,15 @@ bool CURLEx::setURL(const std::string& url) {
     return CURLE_OK == setOption(CURLOPT_URL, url.c_str());
 }
 //------------------------------------------------------------------------
-bool CURLEx::setHeaders(const std::vector<std::string>& headers) {
+bool CURLEx::setHeaders(const std::map<std::string, std::string>& headers) {
     if (headers.empty()) {
         return false;
     }
     // append custom headers one by one
-    std::vector<std::string>::const_iterator iter = headers.begin();
+    std::map<std::string, std::string>::const_iterator iter = headers.begin();
     for (; headers.end() != iter; ++iter) {
         // the second parameter must use type: const char*
-        mHeaders = curl_slist_append(mHeaders, iter->c_str());
+        mHeaders = curl_slist_append(mHeaders, (iter->first + ":" + iter->second).c_str());
     }
     // set custom headers for curl
     return CURLE_OK == setOption(CURLOPT_HTTPHEADER, mHeaders);

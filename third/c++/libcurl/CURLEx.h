@@ -56,7 +56,7 @@ public:
 	bool setURL(const std::string& url);
 
 	// set headers
-	bool setHeaders(const std::vector<std::string>& headers);
+    bool setHeaders(const std::map<std::string, std::string>& headers);
 
 	// set post fields and field size
     bool setPostFields(const unsigned char* fields, unsigned int fieldsize);
@@ -237,17 +237,17 @@ public:
     }
 
 public:
-    std::string sslcafilename;				// ssl CA filename
-    std::string cookiefilename;				// cookie filename
-    int connecttimeout;						// connect timeout
-    int timeout;							// read timeout
-	std::string url;						// request url
-	std::vector<std::string> headers;		// header
+    std::string sslcafilename;                      // ssl CA filename
+    std::string cookiefilename;                     // cookie filename
+    int connecttimeout;                             // connect timeout
+    int timeout;                                    // read timeout
+    std::string url;                                // request url
+    std::map<std::string, std::string> headers;     // headers
 
 private:
-    unsigned char* mData;                   // request data, support binary data
-    unsigned int mDataSize;                 // request data size
-    std::map<std::string, Form*> mForms;    // request form
+    unsigned char* mData;                           // request data, support binary data
+    unsigned int mDataSize;                         // request data size
+    std::map<std::string, Form*> mForms;            // request form
 };
 
 /*
