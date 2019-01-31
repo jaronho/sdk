@@ -9,7 +9,7 @@
 #include <string.h>
 #include <time.h>
 
-logfilewrapper_st* logfilewrapper_init(const char* basename, const char* extname, size_t maxSize, unsigned int override) {
+logfilewrapper_st* logfilewrapper_open(const char* basename, const char* extname, unsigned long maxSize, unsigned int override) {
     char* filename = NULL;
     logfilewrapper_st* wrapper = NULL;
     assert(basename && strlen(basename) > 0);
@@ -62,7 +62,7 @@ void logfilewrapper_enable(logfilewrapper_st* wrapper, unsigned int enable) {
 unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, unsigned int withtime, const char* content) {
     unsigned int flag = 0;
     char* filename = NULL;
-    size_t maxsize = 0;
+    unsigned long maxsize = 0;
     time_t now;
     struct tm t;
     char date[16] = { 0 };
@@ -78,7 +78,7 @@ unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, 
     } else {
         flag = logfile_record_with_tag(wrapper->logfile, tag, withtime, content);
     }
-    if (3 == flag) {
+    if (6 == flag) {
         if (wrapper->override) {
             logfile_clear(wrapper->logfile);
         } else {
@@ -107,7 +107,7 @@ unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, 
                 wrapper->extname = NULL;
                 free(wrapper);
                 wrapper = NULL;
-                return 3;
+                return flag;
             }
         }
         if (!tag || 0 == strlen(tag)) {
@@ -121,24 +121,4 @@ unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, 
         }
     }
     return flag;
-}
-
-unsigned int logfilewrapper_record_ex(logfilewrapper_st* wrapper, const char* tag, unsigned int withtime, const char* content, const char* basename, const char* extname) {
-    size_t maxsize = 0;
-    unsigned int override = 0;
-    assert(wrapper);
-    assert(content);
-    if (basename && strlen(basename) > 0 && extname && strlen(extname) > 0) {
-        if (0 == strcmp(wrapper->basename, basename) && 0 == strcmp(wrapper->extname, extname)) {
-            return logfilewrapper_record(wrapper, tag, withtime, content);
-        } else {
-            maxsize = wrapper->logfile->maxsize;
-            override = wrapper->override;
-            logfilewrapper_close(wrapper);
-            wrapper = logfilewrapper_init(basename, extname, maxsize, override);
-            return logfilewrapper_record(wrapper, tag, withtime, content);
-        }
-    } else {
-        return logfilewrapper_record(wrapper, tag, withtime, content);
-    }
 }

@@ -278,7 +278,7 @@ void logRecord(const std::string& str) {
     printf("%s\n", str.c_str());
     s_logWrapperMutex.lock();
     if (!s_logWrapper) {
-        s_logWrapper = logfilewrapper_init((s_app_directory + LOG_FILENAME).c_str(), LOG_EXTNAME, LOG_FILE_SIZE, false);
+        s_logWrapper = logfilewrapper_open((s_app_directory + LOG_FILENAME).c_str(), LOG_EXTNAME, LOG_FILE_SIZE, false);
     }
     logfilewrapper_record(s_logWrapper, nullptr, 1, str.c_str());
     s_logWrapperMutex.unlock();
@@ -294,7 +294,7 @@ void errRecord(const std::string& str) {
     printf("%s\n", str.c_str());
     s_errWrapperMutex.lock();
     if (!s_errWrapper) {
-        s_errWrapper = logfilewrapper_init((s_app_directory + ERR_FILENAME).c_str(), ERR_EXTNAME, ERR_FILE_SIZE, false);
+        s_errWrapper = logfilewrapper_open((s_app_directory + ERR_FILENAME).c_str(), ERR_EXTNAME, ERR_FILE_SIZE, false);
     }
     logfilewrapper_record(s_errWrapper, nullptr, 1, str.c_str());
     s_errWrapperMutex.unlock();

@@ -23,14 +23,14 @@ typedef struct logfilewrapper_st {
 } logfilewrapper_st;
 
 /*
- * Brief:	init logfile wraper
+ * Brief:	open logfile wraper
  * Param:	basename - file base name, e.g. "demo" or "/home/workspace/demo"
  *          extname - file extend name, e.g. ".log" or ".err"
  *          maxSize - file max size
  *          override - when file reach max size, 0.create new file and write, 1. clear file and override
  * Return:	logfilewrapper_st*
  */
-extern logfilewrapper_st* logfilewrapper_init(const char* basename, const char* extname, size_t maxSize, unsigned int override);
+extern logfilewrapper_st* logfilewrapper_open(const char* basename, const char* extname, unsigned long maxSize, unsigned int override);
 
 /*
  * Brief:	close logfile wraper
@@ -62,26 +62,14 @@ extern void logfilewrapper_enable(logfilewrapper_st* wrapper, unsigned int enabl
  *          withtime - with time, 0.false, 1.true
  *          content - record content
  * Return:	0.ok
- *          1.disabled
- *          2.content size large max
- *          3.file reach max size, create new file fail
+ *          1.lf is null
+ *          2.content is null
+ *          3.logfile disable
+ *          4.logfile ptr is null
+ *          5.content size larger than max
+ *          6.file size reach max, create new file fail
  */
 extern unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, unsigned int withtime, const char* content);
-
-/*
- * Brief:	record log to file, if basename and extname not equal wrapper's, will create new log file
- * Param:	wrapper - a logfile wrapper
- *          tag - record tag
- *          withtime - with time, 0.false, 1.true
- *          content - record content
- *          basename - file base name, allow NULL, e.g. "demo" or "/home/workspace/demo"
- *          extname - file extend name, allow NULL, e.g. ".log" or ".err"
- * Return:	0.ok
- *          1.disabled
- *          2.content size large max
- *          3.file reach max size, create new file fail
- */
-extern unsigned int logfilewrapper_record_ex(logfilewrapper_st* wrapper, const char* tag, unsigned int withtime, const char* content, const char* basename, const char* extname);
 
 #ifdef __cplusplus
 }
