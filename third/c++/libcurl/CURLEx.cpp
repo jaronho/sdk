@@ -281,9 +281,6 @@ bool curlPostForm(CurlRequest& request, CURLEx_callback headerFunc, void* header
     if (CURLE_OK != curlObj.setOption(CURLOPT_FOLLOWLOCATION, 1)) {
         return false;
     }
-    if (request.getForms().empty()) {
-        return false;
-    }
     std::map<std::string, CurlRequest::Form*>::const_iterator formIter = request.getForms().begin();
     for (; request.getForms().end() != formIter; ++formIter) {
         const CurlRequest::Form* f = formIter->second;
