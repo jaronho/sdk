@@ -59,7 +59,7 @@ function createBezierQuadratic(x1, y1, x2, y2, x3, y3) {
             this._totalLength = this._calcLength(1);
         }
     };
-    /* 获取坐标点 */
+    /* 获取坐标点(非平均) */
     bq.getPoint = function(t) {
         var x, y;
         if (this._straight) {
@@ -78,6 +78,19 @@ function createBezierQuadratic(x1, y1, x2, y2, x3, y3) {
             t = this._invertLength(t, len);
         }
         return this.getPoint(t);
+    };
+    /* 获取总长度 */
+    bq.getTotalLength = function() {
+        return this._totalLength;
+    };
+    /* 获取坐标点在曲线上点百分比(非平均) */
+    bq.getPercent = function(x, y) {
+        if (this._straight) {
+            return (this._x1 - x) / (this._x3 - this._x1);
+        }
+        var a = -2 * this._x1 * this._y2 + this._x1 * this._y3 + 2 * this._x2 * this._y1 - this._x3  * this._y1 - x * this._y1 + 2 * x * this._y2 - x * this._y3 + this._x1 * y - 2 * this._x2 * y + this._x3 * y;
+        var b = 2 * ((this._x2 - this._x1) * (this._y1 - 2 * this._y2 + this._y3) - (this._y2 - this._y1) * (this._x1 - 2 * this._x2 + this._x3));
+        return Math.abs(a / b);
     };
     if ('number' === typeof(x1) && 'number' === typeof(y1) &&
         'number' === typeof(x2) && 'number' === typeof(y2) &&
