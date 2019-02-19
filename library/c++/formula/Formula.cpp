@@ -24,6 +24,11 @@ bool Formula::isequald(double a, double b) {
 }
 /*********************************************************************/
 double Formula::clamp(double value, double min, double max) {
+    if (min > max) {
+        double tmp = min;
+        min = max;
+        max = tmp;
+    }
     value = value > min ? value : min;
     value = value < max ? value : max;
     return value;
