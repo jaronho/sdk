@@ -111,9 +111,6 @@ bool CURLEx::setHeaders(const std::map<std::string, std::string>& headers) {
 }
 //------------------------------------------------------------------------
 bool CURLEx::setPostFields(const unsigned char* fields, unsigned int fieldsize) {
-    if (!fields || 0 == fieldsize) {
-        return false;
-    }
     if (CURLE_OK != setOption(CURLOPT_POSTFIELDS, fields)) {
         return false;
     }
@@ -284,16 +281,20 @@ bool curlPostForm(CurlRequest& request, CURLEx_callback headerFunc, void* header
     if (CURLE_OK != curlObj.setOption(CURLOPT_POST, 1)) {
         return false;
     }
-    std::map<std::string, CurlRequest::Form*>::const_iterator formIter = request.getForms().begin();
-    for (; request.getForms().end() != formIter; ++formIter) {
-        const CurlRequest::Form* f = formIter->second;
-        if (CURLFORM_COPYCONTENTS == f->option) {
-            if (!curlObj.addFormContent(f->name.c_str(), f->value, f->length, f->type.c_str())) {
-                return false;
-            }
-        } else if (CURLFORM_FILE == f->option) {
-            if (!curlObj.addFormFile(f->name.c_str(), (const char*)f->value, f->type.c_str())) {
-                return false;
+    if (request.getForms().empty()) {
+        curlObj.setPostFields(request.getData(), request.getDataSize());
+    } else {
+        std::map<std::string, CurlRequest::Form*>::const_iterator formIter = request.getForms().begin();
+        for (; request.getForms().end() != formIter; ++formIter) {
+            const CurlRequest::Form* f = formIter->second;
+            if (CURLFORM_COPYCONTENTS == f->option) {
+                if (!curlObj.addFormContent(f->name.c_str(), f->value, f->length, f->type.c_str())) {
+                    return false;
+                }
+            } else if (CURLFORM_FILE == f->option) {
+                if (!curlObj.addFormFile(f->name.c_str(), (const char*)f->value, f->type.c_str())) {
+                    return false;
+                }
             }
         }
     }
