@@ -5,6 +5,23 @@
  ***********************************************************************/
 var Formula = {};
 //----------------------------------------------------------------------
+// 计算中间值
+Formula.clamp = function(value, min, max) {
+    if (min > max) {
+        var tmp = min;
+        min = max;
+        max = tmp;
+    }
+    value = value > min ? value : min;
+    value = value < max ? value : max;
+    return value;
+};
+//----------------------------------------------------------------------
+// 计算线性值
+Formula.mix = function(x, y, a) {
+    return x * (1 - a) + y * a;
+};
+//----------------------------------------------------------------------
 // 计算夹角
 Formula.calcAngle = function(v1, v2) {
 	var x = v1.x - v2.x;
