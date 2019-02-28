@@ -163,6 +163,16 @@ static void detectThreadHandler(void) {
     }
 }
 
+bool UsbDevice::isOpen(void) {
+    bool flag = false;
+    sLibusbContextMutex.lock();
+    if (sLibusbContext) {
+        flag = true;
+    }
+    sLibusbContextMutex.unlock();
+    return flag;
+}
+
 bool UsbDevice::open(LIBUSB_DEVICE_HOTPLUG_CALLBACK arrivedCallback, LIBUSB_DEVICE_HOTPLUG_CALLBACK leftCallback, const std::vector<libusb_class_code>& validClassCodes) {
     sLibusbContextMutex.lock();
     if (sLibusbContext) {

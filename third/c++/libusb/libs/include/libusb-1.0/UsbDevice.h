@@ -29,6 +29,9 @@ public:
     std::string serialNumber;       /* the device serial number */
 
 public:
+    /* USB设备检测是否已打开 */
+    static bool isOpen(void);
+
     /* 打开USB设备检测,注意:回调函数将在线程中被调用(回调函数可设置为空) */
     static bool open(LIBUSB_DEVICE_HOTPLUG_CALLBACK arrivedCallback, LIBUSB_DEVICE_HOTPLUG_CALLBACK leftCallback, const std::vector<libusb_class_code>& validClassCodes);
 
