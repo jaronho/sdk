@@ -31,12 +31,11 @@
 // http对象
 class HttpObject : public CurlRequest {
 public:
-    HttpObject() : requesttype("post"), syncresponse(true), success(false), curlcode(-1), responsecode(-1) {}
+    HttpObject() : requesttype("post"), success(false), curlcode(-1), responsecode(-1) {}
 
 public:
     // 请求
     std::string requesttype;				// 请求类型(不区分大小写):"GET","POST","POST_FORM","PUT","DELETE"
-    bool syncresponse;						// 同步响应
     HTTP_REQUEST_CALLBACK callback;         // 回调函数
     void* param;                            // 附加参数
 
@@ -54,15 +53,14 @@ class HttpClient {
 public:
     static HttpClient* getInstance(void);	// 获取单例
     static void destroyInstance(void);		// 删除单例
-    void send(HttpObject* obj);                                                                 // 发送http请求
-    void receive(void);                                                                         // 每帧循环接收(用于异步响应)
+    void asyncListen(void);                 // 每帧循环监听(用于异步响应)
     void get(const std::string& url,
              const std::map<std::string, std::string>* headers = NULL,
              HTTP_REQUEST_CALLBACK callback = NULL,
              void* param = NULL,
              int connecttimeout = 30,
              int timeout = 60,
-             bool syncresponse = true);                                                         // GET请求
+             bool async = false);           // GET请求
     void post(const std::string& url,
               const std::map<std::string, std::string>* headers,
               const unsigned char* data,
@@ -71,7 +69,7 @@ public:
               void* param = NULL,
               int connecttimeout = 30,
               int timeout = 60,
-              bool syncresponse = true);                                                        // POST请求
+              bool async = false);          // POST请求
     void postForm(const std::string& url,
                   const std::map<std::string, std::string>* headers = NULL,
                   const std::map<std::string, std::string>* contents = NULL,
@@ -80,7 +78,7 @@ public:
                   void* param = NULL,
                   int connecttimeout = 30,
                   int timeout = 60,
-                  bool syncresponse = true);                                                    // POST请求
+                  bool async = false);      // POST请求
 };
 
 #endif //_HTTP_CLIENT_H_

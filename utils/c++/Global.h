@@ -153,17 +153,17 @@ extern void errRecord(const std::string& str);
 **********************************************************************/
 #include "httpclient/HttpClient.h"
 
-/* http接收(循环调用) */
-extern void httpReceive(void);
+/* http异步监听(每帧循环调用) */
+extern void httpAsyncListen(void);
 
 /* http请求GET */
-extern void httpGet(const std::string& url, const std::map<std::string, std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
+extern void httpGet(const std::string& url, const std::map<std::string, std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async);
 
 /* http请求POST */
-extern void httpPost(const std::string& url, const std::map<std::string, std::string>* headers, const unsigned char* data, unsigned int dataLength, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
+extern void httpPost(const std::string& url, const std::map<std::string, std::string>* headers, const unsigned char* data, unsigned int dataLength, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async);
 
 /* http请求POST表单 */
-extern void httpPostForm(const std::string& url, const std::map<std::string, std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout);
+extern void httpPostForm(const std::string& url, const std::map<std::string, std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async);
 #endif
 
 #ifdef GLOBAL_MODULE_HTTP_SERVER

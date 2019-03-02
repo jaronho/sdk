@@ -305,20 +305,20 @@ void errRecord(const std::string& str) {
 /*********************************************************************
 *************************** HTTP CLIENT 接口 *************************
 **********************************************************************/
-void httpReceive(void) {
-    HttpClient::getInstance()->receive();
+void httpAsyncListen(void) {
+    HttpClient::getInstance()->asyncListen();
 }
 
-void httpGet(const std::string& url, const std::map<std::string, std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout) {
-    HttpClient::getInstance()->get(url, headers, callback, param, connecttimeout, timeout, false);
+void httpGet(const std::string& url, const std::map<std::string, std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async) {
+    HttpClient::getInstance()->get(url, headers, callback, param, connecttimeout, timeout, async);
 }
 
-void httpPost(const std::string& url, const std::map<std::string, std::string>* headers, const unsigned char* data, unsigned int dataLength, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout) {
-    HttpClient::getInstance()->post(url, headers, data, dataLength, callback, param, connecttimeout, timeout, false);
+void httpPost(const std::string& url, const std::map<std::string, std::string>* headers, const unsigned char* data, unsigned int dataLength, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async) {
+    HttpClient::getInstance()->post(url, headers, data, dataLength, callback, param, connecttimeout, timeout, async);
 }
 
-void httpPostForm(const std::string& url, const std::map<std::string, std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout) {
-    HttpClient::getInstance()->postForm(url, headers, contents, filenames, callback, param, connecttimeout, timeout, false);
+void httpPostForm(const std::string& url, const std::map<std::string, std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async) {
+    HttpClient::getInstance()->postForm(url, headers, contents, filenames, callback, param, connecttimeout, timeout, async);
 }
 #endif
 

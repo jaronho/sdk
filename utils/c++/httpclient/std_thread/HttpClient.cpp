@@ -5,11 +5,52 @@
 **********************************************************************/
 #include "HttpClient.h"
 //------------------------------------------------------------------------
+static unsigned int headerFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
+    std::vector<char>* recvBuffer = (std::vector<char>*)stream;
+    unsigned int sizes = size * nmemb;
+    recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr + sizes);
+    return sizes;
+}
+//------------------------------------------------------------------------
+static unsigned int bodyFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
+    std::vector<char>* recvBuffer = (std::vector<char>*)stream;
+    unsigned int sizes = size * nmemb;
+    recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr + sizes);
+    return sizes;
+}
+//------------------------------------------------------------------------
+static void sendHttpObject(HttpObject* obj) {
+    if (!obj) {
+        return;
+    }
+    std::transform(obj->requesttype.begin(), obj->requesttype.end(), obj->requesttype.begin(), ::toupper);
+    if ("GET" == obj->requesttype) {
+        obj->success = curlGet(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+    } else if ("POST" == obj->requesttype) {
+        obj->success = curlPost(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+    } else if ("POST_FORM" == obj->requesttype) {
+        obj->success = curlPostForm(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+    } else if ("PUT" == obj->requesttype) {
+        obj->success = curlPut(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+    } else if ("DELETE" == obj->requesttype) {
+        obj->success = curlDelete(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+    } else {
+        delete obj;
+        return;
+    }
+    if (obj->callback) {
+        std::string responseheader(obj->responseheader.begin(), obj->responseheader.end());
+        std::string responsebody(obj->responsebody.begin(), obj->responsebody.end());
+        obj->callback(obj->success, obj->curlcode, obj->responsecode, obj->errorbuffer, responseheader, responsebody, obj->param);
+    }
+    delete obj;
+}
+//------------------------------------------------------------------------
 static bool sIsRunning = false;								// 是否在运行
-static std::list<HttpObject*>* sReuqestList = NULL;			// 请求列表
-static std::list<HttpObject*>* sResponseList = NULL;		// 响应列表
 static std::mutex sRequestListMutex;						// 请求列表互斥
 static std::mutex sResponseListMutex;						// 响应列表互斥
+static std::list<HttpObject*>* sReuqestList = NULL;			// 请求列表
+static std::list<HttpObject*>* sResponseList = NULL;		// 响应列表
 static std::condition_variable_any sSleepCondition;			// 条件变量
 //------------------------------------------------------------------------
 static void createThreadSemphore(void) {
@@ -26,7 +67,6 @@ static void destroyThreadSemphore(void) {
     if (!sReuqestList || !sResponseList) {
         return;
     }
-    // 清除请求列表
     sRequestListMutex.lock();
     if (sReuqestList) {
         sReuqestList->clear();
@@ -34,7 +74,6 @@ static void destroyThreadSemphore(void) {
         sReuqestList = NULL;
     }
     sRequestListMutex.unlock();
-    // 清除响应列表
     sResponseListMutex.lock();
     if (sResponseList) {
         sResponseList->clear();
@@ -62,79 +101,56 @@ static void recvResponse(void) {
     if (!sIsRunning) {
         return;
     }
-    HttpObject* responseObj = NULL;
+    HttpObject* obj = NULL;
     sResponseListMutex.lock();
     if (sResponseList && sResponseList->size() > 0) {
-        responseObj = *(sResponseList->begin());
+        obj = *(sResponseList->begin());
         sResponseList->pop_front();
     }
     sResponseListMutex.unlock();
-    if (!responseObj) {
+    if (!obj) {
         return;
     }
-    if (responseObj->callback) {
-        std::string responseheader(responseObj->responseheader.begin(), responseObj->responseheader.end());
-        std::string responsebody(responseObj->responsebody.begin(), responseObj->responsebody.end());
-        responseObj->callback(responseObj->success, responseObj->curlcode, responseObj->responsecode, responseObj->errorbuffer, responseheader, responsebody, responseObj->param);
+    if (obj->callback) {
+        std::string responseheader(obj->responseheader.begin(), obj->responseheader.end());
+        std::string responsebody(obj->responsebody.begin(), obj->responsebody.end());
+        obj->callback(obj->success, obj->curlcode, obj->responsecode, obj->errorbuffer, responseheader, responsebody, obj->param);
     }
-    delete responseObj;
-}
-//------------------------------------------------------------------------
-static unsigned int headerFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
-    std::vector<char>* recvBuffer = (std::vector<char>*)stream;
-    unsigned int sizes = size * nmemb;
-    recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr + sizes);
-    return sizes;
-}
-//------------------------------------------------------------------------
-static unsigned int bodyFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
-    std::vector<char>* recvBuffer = (std::vector<char>*)stream;
-    unsigned int sizes = size * nmemb;
-    recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr + sizes);
-    return sizes;
+    delete obj;
 }
 //------------------------------------------------------------------------
 static void httpNetworkThread() {
     while (sIsRunning) {
-        HttpObject* requestObj = NULL;
+        HttpObject* obj = NULL;
         sRequestListMutex.lock();
         if (sReuqestList && sReuqestList->size() > 0) {
-            requestObj = *(sReuqestList->begin());
+            obj = *(sReuqestList->begin());
             sReuqestList->pop_front();
         }
         sRequestListMutex.unlock();
-        if (!requestObj) {
+        if (!obj) {
             std::lock_guard<std::mutex> lock(sRequestListMutex);
             sSleepCondition.wait(sRequestListMutex);
             continue;
         }
-        std::transform(requestObj->requesttype.begin(), requestObj->requesttype.end(), requestObj->requesttype.begin(), ::toupper);
-        if ("GET" == requestObj->requesttype) {
-            requestObj->success = curlGet(*requestObj, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
-        } else if ("POST" == requestObj->requesttype) {
-            requestObj->success = curlPost(*requestObj, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
-        } else if ("POST_FORM" == requestObj->requesttype) {
-            requestObj->success = curlPostForm(*requestObj, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
-        } else if ("PUT" == requestObj->requesttype) {
-            requestObj->success = curlPut(*requestObj, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
-        } else if ("DELETE" == requestObj->requesttype) {
-            requestObj->success = curlDelete(*requestObj, headerFunc, &(requestObj->responseheader), bodyFunc, &(requestObj->responsebody), &(requestObj->curlcode), &(requestObj->responsecode), &(requestObj->errorbuffer));
+        std::transform(obj->requesttype.begin(), obj->requesttype.end(), obj->requesttype.begin(), ::toupper);
+        if ("GET" == obj->requesttype) {
+            obj->success = curlGet(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+        } else if ("POST" == obj->requesttype) {
+            obj->success = curlPost(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+        } else if ("POST_FORM" == obj->requesttype) {
+            obj->success = curlPostForm(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+        } else if ("PUT" == obj->requesttype) {
+            obj->success = curlPut(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+        } else if ("DELETE" == obj->requesttype) {
+            obj->success = curlDelete(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
         } else {
-            delete requestObj;
+            delete obj;
             continue;
         }
-        if (requestObj->syncresponse) {
-            if (requestObj->callback) {
-                std::string responseheader(requestObj->responseheader.begin(), requestObj->responseheader.end());
-                std::string responsebody(requestObj->responsebody.begin(), requestObj->responsebody.end());
-                requestObj->callback(requestObj->success, requestObj->curlcode, requestObj->responsecode, requestObj->errorbuffer, responseheader, responsebody, requestObj->param);
-            }
-            delete requestObj;
-        } else {
-            sResponseListMutex.lock();
-            sResponseList->push_back(requestObj);
-            sResponseListMutex.unlock();
-        }
+        sResponseListMutex.lock();
+        sResponseList->push_back(obj);
+        sResponseListMutex.unlock();
     }
 }
 //------------------------------------------------------------------------
@@ -158,11 +174,7 @@ void HttpClient::destroyInstance(void) {
     }
 }
 //------------------------------------------------------------------------
-void HttpClient::send(HttpObject* obj) {
-    sendRequest(obj);
-}
-//------------------------------------------------------------------------
-void HttpClient::receive(void) {
+void HttpClient::asyncListen(void) {
     recvResponse();
 }
 //------------------------------------------------------------------------
@@ -172,7 +184,7 @@ void HttpClient::get(const std::string& url,
                      void* param,
                      int connecttimeout,
                      int timeout,
-                     bool syncresponse) {
+                     bool async) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = connecttimeout;
     obj->timeout = timeout;
@@ -184,10 +196,13 @@ void HttpClient::get(const std::string& url,
         }
     }
     obj->requesttype = "GET";
-    obj->syncresponse = syncresponse;
     obj->callback = callback;
     obj->param = param;
-    sendRequest(obj);
+    if (async) {
+        sendRequest(obj);
+    } else {
+        sendHttpObject(obj);
+    }
 }
 //------------------------------------------------------------------------
 void HttpClient::post(const std::string& url,
@@ -198,7 +213,7 @@ void HttpClient::post(const std::string& url,
                       void* param,
                       int connecttimeout,
                       int timeout,
-                      bool syncresponse) {
+                      bool async) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = connecttimeout;
     obj->timeout = timeout;
@@ -211,10 +226,13 @@ void HttpClient::post(const std::string& url,
     }
     obj->setData(data, dataLength, true);
     obj->requesttype = "POST";
-    obj->syncresponse = syncresponse;
     obj->callback = callback;
     obj->param = param;
-    sendRequest(obj);
+    if (async) {
+        sendRequest(obj);
+    } else {
+        sendHttpObject(obj);
+    }
 }
 //------------------------------------------------------------------------
 void HttpClient::postForm(const std::string& url,
@@ -225,7 +243,7 @@ void HttpClient::postForm(const std::string& url,
                           void* param,
                           int connecttimeout,
                           int timeout,
-                          bool syncresponse) {
+                          bool async) {
     HttpObject* obj = new HttpObject();
     obj->connecttimeout = connecttimeout;
     obj->timeout = timeout;
@@ -249,9 +267,12 @@ void HttpClient::postForm(const std::string& url,
         }
     }
     obj->requesttype = "POST_FORM";
-    obj->syncresponse = syncresponse;
     obj->callback = callback;
     obj->param = param;
-    sendRequest(obj);
+    if (async) {
+        sendRequest(obj);
+    } else {
+        sendHttpObject(obj);
+    }
 }
 //------------------------------------------------------------------------
