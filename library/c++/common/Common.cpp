@@ -516,6 +516,8 @@ std::vector<std::string> Common::stripFileInfo(const std::string& filePath) {
     if (pos < filename.size()) {
         basename = filename.substr(0, pos);
         extname = filename.substr(pos, filename.size() - 1);
+    } else {
+        basename = filename;
     }
     std::vector<std::string> infos;
     infos.push_back(dirname);
