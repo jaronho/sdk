@@ -8,6 +8,14 @@ function createBezierCubic(x1, y1, x2, y2, x3, y3, x4, y4) {
     /***********************************************************************/
     /* 更新控制点 */
     bq.update = function(x1, y1, x2, y2, x3, y3, x4, y4) {
+        x1 = Math.round(x1);
+        y1 = Math.round(y1);
+        x2 = Math.round(x2);
+        y2 = Math.round(y2);
+        x3 = Math.round(x3);
+        y3 = Math.round(y3);
+        x4 = Math.round(x4);
+        y4 = Math.round(y4);
         this._x1 = x1;
         this._y1 = y1;
         this._x2 = x2;
