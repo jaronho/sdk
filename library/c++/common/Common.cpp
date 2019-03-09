@@ -571,13 +571,33 @@ bool Common::writeDataToFile(const unsigned char* data, long dataSize, const std
     return true;
 }
 /*********************************************************************/
-bool Common::copyFile(const std::string& srcFilePath, const std::string& destFilePath) {
-    if (srcFilePath.empty() || destFilePath.empty() || srcFilePath == destFilePath) {
-        return false;
+int Common::copyFile(const char* srcFilePath, const char* destFilePath) {
+    if (!srcFilePath || 0 == strlen(srcFilePath)) {
+        return 1;
     }
-    long fileSize = 0;
-    unsigned char* fileData = getFileData(srcFilePath, &fileSize);
-    return writeDataToFile(fileData, fileSize, destFilePath);
+    if (!destFilePath || 0 == strlen(destFilePath)) {
+        return 2;
+    }
+    if (0 == strcmp(srcFilePath, destFilePath)) {
+        return 3;
+    }
+    FILE* fileSrc = fopen(srcFilePath, "r");
+    if (!fileSrc) {
+        return 4;
+    }
+    FILE* fileDest = fopen(destFilePath, "w");
+    if (!fileDest){
+        fclose(fileSrc);
+        return 5;
+    }
+    char buffer[1024] = { 0 };
+    unsigned long len = 0;
+    while ((len = fread(buffer, 1, 1024, fileSrc)) > 0) {
+        fwrite(buffer, 1, len, fileDest);
+    }
+    fclose(fileSrc);
+    fclose(fileDest);
+    return 0;
 }
 /*********************************************************************/
 std::string Common::revisalPath(std::string path) {

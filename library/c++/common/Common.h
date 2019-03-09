@@ -347,9 +347,14 @@ public:
      * Brief:	copy src file to dest file
      * Param:	srcFilePath - src file, can be absolute path (d:/test.txt) or relative path (temp/test.txt)
      *          destFilePath - dest file, can be absolute path (d:/test.txt) or relative path (temp/test.txt)
-     * Return:	bool
+     * Return:	0 - ok
+     *          1 - srcFilePath is NULL or empty
+     *          2 - destFilePath is NULL or empty
+     *          3 - srcFilePath equal destFilePath
+     *          4 - can not open srcFilePath
+     *          5 - can not open destFilePath
      */
-    static bool copyFile(const std::string& srcFilePath, const std::string& destFilePath);
+    static int copyFile(const char* srcFilePath, const char* destFilePath);
 
     /*
      * Brief:	revisal path, replace "\\" to "/", make sure end of path is not "/" and "\\"
