@@ -957,7 +957,7 @@ std::string Common::generateFilename(const std::string& extname) {
     return filename;
 }
 /*********************************************************************/
-std::vector<std::string> Common::shellCmd(const std::string& cmd) {
+std::vector<std::string> Common::shellCmd(const std::string& cmd, unsigned int sleepMillisecondWhenOk) {
     std::vector<std::string> results;
     if (cmd.empty()) {
         return results;
@@ -980,6 +980,9 @@ std::vector<std::string> Common::shellCmd(const std::string& cmd) {
 #else
     pclose(stream);
 #endif
+    if (results.empty() && sleepMillisecondWhenOk > 0) {
+        usleep(sleepMillisecondWhenOk * 1000);
+    }
     return results;
 }
 /*********************************************************************/

@@ -525,9 +525,10 @@ public:
     /*
      * Brief:   execute shell command
      * Param:   cmd - command, e.g. "ls" or "dir"
+     *          sleepMillisecondWhenOk - sleep millisecond when command execute ok
      * Return:  std::vector<std::string>
      */
-    static std::vector<std::string> shellCmd(const std::string& cmd);
+    static std::vector<std::string> shellCmd(const std::string& cmd, unsigned int sleepMillisecondWhenOk = 0);
 
     /*
      * Brief:	get size of array, e.g.
