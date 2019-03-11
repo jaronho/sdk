@@ -1,6 +1,7 @@
 #include "Global.h"
 
 static std::string s_app_directory;
+static std::string s_app_name;
 
 /*********************************************************************
 ***************************** Device 接口 ****************************
@@ -117,14 +118,30 @@ disk_dev_st devGetDisk(const char* path) {
 ***************************** Common 接口 ****************************
 **********************************************************************/
 void initAppDirectory(const std::string& dir) {
-    if (s_app_directory.empty() && dir.size() > 0) {
-        std::string exeFullPath = Common::replaceString(dir, "\\", "/");
-        s_app_directory = exeFullPath.substr(0, exeFullPath.find_last_of('/')) + "/";
+    if (dir.size() > 0) {
+        std::string fullPath = Common::replaceString(dir, "\\", "/");
+        size_t pos = fullPath.find_last_of('/');
+        if (std::string::npos != pos) {
+            if (s_app_directory.empty()) {
+                s_app_directory = fullPath.substr(0, pos) + "/";
+            }
+            if (s_app_name.empty()) {
+                s_app_name = fullPath.substr(pos + 1);
+            }
+        } else {
+            if (s_app_name.empty()) {
+                s_app_name = dir;
+            }
+        }
     }
 }
 
 std::string getAppDirectory(void) {
     return s_app_directory;
+}
+
+std::string getAppName(void) {
+    return s_app_name;
 }
 #endif
 

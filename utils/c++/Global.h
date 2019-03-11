@@ -76,6 +76,9 @@ extern void initAppDirectory(const std::string& dir);
 
 /* 获取应用程序目录 */
 extern std::string getAppDirectory(void);
+
+/* 获取应用程序名称 */
+extern std::string getAppName(void);
 #endif
 
 #ifdef GLOBAL_MODULE_INI
