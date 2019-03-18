@@ -516,8 +516,8 @@ public:
     static unsigned long long generateUID(void);
     
     /*
-     * Brief:   生成文件名
-     * Param:   extname - 文件后缀名
+     * Brief:   generate filename
+     * Param:   extname - file extname e.g. "log" or ".log"
      * Return:  std::string
      */
     static std::string generateFilename(const std::string& extname);

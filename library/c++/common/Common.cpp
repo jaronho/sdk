@@ -962,16 +962,19 @@ std::vector<std::string> Common::shellCmd(const std::string& cmd, unsigned int s
     if (cmd.empty()) {
         return results;
     }
-    FILE* stream;
+    FILE* stream = NULL;
 #ifdef _SYSTEM_WINDOWS_
     stream = _popen(cmd.c_str(), "r");
 #else
     stream = popen(cmd.c_str(), "r");
 #endif
-    if (stream) {
-        char line[1024] = { 0 };
-        while (fgets(line, sizeof(line), stream)) {
-            line[strlen(line) - 1] = '\0';
+    if (!stream) {
+        return results;
+    }
+    char line[1024] = { 0 };
+    while (memset(line, 0, sizeof(line)) && fgets(line, sizeof(line) - 1, stream)) {
+        line[strlen(line) - 1] = '\0';
+        if (strlen(line) > 0) {
             results.push_back(line);
         }
     }
