@@ -17,25 +17,26 @@ CURLEx::CURLEx(void) {
     ++sObjCount;
     memset(mErrorBuffer, 0, CURL_ERROR_SIZE);
     mCurl = curl_easy_init();
+    curl_easy_setopt(mCurl, CURLOPT_FORBID_REUSE, 1L);
     mHeaders = NULL;
     mHttpPost = NULL;
     mLastPost = NULL;
 }
 //------------------------------------------------------------------------
 CURLEx::~CURLEx(void) {
-    if (mCurl) {
-        curl_easy_cleanup(mCurl);
-        mCurl = NULL;
-    }
-    if (mHeaders) {
-        curl_slist_free_all(mHeaders);
-        mHeaders = NULL;
-    }
     if (mHttpPost) {
         curl_formfree(mHttpPost);
         mHttpPost = NULL;
     }
     mLastPost = NULL;
+    if (mHeaders) {
+        curl_slist_free_all(mHeaders);
+        mHeaders = NULL;
+    }
+    if (mCurl) {
+        curl_easy_cleanup(mCurl);
+        mCurl = NULL;
+    }
     --sObjCount;
     if (0 == sObjCount) {
         curl_global_cleanup();
