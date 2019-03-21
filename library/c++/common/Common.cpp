@@ -536,6 +536,7 @@ unsigned char* Common::getFileData(const std::string& filePath, long* fileSize, 
     *fileSize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     if (0 == *fileSize) {
+        fclose(fp);
         return NULL;
     }
     unsigned char* buffer = (unsigned char*)malloc(sizeof(unsigned char) * (isText ? *fileSize + 1 : *fileSize));
