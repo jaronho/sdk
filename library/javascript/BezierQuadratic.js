@@ -65,6 +65,10 @@ function createBezierQuadratic(x1, y1, x2, y2, x3, y3) {
             this._totalLength = this._calcLength(1);
         }
     };
+    /* 获取控制点 */
+    bq.getControlPoints = function() {
+        return [this._x1, this._y1, this._x2, this._y2, this._x3, this._y3];
+    }
     /* 获取坐标点(非平均) */
     bq.getPoint = function(t) {
         var x, y;

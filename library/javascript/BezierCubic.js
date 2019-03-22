@@ -4,10 +4,10 @@
  ** Brief:	三次贝塞尔
  ***********************************************************************/
 function createBezierCubic(x1, y1, x2, y2, x3, y3, x4, y4) {
-    var bq = {};
+    var bc = {};
     /***********************************************************************/
     /* 更新控制点 */
-    bq.update = function(x1, y1, x2, y2, x3, y3, x4, y4) {
+    bc.update = function(x1, y1, x2, y2, x3, y3, x4, y4) {
         x1 = Math.round(x1);
         y1 = Math.round(y1);
         x2 = Math.round(x2);
@@ -25,8 +25,12 @@ function createBezierCubic(x1, y1, x2, y2, x3, y3, x4, y4) {
         this._x4 = x4;
         this._y4 = y4;
     };
+    /* 获取控制点 */
+    bc.getControlPoints = function() {
+        return [this._x1, this._y1, this._x2, this._y2, this._x3, this._y3, this._x4, this._y4];
+    }
     /* 获取坐标点 */
-    bq.getPoint = function(t) {
+    bc.getPoint = function(t) {
         var x = Math.pow(1 - t, 3) * this._x1 + 3 * t * Math.pow(1 - t, 2) * this._x2 + 3 * Math.pow(t, 2) * (1 - t) * this._x3 + Math.pow(t, 3) * this._x4;
         var y = Math.pow(1 - t, 3) * this._y1 + 3 * t * Math.pow(1 - t, 2) * this._y2 + 3 * Math.pow(t, 2) * (1 - t) * this._y3 + Math.pow(t, 3) * this._y4;
         return [x, y];
@@ -35,8 +39,8 @@ function createBezierCubic(x1, y1, x2, y2, x3, y3, x4, y4) {
         'number' === typeof(x2) && 'number' === typeof(y2) &&
         'number' === typeof(x3) && 'number' === typeof(y3) &&
         'number' === typeof(x4) && 'number' === typeof(y4)) {
-        bq.update(x1, y1, x2, y2, x3, y3, x4, y4);
+        bc.update(x1, y1, x2, y2, x3, y3, x4, y4);
     }
-    return bq;
+    return bc;
 }
 //----------------------------------------------------------------------
