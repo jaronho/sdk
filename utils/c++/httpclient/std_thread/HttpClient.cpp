@@ -5,13 +5,6 @@
 **********************************************************************/
 #include "HttpClient.h"
 //------------------------------------------------------------------------
-static unsigned int headerFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
-    std::vector<char>* recvBuffer = (std::vector<char>*)stream;
-    unsigned int sizes = size * nmemb;
-    recvBuffer->insert(recvBuffer->end(), (char*)ptr, (char*)ptr + sizes);
-    return sizes;
-}
-//------------------------------------------------------------------------
 static unsigned int bodyFunc(void* ptr, unsigned int size, unsigned int nmemb, void* stream) {
     std::vector<char>* recvBuffer = (std::vector<char>*)stream;
     unsigned int sizes = size * nmemb;
@@ -25,15 +18,15 @@ static void sendHttpObject(HttpObject* obj) {
     }
     std::transform(obj->requesttype.begin(), obj->requesttype.end(), obj->requesttype.begin(), ::toupper);
     if ("GET" == obj->requesttype) {
-        obj->success = curlGet(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+        obj->success = curlGet(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
     } else if ("POST" == obj->requesttype) {
-        obj->success = curlPost(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+        obj->success = curlPost(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
     } else if ("POST_FORM" == obj->requesttype) {
-        obj->success = curlPostForm(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+        obj->success = curlPostForm(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
     } else if ("PUT" == obj->requesttype) {
-        obj->success = curlPut(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+        obj->success = curlPut(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
     } else if ("DELETE" == obj->requesttype) {
-        obj->success = curlDelete(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+        obj->success = curlDelete(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
     } else {
         delete obj;
         return;
@@ -135,15 +128,15 @@ static void httpNetworkThread() {
         }
         std::transform(obj->requesttype.begin(), obj->requesttype.end(), obj->requesttype.begin(), ::toupper);
         if ("GET" == obj->requesttype) {
-            obj->success = curlGet(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+            obj->success = curlGet(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
         } else if ("POST" == obj->requesttype) {
-            obj->success = curlPost(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+            obj->success = curlPost(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
         } else if ("POST_FORM" == obj->requesttype) {
-            obj->success = curlPostForm(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+            obj->success = curlPostForm(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
         } else if ("PUT" == obj->requesttype) {
-            obj->success = curlPut(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+            obj->success = curlPut(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
         } else if ("DELETE" == obj->requesttype) {
-            obj->success = curlDelete(*obj, headerFunc, &(obj->responseheader), bodyFunc, &(obj->responsebody), &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
+            obj->success = curlDelete(*obj, &(obj->responseheader), bodyFunc, &(obj->responsebody), NULL, NULL, &(obj->curlcode), &(obj->responsecode), &(obj->errorbuffer));
         } else {
             delete obj;
             continue;

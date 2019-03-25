@@ -40,6 +40,9 @@ public:
     }
 
 public:
+    /* is object valid */
+    bool isValid(void);
+
     /* set cookie file */
     bool setCookieFile(const std::string& cookieFilename = "");
 
@@ -254,15 +257,15 @@ private:
 /*
 * curl request interface
 */
-bool curlGet(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlGet(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc = NULL, void* progressStream = NULL, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlPost(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlPost(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc = NULL, void* progressStream = NULL, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlPostForm(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlPostForm(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc = NULL, void* progressStream = NULL, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlPut(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlPut(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc = NULL, void* progressStream = NULL, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-bool curlDelete(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+bool curlDelete(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc = NULL, void* progressStream = NULL, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
 #endif	/* _CURL_EX_H_ */
 
