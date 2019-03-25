@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <curl/curl.h>
+#include "curl/curl.h"
 
 /*
 * write/read callback defined
@@ -27,68 +27,69 @@ typedef int (*CURLEx_progress)(void* ptr, double totalToDownload, double nowDown
 */
 class CURLEx {
 public:
-	CURLEx(void);
-	~CURLEx(void);
+    CURLEx(const std::string& sslCaFilename = "");
+    ~CURLEx(void);
 
 public:
-	template <class T>
+    template <class T>
     CURLcode setOption(CURLoption option, T data) {
         if (!mCurl) {
-			return CURLE_FAILED_INIT;
+            return CURLE_FAILED_INIT;
         }
         return curl_easy_setopt(mCurl, option, data);
     }
 
 public:
-	// init CURL options
-    bool initialize(const std::string& sslCaFilename = "");
-
-	// set cookie file
+    /* set cookie file */
     bool setCookieFile(const std::string& cookieFilename = "");
 
-	// set timeout for connect
+    /* set timeout for connect */
     bool setConnectTimeout(int connectTimeout = 30);
 
-	// set timeout for read
+    /* set timeout for read */
     bool setTimeout(int timeout = 60);
 
-    // set full url for request
-	bool setURL(const std::string& url);
+    /* set full url for request */
+    bool setURL(const std::string& url);
 
-	// set headers
+    /* set headers */
     bool setHeaders(const std::map<std::string, std::string>& headers);
 
-	// set post fields and field size
+    /* set post fields and field size */
     bool setPostFields(const unsigned char* fields, unsigned int fieldsize);
 
-    // set header function
+    /* set header function */
     bool setHeaderFunction(CURLEx_callback func, void* userdata);
 
-    // set write function
-	bool setWriteFunction(CURLEx_callback func, void* userdata);
+    /* set write function */
+    bool setWriteFunction(CURLEx_callback func, void* userdata);
 
-    // set read function
+    /* set read function */
     bool setReadFunction(CURLEx_callback func, void* userdata);
 
-    // set process function
-	bool setProgressFunction(CURLEx_progress func, void* userdata);
+    /* set process function */
+    bool setProgressFunction(CURLEx_progress func, void* userdata);
 
-    //--------------------- multipart/formdata block ---------------------
+    /*--------------------- multipart/formdata block ---------------------*/
     bool addFormContent(const char* name, const unsigned char* content, unsigned int length = 0, const char* type = NULL);
 
     bool addFormFile(const char* name, const char* filename, const char* type = NULL);
-	//--------------------------------------------------------------------
+    /*--------------------------------------------------------------------*/
 
-	// called at last
-	bool perform(int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
+    /* called at last */
+    bool perform(int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
 private:
-	char mErrorBuffer[CURL_ERROR_SIZE];		// error buffer
-	CURL* mCurl;							// instance of curl
-    struct curl_slist* mHeaders;			// keeps custom header data
-    struct curl_httppost* mHttpPost;		// needed when multipart/formdata request
-    struct curl_httppost* mLastPost;		// needed when multipart/formdata request
-	static unsigned int sObjCount;			// object count in program
+    /* init CURL options */
+    bool initialize(const std::string& sslCaFilename = "");
+
+private:
+    static unsigned int sObjCount;			/* object count in program */
+    CURL* mCurl;							/* instance of curl */
+    struct curl_slist* mHeaders;			/* keeps custom header data */
+    struct curl_httppost* mHttpPost;		/* needed when multipart/formdata request */
+    struct curl_httppost* mLastPost;		/* needed when multipart/formdata request */
+    char mErrorBuffer[CURL_ERROR_SIZE];		/* error buffer */
 };
 
 /*
@@ -130,7 +131,7 @@ public:
         CURLformoption option;
         unsigned char* value;
         unsigned int length;
-        std::string type;           // e.g. "text/html","image/jpeg","image/png"
+        std::string type;           /* e.g. "text/html","image/jpeg","image/png" */
     };
 
 public:
@@ -176,17 +177,17 @@ public:
             memcpy(mData, data, length);
             *(mData + length) = '\0';
             mDataSize = length;
-		}
+        }
         return true;
-	}
+    }
 
     const unsigned char* getData(void) {
         return mData;
-	}
+    }
 
-	unsigned int getDataSize(void) {
+    unsigned int getDataSize(void) {
         return mDataSize;
-	}
+    }
 
     bool addBuffer(const std::string& name, const unsigned char* content, unsigned int length, const std::string& type = "") {
         if (name.empty() || !content || 0 == length) {
@@ -237,17 +238,17 @@ public:
     }
 
 public:
-    std::string sslcafilename;                      // ssl CA filename
-    std::string cookiefilename;                     // cookie filename
-    int connecttimeout;                             // connect timeout
-    int timeout;                                    // read timeout
-    std::string url;                                // request url
-    std::map<std::string, std::string> headers;     // headers
+    std::string sslcafilename;                      /* ssl CA filename */
+    std::string cookiefilename;                     /* cookie filename */
+    int connecttimeout;                             /* connect timeout */
+    int timeout;                                    /* read timeout */
+    std::string url;                                /* request url */
+    std::map<std::string, std::string> headers;     /* headers */
 
 private:
-    unsigned char* mData;                           // request data, support binary data
-    unsigned int mDataSize;                         // request data size
-    std::map<std::string, Form*> mForms;            // request form
+    unsigned char* mData;                           /* request data, support binary data */
+    unsigned int mDataSize;                         /* request data size */
+    std::map<std::string, Form*> mForms;            /* request form */
 };
 
 /*
@@ -263,7 +264,7 @@ bool curlPut(CurlRequest& request, CURLEx_callback headerFunc, void* headerStrea
 
 bool curlDelete(CurlRequest& request, CURLEx_callback headerFunc, void* headerStream, CURLEx_callback bodyFunc, void* bodyStream, int* curlCode = NULL, int* responseCode = NULL, std::string* errorBuffer = NULL);
 
-#endif	// _CURL_EX_H_
+#endif	/* _CURL_EX_H_ */
 
 /*
 ************************************************** sample_01
