@@ -8,7 +8,7 @@ Qt.include("Common.js")
 Qt.include("Log.js")
 Qt.include("Timer.js")
 //----------------------------------------------------------------------
-var log = createLog(true, false, 1);
+var log = createLog(false, true, null, 1);
 var mTimerManager = createTimerManager();
 var mBlinkManager = createTimerManager();
 var mAnimationMap = {};
