@@ -81,9 +81,10 @@ function CreateMessage()
 						break
 					end
 				end
+                local lastIndex = lastIndexTable[typeInfo.msgtype] or 0
 				local msgIndex = 1
 				for j=1, #(typeInfo.msglist) do
-					if j > (lastIndexTable[typeInfo.msgtype] or 0) then
+					if j > lastIndex then
 						msgIndex = j
 						break
 					end
