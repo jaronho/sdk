@@ -17,9 +17,14 @@ static std::list<Action*> sFinishList;
 void Action::aloneHandler(Action* act) {
     if (act) {
         act->onProcess();
-        sFinishMutex.lock();
-        sFinishList.push_back(act);
-        sFinishMutex.unlock();
+        if (act->mFinishCallback) {
+            sFinishMutex.lock();
+            sFinishList.push_back(act);
+            sFinishMutex.unlock();
+        } else {
+            delete act;
+            act = nullptr;
+        }
     }
 }
 
@@ -34,9 +39,14 @@ void Action::groupHandler(void) {
         sProcessMutex.unlock();
         if (act) {
             act->onProcess();
-            sFinishMutex.lock();
-            sFinishList.push_back(act);
-            sFinishMutex.unlock();
+            if (act->mFinishCallback) {
+                sFinishMutex.lock();
+                sFinishList.push_back(act);
+                sFinishMutex.unlock();
+            } else {
+                delete act;
+                act = nullptr;
+            }
         }
         usleep(10000);  /* 10毫秒 */
     }
