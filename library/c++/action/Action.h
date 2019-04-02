@@ -6,13 +6,18 @@
 #ifndef _ACTION_H_
 #define _ACTION_H_
 
+#include <functional>
+
 /* 动作结束回调 */
 #define ACTION_FINISH_CALLBACK std::function<void(Action* act)>
 
 class Action {
 public:
     Action(ACTION_FINISH_CALLBACK callback = nullptr);
-    virtual void onProcess(void) = 0;       /* 执行函数 */
+    virtual ~Action(void);
+
+protected:
+    virtual void onProcess(void) = 0;
 
 public:
     /*
@@ -35,6 +40,11 @@ public:
      * Return:	void
      */
     static void asyncListen(void);
+
+private:
+    static void aloneHandler(Action* act);
+
+    static void groupHandler(void);
 
 private:
     ACTION_FINISH_CALLBACK mFinishCallback;

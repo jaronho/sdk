@@ -4,17 +4,17 @@
  * Brief:	动作(支持同步/异步),需要实现子类
  **********************************************************************/
 #include "Action.h"
+#include <unistd.h>
 #include <list>
-#inculde <mutex>
+#include <mutex>
 #include <thread>
 
-static bool sInitGroupThread = true;
 static std::mutex sProcessMutex;
 static std::list<Action*> sProcessList;
 static std::mutex sFinishMutex;
 static std::list<Action*> sFinishList;
 
-static void aloneHandler(Action* act) {
+void Action::aloneHandler(Action* act) {
     if (act) {
         act->onProcess();
         sFinishMutex.lock();
@@ -23,7 +23,7 @@ static void aloneHandler(Action* act) {
     }
 }
 
-static void groupHandler(void) {
+void Action::groupHandler(void) {
     while (true) {
         Action* act = nullptr;
         sProcessMutex.lock();
@@ -46,6 +46,8 @@ Action::Action(ACTION_FINISH_CALLBACK callback) {
     mFinishCallback = callback;
 }
 
+Action::~Action(void) {}
+
 Action* Action::syncRun(Action* act, bool autoDestroy) {
     if (act) {
         act->onProcess();
@@ -66,6 +68,7 @@ void Action::asyncRun(Action* act, bool alone) {
             std::thread aloneThread(aloneHandler, act);
             aloneThread.joinable();
         } else {
+            static bool sInitGroupThread = true;
             if (sInitGroupThread) {
                 sInitGroupThread = false;
                 std::thread groupThread(groupHandler);
