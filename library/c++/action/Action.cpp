@@ -46,7 +46,7 @@ Action::Action(ACTION_FINISH_CALLBACK callback) {
     mFinishCallback = callback;
 }
 
-void Action::syncRun(Action* act, bool autoDestroy) {
+Action* Action::syncRun(Action* act, bool autoDestroy) {
     if (act) {
         act->onProcess();
         if (act->mFinishCallback) {
@@ -57,6 +57,7 @@ void Action::syncRun(Action* act, bool autoDestroy) {
             act = nullptr;
         }
     }
+    return act;
 }
 
 void Action::asyncRun(Action* act, bool alone) {

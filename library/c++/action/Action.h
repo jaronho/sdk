@@ -12,15 +12,15 @@
 class Action {
 public:
     Action(ACTION_FINISH_CALLBACK callback = nullptr);
-    virtual void onProcess(void) {}         /* 执行函数 */
+    virtual void onProcess(void) = 0;       /* 执行函数 */
 
 public:
     /*
      * Brief:	同步执行(在函数调用线程执行)
      * Param:	autoDestroy - true.动作自动销毁,false.需要手动销毁动作
-     * Return:	void
+     * Return:	Action*,若autoDestroy为true,则返回空指针
      */
-    static void syncRun(Action* act, bool autoDestroy = true);
+    static Action* syncRun(Action* act, bool autoDestroy = false);
 
     /*
      * Brief:	异步执行
