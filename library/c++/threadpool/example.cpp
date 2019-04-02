@@ -20,13 +20,8 @@ struct gfun {
 
 class A {
 public:
-    static int Afun(int n = 0) {   /* 函数必须是 static 的才能直接使用线程池 */
-        std::cout << n << "  hello, Afun !  " << std::this_thread::get_id() << std::endl;
-        return n;
-    }
-
-    static std::string Bfun(int n, std::string str, char c) {
-        std::cout << n << "  hello, Bfun !  " << str.c_str() <<"  " << (int)c << "  " << std::this_thread::get_id() << std::endl;
+    static std::string Afun(int n, std::string str, char c) {
+        std::cout << n << "  hello, Afun !  " << str.c_str() <<"  " << (int)c << "  " << std::this_thread::get_id() << std::endl;
         return str;
     }
 };
@@ -34,11 +29,9 @@ public:
 int main() {
     try {
         ThreadPool pool1(50);
-        A a;
         std::future<void> ff = pool1.add(fun1, 0);
         std::future<int> fg = pool1.add(gfun{}, 0);
-        std::future<int> gg = pool1.add(a.Afun, 9999);  /* IDE提示错误,但可以编译运行 */
-        std::future<std::string> gh = pool1.add(A::Bfun, 9998, "mult args", 123);
+        std::future<std::string> gh = pool1.add(A::Afun, 9998, "mult args", 123);
         std::future<std::string> fh = pool1.add([]()->std::string {
             std::cout << "hello, fh !  " << std::this_thread::get_id() << std::endl;
             return "hello,fh ret !";
@@ -48,7 +41,7 @@ int main() {
         for (int i = 0; i < 50; ++i) {
             pool1.add(fun1, i * 100);
         }
-        std::cout << " =======  add all ========= " << std::this_thread::get_id() << " idlsize=" << pool1.idlCount() << std::endl;
+        std::cout << " =======  add all ========= " << std::this_thread::get_id() << " idlsize=" << pool1.idleCount() << std::endl;
         std::cout << " =======  sleep ========= " << std::this_thread::get_id() << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(3));
         ff.get(); /* 调用.get()获取返回值会等待线程执行完,获取返回值 */

@@ -16,7 +16,7 @@ public:
     ThreadPool(size_t count = 4);
     ~ThreadPool(void);
     template<class F, class... Args>
-    auto add(F&& f, Args&&... args) -> std::future<typename std::result_of<F(Args...)>::type>;
+    std::future<typename std::result_of<F(Args...)>::type> add(F&& f, Args&&... args);
     size_t totalCount(void);
     size_t idleCount(void);
     
@@ -68,16 +68,16 @@ inline ThreadPool::~ThreadPool(void) {
 
 /* add new work item to the pool */
 template<class F, class... Args>
-auto ThreadPool::add(F&& f, Args&&... args) -> std::future<typename std::result_of<F(Args...)>::type> {
+std::future<typename std::result_of<F(Args...)>::type> ThreadPool::add(F&& f, Args&&... args) {
     /* don't allow enqueueing after stopping the pool */
     if (mStop) {
         throw std::runtime_error("add on ThreadPool is stopped.");
     }
-    using return_type = typename std::result_of<F(Args...)>::type;
-    auto task = std::make_shared<std::packaged_task<return_type()>> (
+    using ReturnType = typename std::result_of<F(Args...)>::type;
+    auto task = std::make_shared<std::packaged_task<ReturnType()>>(
         std::bind(std::forward<F>(f), std::forward<Args>(args)...)
     );
-    std::future<return_type> res = task->get_future();
+    std::future<ReturnType> res = task->get_future();
     std::unique_lock<std::mutex> lock(mQueueMutex);
     mTasks.emplace([task]() {
         (*task)();
@@ -86,11 +86,11 @@ auto ThreadPool::add(F&& f, Args&&... args) -> std::future<typename std::result_
     return res;
 }
 
-size_t ThreadPool:totalCount(void) {
+size_t ThreadPool::totalCount(void) {
     return mTotalCount;
 }
 
-size_t ThreadPool:idleCount(void) {
+size_t ThreadPool::idleCount(void) {
     return mIdleCount;
 }
 
