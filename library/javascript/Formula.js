@@ -53,6 +53,75 @@ Formula.isPointInRect = function(rect, p) {
 	return p.x >= xMin && p.x <= xMax && p.y >= yMin && p.y <= yMax;
 };
 //----------------------------------------------------------------------
+// 获取圆上的点
+Formula.pointOnCircle = function(cX, cY, r, angle) {
+    r = Math.abs(r);
+    angle = angle >= 0 ? angle : 0;
+    var x = 0;
+    var y = 0;
+    if (0 == angle || 360 == angle) {
+        x = cX + r;
+        y = cY;
+    } else if (angle > 0 && angle < 90) {       /* first quadrant */
+        x = cX + r * Math.cos(angle * Math.PI / 180);
+        y = cY + r * Math.sin(angle * Math.PI / 180);
+    } else if (90 == angle) {
+        x = cX;
+        y = cY + r;
+    } else if (angle > 90 && angle < 180) {     /* second quadrant */
+        x = cX - r * Math.cos((180 - angle) * Math.PI / 180);
+        y = cY + r * Math.sin((180 - angle) * Math.PI / 180);
+    } else if (180 == angle) {
+        x = cX - r;
+        y = cY;
+    } else if (angle > 180 && angle < 270) {    /* third quadrant */
+        x = cX - r * Math.cos((angle - 180) * Math.PI / 180);
+        y = cY - r * Math.sin((angle - 180) * Math.PI / 180);
+    } else if (270 == angle) {
+        x = cX;
+        y = cY - r;
+    } else if (angle > 270 && angle < 360) {    /* forth quadrant */
+        x = cX + r * Math.cos((360 - angle) * Math.PI / 180);
+        y = cY - r * Math.sin((360 - angle) * Math.PI / 180);
+    }
+    return [x, y];
+};
+//----------------------------------------------------------------------
+// 获取椭圆上的点
+Formula.pointOnEllipse = function(cX, cY, a, b, angle) {
+    a = Math.abs(a);
+    b = Math.abs(b);
+    angle = angle >= 0 ? angle : 0;
+    var x = 0;
+    var y = 0;
+    if (0 == angle || 360 == angle) {
+        x = cX + a;
+        y = cY;
+    } else if (angle > 0 && angle < 90) {       /* first quadrant */
+        x = cX + (a * b) / Math.sqrt(Math.pow(b, 2) + Math.pow(a, 2) * Math.pow(Math.tan(angle * Math.PI / 180), 2));
+        y = cY + (a * b * Math.tan(angle * Math.PI / 180)) / sqrt(Math.pow(a, 2) * Math.pow(Math.tan(angle * Math.PI / 180), 2) + Math.pow(b, 2));
+    } else if (90 == angle) {
+        x = cX;
+        y = cY + b;
+    } else if (angle > 90 && angle < 180) {     /* second quadrant */
+        x = cX - (a * b) / Math.sqrt(Math.pow(b, 2) + Math.pow(a, 2) * Math.pow(Math.tan((180 - angle) * Math.PI / 180), 2));
+        y = cY + (a * b * Math.tan((180 - angle) * Math.PI / 180)) / Math.sqrt(Math.pow(a, 2) * Math.pow(Math.tan((180 - angle) * Math.PI / 180), 2) + Math.pow(b, 2));
+    } else if (180 == angle) {
+        x = cX - a;
+        y = cY;
+    } else if (angle > 180 && angle < 270) {    /* third quadrant */
+        x = cX - (a * b) / Math.sqrt(Math.pow(b, 2) + Math.pow(a, 2) * Math.pow(Math.tan((angle - 180) * Math.PI / 180), 2));
+        y = cY - (a * b * Math.tan((angle - 180) * Math.PI / 180)) / Math.sqrt(Math.pow(a, 2) * Math.pow(Math.tan((angle - 180) * Math.PI / 180), 2) + Math.pow(b, 2));
+    } else if (270 == angle) {
+        x = cX;
+        y = cY - b;
+    } else if (angle > 270 && angle < 360) {    /* forth quadrant */
+        x = cX + (a * b) / Math.sqrt(Math.pow(b, 2) + Math.pow(a, 2) * Math.pow(Math.tan((360 - angle) * Math.PI / 180), 2));
+        y = cY - (a * b * Math.tan((360 - angle) * Math.PI / 180)) / Math.sqrt(Math.pow(a, 2) * Math.pow(Math.tan((360 - angle) * Math.PI / 180), 2) + Math.pow(b, 2));
+    }
+    return [x, y];
+};
+//----------------------------------------------------------------------
 // 判断点在线段的哪一侧,0.点在线段所在直线上,1.点在线段所在直线左边(线段平行于x轴时上边),2.点在线段所在直线右边(线段平行于x轴时下边)
 Formula.checkPointSide = function(sX, sY, eX, eY, x, y) {
     var a = eY - sY;
