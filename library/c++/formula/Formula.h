@@ -114,6 +114,17 @@ public:
      * Return:  double*
      */
     static double* pointOnCircle(double cX, double cY, double r, double angle);
+    
+    /*
+     * Brief:   calculate point on ellipse
+     * Param:   cX - x of center point
+     *          cY - y of center point
+     *          a - radius of principal axis
+     *          b - radius of secundary axis
+     *          angle - angle, 0-360
+     * Return:  double*
+     */
+    static double* pointOnEllipse(double cX, double cY, double a, double b, double angle);
 
     /*
      * Brief:   判断点在线段的哪一边

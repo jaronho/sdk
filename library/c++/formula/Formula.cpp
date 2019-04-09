@@ -153,6 +153,43 @@ double* Formula::pointOnCircle(double cX, double cY, double r, double angle) {
     return point;
 }
 /*********************************************************************/
+double* Formula::pointOnEllipse(double cX, double cY, double a, double b, double angle) {
+    a = fabs(a);
+    b = fabs(b);
+    angle = angle >= 0 ? angle : 0;
+    double x = 0;
+    double y = 0;
+    if (isequald(0, angle) || isequald(360, angle)) {
+        x = cX + a;
+        y = cY;
+    } else if (angle > 0 && angle < 90) {       /* first quadrant */
+        x = cX + (a * b) / sqrt(pow(b, 2) + pow(a, 2) * pow(tan(angle * M_PI / 180), 2));
+        y = cY + (a * b * tan(angle * M_PI / 180)) / sqrt(pow(a, 2) * pow(tan(angle * M_PI / 180), 2) + pow(b, 2));
+    } else if (isequald(90, angle)) {
+        x = cX;
+        y = cY + b;
+    } else if (angle > 90 && angle < 180) {     /* second quadrant */
+        x = cX - (a * b) / sqrt(pow(b, 2) + pow(a, 2) * pow(tan((180 - angle) * M_PI / 180), 2));
+        y = cY + (a * b * tan((180 - angle) * M_PI / 180)) / sqrt(pow(a, 2) * pow(tan((180 - angle) * M_PI / 180), 2) + pow(b, 2));
+    } else if (isequald(180, angle)) {
+        x = cX - a;
+        y = cY;
+    } else if (angle > 180 && angle < 270) {    /* third quadrant */
+        x = cX - (a * b) / sqrt(pow(b, 2) + pow(a, 2) * pow(tan((angle - 180) * M_PI / 180), 2));
+        y = cY - (a * b * tan((angle - 180) * M_PI / 180)) / sqrt(pow(a, 2) * pow(tan((angle - 180) * M_PI / 180), 2) + pow(b, 2));
+    } else if (isequald(270, angle)) {
+        x = cX;
+        y = cY - b;
+    } else if (angle > 270 && angle < 360) {    /* forth quadrant */
+        x = cX + (a * b) / sqrt(pow(b, 2) + pow(a, 2) * pow(tan((360 - angle) * M_PI / 180), 2));
+        y = cY - (a * b * tan((360 - angle) * M_PI / 180)) / sqrt(pow(a, 2) * pow(tan((360 - angle) * M_PI / 180), 2) + pow(b, 2));
+    }
+    double* point = (double*)malloc(sizeof(double) * 2);
+    point[0] = x;
+    point[1] = y;
+    return point;
+}
+/*********************************************************************/
 int Formula::checkPointSide(double sX, double sY, double eX, double eY, double x, double y) {
     double a = eY - sY;
     double b = sX - eX;
