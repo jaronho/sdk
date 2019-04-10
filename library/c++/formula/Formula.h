@@ -51,7 +51,7 @@ public:
 
     /*
      * Brief:   convert radians to degrees e.g. (180/PI)*radians
-     * Param:   degrees - degrees
+     * Param:   radians - radians
      * Return:  double
      */
     static double degrees(double radians);
@@ -127,28 +127,70 @@ public:
     static double* pointOnEllipse(double cX, double cY, double a, double b, double angle);
 
     /*
-     * Brief:   判断点在线段的哪一边
-     * Param:   sX - 线段起点x坐标
-     *          sY - 线段起点y坐标
-     *          eX - 线段终点x坐标
-     *          eY - 线段终点y坐标
-     *          x - 点x坐标
-     *          y - 点y坐标
-     * Return:  int, 0.点在线段所在直线上,1.点在线段所在直线左边(线段平行于x轴时上边),2.点在线段所在直线右边(线段平行于x轴时下边)
+     * Brief:   check line style
+     * Param:   sX - line segment start x
+     *          sY - line segment start y
+     *          eX - line segment end x
+     *          eY - line segment end y
+     * Return:  1."-"
+     *          2."|"
+     *          3."/"
+     *          4."\"
+     */
+    static int checkLineStyle(double sX, double sY, double eX, double eY);
+    
+    /*
+     * Brief:   check point place side by line
+     * Param:   sX - line segment start x
+     *          sY - line segment start y
+     *          eX - line segment end x
+     *          eY - line segment end y
+     *          x - point x
+     *          y - point y
+     * Return:  0.point place on line
+     *          1.point place on line top
+     *          2.point place on line bottom
+     *          3.point place on line left
+     *          4.point place on line right
      */
     static int checkPointSide(double sX, double sY, double eX, double eY, double x, double y);
 
     /*
-     * Brief:   点到线段所在直线的距离
-     * Param:   sX - 线段起点x坐标
-     *          sY - 线段起点y坐标
-     *          eX - 线段终点x坐标
-     *          eY - 线段终点y坐标
-     *          x - 点x坐标
-     *          y - 点y坐标
+     * Brief:   calculate point to line distance
+     * Param:   sX - line segment start x
+     *          sY - line segment start y
+     *          sZ - line segment start z
+     *          eX - line segment end x
+     *          eY - line segment end y
+     *          eZ - line segment end Z
+     *          x - point x
+     *          y - point y
+     *          z - point z
      * Return:  double
      */
     static double pointToLineDistance(double sX, double sY, double sZ, double eX, double eY, double eZ, double x, double y, double z);
+    
+    /*
+     * Brief:   calculate point of ∠C on right triangle
+     * Param:   aX - x point of ∠A
+     *          aY - y point of ∠A
+     *          bX - x point of ∠B
+     *          bY - y point of ∠B
+     *          bc - length of B to C
+     * Return:  double*
+     */
+    static double* rightTrianglePoint(double aX, double aY, double bX, double bY, double bc);
+    
+    /*
+     * Brief:   calculate point to line distance
+     * Param:   sX - line segment start x
+     *          sY - line segment start y
+     *          eX - line segment end x
+     *          eY - line segment end y
+     *          t - percent
+     * Return:  double*
+     */
+    static double* getLinearPoint(double sX, double sY, double eX, double eY, double t);
 };
 
 #endif	/* _FORMULA_H_ */

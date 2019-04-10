@@ -68,9 +68,9 @@ double Formula::vectorAngle(double sX, double sY, double eX, double eY) {
 /*********************************************************************/
 double Formula::triangleInnerAngle(double aX, double aY, double bX, double bY, double cX, double cY, int type) {
     type = (1 == type || 2 == type || 3 == type) ? type : 1;
-    double a = distance(bX, bY, cX, cY);
-    double b = distance(aX, aY, cX, cY);
-    double c = distance(aX, aY, bX, bY);
+    double a = sqrt(pow(fabs(cX - bX), 2) + pow(fabs(cY - bY), 2));
+    double b = sqrt(pow(fabs(cX - aX), 2) + pow(fabs(cY - aY), 2));
+    double c = sqrt(pow(fabs(bX - aX), 2) + pow(fabs(bY - aY), 2));
     double angle = 0;
     if (1 == type) {
         double ca = (b * b + c * c - a * a) / (2 * c * b);
@@ -98,7 +98,7 @@ double* Formula::crossPoint(double aX, double aY, double bX, double bY, double c
     }
     /* 线段所在直线的交点坐标 */
     double x = ((bX - aX) * (dX - cX) * (cY - aY) + (bY - aY) * (dX - cX) * aX - (dY - cY) * (bX - aX) * cX) / denominator;
-    double y = -((bY - aY) * ( dY - cY) * (cX - aX) + (bX - aX) * (dY - cY) * aY - (dX - cX) * (bY - aY) * cY) / denominator;
+    double y = -((bY - aY) * (dY - cY) * (cX - aX) + (bX - aX) * (dY - cY) * aY - (dX - cX) * (bY - aY) * cY) / denominator;
     /* 判断交点是否必须在两条线段上 */
     int flag = 0;
     if (mustIn) {
@@ -190,19 +190,51 @@ double* Formula::pointOnEllipse(double cX, double cY, double a, double b, double
     return point;
 }
 /*********************************************************************/
+int Formula::checkLineStyle(double sX, double sY, double eX, double eY) {
+    if (isequald(sY, eY)) { /* - */
+        return 1
+    } else if (isequald(sX, eX)) {  /* | */
+        return 2;
+    } else if ((sX < eX && sY < eY) || (sX > eX && sY > eY)) {   /* / */
+        return 3;
+    } else {    /* \ */
+        return 4;
+    }
+}
+/*********************************************************************/
 int Formula::checkPointSide(double sX, double sY, double eX, double eY, double x, double y) {
     double a = eY - sY;
     double b = sX - eX;
     double c = eX * sY - sX * eY;
     double d = a * x + b * y + c;
-    if (isequald(0, d)) {   /* point is on line */
+    if (isequald(0, d)) {   /* point on line */
         return 0;
     }
-    if (sY > eY) {  /* line like '\' */
-        return d > 0 ? 1 : 2;
+    if (isequald(sY, eY)) { /* - */
+        if (y > sY) {
+            return 1;
+        } else {
+            return 2;
+        }
+    } else if (isequald(sX, eX)) {  /* | */
+        if (x < sX) {
+            return 3;
+        } else {
+            return 4;
+        }
+    } else if ((sX < eX && sY < eY) || (sX > eX && sY > eY)) {   /* / */
+        if (d < 0) {
+            return 3;
+        } else {
+            return 4;
+        }
+    } else {    /* \ */
+        if (d > 0) {
+            return 3;
+        } else {
+            return 4;
+        }
     }
-    /* line like '-','|','/' */
-    return d < 0 ? 1 : 2;
 }
 /*********************************************************************/
 double Formula::pointToLineDistance(double sX, double sY, double sZ, double eX, double eY, double eZ, double x, double y, double z) {
@@ -212,5 +244,27 @@ double Formula::pointToLineDistance(double sX, double sY, double sZ, double eX, 
     double cosS = (pow(es, 2) + pow(ps, 2) - pow(pe, 2)) / (2 * es * ps);
     double sinS = sqrt(1 - pow(cosS, 2));
     return ps * sinS;
+}
+/*********************************************************************/
+double* Formula::rightTrianglePoint(double aX, double aY, double bX, double bY, double bc) {
+    double cX1 = bX + (bc * (aY - bY)) / sqrt(pow(aX - bX, 2) + pow(aY - bY, 2));
+    double cY1 = bY - (bc * (aX - bX)) / sqrt(pow(aX - bX, 2) + pow(aY - bY, 2));
+    double cX2 = bX - (bc * (aY - bY)) / sqrt(pow(aX - bX, 2) + pow(aY - bY, 2));
+    double cY2 = bY + (bc * (aX - bX)) / sqrt(pow(aX - bX, 2) + pow(aY - bY, 2));
+    double* point = (double*)malloc(sizeof(double) * 4);
+    point[0] = cX1;
+    point[1] = cY1;
+    point[2] = cX2;
+    point[3] = cY2;
+    return point;
+}
+/*********************************************************************/
+double* Formula::getLinearPoint(double sX, double sY, double eX, double eY, double t) {
+    double x = (1 - t) * sX + t * eX;
+    double y = (1 - t) * sY + t * eY;
+    double* point = (double*)malloc(sizeof(double) * 2);
+    point[0] = x;
+    point[1] = y;
+    return point;
 }
 /*********************************************************************/

@@ -4,8 +4,13 @@
  ** Brief:	formula
  ***********************************************************************/
 var Formula = {};
-//----------------------------------------------------------------------
-// 计算中间值
+/*
+ * Brief:   clamp value
+ * Param:   value - current value
+ *          min - min value
+ *          max - max value
+ * Return:  value
+ */
 Formula.clamp = function(value, min, max) {
     if (min > max) {
         var tmp = min;
@@ -16,19 +21,59 @@ Formula.clamp = function(value, min, max) {
     value = value < max ? value : max;
     return value;
 };
-//----------------------------------------------------------------------
-// 计算线性值
+/*
+ * Brief:   return the linear blend of x and y
+ * Param:   x - x
+ *          y - y
+ *          a - a
+ * Return:  value
+ */
 Formula.mix = function(x, y, a) {
     return x * (1 - a) + y * a;
 };
-//----------------------------------------------------------------------
-// 计算夹角
-Formula.calcAngle = function(v1, v2) {
-	var x = v1.x - v2.x;
-	var y = v1.y - v2.y;
+/*
+ * Brief:   convert degrees to radians e.g. (PI/180)*degrees
+ * Param:   degrees - degrees
+ * Return:  value
+ */
+Formula.radians = function(degrees) {
+    return (Math.PI / 180) * degrees;
+};
+/*
+ * Brief:   convert radians to degrees e.g. (180/PI)*radians
+ * Param:   radians - radians
+ * Return:  value
+ */
+Formula.degrees = function(radians) {
+    return (180 / Math.PI) * radians;
+};
+/*
+ * Brief:   return the linear blend of x and y
+ * Param:   x1 - x of point1
+ *          y1 - y of point1
+ *          x2 - x of point2
+ *          y2 - y of point2
+ * Return:  value
+ */
+Formula.distance = function(x1, y1, x2, y2) {
+	var x = Math.abs(x2 - x1);
+	var y = Math.abs(y2 - y1);
+	return Math.sqrt(x * x + y * y);
+};
+/*
+ * Brief:   calculate angle for vector
+ * Param:   sX - x of vector start point
+ *          sY - y of vector start point
+ *          eX - x of vector end point
+ *          eY - y of vector end point
+ * Return:  double
+ */
+Formula.vectorAngle = function(sX, sY, eX, eY) {
+	var x = eX - sX;
+	var y = eY - sY;
 	var side = Math.sqrt(x * x + y * y);
-	var radian = Math.acos(x/side);
-	var angle = 180/(Math.PI/radian);
+	var radian = Math.acos(x / side);
+	var angle = 180 / (Math.PI / radian);
 	if (y < 0) {
 		angle = 360 - angle;
 	} else if (0 == y && x < 0) {
@@ -36,24 +81,85 @@ Formula.calcAngle = function(v1, v2) {
 	}
 	return angle;
 };
-//----------------------------------------------------------------------
-// 计算距离
-Formula.calcDistance = function(p1, p2) {
-	var x = Math.abs(p1.x - p2.x);
-	var y = Math.abs(p1.y - p2.y);
-	return Math.sqrt(x * x + y * y);
+/*
+ * Brief:   calculate inner angle of triangle
+ * Param:   aX - x of A point
+ *          aY - y of A point
+ *          bX - x of B point
+ *          bY - y of B point
+ *          cX - x of C point
+ *          cY - y of C point
+ *          type - point type:1.A,2.B,3.C
+ * Return:  value
+ */
+Formula.triangleInnerAngle = function(aX, aY, bX, bY, cX, cY, type) {
+    type = (1 == type || 2 == type || 3 == type) ? type : 1;
+    var a = Math.sqrt(Math.pow(Math.abs(cX - bX), 2) + Math.pow(Math.abs(cY - bY), 2));
+    var b = Math.sqrt(Math.pow(Math.abs(cX - aX), 2) + Math.pow(Math.abs(cY - aY), 2));
+    var c = Math.sqrt(Math.pow(Math.abs(bX - aX), 2) + Math.pow(Math.abs(bY - aY), 2));
+    var angle = 0;
+    if (1 == type) {
+        var ca = (b * b + c * c - a * a) / (2 * c * b);
+        angle = Math.acos(ca) * 180 / Math.PI;
+    } else if (2 == type) {
+        var cb = (a * a - b * b + c * c) / (2 * c * a);
+        angle = Math.acos(cb) * 180 / Math.PI;
+    } else if (3 == type) {
+        var cc = (a * a + b * b - c * c) / (2 * a * b);
+        angle = Math.acos(cc) * 180 / Math.PI;
+    }
+    return angle;
 };
-//----------------------------------------------------------------------
-// 点是否在矩形区域
-Formula.isPointInRect = function(rect, p) {
-	var xMin = rect.x;
-	var xMax = rect.x + rect.width;
-	var yMin = rect.y;
-	var yMax = rect.y + rect.height;
-	return p.x >= xMin && p.x <= xMax && p.y >= yMin && p.y <= yMax;
+/*
+ * Brief:   calculate cross point between two line segment
+ * Param:   aX - x of segment1 start point
+ *          aY - y of segment1 start point
+ *          bX - x of segment1 end point
+ *          bY - y of segment1 end point
+ *          cX - x of segment2 start point
+ *          cY - y of segment2 start point
+ *          dX - x of segment2 end point
+ *          dY - y of segment2 end point
+ *          limit - min denominator value, e.g. 0.1
+ *          mustIn - whether cross point must on the two line segemnt, 0.not must in,1.must in
+ * Return:  value
+ */
+Formula.crossPoint = function(aX, aY, bX, bY, cX, cY, dX, dY, limit, mustIn) {
+    /* 如果分母为0则平行或共线,不相交 */
+    var denominator = (bY - aY) * (dX - cX) - (aX - bX) * (cY - dY);
+    if (0 == denominator) {
+        return null;
+    }
+    /* 限制分母大小,当前趋近于限定值时,视为平行 */
+    limit = limit > 0.1 ? limit : 0.1;
+    if (Math.abs(denominator) <= Math.abs(limit)) {
+        return null;
+    }
+    /* 线段所在直线的交点坐标 */
+    var x = ((bX - aX) * (dX - cX) * (cY - aY) + (bY - aY) * (dX - cX) * aX - (dY - cY) * (bX - aX) * cX) / denominator;
+    var y = -((bY - aY) * (dY - cY) * (cX - aX) + (bX - aX) * (dY - cY) * aY - (dX - cX) * (bY - aY) * cY) / denominator;
+    /* 判断交点是否必须在两条线段上 */
+    var flag = 0;
+    if (mustIn) {
+        if ((x - aX) * (x - bX) <= 0 && (y - aY) * (y - bY) <= 0 && (x - cX) * (x - dX) <= 0 && (y - cY) * (y - dY) <= 0) {
+            flag = 1;
+        }
+    } else {
+        flag = 1;
+    }
+    if (!flag) {
+        return null;
+    }
+    return [x, y];
 };
-//----------------------------------------------------------------------
-// 获取圆上的点
+/*
+ * Brief:   calculate point on circle
+ * Param:   cX - x of center point
+ *          cY - y of center point
+ *          r - radius or circle
+ *          angle - angle, 0-360
+ * Return:  value
+ */
 Formula.pointOnCircle = function(cX, cY, r, angle) {
     r = Math.abs(r);
     angle = angle >= 0 ? angle : 0;
@@ -86,8 +192,15 @@ Formula.pointOnCircle = function(cX, cY, r, angle) {
     }
     return [x, y];
 };
-//----------------------------------------------------------------------
-// 获取椭圆上的点
+/*
+ * Brief:   calculate point on ellipse
+ * Param:   cX - x of center point
+ *          cY - y of center point
+ *          a - radius of principal axis
+ *          b - radius of secundary axis
+ *          angle - angle, 0-360
+ * Return:  value
+ */
 Formula.pointOnEllipse = function(cX, cY, a, b, angle) {
     a = Math.abs(a);
     b = Math.abs(b);
@@ -121,8 +234,42 @@ Formula.pointOnEllipse = function(cX, cY, a, b, angle) {
     }
     return [x, y];
 };
-//----------------------------------------------------------------------
-// 判断点在线段的哪一侧,0.点在线段所在直线上,1.点在线段所在直线左边(线段平行于x轴时上边),2.点在线段所在直线右边(线段平行于x轴时下边)
+/*
+ * Brief:   check line style
+ * Param:   sX - line segment start x
+ *          sY - line segment start y
+ *          eX - line segment end x
+ *          eY - line segment end y
+ * Return:  1."-"
+ *          2."|"
+ *          3."/"
+ *          4."\"
+ */
+Formula.checkLineStyle = function(sX, sY, eX, eY) {
+    if (sY == eY) { /* - */
+        return 1
+    } else if (sX == eX) {  /* | */
+        return 2;
+    } else if ((sX < eX && sY < eY) || (sX > eX && sY > eY)) {   /* / */
+        return 3;
+    } else {    /* \ */
+        return 4;
+    }
+};
+/*
+ * Brief:   check point place side by line
+ * Param:   sX - line segment start x
+ *          sY - line segment start y
+ *          eX - line segment end x
+ *          eY - line segment end y
+ *          x - point x
+ *          y - point y
+ * Return:  0.point place on line
+ *          1.point place on line top
+ *          2.point place on line bottom
+ *          3.point place on line left
+ *          4.point place on line right
+ */
 Formula.checkPointSide = function(sX, sY, eX, eY, x, y) {
     var a = eY - sY;
     var b = sX - eX;
@@ -131,26 +278,80 @@ Formula.checkPointSide = function(sX, sY, eX, eY, x, y) {
     if (0 == d) {   /* point is on line */
         return 0;
     }
-    if (sY > eY) {  /* line like '\' */
-        return d > 0 ? 1 : 2;
+    if (sY == eY) { /* - */
+        if (y > sY) {
+            return 1;
+        } else {
+            return 2;
+        }
+    } else if (sX == eX) {  /* | */
+        if (x < sX) {
+            return 3;
+        } else {
+            return 4;
+        }
+    } else if ((sX < eX && sY < eY) || (sX > eX && sY > eY)) {   /* / */
+        if (d < 0) {
+            return 3;
+        } else {
+            return 4;
+        }
+    } else {    /* \ */
+        if (d > 0) {
+            return 3;
+        } else {
+            return 4;
+        }
     }
-    /* line like '-','|','/' */
-    return d < 0 ? 1 : 2;
 };
-//----------------------------------------------------------------------
-// 计算线段上的点,t=[0, 1]
-Formula.calcLinearPoint = function(x1, y1, x2, y2, t) {
-    var x = (1 - t) * x1 + t * x2;
-    var y = (1 - t) * y1 + t * y2;
+/*
+ * Brief:   calculate point to line distance
+ * Param:   sX - line segment start x
+ *          sY - line segment start y
+ *          sZ - line segment start z
+ *          eX - line segment end x
+ *          eY - line segment end y
+ *          eZ - line segment end Z
+ *          x - point x
+ *          y - point y
+ *          z - point z
+ * Return:  value
+ */
+Formula.pointToLineDistance = function(sX, sY, sZ, eX, eY, eZ, x, y, z) {
+    var es = Math.sqrt(Math.pow(eX - sX, 2) + Math.pow(eY - sY, 2) + Math.pow(eZ - sZ, 2));
+    var ps = Math.sqrt(Math.pow(x - sX, 2) + Math.pow(y - sY, 2) + Math.pow(z - sZ, 2));
+    var pe = Math.sqrt(Math.pow(x - eX, 2) + Math.pow(y - eY, 2) + Math.pow(z - eZ, 2));
+    var cosS = (Math.pow(es, 2) + Math.pow(ps, 2) - Math.pow(pe, 2)) / (2 * es * ps);
+    var sinS = Math.sqrt(1 - Math.pow(cosS, 2));
+    return ps * sinS;
+};
+/*
+ * Brief:   calculate point of ∠C on right triangle
+ * Param:   aX - x point of ∠A
+ *          aY - y point of ∠A
+ *          bX - x point of ∠B
+ *          bY - y point of ∠B
+ *          bc - length of B to C
+ * Return:  value
+ */
+Formula.rightTrianglePoint = function(aX, aY, bX, bY, bc) {
+    var cX1 = bX + (bc * (aY - bY)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
+    var cY1 = bY - (bc * (aX - bX)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
+    var cX2 = bX - (bc * (aY - bY)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
+    var cY2 = bY + (bc * (aX - bX)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
+    return [cX1, cY1, cX2, cY2];
+};
+/*
+ * Brief:   calculate point to line distance
+ * Param:   sX - line segment start x
+ *          sY - line segment start y
+ *          eX - line segment end x
+ *          eY - line segment end y
+ *          t - percent
+ * Return:  value
+ */
+Formula.getLinearPoint = function(sX, sY, eX, eY, t) {
+    var x = (1 - t) * sX + t * eX;
+    var y = (1 - t) * sY + t * eY;
     return [x, y];
-}
-//----------------------------------------------------------------------
-// 已知直角三角形两点坐标和一边长,求第三点坐标,(bX, bY)为直角点,求点C坐标
-Formula.calcTrianglePoint = function(aX, aY, bX, bY, lenBC) {
-    var x1 = bX + (lenBC * (aY - bY)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
-    var y1 = bY - (lenBC * (aX - bX)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
-    var x2 = bX - (lenBC * (aY - bY)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
-    var y2 = bY + (lenBC * (aX - bX)) / Math.sqrt(Math.pow(aX - bX, 2) + Math.pow(aY - bY, 2));
-    return [x1, y1, x2, y2]
-}
-//----------------------------------------------------------------------
+};
