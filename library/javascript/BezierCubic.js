@@ -35,6 +35,13 @@ function createBezierCubic(x1, y1, x2, y2, x3, y3, x4, y4) {
         var y = Math.pow(1 - t, 3) * this._y1 + 3 * t * Math.pow(1 - t, 2) * this._y2 + 3 * Math.pow(t, 2) * (1 - t) * this._y3 + Math.pow(t, 3) * this._y4;
         return [x, y];
     };
+    /* 获取坐标点切线 */
+    bq.getTangent = function(t) {
+        var x = -3 * Math.pow(1 - t, 2) * this._x1 + 3 * (Math.pow(1 - t, 2) - 2 * t * (1 - t)) * this._x2 + 3 * (2 * t * (1 - t) - Math.pow(t, 2)) * this._x3 + 3 * Math.pow(t, 2) * this._x4;
+        var y = -3 * Math.pow(1 - t, 2) * this._y1 + 3 * (Math.pow(1 - t, 2) - 2 * t * (1 - t)) * this._y2 + 3 * (2 * t * (1 - t) - Math.pow(t, 2)) * this._y3 + 3 * Math.pow(t, 2) * this._y4;
+        var angle = Math.atan(Math.abs(y / x)) * (180 / Math.PI);
+        return [x, y, angle];
+    };
     if ('number' === typeof(x1) && 'number' === typeof(y1) &&
         'number' === typeof(x2) && 'number' === typeof(y2) &&
         'number' === typeof(x3) && 'number' === typeof(y3) &&

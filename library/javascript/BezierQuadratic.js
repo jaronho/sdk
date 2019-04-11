@@ -102,6 +102,21 @@ function createBezierQuadratic(x1, y1, x2, y2, x3, y3) {
         var b = 2 * ((this._x2 - this._x1) * (this._y1 - 2 * this._y2 + this._y3) - (this._y2 - this._y1) * (this._x1 - 2 * this._x2 + this._x3));
         return Math.abs(a / b);
     };
+    /* 获取坐标点切线 */
+    bq.getTangent = function(t) {
+        var x = -2 * (1 - t) * this._x1 + 2 * (1 - 2 * t) * this._x2 + 2 * t * this._x3;
+        var y = -2 * (1 - t) * this._y1 + 2 * (1 - 2 * t) * this._y2 + 2 * t * this._y3;
+        var angle = Math.atan(Math.abs(y / x)) * (180 / Math.PI);
+        return [x, y, angle];
+    };
+    /* 获取平均坐标点切线 */
+    bq.getAvgTangent = function(t) {
+        if (!this._straight && t > 0 && t < 1) {
+            var len = t * this._totalLength;
+            t = this._invertLength(t, len);
+        }
+        return this.getTangent(t);
+    };
     if ('number' === typeof(x1) && 'number' === typeof(y1) &&
         'number' === typeof(x2) && 'number' === typeof(y2) &&
         'number' === typeof(x3) && 'number' === typeof(y3)) {
