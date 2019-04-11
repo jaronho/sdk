@@ -66,6 +66,15 @@ double Formula::vectorAngle(double sX, double sY, double eX, double eY) {
     return angle;
 }
 /*********************************************************************/
+bool Formula::threePointCollinear(double x1, double y1, double x2, double y2, double x3, double y3) {
+    double v1 = (x3 - x1) * (y2 - y1);
+    double v2 = (y3 - y1) * (x2 - x1);
+    if (isequald(0, v1 - v2)) {
+        return true;
+    }
+    return false;
+}
+/*********************************************************************/
 double Formula::triangleInnerAngle(double aX, double aY, double bX, double bY, double cX, double cY, int type) {
     type = (1 == type || 2 == type || 3 == type) ? type : 1;
     double a = sqrt(pow(fabs(cX - bX), 2) + pow(fabs(cY - bY), 2));
@@ -226,37 +235,13 @@ int Formula::checkLineStyle(double sX, double sY, double eX, double eY) {
 }
 /*********************************************************************/
 int Formula::checkPointSide(double sX, double sY, double eX, double eY, double x, double y) {
-    double a = eY - sY;
-    double b = sX - eX;
-    double c = eX * sY - sX * eY;
-    double d = a * x + b * y + c;
-    if (isequald(0, d)) {   /* point on line */
+    double d = (eX - sX) * (y - sY) - (eY - sY) * (x - sX);
+    if (isequald(0, d)) {   /* on line */
         return 0;
-    }
-    if (isequald(sY, eY)) { /* - */
-        if (y > sY) {
-            return 1;
-        } else {
-            return 2;
-        }
-    } else if (isequald(sX, eX)) {  /* | */
-        if (x < sX) {
-            return 3;
-        } else {
-            return 4;
-        }
-    } else if ((sX < eX && sY < eY) || (sX > eX && sY > eY)) {   /* / */
-        if (d < 0) {
-            return 3;
-        } else {
-            return 4;
-        }
-    } else {    /* \ */
-        if (d > 0) {
-            return 3;
-        } else {
-            return 4;
-        }
+    } else if (d > 0) { /* at left of vector */
+        return 1;
+    } else if (d < 0) { /* at right of vector */
+        return 2;
     }
 }
 /*********************************************************************/

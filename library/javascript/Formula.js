@@ -82,6 +82,24 @@ Formula.vectorAngle = function(sX, sY, eX, eY) {
 	return angle;
 };
 /*
+ * Brief:   check whether three point on one line
+ * Param:   x1 - x of point1
+ *          y1 - y of point1
+ *          x2 - x of point2
+ *          y2 - y of point2
+ *          x3 - x of point3
+ *          y3 - y of point3
+ * Return:  value
+ */
+Formula.threePointCollinear = function(x1, y1, x2, y2, x3, y3) {
+    var v1 = (x3 - x1) * (y2 - y1);
+    var v2 = (y3 - y1) * (x2 - x1);
+    if (0 == v1 - v2) {
+        return true;
+    }
+    return false;
+};
+/*
  * Brief:   calculate inner angle of triangle
  * Param:   aX - x of A point
  *          aY - y of A point
@@ -287,51 +305,25 @@ Formula.checkLineStyle = function(sX, sY, eX, eY) {
     }
 };
 /*
- * Brief:   check point place side by line
- * Param:   sX - line segment start x
- *          sY - line segment start y
- *          eX - line segment end x
- *          eY - line segment end y
+ * Brief:   check point place side by vector
+ * Param:   sX - vector start x
+ *          sY - vector start y
+ *          eX - vector end x
+ *          eY - vector end y
  *          x - point x
  *          y - point y
  * Return:  0.point place on line
- *          1.point place on line top
- *          2.point place on line bottom
- *          3.point place on line left
- *          4.point place on line right
+ *          1.point place at left of vector
+ *          2.point place at right of vector
  */
 Formula.checkPointSide = function(sX, sY, eX, eY, x, y) {
-    var a = eY - sY;
-    var b = sX - eX;
-    var c = eX * sY - sX * eY;
-    var d = a * x + b * y + c;
-    if (0 == d) {   /* point is on line */
+    var d = (eX - sX) * (y - sY) - (eY - sY) * (x - sX);
+    if (0 == d) {   /* on line */
         return 0;
-    }
-    if (sY == eY) { /* - */
-        if (y > sY) {
-            return 1;
-        } else {
-            return 2;
-        }
-    } else if (sX == eX) {  /* | */
-        if (x < sX) {
-            return 3;
-        } else {
-            return 4;
-        }
-    } else if ((sX < eX && sY < eY) || (sX > eX && sY > eY)) {   /* / */
-        if (d < 0) {
-            return 3;
-        } else {
-            return 4;
-        }
-    } else {    /* \ */
-        if (d > 0) {
-            return 3;
-        } else {
-            return 4;
-        }
+    } else if (d > 0) { /* at left of vector */
+        return 1;
+    } else if (d < 0) { /* at right of vector */
+        return 2;
     }
 };
 /*

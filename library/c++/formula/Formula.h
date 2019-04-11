@@ -75,6 +75,18 @@ public:
      * Return:  double
      */
     static double vectorAngle(double sX, double sY, double eX, double eY);
+    
+    /*
+     * Brief:   check whether three point on one line
+     * Param:   x1 - x of point1
+     *          y1 - y of point1
+     *          x2 - x of point2
+     *          y2 - y of point2
+     *          x3 - x of point3
+     *          y3 - y of point3
+     * Return:  double
+     */
+    static bool threePointCollinear(double x1, double y1, double x2, double y2, double x3, double y3);
 
     /*
      * Brief:   calculate inner angle of triangle
@@ -153,18 +165,16 @@ public:
     static int checkLineStyle(double sX, double sY, double eX, double eY);
     
     /*
-     * Brief:   check point place side by line
-     * Param:   sX - line segment start x
-     *          sY - line segment start y
-     *          eX - line segment end x
-     *          eY - line segment end y
+     * Brief:   check point place side by vector
+     * Param:   sX - vector start x
+     *          sY - vector start y
+     *          eX - vector end x
+     *          eY - vector end y
      *          x - point x
      *          y - point y
      * Return:  0.point place on line
-     *          1.point place on line top
-     *          2.point place on line bottom
-     *          3.point place on line left
-     *          4.point place on line right
+     *          1.point place at left of vector
+     *          2.point place at right of vector
      */
     static int checkPointSide(double sX, double sY, double eX, double eY, double x, double y);
 
