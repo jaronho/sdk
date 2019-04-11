@@ -156,6 +156,18 @@ public:
     static int checkPointSide(double sX, double sY, double eX, double eY, double x, double y);
 
     /*
+     * Brief:   calculate point to line projection position
+     * Param:   sX - line segment start x
+     *          sY - line segment start y
+     *          eX - line segment end x
+     *          eY - line segment end y
+     *          x - point x
+     *          y - point y
+     * Return:  double
+     */
+    static double* pointToLineProjection(double sX, double sY, double eX, double eY, double x, double y);
+
+    /*
      * Brief:   calculate point to line distance
      * Param:   sX - line segment start x
      *          sY - line segment start y

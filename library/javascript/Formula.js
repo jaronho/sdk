@@ -305,6 +305,21 @@ Formula.checkPointSide = function(sX, sY, eX, eY, x, y) {
     }
 };
 /*
+ * Brief:   calculate point to line projection position
+ * Param:   sX - line segment start x
+ *          sY - line segment start y
+ *          eX - line segment end x
+ *          eY - line segment end y
+ *          x - point x
+ *          y - point y
+ * Return:  value
+ */
+Formula.pointToLineProjection  = function(sX, sY, eX, eY, x, y) {
+    var pX = (x * Math.pow(eX - sX, 2) + y * (eY - sY) * (eX - sX) + (sX * eY - eX * sY) * (eY - sY)) / (Math.pow(eX - sX, 2) + Math.pow(eY - sY, 2));
+    var pY = (x * (eX - sX) * (eY - sY) + y * Math.pow(eY - sY, 2) + (eX * sY - sX * eY) * (eX - sX)) / (Math.pow(eX - sX, 2) + Math.pow(eY - sY, 2));
+    return [pX, pY];
+};
+/*
  * Brief:   calculate point to line distance
  * Param:   sX - line segment start x
  *          sY - line segment start y

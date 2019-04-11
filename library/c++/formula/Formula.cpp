@@ -237,6 +237,15 @@ int Formula::checkPointSide(double sX, double sY, double eX, double eY, double x
     }
 }
 /*********************************************************************/
+double* Formula::pointToLineProjection(double sX, double sY, double eX, double eY, double x, double y) {
+    double pX = (x * pow(eX - sX, 2) + y * (eY - sY) * (eX - sX) + (sX * eY - eX * sY) * (eY - sY)) / (pow(eX - sX, 2) + pow(eY - sY, 2));
+    double pY = (x * (eX - sX) * (eY - sY) + y * pow(eY - sY, 2) + (eX * sY - sX * eY) * (eX - sX)) / (pow(eX - sX, 2) + pow(eY - sY, 2));
+    double* point = (double*)malloc(sizeof(double) * 2);
+    point[0] = pX;
+    point[1] = pY;
+    return point;
+}
+/*********************************************************************/
 double Formula::pointToLineDistance(double sX, double sY, double sZ, double eX, double eY, double eZ, double x, double y, double z) {
     double es = sqrt(pow(eX - sX, 2) + pow(eY - sY, 2) + pow(eZ - sZ, 2));
     double ps = sqrt(pow(x - sX, 2) + pow(y - sY, 2) + pow(z - sZ, 2));
