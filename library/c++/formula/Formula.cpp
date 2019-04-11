@@ -85,6 +85,29 @@ double Formula::triangleInnerAngle(double aX, double aY, double bX, double bY, d
     return angle;
 }
 /*********************************************************************/
+double Formula::triangleInnerAngleBisectorToSideCrossPoint(double aX, double aY, double bX, double bY, double cX, double cY, int type) {
+    type = (1 == type || 2 == type || 3 == type) ? type : 1;
+    double a = sqrt(pow(abs(cX - bX), 2) + pow(abs(cY - bY), 2));
+    double b = sqrt(pow(abs(cX - aX), 2) + pow(abs(cY - aY), 2));
+    double c = sqrt(pow(abs(bX - aX), 2) + pow(abs(bY - aY), 2));
+    double pX = 0;
+    double pY = 0;
+    if (1 == type) {
+        pX = (b * bX + c * cX) / (b + c);
+        pY = (b * bY + c * cY) / (b + c);
+    } else if (2 == type) {
+        pX = (c * cX + a * aX) / (c + a);
+        pY = (c * cY + a * aY) / (c + a);
+    } else if (3 == type) {
+        pX = (a * aX + b * bX) / (a + b);
+        pY = (a * aY + b * bY) / (a + b);
+    }
+    double* point = (double*)malloc(sizeof(double) * 2);
+    point[0] = pX;
+    point[1] = pY;
+    return point;
+}
+/*********************************************************************/
 double* Formula::crossPoint(double aX, double aY, double bX, double bY, double cX, double cY, double dX, double dY, double limit, int mustIn) {
     /* 如果分母为0则平行或共线,不相交 */
     double denominator = (bY - aY) * (dX - cX) - (aX - bX) * (cY - dY);

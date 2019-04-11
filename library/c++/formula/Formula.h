@@ -85,9 +85,22 @@ public:
      *          cX - x of C point
      *          cY - y of C point
      *          type - point type:1.A,2.B,3.C
+     * Return:  double*
+     */
+    static double* triangleInnerAngle(double aX, double aY, double bX, double bY, double cX, double cY, int type);
+    
+    /*
+     * Brief:   calculate cross point of triangle inner angle bisector to side
+     * Param:   aX - x of A point
+     *          aY - y of A point
+     *          bX - x of B point
+     *          bY - y of B point
+     *          cX - x of C point
+     *          cY - y of C point
+     *          type - point type:1.A,2.B,3.C
      * Return:  double
      */
-    static double triangleInnerAngle(double aX, double aY, double bX, double bY, double cX, double cY, int type);
+    static double triangleInnerAngleBisectorToSideCrossPoint(double aX, double aY, double bX, double bY, double cX, double cY, int type);
 
     /*
      * Brief:   calculate cross point between two line segment
@@ -163,7 +176,7 @@ public:
      *          eY - line segment end y
      *          x - point x
      *          y - point y
-     * Return:  double
+     * Return:  double*
      */
     static double* pointToLineProjection(double sX, double sY, double eX, double eY, double x, double y);
 

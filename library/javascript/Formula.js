@@ -111,6 +111,36 @@ Formula.triangleInnerAngle = function(aX, aY, bX, bY, cX, cY, type) {
     return angle;
 };
 /*
+ * Brief:   calculate cross point of triangle inner angle bisector to side
+ * Param:   aX - x of A point
+ *          aY - y of A point
+ *          bX - x of B point
+ *          bY - y of B point
+ *          cX - x of C point
+ *          cY - y of C point
+ *          type - point type:1.A,2.B,3.C
+ * Return:  value
+ */
+Formula.triangleInnerAngleBisectorToSideCrossPoint = function(aX, aY, bX, bY, cX, cY, type) {
+    type = (1 == type || 2 == type || 3 == type) ? type : 1;
+    var a = Math.sqrt(Math.pow(Math.abs(cX - bX), 2) + Math.pow(Math.abs(cY - bY), 2));
+    var b = Math.sqrt(Math.pow(Math.abs(cX - aX), 2) + Math.pow(Math.abs(cY - aY), 2));
+    var c = Math.sqrt(Math.pow(Math.abs(bX - aX), 2) + Math.pow(Math.abs(bY - aY), 2));
+    var pX = 0;
+    var pY = 0;
+    if (1 == type) {
+        pX = (b * bX + c * cX) / (b + c);
+        pY = (b * bY + c * cY) / (b + c);
+    } else if (2 == type) {
+        pX = (c * cX + a * aX) / (c + a);
+        pY = (c * cY + a * aY) / (c + a);
+    } else if (3 == type) {
+        pX = (a * aX + b * bX) / (a + b);
+        pY = (a * aY + b * bY) / (a + b);
+    }
+    return [pX, pY];
+};
+/*
  * Brief:   calculate cross point between two line segment
  * Param:   aX - x of segment1 start point
  *          aY - y of segment1 start point
