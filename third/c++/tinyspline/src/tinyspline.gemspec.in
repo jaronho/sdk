@@ -1,0 +1,13 @@
+puts(`@CMAKE_COMMAND@ --build . --target @TINYSPLINE_RUBY_CMAKE_TARGET@`)
+
+Gem::Specification.new do |spec|
+  spec.name        = '@TINYSPLINE_PACKAGE_NAME@.@TINYSPLINE_PLATFORM@'
+  spec.version     = '@TINYSPLINE_VERSION@-1'
+  spec.authors     = ["@TINYSPLINE_AUTHOR@"]
+  spec.email       = '@TINYSPLINE_MAIL@'
+  spec.summary     = "@TINYSPLINE_SUMMARY@"
+  spec.description = "@TINYSPLINE_DESCRIPTION@"
+  spec.files       = Dir.glob("{lib}/@TINYSPLINE_RUBY_CMAKE_TARGET@*")
+  spec.homepage    = '@TINYSPLINE_URL@'
+  spec.license     = '@TINYSPLINE_LICENSE@'
+end
