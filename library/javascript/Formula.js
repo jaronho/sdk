@@ -56,9 +56,9 @@ Formula.degrees = function(radians) {
  * Return:  value
  */
 Formula.distance = function(x1, y1, x2, y2) {
-	var x = Math.abs(x2 - x1);
-	var y = Math.abs(y2 - y1);
-	return Math.sqrt(x * x + y * y);
+    var x = Math.abs(x2 - x1);
+    var y = Math.abs(y2 - y1);
+    return Math.sqrt(x * x + y * y);
 };
 /*
  * Brief:   calculate angle for vector
@@ -69,17 +69,17 @@ Formula.distance = function(x1, y1, x2, y2) {
  * Return:  double
  */
 Formula.vectorAngle = function(sX, sY, eX, eY) {
-	var x = eX - sX;
-	var y = eY - sY;
-	var side = Math.sqrt(x * x + y * y);
-	var radian = Math.acos(x / side);
-	var angle = 180 / (Math.PI / radian);
-	if (y < 0) {
-		angle = 360 - angle;
-	} else if (0 == y && x < 0) {
-		angle = 180;
-	}
-	return angle;
+    var x = eX - sX;
+    var y = eY - sY;
+    var side = Math.sqrt(x * x + y * y);
+    var radian = Math.acos(x / side);
+    var angle = 180 / (Math.PI / radian);
+    if (y < 0) {
+        angle = 360 - angle;
+    } else if (0 == y && x < 0) {
+        angle = 180;
+    }
+    return angle;
 };
 /*
  * Brief:   check whether three point on one line
@@ -179,7 +179,7 @@ Formula.crossPoint = function(aX, aY, bX, bY, cX, cY, dX, dY, limit, mustIn) {
         return null;
     }
     /* 限制分母大小,当前趋近于限定值时,视为平行 */
-    limit = limit > 0.1 ? limit : 0.1;
+    limit = 'number' === typeof (limit) && limit > 0.1 ? limit : 0.1;
     if (Math.abs(denominator) <= Math.abs(limit)) {
         return null;
     }
@@ -188,7 +188,7 @@ Formula.crossPoint = function(aX, aY, bX, bY, cX, cY, dX, dY, limit, mustIn) {
     var y = -((bY - aY) * (dY - cY) * (cX - aX) + (bX - aX) * (dY - cY) * aY - (dX - cX) * (bY - aY) * cY) / denominator;
     /* 判断交点是否必须在两条线段上 */
     var flag = 0;
-    if (mustIn) {
+    if (undefined === mustIn || null === mustIn || mustIn) {
         if ((x - aX) * (x - bX) <= 0 && (y - aY) * (y - bY) <= 0 && (x - cX) * (x - dX) <= 0 && (y - cY) * (y - dY) <= 0) {
             flag = 1;
         }
