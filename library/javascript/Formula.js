@@ -387,7 +387,7 @@ Formula.rightTrianglePoint = function(aX, aY, bX, bY, bc) {
  *          t - percent
  * Return:  value
  */
-Formulajavascript:;.getLinearPoint = function(sX, sY, eX, eY, t) {
+Formula.getLinearPoint = function(sX, sY, eX, eY, t) {
     var x = (1 - t) * sX + t * eX;
     var y = (1 - t) * sY + t * eY;
     return [x, y];
