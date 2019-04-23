@@ -387,8 +387,42 @@ Formula.rightTrianglePoint = function(aX, aY, bX, bY, bc) {
  *          t - percent
  * Return:  value
  */
-Formula.getLinearPoint = function(sX, sY, eX, eY, t) {
+Formulajavascript:;.getLinearPoint = function(sX, sY, eX, eY, t) {
     var x = (1 - t) * sX + t * eX;
     var y = (1 - t) * sY + t * eY;
     return [x, y];
 };
+/*
+ * Brief:   calculate point on bezier curve
+ * Param:   controlPoints - control points, e.g. [[0,0],[50, 50],[100,0],[150,50]]
+ *          t - percent
+ * Return:  value
+ */
+Formula.bezier = function(controlPoints, t) {
+    var controlPointCnt = controlPoints.length;
+    if (controlPointCnt < 2) {
+        return null;
+    }
+    var mi = [];
+    mi[0] = mi[1] = 1;
+    for (var i = 3; i <= controlPointCnt; ++i) {
+        var tmp = [];
+        for (var j = 0; j < i - 1; ++j) {
+            tmp[j] = mi[j];
+        }
+        mi[0] = mi[i - 1] = 1;
+        for (var k = 0; k < i - 2; ++k) {
+            mi[k + 1] = tmp[k] + tmp[k + 1];
+        }
+    }
+    var point = [];
+    var dimersion = controlPoints[0].length;
+    for (var d = 0; d < dimersion; ++d) {
+        var temp = 0;
+        for (var q = 0; q < controlPointCnt; ++q) {
+            temp += Math.pow(1 - t, controlPointCnt - q - 1) * controlPoints[q][d] * Math.pow(t, q) * mi[q];
+        }
+        point[d] = temp;
+    }
+    return point;
+}
