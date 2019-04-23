@@ -426,3 +426,33 @@ Formula.bezier = function(controlPoints, t) {
     }
     return point;
 }
+/*
+ * Brief:   calculate length of bezier curve
+ * Param:   controlPoints - control points, e.g. [[0,0],[50, 50],[100,0],[150,50]]
+ *          count - point count, default value is 30
+ * Return:  value
+ */
+Formula.bezierLength = function(controlPoints, count) {
+    var controlPointCnt = controlPoints.length;
+    if (controlPointCnt < 2) {
+        return 0;
+    }
+    if ('number' != typeof(count) || count < 3) {
+        count = 30;
+    }
+    var totalLength = 0;
+    var pt1 = controlPoints[0];
+    for (var i = 1; i <= count; ++i) {
+        var pt2 = bezier(controlPoints, i / count);
+        if (null == pt2) {
+            return 0;
+        }
+        var pv = 0;
+        for (var d = 0; d < pt1.length; ++d) {
+            pv += Math.pow(Math.abs(pt2[d] - pt1[d]), 2);
+        }
+        totalLength += Math.sqrt(pv);
+        pt1 = pt2;
+    }
+    return totalLength;
+};
