@@ -34,8 +34,17 @@ double Formula::clamp(double value, double min, double max) {
     return value;
 }
 /*********************************************************************/
-double Formula::mix(double x, double y, double a) {
-    return x * (1 - a) + y * a;
+double Formula::mix(double a, double b, double t) {
+    return a * (1 - t) + b * t;
+}
+/*********************************************************************/
+unsigned int Formula::factorial(unsigned int n) {
+    unsigned int result = 1;
+    while (n) {
+        result *= n;
+        --n;
+    }
+    return result;
 }
 /*********************************************************************/
 double Formula::radians(double degrees) {
@@ -94,7 +103,7 @@ double Formula::triangleInnerAngle(double aX, double aY, double bX, double bY, d
     return angle;
 }
 /*********************************************************************/
-double Formula::triangleInnerAngleBisectorToSideCrossPoint(double aX, double aY, double bX, double bY, double cX, double cY, int type) {
+double* Formula::triangleInnerAngleBisectorToSideCrossPoint(double aX, double aY, double bX, double bY, double cX, double cY, int type) {
     type = (1 == type || 2 == type || 3 == type) ? type : 1;
     double a = sqrt(pow(abs(cX - bX), 2) + pow(abs(cY - bY), 2));
     double b = sqrt(pow(abs(cX - aX), 2) + pow(abs(cY - aY), 2));
@@ -224,7 +233,7 @@ double* Formula::pointOnEllipse(double cX, double cY, double a, double b, double
 /*********************************************************************/
 int Formula::checkLineStyle(double sX, double sY, double eX, double eY) {
     if (isequald(sY, eY)) { /* - */
-        return 1
+        return 1;
     } else if (isequald(sX, eX)) {  /* | */
         return 2;
     } else if ((sX < eX && sY < eY) || (sX > eX && sY > eY)) {   /* / */
@@ -276,12 +285,39 @@ double* Formula::rightTrianglePoint(double aX, double aY, double bX, double bY, 
     return point;
 }
 /*********************************************************************/
-double* Formula::getLinearPoint(double sX, double sY, double eX, double eY, double t) {
-    double x = (1 - t) * sX + t * eX;
-    double y = (1 - t) * sY + t * eY;
-    double* point = (double*)malloc(sizeof(double) * 2);
-    point[0] = x;
-    point[1] = y;
+double* Formula::bezier(const double* controlPoints, unsigned int length, unsigned int dimersion, double t) {
+    if (!controlPoints || length < 1) {
+        return NULL;
+    }
+    if (dimersion < 1 || dimersion > 3) {
+        return NULL;
+    }
+    unsigned int controlPointCnt = length / dimersion;
+    if (controlPointCnt < 2 || length % dimersion > 0) {
+        return NULL;
+    }
+    unsigned int* mi = (unsigned int*)malloc(sizeof(unsigned int) * controlPointCnt);
+    mi[0] = mi[1] = 1;
+    for (unsigned int i = 3; i <= controlPointCnt; ++i) {
+        unsigned int* tmp = (unsigned int*)malloc(sizeof(unsigned int) * (i - 1));
+        for (unsigned int j = 0; j < i - 1; ++j) {
+            tmp[j] = mi[j];
+        }
+        mi[0] = mi[i - 1] = 1;
+        for (unsigned int k = 0; k < i - 2; ++k) {
+            mi[k + 1] = tmp[k] + tmp[k + 1];
+        }
+        free(tmp);
+    }
+    double* point = (double*)malloc(sizeof(double) * dimersion);
+    for (unsigned int d = 0; d < dimersion; ++d) {
+        double v = 0;
+        for (unsigned int c = 0; c < controlPointCnt; ++c) {
+            v += pow(1 - t, controlPointCnt - c - 1) * controlPoints[c * dimersion + d] * pow(t, c) * mi[c];
+        }
+        point[d] = v;
+    }
+    free(mi);
     return point;
 }
 /*********************************************************************/

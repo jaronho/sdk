@@ -22,17 +22,30 @@ Formula.clamp = function(value, min, max) {
     return value;
 };
 /*
- * Brief:   return the linear blend of x and y
- * Param:   x - x
- *          y - y
- *          a - a
+ * Brief:   return the linear blend of a and b
+ * Param:   a - a
+ *          b - b
+ *          t - [0,1]
  * Return:  value
  */
-Formula.mix = function(x, y, a) {
-    return x * (1 - a) + y * a;
+Formula.mix = function(a, b, t) {
+    return a * (1 - t) + b * t;
 };
 /*
- * Brief:   convert degrees to radians e.g. (PI/180)*degrees
+ * Brief:   calculate factorial of n, e.g. 1*2*3*4*...*n
+ * Param:   n - integer
+ * Return:  value
+ */
+Formula.factorial = function(n) {
+    var result = 1;
+    while (n) {
+        result *= n;
+        --n;
+    }
+    return result;
+};
+/*
+ * Brief:   convert degrees to radians, e.g. PI/6,PI/2,2*PI
  * Param:   degrees - degrees
  * Return:  value
  */
@@ -40,7 +53,7 @@ Formula.radians = function(degrees) {
     return (Math.PI / 180) * degrees;
 };
 /*
- * Brief:   convert radians to degrees e.g. (180/PI)*radians
+ * Brief:   convert radians to degrees, e.g. 30°,90°,360°
  * Param:   radians - radians
  * Return:  value
  */
@@ -379,28 +392,18 @@ Formula.rightTrianglePoint = function(aX, aY, bX, bY, bc) {
     return [cX1, cY1, cX2, cY2];
 };
 /*
- * Brief:   calculate point to line distance
- * Param:   sX - line segment start x
- *          sY - line segment start y
- *          eX - line segment end x
- *          eY - line segment end y
- *          t - percent
- * Return:  value
- */
-Formula.getLinearPoint = function(sX, sY, eX, eY, t) {
-    var x = (1 - t) * sX + t * eX;
-    var y = (1 - t) * sY + t * eY;
-    return [x, y];
-};
-/*
  * Brief:   calculate point on bezier curve
  * Param:   controlPoints - control points, e.g. [[0,0],[50, 50],[100,0],[150,50]]
+ *          dimersion - 1,2,3
  *          t - percent
  * Return:  value
  */
-Formula.bezier = function(controlPoints, t) {
+Formula.bezier = function(controlPoints, dimersion, t) {
     var controlPointCnt = controlPoints.length;
     if (controlPointCnt < 2) {
+        return null;
+    }
+    if (dimersion < 1 || dimersion > 3) {
         return null;
     }
     var mi = [];
@@ -416,13 +419,12 @@ Formula.bezier = function(controlPoints, t) {
         }
     }
     var point = [];
-    var dimersion = controlPoints[0].length;
     for (var d = 0; d < dimersion; ++d) {
-        var temp = 0;
-        for (var q = 0; q < controlPointCnt; ++q) {
-            temp += Math.pow(1 - t, controlPointCnt - q - 1) * controlPoints[q][d] * Math.pow(t, q) * mi[q];
+        var v = 0;
+        for (var c = 0; c < controlPointCnt; ++c) {
+            v += Math.pow(1 - t, controlPointCnt - c - 1) * controlPoints[c][d] * Math.pow(t, c) * mi[c];
         }
-        point[d] = temp;
+        point[d] = v;
     }
     return point;
 }

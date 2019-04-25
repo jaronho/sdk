@@ -34,23 +34,30 @@ public:
     static double clamp(double value, double min, double max);
 
     /*
-     * Brief:   return the linear blend of x and y
-     * Param:   x - x
-     *          y - y
-     *          a - a
+     * Brief:   return the linear blend of a and b
+     * Param:   a - a
+     *          b - b
+     *          t - [0,1]
      * Return:  double
      */
-    static double mix(double x, double y, double a);
+    static double mix(double a, double b, double t);
 
     /*
-     * Brief:   convert degrees to radians e.g. (PI/180)*degrees
+     * Brief:   calculate factorial of n, e.g. 1*2*3*4*...*n
+     * Param:   n - integer
+     * Return:  unsigned int
+     */
+    static unsigned int factorial(unsigned int n);
+
+    /*
+     * Brief:   convert degrees to radians, e.g. PI/6,PI/2,2*PI
      * Param:   degrees - degrees
      * Return:  double
      */
     static double radians(double degrees);
 
     /*
-     * Brief:   convert radians to degrees e.g. (180/PI)*radians
+     * Brief:   convert radians to degrees, e.g. 30°,90°,360°
      * Param:   radians - radians
      * Return:  double
      */
@@ -97,9 +104,9 @@ public:
      *          cX - x of C point
      *          cY - y of C point
      *          type - point type:1.A,2.B,3.C
-     * Return:  double*
+     * Return:  double
      */
-    static double* triangleInnerAngle(double aX, double aY, double bX, double bY, double cX, double cY, int type);
+    static double triangleInnerAngle(double aX, double aY, double bX, double bY, double cX, double cY, int type);
     
     /*
      * Brief:   calculate cross point of triangle inner angle bisector to side
@@ -110,9 +117,9 @@ public:
      *          cX - x of C point
      *          cY - y of C point
      *          type - point type:1.A,2.B,3.C
-     * Return:  double
+     * Return:  double*
      */
-    static double triangleInnerAngleBisectorToSideCrossPoint(double aX, double aY, double bX, double bY, double cX, double cY, int type);
+    static double* triangleInnerAngleBisectorToSideCrossPoint(double aX, double aY, double bX, double bY, double cX, double cY, int type);
 
     /*
      * Brief:   calculate cross point between two line segment
@@ -217,15 +224,14 @@ public:
     static double* rightTrianglePoint(double aX, double aY, double bX, double bY, double bc);
     
     /*
-     * Brief:   calculate point to line distance
-     * Param:   sX - line segment start x
-     *          sY - line segment start y
-     *          eX - line segment end x
-     *          eY - line segment end y
+     * Brief:   calculate point on bezier curve
+     * Param:   controlPoints - control points, e.g. [[0,0],[50,50],[100,0],[150,50]]
+     *          length - control points pointer size, e.g. [[0,0],[50,50],[100,0]] = 6
+     *          dimersion - 1,2,3
      *          t - percent
-     * Return:  double*
+     * Return:  value
      */
-    static double* getLinearPoint(double sX, double sY, double eX, double eY, double t);
+    static double* bezier(const double* controlPoints, unsigned int length, unsigned int dimersion, double t);
 };
 
 #endif	/* _FORMULA_H_ */
