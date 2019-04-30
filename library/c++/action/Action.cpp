@@ -18,9 +18,15 @@ void Action::aloneHandler(Action* act) {
     if (act) {
         act->onProcess();
         if (act->mFinishCallback) {
-            sFinishMutex.lock();
-            sFinishList.push_back(act);
-            sFinishMutex.unlock();
+            if (act->mCallInMainThread) {
+                sFinishMutex.lock();
+                sFinishList.push_back(act);
+                sFinishMutex.unlock();
+            } else {
+                act->mFinishCallback(act);
+                delete act;
+                act = nullptr;
+            }
         } else {
             delete act;
             act = nullptr;
@@ -40,9 +46,15 @@ void Action::groupHandler(void) {
         if (act) {
             act->onProcess();
             if (act->mFinishCallback) {
-                sFinishMutex.lock();
-                sFinishList.push_back(act);
-                sFinishMutex.unlock();
+                if (act->mCallInMainThread) {
+                    sFinishMutex.lock();
+                    sFinishList.push_back(act);
+                    sFinishMutex.unlock();
+                } else {
+                    act->mFinishCallback(act);
+                    delete act;
+                    act = nullptr;
+                }
             } else {
                 delete act;
                 act = nullptr;
@@ -72,17 +84,18 @@ Action* Action::syncRun(Action* act, bool autoDestroy) {
     return act;
 }
 
-void Action::asyncRun(Action* act, bool alone) {
+void Action::asyncRun(Action* act, bool alone, bool callInMainThread) {
     if (act) {
+        act->mCallInMainThread = callInMainThread;
         if (alone) {
             std::thread aloneThread(aloneHandler, act);
-            aloneThread.joinable();
+            aloneThread.detach();
         } else {
             static bool sInitGroupThread = true;
             if (sInitGroupThread) {
                 sInitGroupThread = false;
                 std::thread groupThread(groupHandler);
-                groupThread.joinable();
+                groupThread.detach();
             }
             sProcessMutex.lock();
             sProcessList.push_back(act);
