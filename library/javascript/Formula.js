@@ -427,4 +427,38 @@ Formula.bezier = function(controlPoints, dimersion, t) {
         point[d] = v;
     }
     return point;
-}
+};
+/*
+ * Brief:   calculate length of bezier curve
+ * Param:   controlPoints - control points, e.g. [[0,0],[50, 50],[100,0],[150,50]]
+ *          dimersion - 1,2,3
+ *          count - segment count
+ * Return:  value
+ */
+Formula.bezierLength = function(controlPoints, dimersion, count) {
+    var controlPointCnt = controlPoints.length;
+    if (controlPointCnt < 2) {
+        return 0;
+    }
+    if (dimersion < 1 || dimersion > 3) {
+        return 0;
+    }
+    if ('number' != typeof(count) || count < 10) {
+        count = 30;
+    }
+    var totalLength = 0;
+    var pt1 = controlPoints[0];
+    for (var i = 1; i <= count; ++i) {
+        var pt2 = this.bezier(controlPoints, dimersion, i / count);
+        if (null == pt2) {
+            return 0;
+        }
+        var pv = 0;
+        for (var d = 0; d < dimersion; ++d) {
+            pv += Math.pow(Math.abs(pt2[d] - pt1[d]), 2);
+        }
+        totalLength += Math.sqrt(pv);
+        pt1 = pt2;
+    }
+    return totalLength;
+};

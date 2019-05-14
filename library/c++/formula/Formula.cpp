@@ -285,15 +285,15 @@ double* Formula::rightTrianglePoint(double aX, double aY, double bX, double bY, 
     return point;
 }
 /*********************************************************************/
-double* Formula::bezier(const double* controlPoints, unsigned int length, unsigned int dimersion, double t) {
-    if (!controlPoints || length < 1) {
+double* Formula::bezier(const double* controlPoints, unsigned int size, unsigned int dimersion, double t) {
+    if (!controlPoints || size < 1) {
         return NULL;
     }
     if (dimersion < 1 || dimersion > 3) {
         return NULL;
     }
-    unsigned int controlPointCnt = length / dimersion;
-    if (controlPointCnt < 2 || length % dimersion > 0) {
+    unsigned int controlPointCnt = size / dimersion;
+    if (controlPointCnt < 2 || size % dimersion > 0) {
         return NULL;
     }
     unsigned int* mi = (unsigned int*)malloc(sizeof(unsigned int) * controlPointCnt);
@@ -319,5 +319,41 @@ double* Formula::bezier(const double* controlPoints, unsigned int length, unsign
     }
     free(mi);
     return point;
+}
+/*********************************************************************/
+double Formula::bezierLength(const double* controlPoints, unsigned int size, unsigned int dimersion, unsigned int count) {
+    if (!controlPoints || size < 1) {
+        return 0;
+    }
+    if (dimersion < 1 || dimersion > 3) {
+        return 0;
+    }
+    unsigned int controlPointCnt = size / dimersion;
+    if (controlPointCnt < 2 || size % dimersion > 0) {
+        return 0;
+    }
+    if (count < 10) {
+        count = 30;
+    }
+    double totalLength = 0;
+    double* pt1 = (double*)malloc(sizeof(double) * dimersion);
+    for (unsigned int d = 0; d < dimersion; ++d) {
+        pt1[d] = controlPoints[d];
+    }
+    for (unsigned int i = 1; i <= count; ++i) {
+        double* pt2 = bezier(controlPoints, size, dimersion, i / count);
+        if (!pt2) {
+            free(pt1);
+            return 0;
+        }
+        double pv = 0;
+        for (unsigned int d = 0; d < dimersion; ++d) {
+            pv += pow(fabs(pt2[d] - pt1[d]), 2);
+        }
+        totalLength += sqrt(pv);
+        free(pt1);
+        pt1 = pt2;
+    }
+    return totalLength;
 }
 /*********************************************************************/

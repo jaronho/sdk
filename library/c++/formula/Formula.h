@@ -226,12 +226,22 @@ public:
     /*
      * Brief:   calculate point on bezier curve
      * Param:   controlPoints - control points, e.g. [[0,0],[50,50],[100,0],[150,50]]
-     *          length - control points pointer size, e.g. [[0,0],[50,50],[100,0]] = 6
+     *          size - control points pointer size, e.g. [[0,0],[50,50],[100,0]] = 6
      *          dimersion - 1,2,3
      *          t - percent
      * Return:  value
      */
-    static double* bezier(const double* controlPoints, unsigned int length, unsigned int dimersion, double t);
+    static double* bezier(const double* controlPoints, unsigned int size, unsigned int dimersion, double t);
+    
+    /*
+     * Brief:   calculate length of bezier curve
+     * Param:   controlPoints - control points, e.g. [[0,0],[50,50],[100,0],[150,50]]
+     *          size - control points pointer size, e.g. [[0,0],[50,50],[100,0]] = 6
+     *          dimersion - 1,2,3
+     *          count - segment count
+     * Return:  value
+     */
+    static double bezierLength(const double* controlPoints, unsigned int size, unsigned int dimersion, unsigned int count = 30);
 };
 
 #endif	/* _FORMULA_H_ */
