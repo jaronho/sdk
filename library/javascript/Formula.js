@@ -462,3 +462,52 @@ Formula.bezierLength = function(controlPoints, dimersion, count) {
     }
     return totalLength;
 };
+/*
+ * Brief:   calculate smooth curve which pass control points
+ * Param:   points - point list, e.g. [[0,0],[50, 50],[100,0],[150,50]]
+ *          ratio - smooth ratio, optimum value [0.1, 0.3]
+ * Return:  value
+ */
+Formula.smoothCurve = function(points, ratio) {
+    if (points.length < 3) {
+        return [];
+    }
+    function _getControlPoint(pt1, pt, pt2, ratio) {
+        var len1 = Math.sqrt(Math.pow(Math.abs(pt1[0] - pt[0]), 2) + Math.pow(Math.abs(pt1[1] -  pt[1]), 2));
+        var len2 = Math.sqrt(Math.pow(Math.abs(pt2[0] - pt[0]), 2) + Math.pow(Math.abs(pt2[1] -  pt[1]), 2));
+        var v = len2 / (len1 + 0.000001);
+        var deltaX = 0, deltaY = 0;
+        if (v > 1) {
+            deltaX = pt1[0] - (pt[0] + (pt2[0] - pt[0]) / (v + 0.000001));
+            deltaY = pt1[1] - (pt[1] + (pt2[1] - pt[1]) / (v + 0.000001));
+        } else {
+            deltaX = pt[0] + (pt1[0] - pt[0]) * v - pt2[0];
+            deltaY = pt[1] + (pt1[1] - pt[1]) * v - pt2[1];
+        }
+        deltaX *= ratio;
+        deltaY *= ratio;
+        var cpt1 = [pt[0] + deltaX, pt[1] + deltaY];
+        var cpt2 = [pt[0] - deltaX, pt[1] - deltaY];
+        return [cpt1, cpt2];
+    }
+    var curveList = [];
+    curveList.push([
+        points[0],
+        points[1]
+    ]);
+    for (var i = 1; i < points.length - 1; ++i) {
+        var prefPt = points[i - 1];
+        var currPt = points[i];
+        var nextPt = points[i + 1];
+        var cpts = _getControlPoint(prefPt, currPt, nextPt, ratio);
+        var cpt1 = cpts[0];
+        var cpt2 = cpts[1];
+        curveList[i - 1].splice(-1, 0, cpt1);
+        curveList.push([
+            currPt,
+            cpt2,
+            nextPt
+        ]);
+    }
+    return curveList;
+};
