@@ -472,6 +472,9 @@ Formula.smoothCurve = function(points, ratio) {
     if (points.length < 3) {
         return [];
     }
+    if ('number' !== typeof(ratio)) {
+        ratio = 0.2;
+    }
     function _getControlPoint(pt1, pt, pt2, ratio) {
         var len1 = Math.sqrt(Math.pow(Math.abs(pt1[0] - pt[0]), 2) + Math.pow(Math.abs(pt1[1] -  pt[1]), 2));
         var len2 = Math.sqrt(Math.pow(Math.abs(pt2[0] - pt[0]), 2) + Math.pow(Math.abs(pt2[1] -  pt[1]), 2));
