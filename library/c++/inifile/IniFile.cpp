@@ -52,18 +52,18 @@ int IniFile::getLine(FILE* fp, std::string& line, int lineSize /*= 128*/) {
     char* buf = (char*)malloc(buf_size);
     char* pbuf = NULL;
     char* p = buf;
-    if (NULL == buf) {
+    if (!buf) {
         fprintf(stderr, "no enough memory!\n");
         exit(-1);
     }
     memset(buf, 0, buf_size);
     int total_size = buf_size;
-    while (NULL != fgets(p, buf_size, fp)) {
+    while (fgets(p, buf_size, fp)) {
         plen = strlen(p);
         if (plen > 0 && '\n' != p[plen - 1] && !feof(fp)) {
             total_size = strlen(buf) + buf_size;
             pbuf = (char*)realloc(buf, total_size);
-            if (NULL == pbuf) {
+            if (!pbuf) {
                 free(buf);
                 fprintf(stderr, "no enough memory!\n");
                 exit(-1);
@@ -111,14 +111,14 @@ IniFile::~IniFile(void) {
     mFlags.clear();
 }
 
-int IniFile::open(const std::string& fileName, int lineLength /*= 128*/) {
+int IniFile::open(const std::string& fileName, int lineLength /*= 128*/, bool allowTailComment /*= false*/) {
     if ("" == fileName) {
         return 1;
     }
     release();
     mFileName = fileName;
     FILE* fp = fopen(fileName.c_str(), "r");
-    if (NULL == fp) {
+    if (!fp) {
         return 2;
     }
     IniSection* section = new IniSection();
@@ -129,7 +129,7 @@ int IniFile::open(const std::string& fileName, int lineLength /*= 128*/) {
         trimRight(line, '\r');
         trimRight(line, '\n');
         trimLeftRightSpace(line);
-        if (!isComment(line)) {
+        if (!isComment(line) && allowTailComment) {
             /*
              * 针对 “value=1 #测试” 这种后面有注释的语句
              * 重新分割line，并添加注释到commnet
@@ -164,7 +164,7 @@ int IniFile::open(const std::string& fileName, int lineLength /*= 128*/) {
                 return 4;
             }
             std::string s(line, 1, len);
-            if (NULL != getSection(s.c_str())) {
+            if (getSection(s.c_str())) {
                 fclose(fp);
                 fprintf(stderr, "此段已存在: %s\n", s.c_str());
                 return 5;
@@ -225,7 +225,7 @@ int IniFile::save(const std::string& fileName /*= ""*/) {
         }
     }
     FILE* fp = fopen("" == fileName ? mFileName.c_str() : fileName.c_str(), "w");
-    if (NULL == fp) {
+    if (!fp) {
         return 2;
     }
     fwrite(data.c_str(), 1, data.length(), fp);
@@ -240,7 +240,7 @@ bool IniFile::hasSection(const std::string& section) {
 
 bool IniFile::hasKey(const std::string& section, const std::string& key) {
     IniSection* sect = getSection(section);
-    if (NULL != sect) {
+    if (sect) {
         for (std::vector<IniItem>::iterator iter = sect->items.begin(); sect->items.end() != iter; ++iter) {
             if (key == iter->key) {
                 return true;
@@ -252,7 +252,7 @@ bool IniFile::hasKey(const std::string& section, const std::string& key) {
 
 void IniFile::deleteSection(const std::string& section) {
     IniSection* sect = getSection(section);
-    if (NULL != sect) {
+    if (sect) {
         mSections.erase(section);
         delete sect;
     }
@@ -260,7 +260,7 @@ void IniFile::deleteSection(const std::string& section) {
 
 void IniFile::deleteKey(const std::string& section, const std::string& key) {
     IniSection* sect = getSection(section);
-    if (NULL != sect) {
+    if (sect) {
         for (std::vector<IniItem>::iterator iter = sect->items.begin(); sect->items.end() != iter; ++iter) {
             if (key == iter->key) {
                 sect->items.erase(iter);
@@ -283,7 +283,7 @@ void IniFile::setCommentFlags(const std::vector<std::string>& flags) {
 int IniFile::getSectionComment(const std::string& section, std::string& comment) {
     comment = "";
     IniSection* sect = getSection(section);
-    if (NULL == sect) {
+    if (!sect) {
         return 1;
     }
     comment = sect->comment;
@@ -292,7 +292,7 @@ int IniFile::getSectionComment(const std::string& section, std::string& comment)
 
 int IniFile::setSectionComment(const std::string& section, const std::string& comment) {
     IniSection* sect = getSection(section);
-    if (NULL == sect) {
+    if (!sect) {
         return 1;
     }
     sect->comment = comment;
@@ -301,7 +301,7 @@ int IniFile::setSectionComment(const std::string& section, const std::string& co
 
 int IniFile::getValue(const std::string& section, const std::string& key, std::string& value, std::string& comment) {
     IniSection* sect = getSection(section);
-    if (NULL != sect) {
+    if (sect) {
         for (std::vector<IniItem>::iterator iter = sect->items.begin(); sect->items.end() != iter; ++iter) {
             if (key == iter->key) {
                 value = iter->value;
@@ -319,9 +319,9 @@ int IniFile::setValue(const std::string& section, const std::string& key, const 
     if ("" != comt) {
         comt = mFlags[0] + comt;
     }
-    if (NULL == sect) {
+    if (!sect) {
         sect = new IniSection();
-        if (NULL == sect) {
+        if (!sect) {
             fprintf(stderr, "no enough memory!\n");
             exit(-1);
         }
