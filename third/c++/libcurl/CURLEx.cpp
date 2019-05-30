@@ -97,10 +97,16 @@ bool CURLEx::setCookieFile(const std::string& cookieFilename) {
 }
 //------------------------------------------------------------------------
 bool CURLEx::setConnectTimeout(int connectTimeout) {
+    if (connectTimeout <= 0) {
+        return false;
+    }
     return CURLE_OK == setOption(CURLOPT_CONNECTTIMEOUT, connectTimeout);
 }
 //------------------------------------------------------------------------
 bool CURLEx::setTimeout(int timeout) {
+    if (timeout <= 0) {
+        return false;
+    }
     return CURLE_OK == setOption(CURLOPT_TIMEOUT, timeout);
 }
 //------------------------------------------------------------------------
@@ -246,8 +252,8 @@ static bool curlReuqestConfigure(CURLEx* pCurl, const CurlRequest& request, std:
     if (!pCurl->setCookieFile(request.cookiefilename)) {
         return false;
     }
-    pCurl->setOption(CURLOPT_CONNECTTIMEOUT, request.connecttimeout);
-    pCurl->setOption(CURLOPT_TIMEOUT, request.timeout);
+    pCurl->setConnectTimeout(request.connecttimeout);
+    pCurl->setTimeout(request.timeout);
     if (!pCurl->setURL(request.url)) {
         return false;
     }
