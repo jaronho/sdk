@@ -57,7 +57,7 @@ function createCurve(points, ratio) {
         return this._partions.length;
     };
     /* 加入路径 */
-    curve.joinPath = function(ctx, isBegin, offset) {
+    curve.joinPath = function(ctx, isBegin, isPositiveSeq, offset) {
         if (undefined === ctx || null === ctx || 0 === this._partions.length) {
             return false;
         }
@@ -69,17 +69,41 @@ function createCurve(points, ratio) {
         if (isBegin) {
             ctx.beginPath();
         }
-        for (var i = 0; i < this._partions.length; ++i) {
-            var partion = this._partions[i];
-            if (0 === i && isBegin) {
-                ctx.moveTo(partion[0][0] + ox, partion[0][1] + oy);
-            } else {
-                ctx.lineTo(partion[0][0] + ox, partion[0][1] + oy);
+        if (isPositiveSeq) {
+            for (var i = 0; i < this._partions.length; ++i) {
+                var part1 = this._partions[i];
+                if (0 === i && isBegin) {
+                    ctx.moveTo(part1[0][0] + ox, part1[0][1] + oy);
+                } else {
+                    ctx.lineTo(part1[0][0] + ox, part1[0][1] + oy);
+                }
+                if (3 === part1.length) {
+                    ctx.quadraticCurveTo(part1[1][0] + ox, part1[1][1] + oy, part1[2][0] + ox, part1[2][1] + oy);
+                } else if (4 === part1.length) {
+                    ctx.bezierCurveTo(part1[1][0] + ox, part1[1][1] + oy, part1[2][0] + ox, part1[2][1] + oy, part1[3][0] + ox, part1[3][1] + oy);
+                }
             }
-            if (3 === partion.length) {
-                ctx.quadraticCurveTo(partion[1][0] + ox, partion[1][1] + oy, partion[2][0] + ox, partion[2][1] + oy);
-            } else if (4 === partion.length) {
-                ctx.bezierCurveTo(partion[1][0] + ox, partion[1][1] + oy, partion[2][0] + ox, partion[2][1] + oy, partion[3][0] + ox, partion[3][1] + oy);
+        } else {
+            for (var j = this._partions.length - 1; j >= 0; --j) {
+                var part2 = this._partions[j];
+                if (this._partions.length - 1 === j && isBegin) {
+                    if (3 === part2.length) {
+                        ctx.moveTo(part2[2][0] + ox, part2[2][1] + oy);
+                    } else if (4 === part2.length) {
+                        ctx.moveTo(part2[3][0] + ox, part2[3][1] + oy);
+                    }
+                } else {
+                    if (3 === part2.length) {
+                        ctx.lineTo(part2[2][0] + ox, part2[2][1] + oy);
+                    } else if (4 === part2.length) {
+                        ctx.lineTo(part2[3][0] + ox, part2[3][1] + oy);
+                    }
+                }
+                if (3 === part2.length) {
+                    ctx.quadraticCurveTo(part2[1][0] + ox, part2[1][1] + oy, part2[0][0] + ox, part2[0][1] + oy);
+                } else if (4 === part2.length) {
+                    ctx.bezierCurveTo(part2[2][0] + ox, part2[2][1] + oy, part2[1][0] + ox, part2[1][1] + oy, part2[0][0] + ox, part2[0][1] + oy);
+                }
             }
         }
         return true;
