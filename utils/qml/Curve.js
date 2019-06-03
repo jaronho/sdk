@@ -56,6 +56,34 @@ function createCurve(points, ratio) {
     curve.getPartionCount = function() {
         return this._partions.length;
     };
+    /* 加入路径 */
+    curve.joinPath = function(ctx, isBegin, offset) {
+        if (undefined === ctx || null === ctx || 0 === this._partions.length) {
+            return false;
+        }
+        var ox = 0, oy = 0;
+        if (offset instanceof Array && 'number' === typeof(offset[0]) && 'number' === typeof(offset[1])) {
+            ox = offset[0];
+            oy = offset[1];
+        }
+        if (isBegin) {
+            ctx.beginPath();
+        }
+        for (var i = 0; i < this._partions.length; ++i) {
+            var partion = this._partions[i];
+            if (0 === i && isBegin) {
+                ctx.moveTo(partion[0][0] + ox, partion[0][1] + oy);
+            } else {
+                ctx.lineTo(partion[0][0] + ox, partion[0][1] + oy);
+            }
+            if (3 === partion.length) {
+                ctx.quadraticCurveTo(partion[1][0] + ox, partion[1][1] + oy, partion[2][0] + ox, partion[2][1] + oy);
+            } else if (4 === partion.length) {
+                ctx.bezierCurveTo(partion[1][0] + ox, partion[1][1] + oy, partion[2][0] + ox, partion[2][1] + oy, partion[3][0] + ox, partion[3][1] + oy);
+            }
+        }
+        return true;
+    }
     /* 绘制坐标点 */
     curve.drawPoint = function(ctx, offset, style, radius) {
         if (undefined === ctx || null === ctx || 0 === this._points.length) {
@@ -79,32 +107,6 @@ function createCurve(points, ratio) {
             ctx.arc(pt[0] + ox, pt[1] + oy, radius, 0, 360, true);
             ctx.fill();
         }
-    };
-    /* 绘制路径 */
-    curve.drawPath = function(ctx, offset) {
-        if (undefined === ctx || null === ctx || 0 === this._partions.length) {
-            return false;
-        }
-        var ox = 0, oy = 0;
-        if (offset instanceof Array && 'number' === typeof(offset[0]) && 'number' === typeof(offset[1])) {
-            ox = offset[0];
-            oy = offset[1];
-        }
-        ctx.beginPath();
-        for (var i = 0; i < this._partions.length; ++i) {
-            var partion = this._partions[i];
-            if (0 === i) {
-                ctx.moveTo(partion[0][0] + ox, partion[0][1] + oy);
-            } else {
-                ctx.lineTo(partion[0][0] + ox, partion[0][1] + oy);
-            }
-            if (3 === partion.length) {
-                ctx.quadraticCurveTo(partion[1][0] + ox, partion[1][1] + oy, partion[2][0] + ox, partion[2][1] + oy);
-            } else if (4 === partion.length) {
-                ctx.bezierCurveTo(partion[1][0] + ox, partion[1][1] + oy, partion[2][0] + ox, partion[2][1] + oy, partion[3][0] + ox, partion[3][1] + oy);
-            }
-        }
-        return true;
     };
     if (points instanceof Array) {
         curve.update(points, ratio);
