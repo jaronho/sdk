@@ -77,18 +77,14 @@ Common.query = function(table, conditionFunc, target, isQueryMultiple) {
 // 深度拷贝
 Common.clone = function(obj) {
 	function copyObj(obj) {
-        if (undefined == obj || null == obj || 'object' != typeof(obj) || obj instanceof HTMLElement) {
-            return obj;
-        }
-        var newObj = obj.constructor ? new obj.constructor : {};
-        for (var key in obj) {
-            if (obj.hasOwnProperty(key)) {
-                newObj[key] = copyObj(obj[key]);
-            } else {
+        if (obj && 'object' == typeof(obj)) {
+            var newObj = obj instanceof Array ? [] : {};
+            for (var key in obj) {
                 newObj[key] = copyObj(obj[key]);
             }
+            return newObj;
         }
-        return newObj;
+        return obj;
 	}
 	return copyObj(obj);
 };
