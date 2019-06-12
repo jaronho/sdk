@@ -42,7 +42,7 @@ unsigned char* rgb24Grayscale(unsigned char* rgb24, int width, int height, int c
             r = (int)rgb24[index];
             g = (int)rgb24[index + 1];
             b = (int)rgb24[index + 2];
-            grayvalue = (int)(0.299 * r + 0.587 * g + 0.114 * b);	// 灰度值
+            grayvalue = (int)(0.299 * r + 0.587 * g + 0.114 * b);	/* 灰度值 */
             tmp[index] = tmp[index + 1] = tmp[index + 2] = (unsigned char)grayvalue;
             if (-1 == minValue || grayvalue < minValue) {
                 minValue = grayvalue;
@@ -68,7 +68,7 @@ int* rgb24GrayscaleHistogram(const unsigned char* rgb24, int width, int height, 
 	int i = 0, j = 0, index = 0;
 	int r = 0, g = 0, b = 0, grayvalue = 0;
     int* hist = (int*)calloc(256, sizeof(int));
-	if (grayscaled) {	// 已灰度化
+	if (grayscaled) {	/* 已灰度化 */
 		for (i = 0; i < height; ++i) {
 			for (j = 0; j < width; ++j) {
                 index = (i * width + j) * 3;
@@ -76,7 +76,7 @@ int* rgb24GrayscaleHistogram(const unsigned char* rgb24, int width, int height, 
 				hist[grayvalue]++;
 			}
 		}
-	} else {	// 未灰度化
+	} else {	/* 未灰度化 */
 		for (i = 0; i < height; ++i) {
 			for (j = 0; j < width; ++j) {
                 index = (i * width + j) * 3;
@@ -96,30 +96,30 @@ int rgb24BinarizationThresholdOTSU(const int* hist) {
 	int i = 0, t = 0, maxT = 0;
 	int sum = 0, count = 0;
     float u0 = 0, u1 = 0, w0 = 0, w1 = 0;
-	float devi, maxDevi = 0; // 方差及最大方差
+	float devi, maxDevi = 0; /* 方差及最大方差 */
 	for (i = 0; i < 256; ++i) {
 		sum += hist[i];
 	}
 	for (t = 0; t < 255; t++) {
 		count = 0;
 		u0 = 0;
-		// 阈值为t时,c0组的均值及产生的概率
+		/* 阈值为t时,c0组的均值及产生的概率 */
 		for (i = 0; i <= t; ++i) {
 			count += hist[i];
 			u0 += i * hist[i];
 		}
 		u0 = u0 / count;
 		w0 = (float)count/sum;
-		// 阈值为t时,c1组的均值及产生的概率
+		/* 阈值为t时,c1组的均值及产生的概率 */
 		u1 = 0;
 		for (i = t + 1; i < 256; ++i) {
 			u1 += i * hist[i];
 		}
 		u1 = u1 / (sum - count);
 		w1 = 1 - w0;
-		// 两类间方差
+		/* 两类间方差 */
 		devi = w0 * w1 * (u1 - u0) * (u1 - u0);
-		// 记录最大的方差及最佳位置
+		/* 记录最大的方差及最佳位置 */
 		if (devi > maxDevi) {
 			maxDevi = devi;
 			maxT = t;
