@@ -58,8 +58,8 @@ def main():
     if 1 == len(sys.argv):
         sys.argv.append("-h")
     parser = argparse.ArgumentParser(usage="用于杀死(占用,连接)指定IP地址和端口的进程",description="示例: python " + os.path.basename(__file__) + " -i 127.0.0.1 -p 21")
-    parser.add_argument('-i','--ip',metavar="",type=str,help="指定IP地址(必填), 例如: 127.0.0.1")
-    parser.add_argument('-p','--port',metavar="",type=int,help="指定端口(必填), 例如: 21")
+    parser.add_argument('-i','--ip',metavar="",type=str,help="指定IP地址(必填). 例如: 127.0.0.1")
+    parser.add_argument('-p','--port',metavar="",type=int,help="指定端口(必填). 例如: 21")
     parser.add_argument('-t','--target',metavar="",type=int,default=1,help="指定杀死目标(选填): 1-占用,2-连接. 默认值: 1")
     parser.parse_args()
     args = vars(parser.parse_args())
