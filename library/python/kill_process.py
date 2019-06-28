@@ -66,13 +66,13 @@ def main():
     args = vars(parser.parse_args())
     # step1:必填参数判断
     if not args["ip"]:
-        print("-ip 参数缺少")
+        print("--ip 参数缺少")
         return
     if not args["port"]:
-        print("-port 参数缺少")
+        print("--port 参数缺少")
         return
     if 1 != args["target"] and 2 != args["target"]:
-        print("-target 参数取值范围: [1, 2]")
+        print("--target 参数取值范围: [1, 2]")
         return
     # step2:杀死进程
     killByIpPort(args["ip"], args["port"], args["target"])
