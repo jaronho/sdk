@@ -15,6 +15,7 @@ class Action {
 public:
     /* 执行方式 */
     enum RunType {
+        RT_NONE,                /* 不允许使用syncRun和asyncRun执行 */
         RT_SYNC,                /* 只能同步执行 */
         RT_ASYNC,               /* 只能异步执行 */
         RT_BOTH                 /* 允许同步,异步执行 */
@@ -33,7 +34,8 @@ public:
      *          autoDestroy - true.动作自动销毁,false.动作需要手动销毁
      * Return:	0.成功
      *          1.act为空指针
-     *          2.act动作不能同步执行
+     *          2.act动作不允许使用syncRun和asyncRun执行
+     *          3.act动作不允许同步执行
      */
     static int syncRun(Action* act, bool autoDestroy = false);
 
@@ -44,7 +46,8 @@ public:
      *          callbackToMainThread - true.动作结束回调在主线程执行,false.动作回调在子线程执行
      * Return:	0.成功
      *          1.act为空指针
-     *          2.act动作不能异步执行
+     *          2.act动作不允许使用syncRun和asyncRun执行
+     *          3.act动作不允许异步执行
      */
     static int asyncRun(Action* act, bool alone = false, bool callbackToMainThread = true);
 

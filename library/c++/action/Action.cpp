@@ -75,8 +75,11 @@ int Action::syncRun(Action* act, bool autoDestroy) {
     if (!act) {
         return 1;
     }
-    if (RT_SYNC != act->mRunType && RT_BOTH != act->mRunType) {
+    if (RT_NONE == act->mRunType) {
         return 2;
+    }
+    if (RT_SYNC != act->mRunType && RT_BOTH != act->mRunType) {
+        return 3;
     }
     act->onProcess();
     if (act->mFinishCallback) {
@@ -93,8 +96,11 @@ int Action::asyncRun(Action* act, bool alone, bool callbackToMainThread) {
     if (!act) {
         return 1;
     }
-    if (RT_ASYNC != act->mRunType && RT_BOTH != act->mRunType) {
+    if (RT_NONE == act->mRunType) {
         return 2;
+    }
+    if (RT_ASYNC != act->mRunType && RT_BOTH != act->mRunType) {
+        return 3;
     }
     act->mAsyncCallbackToMainThread = callbackToMainThread;
     if (alone) {
