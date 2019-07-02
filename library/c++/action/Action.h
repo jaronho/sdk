@@ -30,13 +30,13 @@ public:
     /*
      * Brief:	异步执行(在子线程中执行,动作自动销毁)
      * Param:	alone - true.在独立的线程中运行,false.在预设的线程中排队运行
-     *          callInMainThread - true.动作结束回调在主线程执行,false.动作回调在子线程执行
+     *          callbackToMainThread - true.动作结束回调在主线程执行,false.动作回调在子线程执行
      * Return:	void
      */
-    static void asyncRun(Action* act, bool alone = false, bool callInMainThread = true);
+    static void asyncRun(Action* act, bool alone = false, bool callbackToMainThread = true);
 
     /*
-     * Brief:	异步监听(在主线程中循环执行),若动作有回调函数,则回调函数将在主线程中被调用
+     * Brief:	异步监听(需要在主线程中循环调用),若动作有回调函数,则回调函数将在主线程中被调用
      * Param:	void
      * Return:	void
      */
@@ -48,8 +48,8 @@ private:
     static void groupHandler(void);
 
 private:
-    ACTION_FINISH_CALLBACK mFinishCallback;
-    bool mCallInMainThread;
+    ACTION_FINISH_CALLBACK mFinishCallback;             /* 动作结束回调函数 */
+    bool mAsyncCallbackToMainThread;                    /* 异步执行:是否在主线程执行回调 */
 };
 
 #endif	/* _ACTION_H_ */

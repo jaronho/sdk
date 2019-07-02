@@ -9,19 +9,19 @@
 #include <mutex>
 #include <thread>
 
-static std::mutex sProcessMutex;
-static std::list<Action*> sProcessList;
-static std::mutex sFinishMutex;
-static std::list<Action*> sFinishList;
+static std::mutex sAsyncProcessMutex;
+static std::list<Action*> sAsyncProcessList;
+static std::mutex sAsyncFinishMutex;
+static std::list<Action*> sAsyncFinishList;
 
 void Action::aloneHandler(Action* act) {
     if (act) {
         act->onProcess();
         if (act->mFinishCallback) {
-            if (act->mCallInMainThread) {
-                sFinishMutex.lock();
-                sFinishList.push_back(act);
-                sFinishMutex.unlock();
+            if (act->mAsyncCallbackToMainThread) {
+                sAsyncFinishMutex.lock();
+                sAsyncFinishList.push_back(act);
+                sAsyncFinishMutex.unlock();
             } else {
                 act->mFinishCallback(act);
                 delete act;
@@ -37,19 +37,19 @@ void Action::aloneHandler(Action* act) {
 void Action::groupHandler(void) {
     while (true) {
         Action* act = nullptr;
-        sProcessMutex.lock();
-        if (sProcessList.size() > 0) {
-            act = *(sProcessList.begin());
-            sProcessList.pop_front();
+        sAsyncProcessMutex.lock();
+        if (sAsyncProcessList.size() > 0) {
+            act = *(sAsyncProcessList.begin());
+            sAsyncProcessList.pop_front();
         }
-        sProcessMutex.unlock();
+        sAsyncProcessMutex.unlock();
         if (act) {
             act->onProcess();
             if (act->mFinishCallback) {
-                if (act->mCallInMainThread) {
-                    sFinishMutex.lock();
-                    sFinishList.push_back(act);
-                    sFinishMutex.unlock();
+                if (act->mAsyncCallbackToMainThread) {
+                    sAsyncFinishMutex.lock();
+                    sAsyncFinishList.push_back(act);
+                    sAsyncFinishMutex.unlock();
                 } else {
                     act->mFinishCallback(act);
                     delete act;
@@ -84,9 +84,9 @@ Action* Action::syncRun(Action* act, bool autoDestroy) {
     return act;
 }
 
-void Action::asyncRun(Action* act, bool alone, bool callInMainThread) {
+void Action::asyncRun(Action* act, bool alone, bool callbackToMainThread) {
     if (act) {
-        act->mCallInMainThread = callInMainThread;
+        act->mAsyncCallbackToMainThread = callbackToMainThread;
         if (alone) {
             std::thread aloneThread(aloneHandler, act);
             aloneThread.detach();
@@ -97,21 +97,21 @@ void Action::asyncRun(Action* act, bool alone, bool callInMainThread) {
                 std::thread groupThread(groupHandler);
                 groupThread.detach();
             }
-            sProcessMutex.lock();
-            sProcessList.push_back(act);
-            sProcessMutex.unlock();
+            sAsyncProcessMutex.lock();
+            sAsyncProcessList.push_back(act);
+            sAsyncProcessMutex.unlock();
         }
     }
 }
 
 void Action::asyncListen(void) {
     Action* act = nullptr;
-    sFinishMutex.lock();
-    if (sFinishList.size() > 0) {
-        act = *(sFinishList.begin());
-        sFinishList.pop_front();
+    sAsyncFinishMutex.lock();
+    if (sAsyncFinishList.size() > 0) {
+        act = *(sAsyncFinishList.begin());
+        sAsyncFinishList.pop_front();
     }
-    sFinishMutex.unlock();
+    sAsyncFinishMutex.unlock();
     if (act) {
         if (act->mFinishCallback) {
             act->mFinishCallback(act);
