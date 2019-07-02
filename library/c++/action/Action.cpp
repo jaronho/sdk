@@ -64,44 +64,54 @@ void Action::groupHandler(void) {
     }
 }
 
-Action::Action(ACTION_FINISH_CALLBACK callback) {
+Action::Action(ACTION_FINISH_CALLBACK callback, RunType type) {
     mFinishCallback = callback;
+    mRunType = type;
 }
 
 Action::~Action(void) {}
 
-Action* Action::syncRun(Action* act, bool autoDestroy) {
-    if (act) {
-        act->onProcess();
-        if (act->mFinishCallback) {
-            act->mFinishCallback(act);
-        }
-        if (autoDestroy) {
-            delete act;
-            act = nullptr;
-        }
+int Action::syncRun(Action* act, bool autoDestroy) {
+    if (!act) {
+        return 1;
     }
-    return act;
+    if (RT_SYNC != act->mRunType && RT_BOTH != act->mRunType) {
+        return 2;
+    }
+    act->onProcess();
+    if (act->mFinishCallback) {
+        act->mFinishCallback(act);
+    }
+    if (autoDestroy) {
+        delete act;
+        act = nullptr;
+    }
+    return 0;
 }
 
-void Action::asyncRun(Action* act, bool alone, bool callbackToMainThread) {
-    if (act) {
-        act->mAsyncCallbackToMainThread = callbackToMainThread;
-        if (alone) {
-            std::thread aloneThread(aloneHandler, act);
-            aloneThread.detach();
-        } else {
-            static bool sInitGroupThread = true;
-            if (sInitGroupThread) {
-                sInitGroupThread = false;
-                std::thread groupThread(groupHandler);
-                groupThread.detach();
-            }
-            sAsyncProcessMutex.lock();
-            sAsyncProcessList.push_back(act);
-            sAsyncProcessMutex.unlock();
-        }
+int Action::asyncRun(Action* act, bool alone, bool callbackToMainThread) {
+    if (!act) {
+        return 1;
     }
+    if (RT_ASYNC != act->mRunType && RT_BOTH != act->mRunType) {
+        return 2;
+    }
+    act->mAsyncCallbackToMainThread = callbackToMainThread;
+    if (alone) {
+        std::thread aloneThread(aloneHandler, act);
+        aloneThread.detach();
+    } else {
+        static bool sInitGroupThread = true;
+        if (sInitGroupThread) {
+            sInitGroupThread = false;
+            std::thread groupThread(groupHandler);
+            groupThread.detach();
+        }
+        sAsyncProcessMutex.lock();
+        sAsyncProcessList.push_back(act);
+        sAsyncProcessMutex.unlock();
+    }
+    return 0;
 }
 
 void Action::asyncListen(void) {

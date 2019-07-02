@@ -13,7 +13,14 @@
 
 class Action {
 public:
-    Action(ACTION_FINISH_CALLBACK callback = nullptr);
+    /* 执行方式 */
+    enum RunType {
+        RT_SYNC,                /* 只能同步执行 */
+        RT_ASYNC,               /* 只能异步执行 */
+        RT_BOTH                 /* 允许同步,异步执行 */
+    };
+public:
+    Action(ACTION_FINISH_CALLBACK callback = nullptr, RunType type = RT_BOTH);
     virtual ~Action(void);
 
 protected:
@@ -22,18 +29,24 @@ protected:
 public:
     /*
      * Brief:	同步执行(在函数调用线程执行)
-     * Param:	autoDestroy - true.动作自动销毁,false.动作需要手动销毁
-     * Return:	Action*,若autoDestroy为true,则返回空指针
+     * Param:	act - 动作
+     *          autoDestroy - true.动作自动销毁,false.动作需要手动销毁
+     * Return:	0.成功
+     *          1.act为空指针
+     *          2.act动作不能同步执行
      */
-    static Action* syncRun(Action* act, bool autoDestroy = false);
+    static int syncRun(Action* act, bool autoDestroy = false);
 
     /*
      * Brief:	异步执行(在子线程中执行,动作自动销毁)
-     * Param:	alone - true.在独立的线程中运行,false.在预设的线程中排队运行
+     * Param:	act - 动作
+     *          alone - true.在独立的线程中运行,false.在预设的线程中排队运行
      *          callbackToMainThread - true.动作结束回调在主线程执行,false.动作回调在子线程执行
-     * Return:	void
+     * Return:	0.成功
+     *          1.act为空指针
+     *          2.act动作不能异步执行
      */
-    static void asyncRun(Action* act, bool alone = false, bool callbackToMainThread = true);
+    static int asyncRun(Action* act, bool alone = false, bool callbackToMainThread = true);
 
     /*
      * Brief:	异步监听(需要在主线程中循环调用),若动作有回调函数,则回调函数将在主线程中被调用
@@ -49,6 +62,7 @@ private:
 
 private:
     ACTION_FINISH_CALLBACK mFinishCallback;             /* 动作结束回调函数 */
+    RunType mRunType;                                   /* 动作执行方式 */
     bool mAsyncCallbackToMainThread;                    /* 异步执行:是否在主线程执行回调 */
 };
 
