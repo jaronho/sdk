@@ -10,9 +10,10 @@ import re
 import sys
 
 """ FTP登录 """
-def ftpLogin(host, port, user, password):                          
+def ftpLogin(host, port, user="anonymous", password="", pasv=True):                          
     ftp = FTP()
     try:
+        ftp.set_pasv(pasv)      # True.被动模式,False.主动模式
         ftp.connect(host, port)
         ftp.encoding = "utf-8"
     except:
@@ -54,11 +55,12 @@ def ftpDownload(ftp, remotePath, localPath, filterBeforeCB=None, filterAfterCB=N
             else:   # 文件类型
                 remoteFilename = remotePath + fileList[index]
                 remoteFileSize = int(line.split()[4])
+                remoteFileModifyTime = int(ftp.sendcmd("MDTM " + remoteFilename).split()[1])
                 localFilename = localPath + fileList[index]
                 # 判断是否允许下载
                 allowDownload = True
                 if hasattr(filterBeforeCB, '__call__'):
-                    allowDownload = filterBeforeCB(ftp, remoteFilename, remoteFileSize, localFilename)
+                    allowDownload = filterBeforeCB(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename)
                 if True == allowDownload:
                     try:
                         localFile = open(localFilename, 'wb')       # 打开本地的文件
@@ -69,14 +71,14 @@ def ftpDownload(ftp, remotePath, localPath, filterBeforeCB=None, filterAfterCB=N
                     else:
                         # 判断是否需要删除
                         if hasattr(filterAfterCB, '__call__'):
-                            filterAfterCB(ftp, remoteFilename, remoteFileSize, localFilename)
+                            filterAfterCB(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename)
             index += 1
 
 """ 过滤策略 """
 g_filter_policy = {}
 
 """ 下载前过滤 """
-def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, localFilename):
+def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     if not g_filter_policy: # 过滤策略为空
         return True
     # step1:过滤大小
@@ -92,7 +94,7 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, localFilename):
     return True
 
 """ 下载后过滤 """
-def filterAfterDownload(ftp, remoteFilename, remoteFileSize, localFilename):
+def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     if not g_filter_policy: # 过滤策略为空
         return
     # step1:杀毒过滤
@@ -160,8 +162,8 @@ def main():
                                      usage=os.path.basename(__file__) + " [-h] [-i IP] [-p PORT] [-u USERNAME} [-P PASSWORD] [-r REMOTE_PATH]")
     parser.add_argument('-i','--ip',metavar="",type=str,help="指定FTP服务器地址(必填). 例如: 127.0.0.1")
     parser.add_argument('-p','--port',metavar="",type=int,help="指定FTP服务器端口(必填). 例如: 21")
-    parser.add_argument('-u',"--username",metavar="",type=str,help="指定用户名(必填). 例如: root")
-    parser.add_argument('-P',"--password",metavar="",type=str,help="指定密码(必填). 例如: 123456")
+    parser.add_argument('-u',"--username",metavar="",type=str,help="指定用户名(选填). 例如: root. 默认匿名登录")
+    parser.add_argument('-P',"--password",metavar="",type=str,help="指定密码(选填). 例如: 123456. 匿名登录时不必填")
     parser.add_argument('-r',"--remote_path",metavar="",type=str,default="/",help="指定要同步的FTP路径(选填). 例如: 根路径/, 子路径/tmp/. 默认值: /")
     parser.add_argument('-l',"--local_path",metavar="",type=str,help="指定本地同步路径(必填). 例如: F:/ftp_tmp")
     parser.add_argument('-f',"--file",metavar="",type=str,help="指定本地策略文件(选填). 例如: F:/ics/policy.json")
@@ -173,12 +175,6 @@ def main():
         return
     if not args["port"]:
         print("--port 参数缺少")
-        return
-    if not args["username"]:
-        print("--username 参数缺少")
-        return
-    if not args["password"]:
-        print("--password 参数缺少")
         return
     if not args["local_path"]:
         print("--local_path 参数缺少")
