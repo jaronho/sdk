@@ -6,7 +6,13 @@ import platform
 import sys
 import time
 
-""" 查找进程ID """
+"""
+ * Brief:   根据IP和端口查找关联的进程ID
+ * Param:   ip - 地址,例如: 127.0.0.1
+ *          port - 端口,例如: 21
+ *          target - 指定目标(选填): 1-占用,2-连接,默认查找占用目标
+ * Return:  进程ID列表
+"""
 def findPids(ip, port, target=1):
     if 1 != target and 2 != target:
         print("target 参数取值范围: [1, 2]")
@@ -31,7 +37,11 @@ def findPids(ip, port, target=1):
                 pids.append(info[6].split('/')[0])
     return pids
 
-""" 杀死进程ID """
+"""
+ * Brief:   杀死进程ID
+ * Param:   pids - 进程ID列表
+ * Return:  空
+"""
 def killPids(pids):
     if "Windows" == platform.system():
         for pid in pids:
@@ -41,7 +51,14 @@ def killPids(pids):
         for pid in pids:
             os.popen('kill -9 {0}'.format(int(pid)))
 
-""" 杀死进程(根据IP地址和端口) """
+"""
+ * Brief:   杀死进程(根据IP地址和端口)
+ * Param:   ip - 地址,例如: 127.0.0.1
+ *          port - 端口,例如: 21
+ *          target - 指定目标(选填): 1-占用,2-连接,默认查找占用目标
+ *          doPrint - 是否打印消息,默认打印
+ * Return:  被杀死的进程ID列表
+"""
 def killByIpPort(ip, port, target=1, doPrint=True):
     pids = findPids(ip, port, target)
     if 0 == len(pids):
