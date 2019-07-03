@@ -1,7 +1,7 @@
 #!/usr/bin/python2
 # -*- coding: UTF-8 -*-
+from sdk import ftp_client
 from sdk import kill_process
-from ftplib import FTP
 import argparse
 import json
 import math
@@ -9,79 +9,20 @@ import os
 import re
 import sys
 
-""" FTP登录 """
-def ftpLogin(host, port, user="anonymous", password="", pasv=True):                          
-    ftp = FTP()
-    try:
-        ftp.set_pasv(pasv)      # True.被动模式,False.主动模式
-        ftp.connect(host, port)
-        ftp.encoding = "utf-8"
-    except:
-        print(sys.exc_info())
-    else:
-        try:
-            ftp.login(user, password)
-        except:
-            print(sys.exc_info())
-        else:
-            return ftp
-
-""" FTP目录递归下载 """
-def ftpDownload(ftp, remotePath, localPath, filterBeforeCB=None, filterAfterCB=None):
-    # step1: 对路径补位分隔符
-    if False == remotePath.endswith("/"):
-        remotePath += "/"
-    if False == localPath.endswith("/"):
-        localPath += "/"
-    # step2: 切换目录
-    try:
-        ftp.cwd(remotePath)
-        if False == os.path.exists(localPath):
-            os.makedirs(localPath)
-    except:
-        print(sys.exc_info(), "目录错误")
-    else:
-        # step3: 遍历目录和文件
-        lineList = []
-        ftp.dir(lineList.append)
-        fileList = ftp.nlst()
-        index = 0
-        for line in lineList:
-            if "d" in line.split()[0]:  # 目录类型
-                remoteSubPath = remotePath + fileList[index]
-                localSubPath = localPath + fileList[index]
-                ftpDownload(ftp, remoteSubPath, localSubPath, filterBeforeCB, filterAfterCB)
-                ftp.cwd("..")
-            else:   # 文件类型
-                remoteFilename = remotePath + fileList[index]
-                remoteFileSize = int(line.split()[4])
-                remoteFileModifyTime = int(ftp.sendcmd("MDTM " + remoteFilename).split()[1])
-                localFilename = localPath + fileList[index]
-                # 判断是否允许下载
-                allowDownload = True
-                if hasattr(filterBeforeCB, '__call__'):
-                    allowDownload = filterBeforeCB(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename)
-                if True == allowDownload:
-                    try:
-                        localFile = open(localFilename, 'wb')       # 打开本地的文件
-                        ftp.retrbinary('RETR %s' % remoteFilename, localFile.write) # 用二进制的方式将FTP文件写到本地文件
-                        localFile.close()
-                    except:
-                        print(sys.exc_info(), "文件下载出错", remoteFilename)
-                    else:
-                        # 判断是否需要删除
-                        if hasattr(filterAfterCB, '__call__'):
-                            filterAfterCB(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename)
-            index += 1
-
 """ 过滤策略 """
 g_filter_policy = {}
+
+""" 文件列表搜索完毕 """
+def fileListSearchOver(list):
+    # 删除本地文件
+    for item in list:
+        print(item)
 
 """ 下载前过滤 """
 def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     if not g_filter_policy: # 过滤策略为空
         return True
-    # step1:过滤大小
+    # step1:过滤文件大小
     sizeK = math.ceil(remoteFileSize / 1024)
     if sizeK < g_filter_policy["sizeMinKB"] or sizeK > g_filter_policy["sizeMaxKB"]:
         print("文件大小超出范围:", localFilename)
@@ -91,6 +32,8 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
     if len(g_filter_policy["subFixAllow"]) > 0 and not extName in g_filter_policy["subFixAllow"]:
         print("文件后缀名不匹配:", localFilename)
         return False
+    # step3:过滤文件缓存时间(当前时间-文件修改时间)
+    # step4:过滤相关文件(根据文件修改时间是否一致判断)
     return True
 
 """ 下载后过滤 """
@@ -132,6 +75,7 @@ def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTim
         print("内容触发了黑名单:", localFilename)
         os.remove(localFilename)
         return
+    # step6:更新本地文件列表文件
     print("文件下载成功:", localFilename)
 
 """ 解析策略文件 """
@@ -184,13 +128,13 @@ def main():
         global g_filter_policy
         g_filter_policy = parsePolicyFile(args["file"], args["ip"], args["port"])
     # step3:FTP流程
-    ftp = ftpLogin(args["ip"], args["port"], args["username"], args["password"])
+    ftp = ftp_client.ftpLogin(args["ip"], args["port"], args["username"], args["password"])
     if not ftp:
         print("FTP 登录失败")
         return
     print("FTP 登录成功")
     print("FTP 文件同步中...")
-    ftpDownload(ftp, args["remote_path"], args["local_path"], filterBeforeDownload, filterAfterDownload)
+    ftp_client.ftpDownload(ftp, args["remote_path"], args["local_path"], fileListSearchOver, filterBeforeDownload, filterAfterDownload)
     print("FTP 文件同步结束")
     ftp.quit()
     print("FTP 退出")
