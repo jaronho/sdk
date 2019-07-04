@@ -4,6 +4,7 @@
  * Brief:	number base convert
  **********************************************************************/
 #include "BaseConvert.h"
+#include <math.h>
 #include <algorithm>
 /*********************************************************************/
 bool BaseConvert::isBin(const std::string& binStr) {
