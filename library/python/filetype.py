@@ -153,11 +153,11 @@ def isFileHeadWith(file, hexStr, offset=0):
     return False
 
 """
- * Brief:   获取文件类型
+ * Brief:   猜测文件类型
  * Param:   filename - 文件名
  * Return:  文件类型
 """
-def filetype(filename):
+def guess(filename):
     try:
         with open(filename, 'rb') as fp:
             tl = typeList()
@@ -184,7 +184,7 @@ def main():
         return
     # step2:打开文件
     try:
-        print(filetype(args["file"]))
+        print(guess(args["file"]))
     except:
         print(sys.exc_info(), args["file"])
 
