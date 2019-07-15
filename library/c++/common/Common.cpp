@@ -990,3 +990,11 @@ std::vector<std::string> Common::shellCmd(const std::string& cmd, unsigned int s
     return results;
 }
 /*********************************************************************/
+int Common::randomNetPort(void) {
+    static const int PORT_START = 1025;
+    static const int PORT_END = 65534;
+    time_t tm;
+    srand((unsigned int)time(&tm));
+    return (rand() % (PORT_END - PORT_START + 1) + PORT_START);
+}
+/*********************************************************************/

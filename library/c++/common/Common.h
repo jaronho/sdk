@@ -531,6 +531,13 @@ public:
     static std::vector<std::string> shellCmd(const std::string& cmd, unsigned int sleepMillisecondWhenOk = 0);
 
     /*
+     * Brief:   get random network port between [1025, 65534]
+     * Param:   void
+     * Return:  int
+     */
+    static int randomNetPort(void);
+
+    /*
      * Brief:	get data from a specify array, e.g.
      *              std::vector<int> vec;
      *              size_t pg = Common::getArray<int>(vec, 1, 3);
