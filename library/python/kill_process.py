@@ -24,7 +24,7 @@ def findPids(ip, port, target=1):
         for line in lines:
             info = line.strip().split()
             if (5 == len(info)) and \
-               ((1 == target and "LISTENING" == info[3]) or \
+               ((1 == target and "LISTENING" == info[3] and matchStr == info[1]) or \
                 (2 == target and "ESTABLISHED" == info[3] and matchStr == info[2])):
                 pids.append(info[4])
     elif "Linux" == platform.system():
@@ -32,7 +32,7 @@ def findPids(ip, port, target=1):
         for line in lines:
             info = line.strip().split()
             if (7 == len(info)) and \
-               ((1 == target and "LISTEN" == info[5]) or \
+               ((1 == target and "LISTEN" == info[5] and matchStr == info[3]) or \
                 (2 == target and "ESTABLISHED" == info[5] and matchStr == info[4])):
                 pids.append(info[6].split('/')[0])
     return pids
