@@ -188,7 +188,7 @@ int Action::delayRun(Action* act, unsigned long msec) {
         return 3;
     }
     act->mNowRunType = RT_DELAY;
-    act->mDelayTime = msec;
+    act->mDelayTime = msec * 1000;
     static bool sInitDelayGroupThread = true;
     if (sInitDelayGroupThread) {
         sInitDelayGroupThread = false;
@@ -196,7 +196,7 @@ int Action::delayRun(Action* act, unsigned long msec) {
         delayGroupThread.detach();
     }
     sDelayProcessMutex.lock();
-    sDelayProcessMap[act->getId()] = act;
+    sDelayProcessMap.insert(std::pair<unsigned long long, Action*>(act->getId(), act));
     sDelayProcessMutex.unlock();
     return 0;
 }

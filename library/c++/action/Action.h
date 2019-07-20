@@ -95,7 +95,7 @@ private:
     RunType mAllowRunType;                              /* 动作允许的执行方式 */
     RunType mNowRunType;                                /* 动作当前执行方式 */
     bool mAsyncCallbackToMainThread;                    /* 异步执行:是否在主线程执行回调 */
-    unsigned long mDelayTime;                           /* 延迟执行:时间(毫秒) */
+    unsigned long mDelayTime;                           /* 延迟执行:时间(微秒) */
 };
 
 #endif	/* _ACTION_H_ */
