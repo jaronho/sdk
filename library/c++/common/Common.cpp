@@ -941,15 +941,17 @@ bool Common::setSystemTime(int year, int mon, int mday, int hour, int min, int s
 }
 /*********************************************************************/
 unsigned long long Common::generateUID(void) {
-    static unsigned long long s_year = 0, s_mon = 0, s_mday = 0, s_hour = 0, s_min = 0, s_sec = 0, s_index = 1;
-    int year = 0, mon = 0, mday = 0, hour = 0, min = 0, sec = 0;
-    getDate(&year, &mon, &mday, &hour, &min, &sec, NULL, NULL);
-    if (year == s_year && mon == s_mon && mday == s_mday && hour == s_hour && min == s_min && sec == s_sec) {
-        s_index++;
+    static int sY = 0, sM = 0, sD = 0, sH = 0, sMM = 0, sS = 0, sIdx = 1;
+    time_t t = time(nullptr);
+    struct tm* dt = localtime(&t);
+    int year = 1900 + dt->tm_year, mon = 1 + dt->tm_mon, mday = dt->tm_mday, hour = dt->tm_hour, min = dt->tm_min, sec = dt->tm_sec;
+    if (year == sY && mon == sM && mday == sD && hour == sH && min == sMM && sec == sS) {
+        sIdx++;
     } else {
-        s_year = year, s_mon = mon, s_mday = mday, s_hour = hour, s_min = min, s_sec = sec, s_index = 1;
+        sY = year; sM = mon; sD = mday; sH = hour; sMM = min; sS = sec; sIdx = 1;
     }
-    return s_year * 10000000000000 + s_mon * 100000000000 + s_mday * 1000000000 + s_hour * 10000000 + s_min * 100000 + s_sec * 1000 + s_index;
+    return (unsigned long long)sY * 10000000000000 + (unsigned long long)sM * 100000000000 + (unsigned long long)sD * 1000000000 + 
+           (unsigned long long)sH * 10000000 + (unsigned long long)sMM * 100000 + (unsigned long long)sS * 1000 + (unsigned long long)sIdx;
 }
 /*********************************************************************/
 std::string Common::generateFilename(const std::string& extname) {
