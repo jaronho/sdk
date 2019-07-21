@@ -11,6 +11,7 @@ import os
 import platform
 import re
 import sys
+import syslog
 
 """ 远程目录 """
 g_remote_path = ""
@@ -100,6 +101,7 @@ def checkLocalFile(remoteFilename, localFilename):
                     break
         if False == matchWhite:
             print("内容不匹配白名单:", remoteFilename)
+            syslog.syslog("内容不匹配白名单: " + remoteFilename)
             return False
         # 过滤黑名单
         matchBlack = False
@@ -109,17 +111,22 @@ def checkLocalFile(remoteFilename, localFilename):
                 break
         if True == matchBlack:
             print("内容触发了黑名单:", remoteFilename)
+            syslog.syslog("内容触发了黑名单: " + remoteFilename)
             return False
     else:
         # 过滤文件类型
         isFileTypeAllow = False
         with open(localFilename, 'rb') as fp:
             for fileAllow in g_filter_policy["fileTypeAllow"]:
-                if filetype.isFileHeadWith(fp, fileAllow["typeBytes"], 0):
+                offset = 0
+                if fileAllow.has_key("offset"):
+                    offset = fileAllow["offset"]
+                if filetype.isFileHeadWith(fp, fileAllow["typeBytes"], offset):
                     isFileTypeAllow = True
                     break
         if False == isFileTypeAllow:
             print("文件类型不被允许:", remoteFilename)
+            syslog.syslog("文件类型不被允许: " + remoteFilename)
             return False
     return True
 
@@ -148,6 +155,7 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
     dayDiff = (datetime.datetime.now() - datetime.datetime(rYear, rMonth, rDay)).days
     if g_cache_days > 0 and dayDiff > g_cache_days:
         print("文件超过缓存时间:", remoteFilename)
+        syslog.syslog("文件超过缓存时间: " + remoteFilename)
         removeWasteFile(localFilename)
         return False
     # step2:过滤策略
@@ -156,12 +164,14 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
         sizeK = math.ceil(remoteFileSize / 1024)
         if sizeK < g_filter_policy["sizeMinKB"] or sizeK > g_filter_policy["sizeMaxKB"]:
             print("文件大小超出范围:", remoteFilename)
+            syslog.syslog("文件大小超出范围: " + remoteFilename)
             removeWasteFile(localFilename)
             return False
         # 过滤文件后缀名
         extName = os.path.splitext(remoteFilename)[-1][1:]
         if len(g_filter_policy["subFixAllow"]) > 0 and not extName in g_filter_policy["subFixAllow"]:
             print("文件后缀名不匹配:", remoteFilename)
+            syslog.syslog("文件后缀名不匹配: " + remoteFilename)
             removeWasteFile(localFilename)
             return False
     # step3:过滤相同文件(根据文件大小和修改时间是否一致判断)
@@ -180,6 +190,12 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
 """ 下载后过滤 """
 def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     # step1:杀毒过滤
+    results = os.popen("python antivirus.py -p " + localFilename).read()
+    if len(results) > 0:
+        print("文件发现病毒内容:", remoteFilename)
+        syslog.syslog("文件发现病毒内容: " + remoteFilename)
+        os.remove(localFilename)
+        return
     # step2:过滤策略
     if not checkLocalFile(remoteFilename, localFilename):
         os.remove(localFilename)
@@ -221,6 +237,7 @@ def main():
     if len(clientPids) > 0:
         print("当前有进程正在FTP同步中")
         return
+    syslog.openlog("[ics_client:ftp_client_start.py] ", syslog.LOG_PID)
     # step3:规范化目录格式
     global g_remote_path
     g_remote_path = args["remote_path"]
@@ -246,6 +263,7 @@ def main():
     ftp = ftp_client.ftpLogin(args["ip"], args["port"], args["username"], args["password"])
     if not ftp:
         print("FTP 登录失败")
+        syslog.closelog()
         return
     print("FTP 登录成功")
     print("FTP 文件同步中...")
@@ -253,6 +271,7 @@ def main():
     print("FTP 文件同步结束")
     ftp.quit()
     print("FTP 退出")
+    syslog.closelog()
 
 if "__main__" == __name__:
     main()
