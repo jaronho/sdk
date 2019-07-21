@@ -21,34 +21,36 @@ from pyftpdlib.servers import ThreadedFTPServer
 
 """
  * Brief:   开启FTP服务器
- * Param:   dir - 服务器目录
+ * Param:   anoDir - 匿名用户允许访问的目录,例如: /home/
+ *          anoPerm - 匿名用户允许访问的权限,例如: elr
  *          ip - 地址(选填),例如: 127.0.0.1
  *          port - 端口(选填),例如: 21
  *          pasvPortBegin - 被动端口范围起始值(选填),例如: 60000
  *          pasvPortEnd - 被动端口范围结束值(选填),例如: 65535
- *          users - 用户列表(选填),默认匿名登录, 例如: [{"name":"test1","password":"123456","permission":"elr"},{"name":"test2","password":"123456","permission":"elr"}]
+ *          users - 用户列表(选填),默认没有, 例如: [{"name":"test1","pwd":"123456","dir":"/home/","perm":"elr"},{"name":"test2","pwd":"123456","dir":"/home/","perm":"elr"}]
  *          maxCons - 最大连接数(选填),例如: 512
  *          maxConsPerIp - 每个IP最大连接数(选填),0:没有限制,默认为0
  * Return:  空
 """
-def ftpStart(dir, ip="127.0.0.1", port=21, pasvPortBegin=60000, pasvPortEnd=65535, users=[], maxCons=512, maxConsPerIp=0):
+def ftpStart(anoDir="", anoPerm="elr", ip="127.0.0.1", port=21, pasvPortBegin=60000, pasvPortEnd=65535, users=[], maxCons=512, maxConsPerIp=0):
     try:
         # step1:实例化用户授权管理
         authorizer = DummyAuthorizer()
-        if 0 == len(users):  # 添加:匿名用户,任何人都可以访问(只读权限)
-            authorizer.add_anonymous(dir, perm="elr")
-        else:   # 添加:用户名,密码,指定目录,权限
-            for user in users:
-                authorizer.add_user(user["name"], user["password"], dir, perm=user["permission"])
-        # step2:实例化FTPHandler
+        # step2:添加匿名用户,任何人都可以访问
+        if len(anoDir) > 0:
+            authorizer.add_anonymous(anoDir, perm=anoPerm)
+        # step3:添加非匿名用户名,密码,指定目录,权限
+        for user in users:
+            authorizer.add_user(user["name"], user["pwd"], user["dir"], perm=user["perm"])
+        # step4:实例化FTPHandler
         handler = FTPHandler
         handler.authorizer = authorizer
         handler.passive_ports = range(pasvPortBegin, pasvPortEnd)
-        # step3:配置服务器
+        # step5:配置服务器
         server = ThreadedFTPServer((ip, port), handler)
         server.max_cons = maxCons
         server.max_cons_per_ip = maxConsPerIp
-        # step4:开启服务器
+        # step6:开启服务器
         server.serve_forever()
     except:
         print(sys.exc_info())

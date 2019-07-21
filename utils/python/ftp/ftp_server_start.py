@@ -46,15 +46,17 @@ def main():
             password = namepassword[1]
             if 0 == len(password):
                 password = name
-            users.append({"name":name,"password":password,"permission":"elr"})
+            users.append({"name":name,"pwd":password,"dir":args["dir"],"perm":"elr"})
             print("允许访问用户: " + name + ", 密码: " + password + ", 权限: elr")
+    anoDir = "";
     if 0 == len(users):
-        print("允许匿名访问")
+        anoDir = args["dir"];
+        print("允许匿名访问, 权限: elr")
     # step3:开启服务器
     pids = kill_process.killByIpPort(args["ip"], args["port"], 1, False)
     if len(pids) > 0:
         print("杀死占用IP和端口的进程:", pids)
-    ftp_server.ftpStart(dir=args["dir"], ip=args["ip"], pasvPortBegin=args["pasv_port_begin"], pasvPortEnd=args["pasv_port_end"], port=args["port"], users=users)
+    ftp_server.ftpStart(anoDir=anoDir, anoPerm="elr", ip=args["ip"], pasvPortBegin=args["pasv_port_begin"], pasvPortEnd=args["pasv_port_end"], port=args["port"], users=users)
 
 if "__main__" == __name__:
     main()
