@@ -15,8 +15,8 @@ def main():
     parser.add_argument('-d','--dir',metavar="",type=str,help="指定FTP服务器目录(必填). 例如: E:/")
     parser.add_argument('-i','--ip',metavar="",type=str,default="127.0.0.1",help="指定FTP服务器地址(选填). 默认值: 127.0.0.1")
     parser.add_argument('-p','--port',metavar="",type=int,default=21,help="指定FTP服务器端口(选填). 默认值: 21")
-    parser.add_argument('-p1','--pasv_port_begin',metavar="",type=int,default=60000,help="指定FTP服务器被动端口范围起始值(选填). 默认值: 60000")
-    parser.add_argument('-p2','--pasv_port_end',metavar="",type=int,default=65535,help="指定FTP服务器被动端口范围结束值(选填). 默认值: 65535")
+    parser.add_argument('-p1','--pasv_port_begin',metavar="",type=int,default=60000,help="指定FTP服务器被动模式开放的起始端口(选填). 默认值: 60000")
+    parser.add_argument('-p2','--pasv_port_end',metavar="",type=int,default=65535,help="指定FTP服务器被动模式开放的截止端口(选填). 默认值: 65535")
     parser.add_argument('-u','--users',metavar="",type=str,help="""指定允许访问用户列表,若不设置则任何人都可以访问(选填), 例如:
                                                                    test01:123456,test02:,test03:123123
                                                                    用户名和密码之间由冒号分隔,每个用户之间用英文逗号分割,

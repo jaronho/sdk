@@ -25,8 +25,8 @@ from pyftpdlib.servers import ThreadedFTPServer
  *          anoPerm - 匿名用户允许访问的权限,例如: elr
  *          ip - 地址(选填),例如: 127.0.0.1
  *          port - 端口(选填),例如: 21
- *          pasvPortBegin - 被动端口范围起始值(选填),例如: 60000
- *          pasvPortEnd - 被动端口范围结束值(选填),例如: 65535
+ *          pasvPortBegin - 被动模式开放的起始端口(选填),例如: 60000
+ *          pasvPortEnd - 被动模式开放的截止端口(选填),例如: 65535
  *          users - 用户列表(选填),默认没有, 例如: [{"name":"test1","pwd":"123456","dir":"/home/","perm":"elr"},{"name":"test2","pwd":"123456","dir":"/home/","perm":"elr"}]
  *          maxCons - 最大连接数(选填),例如: 512
  *          maxConsPerIp - 每个IP最大连接数(选填),0:没有限制,默认为0
