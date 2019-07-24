@@ -39,24 +39,38 @@ def modifySysctlConf():
     with open("/etc/sysctl.conf", "r") as p, open("/etc/sysctl.conf.bak", "w") as q:
         for line in p:
             if line.find(ip6tables_key) >= 0:
+                if ip6tables_flag:
+                    continue
                 line = ip6tables_str + "\n"
                 ip6tables_flag = True
             elif line.find(iptables_key) >= 0:
+                if iptables_flag:
+                    continue
                 line = iptables_str + "\n"
                 iptables_flag = True
             elif line.find(arptables_key) >= 0:
+                if arptables_flag:
+                    continue
                 line = arptables_str + "\n"
                 arptables_flag = True
             elif line.find(ip_forward_key) >= 0:
+                if ip_forward_flag:
+                    continue
                 line = ip_forward_str + "\n"
                 ip_forward_flag = True
             elif line.find(ip_nonlocal_bind_key) >= 0:
+                if ip_nonlocal_bind_flag:
+                    continue
                 line = ip_nonlocal_bind_str + "\n"
                 ip_nonlocal_bind_flag = True
             elif line.find(default_rp_filter_key) >= 0:
+                if default_rp_filter_flag:
+                    continue
                 line = default_rp_filter_str + "\n"
                 default_rp_filter_flag = True
             elif line.find(all_rp_filter_key) >= 0:
+                if all_rp_filter_flag:
+                    continue
                 line = all_rp_filter_str + "\n"
                 all_rp_filter_flag = True
             q.write(line)
@@ -105,20 +119,12 @@ def modifyNetworkCard(netport1, netport2, bridge, address, netmask, gateway, dns
     with open("/etc/network/interfaces", "w") as fp:
         fp.write(buff)
 
-""" 添加iptables策略 """
-def addIptablesPolicy(ip, port, localIp, localPort, pasvPort):
-    # step1: 清除所有iptables策略
-    os.popen("iptables -F")
-    # step2: 添加iptables策略
-    os.popen("iptables -t nat -A PREROUTING -d " + ip + " -p tcp -m tcp --dport " + str(port) + " -j DNAT --to-destination " + localIp + ":" + str(localPort))
-    os.popen("iptables -t nat -A PREROUTING -d " + ip + " -p tcp -m tcp --dport " + str(pasvPort) + " -j DNAT --to-destination " + localIp + ":" + str(pasvPort))
-
 """ 主入口函数 """
 def main():
     if 1 == len(sys.argv):
         sys.argv.append("-h")
     parser = argparse.ArgumentParser(description="用于初始化FTP网桥配置",
-                                     usage=os.path.basename(__file__) + " [-h] [-n1 NETPORT1] [-n2 NETPORT2] [-a ADDRESS] [-m NETMASK] [-g GATEWAY]"
+                                     usage=os.path.basename(__file__) + " [-h] [-n1 NETPORT1] [-n2 NETPORT2] [-a ADDRESS] [-m NETMASK] [-g GATEWAY]")
     parser.add_argument('-n1','--netport1',metavar="",type=str,help="指定网口1(必填). 例如: enp1s0")
     parser.add_argument('-n2','--netport2',metavar="",type=str,help="指定网口2(必填). 例如: enp2s0")
     parser.add_argument('-a','--address',metavar="",type=str,help="指定IP地址(必填). 例如: 192.168.3.107")
@@ -144,11 +150,14 @@ def main():
         return
     # step1: 加载网桥模块
     if False == loadCoreModule("br_netfilter"):
+        print("加载网桥模块 br_netfilter 失败")
         return
     # step2: 加载iptables模块
     if False == loadCoreModule("ip_nat_ftp"):
+        print("加载iptables模块 ip_nat_ftp 失败")
         return
     if False == loadCoreModule("ip_conntrack_ftp"):
+        print("加载iptables模块 ip_conntrack_ftp 失败")
         return
     # step3: 修改配置
     modifySysctlConf()
