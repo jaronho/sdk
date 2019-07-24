@@ -12,18 +12,20 @@ def getPolicyNum(ip, port, localIp, localPort):
         return 0
     return int(lines[0].split()[0])
 
-""" 添加iptables策略 """
-def addIptablesPolicy(ip, port, localIp, localPort, pasvPort):
-    if 0 == getPolicyNum(ip, port, localIp, localPort):
-        os.popen("iptables -t nat -A PREROUTING -d " + ip + " -p tcp -m tcp --dport " + str(port) + " -j DNAT --to-destination " + localIp + ":" + str(localPort))
-    if 0 == getPolicyNum(ip, port, localIp, pasvPort):
-        os.popen("iptables -t nat -A PREROUTING -d " + ip + " -p tcp -m tcp --dport " + str(pasvPort) + " -j DNAT --to-destination " + localIp + ":" + str(pasvPort))
+""" 删除iptables策略 """
+def delIptablesPolicy(ip, port, localIp, localPort, pasvPort):
+    num1 = getPolicyNum(ip, port, localIp, localPort)
+    if num1 > 0:
+        os.popen("iptables -t nat -D PREROUTING " + str(num1))
+    num2 = getPolicyNum(ip, port, localIp, pasvPort)
+    if num2 > 0:
+        os.popen("iptables -t nat -D PREROUTING " + str(num2))
 
 """ 主入口函数 """
 def main():
     if 1 == len(sys.argv):
         sys.argv.append("-h")
-    parser = argparse.ArgumentParser(description="用于添加FTP桥接策略",
+    parser = argparse.ArgumentParser(description="用于删除FTP桥接策略",
                                      usage=os.path.basename(__file__) + " [-i IP] [-p PORT] [-li LOCAL_IP] [-lp LOCAL_PORT] [-pp PASV_PORT]")
     parser.add_argument('-i','--ip',metavar="",type=str,help="指定远端FTP服务器IP地址(必填). 例如: 192.168.3.254")
     parser.add_argument('-p','--port',metavar="",type=int,help="指定远端FTP服务器端口(必填). 例如: 2124")
@@ -48,7 +50,7 @@ def main():
     if not args["pasv_port"]:
         print("--pasv_port 参数缺少")
         return
-    addIptablesPolicy(args["ip"], args["port"], args["local_ip"], args["local_port"], args["pasv_port"])
+    delIptablesPolicy(args["ip"], args["port"], args["local_ip"], args["local_port"], args["pasv_port"])
 
 if "__main__" == __name__:
     main()

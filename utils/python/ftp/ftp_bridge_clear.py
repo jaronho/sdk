@@ -12,7 +12,7 @@ def main():
                                      usage=os.path.basename(__file__) + " [-h]")
     parser.parse_args()
     args = vars(parser.parse_args())
-    os.popen("iptables -F")
+    os.popen("iptables -t nat -F")
 
 if "__main__" == __name__:
     main()
