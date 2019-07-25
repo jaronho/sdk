@@ -23,8 +23,8 @@ g_checksum_filename = ""
 g_checksum_list = []
 """ 缓存天数 """
 g_cache_days = 0
-""" 过滤策略 """
-g_filter_policy = {}
+""" 过滤策略列表 """
+g_filter_policys = []
 
 """ 解析校验文件 """
 def parseChecksumFile(filename):
@@ -63,7 +63,7 @@ def parsePolicyFile(filename, ip, port):
             return
         for filePolicy in jsonData["data"]["netFilePolicy"]["Policies"]:
             if ip == filePolicy["serverIp"] and port == filePolicy["serverPort"]:
-                return [filePolicy["cacheDays"], filePolicy["filterPolicy"][0]]
+                return [filePolicy["cacheDays"], filePolicy["filterPolicy"]]
     except:
         print(sys.exc_info(), "策略文件", filename, "解析出错")
     return [0, []]
@@ -77,9 +77,18 @@ def removeWasteFile(localFilename):
             os.remove(localFilename)
             break
 
+""" 根据后缀名获取策略 """
+def getPolicyBySuffix(remoteFilename):
+    for policy in g_filter_policys:
+        # 过滤文件后缀名
+        extName = os.path.splitext(remoteFilename)[-1][1:]
+        if len(policy["subFixAllow"]) > 0 and extName in policy["subFixAllow"]:
+            return policy
+    return None
+
 """ 检测本地文件是否合法 """
-def checkLocalFile(remoteFilename, localFilename):
-    if not g_filter_policy:
+def checkLocalFile(remoteFilename, localFilename, policy):
+    if not policy:
         return True
     # 过滤文本文件内容
     isTextFile = False
@@ -92,10 +101,10 @@ def checkLocalFile(remoteFilename, localFilename):
             fileContent = fp.read()
         # 过滤白名单
         matchWhite = False
-        if not g_filter_policy["contentWhiteList"]:
+        if not policy["contentWhiteList"]:
             matchWhite = True
         else:
-            for white in g_filter_policy["contentWhiteList"]:
+            for white in policy["contentWhiteList"]:
                 if 0 == len(white["regx"]) or re.match(white["regx"], fileContent):
                     matchWhite = True
                     break
@@ -105,7 +114,7 @@ def checkLocalFile(remoteFilename, localFilename):
             return False
         # 过滤黑名单
         matchBlack = False
-        for black in g_filter_policy["contentBlackList"]:
+        for black in policy["contentBlackList"]:
             if len(black["regx"]) > 0 and re.match(black["regx"], fileContent):
                 matchBlack = True
                 break
@@ -117,7 +126,7 @@ def checkLocalFile(remoteFilename, localFilename):
         # 过滤文件类型
         isFileTypeAllow = False
         with open(localFilename, 'rb') as fp:
-            for fileAllow in g_filter_policy["fileTypeAllow"]:
+            for fileAllow in policy["fileTypeAllow"]:
                 offset = 0
                 if fileAllow.has_key("offset"):
                     offset = fileAllow["offset"]
@@ -159,27 +168,27 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
         removeWasteFile(localFilename)
         return False
     # step2:过滤策略
-    if g_filter_policy:
-        # 过滤文件大小
-        sizeK = math.ceil(remoteFileSize / 1024)
-        if sizeK < g_filter_policy["sizeMinKB"] or sizeK > g_filter_policy["sizeMaxKB"]:
-            print("文件大小超出范围:", remoteFilename)
-            syslog.syslog("文件大小超出范围: " + remoteFilename)
-            removeWasteFile(localFilename)
-            return False
+    policy = None
+    if len(g_filter_policys) > 0:
+        policy = getPolicyBySuffix(remoteFilename)
         # 过滤文件后缀名
-        extName = os.path.splitext(remoteFilename)[-1][1:]
-        if len(g_filter_policy["subFixAllow"]) > 0 and not extName in g_filter_policy["subFixAllow"]:
+        if not policy:
             print("文件后缀名不匹配:", remoteFilename)
             syslog.syslog("文件后缀名不匹配: " + remoteFilename)
             removeWasteFile(localFilename)
+            return False
+        # 过滤文件大小
+        sizeK = math.ceil(remoteFileSize / 1024)
+        if sizeK < policy["sizeMinKB"] or sizeK > policy["sizeMaxKB"]:
+            print("文件大小超出范围:", remoteFilename)
+            syslog.syslog("文件大小超出范围: " + remoteFilename)
             return False
     # step3:过滤相同文件(根据文件大小和修改时间是否一致判断)
     for i in range(len(g_checksum_list)):
         checksum = g_checksum_list[i]
         if localFilename == checksum["name"]:
             if remoteFileSize == checksum["size"] and remoteFileModifyTime == checksum["mtime"]:
-                if checkLocalFile(remoteFilename, localFilename):
+                if checkLocalFile(remoteFilename, localFilename, policy):
                     return False
             g_checksum_list.pop(i)
             saveChecksumFile(g_checksum_filename, g_checksum_list)
@@ -197,7 +206,8 @@ def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTim
         os.remove(localFilename)
         return
     # step2:过滤策略
-    if not checkLocalFile(remoteFilename, localFilename):
+    policy = getPolicyBySuffix(remoteFilename)
+    if not checkLocalFile(remoteFilename, localFilename, policy):
         os.remove(localFilename)
         return
     # step3:更新校验文件
@@ -257,8 +267,8 @@ def main():
         policyInfo = parsePolicyFile(args["file"], args["ip"], args["port"])
         global g_cache_days
         g_cache_days = policyInfo[0]
-        global g_filter_policy
-        g_filter_policy = policyInfo[1]
+        global g_filter_policys
+        g_filter_policys = policyInfo[1]
     # step6:FTP流程
     ftp = ftp_client.ftpLogin(args["ip"], args["port"], args["username"], args["password"])
     if not ftp:

@@ -7,9 +7,8 @@ import sys
 
 """ 加载内核模块 """
 def loadCoreModule(module):
-    os.popen("modprobe " + module)
-    lines = os.popen("lsmod | grep " + module).readlines()
-    if 0 == len(lines):
+    lines = os.popen("modprobe " + module).readlines()
+    if len(lines) > 0:
         return False
     return True
 

@@ -56,7 +56,7 @@ def main():
     pids = kill_process.killByIpPort(args["ip"], args["port"], 1, False)
     if len(pids) > 0:
         print("杀死占用IP和端口的进程:", pids)
-    ftp_server.ftpStart(anoDir=anoDir, anoPerm="elr", ip=args["ip"], pasvPortBegin=args["pasv_port_begin"], pasvPortEnd=args["pasv_port_end"], port=args["port"], users=users)
+    ftp_server.ftpStart(anoDir=anoDir, anoPerm="elr", ip=args["ip"], port=args["port"], pasvPortBegin=args["pasv_port_begin"], pasvPortEnd=args["pasv_port_end"], users=users)
 
 if "__main__" == __name__:
     main()
