@@ -24,7 +24,7 @@ def main():
     if 1 == len(sys.argv):
         sys.argv.append("-h")
     parser = argparse.ArgumentParser(description="用于添加FTP桥接策略",
-                                     usage=os.path.basename(__file__) + " [-i IP] [-p PORT] [-li LOCAL_IP] [-lp LOCAL_PORT] [-pp PASV_PORT]")
+                                     usage=os.path.basename(__file__) + " [-h] [-i IP] [-p PORT] [-li LOCAL_IP] [-lp LOCAL_PORT] [-pp PASV_PORT]")
     parser.add_argument('-i','--ip',metavar="",type=str,help="指定远端FTP服务器IP地址(必填). 例如: 192.168.3.254")
     parser.add_argument('-p','--port',metavar="",type=int,help="指定远端FTP服务器端口(必填). 例如: 2124")
     parser.add_argument('-li','--local_ip',metavar="",type=str,help="指定本机FTP服务器IP地址(必填). 例如: 192.168.3.107")
