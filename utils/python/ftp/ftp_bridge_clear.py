@@ -9,10 +9,10 @@ def main():
     if 1 == len(sys.argv):
         sys.argv.append("-h")
     parser = argparse.ArgumentParser(description="用于清空FTP桥接策略",
-                                     usage=os.path.basename(__file__) + " [-h]"
+                                     usage=os.path.basename(__file__) + " [-h]")
     parser.parse_args()
     args = vars(parser.parse_args())
-    os.popen("iptables -F")
+    os.popen("iptables -t nat -F")
 
 if "__main__" == __name__:
     main()
