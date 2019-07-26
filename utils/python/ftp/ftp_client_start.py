@@ -30,10 +30,11 @@ g_filter_policys = []
 def parseChecksumFile(filename):
     try:
         jsonData = []
-        with open(filename, 'r') as fp:
-            jsonContent = fp.read()
-            if len(jsonContent) > 0:
-                jsonData = json.loads(jsonContent.replace("\\", "\\\\"))
+        if os.path.exists(filename):
+            with open(filename, 'r') as fp:
+                jsonContent = fp.read()
+                if len(jsonContent) > 0:
+                    jsonData = json.loads(jsonContent.replace("\\", "\\\\"))
         return jsonData
     except:
         print(str(sys.exc_info()) + " 校验文件 " + filename + " 解析出错")
@@ -52,18 +53,19 @@ def saveChecksumFile(filename, checksumList):
 def parsePolicyFile(filename, ip, port):
     try:
         jsonData = {}
-        with open(filename, 'r') as fp:
-            jsonContent = fp.read()
-            jsonData = json.loads(jsonContent.replace("\\", "\\\\"))
-        if not jsonData["data"]:
-            return
-        if not jsonData["data"]["netFilePolicy"]:
-            return
-        if not jsonData["data"]["netFilePolicy"]["Policies"]:
-            return
-        for filePolicy in jsonData["data"]["netFilePolicy"]["Policies"]:
-            if ip == filePolicy["serverIp"] and port == filePolicy["serverPort"]:
-                return [filePolicy["cacheDays"], filePolicy["filterPolicy"]]
+        if os.path.exists(filename):
+            with open(filename, 'r') as fp:
+                jsonContent = fp.read()
+                jsonData = json.loads(jsonContent.replace("\\", "\\\\"))
+            if not jsonData["data"]:
+                return
+            if not jsonData["data"]["netFilePolicy"]:
+                return
+            if not jsonData["data"]["netFilePolicy"]["Policies"]:
+                return
+            for filePolicy in jsonData["data"]["netFilePolicy"]["Policies"]:
+                if ip == filePolicy["serverIp"] and str(port) == str(filePolicy["serverPort"]):
+                    return [filePolicy["cacheDays"], filePolicy["filterPolicy"]]
     except:
         print(str(sys.exc_info()) + " 策略文件 " + filename + " 解析出错")
     return [0, []]
@@ -97,7 +99,7 @@ def checkLocalFile(remoteFilename, localFilename, policy):
             isTextFile = True
     if True == isTextFile:
         fileContent = ""
-        with open(localFilename, 'rt', encoding='utf-8') as fp:
+        with open(localFilename, 'rt') as fp:
             fileContent = fp.read()
         # 过滤白名单
         matchWhite = False
@@ -193,7 +195,7 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
             g_checksum_list.pop(i)
             saveChecksumFile(g_checksum_filename, g_checksum_list)
             os.remove(localFilename)
-            break
+            return False
     return True
 
 """ 下载后过滤 """

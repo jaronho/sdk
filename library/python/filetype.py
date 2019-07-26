@@ -3,6 +3,7 @@
 import argparse
 import math
 import os
+import struct
 import sys
 
 """
@@ -99,34 +100,68 @@ def typeList():
     ]
 
 """
+ * Brief:   字节转十六进制字符串
+ * Param:   bytes - 字节流
+ * Return:  字符串
+"""
+def bytes2hex(bytes):
+    num = len(bytes)
+    hexstr = u''
+    for i in range(num):
+        c = u'%x' % bytes[i]
+        if len(c) % 2:
+            hexstr += u'0'
+        hexstr += c
+    return hexstr.upper()
+
+"""
+ * Brief:   读取文件字节
+ * Param:   fp - 文件句柄
+ *          byteNum - 字节数
+ *          offset - 偏移字节数
+ *          doPrintE - 是否打印异常信息
+ * Return:  字节数组
+"""
+def readFileBytes(fp, byteNum, offset=0,  doPrintE=True):
+    bytes = None
+    try:
+        fp.seek(offset)
+        bytes = struct.unpack_from('B' * byteNum, fp.read(byteNum))
+    except:
+        if doPrintE:
+            print(sys.exc_info())
+    return bytes
+
+"""
  * Brief:   判断文件是否以指定字节开头
  * Param:   file - 文件名或者文件句柄
  *          hexStr - 十六进制字符串.例如: FFD8FF 表示 JPEG
  *          offset - 偏移字节数
+ *          doPrintE - 是否打印异常信息
  * Return:  布尔值
 """
-def isFileHeadWith(file, hexStr, offset=0):
+def isFileHeadWith(file, hexStr, offset=0, doPrintE=True):
     try:
         hexStr = ''.join(hexStr.split())
-        byteNum = math.ceil(len(hexStr) / 2)
+        byteNum = (int)(math.ceil(len(hexStr) / 2))
         if isinstance(file, str):
             with open(file, 'rb') as fp:
-                fp.seek(offset)
-                headHex = fp.read(byteNum).hex().upper()
+                headHex = bytes2hex(readFileBytes(fp, byteNum))
         else:
-            file.seek(offset)
-            headHex = file.read(byteNum).hex().upper()
+            headHex = bytes2hex(readFileBytes(file, byteNum))
         return headHex.startswith(hexStr.upper())
     except:
-        pass
+        if doPrintE:
+            print(sys.exc_info())
     return False
 
 """
  * Brief:   猜测文件类型
  * Param:   filename - 文件名
+ *          doPrintE - 是否打印异常信息
  * Return:  文件类型
 """
-def guess(filename):
+def guess(filename, doPrintE=True):
     try:
         with open(filename, 'rb') as fp:
             tl = typeList()
@@ -135,7 +170,8 @@ def guess(filename):
                     if isFileHeadWith(fp, hexCode, info["offset"]):
                         return info
     except:
-        pass
+        if doPrintE:
+            print(sys.exc_info())
     return None
 
 """ 主入口函数 """
