@@ -78,7 +78,7 @@ def getPolicyBySuffix(remoteFilename):
     for policy in g_filter_policys:
         # 过滤文件后缀名
         extName = os.path.splitext(remoteFilename)[-1][1:]
-        if len(policy["subFixAllow"]) > 0 and extName in policy["subFixAllow"]:
+        if len(policy["subFixAllow"]) > 0 and len(extName) > 0 and extName in policy["subFixAllow"]:
             return policy
     return None
 
