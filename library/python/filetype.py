@@ -155,7 +155,7 @@ def main():
     try:
         print(guess(args["file"]))
     except:
-        print(sys.exc_info(), args["file"])
+        print(str(sys.exc_info()) + " " + args["file"])
 
 if "__main__" == __name__:
     main()

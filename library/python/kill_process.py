@@ -15,8 +15,7 @@ import time
 """
 def findPids(ip, port, target=1):
     if 1 != target and 2 != target:
-        print("target 参数取值范围: [1, 2]")
-        return
+        return None
     matchStr = ip + ":" + str(port)
     pids = []
     if "Windows" == platform.system():
@@ -96,3 +95,4 @@ def main():
 
 if "__main__" == __name__:
     main()
+

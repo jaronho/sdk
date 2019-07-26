@@ -9,6 +9,8 @@ import re
  * Return:  布尔值
 """
 def isIPv4(ip):
+    if not isinstance(ip, str):
+        return False
     compileIp = re.compile('^(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|[1-9])\.(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)\.(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)\.(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)$')
     if compileIp.match(ip):
         return True

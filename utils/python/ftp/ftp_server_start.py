@@ -36,7 +36,7 @@ def main():
         try:
             userList = args["users"].split(",")
         except:
-            print(sys.exc_info(), "用户列表格式错误, 请检查", args["users"])
+            print(str(sys.exc_info()) + " 用户列表格式错误, 请检查 " + args["users"])
             return
     users = []
     for user in userList:
@@ -55,7 +55,7 @@ def main():
     # step3:开启服务器
     pids = kill_process.killByIpPort(args["ip"], args["port"], 1, False)
     if len(pids) > 0:
-        print("杀死占用IP和端口的进程:", pids)
+        print("杀死占用IP和端口的进程: " + str(pids))
     ftp_server.ftpStart(anoDir=anoDir, anoPerm="elr", ip=args["ip"], port=args["port"], pasvPortBegin=args["pasv_port_begin"], pasvPortEnd=args["pasv_port_end"], users=users)
 
 if "__main__" == __name__:

@@ -130,7 +130,7 @@ def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterBeforeCB=None
                 ftp.retrbinary('RETR %s' % remoteFilename, localFile.write) # 用二进制的方式将FTP文件写到本地文件
                 localFile.close()
             except:
-                print(sys.exc_info(), "文件下载出错", remoteFilename)
+                print(str(sys.exc_info()) + " 文件下载出错 " + remoteFilename)
             else:
                 # 判断是否需要删除
                 if hasattr(filterAfterCB, '__call__'):
