@@ -57,13 +57,7 @@ def parsePolicyFile(filename, ip, port):
             with open(filename, 'r') as fp:
                 jsonContent = fp.read()
                 jsonData = json.loads(jsonContent.replace("\\", "\\\\"))
-            if not jsonData["data"]:
-                return
-            if not jsonData["data"]["netFilePolicy"]:
-                return
-            if not jsonData["data"]["netFilePolicy"]["Policies"]:
-                return
-            for filePolicy in jsonData["data"]["netFilePolicy"]["Policies"]:
+            for filePolicy in jsonData["netFilePolicy"]["Policies"]:
                 if ip == filePolicy["serverIp"] and str(port) == str(filePolicy["serverPort"]):
                     return [filePolicy["cacheDays"], filePolicy["filterPolicy"]]
     except:
@@ -184,6 +178,7 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
         if sizeK < policy["sizeMinKB"] or sizeK > policy["sizeMaxKB"]:
             print("文件大小超出范围: " + remoteFilename)
             syslog.syslog("文件大小超出范围: " + remoteFilename)
+            removeWasteFile(localFilename)
             return False
     # step3:过滤相同文件(根据文件大小和修改时间是否一致判断)
     for i in range(len(g_checksum_list)):
@@ -205,7 +200,7 @@ def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTim
     if len(results) > 0:
         print("文件发现病毒内容: " + remoteFilename)
         syslog.syslog("文件发现病毒内容: " + remoteFilename)
-        os.remove(localFilename)
+        removeWasteFile(localFilename)
         return
     # step2:过滤策略
     policy = getPolicyBySuffix(remoteFilename)
