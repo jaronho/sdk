@@ -244,7 +244,8 @@ def main():
     if len(clientPids) > 0:
         print("当前有进程正在FTP同步中")
         return
-    syslog.openlog("[ics_client:ftp_client_start.py] ", syslog.LOG_PID)
+    syslog.openlog("[ics_client:ftp_sync] ", syslog.LOG_PID)
+    syslog.syslog("准备同步FTP " + args["ip"] + ":" + str(args["port"]))
     # step3:规范化目录格式
     global g_remote_path
     g_remote_path = args["remote_path"]
@@ -270,14 +271,17 @@ def main():
     ftp = ftp_client.ftpLogin(args["ip"], args["port"], args["username"], args["password"])
     if not ftp:
         print("FTP 登录失败")
+        syslog.syslog("FTP 登录失败")
         syslog.closelog()
         return
     print("FTP 登录成功")
     print("FTP 文件同步中...")
+    syslog.syslog("FTP 文件同步中...")
     ftp_client.ftpDownload(ftp, g_remote_path, g_local_path, fileListSearchOver, filterBeforeDownload, filterAfterDownload)
     print("FTP 文件同步结束")
     ftp.quit()
     print("FTP 退出")
+    syslog.syslog("FTP 退出")
     syslog.closelog()
 
 if "__main__" == __name__:

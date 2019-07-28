@@ -17,7 +17,7 @@ def delIptablesPolicy(ip, port, localIp, localPort, pasvPort):
     num1 = getPolicyNum(ip, port, localIp, localPort)
     if num1 > 0:
         os.popen("iptables -t nat -D PREROUTING " + str(num1))
-    num2 = getPolicyNum(ip, port, localIp, pasvPort)
+    num2 = getPolicyNum(ip, pasvPort, localIp, pasvPort)
     if num2 > 0:
         os.popen("iptables -t nat -D PREROUTING " + str(num2))
 
