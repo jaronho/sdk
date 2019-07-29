@@ -54,14 +54,16 @@ public:
     static HttpClient* getInstance(void);	// 获取单例
     static void destroyInstance(void);		// 删除单例
     void asyncListen(void);                 // 每帧循环监听(用于异步响应)
-    void get(const std::string& url,
+    void get(const std::string& sslCaFilename,
+             const std::string& url,
              const std::map<std::string, std::string>* headers = NULL,
              HTTP_REQUEST_CALLBACK callback = NULL,
              void* param = NULL,
              int connecttimeout = 30,
              int timeout = 60,
              bool async = false);           // GET请求
-    void post(const std::string& url,
+    void post(const std::string& sslCaFilename,
+              const std::string& url,
               const std::map<std::string, std::string>* headers,
               const unsigned char* data,
               unsigned int dataLength,
@@ -70,7 +72,8 @@ public:
               int connecttimeout = 30,
               int timeout = 60,
               bool async = false);          // POST请求
-    void postForm(const std::string& url,
+    void postForm(const std::string& sslCaFilename,
+                  const std::string& url,
                   const std::map<std::string, std::string>* headers = NULL,
                   const std::map<std::string, std::string>* contents = NULL,
                   const std::map<std::string, std::string>* filenames = NULL,

@@ -160,13 +160,13 @@ extern void errRecord(const std::string& str);
 extern void httpAsyncListen(void);
 
 /* http请求GET */
-extern void httpGet(const std::string& url, const std::map<std::string, std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async);
+extern void httpGet(const std::string& sslCaFilename, const std::string& url, const std::map<std::string, std::string>* headers, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async);
 
 /* http请求POST */
-extern void httpPost(const std::string& url, const std::map<std::string, std::string>* headers, const unsigned char* data, unsigned int dataLength, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async);
+extern void httpPost(const std::string& sslCaFilename, const std::string& url, const std::map<std::string, std::string>* headers, const unsigned char* data, unsigned int dataLength, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async);
 
 /* http请求POST表单 */
-extern void httpPostForm(const std::string& url, const std::map<std::string, std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async);
+extern void httpPostForm(const std::string& sslCaFilename, const std::string& url, const std::map<std::string, std::string>* headers, const std::map<std::string, std::string>* contents, const std::map<std::string, std::string>* filenames, HTTP_REQUEST_CALLBACK callback, void* param, int connecttimeout, int timeout, bool async);
 #endif
 
 #ifdef GLOBAL_MODULE_HTTP_SERVER

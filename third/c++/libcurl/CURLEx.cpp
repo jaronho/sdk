@@ -271,7 +271,7 @@ static bool curlReuqestConfigure(CURLEx* pCurl, const CurlRequest& request, std:
 }
 //------------------------------------------------------------------------
 bool curlGet(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc, void* progressStream, int* curlCode, int* responseCode, std::string* errorBuffer) {
-    CURLEx curlObj;
+    CURLEx curlObj(request.sslcafilename);
     if (!curlReuqestConfigure(&curlObj, request, headerStream, bodyFunc, bodyStream, progressFunc, progressStream)) {
         return false;
     }
@@ -282,7 +282,7 @@ bool curlGet(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callb
 }
 //------------------------------------------------------------------------
 bool curlPost(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc, void* progressStream, int* curlCode, int* responseCode, std::string* errorBuffer) {
-    CURLEx curlObj;
+    CURLEx curlObj(request.sslcafilename);
     if (!curlReuqestConfigure(&curlObj, request, headerStream, bodyFunc, bodyStream, progressFunc, progressStream)) {
         return false;
     }
@@ -294,7 +294,7 @@ bool curlPost(CurlRequest& request, std::vector<char>* headerStream, CURLEx_call
 }
 //------------------------------------------------------------------------
 bool curlPostForm(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc, void* progressStream, int* curlCode, int* responseCode, std::string* errorBuffer) {
-    CURLEx curlObj;
+    CURLEx curlObj(request.sslcafilename);
     if (!curlReuqestConfigure(&curlObj, request, headerStream, bodyFunc, bodyStream, progressFunc, progressStream)) {
         return false;
     }
@@ -322,7 +322,7 @@ bool curlPostForm(CurlRequest& request, std::vector<char>* headerStream, CURLEx_
 }
 //------------------------------------------------------------------------
 bool curlPut(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc, void* progressStream, int* curlCode, int* responseCode, std::string* errorBuffer) {
-    CURLEx curlObj;
+    CURLEx curlObj(request.sslcafilename);
     if (!curlReuqestConfigure(&curlObj, request, headerStream, bodyFunc, bodyStream, progressFunc, progressStream)) {
         return false;
     }
@@ -334,7 +334,7 @@ bool curlPut(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callb
 }
 //------------------------------------------------------------------------
 bool curlDelete(CurlRequest& request, std::vector<char>* headerStream, CURLEx_callback bodyFunc, void* bodyStream, CURLEx_progress progressFunc, void* progressStream, int* curlCode, int* responseCode, std::string* errorBuffer) {
-    CURLEx curlObj;
+    CURLEx curlObj(request.sslcafilename);
     if (!curlReuqestConfigure(&curlObj, request, headerStream, bodyFunc, bodyStream, progressFunc, progressStream)) {
         return false;
     }

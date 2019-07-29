@@ -171,7 +171,8 @@ void HttpClient::asyncListen(void) {
     recvResponse();
 }
 //------------------------------------------------------------------------
-void HttpClient::get(const std::string& url,
+void HttpClient::get(const std::string& sslCaFilename,
+                     const std::string& url,
                      const std::map<std::string, std::string>* headers,
                      HTTP_REQUEST_CALLBACK callback,
                      void* param,
@@ -179,6 +180,7 @@ void HttpClient::get(const std::string& url,
                      int timeout,
                      bool async) {
     HttpObject* obj = new HttpObject();
+    obj->sslcafilename = sslCaFilename;
     obj->connecttimeout = connecttimeout;
     obj->timeout = timeout;
     obj->url = url;
@@ -198,7 +200,8 @@ void HttpClient::get(const std::string& url,
     }
 }
 //------------------------------------------------------------------------
-void HttpClient::post(const std::string& url,
+void HttpClient::post(const std::string& sslCaFilename,
+                      const std::string& url,
                       const std::map<std::string, std::string>* headers,
                       const unsigned char* data,
                       unsigned int dataLength,
@@ -208,6 +211,7 @@ void HttpClient::post(const std::string& url,
                       int timeout,
                       bool async) {
     HttpObject* obj = new HttpObject();
+    obj->sslcafilename = sslCaFilename;
     obj->connecttimeout = connecttimeout;
     obj->timeout = timeout;
     obj->url = url;
@@ -228,7 +232,8 @@ void HttpClient::post(const std::string& url,
     }
 }
 //------------------------------------------------------------------------
-void HttpClient::postForm(const std::string& url,
+void HttpClient::postForm(const std::string& sslCaFilename,
+                          const std::string& url,
                           const std::map<std::string, std::string>* headers,
                           const std::map<std::string, std::string>* contents,
                           const std::map<std::string, std::string>* filenames,
@@ -238,6 +243,7 @@ void HttpClient::postForm(const std::string& url,
                           int timeout,
                           bool async) {
     HttpObject* obj = new HttpObject();
+    obj->sslcafilename = sslCaFilename;
     obj->connecttimeout = connecttimeout;
     obj->timeout = timeout;
     obj->url = url;
