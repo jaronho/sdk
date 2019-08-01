@@ -256,6 +256,15 @@ public:
      */
     size_t characterPlaceholder(unsigned char ch);
 
+    /*
+     * Brief:	convert bytes to hex string
+     * Param:	bytes - bytes
+     *          num - byte number
+     *          sep - separator between each byte
+     * Return:	hex string
+     */
+    static std::string bytes2hex(const unsigned char* bytes, unsigned int num, const std::string& sep = "");
+
     /**********************************************************************
      * file functions
      **********************************************************************/
@@ -342,6 +351,16 @@ public:
      * Return:	bool
      */
     static bool writeDataToFile(const unsigned char* data, long dataSize, const std::string& filePath);
+
+    /*
+     * Brief:	read bytes from file
+     * Param:	fp - file pointer
+     *          filePath - file path, can be absolute path (d:/test.txt) or relative path (temp/test.txt), used when fp is NULL
+     *          offset - to read start position
+     *          num - to read number
+     * Return:	bytes
+     */
+    static unsigned char* readFileBytes(FILE* fp, const char* filePath, long offset, unsigned int num);
 
     /*
      * Brief:	copy src file to dest file

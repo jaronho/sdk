@@ -368,6 +368,20 @@ size_t Common::characterPlaceholder(unsigned char ch) {
     return 1;
 }
 /*********************************************************************/
+std::string Common::bytes2hex(const unsigned char* bytes, unsigned int num, const std::string& sep) {
+    std::string hex;
+    if (!bytes || 0 == num) {
+        return hex;
+    }
+    char tmp[3] = { 0 };
+    for (size_t i = 0; i < num; ++i) {
+        memset(tmp, 0, 3);
+        sprintf(tmp, "%02X", bytes[i]);
+        hex += (0 == i ? "" : sep) + tmp;
+    }
+    return hex;
+}
+/*********************************************************************/
 bool Common::createDir(const std::string& dirName) {
     if (dirName.empty()) {
         return false;
@@ -570,6 +584,28 @@ bool Common::writeDataToFile(const unsigned char* data, long dataSize, const std
     }
     fclose(fp);
     return true;
+}
+/*********************************************************************/
+unsigned char* Common::readFileBytes(FILE* fp, const char* filePath, long offset, unsigned int num) {
+    int needClose = 0;
+    if (!fp) {
+        if (!filePath || 0 == strlen(filePath)) {
+            return NULL;
+        }
+        fp = fopen(filePath, "rb");
+        if (!fp) {
+            return NULL;
+        }
+        needClose = 1;
+    }
+    unsigned char* bytes = (unsigned char*)malloc(sizeof(unsigned char) * num);
+    memset(bytes, 0, sizeof(unsigned char) * num);
+    fseek(fp, offset, SEEK_SET);
+    fread(bytes, sizeof(unsigned char), num, fp);
+    if (1 == needClose) {
+        fclose(fp);
+    }
+    return bytes;
 }
 /*********************************************************************/
 int Common::copyFile(const char* srcFilePath, const char* destFilePath) {
