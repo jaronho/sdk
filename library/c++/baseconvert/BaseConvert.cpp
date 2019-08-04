@@ -105,12 +105,12 @@ unsigned int BaseConvert::hex2dec(const std::string& hexStr) {
     size_t len = hexStr.size();
     size_t start = 0;
     if (len >= 3) {
-        start = 2;
         const char& ch2 = hexStr.at(1);
         if ('x' == ch2 || 'X' == ch2) {
             if ('0' != hexStr.at(0)) {
                 return 0;
             }
+            start = 2;
         } else if ((ch2 < '0' || ch2 > '9') && (ch2 < 'A' || ch2 > 'F') && (ch2 < 'a' || ch2 > 'f')) {
             return 0;
         }
