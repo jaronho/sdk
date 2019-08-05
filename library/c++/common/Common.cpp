@@ -200,6 +200,22 @@ std::string Common::replaceString(std::string str, const std::string& rep, const
     return str;
 }
 /*********************************************************************/
+size_t Common::findString(std::string source, std::string target, bool caseSensitive) {
+    if (source.empty() || target.empty()) {
+        return std::string::npos;
+    }
+    if (caseSensitive) {
+        return source.find(target);
+    }
+    for (std::string::iterator iter = source.begin(); iter != source.end(); ++iter) {
+        *iter = (char)tolower(*iter);
+    }
+    for (std::string::iterator iter = target.begin(); iter != target.end(); ++iter) {
+        *iter = (char)tolower(*iter);
+    }
+    return source.find(target);
+}
+/*********************************************************************/
 std::string Common::formatString(const char* format, ...) {
     char buf[512];
     memset(buf, 0, sizeof(buf));

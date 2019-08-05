@@ -198,6 +198,15 @@ public:
     static std::string replaceString(std::string str, const std::string& rep, const std::string& dest);
 
     /*
+     * Brief:	find string
+     * Param:	source - source string
+     *          target - target string
+     *          caseSensitive - true: case sensitive, false: case insensitive
+     * Return:	position
+     */
+    static size_t findString(std::string source, std::string target, bool caseSensitive);
+
+    /*
      * Brief:	format to string
      * Param:	format - string format
      *          ... - variable length argument
