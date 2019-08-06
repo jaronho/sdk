@@ -1,5 +1,4 @@
-#!/usr/bin/python2
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 from ftplib import FTP
 import os
 import sys
@@ -13,21 +12,17 @@ import sys
  *          pasv - 是否被动模式,True:被动模式,False:主动模式
  * Return:  FTP实例对象
 """
-def ftpLogin(host, port, user="anonymous", password="", pasv=True):                          
-    ftp = FTP()
+def ftpLogin(host, port, user="anonymous", password="", pasv=True):
     try:
+        ftp = FTP()
+        ftp.encoding = "utf-8"
         ftp.set_pasv(pasv)      # True.被动模式,False.主动模式
         ftp.connect(host, port)
-        ftp.encoding = "utf-8"
+        ftp.login(user, password)
+        return ftp
     except:
-        print(sys.exc_info())
-    else:
-        try:
-            ftp.login(user, password)
-        except:
-            print(sys.exc_info())
-        else:
-            return ftp
+        print("Exception: ftp_client.ftpLogin =>\n           " + str(sys.exc_info()))
+    return None
 
 """
  * Brief:   递归搜索FTP指定目录
@@ -42,9 +37,9 @@ def ftpList(ftp, path="/", list=[]):
         "file": 0,          # 文件数
         "folder": 0         # 目录数
     }
-    if False == path.endswith("/"):
-        path += "/"
     try:
+        if False == path.endswith("/"):
+            path += "/"
         ftp.cwd(path)
         lineList = []
         ftp.dir(lineList.append)
@@ -87,7 +82,7 @@ def ftpList(ftp, path="/", list=[]):
                 dirInfo["file"] += 1
             index += 1
     except:
-        print(sys.exc_info())
+        print("Exception: ftp_client.ftpList =>\n           " + str(sys.exc_info()))
     return dirInfo
 
 """
@@ -101,24 +96,24 @@ def ftpList(ftp, path="/", list=[]):
  * Return:  空
 """
 def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterBeforeCB=None, filterAfterCB=None):
-    if False == remotePath.endswith("/"):
-        remotePath += "/"
-    if False == localPath.endswith("/"):
-        localPath += "/"
-    if False == os.path.exists(localPath):
-        os.makedirs(localPath)
-    list = []
-    ftpList(ftp, remotePath, list)
     try:
+        if False == remotePath.endswith("/"):
+            remotePath += "/"
+        if False == localPath.endswith("/"):
+            localPath += "/"
+        if False == os.path.exists(localPath):
+            os.makedirs(localPath)
+        list = []
+        ftpList(ftp, remotePath, list)
         if hasattr(listOverCB, '__call__'):
             listOverCB(list)
         for item in list:
-            localItemName = localPath + item["path"][len(remotePath):] + item["name"]
+            localItemName = "'" + localPath + item["path"][len(remotePath):] + item["name"] + "'" 
             if item["isdir"]:
                 if False == os.path.exists(localItemName):
                     os.makedirs(localItemName)
                 continue
-            remoteFilename = item["path"] + item["name"]
+            remoteFilename = "'" + item["path"] + item["name"] + "'" 
             # 判断是否允许下载
             allowDownload = True
             if hasattr(filterBeforeCB, '__call__'):
@@ -130,10 +125,10 @@ def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterBeforeCB=None
                 ftp.retrbinary('RETR %s' % remoteFilename, localFile.write) # 用二进制的方式将FTP文件写到本地文件
                 localFile.close()
             except:
-                print(str(sys.exc_info()) + " 文件下载出错 " + remoteFilename)
+                print("Exception: ftp_client.ftpDownload[open] =>\n           " + str(sys.exc_info()) + "\n           " + remoteFilename)
             else:
                 # 判断是否需要删除
                 if hasattr(filterAfterCB, '__call__'):
                     filterAfterCB(ftp, remoteFilename, item["size"], item["mtime"], localItemName)
     except:
-        print(sys.exc_info())
+        print("Exception: ftp_client.ftpDownload =>\n           " + str(sys.exc_info()))

@@ -1,5 +1,4 @@
-#!/usr/bin/python2
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.servers import ThreadedFTPServer
@@ -54,4 +53,4 @@ def ftpStart(anoDir="", anoPerm="elr", ip="127.0.0.1", port=21, pasvPortBegin=60
         # step6:开启服务器
         server.serve_forever()
     except:
-        print(sys.exc_info())
+        print("Exception: ftp_server.ftpStart =>\n           " + str(sys.exc_info()))

@@ -1,5 +1,4 @@
-#!/usr/bin/python2
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 import argparse
 import math
 import os
@@ -102,17 +101,23 @@ def typeList():
 """
  * Brief:   字节转十六进制字符串
  * Param:   bytes - 字节流
+ *          doPrintE - 是否打印异常信息
  * Return:  字符串
 """
-def bytes2hex(bytes):
-    num = len(bytes)
-    hexstr = u''
-    for i in range(num):
-        c = u'%x' % bytes[i]
-        if len(c) % 2:
-            hexstr += u'0'
-        hexstr += c
-    return hexstr.upper()
+def bytes2hex(bytes, doPrintE=True):
+    try:
+        num = len(bytes)
+        hexstr = u''
+        for i in range(num):
+            c = u'%x' % bytes[i]
+            if len(c) % 2:
+                hexstr += u'0'
+            hexstr += c
+        return hexstr.upper()
+    except:
+        if doPrintE:
+            print("Exception: filetype.bytes2hex =>\n           " + str(sys.exc_info()))
+    return None
 
 """
  * Brief:   读取文件字节
@@ -122,15 +127,14 @@ def bytes2hex(bytes):
  *          doPrintE - 是否打印异常信息
  * Return:  字节数组
 """
-def readFileBytes(fp, byteNum, offset=0,  doPrintE=True):
-    bytes = None
+def readFileBytes(fp, byteNum, offset=0, doPrintE=True):
     try:
         fp.seek(offset)
-        bytes = struct.unpack_from('B' * byteNum, fp.read(byteNum))
+        return struct.unpack_from('B' * byteNum, fp.read(byteNum))
     except:
         if doPrintE:
-            print(sys.exc_info())
-    return bytes
+            print("Exception: filetype.readFileBytes =>\n           " + str(sys.exc_info()))
+    return None
 
 """
  * Brief:   判断文件是否以指定字节开头
@@ -152,7 +156,7 @@ def isFileHeadWith(file, hexStr, offset=0, doPrintE=True):
         return headHex.startswith(hexStr.upper())
     except:
         if doPrintE:
-            print(sys.exc_info())
+            print("Exception: filetype.isFileHeadWith =>\n           " + str(sys.exc_info()))
     return False
 
 """
@@ -171,7 +175,7 @@ def guess(filename, doPrintE=True):
                         return info
     except:
         if doPrintE:
-            print(sys.exc_info())
+            print("Exception: filetype.guess =>\n           " + str(sys.exc_info()))
     return None
 
 """ 主入口函数 """
