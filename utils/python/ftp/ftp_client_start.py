@@ -37,7 +37,9 @@ def parseChecksumFile(filename):
                     jsonData = json.loads(jsonContent.replace("\\", "\\\\"))
         return jsonData
     except:
-        print(str(sys.exc_info()) + " 校验文件 " + filename + " 解析出错")
+        print("Exception: ftp_client_start.parseChecksumFile =>\n           "
+              + str(sys.exc_info())
+              + "\n           校验文件 " + filename + " 解析出错")
     return []
 
 """ 保存校验文件 """
@@ -47,7 +49,9 @@ def saveChecksumFile(filename, checksumList):
         with open(filename, 'w+') as fp:
             fp.write(jsonContent)
     except:
-        print(str(sys.exc_info()) + " 校验文件保存出错")
+        print("Exception: ftp_client_start.saveChecksumFile =>\n           "
+              + str(sys.exc_info())
+              + "\n           校验文件保存出错")
 
 """ 解析策略文件 """
 def parsePolicyFile(filename, ip, port):
@@ -61,7 +65,9 @@ def parsePolicyFile(filename, ip, port):
                 if ip == filePolicy["serverIp"] and str(port) == str(filePolicy["serverPort"]):
                     return [filePolicy["cacheDays"], filePolicy["filterPolicy"]]
     except:
-        print(str(sys.exc_info()) + " 策略文件 " + filename + " 解析出错")
+        print("Exception: ftp_client_start.parsePolicyFile =>\n           "
+              + str(sys.exc_info())
+              + "\n           策略文件 " + filename + " 解析出错")
     return [0, []]
 
 """ 删除废弃文件 """
@@ -78,62 +84,68 @@ def getPolicyBySuffix(remoteFilename):
     for policy in g_filter_policys:
         # 过滤文件后缀名
         extName = os.path.splitext(remoteFilename)[-1][1:]
-        if len(policy["subFixAllow"]) > 0 and len(extName) > 0 and extName in policy["subFixAllow"]:
+        if extName.upper() in policy["subFixAllow"].upper():
             return policy
     return None
 
 """ 检测本地文件是否合法 """
 def checkLocalFile(remoteFilename, localFilename, policy):
-    if not policy:
-        return True
-    # 过滤文本文件内容
-    isTextFile = False
-    if "Linux" == platform.system():
-        if "text" in os.popen("file " + localFilename).readlines()[0].split(":")[1]:
-            isTextFile = True
-    if True == isTextFile:
-        fileContent = ""
-        with open(localFilename, 'rt') as fp:
-            fileContent = fp.read()
-        # 过滤白名单
-        matchWhite = False
-        if not policy["contentWhiteList"]:
-            matchWhite = True
+    try:
+        if not policy:
+            return True
+        # 过滤文本文件内容
+        isTextFile = False
+        if "Linux" == platform.system():
+            if "text" in os.popen("file " + localFilename).readlines()[0].split(":")[1]:
+                isTextFile = True
+        if True == isTextFile:
+            fileContent = ""
+            with open(localFilename, 'rt') as fp:
+                fileContent = fp.read()
+            # 过滤白名单
+            matchWhite = False
+            if not policy["contentWhiteList"]:
+                matchWhite = True
+            else:
+                for white in policy["contentWhiteList"]:
+                    if 0 == len(white["regx"]) or re.match(white["regx"], fileContent):
+                        matchWhite = True
+                        break
+            if False == matchWhite:
+                print("内容不匹配白名单: " + remoteFilename)
+                syslog.syslog("内容不匹配白名单: " + remoteFilename)
+                return False
+            # 过滤黑名单
+            matchBlack = False
+            for black in policy["contentBlackList"]:
+                if len(black["regx"]) > 0 and re.match(black["regx"], fileContent):
+                    matchBlack = True
+                    break
+            if True == matchBlack:
+                print("内容触发了黑名单: " + remoteFilename)
+                syslog.syslog("内容触发了黑名单: " + remoteFilename)
+                return False
         else:
-            for white in policy["contentWhiteList"]:
-                if 0 == len(white["regx"]) or re.match(white["regx"], fileContent):
-                    matchWhite = True
-                    break
-        if False == matchWhite:
-            print("内容不匹配白名单: " + remoteFilename)
-            syslog.syslog("内容不匹配白名单: " + remoteFilename)
-            return False
-        # 过滤黑名单
-        matchBlack = False
-        for black in policy["contentBlackList"]:
-            if len(black["regx"]) > 0 and re.match(black["regx"], fileContent):
-                matchBlack = True
-                break
-        if True == matchBlack:
-            print("内容触发了黑名单: " + remoteFilename)
-            syslog.syslog("内容触发了黑名单: " + remoteFilename)
-            return False
-    else:
-        # 过滤文件类型
-        isFileTypeAllow = False
-        with open(localFilename, 'rb') as fp:
-            for fileAllow in policy["fileTypeAllow"]:
-                offset = 0
-                if fileAllow.has_key("offset"):
-                    offset = fileAllow["offset"]
-                if filetype.isFileHeadWith(fp, fileAllow["typeBytes"], offset):
-                    isFileTypeAllow = True
-                    break
-        if False == isFileTypeAllow:
-            print("文件类型不被允许: " + remoteFilename)
-            syslog.syslog("文件类型不被允许: " + remoteFilename)
-            return False
-    return True
+            # 过滤文件类型
+            isFileTypeAllow = False
+            with open(localFilename, 'rb') as fp:
+                for fileAllow in policy["fileTypeAllow"]:
+                    offset = 0
+                    if fileAllow.has_key("offset"):
+                        offset = fileAllow["offset"]
+                    if filetype.isFileHeadWith(fp, fileAllow["typeBytes"].replace(" ", ""), offset):
+                        isFileTypeAllow = True
+                        break
+            if False == isFileTypeAllow:
+                print("文件类型不被允许: " + remoteFilename)
+                syslog.syslog("文件类型不被允许: " + remoteFilename)
+                return False
+        return True
+    except:
+        print("Exception: ftp_client_start.checkLocalFile =>\n           "
+              + str(sys.exc_info())
+              + "\n           文件检测出错 " + remoteFilename)
+    return False
 
 """ 文件列表搜索完毕 """
 def fileListSearchOver(list):
@@ -196,7 +208,7 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
 """ 下载后过滤 """
 def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     # step1:杀毒过滤
-    results = os.popen("python antivirus.py -p " + localFilename).read()
+    results = os.popen("python antivirus.py -p '" + localFilename + "'").read()
     if len(results) > 0:
         print("文件发现病毒内容: " + remoteFilename)
         syslog.syslog("文件发现病毒内容: " + remoteFilename)
@@ -257,7 +269,7 @@ def main():
         g_local_path += "/"
     # step4:加载校验文件
     global g_checksum_filename
-    g_checksum_filename = g_local_path + "__checksum__.json"
+    g_checksum_filename = g_local_path[0:-1] + "_checksum.json"
     global g_checksum_list
     g_checksum_list = parseChecksumFile(g_checksum_filename)
     # step5:加载策略文件
@@ -276,7 +288,6 @@ def main():
         return
     print("FTP 登录成功")
     print("FTP 文件同步中...")
-    syslog.syslog("FTP 文件同步中...")
     ftp_client.ftpDownload(ftp, g_remote_path, g_local_path, fileListSearchOver, filterBeforeDownload, filterAfterDownload)
     print("FTP 文件同步结束")
     ftp.quit()

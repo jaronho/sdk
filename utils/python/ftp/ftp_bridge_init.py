@@ -91,11 +91,39 @@ def modifySysctlConf():
     os.popen("sysctl -p")
 
 """ 修改网卡配置文件(ubuntu) """
-def modifyNetworkCard(netport1, netport2, bridge, address, netmask, gateway, dns):
-    buff =  "auto lo\n"
-    buff += "iface lo inet loopback\n"
-    buff += "\n"
-    buff += "auto " + netport1 + "\n"
+def modifyManagePort(port,address,netmask,gateway):
+    buff = "auto "+port+"\n";
+    buff += "iface " + port + " inet static\n"
+    buff += "address "+address+"\n"
+    buff += "network " + network.calcNetAddress(address, netmask) + "\n"
+    buff += "netmask " + netmask + "\n"
+    buff += "broadcast " + network.calcBroadcastAddress(address) + "\n"
+    buff += "gateway " + gateway + "\n"
+   
+    return buff
+
+def setDefaultGw(defaultGw):
+    os.popen("route del -net 0.0.0.0")
+    os.popen("route add -net 0.0.0.0 netmask 0.0.0.0 gw "+defaultGw)
+    """写入到开机启动脚本里"""
+    buff = ""
+    with open("/etc/rc.local", "r") as p:
+        for line in p:
+            if line.find("exit") >= 0:
+                if buff.find("route del -net 0.0.0.0") < 0:
+                    buff += "route del -net 0.0.0.0\n"
+                if buff.find("route add -net 0.0.0.0") < 0:
+                    buff += "route add -net 0.0.0.0 netmask 0.0.0.0 gw "+defaultGw+"\n"
+                buff += line+"\n"
+                break
+            buff += line +"\n"
+    with open("/etc/rc.local", "w") as fp:
+        fp.write(buff)
+    
+
+def modifyBridgePort(netport1, netport2, bridge, address, netmask, gateway, dns):
+    
+    buff = "auto " + netport1 + "\n"
     buff += "iface " + netport1 + " inet manual\n"
     buff += "\n"
     buff += "auto " + netport2 + "\n"
@@ -115,6 +143,15 @@ def modifyNetworkCard(netport1, netport2, bridge, address, netmask, gateway, dns
     buff += "bridge_fd 0\n"
     buff += "bridge_maxwait 0\n"
     buff += "bridge_maxage 12\n"
+    
+    
+    return buff
+def writeNetworkCfg(manageCfg,BridgeCfg):
+    buff =  "auto lo\n"
+    buff += "iface lo inet loopback\n"
+    buff += "\n"
+    buff += manageCfg
+    buff += BridgeCfg
     with open("/etc/network/interfaces", "w") as fp:
         fp.write(buff)
 
@@ -123,12 +160,17 @@ def main():
     if 1 == len(sys.argv):
         sys.argv.append("-h")
     parser = argparse.ArgumentParser(description="用于初始化FTP网桥配置",
-                                     usage=os.path.basename(__file__) + " [-h] [-n1 NETPORT1] [-n2 NETPORT2] [-a ADDRESS] [-m NETMASK] [-g GATEWAY]")
+                                     usage=os.path.basename(__file__) + " [-h] [-dgw defaultGateway][-n1 NETPORT1] [-n2 NETPORT2] [-a ADDRESS] [-m NETMASK] [-g GATEWAY] [-mp MANAGEPORT] [-ma MANAGEPORTADDR] [-mm MANAGEPORTNETMASK] [-mg MANAGEPORTGATEWAY]")
+    parser.add_argument('-dgw','--defaultgw',metavar="",type=str,help="指定默认网关")                                 
     parser.add_argument('-n1','--netport1',metavar="",type=str,help="指定网口1(必填). 例如: enp1s0")
     parser.add_argument('-n2','--netport2',metavar="",type=str,help="指定网口2(必填). 例如: enp2s0")
     parser.add_argument('-a','--address',metavar="",type=str,help="指定IP地址(必填). 例如: 192.168.3.107")
     parser.add_argument('-m','--netmask',metavar="",type=str,help="指定子网掩码(必填). 例如: 255.255.255.0")
     parser.add_argument('-g','--gateway',metavar="",type=str,help="指定网关(必填). 例如: 192.168.3.1")
+    parser.add_argument('-mp','--manageport',metavar="",type=str,help="指定管理口(必填). 例如: enp3s0")
+    parser.add_argument('-ma','--manageaddress',metavar="",type=str,help="指定管理口IP地址(必填). 例如: 192.168.1.107")
+    parser.add_argument('-mm','--managenetmask',metavar="",type=str,help="指定管理口子网掩码(必填). 例如: 255.255.255.0")
+    parser.add_argument('-mg','--managegateway',metavar="",type=str,help="指定管理口网关(必填). 例如: 192.168.1.1")
     parser.parse_args()
     args = vars(parser.parse_args())
     # step1:必填参数判断
@@ -158,9 +200,15 @@ def main():
     if False == loadCoreModule("ip_conntrack_ftp"):
         print("加载iptables模块 ip_conntrack_ftp 失败")
         return
-    # step3: 修改配置
+    # step3: 执行创建br0 
+    os.popen("brctl addbr br0")   
+    # step4:修改配置
     modifySysctlConf()
-    modifyNetworkCard(args["netport1"], args["netport2"], "br0", args["address"], args["netmask"], args["gateway"], args["gateway"])
+    manageCfgBuff = modifyManagePort(args["manageport"],args["manageaddress"],args["managenetmask"],args["managegateway"])
+    bridgeBuff = modifyBridgePort(args["netport1"], args["netport2"], "br0", args["address"], args["netmask"], args["gateway"], args["gateway"])
+    writeNetworkCfg(manageCfgBuff,bridgeBuff)
+    setDefaultGw(args["defaultgw"])
+    
 
 if "__main__" == __name__:
     main()
