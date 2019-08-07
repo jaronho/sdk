@@ -108,12 +108,12 @@ def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterBeforeCB=None
         if hasattr(listOverCB, '__call__'):
             listOverCB(list)
         for item in list:
-            localItemName = "'" + localPath + item["path"][len(remotePath):] + item["name"] + "'" 
+            localItemName = localPath + item["path"][len(remotePath):] + item["name"]
             if item["isdir"]:
                 if False == os.path.exists(localItemName):
                     os.makedirs(localItemName)
                 continue
-            remoteFilename = "'" + item["path"] + item["name"] + "'" 
+            remoteFilename = item["path"] + item["name"]
             # 判断是否允许下载
             allowDownload = True
             if hasattr(filterBeforeCB, '__call__'):
