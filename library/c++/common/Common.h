@@ -464,7 +464,7 @@ public:
     /*
      * Brief:	check whether string is IPv4 format
      * Param:	str - ip string, e.g. "157.15.3.71"
-     * Return:	int - 0.ok, 1.format error
+     * Return:	int - 0.false, 1.true
      */
     static int isIPv4(const char* ip);
 
