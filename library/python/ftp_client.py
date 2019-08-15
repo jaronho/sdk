@@ -43,15 +43,29 @@ def ftpList(ftp, path="/", list=[]):
         ftp.cwd(path)
         lineList = []
         ftp.dir(lineList.append)
-        fileList = ftp.nlst()
-        index = 0
         for line in lineList:
+            # 解析名称
+            index = 0
+            num = 0
+            isPreSpace = False
+            for i in range(len(line)):
+                if ' ' == line[i]:
+                    isPreSpace = True
+                else:
+                    if 0 == num or True == isPreSpace:
+                        isPreSpace = False
+                        num = num + 1
+                        if 9 == num:    # 第9个非空格字符串
+                            index = i
+                            break
+            name = line[index:]
+            # 类型判断
             if line.startswith("d"):  # 目录类型
-                subPath = path + fileList[index] + "/"
+                subPath = path + name + "/"
                 item = {
                     "isdir": 1,                     # 是否目录
                     "path": path,                   # 父目录(绝对路径)
-                    "name": fileList[index],        # 目录名称
+                    "name": name,                   # 目录名称
                     "size": 0,                      # 目录大小
                     "file": 0,                      # 文件数(递归)
                     "folder": 0                     # 目录数(递归)
@@ -67,20 +81,19 @@ def ftpList(ftp, path="/", list=[]):
                 dirInfo["folder"] += 1 + subDirInfo["folder"]
             else:   # 文件类型
                 ftp.voidcmd("TYPE I")
-                filename = path + fileList[index]
+                filename = path + name
                 fileSize = int(ftp.sendcmd("SIZE " + filename).split()[1])
                 fileModifyTime = int(ftp.sendcmd("MDTM " + filename).split()[1])
                 item = {
                     "isdir": 0,                     # 是否目录
                     "path": path,                   # 父目录(绝对路径)
-                    "name": fileList[index],        # 文件名称
+                    "name": name,                   # 文件名称
                     "size": fileSize,               # 文件大小
                     "mtime": fileModifyTime         # 文件修改时间
                 }
                 list.append(item)
                 dirInfo["size"] += fileSize
                 dirInfo["file"] += 1
-            index += 1
     except:
         print("Exception: ftp_client.ftpList =>\n           " + str(sys.exc_info()))
     return dirInfo
@@ -105,6 +118,8 @@ def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterBeforeCB=None
             os.makedirs(localPath)
         list = []
         ftpList(ftp, remotePath, list)
+        if True:
+            return
         if hasattr(listOverCB, '__call__'):
             listOverCB(list)
         for item in list:

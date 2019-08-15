@@ -462,19 +462,42 @@ public:
     **********************************************************************/
 
     /*
-     * Brief:	check whether string is ip format
+     * Brief:	check whether string is IPv4 format
      * Param:	str - ip string, e.g. "157.15.3.71"
-     * Return:	bool
+     * Return:	int - 0.ok, 1.format error
      */
-    static bool isIpFormat(std::string ip);
+    static int isIPv4(const char* ip);
 
     /*
-     * Brief:	check whether ip is inner
+     * Brief:	check whether string is IPv4 inner address
      * Param:	str - ip string, e.g. "157.15.3.71"
      *          ret - check result
-     * Return:	int - 0.check ok, 1.ip format is error
+     * Return:	int - 0.ok, 1.ip format is error, 2.not inner address
      */
-    static int isInnerIp(std::string ip, bool* ret);
+    static int isIPv4Inner(const char* ip);
+
+    /*
+     * Brief:	calculate network address by IPv4 address and subnet mask
+     * Param:	str - ip string, e.g. "157.15.3.71"
+     *          netmask - subnet mask, e.g. "255.255.255.0"
+     * Return:	std::string, netAddress = ip & netmask, e.g. "157.15.3.0"
+     */
+    static std::string calcNetAddress(const char* ip, const char* netmask);
+
+    /*
+     * Brief:	calculate host address by IPv4 address and subnet mask
+     * Param:	str - ip string, e.g. "157.15.3.71"
+     *          netmask - subnet mask, e.g. "255.255.255.0"
+     * Return:	std::string, hostAddress = ip & (~netmask), e.g. "0.0.0.71"
+     */
+    static std::string calcHostAddress(const char* ip, const char* netmask);
+
+    /*
+     * Brief:	calculate broadcast address by IPv4 address
+     * Param:	str - ip string, e.g. "157.15.3.71"
+     * Return:	std::string, broadcastAddress = ip[0].ip[1].ip[2].255, e.g. "157.15.3.255"
+     */
+    static std::string calcBroadcastAddress(const char* ip);
 
     /**********************************************************************
      * time functions

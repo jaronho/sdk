@@ -859,53 +859,92 @@ void Common::traverseFile(std::string dirName,
     }, recursive);
 }
 /*********************************************************************/
-bool Common::isIpFormat(std::string ip) {
-    std::vector<std::string> arr = splitString(ip, ".");
-    if (4 != arr.size()) {
-        return false;
-    }
-    int a = -1, b = -1, c = -1, d = -1;
-    sscanf(ip.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
-    if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255) {
-        return false;
-    }
-    return true;
-}
-/*********************************************************************/
-int Common::isInnerIp(std::string ip, bool* ret) {
-    *ret = false;
-    if ("127.0.0.1" == ip) {
-        *ret = true;
+int Common::isIPv4(const char* ip) {
+    int p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+    char endCh = 0;
+    if (!ip || 0 == strlen(ip)) {
         return 0;
     }
-    std::vector<std::string> arr = splitString(ip, ".");
-    if (4 != arr.size()) {
-        return 1;
-    }
-    int a = -1, b = -1, c = -1, d = -1;
-    sscanf(ip.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
-    if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255) {
-        return 1;
-    }
-    unsigned long long ipNum = (unsigned long long)a * (256 * 256 * 256) + b * (256 * 256) + c * (256) + d;
-    /*
-     * 私有IP:
-     *      A类  10.0.0.0 - 10.255.255.255
-     *      B类  172.16.0.0 - 172.31.255.255
-     *      C类  192.168.0.0 - 192.168.255.255
-     *      127.0.0.1
-     */
-    static unsigned long long b1 = (unsigned long long)10 * (256 * 256 * 256);  /* 10.0.0.0 */
-    static unsigned long long e1 = (unsigned long long)10 * (256 * 256 * 256) + 255 * (256 * 256) + 255 * (256) + 255;  /* 10.255.255.255 */
-    static unsigned long long b2 = (unsigned long long)172 * (256 * 256 * 256) + 16 * (256 * 256);  /* 172.16.0.0 */
-    static unsigned long long e2 = (unsigned long long)172 * (256 * 256 * 256) + 31 * (256 * 256) + 255 * (256) + 255;  /* 172.31.255.255 */
-    static unsigned long long b3 = (unsigned long long)192 * (256 * 256 * 256) + 168 * (256 * 256); /* 192.168.0.0 */
-    static unsigned long long e3 = (unsigned long long)192 * (256 * 256 * 256) + 168 * (256 * 256) + 255 * (256) + 255; /* 192.168.255.255 */
-    if ((ipNum >= b1 && ipNum <= e1) || (ipNum >= b2 && ipNum <= e2) || (ipNum >= b3 && ipNum <= e3)) {
-        *ret = true;
-        return 0;
+    if (4 == sscanf(ip, "%d.%d.%d.%d%c", &p1, &p2, &p3, &p4, &endCh)) {
+        if ((p1 >= 0 && p1 <= 255) && (p2 >= 0 && p2 <= 255) && (p3 >= 0 && p3 <= 255) && (p4 >= 0 && p4 <= 255)) {
+            return 1;
+        }
     }
     return 0;
+}
+/*********************************************************************/
+int Common::isIPv4Inner(const char* ip) {
+    if (!ip || 0 == strlen(ip)) {
+        return 1;
+    }
+    if (0 == strcmp("127.0.0.1", ip)) {
+        return 0;
+    }
+    int p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+    char endCh = 0;
+    if (4 != sscanf(ip, "%d.%d.%d.%d%c", &p1, &p2, &p3, &p4, &endCh)) {
+        return 1;
+    }
+    if ((p1 < 0 || p1 > 255) || (p2 < 0 || p2 > 255) || (p3 < 0 || p3 > 255) || (p4 < 0 || p4 > 255)) {
+        return 1;
+    }
+    unsigned long long ipNum = (unsigned long long)p1 * (256 * 256 * 256) + p2 * (256 * 256) + p3 * (256) + p4;
+    /*
+     * private IP:
+     *      A:  10.0.0.0    - 10.255.255.255
+     *      B:  172.16.0.0  - 172.31.255.255
+     *      C:  192.168.0.0 - 192.168.255.255
+     *      127.0.0.1
+     */
+    static const unsigned long long A1 = (unsigned long long)10 * (256 * 256 * 256);  /* 10.0.0.0 */
+    static const unsigned long long A2 = (unsigned long long)10 * (256 * 256 * 256) + 255 * (256 * 256) + 255 * (256) + 255;  /* 10.255.255.255 */
+    static const unsigned long long B1 = (unsigned long long)172 * (256 * 256 * 256) + 16 * (256 * 256);  /* 172.16.0.0 */
+    static const unsigned long long B2 = (unsigned long long)172 * (256 * 256 * 256) + 31 * (256 * 256) + 255 * (256) + 255;  /* 172.31.255.255 */
+    static const unsigned long long C1 = (unsigned long long)192 * (256 * 256 * 256) + 168 * (256 * 256); /* 192.168.0.0 */
+    static const unsigned long long C2 = (unsigned long long)192 * (256 * 256 * 256) + 168 * (256 * 256) + 255 * (256) + 255; /* 192.168.255.255 */
+    if ((ipNum >= A1 && ipNum <= A2) || (ipNum >= B1 && ipNum <= B2) || (ipNum >= C1 && ipNum <= C2)) {
+        return 0;
+    }
+    return 2;
+}
+/*********************************************************************/
+std::string Common::calcNetAddress(const char* ip, const char* netmask) {
+    if (0 == isIPv4(ip) || 0 == isIPv4(netmask)) {
+        return "";
+    }
+    int p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+    sscanf(ip, "%d.%d.%d.%d", &p1, &p2, &p3, &p4);
+    int n1 = 0, n2 = 0, n3 = 0, n4 = 0;
+    sscanf(netmask, "%d.%d.%d.%d", &n1, &n2, &n3, &n4);
+    int v1 = p1 & n1, v2 = p2 & n2, v3 = p3 & n3, v4 = p4 & n4;
+    char address[16] = { 0 };
+    sprintf(address, "%d.%d.%d.%d", v1, v2, v3, v4);
+    return address;
+}
+/*********************************************************************/
+std::string Common::calcHostAddress(const char* ip, const char* netmask) {
+    if (0 == isIPv4(ip) || 0 == isIPv4(netmask)) {
+        return "";
+    }
+    int p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+    sscanf(ip, "%d.%d.%d.%d", &p1, &p2, &p3, &p4);
+    int n1 = 0, n2 = 0, n3 = 0, n4 = 0;
+    sscanf(netmask, "%d.%d.%d.%d", &n1, &n2, &n3, &n4);
+    int v1 = p1 & (~n1), v2 = p2 & (~n2), v3 = p3 & (~n3), v4 = p4 & (~n4);
+    char address[16] = { 0 };
+    sprintf(address, "%d.%d.%d.%d", v1, v2, v3, v4);
+    return address;
+}
+/*********************************************************************/
+std::string Common::calcBroadcastAddress(const char* ip) {
+    if (0 == isIPv4(ip)) {
+        return "";
+    }
+    int p1 = 0, p2 = 0, p3 = 0;
+    sscanf(ip, "%d.%d.%d", &p1, &p2, &p3);
+    char address[16] = { 0 };
+    sprintf(address, "%d.%d.%d.255", p1, p2, p3);
+    return address;
 }
 /*********************************************************************/
 double Common::getTime(void) {
