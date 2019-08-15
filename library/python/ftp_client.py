@@ -118,8 +118,6 @@ def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterBeforeCB=None
             os.makedirs(localPath)
         list = []
         ftpList(ftp, remotePath, list)
-        if True:
-            return
         if hasattr(listOverCB, '__call__'):
             listOverCB(list)
         for item in list:
