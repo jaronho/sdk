@@ -96,8 +96,8 @@ def removeWasteFile(localFilename):
         if localFilename == g_checksum_list[i]["name"]:
             g_checksum_list.pop(i)
             saveChecksumFile(g_checksum_filename, g_checksum_list)
-            remove(localFilename)
             break
+    remove(localFilename)
 
 """ 根据后缀名获取策略 """
 def getPolicyBySuffix(remoteFilename):
