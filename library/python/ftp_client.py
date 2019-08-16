@@ -106,11 +106,12 @@ def ftpList(ftp, path="/", list=[]):
  *          remotePath - 指定要下载的服务器目录,例如:"/"
  *          localPath - 本地目录,例如:"E:/ftp_tmp"
  *          listOverCB - 文件列表搜索完毕回调函数
- *          filterBeforeCB - 下载前过滤回调函数
- *          filterAfterCB - 下载后过滤回调函数
+ *          filterDirectoryCB - 目录过滤回调函数
+ *          filterFileBeforeCB - 下载前文件过滤回调函数
+ *          filterFileAfterCB - 下载后文件过滤回调函数
  * Return:  空
 """
-def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterBeforeCB=None, filterAfterCB=None):
+def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterDirectoryCB=None, filterFileBeforeCB=None, filterFileAfterCB=None):
     try:
         if False == remotePath.endswith("/"):
             remotePath += "/"
@@ -118,32 +119,47 @@ def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterBeforeCB=None
             localPath += "/"
         if False == os.path.exists(localPath):
             os.makedirs(localPath)
+        # 遍历FTP路径文件
         list = []
         ftpList(ftp, remotePath, list)
         if hasattr(listOverCB, '__call__'):
             listOverCB(list)
+        # 遍历判断已搜索到的文件
+        notAllowDirList = []
         for item in list:
+            remoteItemName = item["path"] + item["name"]
             localItemName = localPath + item["path"][len(remotePath):] + item["name"]
-            if item["isdir"]:
-                if False == os.path.exists(localItemName):
-                    os.makedirs(localItemName)
+            # 判断所在目录是否被过滤
+            if item["path"] in notAllowDirList:
                 continue
-            remoteFilename = item["path"] + item["name"]
+            # 判断是否允许创建目录
+            if item["isdir"]:
+                allowMakeDir = True
+                if hasattr(filterDirectoryCB, '__call__'):
+                    allowMakeDir = filterDirectoryCB(ftp, remoteItemName, item["size"], item["file"], item["folder"], localItemName)
+                if True == allowMakeDir:
+                    if False == os.path.exists(localItemName):
+                        os.makedirs(localItemName)
+                else:
+                    if False == remoteItemName.endswith("/"):
+                        remoteItemName += "/"
+                    notAllowDirList.append(remoteItemName)
+                continue
             # 判断是否允许下载
             allowDownload = True
-            if hasattr(filterBeforeCB, '__call__'):
-                allowDownload = filterBeforeCB(ftp, remoteFilename, item["size"], item["mtime"], localItemName)
+            if hasattr(filterFileBeforeCB, '__call__'):
+                allowDownload = filterFileBeforeCB(ftp, remoteItemName, item["size"], item["mtime"], localItemName)
             if not allowDownload:
                 continue
             try:
                 localFile = open(localItemName, 'wb')       # 打开本地的文件
-                ftp.retrbinary('RETR %s' % remoteFilename, localFile.write) # 用二进制的方式将FTP文件写到本地文件
+                ftp.retrbinary('RETR %s' % remoteItemName, localFile.write) # 用二进制的方式将FTP文件写到本地文件
                 localFile.close()
             except:
-                print("Exception: ftp_client.ftpDownload[open] =>\n           " + str(sys.exc_info()) + "\n           " + remoteFilename)
+                print("Exception: ftp_client.ftpDownload[open] =>\n           " + str(sys.exc_info()) + "\n           " + remoteItemName)
             else:
                 # 判断是否需要删除
-                if hasattr(filterAfterCB, '__call__'):
-                    filterAfterCB(ftp, remoteFilename, item["size"], item["mtime"], localItemName)
+                if hasattr(filterFileAfterCB, '__call__'):
+                    filterFileAfterCB(ftp, remoteItemName, item["size"], item["mtime"], localItemName)
     except:
         print("Exception: ftp_client.ftpDownload =>\n           " + str(sys.exc_info()))

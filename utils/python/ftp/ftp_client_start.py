@@ -26,6 +26,26 @@ g_cache_days = 0
 """ 过滤策略列表 """
 g_filter_policys = []
 
+""" 删除文件/目录 """
+def remove(name):
+    # 判断文件是否存在
+    if not os.path.exists(name):
+        return
+    # 是普通文件
+    if os.path.isfile(name):
+        os.remove(name)
+        return
+    # 是目录文件
+    dirs = os.listdir(name)
+    for f in dirs:
+        itemName = os.path.join(name, f)    # 拼接文件名
+        if os.path.isfile(itemName):    # 普通文件
+            os.remove(itemName)
+        else:   # 目录文件,递归处理
+            remove(itemName)
+    # 删除空目录
+    os.rmdir(name)
+
 """ 解析校验文件 """
 def parseChecksumFile(filename):
     try:
@@ -76,7 +96,7 @@ def removeWasteFile(localFilename):
         if localFilename == g_checksum_list[i]["name"]:
             g_checksum_list.pop(i)
             saveChecksumFile(g_checksum_filename, g_checksum_list)
-            os.remove(localFilename)
+            remove(localFilename)
             break
 
 """ 根据后缀名获取策略 """
@@ -96,11 +116,11 @@ def checkLocalFile(remoteFilename, localFilename, policy):
         # 过滤文本文件内容
         isTextFile = False
         if "Linux" == platform.system():
-            if "text" in os.popen("file " + localFilename).readlines()[0].split(":")[1]:
+            if "text" in os.popen("file '" + localFilename + "'").readlines()[0].split(":")[1]:
                 isTextFile = True
         if True == isTextFile:
             fileContent = ""
-            with open(localFilename, 'rt') as fp:
+            with open(localFilename, 'rb') as fp:
                 fileContent = fp.read()
             # 过滤白名单
             matchWhite = False
@@ -130,11 +150,11 @@ def checkLocalFile(remoteFilename, localFilename, policy):
             isFileTypeAllow = False
             with open(localFilename, 'rb') as fp:
                 for fileAllow in policy["fileTypeAllow"]:
-                    offset = 0
-                    if fileAllow.has_key("offset"):
-                        offset = fileAllow["offset"]
-                    if filetype.isFileHeadWith(fp, fileAllow["typeBytes"].replace(" ", ""), offset):
-                        isFileTypeAllow = True
+                    for identify in fileAllow["IdentifyBytes"]:
+                        if filetype.isFileHeadWith(fp, identify["typeBytes"].replace(" ", ""), identify["offset"]):
+                            isFileTypeAllow = True
+                            break
+                    if isFileTypeAllow:
                         break
             if False == isFileTypeAllow:
                 print("文件类型不被允许: " + remoteFilename)
@@ -149,21 +169,36 @@ def checkLocalFile(remoteFilename, localFilename, policy):
 
 """ 文件列表搜索完毕 """
 def fileListSearchOver(list):
-    # 删除不在服务端的本地文件
+    # 删除不在服务端的本地文件/目录
+    wasteNameList = []
     for checksum in g_checksum_list:
         relativePath = checksum["name"][len(g_local_path):]
         isRemoteExist = False
         for item in list:
-            if not item["isdir"] and relativePath == (item["path"] + item["name"])[len(g_remote_path):]:
+            if relativePath == (item["path"] + item["name"])[len(g_remote_path):]:
                 isRemoteExist = True
                 break
         if not isRemoteExist:
             print("文件在远端不存在: " + checksum["name"])
-            g_checksum_list.remove(checksum)
-            os.remove(checksum["name"])
+            remove(checksum["name"])
+            wasteNameList.append(checksum["name"])
+    for name in wasteNameList:
+        for checksum in g_checksum_list:
+            if name == checksum["name"]:
+                g_checksum_list.remove(checksum)
+                break
     saveChecksumFile(g_checksum_filename, g_checksum_list)
 
-""" 下载前过滤 """
+""" 目录过滤 """
+def filterDirectory(ftp, remoteDir, dirSize, fileCount, folderCount, localDir):
+    for checksum in g_checksum_list:
+        if localDir == checksum["name"]:
+            return True
+    g_checksum_list.append({"isdir":1, "name":localDir, "size":dirSize, "file":fileCount, "folder":folderCount})
+    saveChecksumFile(g_checksum_filename, g_checksum_list)
+    return True
+
+""" 下载前文件过滤 """
 def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     # step1:过滤文件缓存时间(当前时间-文件修改时间)
     rYear = int(str(remoteFileModifyTime)[0:4])
@@ -171,8 +206,8 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
     rDay = int(str(remoteFileModifyTime)[6:8])
     dayDiff = (datetime.datetime.now() - datetime.datetime(rYear, rMonth, rDay)).days
     if g_cache_days > 0 and dayDiff > g_cache_days:
-        print("文件超过缓存时间: " + remoteFilename)
-        syslog.syslog("文件超过缓存时间: " + remoteFilename)
+        print("文件超过缓存时间: " + remoteFilename + ", 修改时间: " + str(remoteFileModifyTime))
+        syslog.syslog("文件超过缓存时间: " + remoteFilename + ", 修改时间: " + str(remoteFileModifyTime))
         removeWasteFile(localFilename)
         return False
     # step2:过滤策略
@@ -188,8 +223,8 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
         # 过滤文件大小
         sizeK = math.ceil(remoteFileSize / 1024)
         if sizeK < policy["sizeMinKB"] or sizeK > policy["sizeMaxKB"]:
-            print("文件大小超出范围: " + remoteFilename)
-            syslog.syslog("文件大小超出范围: " + remoteFilename)
+            print("文件大小超出范围: " + remoteFilename + ", 大小: " + str(remoteFileSize) + "字节")
+            syslog.syslog("文件大小超出范围: " + remoteFilename + ", 大小: " + str(remoteFileSize) + "字节")
             removeWasteFile(localFilename)
             return False
     # step3:过滤相同文件(根据文件大小和修改时间是否一致判断)
@@ -201,11 +236,11 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
                     return False
             g_checksum_list.pop(i)
             saveChecksumFile(g_checksum_filename, g_checksum_list)
-            os.remove(localFilename)
+            remove(localFilename)
             return False
     return True
 
-""" 下载后过滤 """
+""" 下载后文件过滤 """
 def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     # step1:杀毒过滤
     results = os.popen("python antivirus.py -p '" + localFilename + "'").read()
@@ -217,10 +252,10 @@ def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTim
     # step2:过滤策略
     policy = getPolicyBySuffix(remoteFilename)
     if not checkLocalFile(remoteFilename, localFilename, policy):
-        os.remove(localFilename)
+        remove(localFilename)
         return
     # step3:更新校验文件
-    g_checksum_list.append({"name":localFilename, "size":remoteFileSize, "mtime":remoteFileModifyTime})
+    g_checksum_list.append({"isdir":0, "name":localFilename, "size":remoteFileSize, "mtime":remoteFileModifyTime})
     saveChecksumFile(g_checksum_filename, g_checksum_list)
     print("文件下载成功: " + localFilename)
 
@@ -229,7 +264,7 @@ def main():
     if 1 == len(sys.argv):
         sys.argv.append("-h")
     parser = argparse.ArgumentParser(description="用于启动FTP客户端",
-                                     usage=os.path.basename(__file__) + " [-h] [-i IP] [-p PORT] [-u USERNAME} [-P PASSWORD] [-r REMOTE_PATH]")
+                                     usage=os.path.basename(__file__) + " [-h] [-i IP] [-p PORT] [-u USERNAME} [-P PASSWORD] [-r REMOTE_PATH] [-l LOCAL_PATH] [-f POLICY_FILE]")
     parser.add_argument('-i','--ip',metavar="",type=str,help="指定FTP服务器地址(必填). 例如: 127.0.0.1")
     parser.add_argument('-p','--port',metavar="",type=int,help="指定FTP服务器端口(必填). 例如: 21")
     parser.add_argument('-u',"--username",metavar="",type=str,help="指定用户名(选填). 例如: root. 默认匿名登录")
@@ -288,7 +323,7 @@ def main():
         return
     print("FTP 登录成功")
     print("FTP 文件同步中...")
-    ftp_client.ftpDownload(ftp, g_remote_path, g_local_path, fileListSearchOver, filterBeforeDownload, filterAfterDownload)
+    ftp_client.ftpDownload(ftp, g_remote_path, g_local_path, fileListSearchOver, filterDirectory, filterBeforeDownload, filterAfterDownload)
     print("FTP 文件同步结束")
     ftp.quit()
     print("FTP 退出")
@@ -297,3 +332,4 @@ def main():
 
 if "__main__" == __name__:
     main()
+

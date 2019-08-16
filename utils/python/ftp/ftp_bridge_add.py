@@ -15,9 +15,9 @@ def getPolicyNum(ip, port, localIp, localPort):
 """ 添加iptables策略 """
 def addIptablesPolicy(ip, port, localIp, localPort, pasvPort):
     if 0 == getPolicyNum(ip, port, localIp, localPort):
-        os.popen("iptables -t nat -A PREROUTING -d " + ip + " -p tcp -m tcp --dport " + str(port) + " -j DNAT --to-destination " + localIp + ":" + str(localPort))
+        os.popen("iptables -t nat -A PREROUTING -d " + ip + " -p tcp -m tcp --dport " + str(port) + " -j DNAT --to-destination " + localIp + ":" + str(localPort) + " -w ")
     if 0 == getPolicyNum(ip, pasvPort, localIp, pasvPort):
-        os.popen("iptables -t nat -A PREROUTING -d " + ip + " -p tcp -m tcp --dport " + str(pasvPort) + " -j DNAT --to-destination " + localIp + ":" + str(pasvPort))
+        os.popen("iptables -t nat -A PREROUTING -d " + ip + " -p tcp -m tcp --dport " + str(pasvPort) + " -j DNAT --to-destination " + localIp + ":" + str(pasvPort) + " -w ")
 
 """ 主入口函数 """
 def main():
