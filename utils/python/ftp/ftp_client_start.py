@@ -128,7 +128,7 @@ def checkLocalFile(remoteFilename, localFilename, policy):
                 matchWhite = True
             else:
                 for white in policy["contentWhiteList"]:
-                    if 0 == len(white["regx"]) or re.match(white["regx"], fileContent):
+                    if 0 == len(white["regx"]) or re.search(white["regx"], fileContent):
                         matchWhite = True
                         break
             if False == matchWhite:
@@ -138,7 +138,7 @@ def checkLocalFile(remoteFilename, localFilename, policy):
             # 过滤黑名单
             matchBlack = False
             for black in policy["contentBlackList"]:
-                if len(black["regx"]) > 0 and re.match(black["regx"], fileContent):
+                if len(black["regx"]) > 0 and re.search(black["regx"], fileContent):
                     matchBlack = True
                     break
             if True == matchBlack:
@@ -243,8 +243,7 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
 """ 下载后文件过滤 """
 def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     # step1:杀毒过滤
-    results = os.popen("python antivirus.py -p '" + localFilename + "'").read()
-    results = results.strip()
+    results = os.popen("python antivirus.py -p '" + localFilename + "'").read().strip()
     if len(results) > 0:
         print("文件发现病毒内容: " + remoteFilename + ", " + results)
         syslog.syslog("文件发现病毒内容: " + remoteFilename + ", " + results)
