@@ -59,6 +59,8 @@ def ftpList(ftp, path="/", list=[]):
                             index = i
                             break
             name = line[index:]
+            if "." == name or ".." == name:
+                continue
             # 类型判断
             if line.startswith("d"):  # 目录类型
                 subPath = path + name + "/"
@@ -82,8 +84,8 @@ def ftpList(ftp, path="/", list=[]):
             else:   # 文件类型
                 ftp.voidcmd("TYPE I")
                 filename = path + name
-                fileSize = int(ftp.sendcmd("SIZE " + filename).split()[1])
-                fileModifyTime = int(ftp.sendcmd("MDTM " + filename).split()[1])
+                fileSize = int(float(ftp.sendcmd("SIZE " + filename).split()[1]))
+                fileModifyTime = int(float(ftp.sendcmd("MDTM " + filename).split()[1]))
                 item = {
                     "isdir": 0,                     # 是否目录
                     "path": path,                   # 父目录(绝对路径)
