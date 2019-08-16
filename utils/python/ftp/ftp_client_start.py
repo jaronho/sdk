@@ -244,9 +244,10 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
 def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     # step1:杀毒过滤
     results = os.popen("python antivirus.py -p '" + localFilename + "'").read()
+    results = results.strip()
     if len(results) > 0:
-        print("文件发现病毒内容: " + remoteFilename)
-        syslog.syslog("文件发现病毒内容: " + remoteFilename)
+        print("文件发现病毒内容: " + remoteFilename + ", " + results)
+        syslog.syslog("文件发现病毒内容: " + remoteFilename + ", " + results)
         removeWasteFile(localFilename)
         return
     # step2:过滤策略
