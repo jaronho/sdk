@@ -24,6 +24,20 @@ ByteArray::~ByteArray(void) {
 	mContent = NULL;
 }
 /*********************************************************************/
+bool ByteArray::isBigEndium(void) {
+    /*
+        int大端存储方式: 0x00 00 00 01
+        int小端存储方式: 0x01 00 00 00
+        char大端: 0x00
+        char小端: 0x01
+    */
+    int a = 1;
+    if (0 == *(char*)&a) {  /* 大端 */
+        return true;
+    }
+    return false;   /* 小端 */
+}
+/*********************************************************************/
 short ByteArray::swab16(short x)  {
 	return (((x & 0x00FF) << 8) | ((x & 0xFF00) >> 8));
 }

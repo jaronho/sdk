@@ -14,6 +14,8 @@ public:
     virtual ~ByteArray(void);
 
 public:
+    static bool isBigEndium(void);                          /* 判断机器大小端 */
+
     static short swab16(short x);                           /* 大小端转换(短整型数字转为短整型数字) */
     static short swab16_array(char* pBuf);                  /* 大小端转换(字节流转为短整型数字) */
 
