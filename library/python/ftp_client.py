@@ -81,7 +81,7 @@ def ftpList(ftp, path="/", list=[]):
                 dirInfo["size"] += subDirInfo["size"]
                 dirInfo["file"] += subDirInfo["file"]
                 dirInfo["folder"] += 1 + subDirInfo["folder"]
-            else:   # 文件类型
+            elif line.startswith("-"):   # 文件类型
                 ftp.voidcmd("TYPE I")
                 filename = path + name
                 fileSize = int(float(ftp.sendcmd("SIZE " + filename).split()[1]))
@@ -96,6 +96,10 @@ def ftpList(ftp, path="/", list=[]):
                 list.append(item)
                 dirInfo["size"] += fileSize
                 dirInfo["file"] += 1
+            elif line.startswith("l"):  # 软链接类型
+                print("symlink: " + line)
+            else:   # 其他类型
+                print("other: " + line)
     except:
         print("Exception: ftp_client.ftpList =>\n           " + str(sys.exc_info()))
     return dirInfo
