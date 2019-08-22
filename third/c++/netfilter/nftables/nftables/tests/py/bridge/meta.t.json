@@ -1,0 +1,25 @@
+# meta obrname "br0"
+[
+    {
+        "match": {
+            "left": {
+                "meta": { "key": "obrname" }
+            },
+	    "op": "==",
+            "right": "br0"
+        }
+    }
+]
+
+# meta ibrname "br0"
+[
+    {
+        "match": {
+            "left": {
+                "meta": { "key": "ibrname" }
+            },
+	    "op": "==",
+            "right": "br0"
+        }
+    }
+]

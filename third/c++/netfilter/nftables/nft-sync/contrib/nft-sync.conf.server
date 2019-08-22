@@ -1,0 +1,11 @@
+#
+# This the nft-sync configuration file. This software is still under
+# development. Changes in the configuration file may still happen at this
+# stage.
+#
+
+# Bind listener socket to this address
+local-address 127.0.0.1:1234
+
+# Display logging to the standard output
+logging stdout

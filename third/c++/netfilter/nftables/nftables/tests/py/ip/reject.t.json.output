@@ -1,0 +1,25 @@
+# reject with icmp type port-unreachable
+[
+    {
+        "reject": null
+    }
+]
+
+# mark 0x80000000 reject with tcp reset
+[
+    {
+        "match": {
+            "left": {
+                "meta": { "key": "mark" }
+            },
+	    "op": "==",
+            "right": 2147483648
+        }
+    },
+    {
+        "reject": {
+            "type": "tcp reset"
+        }
+    }
+]
+
