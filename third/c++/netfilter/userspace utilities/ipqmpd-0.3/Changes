@@ -1,0 +1,22 @@
+==> Changes for 0.3
+
+ipqmpd:
+- added packet id tracking
+- fixed removal of stale peers
+- added check for mark-clashes in register_msg
+- security check before in handle_msg_setmode
+- if we cannot enqueue (pkt_ids full), return IPQMPD_DEFAULT_VERDICT
+- state check before we call client_inp / outp
+- fixed a braindamage bug in destroy_queue
+
+libipqmpd:
+- added error handling to libipqmpd
+- added ipqmpd-death-detection to libipqmpd
+
+
+==> Changes for 0.2
+
+ipqmpd:
+- verbose error handling after all libc calls 
+- bugfix for NF_ACCEPT case  (we returned an empty packet)
+- ipqmpd_ctl_msg_error for error passing to peer

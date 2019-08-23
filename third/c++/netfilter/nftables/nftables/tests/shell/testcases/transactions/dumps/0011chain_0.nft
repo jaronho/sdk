@@ -1,5 +1,0 @@
-table ip x {
-	chain y {
-		type filter hook input priority filter; policy drop;
-	}
-}

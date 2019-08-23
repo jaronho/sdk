@@ -1,5 +1,0 @@
-table inet global {
-	chain prerouting {
-		type filter hook prerouting priority filter + 10; policy accept;
-	}
-}

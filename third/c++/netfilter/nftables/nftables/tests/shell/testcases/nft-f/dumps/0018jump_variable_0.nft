@@ -1,8 +1,0 @@
-table ip foo {
-	chain bar {
-		jump ber
-	}
-
-	chain ber {
-	}
-}

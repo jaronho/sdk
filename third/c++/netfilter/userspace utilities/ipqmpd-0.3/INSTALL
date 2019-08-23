@@ -1,0 +1,18 @@
+Well... at this state of development there is not much to install.
+
+Just some notes:
+
+- To run it as a real daemon You have to compile it without defining DEBUG
+  in the makefile. If You compile it with DEBUG, it won't fork.
+
+- I did some very small modifications to libipq, so please use the one
+  provided in this package and NOT the one from the iptables package.
+  I expect this to change soon - If my changes get accepted into libipq
+
+- I provide a source-compatible library (libipqmpd) as replacement for
+  libipq. So You only have to recompile Your ip_queue using program and 
+  link it against libilqmpd instead of libipq.
+  In the future I want to be binary compatible with libipq.
+
+- AGAIN: This software is completely new and almost untested. It works
+  at least for me :) Bugfixes / Comments / Ideas are appreciated.

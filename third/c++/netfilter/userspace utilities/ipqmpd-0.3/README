@@ -1,0 +1,94 @@
+ipqmpd - ip queue multiplexer daemon
+======================================================================
+
+===> PROBLEM
+
+The problem is, that the existing QUEUE target does allow only one userspace
+process to attach the queue. 
+
+If linux 2.4 is finally getting released and netfilter is used widespread,
+people are beginning to write code which uses the new QUEUE target for 
+different applications. 
+
+As soon if there are various processes using the QUEUE target available,
+people want to run more than one of them on their machine. 
+
+===> POSSIBLE SOLUTIONS
+
+1. Kernel
+Add support for more than one proccess to the QUEUE target in the kernel.
+Disadvantages: complex change to the kernel, difficult to get them into 
+2.4 at this late stage. More complexity in the kernel.
+
+2. Userspace multiplexer
+Run a special daemon which communicates with the QUEUE stuff in the kernel.
+Various other userspace processes may then attach this daemon. 
+Disadvantages: daemon has to keep track of each packet, because it must 
+receive at least a verdict to reported back to the kernel. When the daemon
+dies, all other daemons are disconnected, too.
+
+===> IDEA
+
+The idea is to provide a library with exactly the same interface as libipq,
+so that userspace applications just have to be relinked against another 
+library to use the multiplex-daemon instead of the kernel interface.
+
+The only question is:, from where does the ipqmpd know, which userspace 
+process should receive which packets? I thought about this question and
+asked Rusty about that issue. We want to use the mark field for that 
+particular purpose.
+
+This results in a minor interface change for libipq. If a process wants to
+obtain a queue handle, it has to specify which mark it is interested in.
+The application will then only receive packets which have that mark. For
+all packets which are queued but no application is interested in, NF_ACCEPT
+is returned to the kernel.
+
+===> DETAIL
+
+to keep track of 
+
+- Who is connected to us
+- Which mark he one is interested in
+- Which packet id's were sent to whom
+
+to implement
+- A control unix domain datagram socket for communication with the library
+- A data unix datagram socket for packet passing to/from the process
+- Check whether the process "owns" the packet id for which he sent us a
+  verdict
+- correct mapping of possible error messages from the kernel api
+- handle clashes, where more than one process wants to register for one 
+  particular mark value
+- a permission system which controls access to the sockets.
+- logging
+
+main loop:
+	create readset for qh->fd and all registered peers
+	create readset for ctlsock 
+	create writeset for qh->fd if any waiting verdicts
+	create writeset for ctlsock, if any waiting packets
+	create writeset for all peers where we have a waiting packet
+	select()
+	read packets from qh->fd, enqueue them for the apr. peer
+	read packets from all inc. peer, enqueue them for qh after check
+	write packets for all sockets which are in writeset
+
+
+message types passed over ctlsock:
+	> connect
+	> request for packets of a specific mark and an addr
+	< answer that ipqmpd bound to addr
+	> ipq_set_mode
+
+message types passed over datasock:
+	< queue packet message
+	> verdict w or w/out packet to be reinserted
+
+
+===> COPYRIGHT + CREDITS
+ipqmpd and libipqmpd are (C) 2000 by Harald Welte. 
+
+Credits for netfilter itself, and especially the queuing system, as well as
+the interface of libipq to: Rusty Russel and James Morris.
+

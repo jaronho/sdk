@@ -1,0 +1,8 @@
+ipqmpd:
+- authentication of peers
+
+libipqmpd:
+- Binary compatibility to libipq
+
+kernel:
+- Patch kernel module to accept IPQ_COPY_NONE

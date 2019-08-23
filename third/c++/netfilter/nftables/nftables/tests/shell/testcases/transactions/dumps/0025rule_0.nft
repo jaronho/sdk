@@ -1,6 +1,0 @@
-table ip x {
-	chain y {
-		log
-		drop
-	}
-}

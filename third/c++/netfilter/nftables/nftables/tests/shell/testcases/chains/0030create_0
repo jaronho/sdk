@@ -1,6 +1,0 @@
-#!/bin/bash
-
-set -e
-
-$NFT add table ip x
-$NFT create chain ip x y
