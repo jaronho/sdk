@@ -65,7 +65,7 @@ def ftpList(ftp, path="/", list=[]):
             if line.startswith("d"):  # 目录类型
                 subPath = path + name + "/"
                 item = {
-                    "isdir": 1,                     # 是否目录
+                    "type": 0,                      # 类型:0.目录,1.文件,2.软链接,3.其他
                     "path": path,                   # 父目录(绝对路径)
                     "name": name,                   # 目录名称
                     "size": 0,                      # 目录大小
@@ -87,7 +87,7 @@ def ftpList(ftp, path="/", list=[]):
                 fileSize = int(float(ftp.sendcmd("SIZE " + filename).split()[1]))
                 fileModifyTime = int(float(ftp.sendcmd("MDTM " + filename).split()[1]))
                 item = {
-                    "isdir": 0,                     # 是否目录
+                    "type": 1,                      # 类型:0.目录,1.文件,2.软链接,3.其他
                     "path": path,                   # 父目录(绝对路径)
                     "name": name,                   # 文件名称
                     "size": fileSize,               # 文件大小
@@ -137,7 +137,7 @@ def ftpDownload(ftp, remotePath, localPath, listOverCB=None, filterDirectoryCB=N
             if item["path"] in notAllowDirList:
                 continue
             # 判断是否允许创建目录
-            if item["isdir"]:
+            if 0 == item["type"]:
                 allowMakeDir = True
                 if hasattr(filterDirectoryCB, '__call__'):
                     allowMakeDir = filterDirectoryCB(ftp, remoteItemName, item["size"], item["file"], item["folder"], localItemName)
