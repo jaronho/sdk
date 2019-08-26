@@ -107,17 +107,14 @@ def setDefaultGw(defaultGw):
     os.popen("route add -net 0.0.0.0 netmask 0.0.0.0 gw "+defaultGw)
     """写入到开机启动脚本里"""
     buff = ""
-    with open("/etc/rc.local", "r") as p:
+    with open("/ics/ics_client/ics_start.sh", "r") as p:
         for line in p:
-            if line.find("exit") >= 0:
-                if buff.find("route del -net 0.0.0.0") < 0:
-                    buff += "route del -net 0.0.0.0\n"
-                if buff.find("route add -net 0.0.0.0") < 0:
-                    buff += "route add -net 0.0.0.0 netmask 0.0.0.0 gw "+defaultGw+"\n"
-                buff += line+"\n"
+            if line.find("route add -net 0.0.0.0") != -1:
+                buff += "route add -net 0.0.0.0 netmask 0.0.0.0 gw " + defaultGw
                 break
-            buff += line +"\n"
-    with open("/etc/rc.local", "w") as fp:
+            buff += line
+            print(buff)
+    with open("/ics/ics_client/ics_start.sh", "w") as fp:
         fp.write(buff)
     
 

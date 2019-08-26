@@ -101,10 +101,11 @@ def removeWasteFile(localFilename):
 
 """ 根据后缀名获取策略 """
 def getPolicyBySuffix(remoteFilename):
+    extName = os.path.splitext(remoteFilename)[-1][1:].upper()
+    if 0 == len(extName):
+        return None
     for policy in g_filter_policys:
-        # 过滤文件后缀名
-        extName = os.path.splitext(remoteFilename)[-1][1:]
-        if extName.upper() in policy["subFixAllow"].upper():
+        if extName in policy["subFixAllow"].upper():
             return policy
     return None
 
@@ -194,7 +195,7 @@ def filterDirectory(ftp, remoteDir, dirSize, fileCount, folderCount, localDir):
     for checksum in g_checksum_list:
         if localDir == checksum["name"]:
             return True
-    g_checksum_list.append({"isdir":1, "name":localDir, "size":dirSize, "file":fileCount, "folder":folderCount})
+    g_checksum_list.append({"type":0, "name":localDir, "size":dirSize, "file":fileCount, "folder":folderCount})
     saveChecksumFile(g_checksum_filename, g_checksum_list)
     return True
 
@@ -255,7 +256,7 @@ def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTim
         remove(localFilename)
         return
     # step3:更新校验文件
-    g_checksum_list.append({"isdir":0, "name":localFilename, "size":remoteFileSize, "mtime":remoteFileModifyTime})
+    g_checksum_list.append({"type":1, "name":localFilename, "size":remoteFileSize, "mtime":remoteFileModifyTime})
     saveChecksumFile(g_checksum_filename, g_checksum_list)
     print("文件下载成功: " + localFilename)
 
@@ -291,7 +292,7 @@ def main():
     if len(clientPids) > 0:
         print("当前有进程正在FTP同步中")
         return
-    syslog.openlog("[ics_client:ftp_sync] ", syslog.LOG_PID)
+    syslog.openlog("ics_client:ftp_client_start", syslog.LOG_PID)
     syslog.syslog("准备同步FTP " + args["ip"] + ":" + str(args["port"]))
     # step3:规范化目录格式
     global g_remote_path
