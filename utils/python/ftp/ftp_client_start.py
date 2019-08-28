@@ -244,10 +244,30 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
 """ 下载后文件过滤 """
 def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     # step1:杀毒过滤
-    results = os.popen("python antivirus.py -p '" + localFilename + "'").read().strip()
-    if len(results) > 0:
-        print("文件发现病毒内容: " + remoteFilename + ", " + results)
-        syslog.syslog("文件发现病毒内容: " + remoteFilename + ", " + results)
+    isAntiVirusPass = False
+    try:
+        results = os.popen("python antivirus.py -p '" + localFilename + "'").read().strip("\r\n")
+        jsonData = json.loads(results)
+        if 0 == jsonData["status"]:
+            if jsonData["infected"] > 0:
+                print("文件发现病毒内容: " + results)
+                syslog.syslog("文件发现病毒内容: " + results)
+            elif jsonData["error"] > 0:
+                print("文件杀毒过程出错: " + results)
+                syslog.syslog("文件杀毒过程出错: " + results)
+            else:
+                isAntiVirusPass = True
+        else:
+            print("文件杀毒过程失败: " + results)
+            syslog.syslog("文件杀毒过程失败: " + results)
+    except:
+        print("Exception: ftp_client_start.filterAfterDownload =>\n           "
+              + str(sys.exc_info())
+              + "\n           文件杀毒出错 " + localFilename)
+        syslog.syslog("Exception: ftp_client_start.filterAfterDownload =>\n           "
+                      + str(sys.exc_info())
+                      + "\n           文件杀毒出错 " + localFilename)
+    if False == isAntiVirusPass:
         removeWasteFile(localFilename)
         return
     # step2:过滤策略
