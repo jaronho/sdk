@@ -9,11 +9,11 @@ import sys
 """ 生成返回数据 """
 def generateRetData(status=1, describe=""):
     jsonData = {
-        "status":status,    # 状态值码:0.杀毒软件已安装,1.杀毒软件未安装
-        "describe":"",      # 状态码描述
-        "details":[],       # 详细列表
-        "infected":0,       # 病毒感染文件个数
-        "error":0           # 杀毒时出错个数
+        "status":status,        # 状态值码:0.杀毒软件已安装,1.杀毒软件未安装
+        "describe":describe,    # 状态码描述
+        "details":[],           # 详细列表
+        "infected":0,           # 病毒感染文件个数
+        "error":0               # 杀毒时出错个数
     }
     return jsonData
 
@@ -23,17 +23,17 @@ def clamavScan(path):
     # step1:判断杀毒软件是否安装
     if 0 == len(os.popen("which clamdscan").read()):
         jsonData["describe"] = "can not find clamdscan"
-        print(json.dumps(jsonData, ensure_ascii=False))
-        return
+        return json.dumps(jsonData, ensure_ascii=False)
     # step2:开始杀毒
     jsonData["status"] = 0
     cmd = "clamdscan --fdpass -i '%s' " % (path)
     output = os.popen(cmd).read().strip("\r\n")
     # step3:解析结果
-    pos = output.find("----------- SCAN SUMMARY -----------")
+    divideLine = "----------- SCAN SUMMARY -----------"
+    pos = output.find(divideLine)
     if pos >= 0:
-        detailList = output[0:pos].split("\n")
-        statusList = output[pos+36:].split("\n")
+        detailList = filter(lambda x: 0 != len(x), output[0:pos].split("\n"))
+        statusList = filter(lambda x: 0 != len(x), output[pos+len(divideLine):].split("\n"))
         for detail in detailList:
             if len(detail) > 0:
                 jsonData["details"].append(detail)
@@ -42,7 +42,7 @@ def clamavScan(path):
                 jsonData["infected"] += int(status.split(":")[1])
             elif "Total errors:".upper() in status.upper():
                 jsonData["error"] += int(status.split(":")[1])
-    print(json.dumps(jsonData, ensure_ascii=False))
+    return json.dumps(jsonData, ensure_ascii=False)
 
 """ 主入口函数 """
 def main():
@@ -68,7 +68,9 @@ def main():
     # step3:引擎选择
     logging.info("start scan " + args["path"])
     if args["engine"].upper() == "clamav".upper():
-        clamavScan(args["path"])
+        jsonContent = clamavScan(args["path"])
+        print(jsonContent)
+        logging.info(jsonContent)
     else:
         print(generateRetData(4, "not support engine '" + args["engine"] + "'"))
         logging.error("not support engine '" + args["engine"] + "'")

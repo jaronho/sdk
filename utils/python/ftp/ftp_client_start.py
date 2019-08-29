@@ -181,6 +181,7 @@ def fileListSearchOver(list):
                 break
         if not isRemoteExist:
             print("文件在远端不存在: " + checksum["name"])
+            syslog.syslog("文件在远端不存在: " + checksum["name"])
             remove(checksum["name"])
             wasteNameList.append(checksum["name"])
     for name in wasteNameList:
@@ -245,6 +246,7 @@ def filterBeforeDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTi
 def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTime, localFilename):
     # step1:杀毒过滤
     isAntiVirusPass = False
+    results = ""
     try:
         results = os.popen("python antivirus.py -p '" + localFilename + "'").read().strip("\r\n")
         jsonData = json.loads(results)
@@ -263,10 +265,12 @@ def filterAfterDownload(ftp, remoteFilename, remoteFileSize, remoteFileModifyTim
     except:
         print("Exception: ftp_client_start.filterAfterDownload =>\n           "
               + str(sys.exc_info())
-              + "\n           文件杀毒出错 " + localFilename)
-        syslog.syslog("Exception: ftp_client_start.filterAfterDownload =>\n           "
+              + "\n           文件杀毒出错 " + localFilename
+              + "\n           返回数据 " + results)
+        syslog.syslog("Exception: ftp_client_start.filterAfterDownload => "
                       + str(sys.exc_info())
-                      + "\n           文件杀毒出错 " + localFilename)
+                      + ", 文件杀毒出错: " + localFilename
+                      + ", 返回数据: " + results)
     if False == isAntiVirusPass:
         removeWasteFile(localFilename)
         return
