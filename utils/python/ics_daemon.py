@@ -25,21 +25,24 @@ def keyboardRecord(minute, path, port):
 def listenClient(name, fullPath):
     while True:
         clientExist = False
-        for pid in psutil.pids():
-            p = psutil.Process(pid)
-            if name == p.name():
-                clientExist = True
-                break
-        if False == clientExist:
-            if True == os.path.exists(fullPath):
-                os.system("chmod 777 " + fullPath)
-                if True == os.access(fullPath, os.X_OK):
-                    printMsg("工控客户端未启动, 准备启动")
-                    os.system(fullPath)
+        try:
+            for pid in psutil.pids():
+                p = psutil.Process(pid)
+                if name == p.name():
+                    clientExist = True
+                    break
+            if False == clientExist:
+                if True == os.path.exists(fullPath):
+                    os.system("chmod 777 " + fullPath)
+                    if True == os.access(fullPath, os.X_OK):
+                        printMsg("工控客户端未启动, 准备启动")
+                        os.system(fullPath)
+                    else:
+                        printMsg("工控客户端程序文件 \"" + fullPath + "\" 不具有可执行权限, 无法启动")
                 else:
-                    printMsg("工控客户端程序文件 \"" + fullPath + "\" 不具有可执行权限, 无法启动")
-            else:
-                printMsg("工控客户端程序文件 \"" + fullPath + "\" 不存在, 无法启动")
+                    printMsg("工控客户端程序文件 \"" + fullPath + "\" 不存在, 无法启动")
+        except:
+            printMsg("Exception: ics_daemon.listenClient =>" + str(sys.exc_info()))
         time.sleep(1)
 
 def main(version):
@@ -56,8 +59,14 @@ def main(version):
     printMsg("工控客户端守护进程启动, 当前用户: " + getpass.getuser())
     currentPath = os.path.dirname(os.path.realpath(__file__))
     configPath = os.path.join(currentPath, "config.ini")
-    conf = ConfigParser.ConfigParser()
-    conf.read(configPath)
+    try:
+        conf = ConfigParser.ConfigParser()
+        conf.read(configPath)
+    except:
+        printMsg("Exception: ics_daemon.main =>"
+                 + str(sys.exc_info())
+                 + ", 配置文件 " + configPath + " 解析出错")
+        return
     # 读取录屏配置参数
     printMsg("读取录屏配置参数")
     screenRecordEnable = conf.get("CONFIG", "SCREEN_RECORD_ENALBE")
