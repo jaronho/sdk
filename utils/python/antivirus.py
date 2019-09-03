@@ -19,30 +19,33 @@ def generateRetData(status=1, describe=""):
 
 """ 使用clamav杀毒 """
 def clamavScan(path):
-    jsonData = generateRetData()
-    # step1:判断杀毒软件是否安装
-    if 0 == len(os.popen("which clamdscan").read()):
-        jsonData["describe"] = "can not find clamdscan"
+    try:
+        jsonData = generateRetData()
+        # step1:判断杀毒软件是否安装
+        if 0 == len(os.popen("which clamdscan").read()):
+            jsonData["describe"] = "can not find clamdscan"
+            return json.dumps(jsonData, ensure_ascii=False)
+        # step2:开始杀毒
+        jsonData["status"] = 0
+        cmd = "clamdscan --fdpass -i '%s' " % (path)
+        output = os.popen(cmd).read().strip("\r\n")
+        # step3:解析结果
+        divideLine = "----------- SCAN SUMMARY -----------"
+        pos = output.find(divideLine)
+        if pos >= 0:
+            detailList = filter(lambda x: 0 != len(x), output[0:pos].split("\n"))
+            statusList = filter(lambda x: 0 != len(x), output[pos+len(divideLine):].split("\n"))
+            for detail in detailList:
+                if len(detail) > 0:
+                    jsonData["details"].append(detail)
+            for status in statusList: 
+                if "Infected files:".upper() in status.upper():
+                    jsonData["infected"] += int(status.split(":")[1])
+                elif "Total errors:".upper() in status.upper():
+                    jsonData["error"] += int(status.split(":")[1])
         return json.dumps(jsonData, ensure_ascii=False)
-    # step2:开始杀毒
-    jsonData["status"] = 0
-    cmd = "clamdscan --fdpass -i '%s' " % (path)
-    output = os.popen(cmd).read().strip("\r\n")
-    # step3:解析结果
-    divideLine = "----------- SCAN SUMMARY -----------"
-    pos = output.find(divideLine)
-    if pos >= 0:
-        detailList = filter(lambda x: 0 != len(x), output[0:pos].split("\n"))
-        statusList = filter(lambda x: 0 != len(x), output[pos+len(divideLine):].split("\n"))
-        for detail in detailList:
-            if len(detail) > 0:
-                jsonData["details"].append(detail)
-        for status in statusList: 
-            if "Infected files:".upper() in status.upper():
-                jsonData["infected"] += int(status.split(":")[1])
-            elif "Total errors:".upper() in status.upper():
-                jsonData["error"] += int(status.split(":")[1])
-    return json.dumps(jsonData, ensure_ascii=False)
+    except:
+        return "Exception: " + str(sys.exc_info()) + ", path: " + path
 
 """ 主入口函数 """
 def main():
