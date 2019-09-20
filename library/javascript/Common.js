@@ -107,6 +107,26 @@ Common.join = function() {
 	return arr;
 };
 //----------------------------------------------------------------------
+// 数组插入
+Common.insert = function(arrOri, index, arrNew) {
+    if (index < 0) {
+        index = 0;
+    } else if (index > arrOri.length) {
+        index = arrOri.length;
+    }
+    var arr = [];
+    for (var i = 0; i < index; ++i) {
+        arr.push(arrOri[i]);
+    }
+    for (var j = 0; j < arrNew.length; ++j) {
+        arr.push(arrNew[j]);
+    }
+    for (var k = index; k < arrOri.length; ++k) {
+        arr.push(arrOri[k]);
+    }
+    return arr;
+};
+//----------------------------------------------------------------------
 // 检查单个字符占位数
 Common.characterPlaceholder = function(ch, charset) {
     if ('number' != typeof(ch)) {
