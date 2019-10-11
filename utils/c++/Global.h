@@ -38,6 +38,12 @@ typedef struct memory_dev_st {
     unsigned long available;        /* 可用的内存大小 */
 } memory_dev_st;
 
+typedef struct disk_dev_st {
+    unsigned long long total;       /* 磁盘总大小(单位:字节B) */
+    unsigned long long free;        /* 空闲磁盘大小(单位:字节B) */
+    unsigned long long available;   /* 非超级用户可用的空闲磁盘大小(单位:字节B) */
+} disk_dev_st;
+
 typedef struct cpu_dev_st { /* 1 jiffies = 0.01秒 */
     unsigned long user;             /* 从系统启动开始累计到当前时刻,处于用户态的运行时间,不包含nice值为负的进程(单位:jiffies) */
     unsigned long nice;             /* 从系统启动开始累计到当前时刻,nice值为负的进程所占用的CPU时间(单位:jiffies) */
@@ -48,12 +54,6 @@ typedef struct cpu_dev_st { /* 1 jiffies = 0.01秒 */
     unsigned long softirq;          /* 从系统启动开始累计到当前时刻,软中断时间(单位:jiffies) */
 } cpu_dev_st;
 
-typedef struct disk_dev_st {
-    unsigned long long total;       /* 磁盘总大小(单位:字节B) */
-    unsigned long long free;        /* 空闲磁盘大小(单位:字节B) */
-    unsigned long long available;   /* 非超级用户可用的空闲磁盘大小(单位:字节B) */
-} disk_dev_st;
-
 /* 获取网络设备 */
 extern std::vector<network_dev_st> devGetNetwork(void);
 
@@ -63,17 +63,17 @@ extern memory_dev_st devGetMemory(void);
 /* 获取内存使用率 */
 extern double devGetMemoryOccupy(void);
 
-/* 获取CPU情况 */
-extern cpu_dev_st devGetCPU(void);
-
-/* 获取CPU使用率 */
-extern double devGetCpuOccupy(void);
-
 /* 获取磁盘情况 */
 extern disk_dev_st devGetDisk(const char* path);
 
 /* 获取磁盘使用率 */
 extern double devGetDiskOccupy(void);
+
+/* 获取CPU情况 */
+extern cpu_dev_st devGetCPU(void);
+
+/* 获取CPU使用率 */
+extern double devGetCpuOccupy(void);
 
 #ifdef GLOBAL_MODULE_COMMON
 /*********************************************************************

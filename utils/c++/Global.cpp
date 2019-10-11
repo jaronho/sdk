@@ -94,37 +94,6 @@ double devGetMemoryOccupy(void) {
     return occupy * 100;
 }
 
-cpu_dev_st devGetCPU(void) {
-    cpu_dev_st cpuDev;
-#ifdef __linux
-    FILE* stream = fopen("/proc/stat", "r");
-    if (stream) {
-        char buffer[256] = { 0 };
-        char name[64] = { 0 };
-        if (fgets(buffer, sizeof(buffer), stream)) {
-            sscanf(buffer, "%s%lu%lu%lu%lu%lu%lu%lu", name, &cpuDev.user, &cpuDev.nice, &cpuDev.system, &cpuDev.idle, &cpuDev.iowait, &cpuDev.irq, &cpuDev.softirq);
-        }
-        fclose(stream);
-    }
-#endif
-    return cpuDev;
-}
-
-double devGetCpuOccupy(void) {
-    cpu_dev_st cpuDev1 = devGetCPU();
-    sleep(1);
-    cpu_dev_st cpuDev2 = devGetCPU();
-    unsigned long t1 = cpuDev1.user + cpuDev1.nice + cpuDev1.system + cpuDev1.idle + cpuDev1.iowait + cpuDev1.irq + cpuDev1.softirq;
-    unsigned long t2 = cpuDev2.user + cpuDev2.nice + cpuDev2.system + cpuDev2.idle + cpuDev2.iowait + cpuDev2.irq + cpuDev2.softirq;
-    unsigned long total = t2 - t1;
-    if (total <= 0) {
-        return 0;
-    }
-    unsigned long idle = cpuDev2.idle - cpuDev1.idle;
-    double occupy = (double)(total - idle) / total;
-    return occupy * 100;
-}
-
 disk_dev_st devGetDisk(const char* path) {
     disk_dev_st diskDev;
 #ifdef __linux
@@ -143,6 +112,37 @@ double devGetDiskOccupy(void) {
         return 0;
     }
     double occupy = (double)(diskDev.total - diskDev.available) / diskDev.total;
+    return occupy * 100;
+}
+
+cpu_dev_st devGetCPU(void) {
+    cpu_dev_st cpuDev;
+#ifdef __linux
+    FILE* stream = fopen("/proc/stat", "r");
+    if (stream) {
+        char buffer[256] = { 0 };
+        char name[64] = { 0 };
+        if (fgets(buffer, sizeof(buffer), stream)) {
+            sscanf(buffer, "%s%lu%lu%lu%lu%lu%lu%lu", name, &cpuDev.user, &cpuDev.nice, &cpuDev.system, &cpuDev.idle, &cpuDev.iowait, &cpuDev.irq, &cpuDev.softirq);
+        }
+        fclose(stream);
+    }
+#endif
+    return cpuDev;
+}
+
+double devGetCpuOccupy(void) {
+    cpu_dev_st cpuDev1 = devGetCPU();
+    usleep(1000 * 1000);
+    cpu_dev_st cpuDev2 = devGetCPU();
+    unsigned long t1 = cpuDev1.user + cpuDev1.nice + cpuDev1.system + cpuDev1.idle + cpuDev1.iowait + cpuDev1.irq + cpuDev1.softirq;
+    unsigned long t2 = cpuDev2.user + cpuDev2.nice + cpuDev2.system + cpuDev2.idle + cpuDev2.iowait + cpuDev2.irq + cpuDev2.softirq;
+    unsigned long total = t2 - t1;
+    if (total <= 0) {
+        return 0;
+    }
+    unsigned long idle = cpuDev2.idle - cpuDev1.idle;
+    double occupy = (double)(total - idle) / total;
     return occupy * 100;
 }
 
