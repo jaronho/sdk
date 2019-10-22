@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.handlers import FTPHandler
-from pyftpdlib.servers import ThreadedFTPServer
+from pyftpdlib.servers import MultiprocessFTPServer, ThreadedFTPServer
 import sys
 
 """
@@ -77,10 +77,11 @@ import sys
  *          maxCons - 最大连接数(选填),例如: 512
  *          maxConsPerIp - 每个IP最大连接数(选填),0:没有限制,默认为0
  *          handler - 处理类(选填),参考:http://pydoc.net/pyftpdlib/1.3.0/pyftpdlib.handlers
+ *          isMultiProcess - 是否支持多进程(选填),默认是
  * Return:  空
 """
 
-def ftpStart(anoDir="", anoPerm="elr", ip="127.0.0.1", port=21, pasvPortBegin=60000, pasvPortEnd=65535, users=[], maxCons=512, maxConsPerIp=0, handler=None):
+def ftpStart(anoDir="", anoPerm="elr", ip="127.0.0.1", port=21, pasvPortBegin=60000, pasvPortEnd=65535, users=[], maxCons=512, maxConsPerIp=0, handler=None, isMultiProcess=True):
     try:
         # step1:实例化用户授权管理
         authorizer = DummyAuthorizer()
@@ -96,7 +97,10 @@ def ftpStart(anoDir="", anoPerm="elr", ip="127.0.0.1", port=21, pasvPortBegin=60
         handler.authorizer = authorizer
         handler.passive_ports = range(pasvPortBegin, pasvPortEnd)
         # step5:配置服务器
-        server = ThreadedFTPServer((ip, port), handler)
+        if isMultiProcess:
+            server = MultiprocessFTPServer((ip, port), handler)
+        else:
+            server = ThreadedFTPServer((ip, port), handler)
         server.max_cons = maxCons
         server.max_cons_per_ip = maxConsPerIp
         # step6:开启服务器
