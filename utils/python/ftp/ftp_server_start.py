@@ -2,9 +2,15 @@
 # -*- coding: UTF-8 -*-
 from sdk import kill_process
 from sdk import ftp_server
+from pyftpdlib.handlers import FTPHandler
 import argparse
 import os
 import sys
+
+class FTPHandlerCB(FTPHandler):
+    # 从FTP服务器下载文件结束,file:文件在FTP服务器的绝对路径
+    def on_file_sent(self, file):
+        print("====== on_file_sent: " + self.username + " ===" + file)
 
 """ 主入口函数 """
 def main():
@@ -56,7 +62,8 @@ def main():
     pids = kill_process.killByIpPort(args["ip"], args["port"], 1, False)
     if len(pids) > 0:
         print("杀死占用IP和端口的进程: " + str(pids))
-    ftp_server.ftpStart(anoDir=anoDir, anoPerm="elr", ip=args["ip"], port=args["port"], pasvPortBegin=args["pasv_port_begin"], pasvPortEnd=args["pasv_port_end"], users=users)
+    handlerCB = FTPHandlerCB
+    ftp_server.ftpStart(anoDir=anoDir, anoPerm="elr", ip=args["ip"], port=args["port"], pasvPortBegin=args["pasv_port_begin"], pasvPortEnd=args["pasv_port_end"], users=users, handler=handlerCB)
 
 if "__main__" == __name__:
     main()

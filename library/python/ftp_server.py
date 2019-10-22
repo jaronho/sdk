@@ -19,6 +19,52 @@ import sys
 'T' = 更改文件修改时间(SITE,MFMT命令)
 """
 
+# class FTPHandlerCB(FTPHandler):
+    # def on_connect(self):
+        # """Called when client connects, *before* sending the initial
+        # 220 reply.
+        # """
+
+    # def on_disconnect(self):
+        # """Called when connection is closed."""
+
+    # def on_login(self, username):
+        # """Called on user login."""
+
+    # def on_login_failed(self, username, password):
+        # """Called on failed login attempt.
+        # At this point client might have already been disconnected if it
+        # failed too many times.
+        # """
+
+    # def on_logout(self, username):
+        # """Called when user "cleanly" logs out due to QUIT or USER
+        # issued twice (re-login). This is not called if the connection
+        # is simply closed by client.
+        # """
+
+    # def on_file_sent(self, file):
+        # """Called every time a file has been succesfully sent.
+        # "file" is the absolute name of the file just being sent.
+        # """
+
+    # def on_file_received(self, file):
+        # """Called every time a file has been succesfully received.
+        # "file" is the absolute name of the file just being received.
+        # """
+
+    # def on_incomplete_file_sent(self, file):
+        # """Called every time a file has not been entirely sent.
+        # (e.g. ABOR during transfer or client disconnected).
+        # "file" is the absolute name of that file.
+        # """
+
+    # def on_incomplete_file_received(self, file):
+        # """Called every time a file has not been entirely received
+        # (e.g. ABOR during transfer or client disconnected).
+        # "file" is the absolute name of that file.
+        # """
+
 """
  * Brief:   开启FTP服务器
  * Param:   anoDir - 匿名用户允许访问的目录,例如: /home/
@@ -30,9 +76,11 @@ import sys
  *          users - 用户列表(选填),默认没有, 例如: [{"name":"test1","pwd":"123456","dir":"/home/","perm":"elr"},{"name":"test2","pwd":"123456","dir":"/home/","perm":"elr"}]
  *          maxCons - 最大连接数(选填),例如: 512
  *          maxConsPerIp - 每个IP最大连接数(选填),0:没有限制,默认为0
+ *          handler - 处理类(选填),参考:http://pydoc.net/pyftpdlib/1.3.0/pyftpdlib.handlers
  * Return:  空
 """
-def ftpStart(anoDir="", anoPerm="elr", ip="127.0.0.1", port=21, pasvPortBegin=60000, pasvPortEnd=65535, users=[], maxCons=512, maxConsPerIp=0):
+
+def ftpStart(anoDir="", anoPerm="elr", ip="127.0.0.1", port=21, pasvPortBegin=60000, pasvPortEnd=65535, users=[], maxCons=512, maxConsPerIp=0, handler=None):
     try:
         # step1:实例化用户授权管理
         authorizer = DummyAuthorizer()
@@ -43,7 +91,8 @@ def ftpStart(anoDir="", anoPerm="elr", ip="127.0.0.1", port=21, pasvPortBegin=60
         for user in users:
             authorizer.add_user(user["name"], user["pwd"], user["dir"], perm=user["perm"])
         # step4:实例化FTPHandler
-        handler = FTPHandler
+        if not handler:
+            handler = FTPHandler
         handler.authorizer = authorizer
         handler.passive_ports = range(pasvPortBegin, pasvPortEnd)
         # step5:配置服务器
