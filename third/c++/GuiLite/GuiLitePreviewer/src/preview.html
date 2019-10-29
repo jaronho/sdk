@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>GuiLite preview</title>
+</head>
+<body>
+    <canvas id="screen" width="1024" height="768"></canvas>
+</body>
+
+<script type="text/javascript">
+function draw_single_widget(context, str, rect){
+    console.log(rect);
+    context.fillStyle = "#1A1D34";
+    context.fillRect(rect[0], rect[1], rect[2], rect[3]);
+
+    context.fillStyle = "#FFFFFF";
+    context.font = "20px Arial";
+    context.textAlign = "center"
+    context.textBaseline = "middle";
+    context.fillText(str, rect[0] + rect[2]/2, rect[1] + rect[3]/2);
+}
+
+function draw_widgets(context, widgets){
+    for( var i = 0; i < widgets.length; i++){
+        widget_name = widgets[i].match(/".*"/g);
+        if(widget_name.length != 1){
+            console.log('Invalid widget_name' + ':' + widget_name.toString());
+        }else{
+            widget_name = widget_name[0].replace(/"/g,'');//remove "
+        }
+
+        widget_without_name = widgets[i].replace(/".*"/g, '');//Remove widget name for rect
+        var rect = widget_without_name.match(/[^A-Za-z_]\d+/g);
+        rect = rect.map(Number);
+        console.log(widget_name.toString() + ': ' + rect.toString());
+        draw_single_widget(context, widget_name, rect)
+    }
+}
+
+function search_widgets(tree){
+    var widgets = tree.match(/{ *&[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*/g);
+    console.log(widgets.length.toString() + ':' + widgets.toString());
+    return widgets;
+}
+
+function search_trees(source){
+    var trees = source.match(/WND_TREE[\s\S]*};$/mg);
+    console.log(trees.length.toString() + ':' + trees.toString());
+    return trees;
+}
+
+const canvas = document.getElementById('screen');
+const context = canvas.getContext('2d');
+context.fillStyle = "#000000";
+context.fillRect(0, 0, 1024, 768);
+var source_code = `static c_my_dialog s_my_dialog;
+
+static c_button s_exit_button;
+WND_TREE s_dialog_widgets[] =
+{
+	{ &s_exit_button,	ID_EXIT_BUTTON,	"Exit",	100, 100, 100, 50},
+	{NULL, 0 , 0, 0, 0, 0, 0}
+};
+
+WND_TREE s_main_widgets[] =
+{
+	{ &s_edit,		ID_EDIT,	"Input",	275, 10, 100, 50},
+
+	{ &s_label_1,	ID_LABEL_1,	"label 1",	150, 100, 100, 50},
+	{ &s_label_2,	ID_LABEL_2,	"label 2",	150, 170, 100, 50},
+	{ &s_label_3,	ID_LABEL_3,	"label 3",	150, 240, 100, 50},
+
+	{ &s_button,	ID_BUTTON,	"Dialog",	400, 100, 100, 50},
+	{ &s_spin_box,	ID_SPIN_BOX,"spinBox",	400, 170, 100, 50},
+	{ &s_list_box,	ID_LIST_BOX,"listBox",	400, 240, 100, 50},
+
+	{ &s_my_dialog,	ID_DIALOG,	"Dialog",	200, 100, 280, 312, s_dialog_widgets},
+	{NULL, 0 , 0, 0, 0, 0, 0}
+};
+
+int captureUiOfHelloWidgets()
+{
+	return s_display->snap_shot("snap_short.bmp");
+}`;
+
+var trees = search_trees(source_code);
+for( var i = 0; i < trees.length; i++){
+    var widgets = search_widgets(trees[i]);
+    draw_widgets(context, widgets);
+}
+</script>
+</html>

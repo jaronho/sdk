@@ -1,0 +1,117 @@
+# For Android(Android studio)
+build
+*.iml
+.gradle
+.DS_Store
+/HostMonitor/BuildAndroid/local.properties
+/HostMonitor/BuildAndroid/.idea/gradle.xml
+/HostMonitor/BuildAndroid/.idea/workspace.xml
+/HostMonitor/BuildAndroid/.idea/libraries
+/HostMonitor/BuildAndroid/.idea/caches
+/HostMonitor/BuildAndroid/.idea/codeStyles
+/HostMonitor/BuildAndroid/build
+/HostMonitor/BuildAndroid/captures
+/HostMonitor/BuildAndroid/libs
+/HostMonitor/BuildAndroid/obj
+
+# For Windows(Visual stduio)
+.vs
+ipch
+*.suo
+Debug
+Release
+obj
+*.sdf
+*.opendb
+*.db
+*.dir
+*.user
+Generated Files
+AppPackages
+BundleArtifacts
+
+# For Linux(GCC)
+*.d
+*.o
+*.map
+*.mk  android jni need it.
+
+# For cmake
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+Makefile
+
+# For Xcode
+.DS_store
+*.swp
+*.lock
+profile
+xcuserdata
+
+# For Keil
+*.uvguix.*
+*.uvoptx
+*.lst
+*.dbgconf
+EventRecorderStub.scvd
+
+# For Qt
+.qmake.cache
+.qmake.stash
+Makefile*
+
+# For output
+/HostMonitor/BuildMacCmd/HostMonitor
+/HostMonitor/BuildLinux/HostMonitor
+/HostMonitor/BuildMFC/HostMonitor/BuildMFC.aps
+/HostMonitor/BuildGo/HostMonitor
+/HostMonitor/UIcode/libUIcode.a
+
+/HelloGuiLite/BuildLinux/HelloGuiLite
+/HelloGuiLite/BuildMFC/HelloGL.aps
+/HelloGuiLite/UIcode/libUIcode.a
+
+/HelloFont/BuildLinux/HelloFont
+/HelloFont/BuildMFC/HelloFont.aps
+/HelloFont/UIcode/libUIcode.a
+
+/HelloSlide/BuildLinux/HelloSlide
+/HelloSlide/BuildMFC/HelloSlide.aps
+/HelloSlide/UIcode/libUIcode.a
+
+/HelloAnimation/BuildLinux/HelloAnimation
+/HelloAnimation/BuildMFC/HelloAnimation.aps
+/HelloAnimation/UIcode/libUIcode.a
+
+/HelloWave/BuildLinux/HelloWave
+/HelloWave/BuildMFC/HelloWave.aps
+/HelloWave/UIcode/libUIcode.a
+
+/HelloParticle/BuildLinux/HelloParticle
+/HelloParticle/BuildMFC/HelloParticle.aps
+/HelloParticle/UIcode/libUIcode.a
+
+/HelloMario/BuildLinux/HelloMario
+/HelloMario/BuildMFC/HelloMario.aps
+/HelloMario/UIcode/libUIcode.a
+
+/HelloNoTouch/BuildLinux/HelloNoTouch
+/HelloNoTouch/BuildMFC/HelloNoTouch.aps
+/HelloNoTouch/UIcode/libUIcode.a
+
+/HelloWidgets/BuildLinux/HelloWidgets
+/HelloWidgets/BuildMFC/HelloWidgets.aps
+/HelloWidgets/UIcode/libUIcode.a
+
+/HelloStar/BuildLinux/HelloStar
+/HelloStar/BuildMFC/HelloStar.aps
+/HelloStar/UIcode/libUIcode.a
+
+/Hello3D/BuildLinux/Hello3D
+/Hello3D/BuildMFC/Hello3D.aps
+/Hello3D/UIcode/libUIcode.a
+
+/HelloNets/BuildLinux/HelloNets
+/HelloNets/BuildMFC/HelloNets.aps
+/HelloNets/UIcode/libUIcode.a
