@@ -17,11 +17,37 @@
  */
 class Pixel {
 public:
-	Pixel(void) : r(0), g(0), b(0) {}
-	Pixel(int r, int g, int b) {
-        this->r = r; this->g = g; this->b = b;
+    static unsigned int A(unsigned int argb) {
+        return (((argb) >> 24) & 0xFF);
     }
-    int r, g, b;
+    static unsigned int R(unsigned int argb) {
+        return (((argb) >> 16) & 0xFF);
+    }
+    static unsigned int G(unsigned int argb) {
+        return (((argb) >> 8) & 0xFF);
+    }
+    static unsigned int B(unsigned int argb) {
+        return ((argb) & 0xFF);
+    }
+    static unsigned int ARGB_32_to_16(unsigned int argb) {
+        return (((argb & 0xFF) >> 3) | ((argb & 0xFC00) >> 5) | ((argb & 0xF80000) >> 8));
+    }
+    static unsigned int RGB_16_to_32(unsigned int rgb, unsigned int a = 255) {
+        return ((a << 24) | ((rgb & 0x1F) << 3) | ((rgb & 0x7E0) << 5) | ((rgb & 0xF800) << 8));
+    }
+public:
+    Pixel(void) : a(255), r(0), g(0), b(0) {}
+    Pixel(unsigned int r, unsigned int g, unsigned int b, unsigned int a = 255) {
+        this->a = a; this->r = r; this->g = g; this->b = b;
+    }
+    unsigned int rgb32(void) {
+        return ((a << 24) | (r << 16) | (g << 8) | (b));
+    }
+    unsigned int rgb16(void) {
+        unsigned int rgb = rgb32();
+        return (((rgb & 0xFF) >> 3) | ((rgb & 0xFC00) >> 5) | ((rgb & 0xF80000) >> 8));
+    }
+    unsigned int a, r, g, b;
 };
 
 /* To abbreviate a pixel matrix built as a vector of vectors */
@@ -112,13 +138,13 @@ public:
     /*
      * Brief:   Save bitmap data to text file
      * Param:   filename - to be written as a text file
-     *          isHex - pixel format, true like #FF00FF, false like 255_000_255
+     *          format - pixel format, 1.#15A0CF, 2.(24bit)4279607503, 3.(16bit)5401, 4.21_160_207
      * Return:  int
      *          0.ok
      *          1.bitmap is not a valid image
      *          2.could not open file
      */
-    int toFile(const std::string& filename, bool isHex = true);
+    int toFile(const std::string& filename, int format = 1);
 
 private:
     PixelMatrix mPixels;

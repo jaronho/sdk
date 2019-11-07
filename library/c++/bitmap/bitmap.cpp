@@ -92,9 +92,9 @@ int Bitmap::open(const std::string& filename) {
 	for (int row = 0; row < dib_info.height; ++row) {
 		std::vector<Pixel> row_data;
 		for (int col = 0; col < dib_info.width; ++col) {
-			int blue = file.get();
-			int green = file.get();
-			int red = file.get();
+            int blue = file.get();
+            int green = file.get();
+            int red = file.get();
 			row_data.push_back(Pixel(red, green, blue));
 		}
 		/* Rows are padded so that they're always a multiple of 4 bytes. This line skips the padding at the end of each row. */
@@ -225,7 +225,7 @@ unsigned char* Bitmap::toRGB24(void) {
     return rgb24;
 }
 
-int Bitmap::toFile(const std::string& filename, bool isHex /*= true*/) {
+int Bitmap::toFile(const std::string& filename, int format) {
     if (!isImage()) {
         std::cout << "Bitmap is not a valid image.\n";
         return 1;
@@ -235,22 +235,71 @@ int Bitmap::toFile(const std::string& filename, bool isHex /*= true*/) {
         std::cout << filename << " could not be opened for editing. Is it already open by another program or is it read-only?\n";
         return 2;
     }
-    for (size_t i = 0; i < mPixels.size(); ++i) {
-        if (i > 0) {
-            file.write("\n", 1);
-        }
-        std::vector<Pixel> row = mPixels[i];
-        for (size_t j = 0; j < row.size(); ++j) {
-            if (j > 0) {
-                file.write(",", 1);
+    format = (format < 1 || format > 4) ? 1 : format;
+    if (1 == format) {
+        char hexStr[12] = { 0 };
+        for (size_t i = 0; i < mPixels.size(); ++i) {
+            if (i > 0) {
+                file.write(",\n", 2);
             }
-            Pixel rgb = row[j];
-            if (isHex) {
-                char hexStr[8] = { 0 };
+            std::vector<Pixel> row = mPixels[i];
+            for (size_t j = 0; j < row.size(); ++j) {
+                if (j > 0) {
+                    file.write(",", 1);
+                }
+                Pixel rgb = row[j];
+                memset(hexStr, 0, 8);
                 sprintf(hexStr, "#%02X%02X%02X", rgb.r, rgb.g, rgb.b);
                 file.write(hexStr, strlen(hexStr));
-            } else {
-                char rgbStr[16] = { 0 };
+            }
+        }
+    } else if (2 == format) {
+        char decStr[16] = { 0 };
+        for (size_t i = 0; i < mPixels.size(); ++i) {
+            if (i > 0) {
+                file.write(",\n", 2);
+            }
+            std::vector<Pixel> row = mPixels[i];
+            for (size_t j = 0; j < row.size(); ++j) {
+                if (j > 0) {
+                    file.write(",", 1);
+                }
+                Pixel rgb = row[j];
+                memset(decStr, 0, 16);
+                sprintf(decStr, "%u", rgb.rgb32());
+                file.write(decStr, strlen(decStr));
+            }
+        }
+    } else if (3 == format) {
+        char decStr[16] = { 0 };
+        for (size_t i = 0; i < mPixels.size(); ++i) {
+            if (i > 0) {
+                file.write(",\n", 2);
+            }
+            std::vector<Pixel> row = mPixels[i];
+            for (size_t j = 0; j < row.size(); ++j) {
+                if (j > 0) {
+                    file.write(",", 1);
+                }
+                Pixel rgb = row[j];
+                memset(decStr, 0, 16);
+                sprintf(decStr, "%u", rgb.rgb16());
+                file.write(decStr, strlen(decStr));
+            }
+        }
+    } else if (4 == format) {
+        char rgbStr[16] = { 0 };
+        for (size_t i = 0; i < mPixels.size(); ++i) {
+            if (i > 0) {
+                file.write(",\n", 2);
+            }
+            std::vector<Pixel> row = mPixels[i];
+            for (size_t j = 0; j < row.size(); ++j) {
+                if (j > 0) {
+                    file.write(",", 1);
+                }
+                Pixel rgb = row[j];
+                memset(rgbStr, 0, 16);
                 sprintf(rgbStr, "%03d_%03d_%03d", rgb.r, rgb.g, rgb.b);
                 file.write(rgbStr, strlen(rgbStr));
             }
