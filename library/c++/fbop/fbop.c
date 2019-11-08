@@ -349,3 +349,4 @@ int fbop_draw_raw_data32(int x, int y, const unsigned int* data, int width, int 
     }
     return 0;
 }
+
