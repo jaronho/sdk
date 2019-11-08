@@ -137,6 +137,13 @@ void fbop_set_draw_bg16(unsigned short rgb);
 void fbop_set_draw_bg32(unsigned int rgb);
 
 /*
+ * 功  能:    复位背景图像数据
+ * 参  数:    void
+ * 返回值:    void
+ */
+void fbop_unset_draw_bg(void);
+
+/*
  * 功  能:    绘制16位图像数据
  * 参  数:    x - 像素点x坐标
  *            y - 像素点y坐标

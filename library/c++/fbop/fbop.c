@@ -274,7 +274,7 @@ int fbop_snapshot(const char* filename) {
 **********************************************************************/
 static unsigned short l_draw_bg16 = 0;
 static unsigned int l_draw_bg32 = 0;
-static int l_draw_bg_bit = 16;
+static int l_draw_bg_bit = 0;
 
 void fbop_set_draw_bg16(unsigned short rgb) {
     l_draw_bg16 = rgb;
@@ -286,6 +286,10 @@ void fbop_set_draw_bg32(unsigned int rgb) {
     l_draw_bg_bit = 32;
 }
 
+void fbop_unset_draw_bg(void) {
+    l_draw_bg_bit = 0;
+}
+
 int fbop_draw_raw_data16(int x, int y, const unsigned short* data, int width, int height) {
     int px, py;
     int dx, dy;
@@ -295,8 +299,10 @@ int fbop_draw_raw_data16(int x, int y, const unsigned short* data, int width, in
             if (py < y || py >= y + height || px < x || px >= x + width) {
                 if (16 == l_draw_bg_bit) {
                     ret = fbop_set_pixel16(px, py, l_draw_bg16);
-                } else {
+                } else if (32 == l_draw_bg_bit) {
                     ret = fbop_set_pixel32(px, py, l_draw_bg32);
+                } else {
+                    continue;
                 }
                 if (0 != ret) {
                     return ret;
@@ -323,8 +329,10 @@ int fbop_draw_raw_data32(int x, int y, const unsigned int* data, int width, int 
             if (py < y || py >= y + height || px < x || px >= x + width) {
                 if (16 == l_draw_bg_bit) {
                     ret = fbop_set_pixel16(px, py, l_draw_bg16);
-                } else {
+                } else if (32 == l_draw_bg_bit) {
                     ret = fbop_set_pixel32(px, py, l_draw_bg32);
+                } else {
+                    continue;
                 }
                 if (0 != ret) {
                     return ret;
@@ -341,4 +349,3 @@ int fbop_draw_raw_data32(int x, int y, const unsigned int* data, int width, int 
     }
     return 0;
 }
-
