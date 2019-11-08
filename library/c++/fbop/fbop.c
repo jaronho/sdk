@@ -14,7 +14,8 @@ typedef struct {
 	unsigned short  bfReserved1;
 	unsigned short  bfReserved2;
 	unsigned int   	bfOffBits;
-}__attribute__((packed))BmpFileHead;
+} __attribute__((packed)) BmpFileHead;
+
 typedef struct {
 	unsigned int  	biSize;
 	int 			biWidth;
@@ -30,17 +31,18 @@ typedef struct {
 	unsigned int 	biRedMask;
 	unsigned int 	biGreenMask;
 	unsigned int 	biBlueMask;
-}__attribute__((packed))BmpInfohead;
+} __attribute__((packed)) BmpInfoHead;
+
 int generateBmpFile(const char* filename, unsigned int width, unsigned int height, unsigned char* data) {
 	BmpFileHead bmp_head;
-	BmpInfohead bmp_info;
+	BmpInfoHead bmp_info;
 	int size;
     FILE* fp;
     int i;
     size = width * height * 2;
 	//initialize bmp head.
 	bmp_head.bfType = 0x4d42;
-	bmp_head.bfSize = size + sizeof(BmpFileHead) + sizeof(BmpInfohead);
+	bmp_head.bfSize = size + sizeof(BmpFileHead) + sizeof(BmpInfoHead);
 	bmp_head.bfReserved1 = bmp_head.bfReserved2 = 0;
 	bmp_head.bfOffBits = bmp_head.bfSize - size;
 	//initialize bmp info.
@@ -64,7 +66,7 @@ int generateBmpFile(const char* filename, unsigned int width, unsigned int heigh
 		return -1;
 	}
 	fwrite(&bmp_head, 1, sizeof(BmpFileHead), fp);
-	fwrite(&bmp_info, 1, sizeof(BmpInfohead), fp);
+	fwrite(&bmp_info, 1, sizeof(BmpInfoHead), fp);
 	for (i = height - 1; i >= 0; --i) {
 		fwrite(&data[i * width * 2], 1, width * 2, fp);
 	}
@@ -76,10 +78,10 @@ int generateBmpFile(const char* filename, unsigned int width, unsigned int heigh
 ****************************** 变量定义 ******************************
 **********************************************************************/
 static int l_opened = 0;
-static unsigned int l_screen_width = 0;
-static unsigned int l_screen_height = 0;
-static unsigned int l_pixel_bits = 0;
-static unsigned int l_color_bytes = 0;
+static int l_screen_width = 0;
+static int l_screen_height = 0;
+static int l_pixel_bits = 0;
+static int l_color_bytes = 0;
 static unsigned long l_buffer_size = 0;
 static void* l_buffer = 0;
 
@@ -116,7 +118,7 @@ int fbop_open(const char* fbPath) {
     l_screen_height = vinfo.yres;
     l_pixel_bits = vinfo.bits_per_pixel;
     l_color_bytes = l_pixel_bits / 8;
-    l_buffer_size = l_screen_width * l_screen_height * l_color_bytes;
+    l_buffer_size = (unsigned long)l_screen_width * l_screen_height * l_color_bytes;
     l_buffer = mmap(0, l_buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
     if (-1 == (int)l_buffer) {
         printf("Cannot map framebuffer device to memory, fb device: %s\n", fbPath);
@@ -141,19 +143,19 @@ void fbop_close(void) {
     }
 }
 
-unsigned int fbop_screen_width(void) {
+int fbop_screen_width(void) {
     return l_screen_width;
 }
 
-unsigned int fbop_screen_height(void) {
+int fbop_screen_height(void) {
     return l_screen_height;
 }
 
-unsigned int fbop_pixel_bits(void) {
+int fbop_pixel_bits(void) {
     return l_pixel_bits;
 }
 
-unsigned int fbop_color_bytes(void) {
+int fbop_color_bytes(void) {
     return l_color_bytes;
 }
 
@@ -165,7 +167,7 @@ void* fbop_buffer(void) {
     return l_buffer;
 }
 
-int fbop_get_pixel(unsigned int x, unsigned int y, unsigned int* rgb) {
+int fbop_get_pixel(int x, int y, unsigned int* rgb) {
     if (0 == l_opened) {
         printf("Cannot get pixel, device not open\n");
         return 1;
@@ -189,12 +191,12 @@ int fbop_get_pixel(unsigned int x, unsigned int y, unsigned int* rgb) {
     return 0;
 }
 
-int fbop_set_pixel16(unsigned int x, unsigned int y, unsigned short rgb) {
+int fbop_set_pixel16(int x, int y, unsigned short rgb) {
     if (0 == l_opened) {
         printf("Cannot set pixel 16, device not open\n");
         return 1;
     }
-    if (x >= l_screen_width || y >= l_screen_height) {
+    if (x < 0 || x >= l_screen_width || y < 0 || y >= l_screen_height) {
         printf("Cannot set pixel 16: (%d, %d), overflow screen area: (%d, %d)\n", x, y, l_screen_width, l_screen_height);
         return 2;
     }
@@ -209,12 +211,12 @@ int fbop_set_pixel16(unsigned int x, unsigned int y, unsigned short rgb) {
     return 0;
 }
 
-int fbop_set_pixel32(unsigned int x, unsigned int y, unsigned int rgb) {
+int fbop_set_pixel32(int x, int y, unsigned int rgb) {
     if (0 == l_opened) {
         printf("Cannot set pixel 32, device not open\n");
         return 1;
     }
-    if (x >= l_screen_width || y >= l_screen_height) {
+    if (x < 0 || x >= l_screen_width || y < 0 || y >= l_screen_height) {
         printf("Cannot set pixel 32: (%d, %d), overflow screen area: (%d, %d)\n", x, y, l_screen_width, l_screen_height);
         return 2;
     }
@@ -232,7 +234,7 @@ int fbop_set_pixel32(unsigned int x, unsigned int y, unsigned int rgb) {
 int fbop_snapshot(const char* filename) {
     unsigned short* p_bmp565_data;
     unsigned int* p_raw_data;
-    unsigned int i;
+    int i;
     int ret;
     unsigned short rgb;
     if (0 == l_opened) {
@@ -270,54 +272,70 @@ int fbop_snapshot(const char* filename) {
 /*********************************************************************
 ****************************** 扩展接口 ******************************
 **********************************************************************/
-int fbop_draw_raw_data16(int x, int y, const unsigned short* data, unsigned int width, unsigned int height) {
-    unsigned int i, j;
+static unsigned short l_draw_bg16 = 0;
+static unsigned int l_draw_bg32 = 0;
+static int l_draw_bg_bit = 16;
+
+void fbop_set_draw_bg16(unsigned short rgb) {
+    l_draw_bg16 = rgb;
+    l_draw_bg_bit = 16;
+}
+
+void fbop_set_draw_bg32(unsigned int rgb) {
+    l_draw_bg32 = rgb;
+    l_draw_bg_bit = 32;
+}
+
+int fbop_draw_raw_data16(int x, int y, const unsigned short* data, int width, int height) {
     int px, py;
+    int dx, dy;
     int ret;
-    for (i = 0; i < height; ++i) {
-        py = y + i;
-        if (py < 0) {
-            continue;
-        } else if ((unsigned int)py >= l_screen_height) {
-            break;
-        }
-        for (j = 0; j < width; ++j) {
-            px = x + j;
-            if (px < 0) {
-                continue;
-            } else if ((unsigned int)px >= l_screen_width) {
-                break;
-            }
-            ret = fbop_set_pixel16(px, py, data[i * width + j]);
-            if (0 != ret) {
-                return ret;
+    for (py = 0; py < l_screen_height; ++py) {
+        for (px = 0; px < l_screen_width; ++px) {
+            if (py < y || py >= y + height || px < x || px >= x + width) {
+                if (16 == l_draw_bg_bit) {
+                    ret = fbop_set_pixel16(px, py, l_draw_bg16);
+                } else {
+                    ret = fbop_set_pixel32(px, py, l_draw_bg32);
+                }
+                if (0 != ret) {
+                    return ret;
+                }
+            } else {
+                dx = px - x;
+                dy = py - y;
+                ret = fbop_set_pixel16(px, py, data[dy * width + dx]);
+                if (0 != ret) {
+                    return ret;
+                }
             }
         }
     }
     return 0;
 }
 
-int fbop_draw_raw_data32(unsigned int x, unsigned int y, const unsigned int* data, unsigned int width, unsigned int height) {
-    unsigned int i, j;
+int fbop_draw_raw_data32(int x, int y, const unsigned int* data, int width, int height) {
     int px, py;
+    int dx, dy;
     int ret;
-    for (i = 0; i < height; ++i) {
-        py = y + i;
-        if (py < 0) {
-            continue;
-        } else if ((unsigned int)py >= l_screen_height) {
-            break;
-        }
-        for (j = 0; j < width; ++j) {
-            px = x + j;
-            if (px < 0) {
-                continue;
-            } else if ((unsigned int)px >= l_screen_width) {
-                break;
-            }
-            ret = fbop_set_pixel32(px, py, data[i * width + j]);
-            if (0 != ret) {
-                return ret;
+    for (py = 0; py < l_screen_height; ++py) {
+        for (px = 0; px < l_screen_width; ++px) {
+            if (py < y || py >= y + height || px < x || px >= x + width) {
+                if (16 == l_draw_bg_bit) {
+                    ret = fbop_set_pixel16(px, py, l_draw_bg16);
+                } else {
+                    ret = fbop_set_pixel32(px, py, l_draw_bg32);
+                }
+                if (0 != ret) {
+                    return ret;
+                }
+            } else {
+                dx = px - x;
+                dy = py - y;
+                ret = fbop_set_pixel32(px, py, data[dy * width + dx]);
+                if (0 != ret) {
+                    return ret;
+                }
             }
         }
     }

@@ -46,30 +46,30 @@ void fbop_close(void);
 /*
  * 功  能:    获取fb设备宽度
  * 参  数:    无
- * 返回值:    unsigned int
+ * 返回值:    int
  */
-unsigned int fbop_screen_width(void);
+int fbop_screen_width(void);
 
 /*
  * 功  能:    获取fb设备高度
  * 参  数:    无
- * 返回值:    unsigned int
+ * 返回值:    int
  */
-unsigned int fbop_screen_height(void);
+int fbop_screen_height(void);
 
 /*
  * 功  能:    获取单个像素所占位数, 例如: 16位, 24位
  * 参  数:    无
- * 返回值:    unsigned int
+ * 返回值:    int
  */
-unsigned int fbop_pixel_bits(void);
+int fbop_pixel_bits(void);
 
 /*
  * 功  能:    获取单个颜色所占字节数, 例如: 2字节, 3字节
  * 参  数:    无
- * 返回值:    unsigned int
+ * 返回值:    int
  */
-unsigned int fbop_color_bytes(void);
+int fbop_color_bytes(void);
 
 /*
  * 功  能:    获取fb缓冲区大小
@@ -89,10 +89,10 @@ void* fbop_buffer(void);
  * 功  能:    获取像素点
  * 参  数:    x - 像素点x坐标
  *            y - 像素点y坐标
- *            rgb - 像素点颜色值(输出)
+ *            rgb - 32位像素点颜色值(输出)
  * 返回值:    0.成功, 1.设备未打开, 2.坐标溢出, 3.不支持颜色所占字节数
  */
-int fbop_get_pixel(unsigned int x, unsigned int y, unsigned int* rgb);
+int fbop_get_pixel(int x, int y, unsigned int* rgb);
 
 /*
  * 功  能:    设置16位像素点
@@ -101,7 +101,7 @@ int fbop_get_pixel(unsigned int x, unsigned int y, unsigned int* rgb);
  *            rgb - 16位像素点颜色值
  * 返回值:    0.成功, 1.设备未打开, 2.坐标溢出, 3.不支持颜色所占字节数
  */
-int fbop_set_pixel16(unsigned int x, unsigned int y, unsigned short rgb);
+int fbop_set_pixel16(int x, int y, unsigned short rgb);
 
 /*
  * 功  能:    设置32位像素点
@@ -110,7 +110,7 @@ int fbop_set_pixel16(unsigned int x, unsigned int y, unsigned short rgb);
  *            rgb - 32位像素点颜色值
  * 返回值:    0.成功, 1.设备未打开, 2.坐标溢出, 3.不支持颜色所占字节数
  */
-int fbop_set_pixel32(unsigned int x, unsigned int y, unsigned int rgb);
+int fbop_set_pixel32(int x, int y, unsigned int rgb);
 
 /*
  * 功  能:    快照
@@ -123,6 +123,20 @@ int fbop_snapshot(const char* filename);
 ****************************** 扩展接口 ******************************
 **********************************************************************/
 /*
+ * 功  能:    设置16位背景图像数据
+ * 参  数:    rgb - 16位图像数据
+ * 返回值:    void
+ */
+void fbop_set_draw_bg16(unsigned short rgb);
+
+/*
+ * 功  能:    设置32位背景图像数据
+ * 参  数:    rgb - 32位图像数据
+ * 返回值:    void
+ */
+void fbop_set_draw_bg32(unsigned int rgb);
+
+/*
  * 功  能:    绘制16位图像数据
  * 参  数:    x - 像素点x坐标
  *            y - 像素点y坐标
@@ -131,7 +145,7 @@ int fbop_snapshot(const char* filename);
  *            height - 图像高
  * 返回值:    0.成功, 1.设备未打开, 2.坐标溢出, 3.不支持颜色所占字节数
  */
-int fbop_draw_raw_data16(int x, int y, const unsigned short* data, unsigned int width, unsigned int height);
+int fbop_draw_raw_data16(int x, int y, const unsigned short* data, int width, int height);
 
 /*
  * 功  能:    绘制32位图像数据
@@ -142,7 +156,7 @@ int fbop_draw_raw_data16(int x, int y, const unsigned short* data, unsigned int 
  *            height - 图像高
  * 返回值:    0.成功, 1.设备未打开, 2.坐标溢出, 3.不支持颜色所占字节数
  */
-int fbop_draw_raw_data32(int x, int y, const unsigned int* data, unsigned int width, unsigned int height);
+int fbop_draw_raw_data32(int x, int y, const unsigned int* data, int width, int height);
 
 #ifdef __cplusplus
 }
