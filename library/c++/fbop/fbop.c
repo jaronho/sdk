@@ -75,27 +75,15 @@ int generateBmpFile(const char* filename, unsigned int width, unsigned int heigh
 }
 
 /*********************************************************************
-****************************** 变量定义 ******************************
-**********************************************************************/
-static int l_opened = 0;
-static int l_screen_width = 0;
-static int l_screen_height = 0;
-static int l_pixel_bits = 0;
-static int l_color_bytes = 0;
-static unsigned long l_buffer_size = 0;
-static void* l_buffer = 0;
-
-/*********************************************************************
 ****************************** 接口实现 ******************************
 **********************************************************************/
-int fbop_open(const char* fbPath) {
+int fbop_open(const char* fbPath, st_frame_buffer** fbPtr) {
     int fbfd;
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
-    if (1 == l_opened) {
-        return 0;
-    }
-    if (!fbPath || 0 == strlen(fbPath)) {
+    st_frame_buffer* fb;
+    if (!fbPath || 0 == strlen(fbPath) || !fbPtr) {
+        printf("Param error\n");
         return 1;
     }
     fbfd = open(fbPath, O_RDWR);
@@ -114,156 +102,143 @@ int fbop_open(const char* fbPath) {
         close(fbfd);
         return 4;
     }
-    l_screen_width = vinfo.xres;
-    l_screen_height = vinfo.yres;
-    l_pixel_bits = vinfo.bits_per_pixel;
-    l_color_bytes = l_pixel_bits / 8;
-    l_buffer_size = (unsigned long)l_screen_width * l_screen_height * l_color_bytes;
-    l_buffer = mmap(0, l_buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
-    if (-1 == (int)l_buffer) {
+    fb = (st_frame_buffer*)malloc(sizeof(st_frame_buffer));
+    fb->width = vinfo.xres;
+    fb->height = vinfo.yres;
+    fb->pixel_bits = vinfo.bits_per_pixel;
+    fb->color_bytes = fb->pixel_bits / 8;
+    fb->size = (unsigned long)fb->width * fb->height * fb->color_bytes;
+    fb->data = mmap(0, fb->size, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
+    if (-1 == (int)fb->data) {
         printf("Cannot map framebuffer device to memory, fb device: %s\n", fbPath);
         close(fbfd);
+        free(fb);
         return 5;
     }
     close(fbfd);
-    l_opened = 1;
+    *fbPtr = fb;
     return 0;
 }
 
-void fbop_close(void) {
-    if (1 == l_opened) {
-        munmap(l_buffer, l_buffer_size);
-        l_buffer = 0;
-        l_screen_width = 0;
-        l_screen_height = 0;
-        l_pixel_bits = 0;
-        l_color_bytes = 0;
-        l_buffer_size = 0;
-        l_opened = 0;
+void fbop_close(st_frame_buffer** fbPtr) {
+    st_frame_buffer* fb;
+    if (fbPtr && *fbPtr) {
+        fb = *fbPtr;
+        if (fb->data) {
+            munmap(fb->data, fb->size);
+        }
+        fb->width = 0;
+        fb->height = 0;
+        fb->pixel_bits = 0;
+        fb->color_bytes = 0;
+        fb->size = 0;
+        fb->data = 0;
+        fb->draw_bg16 = 0;
+        fb->draw_bg32 = 0;
+        fb->draw_bg_bit = 0;
+        free(fb);
+        fb = 0;
+        *fbPtr = fb;
     }
 }
 
-int fbop_screen_width(void) {
-    return l_screen_width;
-}
-
-int fbop_screen_height(void) {
-    return l_screen_height;
-}
-
-int fbop_pixel_bits(void) {
-    return l_pixel_bits;
-}
-
-int fbop_color_bytes(void) {
-    return l_color_bytes;
-}
-
-unsigned long fbop_size(void) {
-    return l_buffer_size;
-}
-
-void* fbop_buffer(void) {
-    return l_buffer;
-}
-
-int fbop_get_pixel(int x, int y, unsigned int* rgb) {
-    if (0 == l_opened) {
+int fbop_get_pixel(st_frame_buffer* fb, int x, int y, unsigned int* rgb) {
+    if (!fb || !fb->data || 0 == fb->size) {
         printf("Cannot get pixel, device not open\n");
         return 1;
     }
-    if (x >= l_screen_width || y >= l_screen_height) {
-        printf("Cannot get pixel: (%d, %d), overflow screen area: (%d, %d)\n", x, y, l_screen_width, l_screen_height);
+    if (x < 0 || x >= fb->width || y < 0 || y >= fb->height) {
+        printf("Cannot get pixel: (%d, %d), overflow screen area: (%d, %d)\n", x, y, fb->width, fb->height);
         return 2;
     }
-    if (2 == l_color_bytes) {
+    if (2 == fb->color_bytes) {
         if (rgb) {
-            *rgb = GL_RGB_16_to_32(((unsigned short*)l_buffer)[y * l_screen_width + x]);
+            *rgb = GL_RGB_16_to_32(((unsigned short*)fb->data)[y * fb->width + x]);
         }
-	} else if (4 == l_color_bytes) {
+	} else if (4 == fb->color_bytes) {
         if (rgb) {
-		    *rgb = ((unsigned int*)l_buffer)[y * l_screen_width + x];
+		    *rgb = ((unsigned int*)fb->data)[y * fb->width + x];
         }
 	} else {
-        printf("Cannot get pixel, not support color bytes: %d\n", l_color_bytes);
+        printf("Cannot get pixel, not support color bytes: %d\n", fb->color_bytes);
         return 3;
     }
     return 0;
 }
 
-int fbop_set_pixel16(int x, int y, unsigned short rgb) {
-    if (0 == l_opened) {
+int fbop_set_pixel16(st_frame_buffer* fb, int x, int y, unsigned short rgb) {
+    if (!fb || !fb->data || 0 == fb->size) {
         printf("Cannot set pixel 16, device not open\n");
         return 1;
     }
-    if (x < 0 || x >= l_screen_width || y < 0 || y >= l_screen_height) {
-        printf("Cannot set pixel 16: (%d, %d), overflow screen area: (%d, %d)\n", x, y, l_screen_width, l_screen_height);
+    if (x < 0 || x >= fb->width || y < 0 || y >= fb->height) {
+        printf("Cannot set pixel 16: (%d, %d), overflow screen area: (%d, %d)\n", x, y, fb->width, fb->height);
         return 2;
     }
-    if (2 == l_color_bytes) {
-		((unsigned short*)l_buffer)[y * l_screen_width + x] = rgb;
-	} else if (4 == l_color_bytes) {
-		((unsigned int*)l_buffer)[y * l_screen_width + x] = GL_RGB_16_to_32(rgb);
+    if (2 == fb->color_bytes) {
+		((unsigned short*)fb->data)[y * fb->width + x] = rgb;
+	} else if (4 == fb->color_bytes) {
+		((unsigned int*)fb->data)[y * fb->width + x] = GL_RGB_16_to_32(rgb);
 	} else {
-        printf("Cannot set pixel 16, not support color bytes: %d\n", l_color_bytes);
+        printf("Cannot set pixel 16, not support color bytes: %d\n", fb->color_bytes);
         return 3;
     }
     return 0;
 }
 
-int fbop_set_pixel32(int x, int y, unsigned int rgb) {
-    if (0 == l_opened) {
+int fbop_set_pixel32(st_frame_buffer* fb, int x, int y, unsigned int rgb) {
+    if (!fb || !fb->data || 0 == fb->size) {
         printf("Cannot set pixel 32, device not open\n");
         return 1;
     }
-    if (x < 0 || x >= l_screen_width || y < 0 || y >= l_screen_height) {
-        printf("Cannot set pixel 32: (%d, %d), overflow screen area: (%d, %d)\n", x, y, l_screen_width, l_screen_height);
+    if (x < 0 || x >= fb->width || y < 0 || y >= fb->height) {
+        printf("Cannot set pixel 32: (%d, %d), overflow screen area: (%d, %d)\n", x, y, fb->width, fb->height);
         return 2;
     }
-    if (2 == l_color_bytes) {
-		((unsigned short*)l_buffer)[y * l_screen_width + x] = GL_RGB_32_to_16(rgb);
-	} else if (4 == l_color_bytes) {
-		((unsigned int*)l_buffer)[y * l_screen_width + x] = rgb;
+    if (2 == fb->color_bytes) {
+		((unsigned short*)fb->data)[y * fb->width + x] = GL_RGB_32_to_16(rgb);
+	} else if (4 == fb->color_bytes) {
+		((unsigned int*)fb->data)[y * fb->width + x] = rgb;
 	} else {
-        printf("Cannot set pixel 32, not support color bytes: %d\n", l_color_bytes);
+        printf("Cannot set pixel 32, not support color bytes: %d\n", fb->color_bytes);
         return 3;
     }
     return 0;
 }
 
-int fbop_snapshot(const char* filename) {
+int fbop_snapshot(st_frame_buffer* fb, const char* filename) {
     unsigned short* p_bmp565_data;
     unsigned int* p_raw_data;
     int i;
     int ret;
     unsigned short rgb;
-    if (0 == l_opened) {
+    if (!fb || !fb->data || 0 == fb->size) {
         printf("Cannot snapshot, device not open\n");
         return 1;
     }
     if (!filename || 0 == strlen(filename)) {
         return 2;
     }
-	if (2 == l_color_bytes) {   //16 bits framebuffer
-		if (-1 == generateBmpFile(filename, l_screen_width, l_screen_height, (unsigned char*)l_buffer)) {
+	if (2 == fb->color_bytes) {   //16 bits framebuffer
+		if (-1 == generateBmpFile(filename, fb->width, fb->height, (unsigned char*)fb->data)) {
             printf("Cannot snapshot, open file: %s fail\n", filename);
             return 4;
         }
-	} else if (4 == l_color_bytes) {    //32 bits framebuffer
-	    p_bmp565_data =  (unsigned short*)malloc(l_screen_width * l_screen_height * sizeof(unsigned short));
-	    p_raw_data = (unsigned int*)l_buffer;
-	    for (i = 0; i < l_screen_width * l_screen_height; ++i) {
+	} else if (4 == fb->color_bytes) {    //32 bits framebuffer
+	    p_bmp565_data =  (unsigned short*)malloc(fb->width * fb->height * sizeof(unsigned short));
+	    p_raw_data = (unsigned int*)fb->data;
+	    for (i = 0; i < fb->width * fb->height; ++i) {
             rgb = *p_raw_data++;
 		    p_bmp565_data[i] = GL_RGB_32_to_16(rgb);
 	    }
-	    ret = generateBmpFile(filename, l_screen_width, l_screen_height, (unsigned char*)p_bmp565_data);
+	    ret = generateBmpFile(filename, fb->width, fb->height, (unsigned char*)p_bmp565_data);
         free(p_bmp565_data);
         if (-1 == ret) {
             printf("Cannot snapshot, open file: %s fail\n", filename);
             return 4;
         }
     } else {
-        printf("Cannot snapshot, not support color bytes: %d\n", l_color_bytes);
+        printf("Cannot snapshot, not support color bytes: %d\n", fb->color_bytes);
         return 3;
     }
 	return 0;
@@ -272,35 +247,41 @@ int fbop_snapshot(const char* filename) {
 /*********************************************************************
 ****************************** 扩展接口 ******************************
 **********************************************************************/
-static unsigned short l_draw_bg16 = 0;
-static unsigned int l_draw_bg32 = 0;
-static int l_draw_bg_bit = 0;
-
-void fbop_set_draw_bg16(unsigned short rgb) {
-    l_draw_bg16 = rgb;
-    l_draw_bg_bit = 16;
+void fbop_set_draw_bg16(st_frame_buffer* fb, unsigned short rgb) {
+    if (fb && fb->data) {
+        fb->draw_bg16 = rgb;
+        fb->draw_bg_bit = 16;
+    }
 }
 
-void fbop_set_draw_bg32(unsigned int rgb) {
-    l_draw_bg32 = rgb;
-    l_draw_bg_bit = 32;
+void fbop_set_draw_bg32(st_frame_buffer* fb, unsigned int rgb) {
+    if (fb && fb->data) {
+        fb->draw_bg32 = rgb;
+        fb->draw_bg_bit = 32;
+    }
 }
 
-void fbop_unset_draw_bg(void) {
-    l_draw_bg_bit = 0;
+void fbop_unset_draw_bg(st_frame_buffer* fb) {
+    if (fb && fb->data) {
+        fb->draw_bg_bit = 0;
+    }
 }
 
-int fbop_draw_raw_data16(int x, int y, const unsigned short* data, int width, int height) {
+int fbop_draw_raw_data16(st_frame_buffer* fb, int x, int y, const unsigned short* data, int width, int height) {
     int px, py;
     int dx, dy;
     int ret;
-    for (py = 0; py < l_screen_height; ++py) {
-        for (px = 0; px < l_screen_width; ++px) {
+    if (!fb || !fb->data || 0 == fb->size) {
+        printf("Cannot draw raw data 16, device not open\n");
+        return 1;
+    }
+    for (py = 0; py < fb->height; ++py) {
+        for (px = 0; px < fb->width; ++px) {
             if (py < y || py >= y + height || px < x || px >= x + width) {
-                if (16 == l_draw_bg_bit) {
-                    ret = fbop_set_pixel16(px, py, l_draw_bg16);
-                } else if (32 == l_draw_bg_bit) {
-                    ret = fbop_set_pixel32(px, py, l_draw_bg32);
+                if (16 == fb->draw_bg_bit) {
+                    ret = fbop_set_pixel16(fb, px, py, fb->draw_bg16);
+                } else if (32 == fb->draw_bg_bit) {
+                    ret = fbop_set_pixel32(fb, px, py, fb->draw_bg32);
                 } else {
                     continue;
                 }
@@ -310,7 +291,7 @@ int fbop_draw_raw_data16(int x, int y, const unsigned short* data, int width, in
             } else {
                 dx = px - x;
                 dy = py - y;
-                ret = fbop_set_pixel16(px, py, data[dy * width + dx]);
+                ret = fbop_set_pixel16(fb, px, py, data[dy * width + dx]);
                 if (0 != ret) {
                     return ret;
                 }
@@ -320,17 +301,21 @@ int fbop_draw_raw_data16(int x, int y, const unsigned short* data, int width, in
     return 0;
 }
 
-int fbop_draw_raw_data32(int x, int y, const unsigned int* data, int width, int height) {
+int fbop_draw_raw_data32(st_frame_buffer* fb, int x, int y, const unsigned int* data, int width, int height) {
     int px, py;
     int dx, dy;
     int ret;
-    for (py = 0; py < l_screen_height; ++py) {
-        for (px = 0; px < l_screen_width; ++px) {
+    if (!fb || !fb->data || 0 == fb->size) {
+        printf("Cannot draw raw data 32, device not open\n");
+        return 1;
+    }
+    for (py = 0; py < fb->height; ++py) {
+        for (px = 0; px < fb->width; ++px) {
             if (py < y || py >= y + height || px < x || px >= x + width) {
-                if (16 == l_draw_bg_bit) {
-                    ret = fbop_set_pixel16(px, py, l_draw_bg16);
-                } else if (32 == l_draw_bg_bit) {
-                    ret = fbop_set_pixel32(px, py, l_draw_bg32);
+                if (16 == fb->draw_bg_bit) {
+                    ret = fbop_set_pixel16(fb, px, py, fb->draw_bg16);
+                } else if (32 == fb->draw_bg_bit) {
+                    ret = fbop_set_pixel32(fb, px, py, fb->draw_bg32);
                 } else {
                     continue;
                 }
@@ -340,7 +325,7 @@ int fbop_draw_raw_data32(int x, int y, const unsigned int* data, int width, int 
             } else {
                 dx = px - x;
                 dy = py - y;
-                ret = fbop_set_pixel32(px, py, data[dy * width + dx]);
+                ret = fbop_set_pixel32(fb, px, py, data[dy * width + dx]);
                 if (0 != ret) {
                     return ret;
                 }
