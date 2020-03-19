@@ -13,7 +13,7 @@
 
 static void* getqueue(queue_st* q) {
 	void* retval;
-	if (NULL == q || QUEUE_EMPTY == q->state) {
+	if (!q || QUEUE_EMPTY == q->state) {
 		return NULL;
 	}
 	retval = q->buf[q->bottom];
@@ -51,7 +51,7 @@ queue_st* queue_create(unsigned long capacity, int loop, int block) {
 }
 
 int queue_destroy(queue_st* q) {
-	if (NULL == q) {
+	if (!q) {
 		return 1;
 	}
 #ifdef QUEUE_THREAD_SAFETY
@@ -65,7 +65,7 @@ int queue_destroy(queue_st* q) {
 }
 
 unsigned long queue_capacity(queue_st* q) {
-	if (NULL == q) {
+	if (!q) {
 		return 0;
 	}
     return q->capacity;
@@ -73,7 +73,7 @@ unsigned long queue_capacity(queue_st* q) {
 
 unsigned long queue_length(queue_st* q) {
 	unsigned long length;
-	if (NULL == q) {
+	if (!q) {
 		return 0;
 	}
 #ifdef QUEUE_THREAD_SAFETY
@@ -88,7 +88,7 @@ unsigned long queue_length(queue_st* q) {
 
 int queue_put(queue_st* q, void* data) {
 	void* retval = NULL;
-	if (NULL == q || NULL == data) {
+	if (!q || !data) {
 		return 1;
 	}
 #ifdef QUEUE_THREAD_SAFETY
@@ -103,7 +103,7 @@ int queue_put(queue_st* q, void* data) {
 			return 2;
 		}
 		retval = getqueue(q);
-		if (NULL != retval) {
+		if (retval) {
 			free(retval);
 		}
 	}
@@ -132,7 +132,7 @@ int queue_put(queue_st* q, void* data) {
 
 void* queue_get(queue_st* q) {
     void* retval;
-	if (NULL == q) {
+	if (!q) {
 		return NULL;
 	}
 #ifdef QUEUE_THREAD_SAFETY

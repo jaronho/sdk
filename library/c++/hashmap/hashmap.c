@@ -26,7 +26,7 @@ hashmap_st* hashmap_create(unsigned long capacity) {
 	}
 	hasht->capacity = capacity;
 	hasht->count = 0;
-	if (NULL == (hasht->map = (hashmap_element_st*)malloc(capacity * sizeof(hashmap_element_st*)))) {
+	if (!(hasht->map = (hashmap_element_st*)malloc(capacity * sizeof(hashmap_element_st*)))) {
 		free(hasht->map);
 		return NULL;
 	}
@@ -42,7 +42,7 @@ hashmap_st* hashmap_create(unsigned long capacity) {
 
 /* Destroy the hash map, and free memory. Data still stored are freed*/
 int hashmap_destroy(hashmap_st* hasht) {
-	if (NULL == hasht) {
+	if (!hasht) {
 		return 1;
 	}
 	hashmap_clear(hasht, 1); // Delete and free all.
@@ -56,7 +56,7 @@ int hashmap_destroy(hashmap_st* hasht) {
 
 /* Removes all elements stored in the hashmap. if free_data, all stored datas are also freed.*/
 int hashmap_clear(hashmap_st* hasht, int free_data) {
-	if (NULL == hasht) {
+	if (!hasht) {
 		return 1;
 	}
 #ifdef HASHMAP_THREAD_SAFETY
@@ -64,7 +64,7 @@ int hashmap_clear(hashmap_st* hasht, int free_data) {
 #endif
 	hashmap_element_iterator_st it = HASHMAP_ITERATOR(hasht);
 	const char* k = hashmap_iterate_key(&it);
-	while (NULL != k) {
+	while (k) {
 		if (free_data) {
 			free(hashmap_remove(hasht, k));
 		} else {
@@ -80,7 +80,7 @@ int hashmap_clear(hashmap_st* hasht, int free_data) {
 
 /* Store data in the hashmap. If data with the same key are already stored return */
 int hashmap_put(hashmap_st* hasht, const char* key, void* data) {
-	if (NULL == hasht || NULL == key || NULL == data) {
+	if (!hasht || !key || !data) {
 		return 1;
 	}
 #ifdef HASHMAP_THREAD_SAFETY
@@ -91,14 +91,14 @@ int hashmap_put(hashmap_st* hasht, const char* key, void* data) {
 	}
 	unsigned int h = ht_calc_hash(key) % hasht->capacity;
 	hashmap_element_st* e = hasht->map[h];
-	while (NULL != e) {
+	while (e) {
 		if (!strcmp(e->key, key)) {	/* same key */
 			return 3;
 		}
 		e = e->next;
 	}
 	// Getting here means the key doesn't already exist
-	if (NULL == (e = (hashmap_element_st*)malloc(sizeof(hashmap_element_st) + strlen(key) + 1))) {
+	if (!(e = (hashmap_element_st*)malloc(sizeof(hashmap_element_st) + strlen(key) + 1))) {
 		return 4;
 	}
 	strcpy(e->key, key);
@@ -115,7 +115,7 @@ int hashmap_put(hashmap_st* hasht, const char* key, void* data) {
 
 /* Retrieve data from the hashmap */
 void* hashmap_get(hashmap_st* hasht, const char* key) {
-	if (NULL == hasht || NULL == key) {
+	if (!hasht || !key) {
 		return NULL;
 	}
 #ifdef HASHMAP_THREAD_SAFETY
@@ -123,7 +123,7 @@ void* hashmap_get(hashmap_st* hasht, const char* key) {
 #endif
 	unsigned int h = ht_calc_hash(key) % hasht->capacity;
 	hashmap_element_st* e = hasht->map[h];
-	while (NULL != e) {
+	while (e) {
 		if (!strcmp(e->key, key)) {
 		#ifdef HASHMAP_THREAD_SAFETY
 			pthread_mutex_unlock(&hasht->mutex);
@@ -140,7 +140,7 @@ void* hashmap_get(hashmap_st* hasht, const char* key) {
 
 /* Remove data from the hashmap. Return the data removed from the map so that we can free memory if needed */
 void* hashmap_remove(hashmap_st* hasht, const char* key) {
-	if (NULL == hasht || NULL == key) {
+	if (!hasht || !key) {
 		return NULL;
 	}
 #ifdef HASHMAP_THREAD_SAFETY
@@ -149,10 +149,10 @@ void* hashmap_remove(hashmap_st* hasht, const char* key) {
 	unsigned int h = ht_calc_hash(key) % hasht->capacity;
 	hashmap_element_st* e = hasht->map[h];
 	hashmap_element_st* prev = NULL;
-	while (NULL != e) {
+	while (e) {
 		if (!strcmp(e->key, key)) {
 			void* ret = e->data;
-			if (NULL != prev) {
+			if (prev) {
 				prev->next = e->next;
 			} else {
 				hasht->map[h] = e->next;
@@ -176,7 +176,7 @@ void* hashmap_remove(hashmap_st* hasht, const char* key) {
 
 /* List keys. keys should have length equals or greater than the number of keys */
 int hashmap_list_keys(hashmap_st* hasht, unsigned long keys_len, char** keys) {
-	if (NULL == hasht || keys_len < hasht->count || NULL == keys) {
+	if (!hasht || keys_len < hasht->count || !keys) {
 		return 1;
 	}
 #ifdef HASHMAP_THREAD_SAFETY
@@ -199,7 +199,7 @@ int hashmap_list_keys(hashmap_st* hasht, unsigned long keys_len, char** keys) {
 
 /* List values. values should have length equals or greater than the number of stored elements */
 int hashmap_list_values(hashmap_st* hasht, unsigned long values_len, void** values) {
-	if (NULL == hasht || values_len < hasht->count || NULL == values) {
+	if (!hasht || values_len < hasht->count || !values) {
 		return 1;
 	}
 #ifdef HASHMAP_THREAD_SAFETY
@@ -222,10 +222,10 @@ int hashmap_list_values(hashmap_st* hasht, unsigned long values_len, void** valu
 
 /* Iterate through map's elements. */
 hashmap_element_st* hashmap_iterate(hashmap_element_iterator_st* iterator) {
-	if (NULL == iterator) {
+	if (!iterator) {
 		return NULL;
 	}
-	while (NULL == iterator->elem) {
+	while (!iterator->elem) {
 		#ifdef HASHMAP_THREAD_SAFETY
 			pthread_mutex_lock(&iterator->hm->mutex);
 		#endif
@@ -251,18 +251,18 @@ hashmap_element_st* hashmap_iterate(hashmap_element_iterator_st* iterator) {
 
 /* Iterate through key. */
 const char* hashmap_iterate_key(hashmap_element_iterator_st* iterator) {
-	if (NULL == iterator) {
+	if (!iterator) {
 		return NULL;
 	}
 	hashmap_element_st* e = hashmap_iterate(iterator);
-	return (NULL == e ? NULL : e->key);
+	return (e ? e->key : NULL);
 }
 
 /* Iterate through value. */
 void* hashmap_iterate_value(hashmap_element_iterator_st* iterator) {
-	if (NULL == iterator) {
+	if (!iterator) {
 		return NULL;
 	}
 	hashmap_element_st* e = hashmap_iterate(iterator);
-	return (NULL == e ? NULL : e->data);
+	return (e ? e->data : NULL);
 }
