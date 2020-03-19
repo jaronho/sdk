@@ -6,31 +6,12 @@
 #ifndef _RINGBUFFER_H_
 #define _RINGBUFFER_H_
 
-#ifdef RINGBUFFER_THREAD_SAFETY
-#include <pthread.h>
-#include <semaphore.h>
-#endif
-
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-typedef struct ringbuffer_st {
-	unsigned long capacity;
-	unsigned long length;
-	unsigned char* bptr;            /* begin ptr */
-    unsigned char* eptr;            /* end ptr */
-    unsigned char* wptr;            /* write ptr */
-    unsigned char* rptr;            /* read ptr */
-    int loop;
-    int block;
-#ifdef RINGBUFFER_THREAD_SAFETY
-	sem_t sem;
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-#endif
-} ringbuffer_st;
+struct ringbuffer_st;
 
 /*
  * Brief:	create a ring buffer
@@ -43,39 +24,40 @@ extern ringbuffer_st* ringbuffer_create(unsigned long capacity, int loop, int bl
 
 /*
  * Brief:	destroy a ring buffer
- * Param:	buff - a ring buffer
+ * Param:	ring - a ring buffer
  * Return:	int, 0.ok, 1.fail
  */
-extern int ringbuffer_destroy(ringbuffer_st* buff);
+extern int ringbuffer_destroy(ringbuffer_st* ring);
 
 /*
  * Brief:	get the capacity of a ring buffer
- * Param:	buff - a ring buffer
+ * Param:	ring - a ring buffer
  * Return:	unsigned long
  */
-extern unsigned long queue_capacity(ringbuffer_st* buff);
+extern unsigned long ringbuffer_capacity(ringbuffer_st* ring);
 
 /*
  * Brief:	get the length of a ring buffer
- * Param:	buff - a ring buffer
+ * Param:	ring - a ring buffer
  * Return:	unsigned long
  */
-extern unsigned long queue_length(ringbuffer_st* buff);
+extern unsigned long ringbuffer_length(ringbuffer_st* ring);
 
 /*
  * Brief:	write data to a ring buffer
- * Param:	buff - a ring buffer
+ * Param:	ring - a ring buffer
  *			data - data
  * Return:	int, 0.ok, 1.fail, 2.ring buffer is full
  */
-extern int ringbuffer_write(ringbuffer_st* buff, void* data);
+extern int ringbuffer_write(ringbuffer_st* ring, unsigned char data);
 
 /*
  * Brief:	read data from a ring buffer
- * Param:	buff - a ring buffer
- * Return:	void*
+ * Param:	ring - a ring buffer
+ *          data - data
+ * Return:	int, 0.ok, 1.fail, 2.ring buffer is empty
  */
-extern void* ringbuffer_read(ringbuffer_st* buff);
+extern int ringbuffer_read(ringbuffer_st* ring, unsigned char* data);
 
 #ifdef __cplusplus
 }

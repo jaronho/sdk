@@ -7,147 +7,177 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef RINGBUFFER_THREAD_SAFETY
+#include <pthread.h>
+#endif
+
+typedef struct ringbuffer_st {
+	unsigned long capacity;
+	unsigned long length;
+	unsigned long bottom;
+    unsigned long top;
+    unsigned long state;
+    int loop;
+    int block;
+    unsigned char* buf;
+#ifdef RINGBUFFER_THREAD_SAFETY
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+#endif
+} ringbuffer_st;
+
 #define RINGBUFFER_EMPTY        0
 #define RINGBUFFER_NORMAL	    1
 #define RINGBUFFER_FULL		    2
 
-static void* getqueue(ringbuffer_st* buff) {
-	void* retval;
-	if (NULL == buff || RINGBUFFER_EMPTY == buff->state) {
-		return NULL;
+static int getringbuffer(ringbuffer_st* ring, unsigned char* data) {
+	if (!ring || RINGBUFFER_EMPTY == ring->state) {
+        if (data) {
+            *data = 0;
+        }
+		return 0;
 	}
-	retval = buff->buf[buff->bottom];
-	buff->buf[buff->bottom] = NULL;
-	++buff->bottom;
-	--buff->length;
-	if (buff->bottom == buff->capacity) {
-		buff->bottom = 0;
+    if (data) {
+        *data = ring->buf[ring->bottom];
+    }
+	ring->buf[ring->bottom] = 0;
+	++ring->bottom;
+	--ring->length;
+	if (ring->bottom == ring->capacity) {
+		ring->bottom = 0;
 	}
-	if (buff->bottom == buff->top) {
-		buff->state = RINGBUFFER_EMPTY;
-	}
-	return retval;
+	if (ring->bottom == ring->top) {
+		ring->state = RINGBUFFER_EMPTY;
+	} else {
+        ring->state = RINGBUFFER_NORMAL;
+    }
+	return 1;
 }
 
 ringbuffer_st* ringbuffer_create(unsigned long capacity, int loop, int block) {
-    ringbuffer_st* buff;
+    ringbuffer_st* ring;
 	if (capacity <= 0) {
 		return NULL;
 	}
-    buff = (ringbuffer_st*)malloc(sizeof(*buff));
-	buff->capacity = capacity;
-    buff->bottom = 0;
-    buff->top = 0;
-    buff->state = RINGBUFFER_EMPTY;
-	buff->loop = loop;
-	buff->block = block;
-    buff->buf = (void**)malloc(capacity * sizeof(void*));
+    ring = (ringbuffer_st*)malloc(sizeof(*ring));
+	ring->capacity = capacity;
+    ring->length = 0;
+    ring->bottom = 0;
+    ring->top = 0;
+    ring->state = RINGBUFFER_EMPTY;
+	ring->loop = loop;
+	ring->block = block;
+    ring->buf = (unsigned char*)malloc(capacity * sizeof(unsigned char));
 #ifdef RINGBUFFER_THREAD_SAFETY
-	sem_init(&buff->sem, 0, 1);
-    pthread_mutex_init(&buff->mutex, NULL);
-	pthread_cond_init(&buff->cond, NULL);
+    pthread_mutex_init(&ring->mutex, NULL);
+	pthread_cond_init(&ring->cond, NULL);
 #endif
-    return buff;
+    return ring;
 }
 
-int ringbuffer_destroy(ringbuffer_st* buff) {
-	if (NULL == buff) {
+int ringbuffer_destroy(ringbuffer_st* ring) {
+	if (!ring) {
 		return 1;
 	}
 #ifdef RINGBUFFER_THREAD_SAFETY
-	sem_destroy(&buff->sem);
-    pthread_mutex_destroy(&buff->mutex);
-	pthread_cond_destroy(&buff->cond);
+    pthread_mutex_destroy(&ring->mutex);
+	pthread_cond_destroy(&ring->cond);
 #endif
-    free(buff->buf);
-    free(buff);
+    free(ring->buf);
+    free(ring);
 	return 0;
 }
 
-unsigned long queue_capacity(ringbuffer_st* buff) {
-	if (NULL == buff) {
+unsigned long ringbuffer_capacity(ringbuffer_st* ring) {
+	if (!ring) {
 		return 0;
 	}
-    return buff->capacity;
+    return ring->capacity;
 }
 
-unsigned long queue_length(ringbuffer_st* buff) {
+unsigned long ringbuffer_length(ringbuffer_st* ring) {
 	unsigned long length;
-	if (NULL == buff) {
+	if (!ring) {
 		return 0;
 	}
 #ifdef RINGBUFFER_THREAD_SAFETY
-	pthread_mutex_lock(&buff->mutex);
+	pthread_mutex_lock(&ring->mutex);
 #endif
-    length = buff->length;
+    length = ring->length;
 #ifdef RINGBUFFER_THREAD_SAFETY
-	pthread_mutex_unlock(&buff->mutex);
+	pthread_mutex_unlock(&ring->mutex);
 #endif
 	return length;
 }
 
-int ringbuffer_write(ringbuffer_st* buff, void* data) {
-	void* retval = NULL;
-	if (NULL == buff || NULL == data) {
+int ringbuffer_write(ringbuffer_st* ring, unsigned char data) {
+	if (!ring || !data) {
 		return 1;
 	}
 #ifdef RINGBUFFER_THREAD_SAFETY
-	sem_wait(&buff->sem);
+	pthread_mutex_lock(&ring->mutex);
 #endif
-	int prev_state = buff->state;
-	if (RINGBUFFER_FULL == prev_state) {
-		if (!buff->loop) {
-		#ifdef RINGBUFFER_THREAD_SAFETY
-			sem_post(&buff->sem);
-		#endif
-			return 2;
-		}
-		retval = getqueue(buff);
-		if (NULL != retval) {
-			free(retval);
-		}
+    while (RINGBUFFER_FULL == ring->state) {
+        if (ring->loop) {
+            getringbuffer(ring, NULL);
+        } else {
+            if (ring->block) {
+            #ifdef RINGBUFFER_THREAD_SAFETY
+                pthread_cond_wait(&ring->cond, &ring->mutex);
+            #endif
+            } else {
+            #ifdef RINGBUFFER_THREAD_SAFETY
+                pthread_mutex_unlock(&ring->mutex);
+            #endif
+                return 2;
+            }
+        }
+    }
+	ring->buf[ring->top] = data;
+	++ring->top;
+	++ring->length;
+	ring->state = RINGBUFFER_NORMAL;
+	if (ring->top == ring->capacity) {
+		ring->top = 0;
 	}
-	buff->buf[buff->top] = data;
-	++buff->top;
-	++buff->length;
-	buff->state = RINGBUFFER_NORMAL;
-	if (buff->top == buff->capacity) {
-		buff->top = 0;
-	}
-	if (buff->top == buff->bottom) {
-		buff->state = RINGBUFFER_FULL;
+	if (ring->top == ring->bottom) {
+		ring->state = RINGBUFFER_FULL;
 	}
 #ifdef RINGBUFFER_THREAD_SAFETY
-	pthread_mutex_lock(&buff->mutex);
-	if (RINGBUFFER_EMPTY == prev_state && buff->block) {
-		pthread_cond_signal(&buff->cond);
-	}
-	pthread_mutex_unlock(&buff->mutex);
-#endif
-#ifdef RINGBUFFER_THREAD_SAFETY
-	sem_post(&buff->sem);
+    if (ring->block) {
+        pthread_cond_signal(&ring->cond);
+    }
+	pthread_mutex_unlock(&ring->mutex);
 #endif
 	return 0;
 }
 
-void* ringbuffer_read(ringbuffer_st* buff) {
-    void* retval;
-	if (NULL == buff) {
-		return NULL;
+int ringbuffer_read(ringbuffer_st* ring, unsigned char* data) {
+	if (!ring) {
+		return 0;
 	}
+    int ok = 0;
 #ifdef RINGBUFFER_THREAD_SAFETY
-	pthread_mutex_lock(&buff->mutex);
-	if (RINGBUFFER_EMPTY == buff->state && buff->block) {
-		pthread_cond_wait(&buff->cond, &buff->mutex);
-	}
-	pthread_mutex_unlock(&buff->mutex);
+	pthread_mutex_lock(&ring->mutex);
 #endif
+    while (RINGBUFFER_EMPTY == ring->state) {
+        if (ring->block) {
+        #ifdef RINGBUFFER_THREAD_SAFETY
+            pthread_cond_wait(&ring->cond, &ring->mutex);
+        #endif
+        } else {
+        #ifdef RINGBUFFER_THREAD_SAFETY
+            pthread_mutex_unlock(&ring->mutex);
+        #endif
+            return 2;
+        }
+    }
+	ok = getringbuffer(ring, data);    
 #ifdef RINGBUFFER_THREAD_SAFETY
-	sem_wait(&buff->sem);
+    if (ring->block) {
+        pthread_cond_signal(&ring->cond);
+    }
+	pthread_mutex_unlock(&ring->mutex);
 #endif
-	retval = getqueue(buff);
-#ifdef RINGBUFFER_THREAD_SAFETY
-	sem_post(&buff->sem);
-#endif
-	return retval;
+	return (ok ? 0 : 2);
 }
