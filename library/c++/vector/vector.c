@@ -8,6 +8,13 @@
 #include <stdio.h>
 #include <memory.h>
 
+typedef struct vector_st {
+	unsigned long current_size;
+	unsigned long total_size;
+	unsigned long grow_size;
+	void** container;
+} vector_st;
+
 vector_st* vector_new(unsigned long default_size, unsigned long grow_size) {
 	unsigned int i = 0;
 	vector_st* new_vector = (vector_st*)malloc(sizeof(vector_st));
