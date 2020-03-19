@@ -1,6 +1,5 @@
 #include "memshare.h"
 #include <pthread.h>
-#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -12,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
+#include <assert.h>
 
 #ifndef NULL
 #define NULL    0
@@ -30,7 +30,6 @@ typedef struct queue_st {
     int state;
     int loop;
     void** buf;
-    sem_t sem;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
 } queue_st;
@@ -151,7 +150,7 @@ static int print(int level, const char* format, ...) {
 
 static void* getqueue(queue_st* q) {
     void* retval;
-    if (NULL == q || QUEUE_EMPTY == q->state) {
+    if (!q || QUEUE_EMPTY == q->state) {
         return NULL;
     }
     retval = q->buf[q->bottom];
@@ -174,33 +173,33 @@ static queue_st* queue_create(unsigned long capacity, int loop) {
         return NULL;
     }
     q = (queue_st*)malloc(sizeof(*q));
+    assert(q);
     q->capacity = capacity;
     q->bottom = 0;
     q->top = 0;
     q->state = QUEUE_EMPTY;
     q->loop = loop;
     q->buf = (void**)malloc(capacity * sizeof(void*));
-    sem_init(&q->sem, 0, 1);
+    assert(q->buf);
     pthread_mutex_init(&q->mutex, NULL);
     pthread_cond_init(&q->cond, NULL);
     return q;
 }
 
 static int queue_put(queue_st* q, void* data) {
-    void* retval = NULL;
-    if (NULL == q || NULL == data) {
+    void* retval;
+    if (!q || !data) {
         return 1;
     }
-    sem_wait(&q->sem);
-    int prev_state = q->state;
-    if (QUEUE_FULL == prev_state) {
-        if (!q->loop) {
-            sem_post(&q->sem);
-            return 2;
-        }
-        retval = getqueue(q);
-        if (NULL != retval) {
-            free(retval);
+    pthread_mutex_lock(&q->mutex);
+    while (QUEUE_FULL == q->state) {
+        if (q->loop) {
+            retval = getqueue(q);
+            if (retval) {
+                free(retval);
+            }
+        } else {
+            pthread_cond_wait(&q->cond, &q->mutex);
         }
     }
     q->buf[q->top] = data;
@@ -212,29 +211,24 @@ static int queue_put(queue_st* q, void* data) {
     if (q->top == q->bottom) {
         q->state = QUEUE_FULL;
     }
-    pthread_mutex_lock(&q->mutex);
-    if (QUEUE_EMPTY == prev_state) {
-        pthread_cond_signal(&q->cond);
-    }
+    pthread_cond_signal(&q->cond);
     pthread_mutex_unlock(&q->mutex);
-    sem_post(&q->sem);
     return 0;
 }
 
 static void* queue_get(queue_st* q) {
-    void* retval;
-    if (NULL == q) {
+    void* data;
+    if (!q) {
         return NULL;
     }
     pthread_mutex_lock(&q->mutex);
-    if (QUEUE_EMPTY == q->state) {
+    while (QUEUE_EMPTY == q->state) {
         pthread_cond_wait(&q->cond, &q->mutex);
     }
+    data = getqueue(q);
+    pthread_cond_signal(&q->cond);
     pthread_mutex_unlock(&q->mutex);
-    sem_wait(&q->sem);
-    retval = getqueue(q);
-    sem_post(&q->sem);
-    return retval;
+    return data;
 }
 
 /********** ipc semaphore functions to be used as mutexes    ***********/
@@ -339,6 +333,7 @@ static void init_mem_proc(int num) {
     int i;
     num_of_procs = num;
     mem_entry = (mem_proc_entry*)malloc(num * SIZEOF_MEM_PROC_ENTRY);
+    assert(mem_entry);
     for (i = 0; i < num; ++i) {
         mem_entry[i].shm = NULL;
         mem_entry[i].rlock = 0;
@@ -404,7 +399,7 @@ static int clear_shm(int key, long size, void** shm) {
         print(LOG_ERR, "Unable get shared mem for key %d, errno %d\n", key, errno);
         return 1;
     }
-    if (NULL != *shm) {
+    if (*shm) {
         shmdt(*shm);
         *shm = NULL;
     }
@@ -437,7 +432,7 @@ static int get_shm(int key, long size, int mode, void** shm) {
             print(LOG_DEBUG, "Get shared mem for key %d with% d\n", key, shmid);
         }
     }
-    if (NULL != *shm) {
+    if (*shm) {
         shmdt(*shm);
         *shm = NULL;
     }
@@ -464,7 +459,7 @@ static int check_proc_entry(int index) {
     /* compare mem_entry with shared memory and see if process is active */
     proc_entry* entry;
     entry = get_proc_at(index);
-    if (NULL == entry) {
+    if (!entry) {
         return 1;
     }
     if (!entry->active) {
@@ -484,7 +479,7 @@ static int clear_proc_entry(int index) {
     proc_entry* entry;
     print(LOG_DEBUG, "Removes proc from entry[%d] and memlist\n", index);
     entry = (proc_entry*)get_proc_at(index);
-    if (NULL == entry) {
+    if (!entry) {
         return 1;
     }
     clear_shm(entry->key_shm, entry->size_shm, &mem_entry[index].shm);
@@ -573,11 +568,12 @@ static void* recv_thread_func(void* arg) {
         usleep(freq_microsecond);
         lock(mem_entry[my_proc_index].rlock);
         hdr = (header*)mem_entry[my_proc_index].shm;
-        if (NULL == hdr || 0 == strlen(hdr->proc_name)) {
+        if (!hdr || 0 == strlen(hdr->proc_name)) {
             unlock(mem_entry[my_proc_index].wlock);
             continue;
         }
         msg = malloc(SIZEOF_HEADER + hdr->msg_len);
+        assert(msg);
         memcpy(msg, mem_entry[my_proc_index].shm, SIZEOF_HEADER + hdr->msg_len);
         memset(mem_entry[my_proc_index].shm, 0, SIZEOF_HEADER + hdr->msg_len);
         if (queue_put(recv_queue, (void*)msg)) {
@@ -595,15 +591,15 @@ static void* read_thread_func(void* arg) {
     header* hdr;
     for (;;) {
         msg = queue_get(recv_queue);
-        if (NULL == msg) {
+        if (!msg) {
             continue;
         }
         hdr = (header*)msg;
-        if (NULL == hdr) {
+        if (!hdr) {
             free(msg);
             continue;
         }
-        if (NULL != callbackmsg) {
+        if (callbackmsg) {
             callbackmsg(hdr->proc_name, hdr->msg_type, hdr->msg_len, hdr->msg_len > 0 ? (msg + SIZEOF_HEADER) : NULL);
         } else {
             print(LOG_WARNING, "No callback\n");
@@ -618,11 +614,11 @@ static void* send_nio_thread_func(void* arg) {
     header* hdr;
     for (;;) {
         msg = queue_get(send_nio_queue);
-        if (NULL == msg) {
+        if (!msg) {
             continue;
         }
         hdr = (header*)msg;
-        if (NULL == hdr) {
+        if (!hdr) {
             free(msg);
             continue;
         }
@@ -686,7 +682,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
     }
     print(LOG_DEBUG, "Init_memshare start\n");
     /* a source proc name is a must */
-    if (NULL == proc_name || 0 == strlen(proc_name)) {
+    if (!proc_name || 0 == strlen(proc_name)) {
         print(LOG_ERR, "proc name is NULL\n");
         return 2;
     }
@@ -752,7 +748,7 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
         print(LOG_ERR, "Module has not been initialized\n");
         return 1;
     }
-    if (NULL == proc_name || 0 == strlen(proc_name)) {
+    if (!proc_name || 0 == strlen(proc_name)) {
         print(LOG_ERR, "Recv proc name is NULL\n");
         return 2;
     }
@@ -779,7 +775,7 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
     hdr.msg_type = msg_type;
     hdr.msg_len = msg_len;
     memcpy(mem_entry[index].shm, &hdr, SIZEOF_HEADER);
-    if (msg_len > 0 && NULL != data) {
+    if (msg_len > 0 && data) {
         memcpy(mem_entry[index].shm + SIZEOF_HEADER, data, msg_len);
     }
     unlock(mem_entry[index].rlock);
@@ -794,7 +790,7 @@ void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void*
         print(LOG_ERR, "Module has not been initialized\n");
         return;
     }
-    if (NULL == proc_name || 0 == strlen(proc_name)) {
+    if (!proc_name || 0 == strlen(proc_name)) {
         print(LOG_ERR, "Recv proc name is NULL\n");
         return;
     }
@@ -808,8 +804,9 @@ void shm_send_nio(const char* proc_name, int msg_type, long msg_len, const void*
     hdr.msg_type = msg_type;
     hdr.msg_len = msg_len;
     msg = malloc(SIZEOF_HEADER + msg_len);
+    assert(msg);
     memcpy(msg, &hdr, SIZEOF_HEADER);
-    if (msg_len > 0 && NULL != data) {
+    if (msg_len > 0 && data) {
         memcpy(msg + SIZEOF_HEADER, data, msg_len);
     }
     queue_put(send_nio_queue, msg);
@@ -821,7 +818,7 @@ int get_proc_index(const char* proc_name) {
         print(LOG_ERR, "Module has not been initialized\n");
         return -1;
     }
-    if (NULL == proc_name || 0 == strlen(proc_name)) {
+    if (!proc_name || 0 == strlen(proc_name)) {
         return -2;
     }
     if (0 == strcmp(proc_name, my_proc_name) && my_proc_index >= 0) {
@@ -845,10 +842,11 @@ int get_proc_info(int index, char** proc_name, long* data_size) {
     }
     /* this call will not check if the entry is active */
     entry = get_proc_at(index);
-    if (NULL == entry) {
+    if (!entry) {
         return 2;
     }
     *proc_name = entry->proc_name;
     *data_size = entry->size_shm;
     return 0;
 }
+
