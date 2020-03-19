@@ -8,6 +8,19 @@
 #include <stdio.h>
 #include <math.h>
 
+typedef struct timer_st {
+    unsigned long interval;					// interval duration in milliseconds
+    unsigned long total_count;				// number of intervals, if count <= 0, timer will repeat forever
+    unsigned long current_count;			// current interval count
+    unsigned long long start_time;			// start time for the current interval in milliseconds
+    unsigned int running;					// status of the timer
+    unsigned int is_pause;					// is timer paused
+    timer_callback_run run_handler;		    // called when current count changed
+    timer_callback_over over_handler;		// called when timer is complete
+    char id[128];                           // id
+    void* param;						    // parameter
+} timer_st;
+
 timer_st* create_timer(unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, const char* id, void* param) {
     timer_st* tm = NULL;
     if (interval <= 0) {
