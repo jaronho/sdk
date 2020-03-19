@@ -162,6 +162,8 @@ static void* getqueue(queue_st* q) {
     }
     if (q->bottom == q->top) {
         q->state = QUEUE_EMPTY;
+    } else {
+        q->state = QUEUE_NORMAL;
     }
     return retval;
 }
