@@ -6,7 +6,6 @@
 #include "ringbuffer.h"
 #include <stdio.h>
 #include <stdlib.h>
-
 #ifdef RINGBUFFER_THREAD_SAFETY
 #include <pthread.h>
 #endif
@@ -153,10 +152,10 @@ int ringbuffer_write(ringbuffer_st* ring, unsigned char data) {
 }
 
 int ringbuffer_read(ringbuffer_st* ring, unsigned char* data) {
-	if (!ring) {
+    int ok;	
+    if (!ring) {
 		return 0;
 	}
-    int ok = 0;
 #ifdef RINGBUFFER_THREAD_SAFETY
 	pthread_mutex_lock(&ring->mutex);
 #endif

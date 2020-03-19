@@ -6,17 +6,35 @@
 #include "queue.h"
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef QUEUE_THREAD_SAFETY
+#include <pthread.h>
+#endif
+
+typedef struct queue_st {
+	unsigned long capacity;
+	unsigned long length;
+	unsigned long bottom;
+	unsigned long top;
+	int state;
+	int loop;
+	int block;
+	void** buf;
+#ifdef QUEUE_THREAD_SAFETY
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+#endif
+} queue_st;
 
 #define QUEUE_EMPTY		0
 #define QUEUE_NORMAL	1
 #define QUEUE_FULL		2
 
 static void* getqueue(queue_st* q) {
-	void* retval;
+	void* data;
 	if (!q || QUEUE_EMPTY == q->state) {
 		return NULL;
 	}
-	retval = q->buf[q->bottom];
+	data = q->buf[q->bottom];
 	q->buf[q->bottom] = NULL;
 	++q->bottom;
 	--q->length;
@@ -28,7 +46,7 @@ static void* getqueue(queue_st* q) {
 	} else {
         q->state = QUEUE_NORMAL;
     }
-	return retval;
+	return data;
 }
 
 queue_st* queue_create(unsigned long capacity, int loop, int block) {
@@ -45,7 +63,6 @@ queue_st* queue_create(unsigned long capacity, int loop, int block) {
 	q->block = block;
     q->buf = (void**)malloc(capacity * sizeof(void*));
 #ifdef QUEUE_THREAD_SAFETY
-	sem_init(&q->sem, 0, 1);
     pthread_mutex_init(&q->mutex, NULL);
 	pthread_cond_init(&q->cond, NULL);
 #endif
@@ -57,7 +74,6 @@ int queue_destroy(queue_st* q) {
 		return 1;
 	}
 #ifdef QUEUE_THREAD_SAFETY
-	sem_destroy(&q->sem);
     pthread_mutex_destroy(&q->mutex);
 	pthread_cond_destroy(&q->cond);
 #endif
@@ -89,26 +105,32 @@ unsigned long queue_length(queue_st* q) {
 }
 
 int queue_put(queue_st* q, void* data) {
-	void* retval = NULL;
+	void* retval;
 	if (!q || !data) {
 		return 1;
 	}
 #ifdef QUEUE_THREAD_SAFETY
-	sem_wait(&q->sem);
+	pthread_mutex_lock(&q->mutex);
 #endif
-	int prev_state = q->state;
-	if (QUEUE_FULL == prev_state) {
-		if (!q->loop) {
-		#ifdef QUEUE_THREAD_SAFETY
-			sem_post(&q->sem);
-		#endif
-			return 2;
-		}
-		retval = getqueue(q);
-		if (retval) {
-			free(retval);
-		}
-	}
+    while (QUEUE_FULL == q->state) {
+        if (q->loop) {
+            retval = getqueue(q);
+		    if (retval) {
+			    free(retval);
+		    }
+        } else {
+            if (q->block) {
+            #ifdef QUEUE_THREAD_SAFETY
+                pthread_cond_wait(&q->cond, &q->mutex);
+            #endif
+            } else {
+            #ifdef QUEUE_THREAD_SAFETY
+                pthread_mutex_unlock(&q->mutex);
+            #endif
+                return 2;
+            }
+        }
+    }
 	q->buf[q->top] = data;
 	++q->top;
 	++q->length;
@@ -120,36 +142,40 @@ int queue_put(queue_st* q, void* data) {
 		q->state = QUEUE_FULL;
 	}
 #ifdef QUEUE_THREAD_SAFETY
-	pthread_mutex_lock(&q->mutex);
-	if (QUEUE_EMPTY == prev_state && q->block) {
-		pthread_cond_signal(&q->cond);
-	}
+    if (q->block) {
+        pthread_cond_signal(&q->cond);
+    }
 	pthread_mutex_unlock(&q->mutex);
-#endif
-#ifdef QUEUE_THREAD_SAFETY
-	sem_post(&q->sem);
 #endif
 	return 0;
 }
 
 void* queue_get(queue_st* q) {
-    void* retval;
+    void* data;
 	if (!q) {
 		return NULL;
 	}
 #ifdef QUEUE_THREAD_SAFETY
 	pthread_mutex_lock(&q->mutex);
-	if (QUEUE_EMPTY == q->state && q->block) {
-		pthread_cond_wait(&q->cond, &q->mutex);
-	}
+#endif
+    while (QUEUE_EMPTY == q->state) {
+        if (q->block) {
+        #ifdef QUEUE_THREAD_SAFETY
+            pthread_cond_wait(&q->cond, &q->mutex);
+        #endif
+        } else {
+        #ifdef QUEUE_THREAD_SAFETY
+            pthread_mutex_unlock(&q->mutex);
+        #endif
+            return NULL;
+        }
+    }
+	data = getqueue(q);
+#ifdef QUEUE_THREAD_SAFETY
+    if (q->block) {
+        pthread_cond_signal(&q->cond);
+    }
 	pthread_mutex_unlock(&q->mutex);
 #endif
-#ifdef QUEUE_THREAD_SAFETY
-	sem_wait(&q->sem);
-#endif
-	retval = getqueue(q);
-#ifdef QUEUE_THREAD_SAFETY
-	sem_post(&q->sem);
-#endif
-	return retval;
+	return data;
 }

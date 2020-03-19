@@ -6,31 +6,12 @@
 #ifndef _QUEUE_H_
 #define _QUEUE_H_
 
-#ifdef QUEUE_THREAD_SAFETY
-#include <pthread.h>
-#include <semaphore.h>
-#endif
-
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-typedef struct queue_st {
-	unsigned long capacity;
-	unsigned long length;
-	unsigned long bottom;
-	unsigned long top;
-	int state;
-	int loop;
-	int block;
-	void** buf;
-#ifdef QUEUE_THREAD_SAFETY
-	sem_t sem;
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-#endif
-} queue_st;
+struct queue_st;
 
 /*
  * Brief:	create a queue
