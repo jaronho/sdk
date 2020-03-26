@@ -764,7 +764,7 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
     }
     msg_len = msg_len >= 0 ? msg_len : 0;
     entry = get_proc_at(index);
-    if (SIZEOF_HEADER + msg_len > entry->size_shm) {
+    if (SIZEOF_HEADER + msg_len > (unsigned long)entry->size_shm) {
         print(LOG_ERR, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
         pthread_mutex_unlock(&send_mutex_t);
         return 4;
