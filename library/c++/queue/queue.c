@@ -6,24 +6,6 @@
 #include "queue.h"
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef QUEUE_THREAD_SAFETY
-#include <pthread.h>
-#endif
-
-typedef struct queue_st {
-	unsigned long capacity;
-	unsigned long length;
-	unsigned long bottom;
-	unsigned long top;
-	int state;
-	int loop;
-	int block;
-	void** buf;
-#ifdef QUEUE_THREAD_SAFETY
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-#endif
-} queue_st;
 
 #define QUEUE_EMPTY		0
 #define QUEUE_NORMAL	1

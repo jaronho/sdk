@@ -14,7 +14,12 @@ extern "C"
 #define VECTOR_DEFAULT_SIZE			32
 #define VECTOR_DEFAULT_GROW_SIZE	16
 
-struct vector_st;
+typedef struct vector_st {
+	unsigned long current_size;
+	unsigned long total_size;
+	unsigned long grow_size;
+	void** container;
+} vector_st;
 
 extern vector_st* vector_new(unsigned long default_size, unsigned long grow_size);
 

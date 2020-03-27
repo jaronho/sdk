@@ -6,24 +6,6 @@
 #include "ringbuffer.h"
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef RINGBUFFER_THREAD_SAFETY
-#include <pthread.h>
-#endif
-
-typedef struct ringbuffer_st {
-	unsigned long capacity;
-	unsigned long length;
-	unsigned long bottom;
-    unsigned long top;
-    unsigned long state;
-    int loop;
-    int block;
-    unsigned char* buf;
-#ifdef RINGBUFFER_THREAD_SAFETY
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-#endif
-} ringbuffer_st;
 
 #define RINGBUFFER_EMPTY        0
 #define RINGBUFFER_NORMAL	    1

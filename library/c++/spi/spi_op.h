@@ -11,7 +11,13 @@ extern "C"
 {
 #endif
 
-struct spi_st;
+typedef struct spi_st {
+    int fd;                         /* 设备文件句柄 */
+    unsigned char mode;             /* 设备对应的模式 */
+    unsigned char lsb;              /* 设备传输的时候是否先传输低比特位,0.否(默认高比特位在前),1.是 */
+    unsigned char bits;             /* 设备通信的字长 */
+    unsigned int speed;             /* 设备通信的最大时钟频率,HZ */
+} spi_st;
 
 /*
  * Brief:	open a spi device
