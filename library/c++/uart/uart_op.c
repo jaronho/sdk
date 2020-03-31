@@ -315,7 +315,7 @@ int uart_set_wait_bytes(int fd, unsigned char bytes) {
     return 0;
 }
 
-int uart_read(int fd, char* buf, unsigned int bufLen) {
+int uart_read(int fd, unsigned char* buf, unsigned int bufLen) {
     if (fd < 0) {
         return -1;
     }
@@ -325,7 +325,7 @@ int uart_read(int fd, char* buf, unsigned int bufLen) {
     return read(fd, buf, bufLen);
 }
 
-int uart_write(int fd, const char* buf, unsigned int bufLen) {
+int uart_write(int fd, const unsigned char* buf, unsigned int bufLen) {
     if (fd < 0) {
         return -1;
     }

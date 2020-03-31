@@ -113,7 +113,7 @@ extern int uart_set_wait_bytes(int fd, unsigned char bytes);
  *          bufLen - buffer length
  * Return:	int, >=0.read length, -1.fd is error, -2.buf is NULL or bufLen is empty
  */
-extern int uart_read(int fd, char* buf, unsigned int bufLen);
+extern int uart_read(int fd, unsigned char* buf, unsigned int bufLen);
 
 /*
  * Brief:	write to uart device
@@ -122,7 +122,7 @@ extern int uart_read(int fd, char* buf, unsigned int bufLen);
  *          bufLen - buffer length
  * Return:	int, >=0.write length, -1.fd is error, -2.buf is NULL or bufLen is empty
  */
-extern int uart_write(int fd, const char* buf, unsigned int bufLen);
+extern int uart_write(int fd, const unsigned char* buf, unsigned int bufLen);
 
 #ifdef __cplusplus
 }

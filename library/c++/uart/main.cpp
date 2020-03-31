@@ -14,9 +14,9 @@ int main(void) {
         char buf[10] = { 0 };
         int len = 0;
         while (1) {
-            while ((len = uart_read(fd, buf, sizeof(buf) - 1)) > 0) {
+            while ((len = uart_read(fd, (unsigned char*)buf, sizeof(buf) - 1)) > 0) {
                 printf("%s\n", buf);
-                uart_write(fd, buf, strlen(buf));
+                uart_write(fd, (const unsigned char*)buf, strlen(buf));
                 len = 0;
                 memset(buf, 0, sizeof(buf));
             }
