@@ -75,7 +75,7 @@ extern int uart_get_data_bits(int fd);
 /*
  * Brief:	get parity
  * Param:	fd - uart device file handler
- * Return:	int, [N="None",O="Odd",E="Even",S="Space",M="Mark"].ok, -1.fd invalid, -2.get attr fail
+ * Return:	int, ['N'=None,'O'=Odd,'E'=Even,'S'=Space,'M'=Mark].ok, -1.fd invalid, -2.get attr fail
  */
 extern char uart_get_parity(int fd);
 
