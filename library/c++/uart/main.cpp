@@ -7,6 +7,7 @@ int main(void) {
     int fd = uart_open("/dev/ttyS1", O_RDWR);
     if (fd > 0) {
         printf("串口打开成功\n");
+        uart_config(fd, 115200, 8, 'N', 1, 0);
         printf("波特率: %d\n", uart_get_baud_rate(fd));
         printf("数据位: %d\n", uart_get_data_bits(fd));
         printf("校验位: %c\n", uart_get_parity(fd));
