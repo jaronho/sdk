@@ -6,8 +6,10 @@ extern "C"
 {
 #endif
 
+#include <stdarg.h>
+
 typedef void (*shm_callback_msg)(const char* proc_name, int msg_type, long msg_len, const void* data);
-typedef void (*shm_callback_log)(int level, const char* format, ...);
+typedef void (*shm_callback_log)(int level, const char* format, va_list ap);
 
 #define DEF_PROC_NUM		2
 #define DEF_SHM_KEY			0x058E
@@ -98,12 +100,12 @@ extern int get_proc_index(const char* proc_name);
 /*****************************************************************************/
 /* Description        : This function get the proc info at index             */
 /* Input(s)           : Proc index                                           */
-/* Output(s)          : Address of proc name(char*), address of data size    */
+/* Output(s)          : Proc name(char*), data size                          */
 /* Return Value(s)    : 0.ok                                                 */
 /*                      1.module has not been initialized                    */
 /*                      2.no such process                                    */
 /*****************************************************************************/
-extern int get_proc_info(int index, char** proc_name, long* data_size);
+extern int get_proc_info(int index, char* proc_name, long* data_size);
 
 #ifdef __cplusplus
 }

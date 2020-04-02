@@ -2,7 +2,6 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -37,7 +36,7 @@ typedef struct queue_st {
 union semun {
     int val;
     struct semid_ds* buf;
-    ushort* array;
+    unsigned short* array;
 };
 
 /* struct that is passed along with the data between procs */
@@ -133,7 +132,7 @@ static void populate_mem_proc_single(int index);
 static int print(int level, const char* format, ...) {
     va_list ap;
     int retval = 0;
-    /* add syslog and user specific TODO */
+    /* add syslog and user specific */
     va_start(ap, format);
     if (callbacklog) {
         callbacklog(level, format, ap);
@@ -834,7 +833,7 @@ int get_proc_index(const char* proc_name) {
     return -3;
 }
 
-int get_proc_info(int index, char** proc_name, long* data_size) {
+int get_proc_info(int index, char* proc_name, long* data_size) {
     proc_entry* entry;
     if (!initialized) {
         print(LOG_ERR, "Module has not been initialized\n");
@@ -845,8 +844,11 @@ int get_proc_info(int index, char** proc_name, long* data_size) {
     if (!entry) {
         return 2;
     }
-    *proc_name = entry->proc_name;
-    *data_size = entry->size_shm;
+    if (proc_name) {
+        memcpy(proc_name, entry->proc_name, PROC_NAME_SIZE);
+    }
+    if (data_size) {
+        *data_size = entry->size_shm;
+    }
     return 0;
 }
-
