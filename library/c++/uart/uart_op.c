@@ -302,6 +302,7 @@ int uart_read(int fd, unsigned char* buf, unsigned int bufLen) {
     if (!buf || 0 == bufLen) {
         return -2;
     }
+    memset(buf, 0, bufLen);
     return read(fd, buf, bufLen);
 }
 
