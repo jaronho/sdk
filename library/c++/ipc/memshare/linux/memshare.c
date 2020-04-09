@@ -269,7 +269,7 @@ static int create_lock(int key, int value) {
 static int destroy_lock(int key) {
     union semun ctrl;
     int sem;
-    print(LOG_DEBUG, "Destroy_lock key=%d\n", key);
+    print(LOG_INFO, "Destroy_lock key=%d\n", key);
     if (-1 == (sem = semget(key, 1, IPC_CREAT | 0600))) {
         print(LOG_ERR, "Unable to create semaphore, errno %d\n", errno);
         return 1;
@@ -380,9 +380,9 @@ static void populate_mem_proc_single(int index) {
                     return;
                 }
             } else {
-                print(LOG_DEBUG, "Index %d is active in shared mem but has no process\n", index);
-                clear_proc_entry(index);
                 /* garbage collect */
+                print(LOG_WARNING, "Index %d is active in shared mem but has no process %s\n", index, entry->proc_name);
+                clear_proc_entry(index);
             }
             memcpy(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE);
         }
@@ -476,7 +476,7 @@ static int check_proc_entry(int index) {
 
 static int clear_proc_entry(int index) {
     proc_entry* entry;
-    print(LOG_DEBUG, "Removes proc from entry[%d] and memlist\n", index);
+    print(LOG_INFO, "Removes proc from entry[%d] and memlist\n", index);
     entry = (proc_entry*)get_proc_at(index);
     if (!entry) {
         return 1;
@@ -517,7 +517,7 @@ static int add_proc(const char* proc_name, long size) {
     if (num_of_procs == (index = get_next_free_index())) {
         return 1;
     }
-    print(LOG_DEBUG, "Adding proc %s to index %d\n", proc_name, index);
+    print(LOG_INFO, "Adding proc %s to index %d\n", proc_name, index);
     entry = get_proc_at(index);
     key_base = sem_ctrl_key + index * 4;
     entry->key_shm = key_base + 1;
@@ -526,14 +526,14 @@ static int add_proc(const char* proc_name, long size) {
     entry->key_active = key_base + 4;
     entry->size_shm = size;
     my_proc_index = index;
-    print(LOG_DEBUG, "Allocating shared memory for key %d size %ld\n", entry->key_shm, entry->size_shm);
+    print(LOG_INFO, "Allocating shared memory for key %d size %ld\n", entry->key_shm, entry->size_shm);
     /* Map up yourself in the local memory map with pointers instead of keys */
     if (1 == get_shm(entry->key_shm, entry->size_shm, 0, &mem_entry[index].shm)) {
         print(LOG_ERR, "Unable to alloc shared mem\n");
         clear_proc_entry(index);
         return 1;
     }
-    print(LOG_DEBUG, "Shared memory allocated for key %d\n", entry->key_shm);
+    print(LOG_INFO, "Shared memory allocated for key %d\n", entry->key_shm);
     if (-1 == (mem_entry[index].rlock = create_lock(entry->key_rlock, 0))) {
         print(LOG_ERR, "Unable to create rlock\n");
         clear_proc_entry(index);
@@ -551,7 +551,7 @@ static int add_proc(const char* proc_name, long size) {
     }
     set_active(mem_entry[index].active);
     if (try_lock1(mem_entry[index].active)) {
-        print(LOG_DEBUG, "Proc %s is now active at index %d\n", proc_name, index);
+        print(LOG_INFO, "Proc %s is now active at index %d\n", proc_name, index);
     }
     strncpy(entry->proc_name, proc_name, PROC_NAME_SIZE);
     memcpy(mem_entry[index].proc_name, entry->proc_name, PROC_NAME_SIZE);
@@ -679,7 +679,7 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
         print(LOG_NOTICE, "Module has been initialized\n");
         return 1;
     }
-    print(LOG_DEBUG, "Init_memshare start\n");
+    print(LOG_INFO, "Init_memshare start\n");
     /* a source proc name is a must */
     if (!proc_name || 0 == strlen(proc_name)) {
         print(LOG_ERR, "proc name is NULL\n");
@@ -720,21 +720,21 @@ int init_memshare(const char* proc_name, int proc_num, int shm_key, long shm_siz
         print(LOG_ERR, "Unable to create semaphore\n");
         return 7;
     }
-    print(LOG_DEBUG, "Created ctrl lock\n");
+    print(LOG_INFO, "Created ctrl lock\n");
     lock(lock_ctrl_sem);
-    print(LOG_DEBUG, "Init_memshare ctrl\n");
+    print(LOG_INFO, "Init_memshare ctrl\n");
     /* map up the ctrl area */
     if (1 == get_shm(shm_ctrl_key, SIZEOF_PROC_ENTRY * proc_num, 1, &shm_ctrl_ptr)) {
         print(LOG_ERR, "Unable to alloc shared mem\n");
         return 8;
     }
-    print(LOG_DEBUG, "Init_memshare populate memproc\n");
+    print(LOG_INFO, "Init_memshare populate memproc\n");
     populate_mem_proc();
     add_proc(proc_name, shm_size);
     unlock(lock_ctrl_sem);
-    print(LOG_DEBUG, "Init_memshare unlock ctrl\n");
+    print(LOG_INFO, "Init_memshare unlock ctrl\n");
     start_listen_thread();
-    print(LOG_DEBUG, "Init_memshare done\n");
+    print(LOG_INFO, "Init_memshare done\n");
     initialized = 1;
     return 0;
 }
@@ -764,7 +764,7 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
     msg_len = msg_len >= 0 ? msg_len : 0;
     entry = get_proc_at(index);
     if (SIZEOF_HEADER + msg_len > (unsigned long)entry->size_shm) {
-        print(LOG_ERR, "Data size %ld large shm size %ld\n", SIZEOF_HEADER + msg_len, entry->size_shm);
+        print(LOG_ERR, "Data size %ld large proc %s shm size %ld\n", SIZEOF_HEADER + msg_len, entry->proc_name, entry->size_shm);
         pthread_mutex_unlock(&send_mutex_t);
         return 4;
     }
