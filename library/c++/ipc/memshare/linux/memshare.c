@@ -577,7 +577,7 @@ static void* recv_thread_func(void* arg) {
         memset(mem_entry[my_proc_index].shm, 0, SIZEOF_HEADER + hdr->msg_len);
         if (queue_put(recv_queue, (void*)msg)) {
             /* Failed to put in queue, msg lost */
-            print(LOG_ERR, "Failed to put msg in queue, msg with type %d is lost!\n", hdr->msg_type);
+            print(LOG_WARNING, "Failed to put msg in queue, msg with type %d is lost!\n", hdr->msg_type);
             free(msg);
         }
         unlock(mem_entry[my_proc_index].wlock);
@@ -757,7 +757,7 @@ int shm_send(const char* proc_name, int msg_type, long msg_len, const void* data
     }
     pthread_mutex_lock(&send_mutex_t);
     if ((index = get_proc_index(proc_name)) < 0) {
-        print(LOG_ERR, "No such process %s, ret %d\n", proc_name, index);
+        print(LOG_WARNING, "No such process %s, ret %d\n", proc_name, index);
         pthread_mutex_unlock(&send_mutex_t);
         return 3;
     }
