@@ -1045,7 +1045,7 @@ int Common::tryToLockFile(int fd, int lock) {
 #endif
 }
 /*********************************************************************/
-int Common::startProcByName(const char* filename, const char* procName) {
+int Common::startProcessByName(const char* filename, const char* procName) {
 #ifdef _SYSTEM_WINDOWS_
     return 0;
 #else
@@ -1077,6 +1077,59 @@ int Common::startProcByName(const char* filename, const char* procName) {
         }
     }
     return 1;
+#endif
+}
+/*********************************************************************/
+int Common::searchProcessByName(const char* filename, void(*callback)(const char* fullPath, int pid)) {
+#ifdef _SYSTEM_WINDOWS_
+    return 0;
+#else
+    unsigned int nameNum = strlen(filename);
+    if (!filename || 0 == nameNum) {
+        return 0;
+    }
+    DIR* dir = opendir("/proc");
+    if (!dir) {
+        return 0;
+    }
+    char exePath[64];
+    char fullPath[256];
+    unsigned int pathNum;
+    int matchCount = 0;
+    struct dirent* dirp = NULL;
+    while ((dirp = readdir(dir))) {
+        if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name) || 0 == atoi(dirp->d_name)) {
+            continue;
+        }
+        if (DT_DIR != dirp->d_type) {
+            continue;
+        }
+        memset(exePath, 0, sizeof(exePath));
+        sprintf(exePath, "/proc/%s/exe", dirp->d_name);
+        pathNum = readlink(exePath, fullPath, sizeof(fullPath) - 1);
+        if (pathNum <= 0 || pathNum >= sizeof(fullPath) - 1) {
+            continue;
+        }
+        fullPath[pathNum] = '\0';
+        if (nameNum > pathNum) {
+            continue;
+        }
+        int matched = 1;
+        for (unsigned int i = 1; i <= nameNum; ++i) {
+            if (fullPath[pathNum - i] != filename[nameNum - i]) {
+                matched = 0;
+                break;
+            }
+        }
+        if (matched) {
+            ++matchCount;
+            if (callback) {
+                callback(fullPath, atoi(dirp->d_name));
+            }
+        }
+    }
+    closedir(dir);
+    return matchCount;
 #endif
 }
 /*********************************************************************/

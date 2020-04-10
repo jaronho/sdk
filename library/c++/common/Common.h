@@ -573,7 +573,15 @@ public:
      *          procName - process name
      * Return:  int - 0.false,1.ok
      */
-    static int startProcByName(const char* filename, const char* procName);
+    static int startProcessByName(const char* filename, const char* procName);
+    
+    /*
+     * Brief:   search process by program filename
+     * Param:   filename - program filename
+     *          callback - match callback
+     * Return:  int - match count
+     */
+    static int searchProcessByName(const char* filename, void(*callback)(const char* fullPath, int pid));
      
     /*
      * Brief:   generate uid
