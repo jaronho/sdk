@@ -504,27 +504,6 @@ public:
      **********************************************************************/
 
     /*
-     * Brief:	get cpu clock HZ
-     * Param:	void
-     * Return:	long (HZ)
-     */
-    static long getClockHz(void);
-
-    /*
-     * Brief:	get cpu clock ticks
-     * Param:	void
-     * Return:	long (ticks)
-     */
-    static long getClockTicks(void);
-
-    /*
-     * Brief:	get cpu clock milliseconds
-     * Param:	void
-     * Return:	long (millisecond)
-     */
-    static long getClockMilliseconds(void);
-
-    /*
      * Brief:	get current system time (current from 1970-01-01 00:00:00)
      * Param:	void
      * Return:	double (seconds)

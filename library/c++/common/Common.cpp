@@ -948,33 +948,6 @@ std::string Common::calcBroadcastAddress(const char* ip) {
     return address;
 }
 /*********************************************************************/
-long Common::getClockHz(void) {
-#ifdef _SYSTEM_WINDOWS_
-    return 1;
-#else
-    return sysconf(_SC_CLK_TCK);
-#endif
-}
-/*********************************************************************/
-long Common::getClockTicks(void) {
-#ifdef _SYSTEM_WINDOWS_
-    return 0;
-#else
-    return times(NULL);
-#endif
-}
-/*********************************************************************/
-long Common::getClockMilliseconds(void) {
-#ifdef _SYSTEM_WINDOWS_
-    return 0;
-#else
-    long hz = sysconf(_SC_CLK_TCK);             /* 1 seconds ticks count */
-    float tickUnit = 1000.0 / hz;               /* milliseconds */
-    long ticks = times(NULL);
-    return (long)(ticks * tickUnit);
-#endif
-}
-/*********************************************************************/
 double Common::getTime(void) {
 #ifdef _SYSTEM_WINDOWS_
     FILETIME ft;
