@@ -968,9 +968,10 @@ long Common::getClockMilliseconds(void) {
 #ifdef _SYSTEM_WINDOWS_
     return 0;
 #else
-    long hz = sysconf(_SC_CLK_TCK);
+    long hz = sysconf(_SC_CLK_TCK);             /* 1 seconds ticks count */
+    float tickUnit = 1000.0 / hz;               /* milliseconds */
     long ticks = times(NULL);
-    return (long)(ticks * (1000.0 / hz));   /* 1 seconds = 1000 milliseconds */
+    return (long)(ticks * tickUnit);
 #endif
 }
 /*********************************************************************/
