@@ -504,6 +504,27 @@ public:
      **********************************************************************/
 
     /*
+     * Brief:	get cpu clock HZ
+     * Param:	void
+     * Return:	long (HZ)
+     */
+    static long getClockHz(void);
+
+    /*
+     * Brief:	get cpu clock ticks
+     * Param:	void
+     * Return:	long (ticks)
+     */
+    static long getClockTicks(void);
+
+    /*
+     * Brief:	get cpu clock milliseconds
+     * Param:	void
+     * Return:	long (millisecond)
+     */
+    static long getClockMilliseconds(void);
+
+    /*
      * Brief:	get current system time (current from 1970-01-01 00:00:00)
      * Param:	void
      * Return:	double (seconds)
@@ -558,6 +579,22 @@ public:
     /**********************************************************************
      * other functions
      **********************************************************************/
+
+    /*
+     * Brief:   try to lock file
+     * Param:   fd - file describe handler
+     *          lock - 0.unlock,1.lock
+     * Return:  int - -1.error,other number ok
+     */
+    static int tryToLockFile(int fd, int lock);
+
+    /*
+     * Brief:   start a new process by program filename
+     * Param:   filename - program filename
+     *          procName - process name
+     * Return:  int - 0.false,1.ok
+     */
+    static int startProcByName(const char* filename, const char* procName);
      
     /*
      * Brief:   generate uid

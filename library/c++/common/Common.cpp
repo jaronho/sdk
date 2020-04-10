@@ -27,6 +27,7 @@
 #include <sys/io.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/times.h>
 #include <sys/types.h>
 #endif
 /*********************************************************************/
@@ -947,6 +948,32 @@ std::string Common::calcBroadcastAddress(const char* ip) {
     return address;
 }
 /*********************************************************************/
+long Common::getClockHz(void) {
+#ifdef _SYSTEM_WINDOWS_
+    return 1;
+#else
+    return sysconf(_SC_CLK_TCK);
+#endif
+}
+/*********************************************************************/
+long Common::getClockTicks(void) {
+#ifdef _SYSTEM_WINDOWS_
+    return 0;
+#else
+    return times(NULL);
+#endif
+}
+/*********************************************************************/
+long Common::getClockMilliseconds(void) {
+#ifdef _SYSTEM_WINDOWS_
+    return 0;
+#else
+    long hz = sysconf(_SC_CLK_TCK);
+    long ticks = times(NULL);
+    return (long)(ticks * (1000.0 / hz));   /* 1 seconds = 1000 milliseconds */
+#endif
+}
+/*********************************************************************/
 double Common::getTime(void) {
 #ifdef _SYSTEM_WINDOWS_
     FILETIME ft;
@@ -1029,6 +1056,54 @@ bool Common::setSystemTime(int year, int mon, int mday, int hour, int min, int s
     tv.tv_sec = t;
     tv.tv_usec = 0;
     return 0 == settimeofday(&tv, NULL);
+}
+/*********************************************************************/
+int Common::tryToLockFile(int fd, int lock) {
+#ifdef _SYSTEM_WINDOWS_
+    return 0;
+#else
+    struct flock fl;
+    fl.l_type = (1 == lock) ? F_WRLCK : F_UNLCK;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
+    fl.l_len = 0;
+    return fcntl(fd, F_SETLK, &fl);
+#endif
+}
+/*********************************************************************/
+int Common::startProcByName(const char* filename, const char* procName) {
+#ifdef _SYSTEM_WINDOWS_
+    return 0;
+#else
+    if (!filename || 0 == strlen(filename)) {
+        return 0;
+    }
+    if (!procName || 0 == strlen(procName)) {
+        return 0;
+    }
+    if (0 != access(filename, F_OK | R_OK | X_OK)) {                           /* 文件必须具有可读,可执行权限 */
+        return 0;
+    }
+    pid_t firstPid = fork();                                                   /* 创建一代子进程 */
+    if (firstPid < 0) {                                                        /* 一代子进程创建失败 */
+        return 0;
+    } else if (0 == firstPid) {                                                /* 创建成功,此处是一代子进程的代码 */
+        pid_t secondPid = fork();                                              /* 创建二代孙进程 */
+        if (secondPid < 0) {                                                   /* 二代孙进程创建失败 */
+            return 0;
+        } else if (0 == secondPid) {                                           /* 创建成功,此处是二代孙进程的代码 */
+            if (-1 != execl(filename, procName, (char*)NULL)) {                /* 在子进程中执行该程序 */
+                return 1;                                                      /* 执行完毕直接退出 */
+            }
+            return 0;
+        }
+        exit(1);                                                               /* 创建成功,此处是一代子进程的代码 */
+    } else {                                                                   /* 创建成功,此处是父进程的代码 */
+        if (waitpid(firstPid, NULL, 0) != firstPid) {                          /* 父进程必须为一代子进程收尸 */
+        }
+    }
+    return 1;
+#endif
 }
 /*********************************************************************/
 unsigned long long Common::generateUID(void) {
