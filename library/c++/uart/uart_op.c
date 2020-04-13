@@ -163,6 +163,22 @@ int uart_config(int fd, int baudRate, int dataBits, char parity, int stopBits, i
     return 0;
 }
 
+int uart_set_nonblock(int fd, int nonblock) {
+    if (fd < 0) {
+        return -1;
+    }
+    if (1 == nonblock) {
+        if (fcntl(fd, F_SETFL, FNDELAY) < 0) {
+            return -2;
+        }
+    } else {
+        if (fcntl(fd, F_SETFL, 0) < 0) {
+            return -2;
+        }
+    }
+    return 0;
+}
+
 int uart_set_wait_time(int fd, unsigned char time) {
     struct termios opt;
     if (fd < 0) {
@@ -296,6 +312,7 @@ int uart_get_stop_bits(int fd) {
 }
 
 int uart_read(int fd, unsigned char* buf, unsigned int bufLen) {
+    int len;
     if (fd < 0) {
         return -1;
     }
@@ -303,15 +320,18 @@ int uart_read(int fd, unsigned char* buf, unsigned int bufLen) {
         return -2;
     }
     memset(buf, 0, bufLen);
-    return read(fd, buf, bufLen);
+    len = read(fd, buf, bufLen);
+    return (len < 0 ? 0 : len);
 }
 
 int uart_write(int fd, const unsigned char* buf, unsigned int bufLen) {
+    int len;
     if (fd < 0) {
         return -1;
     }
     if (!buf || 0 == bufLen) {
         return -2;
     }
-    return write(fd, buf, bufLen);
+    len = write(fd, buf, bufLen);
+    return (len < 0 ? 0 : len);
 }

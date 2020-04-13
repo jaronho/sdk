@@ -12,7 +12,7 @@ extern "C"
 #endif
 
 /*
- * Brief:	open uart device
+ * Brief:	open uart device(default read block)
  * Param:	device - uart device name, e.g. "/dev/ttyS0"
  *          mode - uart device open mode, e.g. O_RDWR
  * Return:	int(fd), >=0.ok, -1.open failed, -2.device invalid
@@ -39,6 +39,14 @@ extern int uart_close(int fd);
  * Return:	int, 0.ok, -1.fd invalid, -2.get attr fail, -3.set io speed fail, -4.set attr fail
  */
 extern int uart_config(int fd, int baudRate, int dataBits, char parity, int stopBits, int flow);
+
+/*
+ * Brief:	set whether none block
+ * Param:	fd - uart device file handler
+ *          nonblock - 0.block,1.none block
+ * Return:	int, 0.ok, -1.fd invalid, -2.set fail
+ */
+extern int uart_set_nonblock(int fd, int nonblock);
 
 /*
  * Brief:	set wait time
