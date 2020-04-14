@@ -35,10 +35,10 @@ extern int uart_close(int fd);
  *          dataBits - 5,6,7,8
  *          parity - 'N'=None,'O'=Odd,'E'=Even,'S'=Space,'M'=Mark
  *          stopBits - 1,2
- *          flow - 0=no,1=hard,2=soft
+ *          flowCtrl - 0=no,1=hard,2=soft
  * Return:	int, 0.ok, -1.fd invalid, -2.get attr fail, -3.set io speed fail, -4.set attr fail
  */
-extern int uart_config(int fd, int baudRate, int dataBits, char parity, int stopBits, int flow);
+extern int uart_config(int fd, int baudRate, int dataBits, char parity, int stopBits, int flowCtrl);
 
 /*
  * Brief:	set whether none block

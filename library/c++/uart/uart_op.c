@@ -26,7 +26,7 @@ int uart_close(int fd) {
     return 0;
 }
 
-int uart_config(int fd, int baudRate, int dataBits, char parity, int stopBits, int flow) {
+int uart_config(int fd, int baudRate, int dataBits, char parity, int stopBits, int flowCtrl) {
     struct termios opt;
     unsigned int speed;
     unsigned char speedValid;
@@ -137,7 +137,7 @@ int uart_config(int fd, int baudRate, int dataBits, char parity, int stopBits, i
         break;
     }
     /* 设置流控 */
-    switch(flow) {
+    switch(flowCtrl) {
     case 0:
     #ifdef __USE_MISC
         opt.c_cflag &= ~CRTSCTS;                /* 不使用流控制 */
