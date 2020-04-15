@@ -156,6 +156,7 @@ int uart_config(int fd, int baudRate, int dataBits, char parity, int stopBits, i
     }
     /* 使用原始模式(Raw Mode)方式来通讯 */
     opt.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL | ICANON | IEXTEN | ISIG);  /* 本地模式 */
+    opt.c_iflag &= ~IXON;                       /* 关闭输入的XON/XOFF流控制 */
     opt.c_oflag &= ~OPOST;                      /* 关闭处理后输出 */
     /* 如果发生数据溢出,接收数据,但是不再读取,刷新收到的数据但是不读 */
     tcflush(fd, TCIFLUSH);
