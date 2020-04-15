@@ -155,9 +155,8 @@ int uart_config(int fd, int baudRate, int dataBits, char parity, int stopBits, i
         break;
     }
     /* 使用原始模式(Raw Mode)方式来通讯 */
-    opt.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);   /* 本地模式 */
-    opt.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON); /* 输出模式 */
-    opt.c_oflag &= ~OPOST;                      /* 输出模式 */
+    opt.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL | ICANON | IEXTEN | ISIG);  /* 本地模式 */
+    opt.c_oflag &= ~OPOST;                      /* 关闭处理后输出 */
     /* 如果发生数据溢出,接收数据,但是不再读取,刷新收到的数据但是不读 */
     tcflush(fd, TCIFLUSH);
     /* 激活配置 */
