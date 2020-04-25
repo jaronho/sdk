@@ -7,7 +7,7 @@ extern "C"
 #endif
 
 typedef struct namedpipe_st {
-    char* name;             /* pipe name, e.g. "test.in" or "/home/pipe.rd" */
+    const char* name;       /* pipe name, e.g. "test.in" or "/home/pipe.rd" */
     int fd;                 /* pip fd */
     int rd_flag;            /* whether pipe for read or write: 0.read, 1.write */
 } namedpipe_st;

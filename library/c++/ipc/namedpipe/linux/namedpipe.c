@@ -1,6 +1,10 @@
 #include "namedpipe.h"
 #include <assert.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <sys/stat.h>
 
 #ifndef NULL
@@ -28,13 +32,7 @@ namedpipe_st* namedpipe_open(const char* name, int rdFlag) {
         close(fd);
         return NULL;
     }
-    np->name = (char*)malloc(strlen(name) + 1);
-    if (!np->name) {
-        close(fd);
-        free(np);
-        return NULL;
-    }
-    sprintf(np->name, "%s", name);
+    np->name = name;
     np->fd = fd;
     np->rd_flag = rdFlag;
     return np;
@@ -46,10 +44,6 @@ void namedpipe_close(namedpipe_st* np) {
     }
     if (-1 != np->fd) {
         close(np->fd);
-    }
-    if (np->name) {
-        free(np->name);
-        np->name = NULL;
     }
     free(np);
     np = NULL;
