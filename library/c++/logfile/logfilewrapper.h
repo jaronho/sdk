@@ -17,8 +17,8 @@ extern "C"
 
 typedef struct logfilewrapper_st {
     logfile_st* logfile;
-    char* basename;
-    char* extname;
+    const char* basename;
+    const char* extname;
     unsigned int override;
 } logfilewrapper_st;
 

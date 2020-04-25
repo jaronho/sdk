@@ -29,10 +29,8 @@ logfilewrapper_st* logfilewrapper_open(const char* basename, const char* extname
         free(wrapper);
         return NULL;
     }
-    wrapper->basename = (char*)malloc(strlen(basename) + 1);
-    sprintf(wrapper->basename, "%s", basename);
-    wrapper->extname = (char*)malloc(strlen(extname) + 1);
-    sprintf(wrapper->extname, "%s", extname);
+    wrapper->basename = basename;
+    wrapper->extname = extname;
     wrapper->override = override;
     return wrapper;
 }
@@ -41,10 +39,6 @@ void logfilewrapper_close(logfilewrapper_st* wrapper) {
     assert(wrapper);
     logfile_close(wrapper->logfile);
     wrapper->logfile = NULL;
-    free(wrapper->basename);
-    wrapper->basename = NULL;
-    free(wrapper->extname);
-    wrapper->extname = NULL;
     free(wrapper);
     wrapper = NULL;
 }
@@ -101,10 +95,6 @@ unsigned int logfilewrapper_record(logfilewrapper_st* wrapper, const char* tag, 
             wrapper->logfile = logfile_open(filename, maxsize);
             free(filename);
             if (!wrapper->logfile) {
-                free(wrapper->basename);
-                wrapper->basename = NULL;
-                free(wrapper->extname);
-                wrapper->extname = NULL;
                 free(wrapper);
                 wrapper = NULL;
                 return flag;
