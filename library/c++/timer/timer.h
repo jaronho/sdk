@@ -25,7 +25,7 @@ typedef struct timer_st {
     unsigned int is_pause;					// is timer paused
     timer_callback_run run_handler;		    // called when current count changed
     timer_callback_over over_handler;		// called when timer is complete
-    char id[128];                           // id
+    const char* id;                         // id
     void* param;						    // parameter
 } timer_st;
 

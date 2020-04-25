@@ -4,8 +4,9 @@
 * Brief:	timer
 **********************************************************************/
 #include "timer.h"
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 timer_st* create_timer(unsigned long interval, unsigned long count, timer_callback_run run_handler, timer_callback_over over_handler, const char* id, void* param) {
@@ -22,14 +23,10 @@ timer_st* create_timer(unsigned long interval, unsigned long count, timer_callba
 	tm->is_pause = 0;
 	tm->run_handler = run_handler;
 	tm->over_handler = over_handler;
-    memset(tm->id, 0, sizeof(tm->id));
     if (id && strlen(id) > 0) {
-        if (strlen(id) > sizeof(tm->id)) {
-            free(tm);
-            printf("id [%s] length [%d] is greater than the maximum length [%d] \n", id, strlen(id), sizeof(tm->id));
-            return NULL;
-        }
-        sprintf(tm->id, "%s", id);
+        tm->id = id;
+    } else {
+        tm->id = NULL;
     }
 	tm->param = param;
 	return tm;
