@@ -23,6 +23,7 @@ spi_st* spi_open(const char* device, int mode) {
         return NULL;
     }
     sst = (spi_st*)malloc(sizeof(spi_st));
+    sst->device = device;
     sst->fd = fd;
     if (-1 == ioctl(fd, SPI_IOC_RD_MODE, &sst->mode)) {
         printf("can't get spi mode, device: %s\n", device);

@@ -12,6 +12,7 @@ extern "C"
 #endif
 
 typedef struct spi_st {
+    const char* device;             /* 设备文件名字 */
     int fd;                         /* 设备文件句柄 */
     unsigned char mode;             /* 设备对应的模式 */
     unsigned char lsb;              /* 设备传输的时候是否先传输低比特位,0.否(默认高比特位在前),1.是 */
