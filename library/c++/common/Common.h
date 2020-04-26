@@ -554,6 +554,27 @@ public:
      * Return:	long (seconds)
      */
     static bool setSystemTime(int year, int mon, int mday, int hour, int min, int sec);
+    
+    /*
+     * Brief:	sleep seconds used select
+     * Param:	seconds - sleep time
+     * Return:	void
+     */
+    static void sleepSeconds(unsigned long seconds);
+    
+    /*
+     * Brief:	sleep milliseconds used select
+     * Param:	milliseconds - sleep time
+     * Return:	void
+     */
+    static void sleepMilliseconds(unsigned long milliseconds);
+    
+    /*
+     * Brief:	sleep microseconds used select
+     * Param:	microseconds - sleep time
+     * Return:	void
+     */
+    static void sleepMicroseconds(unsigned long microseconds);
 
     /**********************************************************************
      * other functions

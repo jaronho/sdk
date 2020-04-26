@@ -23,6 +23,7 @@
 #pragma warning(disable: 4996)
 #else
 #include <dirent.h>
+#include <errno.h>
 #include <unistd.h>
 #include <sys/io.h>
 #include <sys/stat.h>
@@ -1030,6 +1031,57 @@ bool Common::setSystemTime(int year, int mon, int mday, int hour, int min, int s
     tv.tv_sec = t;
     tv.tv_usec = 0;
     return 0 == settimeofday(&tv, NULL);
+}
+/*********************************************************************/
+void Common::sleepSeconds(unsigned long seconds) {
+    int ret;
+    struct timeval tv;
+    tv.tv_sec = seconds;
+    tv.tv_usec = 0;
+    do {
+#ifdef _SYSTEM_WINDOWS_
+        ret = 0;
+#else
+        ret = select(0, 0, 0, 0, &tv);
+#endif
+        if (tv.tv_sec <= 0 && tv.tv_usec <= 0) {
+            break;
+        }
+    } while (ret < 0 && EINTR == errno);
+}
+/*********************************************************************/
+void Common::sleepMilliseconds(unsigned long milliseconds) {
+    int ret;
+    struct timeval tv;
+    tv.tv_sec = milliseconds / 1000;
+    tv.tv_usec = (milliseconds % 1000) * 1000;
+    do {
+#ifdef _SYSTEM_WINDOWS_
+        ret = 0;
+#else
+        ret = select(0, 0, 0, 0, &tv);
+#endif
+        if (tv.tv_sec <= 0 && tv.tv_usec <= 0) {
+            break;
+        }
+    } while (ret < 0 && EINTR == errno);
+}
+/*********************************************************************/
+void Common::sleepMicroseconds(unsigned long microseconds) {
+    int ret;
+    struct timeval tv;
+    tv.tv_sec = microseconds / 1000000;
+    tv.tv_usec = microseconds % 1000000;
+    do {
+#ifdef _SYSTEM_WINDOWS_
+        ret = 0;
+#else
+        ret = select(0, 0, 0, 0, &tv);
+#endif
+        if (tv.tv_sec <= 0 && tv.tv_usec <= 0) {
+            break;
+        }
+    } while (ret < 0 && EINTR == errno);
 }
 /*********************************************************************/
 int Common::tryToLockFile(int fd, int lock) {
