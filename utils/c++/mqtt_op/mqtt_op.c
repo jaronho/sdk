@@ -281,12 +281,12 @@ int mqtt_disconnect(MQTT_T client) {
     return mosquitto_disconnect((struct mosquitto*)client);
 }
 
-int mqtt_subscribe(MQTT_T client, int* msgId, const char* topic, int qos) {
-    return mosquitto_subscribe((struct mosquitto*)client, msgId, topic, qos);
+int mqtt_subscribe(MQTT_T client, int* msgId, const char* pattern, int qos) {
+    return mosquitto_subscribe((struct mosquitto*)client, msgId, pattern, qos);
 }
 
-int mqtt_unsubscribe(MQTT_T client, int* msgId, const char* topic) {
-    return mosquitto_unsubscribe((struct mosquitto*)client, msgId, topic);
+int mqtt_unsubscribe(MQTT_T client, int* msgId, const char* pattern) {
+    return mosquitto_unsubscribe((struct mosquitto*)client, msgId, pattern);
 }
 
 int mqtt_publish(MQTT_T client, int* msgId, const char* topic, int payloadlen, const void* payload, int qos, int retain) {

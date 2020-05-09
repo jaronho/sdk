@@ -88,7 +88,7 @@ typedef struct {
     /*******************************************************************
     ** 函数描述:   消息回调函数
     ** 参数:       [in] msgId: 消息id
-    **             [in] topic: 主题名
+    **             [in] topic: 主题
     **             [in] data: 数据
     **             [in] dataLen: 数据长度
     **             [in] qos: 值范围[0 - 至多一次, 1 - 至少一次, 2 - 只有一次]
@@ -162,7 +162,7 @@ extern int mqtt_tls_opts_set(MQTT_T client, int certReqs, const char* tlsVersion
 ** 函数描述:   连接
 ** 参数:       [in] client: MQTT对象
 **             [in] host: 代理服务器主机地址, 例如: mqtt.eclipse.org
-**             [in] port: 代理服务器端口, 通常是1883
+**             [in] port: 代理服务器端口, 通常是1883, 若支持TLS则通常是8883
 **             [in] keepalive: 当没有消息交换时,客户端在此之后发送PING消息的秒数
 ** 返回:       MQTT_CODE_SUCCESS
 **             MQTT_CODE_INVAL
@@ -182,8 +182,8 @@ extern int mqtt_disconnect(MQTT_T client);
 /*******************************************************************
 ** 函数描述:   发起订阅, 注意: 必须在连接成功后调用才有效
 ** 参数:       [in] client: MQTT对象
-**             [out] msgId: 消息id, 如果非NULL, 则会在on_subscribe回调中返回
-**             [in] topic: 主题名, 用符号'/'进行分级
+**             [out] msgId: 消息id
+**             [in] pattern: 主题模式, 可以包含模式字符, 如: #,+
 **             [in] qos: 所订阅消息的服务质量, 值为: 0, 1, 2
 ** 返回:       MQTT_CODE_SUCCESS
 **             MQTT_CODE_INVAL
@@ -193,13 +193,13 @@ extern int mqtt_disconnect(MQTT_T client);
 **             MQTT_CODE_OVERSIZE_PACKET
 
 ********************************************************************/
-extern int mqtt_subscribe(MQTT_T client, int* msgId, const char* topic, int qos);
+extern int mqtt_subscribe(MQTT_T client, int* msgId, const char* pattern, int qos);
 
 /*******************************************************************
 ** 函数描述:   取消订阅, 注意: 必须在连接成功后调用才有效
 ** 参数:       [in] client: MQTT对象
-**             [out] msgId: 消息id, 如果非NULL, 则会在on_unsubscribe回调中返回
-**             [in] topic: 主题名, 用符号'/'进行分级
+**             [out] msgId: 消息id
+**             [in] pattern: 主题模式, 可以包含模式字符, 如: #,+
 ** 返回:       MQTT_CODE_SUCCESS
 **             MQTT_CODE_INVAL
 **             MQTT_CODE_NOMEM
@@ -207,13 +207,13 @@ extern int mqtt_subscribe(MQTT_T client, int* msgId, const char* topic, int qos)
 **             MQTT_CODE_MALFORMED_UTF8
 **             MQTT_CODE_OVERSIZE_PACKET
 ********************************************************************/
-extern int mqtt_unsubscribe(MQTT_T client, int* msgId, const char* topic);
+extern int mqtt_unsubscribe(MQTT_T client, int* msgId, const char* pattern);
 
 /*******************************************************************
 ** 函数描述:   发布消息, 注意: 必须在连接成功后调用才有效
 ** 参数:       [in] client: MQTT对象
-**             [out] msgId: 消息id, 如果非NULL, 则会在on_publish回调中返回
-**             [in] topic: 主题名, 用符号'/'进行分级
+**             [out] msgId: 消息id
+**             [in] topic: 主题
 **             [in] data: 要发送的数据
 **             [in] dataLen: 数据长度(字节), 有效的值在0到268,435,455之间
 **             [in] qos: 消息的服务质量, 值范围[0 - 至多一次, 1 - 至少一次, 2 - 只有一次]
