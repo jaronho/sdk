@@ -281,7 +281,7 @@ int mqtt_disconnect(MQTT_T client) {
     return mosquitto_disconnect((struct mosquitto*)client);
 }
 
-int yx_mqtt_subscribe(MQTT_T client, int* msgId, const char* topic, int qos) {
+int mqtt_subscribe(MQTT_T client, int* msgId, const char* topic, int qos) {
     return mosquitto_subscribe((struct mosquitto*)client, msgId, topic, qos);
 }
 
