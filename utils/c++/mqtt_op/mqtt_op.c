@@ -264,9 +264,9 @@ int mqtt_is_connected(MQTT_T client) {
     return MQTT_CODE_INVAL;
 }
 
-int mqtt_tls_set(MQTT_T client, const char* cafile, const char* capath, const char* certfile, const char* keyfile,
+int mqtt_tls_set(MQTT_T client, const char* cafile, const char* certfile, const char* keyfile,
 		                int (*pw_callback)(char* buf, int size, int rwflag, void* userdata)) {
-    return mosquitto_tls_set((struct mosquitto*)client, cafile, capath, certfile, keyfile, pw_callback);
+    return mosquitto_tls_set((struct mosquitto*)client, cafile, NULL, certfile, keyfile, pw_callback);
 }
 
 int mqtt_tls_opts_set(MQTT_T client, int certReqs, const char* tlsVersion, const char* ciphers) {

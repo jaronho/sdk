@@ -128,7 +128,6 @@ extern int mqtt_is_connected(MQTT_T client);
 ** 函数描述:   配置基于SSL/TLS的证书, 注意: 必须在连接之前调用
 ** 参数:       [in] client: MQTT对象
 **             [in] cafile: 指向包含PEM编码的受信任CA证书文件, 不能为NULL
-**             [in] capath: 指向包含PEM编码的受信任CA证书文件的路径, 不能为NULL
 **             [in] certfile: 指向包含此客户端PEM编码的证书文件, 如果为NULL，keyfile也必须为NULL，并且不使用客户端证书
 **             [in] keyfile: 指向包含此客户端PEM编码的私钥文件, 如果为NULL，certfile也必须为NULL，并且不使用客户端证书
 **             [in] pw_callback: 如果keyfile是加密的, 设置pw_callback允许客户端传递正确的密码用于解密, 如果设置为NULL,
@@ -138,7 +137,7 @@ extern int mqtt_is_connected(MQTT_T client);
 **             MQTT_CODE_INVAL
 **             MQTT_CODE_NOMEM
 ********************************************************************/
-extern int mqtt_tls_set(MQTT_T client, const char* cafile, const char* capath, const char* certfile, const char* keyfile,
+extern int mqtt_tls_set(MQTT_T client, const char* cafile, const char* certfile, const char* keyfile,
 		                int (*pw_callback)(char* buf, int size, int rwflag, void* userdata));
 
 /*******************************************************************
