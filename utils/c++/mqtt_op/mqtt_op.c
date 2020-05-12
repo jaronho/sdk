@@ -274,6 +274,9 @@ int mqtt_tls_opts_set(MQTT_T client, int certReqs, const char* tlsVersion, const
 }
 
 int mqtt_connect(MQTT_T client, const char* host, int port, int keepalive) {
+    if (MQTT_CODE_SUCCESS == mqtt_is_connected(client)) {
+        return MQTT_CODE_SUCCESS;
+    }
     return mosquitto_connect((struct mosquitto*)client, host, port, keepalive);
 }
 
