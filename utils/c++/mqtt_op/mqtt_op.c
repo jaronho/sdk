@@ -277,7 +277,7 @@ int mqtt_connect(MQTT_T client, const char* host, int port, int keepalive) {
     if (MQTT_CODE_SUCCESS == mqtt_is_connected(client)) {
         return MQTT_CODE_SUCCESS;
     }
-    return mosquitto_connect((struct mosquitto*)client, host, port, keepalive);
+    return mosquitto_connect_async((struct mosquitto*)client, host, port, keepalive);
 }
 
 int mqtt_disconnect(MQTT_T client) {
