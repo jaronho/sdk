@@ -24,6 +24,7 @@ extern "C"
 #define MQTT_CODE_PROTOCOL             2                                       /* 协议方面出错 */
 #define MQTT_CODE_INVAL                3                                       /* 输入参数无效 */
 #define MQTT_CODE_NO_CONN              4                                       /* 未连接 */
+#define MQTT_CODE_CONN_LOST            7                                       /* 与代理服务器连接丢失 */
 #define MQTT_CODE_PAYLOAD_SIZE         9                                       /* 荷载长度过大 */
 #define MQTT_CODE_ERRNO                14                                      /* 系统调用出错, 变量errno包含错误码 */
 #define MQTT_CODE_MALFORMED_UTF8       18                                      /* 主题名不是有效的utf-8字符串 */
@@ -104,9 +105,10 @@ typedef struct {
 ** 参数:       [in] clientId: 客户端id, 如果设置为NULL则内部随机生成(为NULL时cleanSession必须设置为true)
 **             [in] cleanSession: 当断开连接时是否清空所有消息和订阅
 **             [in] callback: 回调函数集合
+**             [in] useDefaultNewThread: 0 - 需要循环调用mqtt_loop接口, 1 - 使用默认新创建的线程处理网络消息(不能再调用mqtt_loop接口)
 ** 返回:       MQTT对象
 ********************************************************************/
-extern MQTT_T mqtt_create(const char* clientId, int cleanSession, MQTT_CALLBACK_T* callback);
+extern MQTT_T mqtt_create(const char* clientId, int cleanSession, MQTT_CALLBACK_T* callback, int useDefaultNewThread);
 
 /*******************************************************************
 ** 函数描述:   销毁MQTT对象
@@ -114,6 +116,21 @@ extern MQTT_T mqtt_create(const char* clientId, int cleanSession, MQTT_CALLBACK_
 ** 返回:       是返回1, 否返回0
 ********************************************************************/
 extern void mqtt_destroy(MQTT_T client);
+
+/*******************************************************************
+** 函数名:     mqtt_loop
+** 函数描述:   MQTT消息循环处理(在循环体中以一定时间间隔调用), 当mqtt_create接口中useDefaultNewThread参数为1时该接口无效
+** 参数:       [in] client: MQTT对象
+**             [in] timeout: 等待毫秒数, 0 - 立即返回, <0 - 默认1000毫秒
+** 返回:       MQTT_CODE_SUCCESS
+**             MQTT_CODE_INVAL
+**             MQTT_CODE_NOMEM
+**             MQTT_CODE_NO_CONN
+**             MQTT_CODE_CONN_LOST
+**             MQTT_CODE_PROTOCOL
+**             MQTT_CODE_ERRNO
+********************************************************************/
+extern int mqtt_loop(MQTT_T client, int timeout);
 
 /*******************************************************************
 ** 函数描述:   是否连接中

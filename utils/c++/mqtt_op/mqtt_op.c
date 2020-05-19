@@ -14,6 +14,7 @@ static int s_mosq_count = 0;
 
 /* MQTT自定义数据类型 */
 struct mqttuserdata {
+    int use_default_new_thread;                                                /* 是否使用默认新创建的线程处理网络消息:0 - 否, 1 - 是 */
     int is_connected;                                                          /* 是否已连接:0 - 未连接, 1 - 已连接 */
     MQTT_CALLBACK_T callback;                                                  /* 回调函数集合 */
 };
@@ -176,7 +177,7 @@ static void mosq_message_callback(struct mosquitto* mosq, void* obj, const struc
     }
 }
 
-MQTT_T mqtt_create(const char* clientId, int cleanSession, MQTT_CALLBACK_T* callback) {
+MQTT_T mqtt_create(const char* clientId, int cleanSession, MQTT_CALLBACK_T* callback, int useDefaultNewThread) {
     struct mqttuserdata* userdata;
     struct mosquitto* mosq = NULL;
     /* 初始化库 */
@@ -222,14 +223,17 @@ MQTT_T mqtt_create(const char* clientId, int cleanSession, MQTT_CALLBACK_T* call
     mosquitto_publish_callback_set(mosq, mosq_publish_callback);
     mosquitto_message_callback_set(mosq, mosq_message_callback);
     /* 开启一个线程来处理网络信息 */
-    if (MOSQ_ERR_SUCCESS != mosquitto_loop_start(mosq)) {
-        free(userdata);
-        mosquitto_destroy(mosq);
-        --s_mosq_count;
-        if (0 == s_mosq_count) {
-            mosquitto_lib_cleanup();
+    userdata->use_default_new_thread = useDefaultNewThread;
+    if (useDefaultNewThread) {
+        if (MOSQ_ERR_SUCCESS != mosquitto_loop_start(mosq)) {
+            free(userdata);
+            mosquitto_destroy(mosq);
+            --s_mosq_count;
+            if (0 == s_mosq_count) {
+                mosquitto_lib_cleanup();
+            }
+            return NULL;
         }
-        return NULL;
     }
     return mosq;
 }
@@ -237,8 +241,12 @@ MQTT_T mqtt_create(const char* clientId, int cleanSession, MQTT_CALLBACK_T* call
 void mqtt_destroy(MQTT_T client) {
     struct mqttuserdata* userdata;
     if (client) {
+        mosquitto_disconnect((struct mosquitto*)client);        
         userdata = (struct mqttuserdata*)mosquitto_userdata((struct mosquitto*)client);
         if (userdata) {
+            if (userdata->use_default_new_thread) {
+                mosquitto_loop_stop((struct mosquitto*)client, 1);
+            }
             free(userdata);
         }
         mosquitto_destroy((struct mosquitto*)client);
@@ -248,6 +256,20 @@ void mqtt_destroy(MQTT_T client) {
             mosquitto_lib_cleanup();
         }
     }
+}
+
+int mqtt_loop(MQTT_T client, int timeout) {
+    struct mqttuserdata* userdata;
+    if (client) {
+        userdata = (struct mqttuserdata*)mosquitto_userdata((struct mosquitto*)client);
+        if (userdata) {
+            if (userdata->use_default_new_thread) {
+                return MOSQ_ERR_INVAL;
+            }
+            return mosquitto_loop((struct mosquitto*)client, timeout, 1);   
+        }
+    }
+    return MQTT_CODE_INVAL;
 }
 
 int mqtt_is_connected(MQTT_T client) {
@@ -274,10 +296,20 @@ int mqtt_tls_opts_set(MQTT_T client, int certReqs, const char* tlsVersion, const
 }
 
 int mqtt_connect(MQTT_T client, const char* host, int port, int keepalive) {
-    if (MQTT_CODE_SUCCESS == mqtt_is_connected(client)) {
+    struct mqttuserdata* userdata;
+    if (MQTT_CODE_SUCCESS == port_mqtt_is_connected(client)) {
         return MQTT_CODE_SUCCESS;
     }
-    return mosquitto_connect_async((struct mosquitto*)client, host, port, keepalive);
+    if (client) {
+        userdata = (struct mqttuserdata*)mosquitto_userdata((struct mosquitto*)client);
+        if (userdata) {
+            if (userdata->use_default_new_thread) {
+                return mosquitto_connect_async((struct mosquitto*)client, host, port, keepalive);
+            }
+            return mosquitto_connect((struct mosquitto*)client, host, port, keepalive);
+        }
+    }
+    return MQTT_CODE_INVAL;
 }
 
 int mqtt_disconnect(MQTT_T client) {
