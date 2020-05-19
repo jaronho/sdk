@@ -297,7 +297,7 @@ int mqtt_tls_opts_set(MQTT_T client, int certReqs, const char* tlsVersion, const
 
 int mqtt_connect(MQTT_T client, const char* host, int port, int keepalive) {
     struct mqttuserdata* userdata;
-    if (MQTT_CODE_SUCCESS == port_mqtt_is_connected(client)) {
+    if (MQTT_CODE_SUCCESS == mqtt_is_connected(client)) {
         return MQTT_CODE_SUCCESS;
     }
     if (client) {
