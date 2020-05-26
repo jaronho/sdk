@@ -85,11 +85,11 @@ public:
     
     /*
      * Brief:   calculate distance between two gps point
-     * Param:   lon1 - longitude of gps point1
-     *          lat1 - latitude of gps point1
-     *          lon2 - longitude of gps point2
-     *          lat2 - latitude of gps point2
-     * Return:  double
+     * Param:   lon1 - longitude of gps point1, e.g. 118.17537958831787
+     *          lat1 - latitude of gps point1, e.g. 24.487689039608515
+     *          lon2 - longitude of gps point2, e.g. 118.17577119083404
+     *          lat2 - latitude of gps point2, e.g. 24.487698803389193
+     * Return:  double, e.g. 39.642319 meter
      */
     static double gpsDistance(double lon1, double lat1, double lon2, double lat2);
     
