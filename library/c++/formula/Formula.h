@@ -84,6 +84,16 @@ public:
     static double vectorAngle(double sX, double sY, double eX, double eY);
     
     /*
+     * Brief:   calculate distance between two gps point
+     * Param:   lon1 - longitude of gps point1
+     *          lat1 - latitude of gps point1
+     *          lon2 - longitude of gps point2
+     *          lat2 - latitude of gps point2
+     * Return:  double
+     */
+    static double gpsDistance(double lon1, double lat1, double lon2, double lat2);
+    
+    /*
      * Brief:   check whether three point on one line
      * Param:   x1 - x of point1
      *          y1 - y of point1

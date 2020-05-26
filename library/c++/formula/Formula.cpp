@@ -74,6 +74,22 @@ double Formula::vectorAngle(double sX, double sY, double eX, double eY) {
     }
     return angle;
 }
+double Formula::gpsDistance(double lon1, double lat1, double lon2, double lat2) {
+    static const double PI = 3.1415926535897932384626433832795;                /* 圆周率 */
+    static const double EARTH_R = 6371004.0000;                                /* 地球半径平均值(米) */
+    /* 经纬度转换成弧度 */
+    lon1 = (lon1 * PI) / 180.0;
+    lat1 = (lat1 * PI) / 180.0;
+    lon2 = (lon2 * PI) / 180.0;
+    lat2 = (lat2 * PI) / 180.0;
+    /* 计算差值 */
+    double dLon = fabs(lon1 - lon2);
+    double dLat = fabs(lat1 - lat2);
+    /* 以弧度表示的大圆距离, 大圆是指一个球体上的切面, 它的圆心即是球心的一个周长最大的圆 */
+    double len = pow(sin(dLat / 2), 2) + cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2);
+    double distance = 2 * EARTH_R * asin(sqrt(len));
+    return distance;
+}
 /*********************************************************************/
 bool Formula::threePointCollinear(double x1, double y1, double x2, double y2, double x3, double y3) {
     double v1 = (x3 - x1) * (y2 - y1);
