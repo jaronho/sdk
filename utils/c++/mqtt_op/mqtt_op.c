@@ -177,6 +177,10 @@ static void mosq_message_callback(struct mosquitto* mosq, void* obj, const struc
     }
 }
 
+int mqtt_count(void) {
+    return s_mosq_count;
+}
+
 MQTT_T mqtt_create(const char* clientId, int cleanSession, MQTT_CALLBACK_T* callback, int useDefaultNewThread) {
     struct mqttuserdata* userdata;
     struct mosquitto* mosq = NULL;
@@ -328,3 +332,54 @@ int mqtt_publish(MQTT_T client, int* msgId, const char* topic, int payloadlen, c
     return mosquitto_publish((struct mosquitto*)client, msgId, topic, payloadlen, payload, qos, retain ? 1 : 0);
 }
 
+const char* mqtt_log_str(int type) {
+    char str[16];
+    switch (type) {
+    case MQTT_LOG_ERR:
+        return "ERR";
+    case MQTT_LOG_WARNING:
+        return "WARNING";
+    case MQTT_LOG_NOTICE:
+        return "NOTICE";
+    case MQTT_LOG_INFO:
+        return "INFO";
+    case MQTT_LOG_DEBUG:
+        return "DEBUG";
+    default:
+        memset(str, 0, sizeof(str));
+        sprintf(str, "UNKNOWN(%d)", type);
+        return str;
+    }
+}
+
+const char* mqtt_code_str(int code) {
+    char str[16];
+    switch (code) {
+    case MQTT_CODE_SUCCESS:
+        return "SUCCESS";
+    case MQTT_CODE_NOMEM:
+        return "NOMEM";
+    case MQTT_CODE_PROTOCOL:
+        return "PROTOCOL";
+    case MQTT_CODE_INVAL:
+        return "INVAL";
+    case MQTT_CODE_NO_CONN:
+        return "NO_CONN";
+    case MQTT_CODE_CONN_LOST:
+        return "CONN_LOST";
+    case MQTT_CODE_PAYLOAD_SIZE:
+        return "PAYLOAD_SIZE";
+    case MQTT_CODE_ERRNO:
+        return "ERRNO";
+    case MQTT_CODE_MALFORMED_UTF8:
+        return "MALFORMED_UTF8";
+    case MQTT_CODE_QOS_NOT_SUPPORTED:
+        return "QOS_NOT_SUPPORTED";
+    case MQTT_CODE_OVERSIZE_PACKET:
+        return "OVERSIZE_PACKET";
+    default:
+        memset(str, 0, sizeof(str));
+        sprintf(str, "UNKNOWN(%d)", code);
+        return str;
+    }
+}

@@ -101,6 +101,13 @@ typedef struct {
 } MQTT_CALLBACK_T;
 
 /*******************************************************************
+** 函数描述:   获取当前MQTT对象数量
+** 参数:       无
+** 返回:       MQTT对象数量
+********************************************************************/
+extern int mqtt_count(void);
+
+/*******************************************************************
 ** 函数描述:   创建MQTT对象
 ** 参数:       [in] clientId: 客户端id, 如果设置为NULL则内部随机生成(为NULL时cleanSession必须设置为true)
 **             [in] cleanSession: 当断开连接时是否清空所有消息和订阅
@@ -245,6 +252,20 @@ extern int mqtt_unsubscribe(MQTT_T client, int* msgId, const char* pattern);
 **             MQTT_CODE_OVERSIZE_PACKET
 ********************************************************************/
 extern int mqtt_publish(MQTT_T client, int* msgId, const char* topic, const void* data, int dataLen, int qos, int retain);
+
+/*******************************************************************
+** 函数描述:   获取日志类型描述字符串
+** 参数:       [in] type: 日志类型
+** 返回:       类型描述字符串
+********************************************************************/
+extern const char* mqtt_log_str(int type);
+
+/*******************************************************************
+** 函数描述:   获取响应码描述字符串
+** 参数:       [in] code: 响应码
+** 返回:       响应码描述字符串
+********************************************************************/
+extern const char* mqtt_code_str(int code);
 
 #ifdef __cplusplus
 }
