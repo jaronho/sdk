@@ -333,7 +333,7 @@ int mqtt_publish(MQTT_T client, int* msgId, const char* topic, int payloadlen, c
 }
 
 const char* mqtt_log_str(int type) {
-    char str[16];
+    static char str[16];
     switch (type) {
     case MQTT_LOG_ERR:
         return "ERR";
@@ -353,7 +353,7 @@ const char* mqtt_log_str(int type) {
 }
 
 const char* mqtt_code_str(int code) {
-    char str[16];
+    static char str[16];
     switch (code) {
     case MQTT_CODE_SUCCESS:
         return "SUCCESS";
