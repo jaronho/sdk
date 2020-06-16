@@ -1,18 +1,20 @@
 /**********************************************************************
  * Author:  jaron.ho
  * Date:    2009-09-23
- * Brief:   字节流类(网络协议序列化)
+ * Brief:   字节流类(序列化)
  **********************************************************************/
 #include "ByteArray.h"
+#include <assert.h>
 #include <string.h>
 
-const static int MAX_MSG_SIZE = 1024 * 1024;		/* 单个网络消息最大长度(超过极易导致物理服务器收发队列阻塞) */
+static const int DEFAULT_SIZE = 1024 * 1024;		                           /* 默认字节流大小(单个网络消息最大长度,超过极易导致物理服务器收发队列阻塞) */
 /*********************************************************************/
 ByteArray::ByteArray(int size) {
-	if (size <= 0 || size > MAX_MSG_SIZE) {
-		size = MAX_MSG_SIZE;
+	if (size <= 0) {
+		size = DEFAULT_SIZE;
 	}
-	mContent = new char[size];
+	mContent = (unsigned char*)malloc(sizeof(unsigned char) * size);
+    assert(mContent);
 	memset(mContent, 0, size);
 	mTotalSize = size;
 	mReadIndex = 0;
@@ -20,16 +22,16 @@ ByteArray::ByteArray(int size) {
 }
 /*********************************************************************/
 ByteArray::~ByteArray(void) {
-    delete[] mContent;
+    free(mContent);
 	mContent = NULL;
 }
 /*********************************************************************/
 bool ByteArray::isBigEndium(void) {
     /*
-        int大端存储方式: 0x00 00 00 01
-        int小端存储方式: 0x01 00 00 00
-        char大端: 0x00
-        char小端: 0x01
+        int为1(大端存储方式): 00 00 00 01
+        int为1(小端存储方式): 01 00 00 00
+        强制转换为char(大端): 00
+        强制转换为char(小端): 01
     */
     int a = 1;
     if (0 == *(char*)&a) {  /* 大端 */
@@ -38,33 +40,34 @@ bool ByteArray::isBigEndium(void) {
     return false;   /* 小端 */
 }
 /*********************************************************************/
-short ByteArray::swab16(short x)  {
-	return (((x & 0x00FF) << 8) | ((x & 0xFF00) >> 8));
+short ByteArray::swab16(short n)  {
+	return (((n & 0x00FF) << 8) | ((n & 0xFF00) >> 8));
 }
 /*********************************************************************/
-short ByteArray::swab16_array(char* pBuf) {
-	unsigned char* p = (unsigned char*)pBuf;
+short ByteArray::swab16_array(unsigned char* p) {
 	short ret = ((p[0] << 8) | p[1]);
 	return ret;
 }
 /*********************************************************************/
-int ByteArray::swab32(int x) {
-	return (((x & 0x000000FF) << 24) | ((x & 0x0000FF00) << 8) | ((x & 0x00FF0000) >> 8) | ((x & 0xFF000000) >> 24));
+int ByteArray::swab32(int n) {
+	return (((n & 0x000000FF) << 24) | ((n & 0x0000FF00) << 8) | ((n & 0x00FF0000) >> 8) | ((n & 0xFF000000) >> 24));
 }
 /*********************************************************************/
-int ByteArray::swab32_array(char* pBuf) {
-	unsigned char* p = (unsigned char*)pBuf;
+int ByteArray::swab32_array(unsigned char* p) {
 	int ret = ((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
 	return ret;
 }
 /*********************************************************************/
-int ByteArray::max_size(void) {
-	return MAX_MSG_SIZE;
+int ByteArray::def_size(void) {
+	return DEFAULT_SIZE;
 }
 /*********************************************************************/
 void ByteArray::print(void) {
-    printf("==================== byte array: max=%d, length=%d, space=%d\n", mTotalSize, strlen(mContent), getSpaceLength());
-	printf("%s\n", mContent);		// 字符串
+    printf("==================== byte array: max=%d, length=%d, space=%d\n", mTotalSize, getCurrentLength(), getSpaceLength());
+    for (int i = 0, len = getCurrentLength(); i < len; ++i) {
+        printf("%02x ", *(mContent + i));
+    }
+    printf("\n");
 	printf("========================================\n");
 }
 /*********************************************************************/
@@ -86,11 +89,12 @@ int ByteArray::getSpaceLength() {
 	return mTotalSize - mWriteIndex;
 }
 /*********************************************************************/
-const char* ByteArray::getContent(void) {
+const unsigned char* ByteArray::getContent(void) {
 	return mContent;
 }
 /*********************************************************************/
-bool ByteArray::setContent(const char* content, int len) {
+bool ByteArray::setContent(const unsigned char* content, int len) {
+	assert(content);
 	if (len > mTotalSize) {
 		return false;
 	}
@@ -100,7 +104,7 @@ bool ByteArray::setContent(const char* content, int len) {
 }
 /*********************************************************************/
 bool ByteArray::read_bool(void) {
-	char* p = read(sizeof(bool));
+	unsigned char* p = read(sizeof(bool));
 	if (!p) {
 		return false;
 	}
@@ -109,7 +113,7 @@ bool ByteArray::read_bool(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_bool(bool value) {
-	char* p = write(sizeof(bool));
+	unsigned char* p = write(sizeof(bool));
 	if (!p) {
 		return false;
 	}
@@ -119,7 +123,7 @@ bool ByteArray::write_bool(bool value) {
 }
 /*********************************************************************/
 char ByteArray::read_char(void) {
-	char* p = read(sizeof(char));
+	unsigned char* p = read(sizeof(char));
 	if (!p) {
 		return false;
 	}
@@ -128,7 +132,7 @@ char ByteArray::read_char(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_char(char value) {
-	char* p = write(sizeof(char));
+	unsigned char* p = write(sizeof(char));
 	if (!p) {
 		return false;
 	}
@@ -138,7 +142,7 @@ bool ByteArray::write_char(char value) {
 }
 /*********************************************************************/
 unsigned char ByteArray::read_uchar(void) {
-	char* p = read(sizeof(unsigned char));
+	unsigned char* p = read(sizeof(unsigned char));
 	if (!p) {
 		return false;
 	}
@@ -147,17 +151,17 @@ unsigned char ByteArray::read_uchar(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_uchar(unsigned char value) {
-	char* p = write(sizeof(unsigned char));
+	unsigned char* p = write(sizeof(unsigned char));
 	if (!p) {
 		return false;
 	}
-	unsigned char* w = (unsigned char*)p;
+    unsigned char* w = (unsigned char*)p;
     *w = value;
 	return true;
 }
 /*********************************************************************/
 short ByteArray::read_int16(void) {
-	char* p = read(sizeof(short));
+	unsigned char* p = read(sizeof(short));
 	if (!p) {
 		return 0;
 	}
@@ -166,7 +170,7 @@ short ByteArray::read_int16(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_int16(short value) {
-	char* p = write(sizeof(short));
+	unsigned char* p = write(sizeof(short));
 	if (!p) {
 		return false;
 	}
@@ -176,7 +180,7 @@ bool ByteArray::write_int16(short value) {
 }
 /*********************************************************************/
 unsigned short ByteArray::read_uint16(void) {
-	char* p = read(sizeof(unsigned short));
+	unsigned char* p = read(sizeof(unsigned short));
 	if (!p) {
 		return 0;
 	}
@@ -185,7 +189,7 @@ unsigned short ByteArray::read_uint16(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_uint16(unsigned short value) {
-	char* p = write(sizeof(unsigned short));
+	unsigned char* p = write(sizeof(unsigned short));
 	if (!p) {
 		return false;
 	}
@@ -195,7 +199,7 @@ bool ByteArray::write_uint16(unsigned short value) {
 }
 /*********************************************************************/
 int ByteArray::read_int(void) {
-	char* p = read(sizeof(int));
+	unsigned char* p = read(sizeof(int));
 	if (!p) {
 		return 0;
 	}
@@ -204,7 +208,7 @@ int ByteArray::read_int(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_int(int value) {
-	char* p = write(sizeof(int));
+	unsigned char* p = write(sizeof(int));
 	if (!p) {
 		return false;
 	}
@@ -214,7 +218,7 @@ bool ByteArray::write_int(int value) {
 }
 /*********************************************************************/
 unsigned int ByteArray::read_uint(void) {
-	char* p = read(sizeof(unsigned int));
+	unsigned char* p = read(sizeof(unsigned int));
 	if (!p) {
 		return 0;
 	}
@@ -223,7 +227,7 @@ unsigned int ByteArray::read_uint(void) {
 }
 //----------------------------------------------------------------------
 bool ByteArray::write_uint(unsigned int value) {
-	char* p = write(sizeof(unsigned int));
+	unsigned char* p = write(sizeof(unsigned int));
 	if (!p) {
 		return false;
 	}
@@ -233,7 +237,7 @@ bool ByteArray::write_uint(unsigned int value) {
 }
 /*********************************************************************/
 long ByteArray::read_long(void) {
-	char* p = read(sizeof(long));
+	unsigned char* p = read(sizeof(long));
 	if (!p) {
 		return 0;
 	}
@@ -242,7 +246,7 @@ long ByteArray::read_long(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_long(long value) {
-	char* p = write(sizeof(long));
+	unsigned char* p = write(sizeof(long));
 	if (!p) {
 		return false;
 	}
@@ -252,7 +256,7 @@ bool ByteArray::write_long(long value) {
 }
 /*********************************************************************/
 unsigned long ByteArray::read_ulong(void) {
-	char* p = read(sizeof(unsigned long));
+	unsigned char* p = read(sizeof(unsigned long));
 	if (!p) {
 		return 0;
 	}
@@ -261,7 +265,7 @@ unsigned long ByteArray::read_ulong(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_ulong(unsigned long value) {
-	char* p = write(sizeof(unsigned long));
+	unsigned char* p = write(sizeof(unsigned long));
 	if (!p) {
 		return false;
 	}
@@ -271,7 +275,7 @@ bool ByteArray::write_ulong(unsigned long value) {
 }
 /*********************************************************************/
 long long ByteArray::read_int64(void) {
-	char* p = read(sizeof(long long));
+	unsigned char* p = read(sizeof(long long));
 	if (!p) {
 		return 0;
 	}
@@ -280,7 +284,7 @@ long long ByteArray::read_int64(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_int64(long long value) {
-	char* p = write(sizeof(long long));
+	unsigned char* p = write(sizeof(long long));
 	if (!p) {
 		return false;
 	}
@@ -290,7 +294,7 @@ bool ByteArray::write_int64(long long value) {
 }
 /*********************************************************************/
 unsigned long long ByteArray::read_uint64(void) {
-	char* p = read(sizeof(unsigned long long));
+	unsigned char* p = read(sizeof(unsigned long long));
 	if (!p) {
 		return 0;
 	}
@@ -299,7 +303,7 @@ unsigned long long ByteArray::read_uint64(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_uint64(unsigned long long value) {
-	char* p = write(sizeof(unsigned long long));
+	unsigned char* p = write(sizeof(unsigned long long));
 	if (!p) {
 		return false;
 	}
@@ -309,7 +313,7 @@ bool ByteArray::write_uint64(unsigned long long value) {
 }
 /*********************************************************************/
 float ByteArray::read_float(void) {
-	char* p = read(sizeof(float));
+	unsigned char* p = read(sizeof(float));
 	if (!p) {
 		return 0;
 	}
@@ -318,7 +322,7 @@ float ByteArray::read_float(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_float(float value) {
-	char* p = write(sizeof(float));
+	unsigned char* p = write(sizeof(float));
 	if (!p) {
 		return false;
 	}
@@ -328,7 +332,7 @@ bool ByteArray::write_float(float value) {
 }
 /*********************************************************************/
 double ByteArray::read_double(void) {
-	char* p = read(sizeof(double));
+	unsigned char* p = read(sizeof(double));
 	if (!p) {
 		return 0;
 	}
@@ -337,7 +341,7 @@ double ByteArray::read_double(void) {
 }
 /*********************************************************************/
 bool ByteArray::write_double(double value) {
-	char* p = write(sizeof(double));
+	unsigned char* p = write(sizeof(double));
 	if (!p) {
 		return false;
 	}
@@ -346,30 +350,54 @@ bool ByteArray::write_double(double value) {
 	return true;
 }
 /*********************************************************************/
+char* ByteArray::read_string(unsigned int* len) {
+	assert(len);
+    *len = read_uint();
+	if (0 == *len) {
+		return NULL;
+	}
+	unsigned char* p = read(*len);
+	if (!p) {
+		return NULL;
+	}
+    char* str = (char*)malloc(sizeof(char) * (*len) + 1);
+    strcpy(str, (char*)p);
+    *(str + (*len)) = '\0';
+    return str;
+}
+/*********************************************************************/
+bool ByteArray::write_string(const char* str, unsigned int len) {
+	assert(str);
+    if (!write_uint(len)) {
+		return false;
+	}
+	return copy((const unsigned char*)str, len);
+}
+/*********************************************************************/
 std::string ByteArray::read_string(void) {
 	unsigned int len = read_uint();
 	if (0 == len) {
 		return "";
 	}
-	char* p = read(len);
+	unsigned char* p = read(len);
 	if (!p) {
 		return "";
 	}
-    return std::string(p, len);
+    return std::string((char*)p, len);
 }
 /*********************************************************************/
 bool ByteArray::write_string(const std::string& str) {
 	if (!write_uint((unsigned int)(str.length()))) {
 		return false;
 	}
-	return copy(str.data(), str.length());
+	return copy((const unsigned char*)str.data(), str.length());
 }
 /*********************************************************************/
-bool ByteArray::copy(const char* buf, int n) {
+bool ByteArray::copy(const unsigned char* buf, int n) {
 	if (getSpaceLength() < n) {
 		return false;
 	}
-	char* p = write(n);
+	unsigned char* p = write(n);
 	if (!p) {
 		return false;
 	}
@@ -377,20 +405,20 @@ bool ByteArray::copy(const char* buf, int n) {
 	return true;
 }
 /*********************************************************************/
-char* ByteArray::read(int n) {
+unsigned char* ByteArray::read(int n) {
 	if (mReadIndex + n > mTotalSize) {
 		return NULL;
 	}
-	char* p = mContent + mReadIndex;
+	unsigned char* p = mContent + mReadIndex;
 	mReadIndex += n;
 	return p;
 }
 /*********************************************************************/
-char* ByteArray::write(int n) {
+unsigned char* ByteArray::write(int n) {
 	if (mWriteIndex + n > mTotalSize) {
 		return NULL;
 	}
-	char* p = mContent + mWriteIndex;
+	unsigned char* p = mContent + mWriteIndex;
 	mWriteIndex += n;
 	return p;
 }
