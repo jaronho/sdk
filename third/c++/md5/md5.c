@@ -3,12 +3,6 @@
  *       - Modified by cheungmine, 2007-9-15
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <memory.h>
-#include "md5.h"
-
 /*=====================================================================
    The remaining code is the reference md5 code (md5c.c) from rfc1321
    MD5C.C - RSA Data Security, Inc., md5 message-digest algorithm
@@ -34,6 +28,12 @@
    These notices must be retained in any copies of any part of this
    documentation and/or software.
 =====================================================================*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <memory.h>
+#include "md5.h"
 
 #define MD5STR_LEN        32
 
