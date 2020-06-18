@@ -162,15 +162,13 @@ void md5_fini(md5_ctx_t* context, unsigned char digest[16]) {
     memset((void*)context, 0, sizeof(*context));
 }
 
-#pragma warning(push)    /* C4996 */
-#pragma warning(disable:4996)
-
-const char* md5_sign(const unsigned char* input, unsigned int inputLen) {
+char* md5_sign(const unsigned char* input, unsigned int inputLen) {
     int i;
     md5_ctx_t md5;
     char hash[16], tmp[3];
-    static char md5Str[MD5STR_LEN + 1];
+    char* md5Str;
     
+    md5Str = (char*)malloc(sizeof(char) * (MD5STR_LEN + 1));
     md5Str[0] = 0;
             
     md5_init(&md5);
@@ -179,7 +177,7 @@ const char* md5_sign(const unsigned char* input, unsigned int inputLen) {
         
     for (i = 0; i < 16; i++) {
 		sprintf(tmp, "%x", (unsigned char)hash[i]);
-        //_itoa((unsigned char)hash[i], tmp , 16);
+        /* _itoa((unsigned char)hash[i], tmp , 16); */
 
         if (tmp[1] == 0) {
             tmp[2] = 0;
@@ -191,8 +189,6 @@ const char* md5_sign(const unsigned char* input, unsigned int inputLen) {
 
     return md5Str;
 }
-
-#pragma warning(pop)    /* C4996 */
 
 /* md5 basic transformation. Transforms state based on block. */
 static void _md5_transform(unsigned int state[4], const unsigned char block[64]) {

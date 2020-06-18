@@ -43,7 +43,7 @@ extern void md5_init(md5_ctx_t* context);
 extern void md5_update(md5_ctx_t* context, const unsigned char* input, unsigned int inputLen);
 extern void md5_fini(md5_ctx_t* context, unsigned char digest[16]);
 
-extern const char* md5_sign(const unsigned char* input, unsigned int inputLen);
+extern char* md5_sign(const unsigned char* input, unsigned int inputLen);
 
 #ifdef __cplusplus
 }
