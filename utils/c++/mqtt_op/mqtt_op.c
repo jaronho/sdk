@@ -292,11 +292,17 @@ int mqtt_is_connected(MQTT_T client) {
 
 int mqtt_tls_set(MQTT_T client, const char* cafile, const char* certfile, const char* keyfile,
 		                int (*pw_callback)(char* buf, int size, int rwflag, void* userdata)) {
-    return mosquitto_tls_set((struct mosquitto*)client, cafile, NULL, certfile, keyfile, pw_callback);
+    if (client) {
+        return mosquitto_tls_set((struct mosquitto*)client, cafile, NULL, certfile, keyfile, pw_callback);
+    }
+    return MQTT_CODE_INVAL;
 }
 
 int mqtt_tls_opts_set(MQTT_T client, int certReqs, const char* tlsVersion, const char* ciphers) {
-    return mosquitto_tls_opts_set((struct mosquitto*)client, certReqs, tlsVersion, ciphers);
+    if (client) {
+        return mosquitto_tls_opts_set((struct mosquitto*)client, certReqs, tlsVersion, ciphers);
+    }
+    return MQTT_CODE_INVAL;
 }
 
 int mqtt_connect(MQTT_T client, const char* host, int port, int keepalive) {
@@ -317,19 +323,31 @@ int mqtt_connect(MQTT_T client, const char* host, int port, int keepalive) {
 }
 
 int mqtt_disconnect(MQTT_T client) {
-    return mosquitto_disconnect((struct mosquitto*)client);
+    if (client) {
+        return mosquitto_disconnect((struct mosquitto*)client);
+    }
+    return MQTT_CODE_INVAL;
 }
 
 int mqtt_subscribe(MQTT_T client, int* msgId, const char* pattern, int qos) {
-    return mosquitto_subscribe((struct mosquitto*)client, msgId, pattern, qos);
+    if (client) {
+        return mosquitto_subscribe((struct mosquitto*)client, msgId, pattern, qos);
+    }
+    return MQTT_CODE_INVAL;
 }
 
 int mqtt_unsubscribe(MQTT_T client, int* msgId, const char* pattern) {
-    return mosquitto_unsubscribe((struct mosquitto*)client, msgId, pattern);
+    if (client) {
+        return mosquitto_unsubscribe((struct mosquitto*)client, msgId, pattern);
+    }
+    return MQTT_CODE_INVAL;
 }
 
 int mqtt_publish(MQTT_T client, int* msgId, const char* topic, int payloadlen, const void* payload, int qos, int retain) {
-    return mosquitto_publish((struct mosquitto*)client, msgId, topic, payloadlen, payload, qos, retain ? 1 : 0);
+    if (client) {
+        return mosquitto_publish((struct mosquitto*)client, msgId, topic, payloadlen, payload, qos, retain ? 1 : 0);
+    }
+    return MQTT_CODE_INVAL;
 }
 
 const char* mqtt_log_str(int type) {
