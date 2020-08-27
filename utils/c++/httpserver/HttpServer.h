@@ -56,11 +56,13 @@ class HttpField;
 /* http路由对象 */
 class HttpRouter {
 public:
-    HttpRouter() : support_get(true), support_post(true) {}
+    HttpRouter() : support_delete(true), support_get(true), support_post(true), support_put(true) {}
 
 public:
+    bool support_delete;                    /* 是否支持delete */
     bool support_get;                       /* 是否支持get */
     bool support_post;                      /* 是否支持post */
+    bool support_put;                       /* 是否支持put */
     HTTP_ROUTER_CALLBACK callback;          /* 回调函数 */
 };
 
@@ -138,9 +140,11 @@ public:
     void setFilterCallback(HTTP_FILTER_CALLBACK filterCallback);                        /* 设置过滤回调 */
     void setErrorCallback(HTTP_ERROR_CALLBACK errorCallback);                           /* 设置错误回调 */
     void addRouter(const std::string& uri, HttpRouter* router);                         /* 添加路由 */
-    void addRouter(const std::string& uri, HTTP_ROUTER_CALLBACK callback);              /* 添加路由(支持get和post) */
+    void addRouter(const std::string& uri, HTTP_ROUTER_CALLBACK callback);              /* 添加路由(支持delete,get,post,put) */
+    void addRouterDelete(const std::string& uri, HTTP_ROUTER_CALLBACK callback);        /* 添加路由(只支持delete) */
     void addRouterGet(const std::string& uri, HTTP_ROUTER_CALLBACK callback);           /* 添加路由(只支持get) */
     void addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK callback);          /* 添加路由(只支持post) */
+    void addRouterPut(const std::string& uri, HTTP_ROUTER_CALLBACK callback);           /* 添加路由(只支持put) */
     void run(const std::string& ip, unsigned int port, bool printReceive = false, bool printError = true, bool printFilter = true);    /* 运行 */
 
 private:
@@ -170,6 +174,22 @@ private:
 
 /*
 ************************************************** sample_01
+#include <iostream>
+#include <string>
+#include "httpserver/HttpServer.h"
+
+static bool writeDataToFile(const unsigned char* data, long dataSize, const std::string& filePath) {
+    FILE* fp = fopen(filePath.c_str(), "wb");
+    if (!fp) {
+        return false;
+    }
+    if (data && dataSize > 0) {
+        fwrite(data, dataSize, sizeof(unsigned char), fp);
+        fflush(fp);
+    }
+    fclose(fp);
+    return true;
+}
 
 auto handleFilter = [](char major,
                        char minor,
@@ -190,7 +210,9 @@ auto handleError = [](const std::string& method,
                       const std::string& host,
                       unsigned short port,
                       const std::map<std::string, std::string>& headers,
-                      const std::map<std::string, HttpField*>& body,
+                      const unsigned char* body,
+                      unsigned int bodySize,
+                      const std::map<std::string, HttpField*>& bodyMap,
                       const std::string& uri,
                       unsigned int errorCode,
                       const std::string& errorBuf,
@@ -202,18 +224,26 @@ auto handlePost = [](const std::string& method,
                      const std::string& host,
                      unsigned short port,
                      const std::map<std::string, std::string>& headers,
-                     const std::map<std::string, HttpField*>& body,
+                     const unsigned char* body,
+                     unsigned int bodySize,
+                     const std::map<std::string, HttpField*>& bodyMap,
                      const std::string& uri,
                      std::map<std::string, std::string>& responseHeaders)->std::string {
     std::string response = "{";
-    std::map<std::string, HttpField*>::const_iterator iter = body.begin();
-    for (; body.end() != iter; ++iter) {
-        if (body.begin() != iter) {
+    std::map<std::string, HttpField*>::const_iterator iter = bodyMap.begin();
+    for (; bodyMap.end() != iter; ++iter) {
+        if (bodyMap.begin() != iter) {
             response += ",";
         }
         response += "\"" + iter->first + "\":";
         if (HttpField::TYPE_TEXT == iter->second->getType()) {
-            response += iter->second->getContent();
+            response += std::string((const char*)iter->second->getContent());
+        } else if (HttpField::TYPE_FILE == iter->second->getType()) {
+            if (writeDataToFile(iter->second->getContent(), iter->second->getContentLength(), iter->second->getFilename())) {
+                std::cout << "save file '" << iter->second->getFilename() << "' ok" << std::endl;
+            } else {
+                std::cout << "save file '" << iter->second->getFilename() << "' fail" << std::endl;
+            }
         }
     }
     response += "}";

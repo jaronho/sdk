@@ -20,22 +20,22 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
 //------------------------------------------------------------------------
 static int startHttpServer(const char* ip, unsigned short port, void (*cb)(struct evhttp_request*, void*), void* arg) {
     if (!ip || 0 == strlen(ip)) {
-	    printf("start http server failed, ip is empty ...\n");
+        printf("start http server failed, ip is empty ...\n");
         return 1;
     }
     if (0 == port) {
-	    printf("start http server failed, port is 0 ...\n");
-	    return 2;
+        printf("start http server failed, port is 0 ...\n");
+        return 2;
     }
     struct event_base* base = event_base_new();
     struct evhttp* http_server = evhttp_new(base);
     if (!http_server) {
-	    printf("start http server failed, evhttp_new error ...\n");
+        printf("start http server failed, evhttp_new error ...\n");
         return 3;
     }
     /* bind address */
     if (0 != evhttp_bind_socket(http_server, ip, port)) {
-	    printf("start http server failed, bind socket %s:%u error ...\n", ip, port);
+        printf("start http server failed, bind socket %s:%u error ...\n", ip, port);
         return 4;
     }
     /* set http request handle callabck */
@@ -139,7 +139,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
         headerMap[headerKey] = header->value;
     }
     /* parse body into map */
-    if (0 == strcmp("GET", method)) {               /* parse GET body */
+    if (0 == strcmp("DELETE", method) || 0 == strcmp("GET", method)) {               /* parse DELETE/GET body */
         struct evkeyvalq params;
         evhttp_parse_query(uri, &params);
         for (struct evkeyval* param = params.tqh_first; param; param = param->next.tqe_next) {
@@ -160,7 +160,7 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
             memcpy(bodyTmp, realUri.substr(pos + 1).c_str(), bodySizeTmp);
             *(bodyTmp + bodySizeTmp) = '\0';
         }
-    } else if (0 == strcmp("POST", method)) {       /* parse POST body */
+    } else if (0 == strcmp("POST", method) || 0 == strcmp("PUT", method)) {       /* parse POST/PUT body */
         std::map<std::string, std::string>::iterator iter = headerMap.find("content-type");
         if (headerMap.end() != iter) {
             std::string contentType = iter->second;
@@ -181,16 +181,17 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
                     }
                     evhttp_clear_headers(&params);
                 }
-            } else if (std::string::npos != contentType.find("multipart/form-data")) {
+            } else if ("multipart/form-data" == contentType) { /* raw input */
+                /* do nothing */
+            } else if (std::string::npos != contentType.find("multipart/form-data;")) { /* form data */
                 MultipartFormData* forms = new MultipartFormData();
                 if (!forms->parse(iter->second, body, bodySize, &bodyMap)) {
-                    errorCode = 4;
+                    errorCode = 3;
                     sprintf(errorBuf, "can not parse multipart form-data for uri '%s'", uri);
                 }
                 delete forms;
             } else {
-                errorCode = 3;
-                sprintf(errorBuf, "no support %s request which content-type is '%s'", method, iter->second.c_str());
+                sprintf(errorBuf, "haven't process %s request which content-type is '%s'", method, iter->second.c_str());
             }
         } else {
             errorCode = 2;
@@ -203,15 +204,15 @@ static char* handleHttpRequest(char major, char minor, const char* method, const
     /* parse real uri */
     size_t pos = realUri.find_first_of('?');
     if (std::string::npos != pos) {
-	    realUri = realUri.substr(0, pos);
+        realUri = realUri.substr(0, pos);
     }
     /* handle request */
     std::map<std::string, std::string> reponseHeaderMap;
     std::string result;
     if (errorCode) {   /* handle error */
-        result = HttpServer::getInstance()->handleError(major, minor, method, host, port, headerMap, bodyTmp ? bodyTmp : body, bodyTmp ? bodySizeTmp : bodySize, bodyMap, realUri, errorCode, errorBuf, reponseHeaderMap);
+        result = HttpServer::getInstance()->handleError(major, minor, method, host, port, headerMap, (bodyTmp ? bodyTmp : body), (bodyTmp ? bodySizeTmp : bodySize), bodyMap, realUri, errorCode, errorBuf, reponseHeaderMap);
     } else {           /* handle router */
-        result = HttpServer::getInstance()->handleRouter(major, minor, method, host, port, headerMap, bodyTmp ? bodyTmp : body, bodyTmp ? bodySizeTmp : bodySize, bodyMap, realUri, reponseHeaderMap);
+        result = HttpServer::getInstance()->handleRouter(major, minor, method, host, port, headerMap, (bodyTmp ? bodyTmp : body), (bodyTmp ? bodySizeTmp : bodySize), bodyMap, realUri, reponseHeaderMap);
     }
     /* handle clear */
     if (bodyTmp) {
@@ -461,8 +462,19 @@ std::string HttpServer::handleRouter(char major,
         }
         return buf;
     }
-    if ("GET" == method && !mRouterMap[uri]->support_get) {
+    if ("DELETE" == method && !mRouterMap[uri]->support_delete) {
         unsigned int errorCode = 104;
+        std::string errorBuf = "can not support DELETE request for '" + uri + "'";
+        std::string buf = getErrorResponse(errorCode, errorBuf);
+        if (mIsPrintError) {
+            printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
+        }
+        if (mErrorCallback) {
+            mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
+        }
+        return buf;
+    } else if ("GET" == method && !mRouterMap[uri]->support_get) {
+        unsigned int errorCode = 105;
         std::string errorBuf = "can not support GET request for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
@@ -472,10 +484,20 @@ std::string HttpServer::handleRouter(char major,
             mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
         }
         return buf;
-    }
-    if ("POST" == method && !mRouterMap[uri]->support_post) {
-        unsigned int errorCode = 105;
+    } else if ("POST" == method && !mRouterMap[uri]->support_post) {
+        unsigned int errorCode = 106;
         std::string errorBuf = "can not support POST request for '" + uri + "'";
+        std::string buf = getErrorResponse(errorCode, errorBuf);
+        if (mIsPrintError) {
+            printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
+        }
+        if (mErrorCallback) {
+            mErrorCallback(method, host, port, headers, body, bodySize, bodyMap, uri, errorCode, errorBuf, responseHeaders);
+        }
+        return buf;
+    } else if ("PUT" == method && !mRouterMap[uri]->support_put) {
+        unsigned int errorCode = 107;
+        std::string errorBuf = "can not support PUT request for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
             printf("ERROR: [%s] %s\n", nowdate().c_str(), buf.c_str());
@@ -486,7 +508,7 @@ std::string HttpServer::handleRouter(char major,
         return buf;
     }
     if (!mRouterMap[uri]->callback) {
-        unsigned int errorCode = 106;
+        unsigned int errorCode = 108;
         std::string errorBuf = "can not find execute function for '" + uri + "'";
         std::string buf = getErrorResponse(errorCode, errorBuf);
         if (mIsPrintError) {
@@ -529,8 +551,23 @@ void HttpServer::addRouter(const std::string& uri, HTTP_ROUTER_CALLBACK callback
         return;
     }
     HttpRouter* router = new HttpRouter();
+    router->support_delete = true;
     router->support_get = true;
     router->support_post = true;
+    router->support_put = true;
+    router->callback = callback;
+    addRouter(uri, router);
+}
+//------------------------------------------------------------------------
+void HttpServer::addRouterDelete(const std::string& uri, HTTP_ROUTER_CALLBACK callback) {
+    if (uri.empty() || !callback) {
+        return;
+    }
+    HttpRouter* router = new HttpRouter();
+    router->support_delete = true;
+    router->support_get = false;
+    router->support_post = false;
+    router->support_put = false;
     router->callback = callback;
     addRouter(uri, router);
 }
@@ -540,8 +577,10 @@ void HttpServer::addRouterGet(const std::string& uri, HTTP_ROUTER_CALLBACK callb
         return;
     }
     HttpRouter* router = new HttpRouter();
+    router->support_delete = false;
     router->support_get = true;
     router->support_post = false;
+    router->support_put = false;
     router->callback = callback;
     addRouter(uri, router);
 }
@@ -551,8 +590,23 @@ void HttpServer::addRouterPost(const std::string& uri, HTTP_ROUTER_CALLBACK call
         return;
     }
     HttpRouter* router = new HttpRouter();
+    router->support_delete = false;
     router->support_get = false;
     router->support_post = true;
+    router->support_put = false;
+    router->callback = callback;
+    addRouter(uri, router);
+}
+//------------------------------------------------------------------------
+void HttpServer::addRouterPut(const std::string& uri, HTTP_ROUTER_CALLBACK callback) {
+    if (uri.empty() || !callback) {
+        return;
+    }
+    HttpRouter* router = new HttpRouter();
+    router->support_delete = false;
+    router->support_get = false;
+    router->support_post = false;
+    router->support_put = true;
     router->callback = callback;
     addRouter(uri, router);
 }
@@ -613,7 +667,7 @@ void HttpServer::printReceive(char major,
     for (; headers.end() != headerIter; ++headerIter) {
         printf("    %s: %s\n", headerIter->first.c_str(), headerIter->second.c_str());
     }
-    printf("Body: %dB\n", bodySize);
+    printf("Body: %d Byte\n", bodySize);
     if (bodyMap.empty()) {
         printf("    [RAW]: %s\n", bodySize > 1024 ? "Too large to display!!!" : (const char*)body);
     } else {
