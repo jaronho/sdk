@@ -60,19 +60,19 @@ std::string Logger::header(std::string& filename, const std::string& tag, bool w
     strftime(file, sizeof(file), "%Y%m%d.log", &t);
     char date[22] = { 0 };
     strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", &t);
-    std::string header;
+    std::string hdr;
     if (withTime) {
-        header += "[";
-        header += date;
-        header += "]";
+        hdr += "[";
+        hdr += date;
+        hdr += "]";
     }
     if (withTag) {
-        header += "[";
-        header += tag;
-        header += "]";
+        hdr += "[";
+        hdr += tag;
+        hdr += "]";
     }
     filename = file;
-    return header;
+    return hdr;
 }
 
 void Logger::openSyslog(const std::string& ident) {
@@ -98,10 +98,14 @@ void Logger::setPath(const std::string& path) {
     mPath = path;
 }
 
+void Logger::setFilename(const std::string& filename) {
+    mFilename = filename;
+}
+
 std::string Logger::print(const std::string& content, const std::string& tag, bool withTag, bool withTime) {
     std::string filename;
     std::string hdr = header(filename, tag, withTag, withTime);
-    writeLog(mPath, filename, hdr + " " + content);
+    writeLog(mPath, mFilename.empty() ? filename : mFilename, hdr + " " + content);
     return hdr;
 }
 
@@ -109,7 +113,7 @@ std::string Logger::printSyslog(const std::string& content, const std::string& t
     std::string filename;
     std::string hdr = header(filename, tag, true, true);
     std::string buff = hdr + " " + content;
-    writeLog(mPath, filename, buff);
+    writeLog(mPath, mFilename.empty() ? filename : mFilename, buff);
     writeSyslog(tag + " " + content);
     return hdr;
 }
