@@ -47,6 +47,13 @@ public:
      * Return:  void
      */
     void setPath(const std::string& path);
+    
+    /*
+     * Brief:   设置日志文件名
+     * Param:   filename - 文件名, 例如: mylog.log
+     * Return:  void
+     */
+    void setFilename(const std::string& filename);
 
     /*
      * Brief:   打印并写入普通日志
@@ -80,6 +87,7 @@ private:
 private:
     bool mSysLogOpened;
     std::string mPath;
+    std::string mFilename;
 };
 
 #endif // _LOGGER_H_
