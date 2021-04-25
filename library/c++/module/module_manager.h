@@ -32,8 +32,8 @@ protected:
     virtual void onStop(){};
 
 private: /* noncopale */
-    Module(const Module &) = default;
-    Module &operator=(const Module &) = default;
+    Module(const Module&) = default;
+    Module& operator=(const Module&) = default;
 };
 
 /**
@@ -48,20 +48,20 @@ public:
 	 * @brief 获取模块管理器单例
 	 * @return 单例对象
 	 */
-    static ModuleManager &getInstance();
+    static ModuleManager& getInstance();
 
     /**
 	 * @brief 设置日志函数
 	 * @param logFunc 日志函数
 	 */
-    void setLogFunc(const std::function<void(const std::string &)> &logFunc);
+    void setLogFunc(const std::function<void(const std::string&)>& logFunc);
 
     /**
 	 * @brief 注册模块创建函数
 	 * @param type 模块类型id, 通过'typeid'获得
 	 * @param creator 模块创建函数
 	 */
-    bool registerCreator(const std::type_info &type, const Creator &creator);
+    bool registerCreator(const std::type_info& type, const Creator& creator);
 
     /**
 	 * @brief 根据模块类型获取模块实例, 没有找到则创建
@@ -69,7 +69,7 @@ public:
 	 * @param allowCreate 是否允许创建(不允许时,若未创建则返回nullptr)
 	 * @return 模块共享指针
 	 */
-    template <class T>
+    template<class T>
     std::shared_ptr<T> get(bool allowCreate = true)
     {
         const auto module = get(typeid(T), allowCreate);
@@ -112,8 +112,8 @@ private:
     ModuleManager() = default;
 
 private: /* noncopale */
-    ModuleManager(const ModuleManager &) = default;
-    ModuleManager &operator=(const ModuleManager &) = default;
+    ModuleManager(const ModuleManager&) = default;
+    ModuleManager& operator=(const ModuleManager&) = default;
 
 private:
     /**
@@ -122,32 +122,32 @@ private:
 	 * @param allowCreate 是否允许创建(不允许时,若未创建则返回nullptr)
 	 * @return 模块共享指针
 	 */
-    std::shared_ptr<Module> get(const std::type_index &type, bool allowCreate = true);
+    std::shared_ptr<Module> get(const std::type_index& type, bool allowCreate = true);
 
     /**
 	 * @brief 打印日志信息
 	 * @param msg 日志消息
 	 */
-    void printLog(const std::string &msg);
+    void printLog(const std::string& msg);
 
 private:
-    std::unordered_map<std::type_index, Creator> m_creators;                /* 模块类型id <-> 模块创建函数, 映射表 */
+    std::unordered_map<std::type_index, Creator> m_creators; /* 模块类型id <-> 模块创建函数, 映射表 */
     std::unordered_map<std::type_index, std::shared_ptr<Module>> m_modules; /* 模块类型id <-> 模块, 映射表 */
-    std::function<void(const std::string &)> m_logFunc = nullptr;           /* 日志函数 */
+    std::function<void(const std::string&)> m_logFunc = nullptr; /* 日志函数 */
 };
 
 /* 模块管理器 */
 #define MODULE_MANAGER() ModuleManager::getInstance()
 
 /* 注册模块, 只能在cpp文件中使用 */
-#define REGISTER_MODULE(moduleType)                                                                                                                            \
-    static bool s_module_##moduleType##_registered                                                                                                             \
-        = ModuleManager::getInstance().registerCreator(typeid(moduleType), []() -> std::shared_ptr<Module> { return std::make_shared<moduleType>(); })
+#define REGISTER_MODULE(moduleType) \
+    static bool s_module_##moduleType##_registered = \
+        ModuleManager::getInstance().registerCreator(typeid(moduleType), []() -> std::shared_ptr<Module> { return std::make_shared<moduleType>(); })
 
 /* 注册模块, 只能在cpp文件中使用 */
-#define REGISTER_MODULE_IMPL(moduleType, moduleTypeImpl)                                                                                                       \
-    static bool s_module_##moduleType##_registered                                                                                                             \
-        = ModuleManager::getInstance().registerCreator(typeid(moduleType), []() -> std::shared_ptr<Module> { return std::make_shared<moduleTypeImpl>(); })
+#define REGISTER_MODULE_IMPL(moduleType, moduleTypeImpl) \
+    static bool s_module_##moduleType##_registered = \
+        ModuleManager::getInstance().registerCreator(typeid(moduleType), []() -> std::shared_ptr<Module> { return std::make_shared<moduleTypeImpl>(); })
 
 /* 获取模块 */
 #define GET_MODULE(moduleType) ModuleManager::getInstance().get<moduleType>()

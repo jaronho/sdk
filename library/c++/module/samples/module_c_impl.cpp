@@ -1,4 +1,5 @@
 #include "module_c_impl.h"
+
 #include <iostream>
 
 REGISTER_MODULE_IMPL(ModuleC, ModuleCImpl);

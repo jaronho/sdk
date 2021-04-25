@@ -1,15 +1,16 @@
 #include "module_manager.h"
+
 #include <assert.h>
 #include <chrono>
 #include <iostream>
 
-ModuleManager &ModuleManager::getInstance()
+ModuleManager& ModuleManager::getInstance()
 {
     static ModuleManager s_instance;
     return s_instance;
 }
 
-void ModuleManager::setLogFunc(const std::function<void(const std::string &)> &logFunc)
+void ModuleManager::setLogFunc(const std::function<void(const std::string&)>& logFunc)
 {
     if (logFunc)
     {
@@ -17,7 +18,7 @@ void ModuleManager::setLogFunc(const std::function<void(const std::string &)> &l
     }
 }
 
-bool ModuleManager::registerCreator(const std::type_info &type, const Creator &creator)
+bool ModuleManager::registerCreator(const std::type_info& type, const Creator& creator)
 {
     printLog("register module [" + std::string(type.name()) + "] creator");
     assert(!m_creators[type]);
@@ -27,7 +28,7 @@ bool ModuleManager::registerCreator(const std::type_info &type, const Creator &c
 
 int ModuleManager::create()
 {
-    for (const auto &creatorIter : m_creators)
+    for (const auto& creatorIter : m_creators)
     {
         printLog("creating module [" + std::string(creatorIter.first.name()) + "]");
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -41,7 +42,7 @@ int ModuleManager::create()
 
 void ModuleManager::start()
 {
-    for (const auto &moduleIter : m_modules)
+    for (const auto& moduleIter : m_modules)
     {
         printLog("starting module [" + std::string(moduleIter.first.name()) + "]");
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -54,7 +55,7 @@ void ModuleManager::start()
 
 void ModuleManager::resume()
 {
-    for (const auto &moduleIter : m_modules)
+    for (const auto& moduleIter : m_modules)
     {
         moduleIter.second->onResume();
     }
@@ -62,7 +63,7 @@ void ModuleManager::resume()
 
 void ModuleManager::pause()
 {
-    for (const auto &moduleIter : m_modules)
+    for (const auto& moduleIter : m_modules)
     {
         moduleIter.second->onPause();
     }
@@ -70,7 +71,7 @@ void ModuleManager::pause()
 
 void ModuleManager::stop()
 {
-    for (const auto &moduleIter : m_modules)
+    for (const auto& moduleIter : m_modules)
     {
         moduleIter.second->onStop();
     }
@@ -83,7 +84,7 @@ int ModuleManager::destroy()
     return static_cast<int>(size);
 }
 
-std::shared_ptr<Module> ModuleManager::get(const std::type_index &type, bool allowCreate)
+std::shared_ptr<Module> ModuleManager::get(const std::type_index& type, bool allowCreate)
 {
     /* 先在已经创建的模块中搜索 */
     const auto moduleIter = m_modules.find(type);
@@ -124,7 +125,7 @@ std::shared_ptr<Module> ModuleManager::get(const std::type_index &type, bool all
     return nullptr;
 }
 
-void ModuleManager::printLog(const std::string &msg)
+void ModuleManager::printLog(const std::string& msg)
 {
     if (m_logFunc)
     {

@@ -1,4 +1,5 @@
 #include "module_b.h"
+
 #include <iostream>
 
 REGISTER_MODULE(ModuleB);

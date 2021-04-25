@@ -5,7 +5,7 @@
 
 int main()
 {
-    ModuleManager::getInstance().setLogFunc([](const std::string &msg) { std::cout << msg << std::endl; });
+    ModuleManager::getInstance().setLogFunc([](const std::string& msg) { std::cout << msg << std::endl; });
     std::cout << std::endl << std::endl;
     ModuleManager::getInstance().create();
     std::cout << std::endl << std::endl;
