@@ -1,7 +1,7 @@
 #pragma once
 
+#include "asio/asio_executor.h"
 #include "diagnose/diagnose.h"
-#include "task/executor.h"
 
 #include <chrono>
 #include <exception>
@@ -11,18 +11,18 @@
 
 namespace threading
 {
-std::chrono::steady_clock::duration ThreadProxy::s_syncTimeout = std::chrono::seconds(30); /* 默认超时时间 */
-
 class ThreadProxy final
 {
 public:
     /**
-     * @brief 设置同步接口超时时间
-     * @param timeout 同步接口超时时间,
+     * @brief 创建asio线程
+     * @param name 任务名称
+     * @param threadCount 线程个数
+     * @param 线程执行者
      */
-    static void setSyncTimeout(const std::chrono::steady_clock::duration& timeout)
+    static ExecutorPtr createAsioExecutor(const std::string& name, size_t threadCount = 1)
     {
-        s_syncTimeout = timeout;
+        return std::make_shared<AsioExecutor>(name, threadCount);
     }
 
     /**
@@ -42,15 +42,14 @@ public:
             function();
             result->set_value();
         });
-        if (std::chrono::steady_clock::duration::zero == timeout)
+        if (timeout > std::chrono::steady_clock::duration::zero)
         {
-            timeout = s_syncTimeout;
-        }
-        auto waitResult = future.wait_for(timeout);
-        if (std::future_status::timeout == waitResult) /* 超时判断 */
-        {
-            int64_t millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
-            Diagnose::onTaskException(0, std::string(), task, "timeout [" + std::to_string(millisecond) + "]");
+            auto waitResult = future.wait_for(timeout);
+            if (std::future_status::timeout == waitResult) /* 超时判断 */
+            {
+                int64_t millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
+                Diagnose::onTaskException(0, std::string(), task, "timeout [" + std::to_string(millisecond) + "]");
+            }
         }
         future.get();
     }
@@ -70,15 +69,14 @@ public:
         auto result = std::make_shared<std::promise<typename std::result_of<Func()>::type>>();
         auto future = result->get_future().share();
         executor->post(taskName, [function = std::move(function), result] { result->set_value(function()); });
-        if (std::chrono::steady_clock::duration::zero == timeout)
+        if (timeout > std::chrono::steady_clock::duration::zero)
         {
-            timeout = s_syncTimeout;
-        }
-        auto waitResult = future.wait_for(timeout);
-        if (std::future_status::timeout == waitResult) /* 超时判断 */
-        {
-            int64_t millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
-            Diagnose::onTaskException(0, std::string(), task, "timeout [" + std::to_string(millisecond) + "]");
+            auto waitResult = future.wait_for(timeout);
+            if (std::future_status::timeout == waitResult) /* 超时判断 */
+            {
+                int64_t millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
+                Diagnose::onTaskException(0, std::string(), task, "timeout [" + std::to_string(millisecond) + "]");
+            }
         }
         return future.get();
     }
@@ -95,6 +93,20 @@ public:
     }
 
 #if 1 == ENABLE_THREADING_FIBER
+#include "fiber/fiber_executor.h"
+
+    /**
+     * @brief 创建asio线程
+     * @param name 线程名称
+     * @param maxFiberCount 队列中允许的fiber最大个数, 这里默认最多1024个fiber
+     * @param stackSize 每个fiber的栈空间大小(字节), 这里默认统一为512Kb
+     * @param 线程执行者
+     */
+    static ExecutorPtr createFiberExecutor(const std::string& name, size_t maxFiberCount = 1024, size_t stackSize = 512 * 1024)
+    {
+        return std::make_shared<FiberExecutor>(name, maxFiberCount, stackSize);
+    }
+
     /**
      * @brief 休眠一段时间(注意: 只用于fiber)
      * @param duration 休眠时长
@@ -147,8 +159,5 @@ public:
         return promise->get_future().get();
     }
 #endif
-
-private:
-    static std::chrono::steady_clock::duration s_syncTimeout; /* 调用同步接口时的超时时间 */
 };
 } /* namespace threading */

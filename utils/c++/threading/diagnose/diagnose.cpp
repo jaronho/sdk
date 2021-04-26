@@ -195,7 +195,7 @@ std::string Diagnose::taskInfoToString(const TaskInfoPtr& taskInfo, bool showRun
     {
         result += ", thread [" + std::to_string(taskInfo->attachThreadId) + ", " + taskInfo->attachThreadName + "]";
     }
-    result += ", current state [" + (taskInfo->exceptionMsg.empty() ? "ARNORMAL" : taskStateToString(taskInfo->task->getState())) + "]";
+    result += ", current state [" + (taskInfo->exceptionMsg.empty() ? taskStateToString(taskInfo->task->getState()) : "ARNORMAL") + "]";
     if (!taskInfo->exceptionMsg.empty())
     {
         result += "(" + taskInfo->exceptionMsg + ")";
