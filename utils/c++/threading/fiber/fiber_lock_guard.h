@@ -7,20 +7,20 @@ namespace threading
  * @param LockType 锁类型
  */
 template<typename LockType>
-class FiberLockGuard
+class FiberLockGuard final
 {
 public:
     /**
-     * @brief 构造, 同时上锁
+     * @brief 构造函数, 同时上锁
      * @param lock 对应锁的对象
      */
-    FiberLockGuard(LockType& lock)
-        : m_lock(lock)
+    FiberLockGuard(LockType& lock) : m_lock(lock)
     {
         m_lock.Lock();
     }
+
     /**
-     * @brief 析构, 释放对应锁
+     * @brief 析构函数, 释放对应锁
      */
     ~FiberLockGuard()
     {

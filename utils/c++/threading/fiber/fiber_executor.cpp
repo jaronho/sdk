@@ -1,43 +1,48 @@
 #include "fiber_executor.h"
 
+#include "../diagnose/diagnose.h"
+#include "../platform.h"
+
+#include <exception>
+
 namespace threading
 {
-FiberExecutor::FiberExecutor(const std::string& name)
-    : Executor(name)
-    , m_channel(std::make_unique<boost::fibers::buffered_channel<TaskPtr>>(1024))
-    , m_count(0)
+FiberExecutor::FiberExecutor(const std::string& name, size_t maxFiberCount, size_t stackSize)
+    : Executor(name), m_channel(std::make_unique<boost::fibers::buffered_channel<TaskPtr>>(maxFiberCount))
 {
+    Diagnose::onExecutorCreated(this);
     std::promise<void> result;
-    m_thread = std::make_unique<std::thread>([this, name, &result] {
+    m_thread = std::make_unique<std::thread>([this, name, stackSize, &result] {
+        /* 设置线程名称 */
+        auto threadId = Platform::getThreadId();
+        Platform::setThreadName(name);
+        /* 循环从任务队列中取出任务 */
         result.set_value();
         TaskPtr task;
-        /* 循环从任务队列中取出任务 */
         while (boost::fibers::channel_op_status::closed != m_channel->pop(task))
         {
             --m_count;
             /* 创建fiber运行 */
-            boost::fibers::fiber{std::allocator_arg, boost::fibers::default_stack(512 * 1024),
-                                 [this, task]() {
+            boost::fibers::fiber{std::allocator_arg, boost::fibers::default_stack(stackSize),
+                                 [threadId, name, task = std::move(task)]() {
                                      try
                                      {
-                                         if (!task->IsCancelled())
+                                         if (!task->isCancelled())
                                          {
-                                             task->SetState(Task::State::RUNNING);
-                                             task->Run();
+                                             task->setState(Task::State::RUNNING);
+                                             Diagnose::onTaskRunning(threadId, name, task.get());
+                                             task->run();
                                          }
-                                         task->SetState(Task::State::FINISHED);
+                                         task->setState(Task::State::FINISHED);
+                                         Diagnose::onTaskFinished(threadId, name, task.get());
                                      }
                                      catch (const std::exception& e)
                                      {
-                                         std::string str = "fiber[" + GetName() + "] task[" + task->GetName()
-                                                           + "] exception[what: " + std::string(e.what()) + "]\n";
-                                         std::cout << str;
+                                         Diagnose::onTaskException(threadId, name, task.get(), e.what());
                                      }
                                      catch (...)
                                      {
-                                         std::string str = "fiber[" + GetName() + "] task[" + task->GetName()
-                                                           + "] unknown exception\n";
-                                         std::cout << str;
+                                         Diagnose::onTaskException(threadId, name, task.get(), "unknown exception");
                                      }
                                  }}
                 .detach();
@@ -50,38 +55,36 @@ FiberExecutor::FiberExecutor(const std::string& name)
 FiberExecutor::~FiberExecutor()
 {
     m_channel->close();
-    m_thread->join();
+    join();
+    Diagnose::onExecutorDestroyed(this);
 }
 
-void FiberExecutor::Join()
+void FiberExecutor::join()
 {
     m_thread->join();
 }
 
-TaskPtr FiberExecutor::Post(const TaskPtr& task)
+TaskPtr FiberExecutor::post(const TaskPtr& task)
 {
-    task->SetState(Task::State::QUEUING);
-    const auto ret = m_channel->try_push(task);
+    task->setState(Task::State::QUEUING);
+    auto ret = m_channel->try_push(task);
     switch (ret)
     {
     case boost::fibers::channel_op_status::success: {
         ++m_count;
+        Diagnose::bindTaskToExecutor(task.get(), this);
         break;
     }
     case boost::fibers::channel_op_status::full: {
-        std::string str = "fiber[" + GetName() + "] task full, count: " + std::to_string(m_count) + "\n";
-        std::cout << str;
-        throw std::exception(str.c_str());
+        Diagnose::onTaskException(Platform::getThreadId(), getName(), task.get(), "fiber task full, count [" + std::to_string(m_count) + "]");
         break;
     }
     case boost::fibers::channel_op_status::closed: {
-        std::string str = "fiber[" + GetName() + "] closed, ignore\n";
-        std::cout << str;
+        Diagnose::onTaskException(Platform::getThreadId(), getName(), task.get(), "fiber closed, ignore");
         break;
     }
     default: {
-        std::string str = "fiber[" + GetName() + "] invalid status: " + std::to_string((int)ret) + "\n";
-        std::cout << str;
+        Diagnose::onTaskException(Platform::getThreadId(), getName(), task.get(), "fiber invalid, status [" + std::to_string((int)ret) + "]");
     }
     }
     return task;

@@ -2,44 +2,37 @@
 
 namespace threading
 {
-Task::Task(const std::string& name)
-    : m_name(name)
-    , m_state(State::CREATED)
-    , m_cancelled(false)
-{
-}
+Task::Task(const std::string& name) : m_name(name) {}
 
-Task::~Task() = default;
-
-std::string Task::GetName() const
+std::string Task::getName() const
 {
     return m_name;
 }
 
-void Task::Cancel()
+void Task::setState(const State& state)
 {
-    m_cancelled = true;
+    m_state = state;
+    m_cv.notify_all();
 }
 
-bool Task::IsCancelled() const
-{
-    return m_cancelled;
-}
-
-Task::State Task::GetState() const
+Task::State Task::getState() const
 {
     return m_state;
 }
 
-void Task::Join()
+bool Task::isCancelled() const
+{
+    return m_cancelled;
+}
+
+void Task::cancel()
+{
+    m_cancelled = true;
+}
+
+void Task::join()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
     m_cv.wait(lock, [this] { return m_state != State::RUNNING; });
-}
-
-void Task::SetState(State state)
-{
-    m_state = state;
-    m_cv.notify_all();
 }
 } /* namespace threading */

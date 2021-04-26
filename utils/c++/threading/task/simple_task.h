@@ -1,31 +1,29 @@
 #pragma once
 
-#include <functional>
-
 #include "task.h"
+
+#include <functional>
 
 namespace threading
 {
 /**
- * @brief 简单的异步任务实现：基于回调函数封装
+ * @brief 简单的任务实现：基于函数封装
  */
 class SimpleTask : public Task
 {
 public:
-    using CallbackType = std::function<void()>;
-
     /**
-     * @brief 构造回调函数异步任务
-     * @param callback 需要异步执行的函数
-     * @param name 异步任务名称
+     * @brief 构造函数
+     * @param name 任务名称
+     * @param func 需要执行的函数
      */
-    SimpleTask(const CallbackType& callback, const std::string& name = std::string());
+    SimpleTask(const std::string& name, const std::function<void()>& func);
 
-    virtual ~SimpleTask();
+    virtual ~SimpleTask() = default;
 
-    void Run() override;
+    void run() override;
 
 private:
-    const CallbackType m_callback;
+    const std::function<void()> m_func; /* 任务执行函数 */
 };
 } /* namespace threading */

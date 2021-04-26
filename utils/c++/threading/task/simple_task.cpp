@@ -2,19 +2,13 @@
 
 namespace threading
 {
-SimpleTask::SimpleTask(const CallbackType& callback, const std::string& name)
-    : Task(name)
-    , m_callback(callback)
-{
-}
+SimpleTask::SimpleTask(const std::string& name, const std::function<void()>& func) : Task(name), m_func(func) {}
 
-SimpleTask::~SimpleTask() = default;
-
-void SimpleTask::Run()
+void SimpleTask::run()
 {
-    if (m_callback)
+    if (m_func)
     {
-        m_callback();
+        m_func();
     }
 }
 } /* namespace threading */

@@ -9,36 +9,30 @@ namespace threading
  * @brief 协程递归锁
  * @note 如果在同一个协程栈中, 会多次上锁, 请使用这个锁
  */
-class FiberRecursiveMutex
+class FiberRecursiveMutex final
 {
 public:
-    /**
-     * @brief 构造
-     */
     FiberRecursiveMutex();
 
-    /**
-     * @brief 析构
-     */
-    ~FiberRecursiveMutex();
+    virtual ~FiberRecursiveMutex() = default;
 
     /**
      * @brief 上锁
      */
-    void Lock();
+    void lock();
 
     /**
      * @brief 解锁
      */
-    void Unlock();
+    void unlock();
 
     /**
      * @brief 尝试上锁
-     * @return 上锁成功则返回true, 否则返回false
+     * @return true-上锁成功, false-失败
      */
-    bool TryLock();
+    bool tryLock();
 
 private:
-    std::unique_ptr<boost::fibers::recursive_mutex> m_lock; /* 内部使用 boost 的 fiber 锁实现 */
+    std::unique_ptr<boost::fibers::recursive_mutex> m_lock; /* 内部使用boost的fiber锁实现 */
 };
 } /* namespace threading */

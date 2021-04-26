@@ -2,24 +2,19 @@
 
 namespace threading
 {
-FiberMutex::FiberMutex()
-    : m_lock(std::make_unique<boost::fibers::mutex>())
-{
-}
+FiberMutex::FiberMutex() : m_lock(std::make_unique<boost::fibers::mutex>()) {}
 
-FiberMutex::~FiberMutex() = default;
-
-void FiberMutex::Lock()
+void FiberMutex::lock()
 {
     m_lock->lock();
 }
 
-void FiberMutex::Unlock()
+void FiberMutex::unlock()
 {
     m_lock->unlock();
 }
 
-bool FiberMutex::TryLock()
+bool FiberMutex::tryLock()
 {
     return m_lock->try_lock();
 }

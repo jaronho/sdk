@@ -4,23 +4,16 @@
 
 namespace threading
 {
-Executor::Executor(const std::string& name)
-    : m_name(name)
-{
-}
+Executor::Executor(const std::string& name) : m_name(name) {}
 
-Executor::~Executor()
-{
-}
-
-std::string Executor::GetName() const
+std::string Executor::getName() const
 {
     return m_name;
 }
 
-TaskPtr Executor::Post(const std::function<void()>& task, const std::string& name)
+TaskPtr Executor::post(const std::string& name, const std::function<void()>& func)
 {
-    const auto taskPtr = std::make_shared<SimpleTask>(task, name);
-    return Post(taskPtr);
+    auto taskPtr = std::make_shared<SimpleTask>(name, func);
+    return post(taskPtr);
 }
 } /* namespace threading */

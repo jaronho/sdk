@@ -2,24 +2,19 @@
 
 namespace threading
 {
-FiberRecursiveMutex::FiberRecursiveMutex()
-    : m_lock(std::make_unique<boost::fibers::recursive_mutex>())
-{
-}
+FiberRecursiveMutex::FiberRecursiveMutex() : m_lock(std::make_unique<boost::fibers::recursive_mutex>()) {}
 
-FiberRecursiveMutex::~FiberRecursiveMutex() = default;
-
-void FiberRecursiveMutex::Lock()
+void FiberRecursiveMutex::lock()
 {
     m_lock->lock();
 }
 
-void FiberRecursiveMutex::Unlock()
+void FiberRecursiveMutex::unlock()
 {
     m_lock->unlock();
 }
 
-bool FiberRecursiveMutex::TryLock()
+bool FiberRecursiveMutex::tryLock()
 {
     return m_lock->try_lock();
 }
