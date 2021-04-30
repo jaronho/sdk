@@ -1,8 +1,8 @@
 #pragma once
 
-#include "module/module_manager.h"
+#include "../module/module_manager.h"
 
-class ModuleA : public Module
+class ModuleA : public module::Module
 {
 public:
     ModuleA();
