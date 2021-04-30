@@ -92,7 +92,7 @@ void SetThreadName(DWORD dwThreadID, const char* threadName)
     {
     }
 }
-} // namespace
+} /* namespace */
 #endif
 
 void Platform::setThreadName(const std::string& name)
