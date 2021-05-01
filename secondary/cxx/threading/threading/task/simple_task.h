@@ -26,4 +26,4 @@ public:
 private:
     const std::function<void()> m_func; /* 任务执行函数 */
 };
-} /* namespace threading */
+} // namespace threading

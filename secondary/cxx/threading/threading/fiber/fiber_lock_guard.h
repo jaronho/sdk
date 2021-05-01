@@ -30,4 +30,4 @@ public:
 private:
     LockType& m_lock; /* 锁对象 */
 };
-} /* namespace threading */
+} // namespace threading

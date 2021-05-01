@@ -81,4 +81,4 @@ private:
 };
 
 using TaskPtr = std::shared_ptr<Task>;
-} /* namespace threading */
+} // namespace threading

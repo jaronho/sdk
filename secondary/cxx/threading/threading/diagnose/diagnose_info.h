@@ -36,4 +36,4 @@ struct ExecutorInfo
     std::unordered_map<const Task*, TaskInfoPtr> tasks; /* 任务列表 */
 };
 using ExecutorInfoPtr = std::unique_ptr<ExecutorInfo>;
-} /* namespace threading */
+} // namespace threading

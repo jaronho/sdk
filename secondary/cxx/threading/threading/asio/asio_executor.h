@@ -47,4 +47,4 @@ private:
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_worker;
     std::unordered_map<int64_t, std::string> m_threadIdNameMap; /* 线程id和名称映射表 */
 };
-} /* namespace threading */
+} // namespace threading

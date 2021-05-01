@@ -138,4 +138,4 @@ void ModuleManager::printLog(const std::string& msg)
         std::cout << msg + "\n";
     }
 }
-} /* namespace module */
+} // namespace module

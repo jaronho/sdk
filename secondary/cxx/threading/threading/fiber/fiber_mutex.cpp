@@ -18,4 +18,4 @@ bool FiberMutex::tryLock()
 {
     return m_lock->try_lock();
 }
-} /* namespace threading */
+} // namespace threading

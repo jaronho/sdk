@@ -53,4 +53,4 @@ private:
 };
 
 using ExecutorPtr = std::shared_ptr<Executor>;
-} /* namespace threading */
+} // namespace threading

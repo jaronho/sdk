@@ -11,4 +11,4 @@ void SimpleTask::run()
         m_func();
     }
 }
-} /* namespace threading */
+} // namespace threading

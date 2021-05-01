@@ -16,4 +16,4 @@ TaskPtr Executor::post(const std::string& name, const std::function<void()>& fun
     auto taskPtr = std::make_shared<SimpleTask>(name, func);
     return post(taskPtr);
 }
-} /* namespace threading */
+} // namespace threading

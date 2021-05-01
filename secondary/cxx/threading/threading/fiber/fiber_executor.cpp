@@ -89,4 +89,4 @@ TaskPtr FiberExecutor::post(const TaskPtr& task)
     }
     return task;
 }
-} /* namespace threading */
+} // namespace threading

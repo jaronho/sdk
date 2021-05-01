@@ -160,4 +160,4 @@ public:
     }
 #endif
 };
-} /* namespace threading */
+} // namespace threading

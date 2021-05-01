@@ -35,4 +35,4 @@ void Task::join()
     std::unique_lock<std::mutex> lock(m_mutex);
     m_cv.wait(lock, [this] { return m_state != State::RUNNING; });
 }
-} /* namespace threading */
+} // namespace threading

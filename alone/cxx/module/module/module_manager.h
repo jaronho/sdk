@@ -137,7 +137,7 @@ private:
     std::unordered_map<std::type_index, std::shared_ptr<Module>> m_modules; /* 模块类型id <-> 模块, 映射表 */
     std::function<void(const std::string&)> m_logFunc = nullptr; /* 日志函数 */
 };
-} /* namespace module */
+} // namespace module
 
 /* 模块管理器 */
 #define MODULE_MANAGER() module::ModuleManager::getInstance()

@@ -253,4 +253,4 @@ std::string Diagnose::getDiagnoseInfo()
     }
     return result;
 }
-} /* namespace threading */
+} // namespace threading

@@ -35,4 +35,4 @@ public:
 private:
     std::unique_ptr<boost::fibers::recursive_mutex> m_lock; /* 内部使用boost的fiber锁实现 */
 };
-} /* namespace threading */
+} // namespace threading

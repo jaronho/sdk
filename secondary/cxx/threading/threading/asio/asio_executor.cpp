@@ -80,4 +80,4 @@ void AsioExecutor::stop()
 {
     m_context.stop();
 }
-} /* namespace threading */
+} // namespace threading

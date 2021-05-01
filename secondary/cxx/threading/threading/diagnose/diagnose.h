@@ -88,4 +88,4 @@ private:
     static std::string taskInfoToString(const TaskInfoPtr& taskInfo, bool showRun = true);
     static std::string executorInfoToString(const ExecutorInfoPtr& executorInfo);
 };
-} /* namespace threading */
+} // namespace threading

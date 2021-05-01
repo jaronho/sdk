@@ -34,4 +34,4 @@ public:
      */
     static void setThreadName(const std::string& name);
 };
-} /* namespace threading */
+} // namespace threading

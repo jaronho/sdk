@@ -103,4 +103,4 @@ void Platform::setThreadName(const std::string& name)
     pthread_setname_np(pthread_self(), name.substr(0, 15).c_str());
 #endif
 }
-} /* namespace threading */
+} // namespace threading

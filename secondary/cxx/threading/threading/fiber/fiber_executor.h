@@ -41,4 +41,4 @@ private:
     std::atomic_int m_count = 0; /* 任务队列个数 */
     std::unique_ptr<std::thread> m_thread; /* 线程 */
 };
-} /* namespace threading */
+} // namespace threading
