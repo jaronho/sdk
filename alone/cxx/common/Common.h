@@ -424,7 +424,8 @@ public:
     /*
      * Brief:	traverse search in the specified directory
      * Param:	dirName - specified directory, can be absolute path (d:) or relative path (temp)
-     *          callback - called when folder or file searched
+     *          folderCallback - called when folder searched
+     *          fileCallback - called when file searhed
      *          recursive - if recursive sub dir
      * Return:	void
      */
