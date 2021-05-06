@@ -10,39 +10,39 @@
 namespace logger
 {
 /**
- * @brief Ã¿ÌìÈÕÖ¾ÎÄ¼ş
+ * @brief æ¯å¤©æ—¥å¿—æ–‡ä»¶
  */
 class DailyLogfile final
 {
 public:
     /**
-     * @brief ¹¹Ôìº¯Êı
-     * @param path ÈÕÖ¾ÎÄ¼şÂ·¾¶, ÀıÈç: "/home/workspace/logs" »ò "/home/workspace/logs/"
-     * @param prefixName ÈÕÖ¾ÎÄ¼şÇ°×ºÃû(ÔÊĞíÎª¿Õ), ÀıÈç: "demo"
-     * @param extName ÈÕÖ¾ÎÄ¼şºó×ºÃû, ÀıÈç: "log" »ò ".log"
-     * @param maxSize ÎÄ¼ş×î´óÈİÁ¿Öµ(×Ö½Ú), ÀıÈç: 4M = 4 * 1024 * 1024
-     * @param maxFiles ×î¶àÎÄ¼ş¸öÊı, Îª0Ê±±íÊ¾¸öÊı²»ÊÜÏŞÖÆ
+     * @brief æ„é€ å‡½æ•°
+     * @param path æ—¥å¿—æ–‡ä»¶è·¯å¾„, ä¾‹å¦‚: "/home/workspace/logs" æˆ– "/home/workspace/logs/"
+     * @param prefixName æ—¥å¿—æ–‡ä»¶å‰ç¼€å(å…è®¸ä¸ºç©º), ä¾‹å¦‚: "demo"
+     * @param extName æ—¥å¿—æ–‡ä»¶åç¼€å, ä¾‹å¦‚: "log" æˆ– ".log"
+     * @param maxSize æ–‡ä»¶æœ€å¤§å®¹é‡å€¼(å­—èŠ‚), ä¾‹å¦‚: 4M = 4 * 1024 * 1024
+     * @param maxFiles æœ€å¤šæ–‡ä»¶ä¸ªæ•°, ä¸º0æ—¶è¡¨ç¤ºä¸ªæ•°ä¸å—é™åˆ¶
      */
     DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& extName, size_t maxSize, size_t maxFiles = 0);
 
     virtual ~DailyLogfile() = default;
 
     /**
-     * @brief ¼ÇÂ¼ÈÕÖ¾ÄÚÈİ
-     * @param content ÈÕÖ¾ÄÚÈİ
-     * @param newline ÊÇ·ñ»»ĞĞ
-     * @return ²Ù×÷½á¹û
+     * @brief è®°å½•æ—¥å¿—å†…å®¹
+     * @param content æ—¥å¿—å†…å®¹
+     * @param newline æ˜¯å¦æ¢è¡Œ
+     * @return æ“ä½œç»“æœ
      */
     Logfile::Result record(const std::string& content, bool newline = true);
 
 private:
-    std::string m_path; /* ÈÕÖ¾ÎÄ¼şÂ·¾¶ */
-    std::string m_prefixName; /* ÈÕÖ¾ÎÄ¼şÇ°×ºÃû */
-    std::string m_baseName; /* ÈÕÖ¾ÎÄ¼şÃû */
-    std::string m_extName; /* ÈÕÖ¾ÎÄ¼şºó×ºÃû */
-    size_t m_maxSize; /* ÎÄ¼ş×î´óÈİÁ¿Öµ */
-    size_t m_maxFiles; /* ×î¶àÎÄ¼ş¸öÊı */
-    std::recursive_mutex m_mutex; /* »¥³âËø */
-    std::shared_ptr<RotatingLogfile> m_rotatingLogfile; /* ¹ö¶¯ÈÕÖ¾ÎÄ¼ş */
+    std::string m_path; /* æ—¥å¿—æ–‡ä»¶è·¯å¾„ */
+    std::string m_prefixName; /* æ—¥å¿—æ–‡ä»¶å‰ç¼€å */
+    std::string m_baseName; /* æ—¥å¿—æ–‡ä»¶å */
+    std::string m_extName; /* æ—¥å¿—æ–‡ä»¶åç¼€å */
+    size_t m_maxSize; /* æ–‡ä»¶æœ€å¤§å®¹é‡å€¼ */
+    size_t m_maxFiles; /* æœ€å¤šæ–‡ä»¶ä¸ªæ•° */
+    std::recursive_mutex m_mutex; /* äº’æ–¥é” */
+    std::shared_ptr<RotatingLogfile> m_rotatingLogfile; /* æ»šåŠ¨æ—¥å¿—æ–‡ä»¶ */
 };
 } // namespace logger

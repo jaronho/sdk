@@ -11,15 +11,15 @@
 
 namespace logger
 {
-const std::string DAILY_LOG_EXT = ".log"; /* ÈÕÖ¾ÎÄ¼şÄ¬ÈÏºó×ºÃû */
-const size_t DAILY_LOG_MAX_SIZE = 20 * 1024 * 1024; /* Ã¿¸öÈÕÖ¾ÎÄ¼ş×î´óÈİÁ¿(ÕâÀïÄ¬ÈÏÎª20M) */
-const size_t DAILY_LOG_MAX_COUNT = 0U; /* Ã¿ÌìÔÊĞí×î¶àÉú³ÉµÄÈÕÖ¾ÎÄ¼şÊı(ÕâÀïÄ¬ÈÏ²»ÏŞÖÆ) */
+const std::string DAILY_LOG_EXT = ".log"; /* æ—¥å¿—æ–‡ä»¶é»˜è®¤åç¼€å */
+const size_t DAILY_LOG_MAX_SIZE = 20 * 1024 * 1024; /* æ¯ä¸ªæ—¥å¿—æ–‡ä»¶æœ€å¤§å®¹é‡(è¿™é‡Œé»˜è®¤ä¸º20M) */
+const size_t DAILY_LOG_MAX_COUNT = 0U; /* æ¯å¤©å…è®¸æœ€å¤šç”Ÿæˆçš„æ—¥å¿—æ–‡ä»¶æ•°(è¿™é‡Œé»˜è®¤ä¸é™åˆ¶) */
 
 struct DateTime
 {
-    char ymd[12]; /* ÄêÔÂÈÕ */
-    char hms[12]; /* Ê±·ÖÃë */
-    char ms[4]; /* ºÁÃë */
+    char ymd[12]; /* å¹´æœˆæ—¥ */
+    char hms[12]; /* æ—¶åˆ†ç§’ */
+    char ms[4]; /* æ¯«ç§’ */
 };
 
 DateTime getDateTime()
@@ -27,13 +27,21 @@ DateTime getDateTime()
     struct tm t;
     time_t now;
     time(&now);
+#ifdef _WIN32
     localtime_s(&t, &now);
+#else
+    t = *localtime(&now);
+#endif
     DateTime dt;
     strftime(dt.ymd, sizeof(dt.ymd), "%Y-%m-%d", &t);
     strftime(dt.hms, sizeof(dt.hms), "%H:%M:%S", &t);
     struct timeb tb;
     ftime(&tb);
+#ifdef _WIN32
     sprintf_s(dt.ms, "%03d", tb.millitm);
+#else
+    sprintf(dt.ms, "%03d", tb.millitm);
+#endif
     return dt;
 }
 
@@ -125,23 +133,23 @@ void InnerLoggerImpl::print(const Level& level, const std::string& tag, const st
 {
     static const std::string PID = std::to_string(getProcessId());
     DateTime dt = getDateTime();
-    /* Æ´½ÓÈÕÖ¾ÄÚÈİ */
+    /* æ‹¼æ¥æ—¥å¿—å†…å®¹ */
     std::string content;
-    content.append(getLevelShortName(level)); /* ¼¶±ğ */
-    content.append("[").append(dt.ymd).append(" ").append(dt.hms).append(".").append(dt.ms).append("]"); /* Ê±¼ä */
-    content.append("[").append(PID).append(":").append(std::to_string(getThreadId())).append("]"); /* ½ø³Ì:Ïß³Ì */
-    content.append("[").append(tag).append("]"); /* ±êÇ© */
-    if (!file.empty()) /* ÎÄ¼şÃû ĞĞºÅ º¯ÊıÃû */
+    content.append(getLevelShortName(level)); /* çº§åˆ« */
+    content.append("[").append(dt.ymd).append(" ").append(dt.hms).append(".").append(dt.ms).append("]"); /* æ—¶é—´ */
+    content.append("[").append(PID).append(":").append(std::to_string(getThreadId())).append("]"); /* è¿›ç¨‹:çº¿ç¨‹ */
+    content.append("[").append(tag).append("]"); /* æ ‡ç­¾ */
+    if (!file.empty()) /* æ–‡ä»¶å è¡Œå· å‡½æ•°å */
     {
         content.append("[").append(file).append(" ").append(std::to_string(line)).append(" ").append(func).append("]");
     }
-    content.append(" ").append(msg); /* ÄÚÈİ */
-    /* ¼ÇÂ¼µ½ÈÕÖ¾ÎÄ¼ş */
+    content.append(" ").append(msg); /* å†…å®¹ */
+    /* è®°å½•åˆ°æ—¥å¿—æ–‡ä»¶ */
     if (level >= m_level)
     {
         m_dailyLog->record(content, true);
     }
-    /* ´òÓ¡µ½¿ØÖÆÌ¨ */
+    /* æ‰“å°åˆ°æ§åˆ¶å° */
     if (m_consoleEnable)
     {
         fmt::print(getLevelTextStyle(level), "{}\n", content);

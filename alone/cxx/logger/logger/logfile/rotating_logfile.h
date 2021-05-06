@@ -10,85 +10,85 @@
 namespace logger
 {
 /**
- * @brief ¹ö¶¯ÈÕÖ¾ÎÄ¼ş
+ * @brief æ»šåŠ¨æ—¥å¿—æ–‡ä»¶
  */
 class RotatingLogfile final
 {
 public:
     /**
-     * @brief ¹¹Ôìº¯Êı
-     * @param path ÈÕÖ¾ÎÄ¼şÂ·¾¶, ÀıÈç: "/home/workspace/logs" »ò "/home/workspace/logs/"
-     * @param baseName ÈÕÖ¾ÎÄ¼şÃû, ÀıÈç: "demo"
-     * @param extName ÈÕÖ¾ÎÄ¼şºó×ºÃû, ÀıÈç: "log" »ò ".log"
-     * @param maxSize ÎÄ¼ş×î´óÈİÁ¿Öµ(×Ö½Ú), ÀıÈç: 4M = 4 * 1024 * 1024
-     * @param maxFiles ×î¶àÎÄ¼ş¸öÊı, Îª0Ê±±íÊ¾¸öÊı²»ÊÜÏŞÖÆ
+     * @brief æ„é€ å‡½æ•°
+     * @param path æ—¥å¿—æ–‡ä»¶è·¯å¾„, ä¾‹å¦‚: "/home/workspace/logs" æˆ– "/home/workspace/logs/"
+     * @param baseName æ—¥å¿—æ–‡ä»¶å, ä¾‹å¦‚: "demo"
+     * @param extName æ—¥å¿—æ–‡ä»¶åç¼€å, ä¾‹å¦‚: "log" æˆ– ".log"
+     * @param maxSize æ–‡ä»¶æœ€å¤§å®¹é‡å€¼(å­—èŠ‚), ä¾‹å¦‚: 4M = 4 * 1024 * 1024
+     * @param maxFiles æœ€å¤šæ–‡ä»¶ä¸ªæ•°, ä¸º0æ—¶è¡¨ç¤ºä¸ªæ•°ä¸å—é™åˆ¶
      */
     RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize, size_t maxFiles = 0);
 
     virtual ~RotatingLogfile() = default;
 
     /**
-     * @brief ´ò¿ª
-     * @return true-³É¹¦, false-Ê§°Ü
+     * @brief æ‰“å¼€
+     * @return true-æˆåŠŸ, false-å¤±è´¥
      */
     bool open();
 
     /**
-     * @brief ¹Ø±Õ
+     * @brief å…³é—­
      */
     void close();
 
     /**
-     * @brief »ñÈ¡µ±Ç°ÈÕÖ¾ÎÄ¼şË÷ÒıÖµ
-     * @return Ë÷ÒıÖµ
+     * @brief è·å–å½“å‰æ—¥å¿—æ–‡ä»¶ç´¢å¼•å€¼
+     * @return ç´¢å¼•å€¼
      */
     size_t getFileIndex() const;
 
     /**
-     * @brief ¼ÇÂ¼ÈÕÖ¾ÄÚÈİ
-     * @param content ÈÕÖ¾ÄÚÈİ
-     * @param newline ÊÇ·ñ»»ĞĞ
-     * @return ²Ù×÷½á¹û
+     * @brief è®°å½•æ—¥å¿—å†…å®¹
+     * @param content æ—¥å¿—å†…å®¹
+     * @param newline æ˜¯å¦æ¢è¡Œ
+     * @return æ“ä½œç»“æœ
      */
     Logfile::Result record(const std::string& content, bool newline = true);
 
 private:
     /**
-     * @brief ²éÕÒÖ¸¶¨Â·¾¶ÏÂÆ¥ÅäµÄÎÄ¼şÃûË÷ÒıÁĞ±í
-     * @param path Â·¾¶
-     * @param pattern Æ¥ÅäÄ£Ê½(ÕıÔò±í´ïÊ½)
-     * @param indexList Æ¥Åäµ½µÄË÷ÒıÁĞ±í(°´½µĞòÅÅĞò)
-     * @return true-ÓĞÕÒµ½, false-Î´ÕÒµ½
+     * @brief æŸ¥æ‰¾æŒ‡å®šè·¯å¾„ä¸‹åŒ¹é…çš„æ–‡ä»¶åç´¢å¼•åˆ—è¡¨
+     * @param path è·¯å¾„
+     * @param pattern åŒ¹é…æ¨¡å¼(æ­£åˆ™è¡¨è¾¾å¼)
+     * @param indexList åŒ¹é…åˆ°çš„ç´¢å¼•åˆ—è¡¨(æŒ‰é™åºæ’åº)
+     * @return true-æœ‰æ‰¾åˆ°, false-æœªæ‰¾åˆ°
      */
     bool findIndexList(const std::string& path, const std::regex& pattern, std::vector<int>& indexList);
 
     /**
-     * @brief ²éÕÒÖ¸¶¨Â·¾¶ÏÂµÄ×îºóµÄË÷ÒıÖµ
-     * @param path Â·¾¶
-     * @param indexList Æ¥Åäµ½µÄË÷ÒıÁĞ±í(°´½µĞòÅÅĞò)
-     * @return Ë÷ÒıÖµ
+     * @brief æŸ¥æ‰¾æŒ‡å®šè·¯å¾„ä¸‹çš„æœ€åçš„ç´¢å¼•å€¼
+     * @param path è·¯å¾„
+     * @param indexList åŒ¹é…åˆ°çš„ç´¢å¼•åˆ—è¡¨(æŒ‰é™åºæ’åº)
+     * @return ç´¢å¼•å€¼
      */
     int findLastIndex(const std::string& path, std::vector<int>& indexList);
 
     /**
-     * @brief ¸ù¾İË÷ÒıÖµ¼ÆËãÎÄ¼şÃû
-     * @param index Ë÷ÒıÖµ
-     * @return ÎÄ¼şÃû
+     * @brief æ ¹æ®ç´¢å¼•å€¼è®¡ç®—æ–‡ä»¶å
+     * @param index ç´¢å¼•å€¼
+     * @return æ–‡ä»¶å
      */
     std::string calcFilenameByIndex(int index);
 
     /**
-     * @brief ¹ö¶¯ÎÄ¼ş
-     * @return true-³É¹¦, false-Ê§°Ü
+     * @brief æ»šåŠ¨æ–‡ä»¶
+     * @return true-æˆåŠŸ, false-å¤±è´¥
      */
     bool rotateFileList();
 
 private:
-    std::string m_baseName; /* ÈÕÖ¾ÎÄ¼şÃû */
-    std::string m_extName; /* ÈÕÖ¾ÎÄ¼şºó×ºÃû */
-    size_t m_maxFiles; /* ×î¶àÎÄ¼ş¸öÊı */
-    std::atomic_size_t m_index; /* µ±Ç°ÈÕÖ¾ÎÄ¼şË÷ÒıÖµ */
-    std::recursive_mutex m_mutex; /* »¥³âËø */
-    std::shared_ptr<Logfile> m_logfile; /* »ù´¡ÈÕÖ¾ÎÄ¼ş */
+    std::string m_baseName; /* æ—¥å¿—æ–‡ä»¶å */
+    std::string m_extName; /* æ—¥å¿—æ–‡ä»¶åç¼€å */
+    size_t m_maxFiles; /* æœ€å¤šæ–‡ä»¶ä¸ªæ•° */
+    std::atomic_size_t m_index; /* å½“å‰æ—¥å¿—æ–‡ä»¶ç´¢å¼•å€¼ */
+    std::recursive_mutex m_mutex; /* äº’æ–¥é” */
+    std::shared_ptr<Logfile> m_logfile; /* åŸºç¡€æ—¥å¿—æ–‡ä»¶ */
 };
 } // namespace logger

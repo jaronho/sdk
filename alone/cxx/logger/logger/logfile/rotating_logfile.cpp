@@ -108,7 +108,7 @@ bool RotatingLogfile::rotateFileList()
     size_t maxSize = m_logfile->getMaxSize();
     std::vector<int> indexList;
     int lastIndex = findLastIndex(path, indexList);
-    if (m_maxFiles > 0 && indexList.size() >= m_maxFiles) /* ÒÑ´ïµ½ÎÄ¼ş×î´óÊı */
+    if (m_maxFiles > 0 && indexList.size() >= m_maxFiles) /* å·²è¾¾åˆ°æ–‡ä»¶æœ€å¤§æ•° */
     {
         size_t discardCount = indexList.size() - m_maxFiles;
         for (size_t i = 0; i < discardCount; ++i)
@@ -116,11 +116,11 @@ bool RotatingLogfile::rotateFileList()
             std::string descardFullName = path + calcFilenameByIndex(indexList.at(i));
             remove(descardFullName.c_str());
         }
-        if (1 == m_maxFiles) /* Ö»ÔÊĞíÒ»¸öÎÄ¼ş, ÔòÇå¿ÕÎÄ¼şÄÚÈİ */
+        if (1 == m_maxFiles) /* åªå…è®¸ä¸€ä¸ªæ–‡ä»¶, åˆ™æ¸…ç©ºæ–‡ä»¶å†…å®¹ */
         {
             m_logfile->clear();
         }
-        else /* ÔÊĞí¶à¸öÎÄ¼ş, É¾³ı×îÔçµÄÎÄ¼ş, °ÑºóÃæµÄÎÄ¼şÏòÇ°ÒÆ¶¯, Áô³ö×îĞÂµÄÎÄ¼ş */
+        else /* å…è®¸å¤šä¸ªæ–‡ä»¶, åˆ é™¤æœ€æ—©çš„æ–‡ä»¶, æŠŠåé¢çš„æ–‡ä»¶å‘å‰ç§»åŠ¨, ç•™å‡ºæœ€æ–°çš„æ–‡ä»¶ */
         {
             m_logfile->close();
             for (size_t i = discardCount + 1, count = indexList.size(); i < count; ++i)
@@ -138,7 +138,7 @@ bool RotatingLogfile::rotateFileList()
             m_logfile->open();
         }
     }
-    else /* ²»ÏŞÎÄ¼ş¸öÊı, »òÎ´´ïµ½×î´óÎÄ¼şÊı */
+    else /* ä¸é™æ–‡ä»¶ä¸ªæ•°, æˆ–æœªè¾¾åˆ°æœ€å¤§æ–‡ä»¶æ•° */
     {
         lastIndex += 1;
         m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(lastIndex), maxSize);

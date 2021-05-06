@@ -33,7 +33,7 @@ Logger LoggerManager::getLogger(const std::string& tagName, const std::string& l
     {
         return Logger(tag, iter->second);
     }
-    /* Ä¬ÈÏÈÕÖ¾Æ÷ÕÒ²»µ½Ôò´´½¨Ä¬ÈÏÄ¿Â¼ÏÂµÄdefaultÈÕÖ¾Æ÷ */
+    /* é»˜è®¤æ—¥å¿—å™¨æ‰¾ä¸åˆ°åˆ™åˆ›å»ºé»˜è®¤ç›®å½•ä¸‹çš„defaultæ—¥å¿—å™¨ */
     InnerLoggerPtr innerLogger = createInnerLogger(m_logPath, name);
     m_loggerMap.insert(std::make_pair(name, innerLogger));
     return Logger(tag, innerLogger);

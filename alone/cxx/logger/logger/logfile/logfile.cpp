@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <iostream>
+#include <string.h>
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
@@ -206,7 +207,12 @@ bool Logfile::open()
         std::cout << "create path [" << m_path << "] fail, errno[" << errno << "]" << std::endl;
         return false;
     }
+#ifdef _WIN32
     if (0 != fopen_s(&m_fp, m_fullName.c_str(), "a+"))
+#else
+    m_fp = fopen(m_fullName.c_str(), "a+");
+    if (!m_fp)
+#endif
     {
         std::cout << "open file [" << m_fullName << "] fail, errno[" << errno << "]" << std::endl;
         return false;
@@ -271,7 +277,12 @@ void Logfile::clear()
         m_fp = nullptr;
     }
     remove(m_fullName.c_str());
-    if (0 == fopen_s(&m_fp, m_fullName.c_str(), "a+"))
+#ifdef _WIN32
+    if (0 != fopen_s(&m_fp, m_fullName.c_str(), "a+"))
+#else
+    m_fp = fopen(m_fullName.c_str(), "a+");
+    if (!m_fp)
+#endif
     {
         fseek(m_fp, 0, SEEK_END);
         m_size.store(ftell(m_fp));

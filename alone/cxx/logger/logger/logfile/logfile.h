@@ -7,37 +7,37 @@
 namespace logger
 {
 /**
- * @brief ÈÕÖ¾ÎÄ¼ş
+ * @brief æ—¥å¿—æ–‡ä»¶
  */
 class Logfile
 {
 public:
     enum class Result
     {
-        OK, /* ³É¹¦ */
-        INVALID, /* ÈÕÖ¾ÎÄ¼şÎŞĞ§ */
-        DISABLED, /* ÈÕÖ¾±»½ûÖ¹Ğ´Èë */
-        TOO_LARGE, /* ÒªĞ´ÈëµÄÄÚÈİÌ«³¤(³¬¹ıÎÄ¼şÈİÁ¿) */
-        WILL_FULL, /* ÄÚÈİĞ´ÈëºóÎÄ¼ş½«Âú */
-        NEWLINE_FAILED, /* Ğ´Èë»»ĞĞ³ö´í */
-        CONTENT_FAILED, /* Ğ´ÈëÄÚÈİ³ö´í */
-        FLUSH_FAILED /* Ë¢ĞÂ³ö´í */
+        OK, /* æˆåŠŸ */
+        INVALID, /* æ—¥å¿—æ–‡ä»¶æ— æ•ˆ */
+        DISABLED, /* æ—¥å¿—è¢«ç¦æ­¢å†™å…¥ */
+        TOO_LARGE, /* è¦å†™å…¥çš„å†…å®¹å¤ªé•¿(è¶…è¿‡æ–‡ä»¶å®¹é‡) */
+        WILL_FULL, /* å†…å®¹å†™å…¥åæ–‡ä»¶å°†æ»¡ */
+        NEWLINE_FAILED, /* å†™å…¥æ¢è¡Œå‡ºé”™ */
+        CONTENT_FAILED, /* å†™å…¥å†…å®¹å‡ºé”™ */
+        FLUSH_FAILED /* åˆ·æ–°å‡ºé”™ */
     };
 
 public:
     /**
-     * @brief ´´½¨Â·¾¶
-     * @param path Â·¾¶, ÀıÈç: "/home/workdpace/logs" »ò "/home/workdpace/logs/"
-     * @return true-´´½¨³É¹¦, false-´´½¨Ê§°Ü
+     * @brief åˆ›å»ºè·¯å¾„
+     * @param path è·¯å¾„, ä¾‹å¦‚: "/home/workdpace/logs" æˆ– "/home/workdpace/logs/"
+     * @return true-åˆ›å»ºæˆåŠŸ, false-åˆ›å»ºå¤±è´¥
      */
     static bool createPath(const std::string& path);
 
     /**
-     * @brief ±éÀúÖ¸¶¨Â·¾¶
-     * @param path Â·¾¶, ÀıÈç: "/home/workdpace/logs" »ò "/home/workdpace/logs/"
-     * @param folderCallback Ä¿Â¼»Øµ÷
-     * @param fileCallback ÎÄ¼ş»Øµ÷
-     * @param recursive ÊÇ·ñµİ¹é±éÀú
+     * @brief éå†æŒ‡å®šè·¯å¾„
+     * @param path è·¯å¾„, ä¾‹å¦‚: "/home/workdpace/logs" æˆ– "/home/workdpace/logs/"
+     * @param folderCallback ç›®å½•å›è°ƒ
+     * @param fileCallback æ–‡ä»¶å›è°ƒ
+     * @param recursive æ˜¯å¦é€’å½’éå†
      */
     static void traverse(std::string path, std::function<void(const std::string& name, long createTime, long writeTime, long accessTime)> folderCallback,
                          std::function<void(const std::string& name, long createTime, long writeTime, long accessTime, unsigned long size)> fileCallback,
@@ -45,95 +45,95 @@ public:
 
 public:
     /**
-     * @brief ¹¹Ôìº¯Êı
-     * @param path ÈÕÖ¾ÎÄ¼şÂ·¾¶, ÀıÈç: "/home/workdpace/logs" »ò "/home/workdpace/logs/"
-     * @param filename ÈÕÖ¾ÎÄ¼şÃû, ÀıÈç: "demo.log"
-     * @param maxSize ÎÄ¼ş×î´óÈİÁ¿Öµ(×Ö½Ú), ÀıÈç: 4M = 4 * 1024 * 1024
+     * @brief æ„é€ å‡½æ•°
+     * @param path æ—¥å¿—æ–‡ä»¶è·¯å¾„, ä¾‹å¦‚: "/home/workdpace/logs" æˆ– "/home/workdpace/logs/"
+     * @param filename æ—¥å¿—æ–‡ä»¶å, ä¾‹å¦‚: "demo.log"
+     * @param maxSize æ–‡ä»¶æœ€å¤§å®¹é‡å€¼(å­—èŠ‚), ä¾‹å¦‚: 4M = 4 * 1024 * 1024
      */
     Logfile(const std::string& path, const std::string& filename, size_t maxSize);
 
     ~Logfile();
 
     /**
-     * @brief ÎÄ¼şÊÇ·ñÒÑ´ò¿ª
-     * @return true-ÓĞĞ§, false-ÎŞĞ§(´ò¿ªÊ§°Ü)
+     * @brief æ–‡ä»¶æ˜¯å¦å·²æ‰“å¼€
+     * @return true-æœ‰æ•ˆ, false-æ— æ•ˆ(æ‰“å¼€å¤±è´¥)
      */
     bool isOpened();
 
     /**
-     * @brief ´ò¿ª
-     * @return true-³É¹¦, false-Ê§°Ü
+     * @brief æ‰“å¼€
+     * @return true-æˆåŠŸ, false-å¤±è´¥
      */
     bool open();
 
     /**
-     * @brief ¹Ø±Õ
+     * @brief å…³é—­
      */
     void close();
 
     /**
-     * @brief »ñÈ¡ÈÕÖ¾ÎÄ¼şÂ·¾¶
-     * @return ÈÕÖ¾ÎÄ¼şÂ·¾¶
+     * @brief è·å–æ—¥å¿—æ–‡ä»¶è·¯å¾„
+     * @return æ—¥å¿—æ–‡ä»¶è·¯å¾„
      */
     std::string getPath() const;
 
     /**
-     * @brief »ñÈ¡ÈÕÖ¾ÎÄ¼şÃû³Æ
-     * @return ÈÕÖ¾ÎÄ¼şÃû
+     * @brief è·å–æ—¥å¿—æ–‡ä»¶åç§°
+     * @return æ—¥å¿—æ–‡ä»¶å
      */
     std::string getFilename() const;
 
     /**
-     * @brief »ñÈ¡ÈÕÖ¾ÎÄ¼şÈ«Ãû(°üº¬Â·¾¶)
-     * @return ÈÕÖ¾ÎÄ¼şÈ«Ãû
+     * @brief è·å–æ—¥å¿—æ–‡ä»¶å…¨å(åŒ…å«è·¯å¾„)
+     * @return æ—¥å¿—æ–‡ä»¶å…¨å
      */
     std::string getFullName() const;
 
     /**
-     * @brief »ñÈ¡ÈÕÖ¾ÎÄ¼ş×î´óÈİÁ¿
-     * @return ÎÄ¼ş×î´óÈİÁ¿(×Ö½Ú)
+     * @brief è·å–æ—¥å¿—æ–‡ä»¶æœ€å¤§å®¹é‡
+     * @return æ–‡ä»¶æœ€å¤§å®¹é‡(å­—èŠ‚)
      */
     size_t getMaxSize() const;
 
     /**
-     * @brief ÊÇ·ñÆôÓÃ¼ÇÂ¼¹¦ÄÜ
-     * @return true-ÆôÓÃ, false-½ûÓÃ
+     * @brief æ˜¯å¦å¯ç”¨è®°å½•åŠŸèƒ½
+     * @return true-å¯ç”¨, false-ç¦ç”¨
      */
     bool isEnable() const;
 
     /**
-     * @brief ÉèÖÃÊÇ·ñÆôÓÃ¼ÇÂ¼¹¦ÄÜ
-     * @param enable ÆôÓÃ±êÊ¶
+     * @brief è®¾ç½®æ˜¯å¦å¯ç”¨è®°å½•åŠŸèƒ½
+     * @param enable å¯ç”¨æ ‡è¯†
      */
     void setEnable(bool enable);
 
     /**
-     * @brief »ñÈ¡ÎÄ¼şµ±Ç°´óĞ¡(×Ö½Ú)
-     * @return µ±Ç°´óĞ¡
+     * @brief è·å–æ–‡ä»¶å½“å‰å¤§å°(å­—èŠ‚)
+     * @return å½“å‰å¤§å°
      */
     size_t getSize();
 
     /**
-     * @brief Çå³ıÈÕÖ¾ÎÄ¼şÄÚÈİ
+     * @brief æ¸…é™¤æ—¥å¿—æ–‡ä»¶å†…å®¹
      */
     void clear();
 
     /**
-     * @brief ¼ÇÂ¼ÈÕÖ¾ÄÚÈİ
-     * @param content ÈÕÖ¾ÄÚÈİ
-     * @param newline ÊÇ·ñ»»ĞĞ
-     * @return ²Ù×÷½á¹û
+     * @brief è®°å½•æ—¥å¿—å†…å®¹
+     * @param content æ—¥å¿—å†…å®¹
+     * @param newline æ˜¯å¦æ¢è¡Œ
+     * @return æ“ä½œç»“æœ
      */
     Result record(const std::string& content, bool newline = true);
 
 private:
-    std::string m_path; /* ÈÕÖ¾ÎÄ¼şÂ·¾¶ */
-    std::string m_filename; /* ÈÕÖ¾ÎÄ¼şÃû */
-    std::string m_fullName; /* ÈÕÖ¾ÎÄ¼şÈ«Ãû(°üº¬Â·¾¶) */
-    size_t m_maxSize; /* ÎÄ¼ş×î´óÈİÁ¿Öµ */
-    std::recursive_mutex m_mutex; /* »¥³âËø */
-    FILE* m_fp = nullptr; /* ÎÄ¼şÖ¸Õë */
-    std::atomic_size_t m_size = 0; /* ÎÄ¼şµ±Ç°´óĞ¡ */
-    std::atomic_bool m_enable = true; /* ÊÇ·ñÆôÓÃÈÕÖ¾¼ÇÂ¼¹¦ÄÜ */
+    std::string m_path; /* æ—¥å¿—æ–‡ä»¶è·¯å¾„ */
+    std::string m_filename; /* æ—¥å¿—æ–‡ä»¶å */
+    std::string m_fullName; /* æ—¥å¿—æ–‡ä»¶å…¨å(åŒ…å«è·¯å¾„) */
+    size_t m_maxSize; /* æ–‡ä»¶æœ€å¤§å®¹é‡å€¼ */
+    std::recursive_mutex m_mutex; /* äº’æ–¥é” */
+    FILE* m_fp = nullptr; /* æ–‡ä»¶æŒ‡é’ˆ */
+    std::atomic_size_t m_size = {0}; /* æ–‡ä»¶å½“å‰å¤§å° */
+    std::atomic_bool m_enable = {true}; /* æ˜¯å¦å¯ç”¨æ—¥å¿—è®°å½•åŠŸèƒ½ */
 };
 } // namespace logger

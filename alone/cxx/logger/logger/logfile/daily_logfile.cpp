@@ -23,7 +23,11 @@ Logfile::Result DailyLogfile::record(const std::string& content, bool newline)
     struct tm t;
     time_t now;
     time(&now);
+#ifdef _WIN32
     localtime_s(&t, &now);
+#else
+    t = *localtime(&now);
+#endif
     char dateStr[9] = {0};
     strftime(dateStr, sizeof(dateStr), "%Y%m%d", &t);
     std::lock_guard<std::recursive_mutex> locker(m_mutex);

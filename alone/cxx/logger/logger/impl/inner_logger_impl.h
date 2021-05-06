@@ -59,9 +59,9 @@ public:
     void print(const Level& level, const std::string& tag, const std::string& file, int line, const std::string& func, const std::string& msg) override;
 
 private:
-    std::atomic<Level> m_level = Level::TRACE; /* 日志等级 */
+    std::atomic<Level> m_level = {Level::TRACE}; /* 日志等级 */
     std::shared_ptr<DailyLogfile> m_dailyLog; /* 每天日志文件 */
-    std::atomic_bool m_consoleEnable = true; /* 是否输出到控制台 */
+    std::atomic_bool m_consoleEnable = {true}; /* 是否输出到控制台 */
 };
 
 using InnerLoggerPtr = std::shared_ptr<InnerLogger>;
