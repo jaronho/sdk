@@ -8,7 +8,7 @@ include(../cmake/tools.cmake)
 
 option(ENABLE_DETAIL "" ON)
 
-if (ENABLE_DETAIL)
+if(ENABLE_DETAIL)
     add_definitions(-DENABLE_LOGGER_DETAIL=1)
 else()
     add_definitions(-DENABLE_LOGGER_DETAIL=0)
