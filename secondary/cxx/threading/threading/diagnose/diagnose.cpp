@@ -110,7 +110,7 @@ void Diagnose::bindTaskToExecutor(const Task* task, const Executor* executor)
     printLog("bind Task [" + task->getName() + "] to Executor [" + executor->getName() + "]");
 }
 
-void Diagnose::onTaskRunning(int64_t threadId, const std::string& threadName, const Task* task)
+void Diagnose::onTaskRunning(int threadId, const std::string& threadName, const Task* task)
 {
     std::lock_guard<std::mutex> lock(s_mutex);
     auto taskInfo = getTaskInfo(task);
@@ -124,7 +124,7 @@ void Diagnose::onTaskRunning(int64_t threadId, const std::string& threadName, co
     printLog(taskInfoToString(taskInfo, false));
 }
 
-void Diagnose::onTaskFinished(int64_t threadId, const std::string& threadName, const Task* task)
+void Diagnose::onTaskFinished(int threadId, const std::string& threadName, const Task* task)
 {
     std::lock_guard<std::mutex> lock(s_mutex);
     auto taskInfo = getTaskInfo(task);
@@ -139,7 +139,7 @@ void Diagnose::onTaskFinished(int64_t threadId, const std::string& threadName, c
     delTaskInfo(task);
 }
 
-void Diagnose::onTaskException(int64_t threadId, const std::string& threadName, const Task* task, const std::string& msg)
+void Diagnose::onTaskException(int threadId, const std::string& threadName, const Task* task, const std::string& msg)
 {
     std::lock_guard<std::mutex> lock(s_mutex);
     auto taskInfo = getTaskInfo(task);

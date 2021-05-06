@@ -60,7 +60,7 @@ protected:
      * @param threadName 线程名称
      * @param task 任务
      */
-    static void onTaskRunning(int64_t threadId, const std::string& threadName, const Task* task);
+    static void onTaskRunning(int threadId, const std::string& threadName, const Task* task);
 
     /**
      * @brief 响应任务运行结束(模块内部接口)
@@ -68,7 +68,7 @@ protected:
      * @param threadName 线程名称
      * @param task 任务
      */
-    static void onTaskFinished(int64_t threadId, const std::string& threadName, const Task* task);
+    static void onTaskFinished(int threadId, const std::string& threadName, const Task* task);
 
     /**
      * @brief 响应任务运行异常(模块内部接口)
@@ -77,7 +77,7 @@ protected:
      * @param task 任务
      * @param msg 异常消息
      */
-    static void onTaskException(int64_t threadId, const std::string& threadName, const Task* task, const std::string& msg);
+    static void onTaskException(int threadId, const std::string& threadName, const Task* task, const std::string& msg);
 
 private:
     static void printLog(const std::string& msg);

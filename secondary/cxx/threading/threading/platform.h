@@ -13,20 +13,20 @@ public:
      * @brief 获取进程id
      * @return 进程id
      */
-    static int64_t getProcessId();
+    static int getProcessId();
 
     /**
      * @brief 获取线程id
      * @return 线程id
      */
-    static int64_t getThreadId();
+    static int getThreadId();
 
     /**
      * @brief 判断线程id是否有效
      * @param threadId 线程id
      * @return 是否有效
     */
-    static bool isValidThreadId(int64_t threadId);
+    static bool isValidThreadId(int threadId);
 
     /**
      * @brief 设置线程名

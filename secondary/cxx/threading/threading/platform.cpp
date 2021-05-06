@@ -1,6 +1,7 @@
 #include "platform.h"
 
 #include <cstdint>
+#include <thread>
 #if WIN32
 #include <Windows.h>
 #else
@@ -12,25 +13,23 @@
 
 namespace threading
 {
-int64_t Platform::getProcessId()
+int Platform::getProcessId()
 {
 #if WIN32
-    return GetCurrentProcessId();
+    return _getpid();
 #else
-    return getpid();
+    return (int)getpid();
 #endif
 }
 
-int64_t Platform::getThreadId()
+int Platform::getThreadId()
 {
-#ifdef WIN32
-    return GetCurrentThreadId();
-#else
-    return static_cast<int64_t>(pthread_mach_thread_np(pthread_self()));
-#endif
+    std::stringstream ss;
+    ss << std::this_thread::get_id();
+    return atoi(ss.str().c_str());
 }
 
-bool Platform::isValidThreadId(int64_t threadId)
+bool Platform::isValidThreadId(int threadId)
 {
 #if WIN32
     if (0 == threadId)
