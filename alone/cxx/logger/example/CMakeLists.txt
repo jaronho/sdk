@@ -6,6 +6,14 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
+option(ENABLE_DETAIL "" ON)
+
+if (ENABLE_DETAIL)
+    add_definitions(-DENABLE_LOGGER_DETAIL=1)
+else()
+    add_definitions(-DENABLE_LOGGER_DETAIL=0)
+endif()
+
 include_directories(../fmt-7.1.3/include)
 set(FMT_SOURCES)
 get_cxx_files(../fmt-7.1.3/src SRC_LIST)

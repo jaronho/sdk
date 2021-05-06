@@ -6,7 +6,7 @@
 #include <string>
 #include <unordered_map>
 
-#if (1 == ENABLE_LOG_DETAIL)
+#if (1 == ENABLE_LOGGER_DETAIL)
 #define TRACE_LOG(logger, f, ...) (logger).trace(__FILE__, __LINE__, __FUNCTION__, fmt::format(FMT_STRING(f), ##__VA_ARGS__))
 #define DEBUG_LOG(logger, f, ...) (logger).debug(__FILE__, __LINE__, __FUNCTION__, fmt::format(FMT_STRING(f), ##__VA_ARGS__))
 #define INFO_LOG(logger, f, ...) (logger).info(__FILE__, __LINE__, __FUNCTION__, fmt::format(FMT_STRING(f), ##__VA_ARGS__))
