@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <thread>
-#if WIN32
+#if _WIN32
 #include <Windows.h>
 #else
 #include <pthread.h>
@@ -15,7 +15,7 @@ namespace threading
 {
 int Platform::getProcessId()
 {
-#if WIN32
+#if _WIN32
     return _getpid();
 #else
     return (int)getpid();
@@ -31,7 +31,7 @@ int Platform::getThreadId()
 
 bool Platform::isValidThreadId(int threadId)
 {
-#if WIN32
+#if _WIN32
     if (0 == threadId)
     {
         return false;
@@ -58,7 +58,7 @@ bool Platform::isValidThreadId(int threadId)
 #endif
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 namespace
 {
 /// See <http://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx>
@@ -96,7 +96,7 @@ void SetThreadName(DWORD dwThreadID, const char* threadName)
 
 void Platform::setThreadName(const std::string& name)
 {
-#if WIN32
+#if _WIN32
     SetThreadName(-1, name.c_str());
 #else
     pthread_setname_np(pthread_self(), name.substr(0, 15).c_str());
