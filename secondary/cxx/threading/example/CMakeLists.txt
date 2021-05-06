@@ -1,0 +1,75 @@
+cmake_minimum_required(VERSION 3.18.0)
+
+project(example_threading)
+
+set(CMAKE_CXX_STANDARD 14)
+
+include(../cmake/tools.cmake)
+
+option(ENABLE_FIBER "" ON)
+
+if(ENABLE_FIBER)
+    find_package(Boost 1.76.0 COMPONENTS fiber REQUIRED)
+    add_definitions(-DENABLE_THREADING_FIBER=1)
+else()
+    find_package(Boost 1.76.0 COMPONENTS REQUIRED)
+    add_definitions(-DENABLE_THREADING_FIBER=0)
+endif()
+
+if(Boost_FOUND)
+    message(STATUS "boost include path is: ${Boost_INCLUDE_DIRS}")
+    message(STATUS "boost library path is: ${Boost_LIBRARY_DIRS}")
+    message(STATUS "boost libraries is: ${Boost_LIBRARIES}")
+    include_directories(${Boost_INCLUDE_DIRS})
+    link_directories(${Boost_LIBRARY_DIRS})
+else()
+    message(WARNING "boost not found.")
+endif()
+
+set(THREADING_TASK_SOURCES)
+get_cxx_files(../threading/task SRC_LIST)
+list(APPEND THREADING_TASK_SOURCES ${SRC_LIST})
+source_group(threading/task FILES ${THREADING_TASK_SOURCES})
+
+set(THREADING_ASIO_SOURCES)
+get_cxx_files(../threading/asio SRC_LIST)
+list(APPEND THREADING_ASIO_SOURCES ${SRC_LIST})
+source_group(threading/asio FILES ${THREADING_ASIO_SOURCES})
+
+if(ENABLE_FIBER)
+    set(THREADING_FIBER_SOURCES)
+    get_cxx_files(../threading/fiber SRC_LIST)
+    list(APPEND THREADING_FIBER_SOURCES ${SRC_LIST})
+    source_group(threading/fiber FILES ${THREADING_FIBER_SOURCES})
+endif()
+
+set(THREADING_DIAGNOSE_SOURCES)
+get_cxx_files(../threading/diagnose SRC_LIST)
+list(APPEND THREADING_DIAGNOSE_SOURCES ${SRC_LIST})
+source_group(threading/diagnose FILES ${THREADING_DIAGNOSE_SOURCES})
+
+set(THREADING_SOURCES)
+get_cxx_files(../threading SRC_LIST)
+list(APPEND THREADING_SOURCES ${SRC_LIST})
+source_group(threading FILES ${THREADING_SOURCES})
+
+set(DEPEND_FILES)
+list(APPEND DEPEND_FILES ${THREADING_TASK_SOURCES} ${THREADING_ASIO_SOURCES})
+if(ENABLE_FIBER)
+    list(APPEND DEPEND_FILES ${THREADING_FIBER_SOURCES})
+endif()
+list(APPEND DEPEND_FILES ${THREADING_DIAGNOSE_SOURCES} ${THREADING_SOURCES})
+print_info(BODY "depend files:")
+foreach(filename ${DEPEND_FILES})
+    message("    " ${filename})
+endforeach()
+
+set(EXAMPLE_FILES)
+get_cxx_files(. SRC_LIST)
+list(APPEND EXAMPLE_FILES ${MODULE_FILES} ${SRC_LIST})
+print_info(BODY "module file list:")
+foreach(filename ${EXAMPLE_FILES})
+    message("    " ${filename})
+endforeach()
+
+add_executable(example_threading ${DEPEND_FILES} ${EXAMPLE_FILES})
