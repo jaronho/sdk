@@ -6,8 +6,8 @@
 
 namespace threading
 {
-static std::mutex s_mutex; /* »¥³âËø */
-static std::unordered_map<const Executor*, ExecutorInfoPtr> s_executors; /* È«¾ÖÖ´ĞĞÕß */
+static std::mutex s_mutex; /* äº’æ–¥é” */
+static std::unordered_map<const Executor*, ExecutorInfoPtr> s_executors; /* å…¨å±€æ‰§è¡Œè€… */
 static std::function<void(const std::string&)> s_logFunc;
 
 void Diagnose::printLog(const std::string& msg)
@@ -201,12 +201,12 @@ std::string Diagnose::taskInfoToString(const TaskInfoPtr& taskInfo, bool showRun
         result += "(" + taskInfo->exceptionMsg + ")";
     }
     auto now = std::chrono::steady_clock::now();
-    /* ÅÅ¶ÓºÄÊ± */
+    /* æ’é˜Ÿè€—æ—¶ */
     if (taskInfo->queuing > zero)
     {
         result += ", queue for [" + durationToString((taskInfo->running > zero ? taskInfo->running : now) - taskInfo->queuing) + "]";
     }
-    /* ÔËĞĞºÄÊ± */
+    /* è¿è¡Œè€—æ—¶ */
     if (showRun && taskInfo->running > zero)
     {
         if (taskInfo->finished > zero)

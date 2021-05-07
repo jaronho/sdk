@@ -12,11 +12,11 @@ AsioExecutor::AsioExecutor(const std::string& name, size_t threadCount) : Execut
     Diagnose::onExecutorCreated(this);
     m_threads.create_threads(
         [this, name] {
-            /* ÉèÖÃÏß³ÌÃû³Æ */
+            /* è®¾ç½®çº¿ç¨‹åç§° */
             ++m_threadIndex;
             auto threadName = name + "-" + std::to_string(m_threadIndex);
             Platform::setThreadName(threadName);
-            /* ¹ØÁªÏß³ÌidºÍÃû³Æ */
+            /* å…³è”çº¿ç¨‹idå’Œåç§° */
             auto threadId = Platform::getThreadId();
             if (m_threadIdNameMap.end() == m_threadIdNameMap.find(threadId))
             {
@@ -45,14 +45,14 @@ TaskPtr AsioExecutor::post(const TaskPtr& task)
     task->setState(Task::State::QUEUING);
     Diagnose::bindTaskToExecutor(task.get(), this);
     boost::asio::post(m_context, [this, task] {
-        /* »ñÈ¡Ïß³ÌÃû³Æ */
+        /* èŽ·å–çº¿ç¨‹åç§° */
         auto threadId = Platform::getThreadId();
         std::string threadName = std::to_string(threadId);
         if (m_threadIdNameMap.end() != m_threadIdNameMap.find(threadId))
         {
             threadName = m_threadIdNameMap[threadId];
         }
-        /* Ö´ÐÐÈÎÎñ */
+        /* æ‰§è¡Œä»»åŠ¡ */
         try
         {
             if (!task->isCancelled())

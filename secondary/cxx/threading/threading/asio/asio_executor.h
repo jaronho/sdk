@@ -41,7 +41,7 @@ public:
     void stop();
 
 private:
-    std::atomic_int m_threadIndex = 0; /* 线程索引 */
+    std::atomic_int m_threadIndex = {0}; /* 线程索引 */
     boost::asio::detail::thread_group m_threads; /* 线程组 */
     boost::asio::io_context m_context;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_worker;

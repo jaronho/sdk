@@ -38,7 +38,7 @@ public:
 
 private:
     std::unique_ptr<boost::fibers::buffered_channel<TaskPtr>> m_channel; /* fiber队列 */
-    std::atomic_int m_count = 0; /* 任务队列个数 */
+    std::atomic_int m_count = {0}; /* 任务队列个数 */
     std::unique_ptr<std::thread> m_thread; /* 线程 */
 };
 } // namespace threading

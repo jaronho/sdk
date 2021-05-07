@@ -34,21 +34,21 @@ public:
      */
     template<typename Func, typename std::enable_if<std::is_void<typename std::result_of<Func()>::type>::value, int>::type>
     static typename std::result_of<Func()>::type sync(const std::string& taskName, const Func& function, const ExecutorPtr& executor,
-                                                      const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero)
+                                                      const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero())
     {
         auto result = std::make_shared<std::promise<void>>();
         auto future = result->get_future().share();
-        TaskPtr task = executor->post(taskName, [function = std::move(function), result] {
+        auto task = executor->post(taskName, [function = std::move(function), result] {
             function();
             result->set_value();
         });
-        if (timeout > std::chrono::steady_clock::duration::zero)
+        if (timeout > std::chrono::steady_clock::duration::zero())
         {
             auto waitResult = future.wait_for(timeout);
             if (std::future_status::timeout == waitResult) /* 超时判断 */
             {
                 int64_t millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
-                Diagnose::onTaskException(0, std::string(), task, "timeout [" + std::to_string(millisecond) + "]");
+                Diagnose::onTaskException(0, std::string(), task.get(), "timeout [" + std::to_string(millisecond) + "]");
             }
         }
         future.get();
@@ -64,18 +64,18 @@ public:
      */
     template<typename Func, typename std::enable_if<!std::is_void<typename std::result_of<Func()>::type>::value, int>::type>
     static typename std::result_of<Func()>::type sync(const std::string& taskName, const Func& function, const ExecutorPtr& executor,
-                                                      const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero)
+                                                      const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero())
     {
         auto result = std::make_shared<std::promise<typename std::result_of<Func()>::type>>();
         auto future = result->get_future().share();
-        executor->post(taskName, [function = std::move(function), result] { result->set_value(function()); });
-        if (timeout > std::chrono::steady_clock::duration::zero)
+        auto task = executor->post(taskName, [function = std::move(function), result] { result->set_value(function()); });
+        if (timeout > std::chrono::steady_clock::duration::zero())
         {
             auto waitResult = future.wait_for(timeout);
             if (std::future_status::timeout == waitResult) /* 超时判断 */
             {
                 int64_t millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
-                Diagnose::onTaskException(0, std::string(), task, "timeout [" + std::to_string(millisecond) + "]");
+                Diagnose::onTaskException(0, std::string(), task.get(), "timeout [" + std::to_string(millisecond) + "]");
             }
         }
         return future.get();

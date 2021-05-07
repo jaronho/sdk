@@ -1,6 +1,7 @@
 #include "platform.h"
 
 #include <cstdint>
+#include <sstream>
 #include <thread>
 #if _WIN32
 #include <Windows.h>
