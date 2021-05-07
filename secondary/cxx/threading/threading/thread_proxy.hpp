@@ -1,6 +1,9 @@
 #pragma once
 
 #include "asio/asio_executor.h"
+#if 1 == ENABLE_THREADING_FIBER
+#include "fiber/fiber_executor.h"
+#endif
 #include "diagnose/diagnose.h"
 
 #include <chrono>
@@ -93,8 +96,6 @@ public:
     }
 
 #if 1 == ENABLE_THREADING_FIBER
-#include "fiber/fiber_executor.h"
-
     /**
      * @brief 创建asio线程
      * @param name 线程名称
@@ -155,7 +156,7 @@ public:
     static typename std::result_of<Func()>::type await(const std::string& taskName, const Func& function, const ExecutorPtr& executor)
     {
         auto promise = std::make_shared<boost::fibers::promise<typename std::result_of<Func()>::type>>();
-        executor->Post(taskName, [function = std::move(function), promise] { promise->set_value(function()); });
+        executor->post(taskName, [function = std::move(function), promise] { promise->set_value(function()); });
         return promise->get_future().get();
     }
 #endif

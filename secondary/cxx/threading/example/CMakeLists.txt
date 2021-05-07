@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-option(ENABLE_FIBER "是否启用Boost库的Fiber模块" OFF)
+option(ENABLE_FIBER "是否启用Boost库的Fiber模块" ON)
 
 if(ENABLE_FIBER)
     find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time fiber)
