@@ -6,7 +6,8 @@
 
 namespace logger
 {
-DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& extName, size_t maxSize, size_t maxFiles)
+DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& extName, size_t maxSize,
+                           size_t maxFiles)
 {
     assert(!path.empty());
     assert(extName.size() > 1);

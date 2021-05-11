@@ -56,7 +56,8 @@ public:
      * @param func 函数名
      * @param msg 日志消息
      */
-    void print(const Level& level, const std::string& tag, const std::string& file, int line, const std::string& func, const std::string& msg) override;
+    void print(const Level& level, const std::string& tag, const std::string& file, int line, const std::string& func,
+               const std::string& msg) override;
 
 private:
     std::atomic<Level> m_level = {Level::TRACE}; /* 日志等级 */

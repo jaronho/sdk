@@ -39,9 +39,10 @@ public:
      * @param fileCallback 文件回调
      * @param recursive 是否递归遍历
      */
-    static void traverse(std::string path, std::function<void(const std::string& name, long createTime, long writeTime, long accessTime)> folderCallback,
-                         std::function<void(const std::string& name, long createTime, long writeTime, long accessTime, unsigned long size)> fileCallback,
-                         bool recursive = true);
+    static void traverse(
+        std::string path, std::function<void(const std::string& name, long createTime, long writeTime, long accessTime)> folderCallback,
+        std::function<void(const std::string& name, long createTime, long writeTime, long accessTime, unsigned long size)> fileCallback,
+        bool recursive = true);
 
 public:
     /**

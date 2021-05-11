@@ -77,7 +77,8 @@ public:
      * @param func 函数名
      * @param msg 日志消息
      */
-    virtual void print(const Level& level, const std::string& tag, const std::string& file, int line, const std::string& func, const std::string& msg) = 0;
+    virtual void print(const Level& level, const std::string& tag, const std::string& file, int line, const std::string& func,
+                       const std::string& msg) = 0;
 
 private:
     const std::string m_path; /* 日志路径 */

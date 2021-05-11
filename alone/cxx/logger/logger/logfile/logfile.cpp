@@ -64,9 +64,10 @@ bool Logfile::createPath(const std::string& path)
     return true;
 }
 
-void Logfile::traverse(std::string path, std::function<void(const std::string& name, long createTime, long writeTime, long accessTime)> folderCallback,
-                       std::function<void(const std::string& name, long createTime, long writeTime, long accessTime, unsigned long size)> fileCallback,
-                       bool recursive)
+void Logfile::traverse(
+    std::string path, std::function<void(const std::string& name, long createTime, long writeTime, long accessTime)> folderCallback,
+    std::function<void(const std::string& name, long createTime, long writeTime, long accessTime, unsigned long size)> fileCallback,
+    bool recursive)
 {
     char lastPathChar = path.at(path.length() - 1);
     if ('/' == lastPathChar || '\\' == lastPathChar)
@@ -107,7 +108,8 @@ void Logfile::traverse(std::string path, std::function<void(const std::string& n
         {
             if (fileCallback)
             {
-                fileCallback(subName, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access), fileData.size);
+                fileCallback(subName, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access),
+                             fileData.size);
             }
         }
         if (recursive)

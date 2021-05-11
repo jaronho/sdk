@@ -129,7 +129,8 @@ void InnerLoggerImpl::setConsoleEnable(bool enable)
     m_consoleEnable = true;
 }
 
-void InnerLoggerImpl::print(const Level& level, const std::string& tag, const std::string& file, int line, const std::string& func, const std::string& msg)
+void InnerLoggerImpl::print(const Level& level, const std::string& tag, const std::string& file, int line, const std::string& func,
+                            const std::string& msg)
 {
     static const std::string PID = std::to_string(getProcessId());
     DateTime dt = getDateTime();
