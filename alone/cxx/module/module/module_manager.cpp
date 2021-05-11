@@ -37,7 +37,8 @@ int ModuleManager::create()
         get(creatorIter.first, true);
         std::chrono::nanoseconds nanosecondsCost = std::chrono::steady_clock::now() - begin;
         std::chrono::milliseconds millisecondsCost = std::chrono::duration_cast<std::chrono::milliseconds>(nanosecondsCost);
-        printLog("module [" + std::string(creatorIter.first.name()) + "] created, cost " + std::to_string(millisecondsCost.count()) + " ms");
+        printLog("module [" + std::string(creatorIter.first.name()) + "] created, cost " + std::to_string(millisecondsCost.count())
+                 + " ms");
     }
     return static_cast<int>(m_modules.size());
 }
