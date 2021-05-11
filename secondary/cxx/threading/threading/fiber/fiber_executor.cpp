@@ -76,7 +76,8 @@ TaskPtr FiberExecutor::post(const TaskPtr& task)
         break;
     }
     case boost::fibers::channel_op_status::full: {
-        Diagnose::onTaskException(Platform::getThreadId(), getName(), task.get(), "fiber task full, count [" + std::to_string(m_count) + "]");
+        Diagnose::onTaskException(Platform::getThreadId(), getName(), task.get(),
+                                  "fiber task full, count [" + std::to_string(m_count) + "]");
         break;
     }
     case boost::fibers::channel_op_status::closed: {
@@ -84,7 +85,8 @@ TaskPtr FiberExecutor::post(const TaskPtr& task)
         break;
     }
     default: {
-        Diagnose::onTaskException(Platform::getThreadId(), getName(), task.get(), "fiber invalid, status [" + std::to_string((int)ret) + "]");
+        Diagnose::onTaskException(Platform::getThreadId(), getName(), task.get(),
+                                  "fiber invalid, status [" + std::to_string((int)ret) + "]");
     }
     }
     return task;

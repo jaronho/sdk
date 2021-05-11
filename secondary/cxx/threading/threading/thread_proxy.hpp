@@ -36,8 +36,9 @@ public:
      * @param timeout 超时时间
      */
     template<typename Func, typename std::enable_if<std::is_void<typename std::result_of<Func()>::type>::value, int>::type>
-    static typename std::result_of<Func()>::type sync(const std::string& taskName, const Func& function, const ExecutorPtr& executor,
-                                                      const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero())
+    static typename std::result_of<Func()>::type
+    sync(const std::string& taskName, const Func& function, const ExecutorPtr& executor,
+         const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero())
     {
         auto result = std::make_shared<std::promise<void>>();
         auto future = result->get_future().share();
@@ -66,8 +67,9 @@ public:
      * @return 任意类型
      */
     template<typename Func, typename std::enable_if<!std::is_void<typename std::result_of<Func()>::type>::value, int>::type>
-    static typename std::result_of<Func()>::type sync(const std::string& taskName, const Func& function, const ExecutorPtr& executor,
-                                                      const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero())
+    static typename std::result_of<Func()>::type
+    sync(const std::string& taskName, const Func& function, const ExecutorPtr& executor,
+         const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero())
     {
         auto result = std::make_shared<std::promise<typename std::result_of<Func()>::type>>();
         auto future = result->get_future().share();
