@@ -10,7 +10,6 @@ find_package(CURL 7.76.1 REQUIRED)
 
 if(CURL_FOUND)
     message(STATUS "CURL include path: ${CURL_INCLUDE_DIRS}")
-    message(STATUS "CURL library path: ${CURL_LIBRARIES}")
     include_directories(${CURL_INCLUDE_DIRS})
 else()
     message(WARNING "CURL not found")
@@ -37,4 +36,4 @@ foreach(filename ${EXAMPLE_FILES})
 endforeach()
 
 add_executable(example_curlex ${DEPEND_FILES} ${EXAMPLE_FILES})
-target_link_libraries(example_curlex ${CURL_LIBRARIES} CURL::libcurl)
+target_link_libraries(example_curlex CURL::libcurl)
