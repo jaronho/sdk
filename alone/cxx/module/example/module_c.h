@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../module/module_manager.h"
+#include "module/module_manager.h"
 
 class ModuleC : public module::Module
 {
