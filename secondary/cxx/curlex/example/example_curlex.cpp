@@ -247,21 +247,18 @@ void testCurlGet()
     const std::string TAG = "GET, recv";
 #if 0
     auto req = std::make_shared<curlex::SimpleRequest>("https://www.baidu.com");
-    curlex::SimpleResponse resp;
-    auto ret = curlex::curlGet(req, nullptr, [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); }, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
 #else
     std::string url = HOST + "/base64/SFRUUEJJTiBpcyBhd2Vzb21l";
     std::cout << "===================== test curl GET" << std::endl;
     std::cout << "url: " << url << std::endl;
     auto req = std::make_shared<curlex::SimpleRequest>(url);
+#endif
+    curlex::FuncSet funcSet;
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); };
     curlex::SimpleResponse resp;
-    auto ret = curlex::curlGet(
-        req, nullptr, [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); }, resp);
+    auto ret = curlex::curlGet(req, funcSet, resp);
     std::cout << "ret: " << ret << std::endl;
     printSimpleResponse(resp);
-#endif
 }
 
 /**
@@ -284,10 +281,11 @@ void testCurlPostRaw()
     }
     auto req = std::make_shared<curlex::SimpleRequest>(url);
     req->setData(data);
+    curlex::FuncSet funcSet;
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG1, now, total, speed); };
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG2, now, total, speed); };
     curlex::SimpleResponse resp;
-    auto ret = curlex::curlPost(
-        req, nullptr, [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG1, now, total, speed); },
-        [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG2, now, total, speed); }, resp);
+    auto ret = curlex::curlPost(req, funcSet, resp);
     std::cout << "ret: " << ret << std::endl;
     printSimpleResponse(resp);
 }
@@ -305,10 +303,11 @@ void testCurlPostForm()
     auto data = std::make_shared<curlex::FormRequestData>("name=jaronho&sex=male&age=33");
     auto req = std::make_shared<curlex::SimpleRequest>(url);
     req->setData(data);
+    curlex::FuncSet funcSet;
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG1, now, total, speed); };
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG2, now, total, speed); };
     curlex::SimpleResponse resp;
-    auto ret = curlex::curlPost(
-        req, nullptr, [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG1, now, total, speed); },
-        [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG2, now, total, speed); }, resp);
+    auto ret = curlex::curlPost(req, funcSet, resp);
     std::cout << "ret: " << ret << std::endl;
     printSimpleResponse(resp);
 }
@@ -333,10 +332,11 @@ void testCurlPostMultipartForm()
     data->addFile("file3", "test1.png");
     auto req = std::make_shared<curlex::SimpleRequest>(url);
     req->setData(data);
+    curlex::FuncSet funcSet;
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG1, now, total, speed); };
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG2, now, total, speed); };
     curlex::SimpleResponse resp;
-    auto ret = curlex::curlPost(
-        req, nullptr, [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG1, now, total, speed); },
-        [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG2, now, total, speed); }, resp);
+    auto ret = curlex::curlPost(req, funcSet, resp);
     std::cout << "ret: " << ret << std::endl;
     printSimpleResponse(resp);
 }
@@ -351,9 +351,10 @@ void testCurlPut()
     std::cout << "===================== test curl PUT raw" << std::endl;
     std::cout << "url: " << url << std::endl;
     auto req = std::make_shared<curlex::SimpleRequest>(url);
+    curlex::FuncSet funcSet;
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); };
     curlex::SimpleResponse resp;
-    auto ret = curlex::curlPut(
-        req, nullptr, [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); }, resp);
+    auto ret = curlex::curlPut(req, funcSet, resp);
     std::cout << "ret: " << ret << std::endl;
     printSimpleResponse(resp);
 }
@@ -367,8 +368,9 @@ void testCurlDelete()
     std::cout << "===================== test curl DELETE" << std::endl;
     std::cout << "url: " << url << std::endl;
     auto req = std::make_shared<curlex::SimpleRequest>(url);
+    curlex::FuncSet funcSet;
     curlex::SimpleResponse resp;
-    auto ret = curlex::curlDelete(req, resp);
+    auto ret = curlex::curlDelete(req, funcSet, resp);
     std::cout << "ret: " << ret << std::endl;
     printSimpleResponse(resp);
 }
@@ -384,9 +386,10 @@ void testCurlDownload()
     std::cout << "===================== test curl DOWNLOAD" << std::endl;
     std::cout << "url: " << url << std::endl;
     auto req = std::make_shared<curlex::SimpleRequest>(url + filename);
+    curlex::FuncSet funcSet;
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); };
     curlex::Response resp;
-    auto ret = curlex::curlDownload(
-        req, filename, true, nullptr, [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); }, resp);
+    auto ret = curlex::curlDownload(req, filename, true, funcSet, resp);
     std::cout << "ret: " << ret << std::endl;
     printResponse(resp);
 }

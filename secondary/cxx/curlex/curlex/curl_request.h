@@ -117,6 +117,13 @@ public:
     void setHeaders(const std::map<std::string, std::string>& headers);
 
     /**
+     * @brief 追加头部
+     * @param key 键(若已经存在, 则覆盖掉之前的值)
+     * @param value 值
+     */
+    void appendHeader(const std::string& key, const std::string& value);
+
+    /**
      * @brief 获取cookie文件
      * @return 文件名
      */
@@ -128,8 +135,16 @@ public:
      */
     void setCookieFile(const std::string& filename);
 
+    /**
+     * @brief 获取数据
+     * @return 数据
+     */
     RequestDataPtr getData();
 
+    /**
+     * @brief 设置数据
+     * @param data 数据
+     */
     void setData(const RequestDataPtr& data);
 
 private:

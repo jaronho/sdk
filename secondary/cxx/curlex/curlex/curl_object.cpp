@@ -575,10 +575,13 @@ bool CurlObject::perform(int& curlCode, std::string& errorDesc, int& respCode, s
         {
             break;
         }
-        code = setOption(CURLOPT_WRITEDATA, &m_recvFunc);
-        if (CURLE_OK != code)
+        if (m_recvFunc)
         {
-            break;
+            code = setOption(CURLOPT_WRITEDATA, &m_recvFunc);
+            if (CURLE_OK != code)
+            {
+                break;
+            }
         }
         code = setOption(CURLOPT_HEADERFUNCTION, onResponseHeaderFunc);
         if (CURLE_OK != code)

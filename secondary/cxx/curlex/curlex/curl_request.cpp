@@ -71,6 +71,15 @@ void Request::setHeaders(const std::map<std::string, std::string>& headers)
     m_headers = headers;
 }
 
+void Request::appendHeader(const std::string& key, const std::string& value)
+{
+    if (key.empty())
+    {
+        return;
+    }
+    m_headers[key] = value;
+}
+
 std::string Request::getCookieFile()
 {
     return m_cookieFilename;

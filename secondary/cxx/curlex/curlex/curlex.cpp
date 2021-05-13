@@ -1,7 +1,5 @@
 #include "curlex.h"
 
-#include "curl_object.h"
-
 #include <iostream>
 
 namespace curlex
@@ -9,9 +7,10 @@ namespace curlex
 /**
  * @brief 根据请求参数创建Curl对象
  * @param req 请求参数
+ * @param funcSet 函数集
  * @return Curl对象
  */
-std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req)
+std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSet& funcSet)
 {
     /* step1: 创建对象 */
     std::shared_ptr<CurlObject> obj;
@@ -64,7 +63,25 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req)
     {
         obj->setCookieFile(cookieFile);
     }
-    /* step3: 设置数据 */
+    /* step3: 设置函数 */
+    obj->setProgressFunc([&](int64_t nowUploaded, int64_t totalUpload, double uploadSpeed, int64_t nowDownloaded, int64_t totalDownload,
+                             double downloadSpeed) {
+        if (funcSet.isStopFunc && funcSet.isStopFunc())
+        {
+            return true;
+        }
+        if (funcSet.sendProgressFunc)
+        {
+            funcSet.sendProgressFunc(nowUploaded, totalUpload, uploadSpeed);
+        }
+        if (funcSet.recvProgressFunc)
+        {
+            funcSet.recvProgressFunc(nowDownloaded, totalDownload, downloadSpeed);
+        }
+        return false;
+    });
+    obj->setDebugFunc(funcSet.debugFunc);
+    /* step4: 设置数据 */
     auto reqData = req->getData();
     if (reqData)
     {
@@ -101,32 +118,19 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req)
     return obj;
 }
 
-bool curlGet(const RequestPtr& req, const IsStopFunc& isStopFunc, const ProgressFunc& recvProgressFunc, SimpleResponse& resp)
+bool curlGet(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
 {
-    auto obj = createCurlObject(req);
+    auto obj = createCurlObject(req, funcSet);
     obj->setRecvFunc([&](void* bytes, size_t count) {
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    obj->setProgressFunc([&](int64_t nowUploaded, int64_t totalUpload, double uploadSpeed, int64_t nowDownloaded, int64_t totalDownload,
-                             double downloadSpeed) {
-        if (isStopFunc && isStopFunc())
-        {
-            return true;
-        }
-        if (recvProgressFunc)
-        {
-            recvProgressFunc(nowDownloaded, totalDownload, downloadSpeed);
-        }
-        return false;
-    });
     return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
 }
 
-bool curlPost(const RequestPtr& req, const IsStopFunc& isStopFunc, const ProgressFunc& sendProgressFunc,
-              const ProgressFunc& recvProgressFunc, SimpleResponse& resp)
+bool curlPost(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
 {
-    auto obj = createCurlObject(req);
+    auto obj = createCurlObject(req, funcSet);
     auto code = obj->setOption(CURLOPT_POST, 1L);
     if (CURLE_OK != code)
     {
@@ -136,28 +140,12 @@ bool curlPost(const RequestPtr& req, const IsStopFunc& isStopFunc, const Progres
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    obj->setProgressFunc([&](int64_t nowUploaded, int64_t totalUpload, double uploadSpeed, int64_t nowDownloaded, int64_t totalDownload,
-                             double downloadSpeed) {
-        if (isStopFunc && isStopFunc())
-        {
-            return true;
-        }
-        if (sendProgressFunc)
-        {
-            sendProgressFunc(nowUploaded, totalUpload, uploadSpeed);
-        }
-        if (recvProgressFunc)
-        {
-            recvProgressFunc(nowDownloaded, totalDownload, downloadSpeed);
-        }
-        return false;
-    });
     return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
 }
 
-bool curlPut(const RequestPtr& req, const IsStopFunc& isStopFunc, const ProgressFunc& sendProgressFunc, SimpleResponse& resp)
+bool curlPut(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
 {
-    auto obj = createCurlObject(req);
+    auto obj = createCurlObject(req, funcSet);
     auto code = obj->setOption(CURLOPT_PUT, 1L);
     if (CURLE_OK != code)
     {
@@ -172,24 +160,12 @@ bool curlPut(const RequestPtr& req, const IsStopFunc& isStopFunc, const Progress
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    obj->setProgressFunc([&](int64_t nowUploaded, int64_t totalUpload, double uploadSpeed, int64_t nowDownloaded, int64_t totalDownload,
-                             double downloadSpeed) {
-        if (isStopFunc && isStopFunc())
-        {
-            return true;
-        }
-        if (sendProgressFunc)
-        {
-            sendProgressFunc(nowUploaded, totalUpload, uploadSpeed);
-        }
-        return false;
-    });
     return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
 }
 
-bool curlDelete(const RequestPtr& req, SimpleResponse& resp)
+bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
 {
-    auto obj = createCurlObject(req);
+    auto obj = createCurlObject(req, funcSet);
     auto code = obj->setOption(CURLOPT_CUSTOMREQUEST, "DELETE");
     if (CURLE_OK != code)
     {
@@ -202,8 +178,7 @@ bool curlDelete(const RequestPtr& req, SimpleResponse& resp)
     return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
 }
 
-bool curlDownload(const RequestPtr& req, const std::string& filename, bool recover, const IsStopFunc& isStopFunc,
-                  const ProgressFunc& downloadProgressFunc, Response& resp)
+bool curlDownload(const RequestPtr& req, const std::string& filename, bool recover, const FuncSet& funcSet, Response& resp)
 {
     if (filename.empty())
     {
@@ -221,23 +196,14 @@ bool curlDownload(const RequestPtr& req, const std::string& filename, bool recov
     }
     fseek(fp, 0L, SEEK_END);
     auto offset = ftell(fp);
-    auto obj = createCurlObject(req);
+    auto obj = createCurlObject(req, funcSet);
     if (offset > 0)
     {
         obj->setResumeOffset(offset);
     }
-    obj->setRecvFunc([&](void* bytes, size_t count) { return fwrite(bytes, 1, count, fp); });
-    obj->setProgressFunc([&](int64_t nowUploaded, int64_t totalUpload, double uploadSpeed, int64_t nowDownloaded, int64_t totalDownload,
-                             double downloadSpeed) {
-        if (isStopFunc && isStopFunc())
-        {
-            return true;
-        }
-        if (downloadProgressFunc)
-        {
-            downloadProgressFunc(nowDownloaded, totalDownload, downloadSpeed);
-        }
-        return false;
+    obj->setRecvFunc([&](void* bytes, size_t count) {
+        size_t writeCount = fwrite(bytes, 1, count, fp);
+        return writeCount;
     });
     auto ret = obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
     fclose(fp);
