@@ -11,13 +11,13 @@ std::string Task::getName() const
 
 void Task::setState(const State& state)
 {
-    m_state = state;
+    m_state.store(state);
     m_cv.notify_all();
 }
 
 Task::State Task::getState() const
 {
-    return m_state;
+    return m_state.load();
 }
 
 bool Task::isCancelled() const
@@ -33,6 +33,6 @@ void Task::cancel()
 void Task::join()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
-    m_cv.wait(lock, [this] { return m_state != State::RUNNING; });
+    m_cv.wait(lock, [this] { return State::RUNNING != m_state.load(); });
 }
 } // namespace threading
