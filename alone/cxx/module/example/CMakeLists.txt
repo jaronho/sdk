@@ -13,7 +13,7 @@ include_directories(${module_path})
 set(module_src_list)
 get_cxx_files(${module_path}/module src_list)
 list(APPEND module_src_list ${src_list})
-source_group(module FILES ${module_src_list})
+source_group(3rdparty/module FILES ${module_src_list})
 
 set(module_files)
 list(APPEND module_files ${module_src_list})
