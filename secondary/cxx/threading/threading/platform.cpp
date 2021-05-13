@@ -25,9 +25,11 @@ int Platform::getProcessId()
 
 int Platform::getThreadId()
 {
-    std::stringstream ss;
-    ss << std::this_thread::get_id();
-    return atoi(ss.str().c_str());
+#if _WIN32
+    return GetCurrentThreadId();
+#else
+    return syscall(__NR_gettid);
+#endif
 }
 
 bool Platform::isValidThreadId(int threadId)
