@@ -3,11 +3,11 @@
 #include <iostream>
 
 /**
- * @brief ∂¡»°Œƒº˛ƒ⁄»›
- * @param filePath Œƒº˛¬∑æ∂
- * @param fileSize [ ‰≥ˆ]Œƒº˛¥Û–°
- * @param isText  «∑ÒŒƒ±æŒƒº˛
- * @return Œƒº˛ƒ⁄»›
+ * @brief ËØªÂèñÊñá‰ª∂ÂÜÖÂÆπ
+ * @param filePath Êñá‰ª∂Ë∑ØÂæÑ
+ * @param fileSize [ËæìÂá∫]Êñá‰ª∂Â§ßÂ∞è
+ * @param isText ÊòØÂê¶ÊñáÊú¨Êñá‰ª∂
+ * @return Êñá‰ª∂ÂÜÖÂÆπ
  */
 unsigned char* getFileData(const std::string& filePath, long* fileSize, bool isText)
 {
@@ -40,11 +40,11 @@ unsigned char* getFileData(const std::string& filePath, long* fileSize, bool isT
 }
 
 /**
- * @brief –¥ƒ⁄»›µΩŒƒº˛
- * @param data Œƒº˛ƒ⁄»›
- * @param dataSize ƒ⁄»›¥Û–°
- * @param filePath Œƒº˛¬∑æ∂
- * @return true-≥…π¶, false- ß∞‹
+ * @brief ÂÜôÂÜÖÂÆπÂà∞Êñá‰ª∂
+ * @param data Êñá‰ª∂ÂÜÖÂÆπ
+ * @param dataSize ÂÜÖÂÆπÂ§ßÂ∞è
+ * @param filePath Êñá‰ª∂Ë∑ØÂæÑ
+ * @return true-ÊàêÂäü, false-Â§±Ë¥•
  */
 bool writeDataToFile(const unsigned char* data, long dataSize, const std::string& filePath)
 {
@@ -68,8 +68,8 @@ bool writeDataToFile(const unsigned char* data, long dataSize, const std::string
 }
 
 /**
- * @brief ¥Ú”°œÏ”¶∂‘œÛ
- * @param resp œÏ”¶∂‘œÛ
+ * @brief ÊâìÂç∞ÂìçÂ∫îÂØπË±°
+ * @param resp ÂìçÂ∫îÂØπË±°
  */
 void printResponse(const curlex::Response& resp)
 {
@@ -95,8 +95,8 @@ void printResponse(const curlex::Response& resp)
 }
 
 /**
- * @brief ¥Ú”°ºÚµ•œÏ”¶∂‘œÛ
- * @param resp ºÚµ•œÏ”¶∂‘œÛ
+ * @brief ÊâìÂç∞ÁÆÄÂçïÂìçÂ∫îÂØπË±°
+ * @param resp ÁÆÄÂçïÂìçÂ∫îÂØπË±°
  */
 void printSimpleResponse(const curlex::Response& resp)
 {
@@ -124,11 +124,11 @@ void printSimpleResponse(const curlex::Response& resp)
 }
 
 /**
- * @brief ¥Ú”°Ω¯∂»–≈œ¢
- * @param tag ±Í«©
- * @param now µ±«∞Ω¯∂»
- * @param total ◊‹Ω¯∂»
- * @param speed ÀŸ∂»
+ * @brief ÊâìÂç∞ËøõÂ∫¶‰ø°ÊÅØ
+ * @param tag Ê†áÁ≠æ
+ * @param now ÂΩìÂâçËøõÂ∫¶
+ * @param total ÊÄªËøõÂ∫¶
+ * @param speed ÈÄüÂ∫¶
  */
 #ifdef _WIN32
 #define SPRINTF(buffer, f, ...) sprintf_s(buffer, f, ##__VA_ARGS__)
@@ -141,7 +141,7 @@ void printProgressInfo(const std::string& tag, int64_t now, int64_t total, doubl
     static const double GBU = (double)1024 * 1024 * 1024;
     static const double MBU = (double)1024 * 1024;
     static const double KBU = (double)1024;
-    /* ◊‹Ω¯∂» */
+    /* ÊÄªËøõÂ∫¶ */
     double totalF = (double)total;
     char totalDesc[16] = {0};
     if (totalF > GBU)
@@ -163,7 +163,7 @@ void printProgressInfo(const std::string& tag, int64_t now, int64_t total, doubl
     {
         SPRINTF(totalDesc, "%dB", (int)totalF);
     }
-    /* µ±«∞Ω¯∂» */
+    /* ÂΩìÂâçËøõÂ∫¶ */
     double nowF = (double)now;
     char nowDesc[16] = {0};
     if (nowF > GBU)
@@ -185,7 +185,7 @@ void printProgressInfo(const std::string& tag, int64_t now, int64_t total, doubl
     {
         SPRINTF(nowDesc, "%dB", (int)nowF);
     }
-    /* ÀŸ∂» */
+    /* ÈÄüÂ∫¶ */
     char speedDesc[16] = {0};
     if (speed > GBU)
     {
@@ -210,18 +210,18 @@ void printProgressInfo(const std::string& tag, int64_t now, int64_t total, doubl
 }
 
 /**
- * @brief ◊º±∏≤‚ ‘Œƒº˛
+ * @brief ÂáÜÂ§áÊµãËØïÊñá‰ª∂
  */
 void prepareTestFiles()
 {
-    /* ¥¥Ω®≤‚ ‘Œƒ±æŒƒº˛ */
+    /* ÂàõÂª∫ÊµãËØïÊñáÊú¨Êñá‰ª∂ */
     std::string text1 = "Hello world!";
     writeDataToFile((const unsigned char*)text1.c_str(), text1.size(), "test1.txt");
 
     std::string text2 = "Reading the fucking source code!!!";
     writeDataToFile((const unsigned char*)text2.c_str(), text2.size(), "test2.txt");
 
-    /* ¥¥Ω®≤‚ ‘Õº∆¨Œƒº˛ */
+    /* ÂàõÂª∫ÊµãËØïÂõæÁâáÊñá‰ª∂ */
     unsigned char buffer1[] = {
         0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x4B, 0x00,
         0x00, 0x00, 0x40, 0x08, 0x02, 0x00, 0x00, 0x00, 0xDD, 0xEB, 0x1D, 0x7E, 0x00, 0x00, 0x00, 0x01, 0x73, 0x52, 0x47, 0x42, 0x00,
@@ -236,131 +236,11 @@ void prepareTestFiles()
     writeDataToFile(buffer1, sizeof(buffer1) / sizeof(unsigned char), "test1.png");
 }
 
-/* ø…“‘”√”⁄≤‚ ‘µƒHTTP∑˛ŒÒ∆˜ */
+/* ÂèØ‰ª•Áî®‰∫éÊµãËØïÁöÑHTTPÊúçÂä°Âô® */
 const std::string HOST = "http://httpbin.org";
 
 /**
- * @brief ≤‚ ‘GET
- */
-void testCurlGet()
-{
-    const std::string TAG = "GET, recv";
-#if 0
-    auto req = std::make_shared<curlex::SimpleRequest>("https://www.baidu.com");
-#else
-    std::string url = HOST + "/base64/SFRUUEJJTiBpcyBhd2Vzb21l";
-    std::cout << "===================== test curl GET" << std::endl;
-    std::cout << "url: " << url << std::endl;
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-#endif
-    curlex::FuncSet funcSet;
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); };
-    curlex::Response resp;
-    auto ret = curlex::curlGet(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief ≤‚ ‘POST£∫◊÷Ω⁄¡˜
- */
-void testCurlPostRaw()
-{
-    const std::string TAG1 = "POST raw, send";
-    const std::string TAG2 = "POST raw, recv";
-    std::string url = HOST + "/anything";
-    std::cout << "===================== test curl POST raw" << std::endl;
-    std::cout << "url: " << url << std::endl;
-    long length = 0;
-    unsigned char* buffer = getFileData("test1.png", &length, false);
-    auto data = std::make_shared<curlex::RawRequestData>(buffer, length);
-    if (buffer)
-    {
-        delete[] buffer;
-        buffer = nullptr;
-    }
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    req->setData(data);
-    curlex::FuncSet funcSet;
-    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG1, now, total, speed); };
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG2, now, total, speed); };
-    curlex::Response resp;
-    auto ret = curlex::curlPost(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief ≤‚ ‘POST£∫±Ìµ• ˝æ›
- */
-void testCurlPostForm()
-{
-    const std::string TAG1 = "POST form, send";
-    const std::string TAG2 = "POST form, recv";
-    std::string url = HOST + "/anything";
-    std::cout << "===================== test curl POST form" << std::endl;
-    std::cout << "url: " << url << std::endl;
-    auto data = std::make_shared<curlex::FormRequestData>("name=jaronho&sex=male&age=33");
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    req->setData(data);
-    curlex::FuncSet funcSet;
-    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG1, now, total, speed); };
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG2, now, total, speed); };
-    curlex::Response resp;
-    auto ret = curlex::curlPost(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief ≤‚ ‘POST£∫∂‡≤ø∑›±Ìµ•
- */
-void testCurlPostMultipartForm()
-{
-    const std::string TAG1 = "POST multipart form, send";
-    const std::string TAG2 = "POST multipart form, recv";
-    std::string url = HOST + "/anything";
-    std::cout << "===================== test curl POST multipart form" << std::endl;
-    std::cout << "url: " << url << std::endl;
-    auto data = std::make_shared<curlex::MultipartFormRequestData>();
-    data->addText("name", "jaronho");
-    data->addText("sex", "male");
-    data->addText("age", "33");
-    data->addText("json", "{\"company\":\"jh\",\"address\":\"Xiamen\"}", "application/json");
-    data->addFile("file1", "test1.txt");
-    data->addFile("file2", "test2.txt");
-    data->addFile("file3", "test1.png");
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    req->setData(data);
-    curlex::FuncSet funcSet;
-    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG1, now, total, speed); };
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG2, now, total, speed); };
-    curlex::Response resp;
-    auto ret = curlex::curlPost(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief ≤‚ ‘PUT
- */
-void testCurlPut()
-{
-    const std::string TAG = "PUT raw, send";
-    std::string url = HOST + "/anything";
-    std::cout << "===================== test curl PUT raw" << std::endl;
-    std::cout << "url: " << url << std::endl;
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    curlex::FuncSet funcSet;
-    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); };
-    curlex::Response resp;
-    auto ret = curlex::curlPut(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief ≤‚ ‘DELETE
+ * @brief ÊµãËØïDELETE
  */
 void testCurlDelete()
 {
@@ -376,18 +256,139 @@ void testCurlDelete()
 }
 
 /**
- * @brief ≤‚ ‘Œƒº˛œ¬‘ÿ
+ * @brief ÊµãËØïGET
+ */
+void testCurlGet()
+{
+#if 0
+     std::string url = "https://www.baidu.com";
+#else
+    std::string url = HOST + "/base64/SFRUUEJJTiBpcyBhd2Vzb21l";
+#endif
+    std::cout << "===================== test curl GET" << std::endl;
+    std::cout << "url: " << url << std::endl;
+
+    auto req = std::make_shared<curlex::SimpleRequest>(url);
+    curlex::FuncSet funcSet;
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("GET, recv", now, total, speed); };
+    curlex::Response resp;
+    auto ret = curlex::curlGet(req, funcSet, resp);
+    std::cout << "ret: " << ret << std::endl;
+    printSimpleResponse(resp);
+}
+
+/**
+ * @brief ÊµãËØïPUT
+ */
+void testCurlPut()
+{
+    std::string url = HOST + "/anything";
+    std::cout << "===================== test curl PUT" << std::endl;
+    std::cout << "url: " << url << std::endl;
+
+    auto req = std::make_shared<curlex::SimpleRequest>(url);
+    curlex::FuncSet funcSet;
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("PUT, send", now, total, speed); };
+    curlex::Response resp;
+    auto ret = curlex::curlPut(req, funcSet, resp);
+    std::cout << "ret: " << ret << std::endl;
+    printSimpleResponse(resp);
+}
+
+/**
+ * @brief ÊµãËØïPOSTÔºöÂ≠óËäÇÊµÅ
+ */
+void testCurlPostRaw()
+{
+    std::string url = HOST + "/anything";
+    std::cout << "===================== test curl POST raw" << std::endl;
+    std::cout << "url: " << url << std::endl;
+
+    long length = 0;
+    unsigned char* buffer = getFileData("test1.png", &length, false);
+    auto data = std::make_shared<curlex::RawRequestData>(buffer, length);
+    if (buffer)
+    {
+        delete[] buffer;
+        buffer = nullptr;
+    }
+    auto req = std::make_shared<curlex::SimpleRequest>(url);
+    req->setData(data);
+    curlex::FuncSet funcSet;
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw, send", now, total, speed); };
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw, recv", now, total, speed); };
+    curlex::Response resp;
+    auto ret = curlex::curlPost(req, funcSet, resp);
+    std::cout << "ret: " << ret << std::endl;
+    printSimpleResponse(resp);
+}
+
+/**
+ * @brief ÊµãËØïPOSTÔºöË°®ÂçïÊï∞ÊçÆ
+ */
+void testCurlPostForm()
+{
+    std::string url = HOST + "/anything";
+    std::cout << "===================== test curl POST form" << std::endl;
+    std::cout << "url: " << url << std::endl;
+
+    auto data = std::make_shared<curlex::FormRequestData>("name=jaronho&sex=male&age=33");
+    auto req = std::make_shared<curlex::SimpleRequest>(url);
+    req->setData(data);
+    curlex::FuncSet funcSet;
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST form, send", now, total, speed); };
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST form, recv", now, total, speed); };
+    curlex::Response resp;
+    auto ret = curlex::curlPost(req, funcSet, resp);
+    std::cout << "ret: " << ret << std::endl;
+    printSimpleResponse(resp);
+}
+
+/**
+ * @brief ÊµãËØïPOSTÔºöÂ§öÈÉ®‰ªΩË°®Âçï
+ */
+void testCurlPostMultipartForm()
+{
+    std::string url = HOST + "/anything";
+    std::cout << "===================== test curl POST multipart form" << std::endl;
+    std::cout << "url: " << url << std::endl;
+
+    auto data = std::make_shared<curlex::MultipartFormRequestData>();
+    data->addText("name", "jaronho");
+    data->addText("sex", "male");
+    data->addText("age", "33");
+    data->addText("json", "{\"company\":\"jh\",\"address\":\"Xiamen\"}", "application/json");
+    data->addFile("file1", "test1.txt");
+    data->addFile("file2", "test2.txt");
+    data->addFile("file3", "test1.png");
+    auto req = std::make_shared<curlex::SimpleRequest>(url);
+    req->setData(data);
+    curlex::FuncSet funcSet;
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) {
+        printProgressInfo("POST multipart form, send", now, total, speed);
+    };
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) {
+        printProgressInfo("POST multipart form, recv", now, total, speed);
+    };
+    curlex::Response resp;
+    auto ret = curlex::curlPost(req, funcSet, resp);
+    std::cout << "ret: " << ret << std::endl;
+    printSimpleResponse(resp);
+}
+
+/**
+ * @brief ÊµãËØïÊñá‰ª∂‰∏ãËΩΩ
  */
 void testCurlDownload()
 {
-    const std::string TAG = "DOWDLOAD";
     std::string url = "http://127.0.0.1/";
     std::string filename = "test_download.txt";
     std::cout << "===================== test curl DOWNLOAD" << std::endl;
     std::cout << "url: " << url << std::endl;
+
     auto req = std::make_shared<curlex::SimpleRequest>(url + filename);
     curlex::FuncSet funcSet;
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo(TAG, now, total, speed); };
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("DOWDLOAD", now, total, speed); };
     curlex::Response resp;
     auto ret = curlex::curlDownload(req, filename, true, funcSet, resp);
     std::cout << "ret: " << ret << std::endl;
@@ -398,17 +399,23 @@ int main()
 {
     prepareTestFiles();
 
-    testCurlGet();
-    std::cout << std::endl << std::endl;
-    testCurlPostRaw();
-    std::cout << std::endl << std::endl;
-    testCurlPostForm();
-    std::cout << std::endl << std::endl;
-    testCurlPostMultipartForm();
-    std::cout << std::endl << std::endl;
-    testCurlPut();
-    std::cout << std::endl << std::endl;
     testCurlDelete();
     std::cout << std::endl << std::endl;
+
+    testCurlGet();
+    std::cout << std::endl << std::endl;
+
+    testCurlPut();
+    std::cout << std::endl << std::endl;
+
+    testCurlPostRaw();
+    std::cout << std::endl << std::endl;
+
+    testCurlPostForm();
+    std::cout << std::endl << std::endl;
+
+    testCurlPostMultipartForm();
+    std::cout << std::endl << std::endl;
+
     testCurlDownload();
 }
