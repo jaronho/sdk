@@ -41,7 +41,7 @@ struct FuncSet
 };
 
 /**
- * @brief 基本响应数据
+ * @brief 响应数据
  */
 struct Response
 {
@@ -49,13 +49,6 @@ struct Response
     std::string errorDesc; /* 错误描述 */
     int httpCode = -1; /* http码 */
     std::map<std::string, std::string> headers; /* 响应头 */
-};
-
-/**
- * @brief 简单响应数据
- */
-struct SimpleResponse : public Response
-{
     std::string body; /* 响应体 */
 };
 
@@ -66,7 +59,7 @@ struct SimpleResponse : public Response
  * @param resp 响应数据
  * @return true-成功, false-失败
  */
-bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
+bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, Response& resp);
 
 /**
  * @brief GET请求
@@ -75,7 +68,7 @@ bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& r
  * @param resp 响应数据
  * @return true-成功, false-失败
  */
-bool curlGet(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
+bool curlGet(const RequestPtr& req, const FuncSet& funcSet, Response& resp);
 
 /**
  * @brief PUT请求
@@ -84,7 +77,7 @@ bool curlGet(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp
  * @param resp 响应数据
  * @return true-成功, false-失败
  */
-bool curlPut(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
+bool curlPut(const RequestPtr& req, const FuncSet& funcSet, Response& resp);
 
 /**
  * @brief POST请求
@@ -93,7 +86,7 @@ bool curlPut(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp
  * @param resp 响应数据
  * @return true-成功, false-失败
  */
-bool curlPost(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
+bool curlPost(const RequestPtr& req, const FuncSet& funcSet, Response& resp);
 
 /**
  * @brief 下载文件

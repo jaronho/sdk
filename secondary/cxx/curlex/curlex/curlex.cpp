@@ -118,7 +118,7 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
     return obj;
 }
 
-bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
+bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 {
     auto obj = createCurlObject(req, funcSet);
     auto code = obj->setOption(CURLOPT_CUSTOMREQUEST, "DELETE");
@@ -133,7 +133,7 @@ bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& r
     return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
 }
 
-bool curlGet(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
+bool curlGet(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 {
     auto obj = createCurlObject(req, funcSet);
     obj->setRecvFunc([&](void* bytes, size_t count) {
@@ -143,7 +143,7 @@ bool curlGet(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp
     return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
 }
 
-bool curlPut(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
+bool curlPut(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 {
     auto obj = createCurlObject(req, funcSet);
     auto code = obj->setOption(CURLOPT_PUT, 1L);
@@ -163,7 +163,7 @@ bool curlPut(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp
     return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
 }
 
-bool curlPost(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
+bool curlPost(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 {
     auto obj = createCurlObject(req, funcSet);
     auto code = obj->setOption(CURLOPT_POST, 1L);

@@ -34,7 +34,7 @@ public:
 using RequestDataPtr = std::shared_ptr<RequestData>;
 
 /**
- * @brief 原始字节流数据
+ * @brief 二进制字节流数据
  */
 class RawRequestData final : public RequestData
 {
