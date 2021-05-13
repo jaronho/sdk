@@ -38,29 +38,29 @@ include_directories(${threading_path})
 set(threading_asio_src_list)
 get_cxx_files(${threading_path}/threading/asio src_list)
 list(APPEND threading_asio_src_list ${src_list})
-source_group(threading/asio FILES ${threading_asio_src_list})
+source_group(3rdparty/threading/asio FILES ${threading_asio_src_list})
 
 set(threading_diagnose_src_list)
 get_cxx_files(${threading_path}/threading/diagnose src_list)
 list(APPEND threading_diagnose_src_list ${src_list})
-source_group(threading/diagnose FILES ${threading_diagnose_src_list})
+source_group(3rdparty/threading/diagnose FILES ${threading_diagnose_src_list})
 
 set(threading_fiber_src_list)
 if(enable_fiber)
     get_cxx_files(${threading_path}/threading/fiber src_list)
     list(APPEND threading_fiber_src_list ${src_list})
-    source_group(threading/fiber FILES ${threading_fiber_src_list})
+    source_group(3rdparty/threading/fiber FILES ${threading_fiber_src_list})
 endif()
 
 set(threading_task_src_list)
 get_cxx_files(${threading_path}/threading/task src_list)
 list(APPEND threading_task_src_list ${src_list})
-source_group(threading/task FILES ${threading_task_src_list})
+source_group(3rdparty/threading/task FILES ${threading_task_src_list})
 
 set(threading_src_list)
 get_cxx_files(${threading_path}/threading src_list)
 list(APPEND threading_src_list ${src_list})
-source_group(threading FILES ${threading_src_list})
+source_group(3rdparty/threading FILES ${threading_src_list})
 
 set(threading_files) # 工程中需要把threading的文件添加进去
 list(APPEND threading_files ${threading_asio_src_list} ${threading_diagnose_src_list} ${threading_fiber_src_list} ${threading_task_src_list} ${threading_src_list})
@@ -88,7 +88,7 @@ include_directories(${curlex_path})
 set(curlex_src_list)
 get_cxx_files(${curlex_path}/curlex src_list)
 list(APPEND curlex_src_list ${src_list})
-source_group(curlex FILES ${curlex_src_list})
+source_group(3rdparty/curlex FILES ${curlex_src_list})
 
 set(curlex_files) # 工程中需要把curlex的文件添加进去
 list(APPEND curlex_files ${curlex_src_list})
@@ -106,7 +106,7 @@ include_directories(${httpclient_path})
 set(httpclient_src_list)
 get_cxx_files(${httpclient_path}/httpclient src_list)
 list(APPEND httpclient_src_list ${src_list})
-source_group(httpclient FILES ${httpclient_src_list})
+source_group(common/httpclient FILES ${httpclient_src_list})
 
 set(httpclient_files) # 工程中需要把httpclient的文件添加进去
 list(APPEND httpclient_files ${httpclient_src_list})
