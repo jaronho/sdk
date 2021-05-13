@@ -23,7 +23,7 @@ include_directories(${curlex_path})
 set(curlex_src_list)
 get_cxx_files(${curlex_path}/curlex src_list)
 list(APPEND curlex_src_list ${src_list})
-source_group(curlex FILES ${curlex_src_list})
+source_group(3rdparty/curlex FILES ${curlex_src_list})
 
 set(curlex_files) # 工程中需要把curlex的文件添加进去
 list(APPEND curlex_files ${curlex_src_list})
