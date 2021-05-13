@@ -366,9 +366,14 @@ bool CurlObject::setUrl(const std::string& url)
     return CURLE_OK == code;
 }
 
-bool CurlObject::setEnableRedirect()
+bool CurlObject::setEnableRedirect(int maxRedirects)
 {
     auto code = setOption(CURLOPT_FOLLOWLOCATION, 1L);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_MAXREDIRS, maxRedirects);
     return CURLE_OK == code;
 }
 

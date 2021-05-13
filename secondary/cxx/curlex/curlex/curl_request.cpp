@@ -14,9 +14,15 @@ bool Request::isEnableRedirect()
     return m_redirect;
 }
 
-void Request::setEnableRedirect()
+int Request::getMaxRedirects()
+{
+    return m_maxRedirects;
+}
+
+void Request::setEnableRedirect(int maxRedirects)
 {
     m_redirect = true;
+    m_maxRedirects = maxRedirects;
 }
 
 int Request::getConnectTimeout()

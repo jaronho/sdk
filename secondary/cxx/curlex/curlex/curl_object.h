@@ -92,9 +92,10 @@ public:
 
     /**
      * @brief 设置支持重定向
+     * @param maxRedirects 可以递归返回的数量, -1无限制
      * @return true-成功, false-失败
      */
-    bool setEnableRedirect();
+    bool setEnableRedirect(int maxRedirects = -1L);
 
     /**
      * @brief 设置连接超时时间

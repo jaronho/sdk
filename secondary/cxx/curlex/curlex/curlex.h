@@ -60,6 +60,15 @@ struct SimpleResponse : public Response
 };
 
 /**
+ * @brief DELETE请求
+ * @param req 请求参数
+ * @param funcSet 函数集
+ * @param resp 响应数据
+ * @return true-成功, false-失败
+ */
+bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
+
+/**
  * @brief GET请求
  * @param req 请求参数
  * @param funcSet 函数集
@@ -67,15 +76,6 @@ struct SimpleResponse : public Response
  * @return true-成功, false-失败
  */
 bool curlGet(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
-
-/**
- * @brief POST请求
- * @param req 请求参数
- * @param funcSet 函数集
- * @param resp 响应数据
- * @return true-成功, false-失败
- */
-bool curlPost(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
 
 /**
  * @brief PUT请求
@@ -87,13 +87,13 @@ bool curlPost(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& res
 bool curlPut(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
 
 /**
- * @brief DELETE请求
+ * @brief POST请求
  * @param req 请求参数
  * @param funcSet 函数集
  * @param resp 响应数据
  * @return true-成功, false-失败
  */
-bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
+bool curlPost(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp);
 
 /**
  * @brief 下载文件

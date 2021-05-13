@@ -51,9 +51,16 @@ public:
     bool isEnableRedirect();
 
     /**
-     * @brief 设置支持重定
+     * @brief 获取重定向最多递归返回数量
+     * @return 数量
      */
-    void setEnableRedirect();
+    int getMaxRedirects();
+
+    /**
+     * @brief 设置支持重定
+     * @param maxRedirects 可以递归返回的数量, -1无限制
+     */
+    void setEnableRedirect(int maxRedirects);
 
     /**
      * @brief 获取连接超时时间
@@ -151,6 +158,7 @@ private:
     Type m_type = Type::SIMPLE; /* 类型 */
     std::string m_url; /* 资源地址 */
     bool m_redirect = true; /* 是否支持重定向 */
+    int m_maxRedirects = -1; /* 可以递归返回的数量 */
     int m_connectTimeout = -1; /* 连接超时时间(秒) */
     int m_timeout = -1; /* 超时时间(秒) */
     bool m_keepAlive = false; /* 是否保活 */

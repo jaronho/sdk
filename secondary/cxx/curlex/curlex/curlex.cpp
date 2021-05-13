@@ -37,7 +37,7 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
     obj->setUrl(req->getUrl());
     if (req->isEnableRedirect())
     {
-        obj->setEnableRedirect();
+        obj->setEnableRedirect(req->getMaxRedirects());
     }
     int connectTimeout = req->getConnectTimeout();
     if (connectTimeout >= 0)
@@ -118,9 +118,14 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
     return obj;
 }
 
-bool curlGet(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
+bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
 {
     auto obj = createCurlObject(req, funcSet);
+    auto code = obj->setOption(CURLOPT_CUSTOMREQUEST, "DELETE");
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
     obj->setRecvFunc([&](void* bytes, size_t count) {
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
@@ -128,14 +133,9 @@ bool curlGet(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp
     return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
 }
 
-bool curlPost(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
+bool curlGet(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
 {
     auto obj = createCurlObject(req, funcSet);
-    auto code = obj->setOption(CURLOPT_POST, 1L);
-    if (CURLE_OK != code)
-    {
-        return false;
-    }
     obj->setRecvFunc([&](void* bytes, size_t count) {
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
@@ -163,10 +163,10 @@ bool curlPut(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp
     return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
 }
 
-bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
+bool curlPost(const RequestPtr& req, const FuncSet& funcSet, SimpleResponse& resp)
 {
     auto obj = createCurlObject(req, funcSet);
-    auto code = obj->setOption(CURLOPT_CUSTOMREQUEST, "DELETE");
+    auto code = obj->setOption(CURLOPT_POST, 1L);
     if (CURLE_OK != code)
     {
         return false;
