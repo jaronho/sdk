@@ -302,7 +302,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
     {
         return Result::INVALID;
     }
-    if (!m_enable)
+    if (!m_enable.load())
     {
         return Result::DISABLED;
     }

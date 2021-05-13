@@ -121,12 +121,12 @@ void InnerLoggerImpl::setLevel(const Level& level)
 
 bool InnerLoggerImpl::isConsoleEnable()
 {
-    return m_consoleEnable;
+    return m_consoleEnable.load();
 }
 
 void InnerLoggerImpl::setConsoleEnable(bool enable)
 {
-    m_consoleEnable = true;
+    m_consoleEnable.store(true);
 }
 
 void InnerLoggerImpl::print(const Level& level, const std::string& tag, const std::string& file, int line, const std::string& func,

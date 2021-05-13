@@ -27,7 +27,7 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
 
 size_t RotatingLogfile::getFileIndex() const
 {
-    return m_index;
+    return m_index.load();
 }
 
 bool RotatingLogfile::open()
