@@ -28,6 +28,7 @@ endforeach()
 set(example_files)
 get_cxx_files(. src_list)
 list(APPEND example_files ${src_list})
+
 print_info(BODY "example files:")
 foreach(filename ${example_files})
     message("    " ${filename})
