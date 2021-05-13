@@ -1,4 +1,4 @@
-#include "../curlex/curlex.h"
+#include "curlex/curlex.h"
 
 #include <iostream>
 

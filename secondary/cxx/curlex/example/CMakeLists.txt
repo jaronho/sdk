@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
+################################### 添加curlex库 ###################################
 find_package(CURL 7.76.1 REQUIRED)
 
 if(CURL_FOUND)
@@ -13,27 +14,38 @@ if(CURL_FOUND)
     include_directories(${CURL_INCLUDE_DIRS})
 else()
     message(WARNING "CURL not found")
+    return()
 endif()
 
-set(CURLEX_SOURCES)
-get_cxx_files(../curlex SRC_LIST)
-list(APPEND CURLEX_SOURCES ${SRC_LIST})
-source_group(curlex FILES ${CURLEX_SOURCES})
+set(curlex_path ..) # 设置curlex库路径(可修改)
+include_directories(${curlex_path})
 
-set(DEPEND_FILES)
-list(APPEND DEPEND_FILES ${CURLEX_SOURCES})
-print_info(BODY "depend files:")
-foreach(filename ${DEPEND_FILES})
+set(curlex_src_list)
+get_cxx_files(${curlex_path}/curlex src_list)
+list(APPEND curlex_src_list ${src_list})
+source_group(curlex FILES ${curlex_src_list})
+
+set(curlex_files) # 工程中需要把curlex的文件添加进去
+list(APPEND curlex_files ${curlex_src_list})
+
+print_info(BODY "curlex files:")
+foreach(filename ${curlex_files})
     message("    " ${filename})
 endforeach()
+##########################################################################################
 
-set(EXAMPLE_FILES)
-get_cxx_files(. SRC_LIST)
-list(APPEND EXAMPLE_FILES ${SRC_LIST})
+# 添加示例文件
+set(example_files)
+get_cxx_files(. src_list)
+list(APPEND example_files ${src_list})
+
 print_info(BODY "example files:")
-foreach(filename ${EXAMPLE_FILES})
+foreach(filename ${example_files})
     message("    " ${filename})
 endforeach()
 
-add_executable(example_curlex ${DEPEND_FILES} ${EXAMPLE_FILES})
+# 构建可执行程序
+add_executable(example_curlex ${curlex_files} ${example_files})
+
+# 链接依赖库
 target_link_libraries(example_curlex CURL::libcurl)
