@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-# 添加线程库
+################################### 添加线程库 ###################################
 find_package(Threads REQUIRED)
 
 ################################### 添加threading库 ###################################
@@ -74,6 +74,7 @@ endforeach()
 set(example_files)
 get_cxx_files(. src_list)
 list(APPEND example_files ${src_list})
+
 print_info(BODY "example files:")
 foreach(filename ${example_files})
     message("    " ${filename})
