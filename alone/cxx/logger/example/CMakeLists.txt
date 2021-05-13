@@ -22,22 +22,22 @@ include_directories(${logger_path}/fmt-7.1.3/include)
 set(fmt_src_list)
 get_cxx_files(${logger_path}/fmt-7.1.3/src src_list)
 list(APPEND fmt_src_list ${src_list})
-source_group(fmt FILES ${fmt_src_list})
+source_group(3rdparty/fmt FILES ${fmt_src_list})
 
 set(logger_impl_src_list)
 get_cxx_files(${logger_path}/logger/impl src_list)
 list(APPEND logger_impl_src_list ${src_list})
-source_group(logger/impl FILES ${logger_impl_src_list})
+source_group(3rdparty/logger/impl FILES ${logger_impl_src_list})
 
 set(logger_logfile_src_list)
 get_cxx_files(${logger_path}/logger/logfile src_list)
 list(APPEND logger_logfile_src_list ${src_list})
-source_group(logger/logfile FILES ${logger_logfile_src_list})
+source_group(3rdparty/logger/logfile FILES ${logger_logfile_src_list})
 
 set(logger_src_list)
 get_cxx_files(${logger_path}/logger src_list)
 list(APPEND logger_src_list ${src_list})
-source_group(logger FILES ${logger_src_list})
+source_group(3rdparty/logger FILES ${logger_src_list})
 
 set(logger_files) # 工程中需要把logger的文件添加进去
 list(APPEND logger_files ${fmt_src_list} ${logger_impl_src_list} ${logger_logfile_src_list} ${logger_src_list})
