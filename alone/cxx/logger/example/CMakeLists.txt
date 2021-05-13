@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
+################################### 添加logger库 ###################################
 option(ENABLE_DETAIL "是否启用日志详情(包含文件名,行号,函数名)" ON)
 
 if(ENABLE_DETAIL)
@@ -14,40 +15,48 @@ else()
     add_definitions(-DENABLE_LOGGER_DETAIL=0)
 endif()
 
-include_directories(../fmt-7.1.3/include)
-set(FMT_SOURCES)
-get_cxx_files(../fmt-7.1.3/src SRC_LIST)
-list(APPEND FMT_SOURCES ${SRC_LIST})
-source_group(fmt FILES ${FMT_SOURCES})
+set(logger_path ..) # 设置logger库路径(可修改)
+include_directories(${logger_path})
+include_directories(${logger_path}/fmt-7.1.3/include)
 
-set(LOGGER_LOGFILE_SOURCES)
-get_cxx_files(../logger/logfile SRC_LIST)
-list(APPEND LOGGER_LOGFILE_SOURCES ${SRC_LIST})
-source_group(logger/logfile FILES ${LOGGER_LOGFILE_SOURCES})
+set(fmt_src_list)
+get_cxx_files(${logger_path}/fmt-7.1.3/src src_list)
+list(APPEND fmt_src_list ${src_list})
+source_group(fmt FILES ${fmt_src_list})
 
-set(LOGGER_IMPL_SOURCES)
-get_cxx_files(../logger/impl SRC_LIST)
-list(APPEND LOGGER_IMPL_SOURCES ${SRC_LIST})
-source_group(logger/impl FILES ${LOGGER_IMPL_SOURCES})
+set(logger_impl_src_list)
+get_cxx_files(${logger_path}/logger/impl src_list)
+list(APPEND logger_impl_src_list ${src_list})
+source_group(logger/impl FILES ${logger_impl_src_list})
 
-set(LOGGER_SOURCES)
-get_cxx_files(../logger SRC_LIST)
-list(APPEND LOGGER_SOURCES ${SRC_LIST})
-source_group(logger FILES ${LOGGER_SOURCES})
+set(logger_logfile_src_list)
+get_cxx_files(${logger_path}/logger/logfile src_list)
+list(APPEND logger_logfile_src_list ${src_list})
+source_group(logger/logfile FILES ${logger_logfile_src_list})
 
-set(DEPEND_FILES)
-list(APPEND DEPEND_FILES ${FMT_SOURCES} ${LOGGER_LOGFILE_SOURCES} ${LOGGER_IMPL_SOURCES} ${LOGGER_SOURCES})
-print_info(BODY "depend files:")
-foreach(filename ${DEPEND_FILES})
+set(logger_src_list)
+get_cxx_files(${logger_path}/logger src_list)
+list(APPEND logger_src_list ${src_list})
+source_group(logger FILES ${logger_src_list})
+
+set(logger_files) # 工程中需要把logger的文件添加进去
+list(APPEND logger_files ${fmt_src_list} ${logger_impl_src_list} ${logger_logfile_src_list} ${logger_src_list})
+
+print_info(BODY "logger files:")
+foreach(filename ${logger_files})
     message("    " ${filename})
 endforeach()
+##########################################################################################
 
-set(EXAMPLE_FILES)
-get_cxx_files(. SRC_LIST)
-list(APPEND EXAMPLE_FILES ${SRC_LIST})
+# 添加示例文件
+set(example_files)
+get_cxx_files(. src_list)
+list(APPEND example_files ${src_list})
+
 print_info(BODY "example files:")
-foreach(filename ${EXAMPLE_FILES})
+foreach(filename ${example_files})
     message("    " ${filename})
 endforeach()
 
-add_executable(example_logger ${DEPEND_FILES} ${EXAMPLE_FILES})
+# 构建可执行程序
+add_executable(example_logger ${logger_files} ${example_files})

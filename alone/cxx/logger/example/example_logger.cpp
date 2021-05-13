@@ -1,4 +1,4 @@
-﻿#include "../logger/logger_manager.h"
+﻿#include "logger/logger_manager.h"
 
 #include <iostream>
 
