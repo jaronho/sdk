@@ -16,10 +16,6 @@ void Diagnose::printLog(const std::string& msg)
     {
         s_logFunc(msg);
     }
-    else
-    {
-        std::cout << msg + "\n";
-    }
 }
 
 TaskInfoPtr Diagnose::getTaskInfo(const Task* task)
