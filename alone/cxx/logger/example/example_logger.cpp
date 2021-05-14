@@ -4,7 +4,7 @@
 
 int main()
 {
-    logger::LoggerManager::start("logs");
+    logger::LoggerManager::start("log", "app", "who");
     auto logger1 = logger::LoggerManager::getLogger("test", "main_");
     for (int i = 0; i < 100; ++i)
     {

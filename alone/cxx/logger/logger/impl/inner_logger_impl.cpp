@@ -14,6 +14,7 @@ namespace logger
 const std::string DAILY_LOG_EXT = ".log"; /* 日志文件默认后缀名 */
 const size_t DAILY_LOG_MAX_SIZE = 20 * 1024 * 1024; /* 每个日志文件最大容量(这里默认为20M) */
 const size_t DAILY_LOG_MAX_COUNT = 0U; /* 每天允许最多生成的日志文件数(这里默认不限制) */
+const bool DAILY_LOG_CREATE_FOLDER = true; /* 每天是否都创建文件夹 */
 
 struct DateTime
 {
@@ -103,7 +104,8 @@ int getThreadId()
 
 InnerLoggerImpl::InnerLoggerImpl(const std::string& path, const std::string& name) : InnerLogger(path, name)
 {
-    m_dailyLog = std::make_shared<DailyLogfile>(path, name, DAILY_LOG_EXT, DAILY_LOG_MAX_SIZE, DAILY_LOG_MAX_COUNT);
+    m_dailyLog =
+        std::make_shared<DailyLogfile>(path, name, DAILY_LOG_EXT, DAILY_LOG_MAX_SIZE, DAILY_LOG_MAX_COUNT, DAILY_LOG_CREATE_FOLDER);
 }
 
 Level InnerLoggerImpl::getLevel() const
