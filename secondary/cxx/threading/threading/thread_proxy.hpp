@@ -14,6 +14,9 @@
 
 namespace threading
 {
+/**
+ * @brief 线程代理(实现对外接口的封装)
+ */
 class ThreadProxy final
 {
 public:
