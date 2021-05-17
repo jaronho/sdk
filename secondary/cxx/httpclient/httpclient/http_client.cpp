@@ -8,11 +8,11 @@ threading::ExecutorPtr HttpClient::s_workers = nullptr;
 std::mutex HttpClient::s_respMutex;
 std::list<std::shared_ptr<HttpClient::RespParam>> HttpClient::s_respList;
 
-void HttpClient::start()
+void HttpClient::start(size_t threadCount)
 {
     if (!s_workers)
     {
-        s_workers = threading::ThreadProxy::createAsioExecutor("http", 4);
+        s_workers = threading::ThreadProxy::createAsioExecutor("http", threadCount > 0 ? threadCount : 1);
     }
 }
 

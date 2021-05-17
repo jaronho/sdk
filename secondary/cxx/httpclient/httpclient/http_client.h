@@ -24,8 +24,9 @@ class HttpClient
 public:
     /**
      * @brief 启动模块
+     * @param threadCount 用于执行网络事件的线程个数
      */
-    static void start();
+    static void start(size_t threadCount = 4);
 
     /**
      * @brief 停止模块
