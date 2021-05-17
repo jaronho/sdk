@@ -12,7 +12,7 @@ void HttpClient::start(size_t threadCount)
 {
     if (!s_workers)
     {
-        s_workers = threading::ThreadProxy::createAsioExecutor("http", threadCount > 0 ? threadCount : 1);
+        s_workers = threading::ThreadProxy::createAsioExecutor("http", std::max<size_t>(1U, threadCount));
     }
 }
 
@@ -73,52 +73,67 @@ curlex::MultipartFormRequestDataPtr HttpClient::makeMultipartFormData()
 void HttpClient::easyDelete(const curlex::RequestPtr& req, const curlex::FuncSet& funcSet, const ResponseCallback& respCb)
 {
     assert(s_workers);
-    s_workers->post("http.simple_delete", [req, funcSet, respCb]() {
-        curlex::Response resp;
-        curlex::curlDelete(req, funcSet, resp);
-        insertRespList(resp, respCb);
-    });
+    threading::ThreadProxy::async(
+        "http.easy_delete",
+        [req, funcSet, respCb]() {
+            curlex::Response resp;
+            curlex::curlDelete(req, funcSet, resp);
+            insertRespList(resp, respCb);
+        },
+        s_workers);
 }
 
 void HttpClient::easyGet(const curlex::RequestPtr& req, const curlex::FuncSet& funcSet, const ResponseCallback& respCb)
 {
     assert(s_workers);
-    s_workers->post("http.simple_get", [req, funcSet, respCb]() {
-        curlex::Response resp;
-        curlex::curlGet(req, funcSet, resp);
-        insertRespList(resp, respCb);
-    });
+    threading::ThreadProxy::async(
+        "http.easy_get",
+        [req, funcSet, respCb]() {
+            curlex::Response resp;
+            curlex::curlGet(req, funcSet, resp);
+            insertRespList(resp, respCb);
+        },
+        s_workers);
 }
 
 void HttpClient::easyPut(const curlex::RequestPtr& req, const curlex::FuncSet& funcSet, const ResponseCallback& respCb)
 {
     assert(s_workers);
-    s_workers->post("http.simple_put", [req, funcSet, respCb]() {
-        curlex::Response resp;
-        curlex::curlPut(req, funcSet, resp);
-        insertRespList(resp, respCb);
-    });
+    threading::ThreadProxy::async(
+        "http.easy_put",
+        [req, funcSet, respCb]() {
+            curlex::Response resp;
+            curlex::curlPut(req, funcSet, resp);
+            insertRespList(resp, respCb);
+        },
+        s_workers);
 }
 
 void HttpClient::easyPost(const curlex::RequestPtr& req, const curlex::FuncSet& funcSet, const ResponseCallback& respCb)
 {
     assert(s_workers);
-    s_workers->post("http.simple_post", [req, funcSet, respCb]() {
-        curlex::Response resp;
-        curlex::curlPost(req, funcSet, resp);
-        insertRespList(resp, respCb);
-    });
+    threading::ThreadProxy::async(
+        "http.easy_post",
+        [req, funcSet, respCb]() {
+            curlex::Response resp;
+            curlex::curlPost(req, funcSet, resp);
+            insertRespList(resp, respCb);
+        },
+        s_workers);
 }
 
 void HttpClient::easyDownload(const curlex::RequestPtr& req, const std::string& filename, bool recover, const curlex::FuncSet& funcSet,
                               const ResponseCallback& respCb)
 {
     assert(s_workers);
-    s_workers->post("http.simple_download", [req, filename, recover, funcSet, respCb]() {
-        curlex::Response resp;
-        curlex::curlDownload(req, filename, recover, funcSet, resp);
-        insertRespList(resp, respCb);
-    });
+    threading::ThreadProxy::async(
+        "http.easy_download",
+        [req, filename, recover, funcSet, respCb]() {
+            curlex::Response resp;
+            curlex::curlDownload(req, filename, recover, funcSet, resp);
+            insertRespList(resp, respCb);
+        },
+        s_workers);
 }
 
 void HttpClient::insertRespList(const curlex::Response& resp, const ResponseCallback& respCb)
