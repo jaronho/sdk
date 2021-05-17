@@ -242,9 +242,9 @@ void testWrite1()
         std::string key;
 
         section = std::string();
-        iw.setInt(section, "count", iw.getInt(section, "count") + 1);
+        iw.setValue(section, "count", iw.getInt(section, "count") + 1);
 
-        if (!iw.setString(section, "describe", "hello"))
+        if (!iw.setValue(section, "describe", "hello"))
         {
             std::cout << "can't find key [describe]" << std::endl;
         }
@@ -273,40 +273,40 @@ void testWrite2()
 
         section = std::string();
         iw.setSectionComment(section, "测试文件信息");
-        iw.setString(section, "title", "test information");
+        iw.setValue(section, "title", "test information");
 
         section = "MAJOR_INFO";
         iw.setSectionComment(section, "#基础信息");
 
         key = "name";
         iw.setComment(section, key, "#姓名");
-        iw.setString(section, key, "Marry Kaly");
+        iw.setValue(section, key, "Marry Kaly");
 
         key = "male";
         iw.setComment(section, key, "#性别");
-        iw.setBool(section, key, false);
+        iw.setValue(section, key, false);
 
         key = "age";
         iw.setComment(section, key, "#年龄");
-        iw.setInt(section, key, 26);
+        iw.setValue(section, key, 26);
 
         key = "identify";
-        iw.setULongLong(section, key, 12345678901234567890);
+        iw.setValue(section, key, 12345678901234567890);
 
         key = "weight";
         iw.setComment(section, key, "#体重");
-        iw.setFloat(section, key, 43.6);
+        iw.setValue(section, key, 43.6);
 
         section = "MINOR_INFO";
         iw.setSectionComment(section, "#次要信息");
 
         key = "company";
         iw.setComment(section, key, "#公司");
-        iw.setString(section, key, "Bona Brother");
+        iw.setValue(section, key, "Bona Brother");
 
         key = "salary";
         iw.setComment(section, key, "#工资");
-        iw.setDouble(section, key, 654321.987654321);
+        iw.setValue(section, key, 654321.987654321);
 
         iw.save();
     }
