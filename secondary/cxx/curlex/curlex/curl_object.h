@@ -207,11 +207,6 @@ private:
     bool initialize();
     bool initialize(const std::string& sslCaFilename);
     bool initialize(const std::string& user, const std::string& password);
-    friend size_t onSendDataFunc(void* buffer, size_t size, size_t number, void* userdata);
-    friend size_t onRecvDataFunc(void* buffer, size_t size, size_t number, void* userdata);
-    friend size_t onResponseHeaderFunc(void* buffer, size_t size, size_t number, void* userdata);
-    friend int onProgressFunc(void* userdata, int64_t totalDownload, int64_t nowDownloaded, int64_t totalUpload, int64_t nowUploaded);
-    friend int onDebugFunc(CURL* handle, curl_infotype type, char* data, size_t size, void* userdata);
 
     /**
      * @brief 发送对象
