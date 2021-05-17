@@ -153,7 +153,7 @@ void printString(ini::IniReader ir, const std::string& section, const std::strin
 }
 
 /**
- * @brief 测试读本地INI文件
+ * @brief 娴嬭瘯璇绘湰鍦癐NI鏂囦欢
  */
 void testRead()
 {
@@ -229,11 +229,11 @@ void testRead()
 }
 
 /**
- * @brief 测试写本地INI文件(需要字段都已经存在)
+ * @brief 娴嬭瘯鍐欐湰鍦癐NI鏂囦欢(闇�瑕佸瓧娈甸兘宸茬粡瀛樺湪)
  */
 void testWrite1()
 {
-    copyFile("../num.ini", "num.ini"); /* 拷贝测试文件 */
+    copyFile("../num.ini", "num.ini"); /* 鎷疯礉娴嬭瘯鏂囦欢 */
     std::cout << "===================================== test write" << std::endl;
     ini::IniWriter iw;
     if (iw.open("num.ini"))
@@ -258,7 +258,7 @@ void testWrite1()
 }
 
 /**
- * @brief 测试写本地INI文件(字段不存在时自动创建)
+ * @brief 娴嬭瘯鍐欐湰鍦癐NI鏂囦欢(瀛楁涓嶅瓨鍦ㄦ椂鑷姩鍒涘缓)
  */
 void testWrite2()
 {
@@ -272,41 +272,40 @@ void testWrite2()
         std::string key;
 
         section = std::string();
-        iw.setSectionComment(section, "测试文件信息");
+        iw.setSectionComment(section, "娴嬭瘯鏂囦欢淇℃伅");
         iw.setString(section, "title", "test information");
 
         section = "MAJOR_INFO";
-        iw.setSectionComment(section, "#基础信息");
+        iw.setSectionComment(section, "#鍩虹淇℃伅");
 
         key = "name";
-        iw.setComment(section, key, "#姓名");
+        iw.setComment(section, key, "#濮撳悕");
         iw.setString(section, key, "Marry Kaly");
 
         key = "male";
-        iw.setComment(section, key, "#性别");
+        iw.setComment(section, key, "#鎬у埆");
         iw.setBool(section, key, false);
 
         key = "age";
-        iw.setComment(section, key, "#年龄");
+        iw.setComment(section, key, "#骞撮緞");
         iw.setInt(section, key, 26);
 
         key = "identify";
-        iw.setComment(section, key, "#身份证");
         iw.setULongLong(section, key, 12345678901234567890);
 
         key = "weight";
-        iw.setComment(section, key, "#体重");
+        iw.setComment(section, key, "#浣撻噸");
         iw.setFloat(section, key, 43.6);
 
         section = "MINOR_INFO";
-        iw.setSectionComment(section, "#次要信息");
+        iw.setSectionComment(section, "#娆¤淇℃伅");
 
         key = "company";
-        iw.setComment(section, key, "#公司");
+        iw.setComment(section, key, "#鍏徃");
         iw.setString(section, key, "Bona Brother");
 
         key = "salary";
-        iw.setComment(section, key, "#工资");
+        iw.setComment(section, key, "#宸ヨ祫");
         iw.setDouble(section, key, 654321.987654321);
 
         iw.save();

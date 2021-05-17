@@ -1,4 +1,4 @@
-﻿#include "threading/thread_proxy.hpp"
+#include "threading/thread_proxy.hpp"
 
 #include <iostream>
 
