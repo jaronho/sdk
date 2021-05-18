@@ -1,5 +1,6 @@
 #pragma once
 #include "logger.h"
+#include "logger_define.h"
 
 #include <fmt/format.h>
 #include <mutex>
@@ -32,11 +33,10 @@ class LoggerManager final
 public:
     /**
      * @brief 启动日志
-     * @param logPath 日志文件目录
-     * @param defLoggerName 默认的日志记录器名称
-     * @param defTagName 默认的日志标签
+     * @param cfg 配置
+     * @param defultTagName 默认的日志标签
      */
-    static void start(const std::string& logPath, const std::string& defLoggerName = "default", const std::string& defTagName = "unknown");
+    static void start(const LogConfig& cfg, const std::string& defultTagName = "unknown");
 
     /**
      * @brief 获取日志记录器
@@ -49,17 +49,15 @@ public:
 private:
     /**
      * @brief 创建内部日志记录器
-     * @param path 日志文件路径
-     * @param name 日志记录器名称
+     * @param cfg 配置
      * @return 内部日志记录器
      */
-    static InnerLoggerPtr createInnerLogger(const std::string& path, const std::string& name);
+    static InnerLoggerPtr createInnerLogger(const LogConfig& cfg);
 
 private:
     static std::recursive_mutex m_mutex; /* 资源锁 */
-    static std::string m_logPath; /* 日志文件路径 */
+    static LogConfig m_logCfg; /* 日志配置 */
     static std::unordered_map<std::string, InnerLoggerPtr> m_loggerMap; /* 内部日志记录器映射表 */
-    static std::string m_defaultLoggerName; /* 默认日志记录器名称 */
     static std::string m_defaultTagName; /* 默认日志标签名称 */
 };
 } // namespace logger

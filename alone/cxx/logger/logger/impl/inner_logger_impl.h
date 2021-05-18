@@ -16,10 +16,9 @@ class InnerLoggerImpl final : public InnerLogger
 public:
     /**
      * @brief 构造函数
-     * @param path 日志路径
-     * @param name 记录器名称
+     * @param cfg 日志配置
      */
-    InnerLoggerImpl(const std::string& path, const std::string& name);
+    InnerLoggerImpl(const LogConfig& cfg);
     virtual ~InnerLoggerImpl() = default;
     InnerLoggerImpl& operator=(const InnerLoggerImpl& src) = delete;
 

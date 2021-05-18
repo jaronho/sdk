@@ -1,22 +1,11 @@
 #pragma once
+#include "logger_define.h"
+
 #include <memory>
 #include <string>
 
 namespace logger
 {
-/**
- * @brief 日志等级
- */
-enum class Level
-{
-    TRACE = 0, /* 跟踪, 指明程序运行轨迹 */
-    DEBUG = 1, /* 调试，指明细致的事件信息 */
-    INFO = 2, /* 信息，指明描述信息 */
-    WARN = 3, /* 警告，指明可能潜在的危险状况 */
-    ERROR = 4, /* 错误，指明错误事件, 但应用可能还能继续运行 */
-    FATAL = 5 /* 致命，指明非常严重的可能会导致应用终止执行错误事件 */
-};
-
 /**
  * @brief 内部日志记录器
  */

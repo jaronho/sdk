@@ -9,7 +9,6 @@ DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixNam
                            size_t maxFiles, bool createDailyFolder)
 {
     assert(!path.empty());
-    assert(extName.size() > 1);
     assert(maxSize > 0);
     m_path = path;
     m_prefixName = m_baseName = prefixName;

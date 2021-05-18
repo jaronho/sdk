@@ -11,11 +11,10 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
 {
     assert(!path.empty());
     assert(!baseName.empty());
-    assert(extName.size() > 1);
     assert(maxSize > 0);
     m_baseName = baseName;
     m_extName = extName;
-    if ('.' != extName.at(0))
+    if (!extName.empty() && '.' != extName.at(0))
     {
         m_extName.insert(0, ".");
     }
@@ -82,7 +81,7 @@ bool RotatingLogfile::findIndexList(const std::string& path, const std::regex& p
 
 int RotatingLogfile::findLastIndex(const std::string& path, std::vector<int>& indexList)
 {
-    std::regex pattern(m_baseName + "-([0-9]+)\\" + m_extName);
+    std::regex pattern(m_baseName + "-([0-9]+)" + (m_extName.empty() ? "" : "\\") + m_extName);
     int lastIndex = 1;
     if (findIndexList(path, pattern, indexList))
     {

@@ -4,7 +4,14 @@
 
 int main()
 {
-    logger::LoggerManager::start("log", "app", "who");
+    logger::LogConfig cfg;
+    cfg.path = "log";
+    cfg.name = "app"; /* 默认的日志记录器名称 */
+    cfg.fileExtName = ".log";
+    cfg.fileMaxSize = 20 * 1024 * 1024;
+    cfg.fileMaxCount = 5;
+    cfg.newFolderDaily = true;
+    logger::LoggerManager::start(cfg, "who");
     auto logger1 = logger::LoggerManager::getLogger("test", "main_");
     for (int i = 0; i < 100; ++i)
     {
