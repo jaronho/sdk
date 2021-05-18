@@ -114,34 +114,94 @@ bool Connection::appendContentFile(const std::string& key, const std::string& fi
     return true;
 }
 
-void Connection::doDelete(const ResponseCallback& respCb)
+void Connection::doDelete(const ResponseCallback& respCb, bool asyncOp)
 {
     m_req->setData(m_data);
-    HttpClient::easyDelete(m_req, m_funcSet, respCb);
+    if (asyncOp)
+    {
+        HttpClient::easyDelete(m_req, m_funcSet, respCb);
+    }
+    else
+    {
+        curlex::Response resp;
+        curlex::curlDelete(m_req, m_funcSet, resp);
+        if (respCb)
+        {
+            respCb(resp);
+        }
+    }
 }
 
-void Connection::doGet(const ResponseCallback& respCb)
+void Connection::doGet(const ResponseCallback& respCb, bool asyncOp)
 {
     m_req->setData(m_data);
-    HttpClient::easyGet(m_req, m_funcSet, respCb);
+    if (asyncOp)
+    {
+        HttpClient::easyGet(m_req, m_funcSet, respCb);
+    }
+    else
+    {
+        curlex::Response resp;
+        curlex::curlGet(m_req, m_funcSet, resp);
+        if (respCb)
+        {
+            respCb(resp);
+        }
+    }
 }
 
-void Connection::doPut(const ResponseCallback& respCb)
+void Connection::doPut(const ResponseCallback& respCb, bool asyncOp)
 {
     m_req->setData(m_data);
-    HttpClient::easyPut(m_req, m_funcSet, respCb);
+    if (asyncOp)
+    {
+        HttpClient::easyPut(m_req, m_funcSet, respCb);
+    }
+    else
+    {
+        curlex::Response resp;
+        curlex::curlPut(m_req, m_funcSet, resp);
+        if (respCb)
+        {
+            respCb(resp);
+        }
+    }
 }
 
-void Connection::doPost(const ResponseCallback& respCb)
+void Connection::doPost(const ResponseCallback& respCb, bool asyncOp)
 {
     m_req->setData(m_data);
-    HttpClient::easyPost(m_req, m_funcSet, respCb);
+    if (asyncOp)
+    {
+        HttpClient::easyPost(m_req, m_funcSet, respCb);
+    }
+    else
+    {
+        curlex::Response resp;
+        curlex::curlPost(m_req, m_funcSet, resp);
+        if (respCb)
+        {
+            respCb(resp);
+        }
+    }
 }
 
-void Connection::doDownload(const std::string& filename, bool recover, const ResponseCallback& respCb)
+void Connection::doDownload(const std::string& filename, bool recover, const ResponseCallback& respCb, bool asyncOp)
 {
     m_req->setData(m_data);
-    HttpClient::easyDownload(m_req, filename, recover, m_funcSet, respCb);
+    if (asyncOp)
+    {
+        HttpClient::easyDownload(m_req, filename, recover, m_funcSet, respCb);
+    }
+    else
+    {
+        curlex::Response resp;
+        curlex::curlDownload(m_req, filename, recover, m_funcSet, resp);
+        if (respCb)
+        {
+            respCb(resp);
+        }
+    }
 }
 
 void Connection::setStopFunc()

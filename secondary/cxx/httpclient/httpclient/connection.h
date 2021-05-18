@@ -41,15 +41,15 @@ public:
 
     bool appendContentFile(const std::string& key, const std::string& filename);
 
-    void doDelete(const ResponseCallback& respCb);
+    void doDelete(const ResponseCallback& respCb, bool asyncOp = true);
 
-    void doGet(const ResponseCallback& respCb);
+    void doGet(const ResponseCallback& respCb, bool asyncOp = true);
 
-    void doPut(const ResponseCallback& respCb);
+    void doPut(const ResponseCallback& respCb, bool asyncOp = true);
 
-    void doPost(const ResponseCallback& respCb);
+    void doPost(const ResponseCallback& respCb, bool asyncOp = true);
 
-    void doDownload(const std::string& filename, bool recover, const ResponseCallback& respCb);
+    void doDownload(const std::string& filename, bool recover, const ResponseCallback& respCb, bool asyncOp = true);
 
 private:
     void setStopFunc();
