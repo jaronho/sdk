@@ -6,9 +6,72 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/timeb.h>
+#ifdef _WIN32
+#include <direct.h>
+#include <io.h>
+#else
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#endif
 
 namespace stacktrace
 {
+/**
+ * @brief 创建dump文件路径
+ * @param path 路径
+ * @return true-成功, false-失败
+ */
+bool createDumpPath(const std::string& path)
+{
+    if (path.empty())
+    {
+        return false;
+    }
+    std::string pathNode;
+    for (size_t i = 0, pathLen = path.length(); i < pathLen; ++i)
+    {
+        char pathChar = path.at(i);
+        bool newPath = false;
+        if ('/' == pathChar || '\\' == pathChar)
+        {
+#ifdef _WIN32
+            pathChar = '\\';
+#else
+            pathChar = '/';
+#endif
+            newPath = true;
+        }
+        else if (pathLen - 1 == i)
+        {
+            newPath = true;
+        }
+        pathNode += pathChar;
+        if (newPath)
+        {
+#ifdef _WIN32
+            if (0 != _access(pathNode.c_str(), 0))
+            {
+                if (0 != _mkdir(pathNode.c_str()))
+                {
+                    return false;
+                }
+            }
+#else
+            if (0 != access(pathNode.c_str(), F_OK))
+            {
+                if (0 != mkdir(pathNode.c_str(), S_IRWXU | S_IRWXG | S_IRWXO))
+                {
+                    return false;
+                }
+            }
+#endif
+        }
+    }
+    return true;
+}
+
 /**
  * @brief 获取每条堆栈信息的地址
  * @param traceLine 堆栈信息
@@ -53,12 +116,17 @@ void catchHandler(int sigNum)
     bool isProcExist = false;
     FILE* fp = fopen(CrashDump::m_fullProcName.c_str(), "r");
     if (fp)
-
     {
         isProcExist = true;
         fclose(fp);
     }
-    /* step2: 创建堆栈文件 */
+    /* step2: 生成堆栈文件名 */
+    std::string procName = CrashDump::m_fullProcName;
+    size_t pos = procName.find_last_of("/");
+    if (std::string::npos != pos)
+    {
+        procName = procName.substr(pos + 1, procName.size() - pos).append("_");
+    }
     time_t now;
     time(&now);
     struct tm t = *localtime(&now);
@@ -68,16 +136,24 @@ void catchHandler(int sigNum)
     ftime(&tb);
     char ms[4] = {0};
     sprintf(ms, "%03d", tb.millitm);
-    std::string fullDumpFilename;
-    fullDumpFilename.append(CrashDump::m_dumpFilePath).append(datetime).append(ms).append(".dump");
+    std::string dumpFilename = procName + datetime + ms + ".dump";
+    /* step3: 创建堆栈文件*/
+    createDumpPath(CrashDump::m_dumpFilePath);
+    std::string fullDumpFilename = CrashDump::m_dumpFilePath + dumpFilename;
+    bool isFullDumpValid = true;
     fp = fopen(fullDumpFilename.c_str(), "w");
-    /* step3: 获取堆栈信息 */
+    if (!fp)
+    {
+        isFullDumpValid = false;
+        fp = fopen(dumpFilename.c_str(), "w");
+    }
+    /* step4: 获取堆栈信息 */
     std::vector<std::string> traceList = getStackTrace();
     for (size_t i = 0, len = traceList.size(); i < len; ++i)
     {
         std::string traceLine;
         traceLine.append("[").append(std::to_string(i + 1)).append("] ").append(traceList[i]);
-        /* step4: 解析出详细信息 */
+        /* step5: 解析出详细信息 */
         std::string traceAddress = getTraceAddress(traceLine);
         if (!traceAddress.empty() && isProcExist)
         {
@@ -87,7 +163,7 @@ void catchHandler(int sigNum)
                 traceLine.append(" [").append(detail).append("]");
             }
         }
-        /* step5: 写堆栈文件 */
+        /* step6: 写堆栈文件 */
         std::cout << traceLine << std::endl;
         if (fp)
         {
@@ -102,12 +178,12 @@ void catchHandler(int sigNum)
     {
         fclose(fp);
     }
-    /* step6: 回调到外部 */
+    /* step7: 回调到外部 */
     if (CrashDump::m_callback)
     {
-        CrashDump::m_callback(fullDumpFilename);
+        CrashDump::m_callback(isFullDumpValid ? fullDumpFilename : dumpFilename);
     }
-    exit(0);
+    exit(1);
 }
 #endif
 
@@ -118,10 +194,9 @@ FinishCallback CrashDump::m_callback = nullptr;
 void CrashDump::open(const std::string& dumpFilePath, const std::string& fullProcName, const FinishCallback& callback)
 {
     m_dumpFilePath = dumpFilePath;
-    size_t dumpFilePathLen = m_dumpFilePath.size();
-
     m_fullProcName = fullProcName;
     m_callback = callback;
+    size_t dumpFilePathLen = m_dumpFilePath.size();
 #ifdef _WIN32
     if (!m_dumpFilePath.empty() && '\\' != m_dumpFilePath.at(dumpFilePathLen - 1))
     {
