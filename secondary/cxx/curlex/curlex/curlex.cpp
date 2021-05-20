@@ -64,8 +64,8 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
         obj->setCookieFile(cookieFile);
     }
     /* step3: 设置函数 */
-    obj->setProgressFunc([&](int64_t nowUploaded, int64_t totalUpload, double uploadSpeed, int64_t nowDownloaded, int64_t totalDownload,
-                             double downloadSpeed) {
+    obj->setProgressFunc([&funcSet](int64_t nowUploaded, int64_t totalUpload, double uploadSpeed, int64_t nowDownloaded,
+                                    int64_t totalDownload, double downloadSpeed) {
         if (funcSet.isStopFunc && funcSet.isStopFunc())
         {
             return true;
@@ -126,7 +126,7 @@ bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
     {
         return false;
     }
-    obj->setRecvFunc([&](void* bytes, size_t count) {
+    obj->setRecvFunc([&resp](void* bytes, size_t count) {
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
@@ -136,7 +136,7 @@ bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 bool curlGet(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 {
     auto obj = createCurlObject(req, funcSet);
-    obj->setRecvFunc([&](void* bytes, size_t count) {
+    obj->setRecvFunc([&resp](void* bytes, size_t count) {
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
@@ -156,7 +156,7 @@ bool curlPut(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
     {
         return false;
     }
-    obj->setRecvFunc([&](void* bytes, size_t count) {
+    obj->setRecvFunc([&resp](void* bytes, size_t count) {
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
@@ -171,7 +171,7 @@ bool curlPost(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
     {
         return false;
     }
-    obj->setRecvFunc([&](void* bytes, size_t count) {
+    obj->setRecvFunc([&resp](void* bytes, size_t count) {
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
@@ -201,7 +201,7 @@ bool curlDownload(const RequestPtr& req, const std::string& filename, bool recov
     {
         obj->setResumeOffset(offset);
     }
-    obj->setRecvFunc([&](void* bytes, size_t count) {
+    obj->setRecvFunc([&fp](void* bytes, size_t count) {
         size_t writeCount = fwrite(bytes, 1, count, fp);
         return writeCount;
     });

@@ -132,7 +132,7 @@ int onProgressFunc(void* userdata, int64_t totalDownload, int64_t nowDownloaded,
     }
     if (progressObject->func(nowUploaded, totalUpload, uploadSpeed, nowDownloaded, totalDownload, downloadSpeed))
     {
-        return 1; /* 停止 */
+        return 1; /* 停止, curl码将为42, 错误信息为"Callback aborted" */
     }
     return 0;
 }
