@@ -208,9 +208,9 @@ void Connection::setStopFunc()
 {
     std::weak_ptr<Dummy> wpDummy = m_dummy;
     m_funcSet.isStopFunc = [&, wpDummy]() {
-        bool isStop = m_stop.load();
+        bool isStop = m_stop.load(); /* 需要先缓存值, 否则如果在判断spDumpy后获取的话可能此时对象已被销毁 */
         auto spDumpy = wpDummy.lock();
-        if (spDumpy) /* 之前的Connection对象还未销毁, 它还可以控制是否要停止 */
+        if (spDumpy) /* 之前的Connection对象还未销毁, 使用已缓存的值进行是否停止控制 */
         {
             return isStop;
         }
