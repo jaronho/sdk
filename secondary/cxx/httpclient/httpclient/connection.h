@@ -54,11 +54,16 @@ public:
 private:
     void setStopFunc();
 
+    struct Dummy
+    {
+    };
+
 private:
     curlex::RequestPtr m_req = nullptr; /* 请求对象 */
     curlex::RequestDataPtr m_data = nullptr; /* 请求数据 */
     curlex::FuncSet m_funcSet; /* 函数集 */
     ResponseCallback m_respCallback = nullptr; /* 响应回调 */
-    std::atomic_int m_stop = {0}; /* 是否停止 */
+    std::atomic_bool m_stop = {false}; /* 是否停止 */
+    std::shared_ptr<Dummy> m_dummy = std::make_shared<Dummy>(); /* 用于标识当前对象是否已经被销毁 */
 };
 } // namespace http

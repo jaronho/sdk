@@ -22,7 +22,7 @@ Connection::Connection(const std::string& username, const std::string& password,
 
 void Connection::terminate()
 {
-    m_stop.store(1);
+    m_stop.store(true);
 }
 
 void Connection::setConnectTimeout(size_t seconds)
@@ -206,6 +206,14 @@ void Connection::doDownload(const std::string& filename, bool recover, const Res
 
 void Connection::setStopFunc()
 {
-    m_funcSet.isStopFunc = [&]() { return 1 == m_stop.load(); };
+    std::weak_ptr<Dummy> wpDummy = m_dummy;
+    m_funcSet.isStopFunc = [&, wpDummy]() {
+        auto spDumpy = wpDummy.lock();
+        if (spDumpy) /* 之前的Connection对象还未销毁, 它还可以控制是否要停止 */
+        {
+            return m_stop.load();
+        }
+        return false;
+    };
 }
 } // namespace http
