@@ -208,10 +208,11 @@ void Connection::setStopFunc()
 {
     std::weak_ptr<Dummy> wpDummy = m_dummy;
     m_funcSet.isStopFunc = [&, wpDummy]() {
+        bool isStop = m_stop.load();
         auto spDumpy = wpDummy.lock();
-        if (spDumpy) /* Ö®Ç°µÄConnection¶ÔÏó»¹Î´Ïú»Ù, Ëü»¹¿ÉÒÔ¿ØÖÆÊÇ·ñÒªÍ£Ö¹ */
+        if (spDumpy) /* ä¹‹å‰çš„Connectionå¯¹è±¡è¿˜æœªé”€æ¯, å®ƒè¿˜å¯ä»¥æ§åˆ¶æ˜¯å¦è¦åœæ­¢ */
         {
-            return m_stop.load();
+            return isStop;
         }
         return false;
     };
