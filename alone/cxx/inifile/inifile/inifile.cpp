@@ -38,7 +38,7 @@ void trimLeftRightSpace(std::string& str)
 {
     int len = static_cast<int>(str.size());
     int i = 0;
-    while (isspace(str[i]) && '\0' != str[i])
+    while (' ' == str[i] && '\0' != str[i])
     {
         ++i;
     }
@@ -49,7 +49,7 @@ void trimLeftRightSpace(std::string& str)
     len = str.size();
     for (i = len - 1; i >= 0; --i)
     {
-        if (!isspace(str[i]))
+        if (' ' != str[i])
         {
             break;
         }
