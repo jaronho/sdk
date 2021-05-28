@@ -1,3 +1,4 @@
+#include "config.h"
 #include "inifile/ini_reader.h"
 #include "inifile/ini_writer.h"
 
@@ -316,6 +317,23 @@ void testWrite2()
     }
 }
 
+/**
+ * @brief 测试恢复默认设置
+ */
+void testRestore()
+{
+    std::cout << "===================================== test restore" << std::endl;
+    Config cfg;
+    if (cfg.init(".."))
+    {
+        cfg.setValue(config_key::SERVER_IP, "192.168.5.3");
+        cfg.save();
+        std::cout << "modify server ip to " << cfg.getValue(config_key::SERVER_IP).toString() << std::endl;
+        cfg.restoreFactory();
+        std::cout << "restore server ip to " << cfg.getValue(config_key::SERVER_IP).toString() << std::endl;
+    }
+}
+
 int main()
 {
     testRead();
@@ -323,6 +341,8 @@ int main()
     testWrite1();
     std::cout << std::endl;
     testWrite2();
+    std::cout << std::endl;
+    testRestore();
     std::cout << std::endl;
     return 0;
 }
