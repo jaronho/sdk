@@ -36,7 +36,11 @@ bool Config::init(const std::string& path)
     std::lock_guard<std::mutex> locker(m_mutex);
     m_iniWriter = std::make_shared<ini::IniWriter>();
     m_iniWriter->setAllowAutoCreate();
-    return m_iniWriter->open(path + "/" + CONFIG_FILENAME);
+    if (m_iniWriter->open(path + "/" + CONFIG_FILENAME))
+    {
+        return ini::syncIni(m_iniWriter, CONFIG_FILENAME); /* 主要用于升级时同步配置文件的修改 */
+    }
+    return false;
 }
 
 bool Config::reload()
