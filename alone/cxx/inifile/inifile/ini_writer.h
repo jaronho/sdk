@@ -15,6 +15,8 @@ public:
 
     bool save();
 
+    void clear();
+
     bool setCommentFlags(const std::vector<std::string>& flags);
 
     bool removeSection(const std::string& section);
@@ -45,7 +47,6 @@ public:
 
     bool setValue(const std::string& section, const std::string& key, std::string value);
 
-protected:
     bool isAllowAutoCreate() override;
 
 private:

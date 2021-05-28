@@ -29,6 +29,11 @@ bool IniWriter::save()
     return IniFile::save();
 }
 
+void IniWriter::clear()
+{
+    IniFile::clear();
+}
+
 bool IniWriter::setCommentFlags(const std::vector<std::string>& flags)
 {
     return IniFile::setCommentFlags(flags);

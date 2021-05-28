@@ -11,6 +11,8 @@ public:
 
     bool open(const std::string& filename, size_t lineLength = 128);
 
+    bool reload();
+
     std::vector<IniSection> getDataList();
 
     std::vector<std::string> getCommentFlags();
@@ -43,7 +45,10 @@ public:
 
     std::string getString(const std::string& section, const std::string& key, std::string defaultValue = std::string());
 
-protected:
     bool isAllowAutoCreate() override;
+
+private:
+    std::string m_filename;
+    size_t m_lineLength;
 };
 } // namespace ini

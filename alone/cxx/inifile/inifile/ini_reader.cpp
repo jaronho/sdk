@@ -17,7 +17,15 @@ out_type convert(const in_value& t)
 
 bool IniReader::open(const std::string& filename, size_t lineLength)
 {
+    m_filename = filename;
+    m_lineLength = lineLength;
     int ret = IniFile::open(filename, false, lineLength);
+    return 0 == ret;
+}
+
+bool IniReader::reload()
+{
+    int ret = IniFile::open(m_filename, false, m_lineLength);
     return 0 == ret;
 }
 

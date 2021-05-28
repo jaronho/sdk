@@ -120,8 +120,8 @@ bool getKeyAndValue(const std::string& content, std::string& key, std::string& v
 
 IniFile::IniFile()
 {
-    m_commentFlags.push_back("#");
-    m_commentFlags.push_back(";");
+    m_commentFlags.emplace_back("#");
+    m_commentFlags.emplace_back(";");
 }
 
 IniFile::~IniFile()
@@ -228,7 +228,7 @@ int IniFile::open(const std::string& filename, bool allowTailComment, size_t lin
                     item.key = key;
                     item.value = value;
                     item.comment = comment;
-                    section->items.push_back(item);
+                    section->items.emplace_back(item);
                     comment.clear();
                 }
                 else /* 项解析出错, 说明格式不对 */
@@ -289,12 +289,18 @@ bool IniFile::save()
     return true;
 }
 
+void IniFile::clear()
+{
+    m_sections.clear();
+    m_saved = false;
+}
+
 std::vector<IniSection> IniFile::getDataList()
 {
     std::vector<IniSection> dataList;
     for (auto iter = m_sections.begin(); m_sections.end() != iter; ++iter)
     {
-        dataList.push_back(*(iter->second.get()));
+        dataList.emplace_back(*(iter->second.get()));
     }
     return dataList;
 }
@@ -468,7 +474,7 @@ bool IniFile::setValue(const std::string& sectionName, const std::string& key, c
         IniItem item;
         item.key = key;
         item.value = value;
-        section->items.push_back(item);
+        section->items.emplace_back(item);
         m_saved = false;
         return true;
     }
@@ -531,7 +537,7 @@ bool IniFile::setComment(const std::string& sectionName, const std::string& key,
     IniItem item;
     item.key = key;
     item.comment = comment;
-    section->items.push_back(item);
+    section->items.emplace_back(item);
     m_saved = false;
     return true;
 }

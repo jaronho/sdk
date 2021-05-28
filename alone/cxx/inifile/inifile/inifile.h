@@ -53,6 +53,11 @@ public:
     bool save();
 
     /**
+     * @brief 清除
+     */
+    void clear();
+
+    /**
      * @brief 获取数据列表
      * @return 数据列表
      */
@@ -153,7 +158,6 @@ public:
      */
     bool setComment(const std::string& sectionName, const std::string& key, const std::string& comment);
 
-protected:
     /**
      * @brief 是否允许创建节/项
      * @return true-允许, false-不允许
