@@ -9,7 +9,7 @@ namespace stacktrace
  * @brief 获取堆栈信息
  * @return 堆栈信息
  */
-std::vector<std::string> getStackTrace();
+std::vector<std::string> getStacktrace();
 
 #ifndef _WIN32
 /**

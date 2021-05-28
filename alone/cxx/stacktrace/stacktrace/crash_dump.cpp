@@ -148,7 +148,7 @@ void catchHandler(int sigNum)
         fp = fopen(dumpFilename.c_str(), "w");
     }
     /* step4: 获取堆栈信息 */
-    std::vector<std::string> traceList = getStackTrace();
+    std::vector<std::string> traceList = getStacktrace();
     for (size_t i = 0, len = traceList.size(); i < len; ++i)
     {
         std::string traceLine;

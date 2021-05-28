@@ -9,7 +9,7 @@
 
 namespace stacktrace
 {
-std::vector<std::string> getStackTrace()
+std::vector<std::string> getStacktrace()
 {
     std::vector<std::string> traceList;
 #ifdef _WIN32
@@ -20,7 +20,7 @@ std::vector<std::string> getStackTrace()
     char** symbolArray = (char**)backtrace_symbols(traceArray, arraySize);
     for (size_t i = 0; i < arraySize; ++i)
     {
-        traceList.push_back(symbolArray[i]);
+        traceList.emplace_back(symbolArray[i]);
     }
     free(symbolArray);
 #endif
