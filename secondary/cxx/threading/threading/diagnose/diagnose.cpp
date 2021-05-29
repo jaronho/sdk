@@ -65,7 +65,7 @@ void Diagnose::onExecutorCreated(const Executor* executor)
         return;
     }
     auto executorInfo = std::make_unique<ExecutorInfo>(executor);
-    s_executors[executor] = std::move(executorInfo);
+    s_executors.insert(std::make_pair(executor, std::move(executorInfo)));
 }
 
 void Diagnose::onExecutorDestroyed(const Executor* executor)
@@ -102,7 +102,7 @@ void Diagnose::bindTaskToExecutor(const Task* task, const Executor* executor)
     }
     auto taskInfo = std::make_shared<TaskInfo>(task);
     taskInfo->queuing = std::chrono::steady_clock::now();
-    iter->second->tasks[task] = taskInfo;
+    iter->second->tasks.insert(std::make_pair(task, taskInfo));
     printLog("bind Task [" + task->getName() + "] to Executor [" + executor->getName() + "]");
 }
 
