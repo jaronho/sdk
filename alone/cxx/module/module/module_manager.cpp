@@ -23,7 +23,8 @@ void ModuleManager::setLogFunc(const std::function<void(const std::string&)>& lo
 bool ModuleManager::registerCreator(const std::type_info& type, const Creator& creator)
 {
     printLog("register module [" + std::string(type.name()) + "] creator");
-    assert(!m_creators[type]);
+    auto iter = m_creators.find(type);
+    assert(m_creators.end() == iter);
     m_creators[type] = creator;
     return true;
 }
