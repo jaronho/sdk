@@ -1,4 +1,4 @@
-#include "stacktrace/crash_dump.h"
+#include "crashdump/crashdump.h"
 
 #include <iostream>
 #include <string.h>
@@ -6,6 +6,27 @@
 #else
 #include <unistd.h>
 #endif
+
+class Person
+{
+public:
+    std::string name;
+    int age;
+};
+
+void crash1()
+{
+    volatile int* a = (int*)(NULL);
+    *a = 1;
+}
+
+void crash2()
+{
+    Person* p = new Person();
+    delete p;
+    p = nullptr;
+    p->name = "jim";
+}
 
 int main(int argc, char** argv)
 {
@@ -27,9 +48,8 @@ int main(int argc, char** argv)
         fullProcName.append(procName.substr(pos + 1, procName.size() - pos));
     }
     std::cout << "====" << fullProcName << std::endl;
-    stacktrace::CrashDump::open("", fullProcName,
-                                [](const std::string& dumpFilename) { std::cout << "dumpFilename: " << dumpFilename << std::endl; });
-    char* str = nullptr;
-    memset(str, 0, 6);
+    crashdump::open("./dump", fullProcName,
+                    [](const std::string& dumpFilename) { std::cout << "dumpFilename: " << dumpFilename << std::endl; });
+    crash2();
     return 0;
 }
