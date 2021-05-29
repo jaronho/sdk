@@ -210,7 +210,6 @@ std::string g_symbolPath; /* 符号文件路径 */
 std::string g_symbolFilename; /* 符号文件名 */
 DumpCallback g_dumpCallback = nullptr; /* 崩溃回调 */
 google_breakpad::ExceptionHandler* g_execptionHandler = nullptr; /* 异常句柄 */
-bool g_isSymbolFileExist = false; /* 符号文件是否存在 */
 
 /**
  * @brief 生成符号文件
@@ -264,7 +263,8 @@ bool generateSymbolFile()
 bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* context, bool succeeded)
 {
     std::string fullDumpName = descriptor.path();
-    if (g_isSymbolFileExist)
+    /* 生成符号文件 */
+    if (generateSymbolFile())
     {
         /* 生成文件名 */
         time_t now;
@@ -318,8 +318,6 @@ void open(const std::string& outputPath, const std::string& fullProcName, const 
     /* 创建路径 */
     createPath(g_outputPath);
     createPath(g_symbolPath);
-    /* 生成符号文件 */
-    g_isSymbolFileExist = generateSymbolFile();
     /* 开始监听 */
     google_breakpad::MinidumpDescriptor descriptor(g_outputPath.c_str());
     g_execptionHandler = new google_breakpad::ExceptionHandler(descriptor, NULL, dumpHandler, NULL, true, -1);
