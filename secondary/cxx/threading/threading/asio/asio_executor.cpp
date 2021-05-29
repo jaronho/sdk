@@ -18,9 +18,12 @@ AsioExecutor::AsioExecutor(const std::string& name, size_t threadCount) : Execut
             Platform::setThreadName(threadName);
             /* 关联线程id和名称 */
             auto threadId = Platform::getThreadId();
-            if (m_threadIdNameMap.end() == m_threadIdNameMap.find(threadId))
             {
-                m_threadIdNameMap.insert(std::make_pair(threadId, threadName));
+                std::lock_guard<std::mutex> locker(m_mapMutex);
+                if (m_threadIdNameMap.end() == m_threadIdNameMap.find(threadId))
+                {
+                    m_threadIdNameMap.insert(std::make_pair(threadId, threadName));
+                }
             }
             m_context.run();
         },
@@ -44,7 +47,12 @@ TaskPtr AsioExecutor::post(const TaskPtr& task)
 {
     task->setState(Task::State::QUEUING);
     Diagnose::bindTaskToExecutor(task.get(), this);
-    boost::asio::post(m_context, [threadIdNameMap = m_threadIdNameMap, task] {
+    std::unordered_map<int, std::string> threadIdNameMap;
+    {
+        std::lock_guard<std::mutex> locker(m_mapMutex);
+        threadIdNameMap = m_threadIdNameMap;
+    }
+    boost::asio::post(m_context, [threadIdNameMap, task] {
         /* 获取线程名称 */
         auto threadId = Platform::getThreadId();
         std::string threadName = std::to_string(threadId);

@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <boost/asio.hpp>
+#include <mutex>
 #include <unordered_map>
 
 namespace threading
@@ -45,6 +46,7 @@ private:
     boost::asio::detail::thread_group m_threads; /* 线程组 */
     boost::asio::io_context m_context;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_worker;
+    std::mutex m_mapMutex; /* 映射表互斥锁 */
     std::unordered_map<int, std::string> m_threadIdNameMap; /* 线程id和名称映射表 */
 };
 } // namespace threading
