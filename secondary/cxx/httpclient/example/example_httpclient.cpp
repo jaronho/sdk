@@ -1,8 +1,8 @@
-#include "httpclient/connection.h"
-#include "threading/platform.h"
-
 #include <iostream>
 #include <list>
+
+#include "httpclient/connection.h"
+#include "threading/platform.h"
 
 /**
  * @brief 读取文件内容

@@ -32,7 +32,7 @@ else()
     return()
 endif()
 
-set(threading_path ../../threading) # 设置threading库路径(可修改)
+set(threading_path ../../../../3rdparty/cxx_base_threading) # 设置threading库路径(可修改)
 include_directories(${threading_path})
 
 set(threading_asio_src_list)
@@ -82,7 +82,7 @@ else()
     return()
 endif()
 
-set(curlex_path ../../curlex) # 设置curlex库路径(可修改)
+set(curlex_path ../../../../3rdparty/cxx_base_curlex) # 设置curlex库路径(可修改)
 include_directories(${curlex_path})
 
 set(curlex_src_list)

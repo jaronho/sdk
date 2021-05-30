@@ -1,12 +1,12 @@
 #pragma once
 
-#include "curlex/curlex.h"
-#include "threading/thread_proxy.hpp"
-
 #include <condition_variable>
 #include <list>
 #include <mutex>
 #include <string>
+
+#include "curlex/curlex.h"
+#include "threading/thread_proxy.hpp"
 
 namespace http
 {
