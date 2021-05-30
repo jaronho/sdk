@@ -76,11 +76,11 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     return sectionKey;
 }
 
-bool restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id)
+int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id)
 {
     if (!writer || !writer->isAllowAutoCreate())
     {
-        return false;
+        return 1;
     }
     std::lock_guard<std::mutex> locker(g_mutex);
     /* 查找ini配置 */
@@ -91,7 +91,7 @@ bool restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id)
     auto iniIter = g_iniMap->find(id);
     if (g_iniMap->end() == iniIter)
     {
-        return false;
+        return 2;
     }
     /* 进行配置 */
     const auto& sectionMap = iniIter->second;
@@ -114,14 +114,18 @@ bool restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id)
         }
     }
     /* 最后要保存 */
-    return writer->save();
+    if (!writer->save())
+    {
+        return 3;
+    }
+    return 0;
 }
 
-bool syncIni(std::shared_ptr<IniWriter> writer, const std::string& id)
+int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id)
 {
     if (!writer || !writer->isAllowAutoCreate())
     {
-        return false;
+        return 1;
     }
     std::lock_guard<std::mutex> locker(g_mutex);
     /* 查找ini配置 */
@@ -132,8 +136,9 @@ bool syncIni(std::shared_ptr<IniWriter> writer, const std::string& id)
     auto iniIter = g_iniMap->find(id);
     if (g_iniMap->end() == iniIter)
     {
-        return false;
+        return 2;
     }
+    bool changed = false;
     const auto& newSectionMap = iniIter->second;
     /* 删除废弃数据 */
     auto oldSectionList = writer->getDataList();
@@ -143,12 +148,23 @@ bool syncIni(std::shared_ptr<IniWriter> writer, const std::string& id)
         auto newSectionIter = newSectionMap.find(oldSection.name);
         if (newSectionMap.end() == newSectionIter) /* 删除无用的节数据 */
         {
+            if (oldSection.name.empty() && oldSection.items.empty()) /* 全局节且无数据则忽略 */
+            {
+                continue;
+            }
             writer->removeSection(oldSection.name);
+            changed = true;
         }
         else
         {
             const auto& newSection = newSectionIter->second;
-            writer->setSectionComment(oldSection.name, newSection->comment);
+            std::string oldSectionComment;
+            writer->getSectionComment(oldSection.name, oldSectionComment);
+            if (0 != oldSectionComment.compare(newSection->comment))
+            {
+                writer->setSectionComment(oldSection.name, newSection->comment);
+                changed = true;
+            }
             /* 删除无用的键值数据 */
             for (size_t j = 0; j < oldSection.items.size(); ++j)
             {
@@ -160,13 +176,20 @@ bool syncIni(std::shared_ptr<IniWriter> writer, const std::string& id)
                     if (newItem.key == oldItem.key)
                     {
                         needRemove = false;
-                        writer->setComment(oldSection.name, oldItem.key, newItem.comment);
+                        std::string oldComment;
+                        writer->getComment(oldSection.name, oldItem.key, oldComment);
+                        if (0 != oldComment.compare(newItem.comment))
+                        {
+                            writer->setComment(oldSection.name, oldItem.key, newItem.comment);
+                            changed = true;
+                        }
                         break;
                     }
                 }
                 if (needRemove)
                 {
                     writer->removeKey(oldSection.name, oldItem.key);
+                    changed = true;
                 }
             }
         }
@@ -175,18 +198,38 @@ bool syncIni(std::shared_ptr<IniWriter> writer, const std::string& id)
     for (auto newSectionIter = newSectionMap.begin(); newSectionMap.end() != newSectionIter; ++newSectionIter)
     {
         const auto& newSection = newSectionIter->second;
-        writer->setSectionComment(newSection->name, newSection->comment);
+        std::string oldSectionComment;
+        writer->getSectionComment(newSection->name, oldSectionComment);
+        if (0 != oldSectionComment.compare(newSection->comment))
+        {
+            writer->setSectionComment(newSection->name, newSection->comment);
+            changed = true;
+        }
         for (size_t k = 0; k < newSection->items.size(); ++k)
         {
             const auto& newItem = newSection->items[k];
             if (!writer->hasKey(newSection->name, newItem.key))
             {
                 writer->setValue(newSection->name, newItem.key, newItem.value);
+                changed = true;
             }
-            writer->setComment(newSection->name, newItem.key, newItem.comment);
+            std::string oldComment;
+            writer->getComment(newSection->name, newItem.key, oldComment);
+            if (0 != oldComment.compare(newItem.comment))
+            {
+                writer->setComment(newSection->name, newItem.key, newItem.comment);
+                changed = true;
+            }
         }
     }
     /* 最后要保存 */
-    return writer->save();
+    if (changed)
+    {
+        if (!writer->save())
+        {
+            return 3;
+        }
+    }
+    return 0;
 }
 } // namespace ini

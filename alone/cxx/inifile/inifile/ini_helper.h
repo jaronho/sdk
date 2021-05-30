@@ -36,15 +36,15 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
  * @brief 恢复指定模块的配置
  * @param writer 写入器
  * @param id 键值对所在模块id(一般传入文件名, 能够标识唯一即可)
- * @return true-成功, false-失败
+ * @return 0-成功, 1-写入器为空或不允许写入新字段, 2-找不到模块id, 3-保存失败
  */
-bool restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id);
+int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id);
 
 /**
  * @brief 同步指定模块的配置(将对写入器进行删除和增加键值, 不修改共有的键值)
  * @param writer 写入器
  * @param id 键值对所在模块id(一般传入文件名, 能够标识唯一即可)
- * @return true-成功, false-失败
+ * @return 0-成功, 1-写入器为空或不允许写入新字段, 2-找不到模块id, 3-保存失败
  */
-bool syncIni(std::shared_ptr<IniWriter> writer, const std::string& id);
+int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id);
 } // namespace ini
