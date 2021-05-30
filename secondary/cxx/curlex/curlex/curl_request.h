@@ -1,10 +1,10 @@
 #pragma once
 
-#include "curl_req_data.h"
-
 #include <map>
 #include <memory>
 #include <string>
+
+#include "curl_req_data.h"
 
 namespace curlex
 {

@@ -1,6 +1,6 @@
-#include "threading/thread_proxy.hpp"
-
 #include <iostream>
+
+#include "threading/thread_proxy.hpp"
 
 threading::ExecutorPtr g_workers;
 

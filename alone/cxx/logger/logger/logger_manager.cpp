@@ -1,8 +1,8 @@
 #include "logger_manager.h"
 
-#include "impl/inner_logger_impl.h"
-
 #include <assert.h>
+
+#include "impl/inner_logger_impl.h"
 
 namespace logger
 {

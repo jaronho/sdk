@@ -4,13 +4,13 @@
 #if 1 == ENABLE_THREADING_FIBER
 #include "fiber/fiber_executor.h"
 #endif
-#include "diagnose/diagnose.h"
-
 #include <chrono>
 #include <exception>
 #include <functional>
 #include <future>
 #include <type_traits>
+
+#include "diagnose/diagnose.h"
 
 namespace threading
 {

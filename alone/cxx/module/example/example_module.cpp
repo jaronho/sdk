@@ -1,8 +1,8 @@
+#include <iostream>
+
 #include "module_a.h"
 #include "module_b.h"
 #include "module_c.h"
-
-#include <iostream>
 
 int main()
 {

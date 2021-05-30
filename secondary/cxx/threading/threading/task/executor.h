@@ -1,10 +1,10 @@
 #pragma once
 
-#include "task.h"
-
 #include <functional>
 #include <memory>
 #include <string>
+
+#include "task.h"
 
 namespace threading
 {

@@ -1,11 +1,10 @@
-#include "crashdump/crashdump.h"
-
 #include <iostream>
 #include <string.h>
 #ifdef _WIN32
 #else
 #include <unistd.h>
 #endif
+#include "crashdump/crashdump.h"
 
 class Person
 {

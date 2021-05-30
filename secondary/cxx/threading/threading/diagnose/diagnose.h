@@ -1,10 +1,10 @@
 #pragma once
+#include <functional>
+#include <string>
+
 #include "../task/executor.h"
 #include "../task/task.h"
 #include "diagnose_info.h"
-
-#include <functional>
-#include <string>
 
 namespace threading
 {

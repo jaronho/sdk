@@ -1,9 +1,9 @@
+#include <iomanip>
+#include <iostream>
+
 #include "config.h"
 #include "inifile/ini_reader.h"
 #include "inifile/ini_writer.h"
-
-#include <iomanip>
-#include <iostream>
 
 bool copyFile(const std::string& srcFilePath, const std::string& destFilePath)
 {

@@ -8,12 +8,12 @@
 #include <direct.h>
 #include <io.h>
 #else
-#include "client/linux/handler/exception_handler.h"
-
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include "client/linux/handler/exception_handler.h"
 #endif
 
 namespace crashdump

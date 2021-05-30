@@ -1,11 +1,11 @@
 #pragma once
-#include "../task/executor.h"
-#include "../task/task.h"
-
 #include <chrono>
 #include <memory>
 #include <string>
 #include <unordered_map>
+
+#include "../task/executor.h"
+#include "../task/task.h"
 
 namespace threading
 {

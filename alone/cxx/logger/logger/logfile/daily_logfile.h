@@ -1,11 +1,11 @@
 #pragma once
-#include "rotating_logfile.h"
-
 #include <atomic>
 #include <mutex>
 #include <regex>
 #include <string>
 #include <vector>
+
+#include "rotating_logfile.h"
 
 namespace logger
 {

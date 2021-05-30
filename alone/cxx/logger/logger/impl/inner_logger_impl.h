@@ -1,10 +1,10 @@
 #pragma once
-#include "../inner_logger.h"
-#include "../logfile/daily_logfile.h"
-
 #include <atomic>
 #include <memory>
 #include <string>
+
+#include "../inner_logger.h"
+#include "../logfile/daily_logfile.h"
 
 namespace logger
 {

@@ -1,9 +1,9 @@
 #include "fiber_executor.h"
 
+#include <exception>
+
 #include "../diagnose/diagnose.h"
 #include "../platform.h"
-
-#include <exception>
 
 namespace threading
 {

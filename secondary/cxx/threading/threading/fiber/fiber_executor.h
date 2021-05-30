@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../task/executor.h"
-
 #include <boost/fiber/all.hpp>
 #include <memory>
 #include <thread>
+
+#include "../task/executor.h"
 
 namespace threading
 {

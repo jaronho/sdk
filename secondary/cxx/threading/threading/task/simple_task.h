@@ -1,8 +1,8 @@
 #pragma once
 
-#include "task.h"
-
 #include <functional>
+
+#include "task.h"
 
 namespace threading
 {

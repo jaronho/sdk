@@ -1,6 +1,6 @@
-#include "logger/logger_manager.h"
-
 #include <iostream>
+
+#include "logger/logger_manager.h"
 
 int main()
 {

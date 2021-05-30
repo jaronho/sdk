@@ -1,8 +1,8 @@
 #pragma once
-#include "inner_logger.h"
-
 #include <memory>
 #include <string>
+
+#include "inner_logger.h"
 
 namespace logger
 {

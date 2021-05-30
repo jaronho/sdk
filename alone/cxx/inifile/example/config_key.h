@@ -1,7 +1,7 @@
 #pragma once
-#include "inifile/ini_helper.h"
-
 #include <string>
+
+#include "inifile/ini_helper.h"
 
 const std::string CONFIG_FILENAME = "config.ini";
 #define CONFIG_KV_S(keyVar, keyName, val) MAKE_INI_KV(CONFIG_FILENAME, keyVar, keyName, val, "", "")

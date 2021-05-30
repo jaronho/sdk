@@ -1,11 +1,11 @@
 #pragma once
-#include "logger.h"
-#include "logger_define.h"
-
 #include <fmt/format.h>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+
+#include "logger.h"
+#include "logger_define.h"
 
 #if (1 == ENABLE_LOGGER_DETAIL)
 #define TRACE_LOG(logger, f, ...) (logger).trace(__FILE__, __LINE__, __FUNCTION__, fmt::format(FMT_STRING(f), ##__VA_ARGS__))

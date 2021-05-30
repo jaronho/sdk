@@ -1,12 +1,12 @@
 #pragma once
 
-#include "curl_object.h"
-#include "curl_request.h"
-
 #include <functional>
 #include <map>
 #include <memory>
 #include <string>
+
+#include "curl_object.h"
+#include "curl_request.h"
 
 namespace curlex
 {
