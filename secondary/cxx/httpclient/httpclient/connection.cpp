@@ -5,24 +5,16 @@ namespace http
 Connection::Connection(const std::string& url)
 {
     m_req = HttpClient::makeSimpleRequest(url);
-    setStopFunc();
 }
 
 Connection::Connection(const std::string& sslCaFilename, const std::string& url)
 {
     m_req = HttpClient::makeCafileRequest(sslCaFilename, url);
-    setStopFunc();
 }
 
 Connection::Connection(const std::string& username, const std::string& password, const std::string& url)
 {
     m_req = HttpClient::makeUserpwdRequest(username, password, url);
-    setStopFunc();
-}
-
-void Connection::terminate()
-{
-    m_stop.store(true);
 }
 
 void Connection::setConnectTimeout(size_t seconds)
@@ -38,6 +30,11 @@ void Connection::setTimeout(size_t seconds)
 void Connection::appendHeader(const std::string& key, const std::string& value)
 {
     m_req->appendHeader(key, value);
+}
+
+void Connection::setStopFunc(const std::function<bool()>& func)
+{
+    m_funcSet.isStopFunc = func;
 }
 
 void Connection::setSendProgressFunc(const std::function<void(int64_t now, int64_t total, double speed)>& func)
@@ -202,19 +199,5 @@ void Connection::doDownload(const std::string& filename, bool recover, const Res
             respCb(resp);
         }
     }
-}
-
-void Connection::setStopFunc()
-{
-    std::weak_ptr<Dummy> wpDummy = m_dummy;
-    m_funcSet.isStopFunc = [&, wpDummy]() {
-        bool isStop = m_stop.load(); /* 需要先缓存值, 否则如果在判断spDumpy后获取的话可能此时对象已被销毁 */
-        auto spDumpy = wpDummy.lock();
-        if (spDumpy) /* 之前的Connection对象还未销毁, 使用已缓存的值进行是否停止控制 */
-        {
-            return isStop;
-        }
-        return false;
-    };
 }
 } // namespace http

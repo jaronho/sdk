@@ -21,13 +21,13 @@ public:
 
     virtual ~Connection() = default;
 
-    void terminate();
-
     void setConnectTimeout(size_t seconds);
 
     void setTimeout(size_t seconds);
 
     void appendHeader(const std::string& key, const std::string& value);
+
+    void setStopFunc(const std::function<bool()>& func);
 
     void setSendProgressFunc(const std::function<void(int64_t now, int64_t total, double speed)>& func);
 
@@ -52,18 +52,9 @@ public:
     void doDownload(const std::string& filename, bool recover, const ResponseCallback& respCb, bool asyncOp = true);
 
 private:
-    void setStopFunc();
-
-    struct Dummy
-    {
-    };
-
-private:
     curlex::RequestPtr m_req = nullptr; /* 请求对象 */
     curlex::RequestDataPtr m_data = nullptr; /* 请求数据 */
     curlex::FuncSet m_funcSet; /* 函数集 */
     ResponseCallback m_respCallback = nullptr; /* 响应回调 */
-    std::atomic_bool m_stop = {false}; /* 是否停止 */
-    std::shared_ptr<Dummy> m_dummy = std::make_shared<Dummy>(); /* 用于标识当前对象是否已经被销毁 */
 };
 } // namespace http
