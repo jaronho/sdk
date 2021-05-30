@@ -40,11 +40,12 @@ public:
     /**
      * @brief 打开文件
      * @param filename 文件名, 例如: "test.ini", "../test.ini", "temp\\test.ini"
-     * @param allowTailComment 是否允许在行后面添加注释
-     * @param lineLength 每行的字符个数限制
+     * @param allowTailComment 是否允许在行后面添加注释, 一般设置为: false
+     * @param lineLength 每行的字符个数限制, 例如: 128
+     * @param errorDesc [输出]错误信息
      * @return 0-成功, 1-文件无法打开, 2-不匹配']', 3-节名称为空, 4-节名称重复, 5-项解析出错
      */
-    int open(const std::string& filename, bool allowTailComment = false, size_t lineLength = 128);
+    int open(const std::string& filename, bool allowTailComment, size_t lineLength, std::string& errorDesc);
 
     /**
      * @brief 保存文件(对象在析构时会自动调用该接口)

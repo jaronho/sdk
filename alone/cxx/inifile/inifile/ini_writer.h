@@ -9,11 +9,11 @@ class IniWriter final : public IniReader
 public:
     virtual ~IniWriter() = default;
 
-    bool open(const std::string& filename, size_t lineLength = 128);
+    int open(const std::string& filename, std::string& errorDesc, size_t lineLength = 128);
 
     void setAllowAutoCreate();
 
-    bool save();
+    int save();
 
     void clear();
 

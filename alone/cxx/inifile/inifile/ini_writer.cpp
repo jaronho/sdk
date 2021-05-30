@@ -2,7 +2,7 @@
 
 namespace ini
 {
-bool IniWriter::open(const std::string& filename, size_t lineLength)
+int IniWriter::open(const std::string& filename, std::string& errorDesc, size_t lineLength)
 {
 #if _WIN32
     FILE* fp;
@@ -15,8 +15,7 @@ bool IniWriter::open(const std::string& filename, size_t lineLength)
 #endif
         fclose(fp);
     }
-    int ret = IniFile::open(filename, false, lineLength);
-    return 0 == ret;
+    return IniFile::open(filename, false, lineLength, errorDesc);
 }
 
 void IniWriter::setAllowAutoCreate()
@@ -24,7 +23,7 @@ void IniWriter::setAllowAutoCreate()
     m_allowAutoCreate = true;
 }
 
-bool IniWriter::save()
+int IniWriter::save()
 {
     return IniFile::save();
 }

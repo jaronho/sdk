@@ -9,9 +9,9 @@ class IniReader : protected IniFile
 public:
     virtual ~IniReader() = default;
 
-    bool open(const std::string& filename, size_t lineLength = 128);
+    int open(const std::string& filename, std::string& errorDesc, size_t lineLength = 128);
 
-    bool reload();
+    int reload(std::string& errorDesc);
 
     std::vector<IniSection> getDataList();
 

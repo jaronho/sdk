@@ -8,53 +8,36 @@ namespace ini
 {
 void trimLeft(std::string& str, char c)
 {
-    size_t len = str.size();
-    size_t i = 0;
-    while (str[i] == c && '\0' != str[i])
+    if (str.empty())
     {
-        ++i;
+        return;
     }
-    if (0 != i)
-    {
-        str = std::string(str, i, len - i);
-    }
+    str.erase(0, str.find_first_not_of(c));
 }
 
 void trimRight(std::string& str, char c)
 {
-    int len = static_cast<int>(str.size());
-    int i = 0;
-    for (i = len - 1; i >= 0; --i)
+    if (str.empty())
     {
-        if (c != str[i])
-        {
-            break;
-        }
+        return;
     }
-    str = std::string(str, 0, static_cast<size_t>(i) + 1);
+    str.erase(str.find_last_not_of(c) + 1);
 }
 
 void trimLeftRightSpace(std::string& str)
 {
-    int len = static_cast<int>(str.size());
-    int i = 0;
-    while (' ' == str[i] && '\0' != str[i])
-    {
-        ++i;
-    }
-    if (0 != i)
-    {
-        str = std::string(str, i, static_cast<size_t>(len) - i);
-    }
-    len = str.size();
-    for (i = len - 1; i >= 0; --i)
-    {
-        if (' ' != str[i])
-        {
-            break;
-        }
-    }
-    str = std::string(str, 0, static_cast<size_t>(i) + 1);
+    trimLeft(str, ' ');
+    trimRight(str, ' ');
+}
+
+void trimLeftRightCRLF(std::string& str)
+{
+    /* 左边顺序为: 先除\r, 再除\n */
+    trimLeft(str, '\r');
+    trimLeft(str, '\n');
+    /* 右边顺序为: 先除\n, 再除\r */
+    trimRight(str, '\n');
+    trimRight(str, '\r');
 }
 
 size_t getLine(FILE* fp, std::string& line, size_t lineSize)
@@ -129,8 +112,9 @@ IniFile::~IniFile()
     save();
 }
 
-int IniFile::open(const std::string& filename, bool allowTailComment, size_t lineLength)
+int IniFile::open(const std::string& filename, bool allowTailComment, size_t lineLength, std::string& errorDesc)
 {
+    errorDesc.clear();
 #if _WIN32
     FILE* fp;
     if (0 != fopen_s(&fp, filename.c_str(), "r"))
@@ -140,6 +124,7 @@ int IniFile::open(const std::string& filename, bool allowTailComment, size_t lin
     if (!fp)
     {
 #endif
+        errorDesc = "can't open file [" + filename + "]";
         return 1;
     }
     m_filename = filename;
@@ -148,11 +133,12 @@ int IniFile::open(const std::string& filename, bool allowTailComment, size_t lin
     m_sections.insert(std::make_pair(std::string(), section));
     std::string line;
     std::string comment;
+    size_t lineNumber = 0;
     while (getLine(fp, line, lineLength) > 0)
     {
-        trimLeft(line, ' ');
-        trimRight(line, '\r');
-        trimRight(line, '\n');
+        ++lineNumber;
+        trimLeftRightSpace(line);
+        trimLeftRightCRLF(line);
         if (line.empty())
         {
             continue;
@@ -205,12 +191,14 @@ int IniFile::open(const std::string& filename, bool allowTailComment, size_t lin
                 if (sectionNameLen <= 0) /* 节名称为空, 说明格式不对 */
                 {
                     fclose(fp);
+                    errorDesc = "section name is empty, line[" + std::to_string(lineNumber) + "]: " + line;
                     return 3;
                 }
                 std::string sectionName(line, 1, sectionNameLen);
                 if (m_sections.end() != m_sections.find(sectionName)) /* 节名称已经存在, 说明格式不对 */
                 {
                     fclose(fp);
+                    errorDesc = "section name [" + sectionName + "] is duplicated, line[" + std::to_string(lineNumber) + "]: " + line;
                     return 4;
                 }
                 section = std::make_shared<IniSection>();
@@ -234,6 +222,7 @@ int IniFile::open(const std::string& filename, bool allowTailComment, size_t lin
                 else /* 项解析出错, 说明格式不对 */
                 {
                     fclose(fp);
+                    errorDesc = "format error, line[" + std::to_string(lineNumber) + "]: " + line;
                     return 5;
                 }
             }

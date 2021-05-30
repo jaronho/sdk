@@ -15,18 +15,16 @@ out_type convert(const in_value& t)
     return result;
 }
 
-bool IniReader::open(const std::string& filename, size_t lineLength)
+int IniReader::open(const std::string& filename, std::string& errorDesc, size_t lineLength)
 {
     m_filename = filename;
     m_lineLength = lineLength;
-    int ret = IniFile::open(filename, false, lineLength);
-    return 0 == ret;
+    return IniFile::open(filename, false, lineLength, errorDesc);
 }
 
-bool IniReader::reload()
+int IniReader::reload(std::string& errorDesc)
 {
-    int ret = IniFile::open(m_filename, false, m_lineLength);
-    return 0 == ret;
+    return IniFile::open(m_filename, false, m_lineLength, errorDesc);
 }
 
 std::vector<IniSection> IniReader::getDataList()
