@@ -1,5 +1,4 @@
 /****************************************************************************
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -18,30 +17,20 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ****************************************************************************/
-
-#ifndef __SUPPORT_BASE64_H__
-#define __SUPPORT_BASE64_H__
+#pragma once
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
-
-/** @file
- base64 helper functions
- */
-
-/** 
- * Decodes a 64base encoded memory. The decoded memory is
- * expected to be freed by the caller.
- *
- * @returns the length of the out buffer
- *
- @since v0.8.1
- */
-int base64Decode(unsigned char *in, unsigned int inLength, unsigned char **out);
-
+    /** 
+     * @brief 解码base64字节流
+     * @param in 输入的base64字节流
+     * @param inLength 输入的字节流长度
+     * @param out [输出]解码后的字节流(需要外部调用free释放内存)
+     * @return 输出的长度, 0-表示解码失败
+     */
+    unsigned int base64Decode(const unsigned char* in, unsigned int inLength, unsigned char** out);
 #ifdef __cplusplus
 }
-#endif    
-
-#endif // __SUPPORT_BASE64_H__
+#endif
