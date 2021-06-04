@@ -199,6 +199,26 @@ std::string revisalPath(std::string path)
     return path;
 }
 
+/**
+ * @brief 重命名文件
+ * @param oldFilename 旧的文件名
+ * @param newFilename 新的文件名
+ * @param forceRename 是否强制命名(新的文件名已有文件存在时, 是否强制删除)
+ * @return true-成功, false-失败
+ */
+bool renameFile(const std::string& oldFilename, const std::string& newFilename, bool forceRename)
+{
+    if (oldFilename.empty() || newFilename.empty())
+    {
+        return false;
+    }
+    if (forceRename)
+    {
+        remove(newFilename.c_str());
+    }
+    return 0 == rename(oldFilename.c_str(), newFilename.c_str());
+}
+
 /*********************************************************************
  业务逻辑
 *********************************************************************/
@@ -262,22 +282,28 @@ bool generateSymbolFile()
  */
 bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* context, bool succeeded)
 {
+    /* 根据时间生成文件基础名称 */
+    time_t now;
+    time(&now);
+    struct tm t = *localtime(&now);
+    char datetime[16] = {0};
+    strftime(datetime, sizeof(datetime), "%Y%m%d%H%M%S", &t);
+    struct timeb tb;
+    ftime(&tb);
+    char ms[4] = {0};
+    sprintf(ms, "%03d", tb.millitm);
+    std::string newBaseName = g_procBasename + "_" + datetime + ms;
+    /* 重命名dump文件 */
     std::string fullDumpName = descriptor.path();
+    std::string newFullDumpName = g_outputPath + newBaseName + ".dmp";
+    if (renameFile(fullDumpName, newFullDumpName, true))
+    {
+        fullDumpName = newFullDumpName;
+    }
     /* 生成符号文件 */
     if (generateSymbolFile())
     {
-        /* 生成文件名 */
-        time_t now;
-        time(&now);
-        struct tm t = *localtime(&now);
-        char datetime[16] = {0};
-        strftime(datetime, sizeof(datetime), "%Y%m%d%H%M%S", &t);
-        struct timeb tb;
-        ftime(&tb);
-        char ms[4] = {0};
-        sprintf(ms, "%03d", tb.millitm);
-        std::string dumpFilename = g_procBasename + "_" + datetime + ms + ".txt";
-        fullDumpName = g_outputPath + dumpFilename;
+        fullDumpName = g_outputPath + newBaseName + ".txt";
         /* 翻译dump文件 */
         std::string cmd = "minidump_stackwalk " + std::string(descriptor.path()) + " " + g_symbolPath + " > " + fullDumpName;
         if (shellCmd(cmd).empty())
