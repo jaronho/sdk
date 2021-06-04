@@ -29,6 +29,12 @@ public:
      * @return 数据类型
      */
     virtual Type getType() = 0;
+
+    /**
+     * @brief 转换为字符串(用于信息打印)
+     * @return 字符串
+     */
+    virtual std::string toString() = 0;
 };
 
 using RequestDataPtr = std::shared_ptr<RequestData>;
@@ -49,6 +55,8 @@ public:
     ~RawRequestData();
 
     Type getType() override;
+
+    std::string toString() override;
 
     /**
      * @brief 获取字节流
@@ -85,6 +93,8 @@ public:
 
     Type getType() override;
 
+    std::string toString() override;
+
     /**
      * @brief 获取表单内容
      * @return 表单内容
@@ -120,6 +130,8 @@ public:
     virtual ~MultipartFormRequestData() = default;
 
     Type getType() override;
+
+    std::string toString() override;
 
     /**
      * @brief 获取文本列表

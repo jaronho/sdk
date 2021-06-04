@@ -28,6 +28,16 @@ RequestData::Type RawRequestData::getType()
     return Type::RAW;
 }
 
+std::string RawRequestData::toString()
+{
+    std::string str;
+    str.append("{").append("\n");
+    str.append("    \"count\": ").append(std::to_string(m_byteCount)).append(",").append("\n");
+    str.append("    \"data\": \"").append(std::string(m_bytes ? (char*)m_bytes : "")).append("\"").append("\n");
+    str.append("}");
+    return str;
+}
+
 const unsigned char* RawRequestData::getBytes()
 {
     return m_bytes;
@@ -45,6 +55,11 @@ RequestData::Type FormRequestData::getType()
     return Type::FORM;
 }
 
+std::string FormRequestData::toString()
+{
+    return m_data;
+}
+
 std::string FormRequestData::getData()
 {
     return m_data;
@@ -55,6 +70,40 @@ MultipartFormRequestData::MultipartFormRequestData() {}
 RequestData::Type MultipartFormRequestData::getType()
 {
     return Type::MULTIPART_FORM;
+}
+
+std::string MultipartFormRequestData::toString()
+{
+    std::string str;
+    str.append("{").append("\n");
+    str.append("    \"texts\":").append("\n");
+    str.append("    {").append("\n");
+    for (auto iter = m_textMap.begin(); m_textMap.end() != iter;)
+    {
+        str.append("        \"").append(iter->first).append("\": \"").append(iter->second.text).append("\"");
+        ++iter;
+        if (m_textMap.end() != iter)
+        {
+            str.append(",");
+        }
+        str.append("\n");
+    }
+    str.append("    },").append("\n");
+    str.append("    \"files\":").append("\n");
+    str.append("    {").append("\n");
+    for (auto iter = m_fileMap.begin(); m_fileMap.end() != iter;)
+    {
+        str.append("        \"").append(iter->first).append("\": \"").append(iter->second).append("\"");
+        ++iter;
+        if (m_fileMap.end() != iter)
+        {
+            str.append(",");
+        }
+        str.append("\n");
+    }
+    str.append("    }").append("\n");
+    str.append("}");
+    return str;
 }
 
 std::map<std::string, MultipartFormRequestData::TextInfo> MultipartFormRequestData::getTextMap()
