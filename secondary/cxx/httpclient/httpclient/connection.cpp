@@ -111,6 +111,26 @@ bool Connection::appendContentFile(const std::string& key, const std::string& fi
     return true;
 }
 
+std::string Connection::toString()
+{
+    std::string str;
+    /* URL */
+    str.append(m_req->getUrl()).append("\n");
+    /* 请求首部字段 */
+    auto headers = m_req->getHeaders();
+    for (auto iter = headers.begin(); headers.end() != iter; ++iter)
+    {
+        str.append(iter->first).append(": ").append(iter->second).append("\n");
+    }
+    /* 内容实体 */
+    if (m_data)
+    {
+        str.append("\n");
+        str.append(m_data->toString());
+    }
+    return str;
+}
+
 void Connection::doDelete(const ResponseCallback& respCb, bool asyncOp)
 {
     m_req->setData(m_data);

@@ -41,6 +41,8 @@ public:
 
     bool appendContentFile(const std::string& key, const std::string& filename);
 
+    std::string toString();
+
     void doDelete(const ResponseCallback& respCb, bool asyncOp = true);
 
     void doGet(const ResponseCallback& respCb, bool asyncOp = true);
