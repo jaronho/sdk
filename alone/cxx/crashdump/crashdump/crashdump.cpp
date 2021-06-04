@@ -303,17 +303,14 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     /* 生成符号文件 */
     if (generateSymbolFile())
     {
-        fullDumpName = g_outputPath + newBaseName + ".txt";
+        std::string translateDumpName = g_outputPath + newBaseName + ".txt";
         /* 翻译dump文件 */
-        std::string cmd = "minidump_stackwalk " + std::string(descriptor.path()) + " " + g_symbolPath + " > " + fullDumpName;
+        std::string cmd = "minidump_stackwalk " + fullDumpName + " " + g_symbolPath + " > " + translateDumpName;
         if (shellCmd(cmd).empty())
         {
-            cmd = "rm " + std::string(descriptor.path());
+            cmd = "rm " + fullDumpName;
             shellCmd(cmd);
-        }
-        else
-        {
-            fullDumpName = descriptor.path();
+            fullDumpName = translateDumpName;
         }
     }
     /* 回调到外部 */
