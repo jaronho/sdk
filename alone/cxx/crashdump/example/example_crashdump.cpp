@@ -24,31 +24,30 @@ void crash2()
     Person* p = new Person();
     delete p;
     p = nullptr;
-    p->name = "jim";
+    p->name = "Jim";
 }
 
 int main(int argc, char** argv)
 {
-    std::string fullProcName;
+    std::string procFile;
 #ifdef _WIN32
 #else
     char buffer[256];
     getcwd(buffer, sizeof(buffer));
-    fullProcName.append(buffer).append("/");
+    procFile.append(buffer).append("/");
 #endif
     std::string procName(argv[0]);
     size_t pos = procName.find("/");
     if (std::string::npos == pos)
     {
-        fullProcName.append(procName);
+        procFile.append(procName);
     }
     else
     {
-        fullProcName.append(procName.substr(pos + 1, procName.size() - pos));
+        procFile.append(procName.substr(pos + 1, procName.size() - pos));
     }
-    std::cout << "====" << fullProcName << std::endl;
-    crashdump::open("./dump", fullProcName,
-                    [](const std::string& dumpFilename) { std::cout << "dumpFilename: " << dumpFilename << std::endl; });
+    std::cout << "====" << procFile << std::endl;
+    crashdump::open(procFile, "./dump", [](const std::string& json) { std::cout << json << std::endl; });
     crash2();
     return 0;
 }
