@@ -24,10 +24,10 @@ get_cxx_files(${crashdump_path}/crashdump src_list)
 list(APPEND crashdump_src_list ${src_list})
 source_group(3rdparty/crashdump FILES ${crashdump_src_list})
 
-set(crashdump_files)
+set(crashdump_files) # 工程中需要把crashdump的文件添加进去
 list(APPEND crashdump_files ${crashdump_src_list})
 
-print_info(BODY "crashdump files:") # 工程中需要把crashdump的文件添加进去
+print_info(BODY "crashdump files:")
 foreach(filename ${crashdump_files})
     message("    " ${filename})
 endforeach()

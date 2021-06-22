@@ -15,10 +15,10 @@ get_cxx_files(${inifile_path}/inifile src_list)
 list(APPEND inifile_src_list ${src_list})
 source_group(3rdparty/inifile FILES ${inifile_src_list})
 
-set(inifile_files)
+set(inifile_files) # 工程中需要把inifile的文件添加进去
 list(APPEND inifile_files ${inifile_src_list})
 
-print_info(BODY "inifile files:") # 工程中需要把inifile的文件添加进去
+print_info(BODY "inifile files:")
 foreach(filename ${inifile_files})
     message("    " ${filename})
 endforeach()

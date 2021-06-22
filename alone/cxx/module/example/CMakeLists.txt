@@ -15,10 +15,10 @@ get_cxx_files(${module_path}/module src_list)
 list(APPEND module_src_list ${src_list})
 source_group(3rdparty/module FILES ${module_src_list})
 
-set(module_files)
+set(module_files) # 工程中需要把module的文件添加进去
 list(APPEND module_files ${module_src_list})
 
-print_info(BODY "module files:") # 工程中需要把module的文件添加进去
+print_info(BODY "module files:")
 foreach(filename ${module_files})
     message("    " ${filename})
 endforeach()
