@@ -1,5 +1,6 @@
 #include "crashdump.h"
 
+#include <sys/timeb.h>
 #include <vector>
 #ifdef _WIN32
 #include <direct.h>
@@ -73,6 +74,38 @@ bool createPath(const std::string& path)
 }
 
 /**
+ * @brief 解析文件名信息
+ * @param filePath 文件路径
+ * @return 文件名信息数组, [0]-路径, [1]-文件名, [2]-基础名, [3]-后缀名
+ */
+std::vector<std::string> stripFileInfo(const std::string& filePath)
+{
+    std::string dirname = "", filename = filePath, basename = "", extname = "";
+    size_t pos = filePath.find_last_of("/\\");
+    if (pos < filePath.size())
+    {
+        dirname = filePath.substr(0, pos + 1);
+        filename = filePath.substr(pos + 1, filePath.size() - 1);
+    }
+    pos = filename.find_last_of(".");
+    if (pos < filename.size())
+    {
+        basename = filename.substr(0, pos);
+        extname = filename.substr(pos, filename.size() - 1);
+    }
+    else
+    {
+        basename = filename;
+    }
+    std::vector<std::string> infos;
+    infos.push_back(dirname);
+    infos.push_back(filename);
+    infos.push_back(basename);
+    infos.push_back(extname);
+    return infos;
+}
+
+/**
  * @brief 执行命令
  * @param cmd 命令
  * @return 执行结果
@@ -115,6 +148,7 @@ std::vector<std::string> shellCmd(const std::string& cmd)
  业务逻辑
 *********************************************************************/
 std::string g_procFile; /* 当前程序文件全路径名 */
+std::string g_procBasename; /* 当前程序文件基础名 */
 std::string g_outputPath; /* 崩溃堆栈文件输出路径 */
 DumpCallback g_callback = nullptr; /* 崩溃回调 */
 google_breakpad::ExceptionHandler* g_execptionHandler = nullptr; /* 异常句柄 */
@@ -124,8 +158,27 @@ google_breakpad::ExceptionHandler* g_execptionHandler = nullptr; /* 异常句柄
  */
 bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* context, bool succeeded)
 {
-    std::string cmd = "dump_assist.sh -pname " + g_procFile + " -dname " + descriptor.path();
-    auto results = shellCmd(cmd);
+    /* 获取当前时间戳 */
+    time_t now;
+    time(&now);
+    struct tm t = *localtime(&now);
+    char datetime[16] = {0};
+    strftime(datetime, sizeof(datetime), "%Y%m%d%H%M%S", &t);
+    struct timeb tb;
+    ftime(&tb);
+    char ms[4] = {0};
+    sprintf(ms, "%03d", tb.millitm);
+    /* 重命名堆栈文件 */
+    auto fileInfo = stripFileInfo(descriptor.path());
+    std::string dumpFile = fileInfo[0] + g_procBasename + "_" + datetime + ms + fileInfo[3];
+    auto results = shellCmd("mv " + std::string(descriptor.path()) + " " + dumpFile);
+    if (!results.empty())
+    {
+        dumpFile = descriptor.path();
+    }
+    /* 堆栈文件处理 */
+    std::string cmd = "dump_assist.sh -pname " + g_procFile + " -dname " + dumpFile;
+    results = shellCmd(cmd);
     /* 回调到外部 */
     if (g_callback)
     {
@@ -149,6 +202,7 @@ void open(const std::string& procFile, const std::string& outputPath, const Dump
     s_opened = true;
     /* 参数保存 */
     g_procFile = procFile;
+    g_procBasename = stripFileInfo(procFile)[2];
     g_outputPath = outputPath;
     g_callback = callback;
     /* 创建路径 */
