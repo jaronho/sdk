@@ -31,6 +31,7 @@ Logger LoggerManager::getLogger(const std::string& tagName, const std::string& l
         return Logger(tag, iter->second);
     }
     /* 默认日志器找不到则创建 */
+    assert(!m_logCfg.path.empty());
     LogConfig cfg = m_logCfg;
     cfg.name = name;
     InnerLoggerPtr innerLogger = createInnerLogger(cfg);
