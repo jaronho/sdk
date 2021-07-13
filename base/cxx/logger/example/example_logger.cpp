@@ -15,6 +15,7 @@ int main()
     cfg.newFolderDaily = true;
     logger::LoggerManager::start(cfg, "who");
     auto logger1 = logger::LoggerManager::getLogger("test", "main_");
+    logger1.setConsoleEnable(true);
     for (int i = 0; i < 100; ++i)
     {
         if (i <= 16)
@@ -43,6 +44,7 @@ int main()
         }
     }
     auto logger2 = logger::LoggerManager::getLogger("ceshi", "main_");
+    logger2.setConsoleEnable(true);
     logger2.setLevel(logger::LEVEL_INFO);
     for (int i = 0; i < 100; ++i)
     {
@@ -62,6 +64,7 @@ int main()
         INFO_LOG(logger3, "hello world, I'm hw, i[{}]", i);
     }
     g_logger = logger::LoggerManager::getLogger();
+    g_logger.setConsoleEnable(true);
     for (int i = 0; i < 100; ++i)
     {
         INFO_LOG(g_logger, "hello world, I'm default, i[{}]", i);
