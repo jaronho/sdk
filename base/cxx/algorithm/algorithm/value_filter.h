@@ -88,8 +88,8 @@ public:
             if (!isRealEqualNow)
             {
                 m_realValue = nowValue;
+                return true;
             }
-            return true;
         }
         return false;
     }
