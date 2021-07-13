@@ -143,9 +143,18 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
     {
         content.append("[").append(tag).append("]"); /* 标签 */
     }
-    if (!file.empty()) /* 文件名 行号 函数名 */
+    if (!file.empty()) /* 文件名 行号 */
     {
-        content.append("[").append(file).append(" ").append(std::to_string(line)).append(" ").append(func).append("]");
+        content.append("[").append(file).append(" ").append(std::to_string(line));
+        if (!func.empty()) /* 函数名 */
+        {
+            content.append(" ").append(func);
+        }
+        content.append("]");
+    }
+    else if (!func.empty()) /* 函数名 */
+    {
+        content.append("[").append(func).append("]");
     }
     content.append(" ").append(msg); /* 内容 */
     /* 记录到日志文件 */

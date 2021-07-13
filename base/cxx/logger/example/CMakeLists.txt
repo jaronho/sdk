@@ -10,7 +10,7 @@ include(../cmake/tools.cmake)
 option(ENABLE_DETAIL "是否启用日志详情(包含文件名,行号,函数名)" ON)
 
 if(ENABLE_DETAIL)
-    add_definitions(-DENABLE_LOGGER_DETAIL=1)
+    add_definitions(-DENABLE_LOGGER_DETAIL=2)
 else()
     add_definitions(-DENABLE_LOGGER_DETAIL=0)
 endif()
