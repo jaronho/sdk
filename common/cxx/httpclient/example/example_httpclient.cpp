@@ -381,13 +381,13 @@ void testHttpDownload()
 int main()
 {
     std::list<std::function<void()>> funcList;
-    funcList.push_back(testHttpDelete);
-    funcList.push_back(testHttpGet);
-    funcList.push_back(testHttpPut);
-    funcList.push_back(testHttpPostRaw);
-    funcList.push_back(testHttpPostForm);
-    funcList.push_back(testHttpPostMultipartForm);
-    funcList.push_back(testHttpDownload);
+    funcList.emplace_back(testHttpDelete);
+    funcList.emplace_back(testHttpGet);
+    funcList.emplace_back(testHttpPut);
+    funcList.emplace_back(testHttpPostRaw);
+    funcList.emplace_back(testHttpPostForm);
+    funcList.emplace_back(testHttpPostMultipartForm);
+    funcList.emplace_back(testHttpDownload);
 
     auto tid = threading::Platform::getThreadId();
     std::string str("[" + std::to_string(tid) + "] ");

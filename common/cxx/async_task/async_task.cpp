@@ -42,7 +42,7 @@ void AsyncProxy::execute(const AsyncTaskPtr& task)
                 if (task->finishCb)
                 {
                     std::unique_lock<std::mutex> locker(s_finishMutex);
-                    s_finishList.push_back(task);
+                    s_finishList.emplace_back(task);
                 }
             },
             s_workers);

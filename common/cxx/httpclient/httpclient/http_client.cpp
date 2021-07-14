@@ -142,6 +142,6 @@ void HttpClient::insertRespList(const curlex::Response& resp, const ResponseCall
     std::shared_ptr<RespParam> param = std::make_shared<RespParam>();
     param->resp = resp;
     param->respCb = respCb;
-    s_respList.push_back(param);
+    s_respList.emplace_back(param);
 }
 } // namespace http
