@@ -85,10 +85,10 @@ std::vector<std::string> stripFileInfo(const std::string& fullName)
         basename = filename;
     }
     std::vector<std::string> infos;
-    infos.push_back(path);
-    infos.push_back(filename);
-    infos.push_back(basename);
-    infos.push_back(extname);
+    infos.emplace_back(path);
+    infos.emplace_back(filename);
+    infos.emplace_back(basename);
+    infos.emplace_back(extname);
     return infos;
 }
 
