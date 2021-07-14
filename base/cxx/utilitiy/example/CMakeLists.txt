@@ -29,6 +29,11 @@ get_cxx_files(${utilitiy_path}/utilitiy/process src_list)
 list(APPEND utilitiy_process_src_list ${src_list})
 source_group(3rdparty/utilitiy/process FILES ${utilitiy_process_src_list})
 
+set(utilitiy_strtool_src_list)
+get_cxx_files(${utilitiy_path}/utilitiy/strtool src_list)
+list(APPEND utilitiy_strtool_src_list ${src_list})
+source_group(3rdparty/utilitiy/strtool FILES ${utilitiy_strtool_src_list})
+
 set(utilitiy_system_src_list)
 get_cxx_files(${utilitiy_path}/utilitiy/system src_list)
 list(APPEND utilitiy_system_src_list ${src_list})
@@ -43,6 +48,7 @@ set(utilitiy_files) # 工程中需要把utilitiy的文件添加进去
 list(APPEND utilitiy_files ${utilitiy_cmdline_src_list}
                            ${utilitiy_filesystem_src_list}
                            ${utilitiy_process_src_list}
+                           ${utilitiy_strtool_src_list}
                            ${utilitiy_system_src_list}
                            ${utilitiy_src_list})
 
