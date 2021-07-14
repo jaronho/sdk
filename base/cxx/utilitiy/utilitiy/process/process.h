@@ -44,7 +44,8 @@ public:
      * @param callback 匹配时的回调函数, exeFile - 程序全路径文件名, pid - 匹配到的进程ID
      * @return 匹配到的进程数
      */
-    static int searchProcess(const std::string& filename, const std::function<void(const std::string& exeFile, int pid)>& callback);
+    static int searchProcess(const std::string& filename,
+                             const std::function<void(const std::string& exeFile, int pid)>& callback = nullptr);
 
     /**
      * @brief 启动进程
