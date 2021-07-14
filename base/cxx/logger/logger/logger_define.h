@@ -18,7 +18,10 @@ const int LEVEL_FATAL = 5; /* 致命，指明非常严重的可能会导致应�
  */
 struct LogConfig
 {
-    LogConfig() : name("app"), fileExtName(".log"), fileMaxSize(20 * 1024 * 1024), fileMaxCount(0U), newFolderDaily(true) {}
+    LogConfig()
+        : name("app"), fileExtName(".log"), fileMaxSize(20 * 1024 * 1024), fileMaxCount(0U), newFolderDaily(true), consoleEnable(false)
+    {
+    }
 
     std::string path; /* (必填)日志文件路径 */
     std::string name; /* (选填)记录器名称, 默认: "app" */
@@ -26,5 +29,6 @@ struct LogConfig
     size_t fileMaxSize; /* (选填)每个日志文件最大长度(字节), 默认: 20M = 20 * 1024 * 1024 */
     size_t fileMaxCount; /* (选填)每天允许最多的日志文件数, 默认: 0-表示不限制 */
     bool newFolderDaily; /* (选填)是否每天使用新文件夹, 默认: true-表示每天都创建新文件夹 */
+    bool consoleEnable; /* (选填)是否把日志输出到控制台, 默认: false-不输出到控制台 */
 };
 } // namespace logger
