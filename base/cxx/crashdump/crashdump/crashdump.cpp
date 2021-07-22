@@ -1,6 +1,8 @@
 #include "crashdump.h"
 
+#include <sys/stat.h>
 #include <sys/timeb.h>
+#include <sys/types.h>
 #include <vector>
 #ifdef _WIN32
 #include <Windows.h>
@@ -8,8 +10,6 @@
 #include <io.h>
 #else
 #include <dirent.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "client/linux/handler/exception_handler.h"

@@ -3,13 +3,13 @@
 #include <assert.h>
 #include <iostream>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
 #else
 #include <dirent.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 #endif
 

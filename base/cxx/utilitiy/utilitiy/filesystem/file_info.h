@@ -78,12 +78,29 @@ public:
     long long size();
 
     /**
-     * @brief 文件数据
+     * @brief 获取文件数据
      * @param fileSize [输出]文件大小
      * @param isText true-文本文件, false-二进制文件
      * @return 数据(要外部调用free释放内存)
      */
     char* data(long long& fileSize, bool isText = false);
+
+    /**
+     * @brief 读取文件数据
+     * @param offset 读取的偏移值, 为0时表示从头开始
+     * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
+     * @return 数据(要外部调用free释放内存)
+     */
+    char* read(long long offset, long long& count);
+
+    /**
+     * @brief 写文件数据
+     * @param data 数据
+     * @param length 数据长度
+     * @param isAppend true-在文件末尾追加, false-替换全部
+     * @return true-成功, false-失败
+     */
+    bool write(const char* data, long long length, bool isAppend = false);
 
 private:
     std::string m_fullName; /* 全路径文件名 */

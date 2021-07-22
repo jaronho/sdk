@@ -88,7 +88,7 @@ typedef struct tagTHREADNAME_INFO
 } THREADNAME_INFO;
 #pragma pack(pop)
 
-void SetThreadName(DWORD dwThreadID, const char* threadName)
+static void SetThreadName(DWORD dwThreadID, const char* threadName)
 {
     THREADNAME_INFO info;
     info.dwType = 0x1000;
@@ -116,7 +116,7 @@ void Process::setThreadName(const std::string& name)
 }
 
 #if _WIN32
-char* wchar2char(const wchar_t* wstr)
+static char* wchar2char(const wchar_t* wstr)
 {
     char* buf = NULL;
     if (!wstr || 0 == wcslen(wstr))
@@ -130,7 +130,7 @@ char* wchar2char(const wchar_t* wstr)
     return buf;
 }
 
-wchar_t* char2wchar(const char* str)
+static wchar_t* char2wchar(const char* str)
 {
     wchar_t* buf = NULL;
     if (!str || 0 == strlen(str))

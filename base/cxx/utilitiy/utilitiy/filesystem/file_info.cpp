@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <string.h>
+#include <sys/stat.h>
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -74,10 +75,17 @@ std::string FileInfo::extname()
 bool FileInfo::exist()
 {
 #ifdef _WIN32
-    return (0 == _access(m_fullName.c_str(), 0));
+    struct _stat64 st;
+    int ret = _stat64(m_fullName.c_str(), &st);
 #else
-    return (0 == access(m_fullName.c_str(), F_OK));
+    struct stat64 st;
+    int ret = stat64(m_fullName.c_str(), &st);
 #endif
+    if (0 == ret && (S_IFREG & st.st_mode))
+    {
+        return true;
+    }
+    return false;
 }
 
 bool FileInfo::create()
@@ -128,7 +136,7 @@ bool FileInfo::copy(const std::string& destFilename, const std::function<void(si
     {
         blockSize = blockMaxSize;
     }
-    char* block = (char*)malloc(blockSize * sizeof(char));
+    char* block = (char*)malloc(sizeof(char) * blockSize);
     if (!block)
     {
         return false;
@@ -136,7 +144,7 @@ bool FileInfo::copy(const std::string& destFilename, const std::function<void(si
     size_t nowSize = 0, readSize = 0;
     while (!srcFile.eof())
     {
-        memset(block, 0, blockSize);
+        memset(block, 0, sizeof(char) * blockSize);
         srcFile.read(block, blockSize);
         readSize = srcFile.gcount();
         destFile.write(block, readSize);
@@ -177,10 +185,11 @@ char* FileInfo::data(long long& fileSize, bool isText)
     }
     fileSize = f.tellg();
     f.seekg(0, std::ios::beg);
-    char* fileData = (char*)malloc((fileSize + (isText ? 1 : 0)) * sizeof(char));
+    long long dataSize = (fileSize + (isText ? 1 : 0));
+    char* fileData = (char*)malloc(sizeof(char) * dataSize);
     if (fileData)
     {
-        memset(fileData, 0, fileSize);
+        memset(fileData, 0, sizeof(char) * dataSize);
         f.read(fileData, fileSize);
         if (isText)
         {
@@ -189,5 +198,53 @@ char* FileInfo::data(long long& fileSize, bool isText)
     }
     f.close();
     return fileData;
+}
+
+char* FileInfo::read(long long offset, long long& count)
+{
+    std::fstream f(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
+    if (!f.is_open())
+    {
+        return NULL;
+    }
+    char* buffer = NULL;
+    long long fileSize = f.tellg();
+    if (offset < fileSize)
+    {
+        if (offset + count > fileSize)
+        {
+            count = fileSize - offset;
+        }
+        buffer = (char*)malloc(sizeof(char) * count);
+        if (buffer)
+        {
+            memset(buffer, 0, sizeof(char) * count);
+            f.seekg(offset, std::ios::beg);
+            f.read(buffer, count);
+        }
+    }
+    else
+    {
+        count = 0;
+    }
+    f.close();
+    return buffer;
+}
+
+bool FileInfo::write(const char* data, long long length, bool isAppend)
+{
+    if (!data || length <= 0)
+    {
+        return false;
+    }
+    std::fstream f(m_fullName, std::ios::out | (isAppend ? (std::ios::binary | std::ios::app) : std::ios::binary));
+    if (!f.is_open())
+    {
+        return false;
+    }
+    f.write(data, length);
+    f.flush();
+    f.close();
+    return true;
 }
 } // namespace utilitiy
