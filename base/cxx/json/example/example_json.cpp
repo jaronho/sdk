@@ -132,6 +132,8 @@ void test2()
     gd["capital"] = "GuangZhou";
     provinces.emplace_back(gd);
     obj["provinces"] = provinces;
+    obj["empty_object"] = nlohmann::json().object();
+    obj["empty_array"] = nlohmann::json().array();
     std::cout << obj.dump(4) << std::endl;
 }
 
