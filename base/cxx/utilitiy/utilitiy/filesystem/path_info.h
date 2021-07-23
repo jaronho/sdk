@@ -64,9 +64,10 @@ public:
 
     /**
      * @brief 清空路径下的所有子项
+     * @param continueIfRoot 如果路径是根目录是否继续清空(选填), 默认为不清空
      * @return true-成功, false-失败
      */
-    bool clear();
+    bool clear(bool continueIfRoot = false);
 
     /**
      * @brief 遍历文件夹和文件

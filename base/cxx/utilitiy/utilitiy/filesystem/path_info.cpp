@@ -114,8 +114,12 @@ bool PathInfo::remove()
     return clearImpl(m_path, true);
 }
 
-bool PathInfo::clear()
+bool PathInfo::clear(bool continueIfRoot)
 {
+    if (isRoot() && !continueIfRoot) /* 避免误清空根目录, 触发明确知道该操作 */
+    {
+        return false;
+    }
     return clearImpl(m_path, false);
 }
 
