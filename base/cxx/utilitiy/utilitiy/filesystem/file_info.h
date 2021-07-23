@@ -1,4 +1,5 @@
 #pragma once
+#include <fstream>
 #include <functional>
 #include <string>
 
@@ -101,6 +102,15 @@ public:
      * @return true-成功, false-失败
      */
     bool write(const char* data, long long length, bool isAppend = false);
+
+    /**
+     * @brief 从文件流中读取数据
+     * @param f 文件流
+     * @param offset 读取的偏移值, 为0时表示从头开始
+     * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
+     * @return 数据(要外部调用free释放内存)
+     */
+    static char* read(std::fstream& f, long long offset, long long& count);
 
 private:
     std::string m_fullName; /* 全路径文件名 */

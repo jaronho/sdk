@@ -1,6 +1,5 @@
 #include "file_info.h"
 
-#include <fstream>
 #include <string.h>
 #include <sys/stat.h>
 #ifdef _WIN32
@@ -207,6 +206,34 @@ char* FileInfo::read(long long offset, long long& count)
     {
         return NULL;
     }
+    char* buffer = read(f, offset, count);
+    f.close();
+    return buffer;
+}
+
+bool FileInfo::write(const char* data, long long length, bool isAppend)
+{
+    if (!data || length <= 0)
+    {
+        return false;
+    }
+    std::fstream f(m_fullName, std::ios::out | (isAppend ? (std::ios::binary | std::ios::app) : std::ios::binary));
+    if (!f.is_open())
+    {
+        return false;
+    }
+    f.write(data, length);
+    f.flush();
+    f.close();
+    return true;
+}
+
+char* FileInfo::read(std::fstream& f, long long offset, long long& count)
+{
+    if (!f.is_open())
+    {
+        return NULL;
+    }
     char* buffer = NULL;
     long long fileSize = f.tellg();
     if (offset < fileSize)
@@ -227,24 +254,6 @@ char* FileInfo::read(long long offset, long long& count)
     {
         count = 0;
     }
-    f.close();
     return buffer;
-}
-
-bool FileInfo::write(const char* data, long long length, bool isAppend)
-{
-    if (!data || length <= 0)
-    {
-        return false;
-    }
-    std::fstream f(m_fullName, std::ios::out | (isAppend ? (std::ios::binary | std::ios::app) : std::ios::binary));
-    if (!f.is_open())
-    {
-        return false;
-    }
-    f.write(data, length);
-    f.flush();
-    f.close();
-    return true;
 }
 } // namespace utilitiy

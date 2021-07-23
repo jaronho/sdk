@@ -12,9 +12,9 @@ void testFilesystem()
     printf("\n============================== test filesystem =============================\n");
     printf("---------- file info\n");
 #ifdef _WIN32
-    utilitiy::FileInfo fi("D:\\config.json");
+    utilitiy::FileInfo fi("D:\\config.txt");
 #else
-    utilitiy::FileInfo fi("/home/jaron/config.json");
+    utilitiy::FileInfo fi("/home/jaron/config.txt");
 #endif
     printf("name: %s\n", fi.name().c_str());
     printf("path: %s\n", fi.path().c_str());
@@ -32,6 +32,19 @@ void testFilesystem()
             printf("data:--------------------\n%s\n--------------------\n", fileData);
             free(fileData);
         }
+        long long offset = 2;
+        long long count = 4;
+        char* buffer = fi.read(offset, count);
+        if (buffer)
+        {
+            printf("offset[%lld], count[%lld], buffer:--------------------\n", offset, count);
+            for (size_t i = 0; i < count; ++i)
+            {
+                printf("%c", buffer[i]);
+            }
+            printf("\n--------------------\n");
+            free(buffer);
+        }
     }
     else
     {
@@ -43,7 +56,7 @@ void testFilesystem()
 #else
     utilitiy::PathInfo pi("/home/jaron/test/111/222/333");
 #endif
-    printf("path: %s\n", fi.path().c_str());
+    printf("path: %s\n", pi.path().c_str());
     if (pi.exist())
     {
         printf("exist: true\n");
