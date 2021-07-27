@@ -135,6 +135,23 @@ std::vector<std::string> shellCmd(const std::string& cmd)
     return result;
 }
 
+#if _WIN32
+static std::string wstring2string(const std::wstring& wstr)
+{
+    if (wstr.empty())
+    {
+        return std::string();
+    }
+    int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+    char* buf = (char*)malloc(sizeof(char) * (len + 1));
+    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
+    buf[len] = '\0';
+    std::string str(buf);
+    free(buf);
+    return str;
+}
+#endif
+
 /**
  * @brief 获取程序文件
  * @return 程序文件全路径
@@ -145,14 +162,7 @@ std::string getProcFile()
 #ifdef UNICODE
     TCHAR exeFileW[MAX_PATH + 1] = {0};
     GetModuleFileName(NULL, exeFileW, MAX_PATH);
-    char* exeFileTmp = wchar2char(exeFileW);
-    std::string exeFile;
-    if (exeFileTmp)
-    {
-        exeFile = exeFileTmp;
-        free(exeFileTmp);
-    }
-    return exeFile;
+    return wstring2string(exeFileW);
 #else
     CHAR exeFile[MAX_PATH + 1] = {0};
     GetModuleFileName(NULL, exeFile, MAX_PATH);
