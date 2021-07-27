@@ -71,10 +71,9 @@ public:
     /**
      * @brief 16进制字符串转为字节流
      * @param hexStr 16进制字符串
-     * @param byteCount [输出]字节数
      * @param sep 每个16进制间的分隔符(非必填)
      * @return 字节流(需要外部调用free释放内存)
      */
-    static char* fromHex(const std::string& hexStr, unsigned int& byteCount, const std::string& sep = "");
+    static std::vector<char> fromHex(const std::string& hexStr, const std::string& sep = "");
 };
 } // namespace utilitiy

@@ -102,10 +102,9 @@ std::string StrTool::toHex(const char* bytes, unsigned int byteCount, bool upper
     return hexStr;
 }
 
-char* StrTool::fromHex(const std::string& hexStr, unsigned int& byteCount, const std::string& sep)
+std::vector<char> StrTool::fromHex(const std::string& hexStr, const std::string& sep)
 {
-    byteCount = 0;
-    char* bytes = NULL;
+    std::vector<char> bytes;
     if (hexStr.empty())
     {
         return bytes;
@@ -114,8 +113,7 @@ char* StrTool::fromHex(const std::string& hexStr, unsigned int& byteCount, const
     {
         if (0 == hexStr.size() % 2) /* 必须保证16进制字符串长度为偶数 */
         {
-            byteCount = hexStr.size() / 2;
-            bytes = (char*)malloc(sizeof(char) * byteCount);
+            bytes.resize(hexStr.size() / 2);
             unsigned char highByte, lowByte;
             for (size_t i = 0; i < hexStr.size(); i += 2)
             {
@@ -129,7 +127,6 @@ char* StrTool::fromHex(const std::string& hexStr, unsigned int& byteCount, const
     }
     else /* 有分隔符 */
     {
-        std::vector<char> byteVec;
         unsigned char highByte, lowByte;
         for (size_t i = 0; i < hexStr.size(); ++i)
         {
@@ -155,12 +152,9 @@ char* StrTool::fromHex(const std::string& hexStr, unsigned int& byteCount, const
             highByte -= (highByte > 0x39) ? 0x37 : 0x30;
             lowByte = toupper(hex[1]);
             lowByte -= (lowByte > 0x39) ? 0x37 : 0x30;
-            byteVec.emplace_back((highByte << 4) | lowByte);
+            bytes.emplace_back((highByte << 4) | lowByte);
             i = pos + sep.size() - 1;
         }
-        byteCount = byteVec.size();
-        bytes = (char*)malloc(sizeof(char) * byteCount);
-        std::copy(byteVec.begin(), byteVec.end(), bytes);
     }
     return bytes;
 }
