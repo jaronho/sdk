@@ -191,18 +191,19 @@ bool PathInfo::clearImpl(const std::string& path, bool rmSelf)
 }
 
 #if _WIN32
-static wchar_t* char2wchar(const char* str)
+static std::wstring string2wstring(const std::string& str)
 {
-    wchar_t* buf = NULL;
-    if (!str || 0 == strlen(str))
+    if (str.empty())
     {
-        return buf;
+        return std::wstring();
     }
-    int len = MultiByteToWideChar(CP_ACP, 0, str, strlen(str), NULL, 0);
-    buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
-    MultiByteToWideChar(CP_ACP, 0, str, strlen(str), buf, len);
+    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
+    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
+    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
     buf[len] = '\0';
-    return buf;
+    std::wstring wstr(buf);
+    free(buf);
+    return wstr;
 }
 #endif
 
@@ -232,13 +233,11 @@ void PathInfo::traverseImpl(std::string path, std::function<void(const std::stri
         SHFILEINFO shFileInfo;
         memset(&shFileInfo, 0, sizeof(SHFILEINFO));
 #ifdef UNICODE
-        wchar_t* subNameTmp = char2wchar(subName.c_str());
-        if (!subNameTmp)
+        std::wstring subNameW = string2wstring(subName);
+        if (subNameW.empty())
         {
             continue;
         }
-        std::wstring subNameW = subNameTmp;
-        free(subNameTmp);
         SHGetFileInfo(subNameW.c_str(), 0, &shFileInfo, sizeof(SHFILEINFO),
                       SHGFI_DISPLAYNAME | SHGFI_ICON | SHGFI_SMALLICON | SHGFI_TYPENAME | SHGFI_ATTRIBUTES);
 #else

@@ -116,32 +116,34 @@ void Process::setThreadName(const std::string& name)
 }
 
 #if _WIN32
-static char* wchar2char(const wchar_t* wstr)
+static std::string wstring2string(const std::wstring& wstr)
 {
-    char* buf = NULL;
-    if (!wstr || 0 == wcslen(wstr))
+    if (wstr.empty())
     {
-        return buf;
+        return std::string();
     }
-    int len = WideCharToMultiByte(CP_ACP, 0, wstr, wcslen(wstr), NULL, 0, NULL, NULL);
-    buf = (char*)malloc(sizeof(char) * (len + 1));
-    WideCharToMultiByte(CP_ACP, 0, wstr, wcslen(wstr), buf, len, NULL, NULL);
+    int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+    char* buf = (char*)malloc(sizeof(char) * (len + 1));
+    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
     buf[len] = '\0';
-    return buf;
+    std::string str(buf);
+    free(buf);
+    return str;
 }
 
-static wchar_t* char2wchar(const char* str)
+static std::wstring string2wstring(const std::string& str)
 {
-    wchar_t* buf = NULL;
-    if (!str || 0 == strlen(str))
+    if (str.empty())
     {
-        return buf;
+        return std::wstring();
     }
-    int len = MultiByteToWideChar(CP_ACP, 0, str, strlen(str), NULL, 0);
-    buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
-    MultiByteToWideChar(CP_ACP, 0, str, strlen(str), buf, len);
+    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
+    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
+    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
     buf[len] = '\0';
-    return buf;
+    std::wstring wstr(buf);
+    free(buf);
+    return wstr;
 }
 #endif
 
@@ -151,14 +153,7 @@ std::string Process::getProcessExeFile()
 #ifdef UNICODE
     TCHAR exeFileW[MAX_PATH + 1] = {0};
     GetModuleFileName(NULL, exeFileW, MAX_PATH);
-    char* exeFileTmp = wchar2char(exeFileW);
-    std::string exeFile;
-    if (exeFileTmp)
-    {
-        exeFile = exeFileTmp;
-        free(exeFileTmp);
-    }
-    return exeFile;
+    return wstring2string(exeFileW);
 #else
     CHAR exeFile[MAX_PATH + 1] = {0};
     GetModuleFileName(NULL, exeFile, MAX_PATH);
@@ -213,14 +208,7 @@ int Process::searchProcess(const std::string& filename, const std::function<void
         CloseHandle(moduleSnap);
         std::string exeFile;
 #ifdef UNICODE
-        const wchar_t* exeFileW = moduleEntry32.szExePath;
-        char* exeFileTmp = wchar2char(exeFileW);
-        if (!exeFileTmp)
-        {
-            continue;
-        }
-        exeFile = exeFileTmp;
-        free(exeFileTmp);
+        exeFile = wstring2string(moduleEntry32.szExePath);
 #else
         exeFile = moduleEntry32.szExePath;
 #endif
@@ -322,13 +310,11 @@ bool Process::runProcess(const std::string& exeFile, int flag)
     PROCESS_INFORMATION pi;
     ZeroMemory(&pi, sizeof(pi));
 #ifdef UNICODE
-    wchar_t* exeFileTmp = char2wchar(exeFile.c_str());
-    if (!exeFileTmp)
+    std::wstring exeFileW = string2wstring(exeFile);
+    if (exeFileW.empty())
     {
         return false;
     }
-    std::wstring exeFileW = exeFileTmp;
-    free(exeFileTmp);
     if (!CreateProcess(NULL, (WCHAR*)exeFileW.c_str(), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
 #else
     if (!CreateProcess(NULL, (CHAR*)(exeFile.c_str()), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
