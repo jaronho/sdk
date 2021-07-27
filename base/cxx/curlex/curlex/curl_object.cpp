@@ -156,18 +156,6 @@ int onDebugFunc(CURL* handle, curl_infotype type, char* data, size_t size, void*
     return 0;
 }
 
-bool CurlObject::SendObject::reset(const char* data, size_t length)
-{
-    if (!data || length <= 0)
-    {
-        return false;
-    }
-    m_data = std::string(data, length);
-    m_length = length;
-    m_readed = 0;
-    return true;
-}
-
 bool CurlObject::SendObject::reset(const std::string& data)
 {
     if (data.empty())
@@ -484,17 +472,17 @@ bool CurlObject::setResumeOffset(int64_t index)
     return CURLE_OK == code;
 }
 
-bool CurlObject::setRawData(const char* bytes, size_t count)
+bool CurlObject::setRawData(const std::vector<char>& bytes)
 {
-    if (!bytes || count <= 0)
+    if (bytes.empty())
     {
         return false;
     }
-    if (!m_sendObject.reset(bytes, count))
+    if (!m_sendObject.reset(std::string(bytes.begin(), bytes.end())))
     {
         return false;
     }
-    auto code = setOption(CURLOPT_INFILESIZE_LARGE, count);
+    auto code = setOption(CURLOPT_INFILESIZE_LARGE, bytes.size());
     if (CURLE_OK != code)
     {
         return false;

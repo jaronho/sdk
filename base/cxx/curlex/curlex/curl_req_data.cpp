@@ -13,18 +13,7 @@ RawRequestData::RawRequestData(const char* bytes, size_t count)
 {
     if (bytes && count > 0)
     {
-        m_bytes = new char[count];
-        memcpy(m_bytes, bytes, count);
-        m_byteCount = count;
-    }
-}
-
-RawRequestData::~RawRequestData()
-{
-    if (m_bytes)
-    {
-        delete[] m_bytes;
-        m_bytes = nullptr;
+        m_bytes.insert(m_bytes.end(), bytes, bytes + count);
     }
 }
 
@@ -37,20 +26,15 @@ std::string RawRequestData::toString()
 {
     std::string str;
     str.append("{").append("\n");
-    str.append("    \"count\": ").append(std::to_string(m_byteCount)).append(",").append("\n");
-    str.append("    \"data\": \"").append(std::string(m_bytes ? (char*)m_bytes : "")).append("\"").append("\n");
+    str.append("    \"count\": ").append(std::to_string(m_bytes.size())).append(",").append("\n");
+    str.append("    \"data\": \"").append(std::string(m_bytes.begin(), m_bytes.end())).append("\"").append("\n");
     str.append("}");
     return str;
 }
 
-const char* RawRequestData::getBytes()
+const std::vector<char> RawRequestData::getBytes()
 {
     return m_bytes;
-}
-
-size_t RawRequestData::getByteCount()
-{
-    return m_byteCount;
 }
 
 FormRequestData::FormRequestData(const std::string& data) : m_data(data) {}

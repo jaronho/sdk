@@ -3,6 +3,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace curlex
 {
@@ -52,7 +53,7 @@ public:
      */
     RawRequestData(const char* bytes, size_t count);
 
-    ~RawRequestData();
+    virtual ~RawRequestData() = default;
 
     Type getType() override;
 
@@ -62,17 +63,10 @@ public:
      * @brief 获取字节流
      * @return 字节流
      */
-    const char* getBytes();
-
-    /**
-     * @brief 获取字节数
-     * @return 字节数
-     */
-    size_t getByteCount();
+    const std::vector<char> getBytes();
 
 private:
-    char* m_bytes = nullptr; /* 字节流 */
-    size_t m_byteCount = 0; /* 字节数 */
+    std::vector<char> m_bytes; /* 字节流 */
 };
 
 using RawRequestDataPtr = std::shared_ptr<RawRequestData>;

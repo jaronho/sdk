@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <vector>
 
 namespace curlex
 {
@@ -164,10 +165,9 @@ public:
     /**
      * @brief 设置原始字节流数据(适用于POST/PUT/DELETE)
      * @param bytes 字节流
-     * @param count 字节数
      * @return true-成功, false-失败
      */
-    bool setRawData(const char* bytes, size_t count);
+    bool setRawData(const std::vector<char>& bytes);
 
     /**
      * @brief 设置表单数据(适用于POST/PUT/DELETE)
@@ -219,14 +219,6 @@ private:
     class SendObject
     {
     public:
-        /**
-         * @brief 重置函数
-         * @param data 数据
-         * @param length 数据长度
-         * @return true-成功, false-失败
-         */
-        bool reset(const char* data, size_t length);
-
         /**
          * @brief 重置函数
          * @param data 数据
