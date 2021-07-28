@@ -82,7 +82,7 @@ public:
      * @brief 获取文件数据
      * @param fileSize [输出]文件大小
      * @param isText true-文本文件, false-二进制文件
-     * @return 数据(要外部调用free释放内存)
+     * @return 数据(需要外部调用free释放内存)
      */
     char* data(long long& fileSize, bool isText = false);
 
@@ -90,7 +90,7 @@ public:
      * @brief 读取文件数据
      * @param offset 读取的偏移值, 为0时表示从头开始
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
-     * @return 数据(要外部调用free释放内存)
+     * @return 数据(需要外部调用free释放内存)
      */
     char* read(long long offset, long long& count);
 
@@ -108,7 +108,7 @@ public:
      * @param f 文件流
      * @param offset 读取的偏移值, 为0时表示从头开始
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
-     * @return 数据(要外部调用free释放内存)
+     * @return 数据(需要外部调用free释放内存)
      */
     static char* read(std::fstream& f, long long offset, long long& count);
 

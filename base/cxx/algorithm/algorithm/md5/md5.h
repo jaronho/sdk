@@ -30,7 +30,7 @@ extern "C"
      * @brief md5加密结束
      * @param context 上下文
      * @param digest [输出]16位哈希值
-     * @return 由digest哈希值转换后的十六进制字符串(32位小写)
+     * @return 由digest哈希值转换后的十六进制字符串(32位小写)(需要外部调用free释放内存)
      */
     char* md5Fini(md5_ctx_t* context, unsigned char digest[16]);
 
@@ -38,7 +38,7 @@ extern "C"
      * @brief md5加密, 内部集成了md5Init, md5Update, md5Fini三个接口的调用(一般直接调用该接口即可)
      * @param input 原始字节流
      * @param inLength 输入的字节流长度
-     * @return md5字符串(32位小写)
+     * @return md5字符串(32位小写)(需要外部调用free释放内存)
      */
     char* md5Sign(const unsigned char* input, unsigned int inputLen);
 #ifdef __cplusplus
