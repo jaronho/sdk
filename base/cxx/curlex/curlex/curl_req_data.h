@@ -63,7 +63,7 @@ public:
      * @brief 获取字节流
      * @return 字节流
      */
-    const std::vector<char> getBytes();
+    std::vector<char> getBytes();
 
 private:
     std::vector<char> m_bytes; /* 字节流 */

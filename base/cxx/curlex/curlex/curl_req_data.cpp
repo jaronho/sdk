@@ -32,7 +32,7 @@ std::string RawRequestData::toString()
     return str;
 }
 
-const std::vector<char> RawRequestData::getBytes()
+std::vector<char> RawRequestData::getBytes()
 {
     return m_bytes;
 }
