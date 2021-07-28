@@ -9,11 +9,13 @@
 void testSystem()
 {
     printf("\n============================== test system =============================\n");
+    std::vector<std::string> result;
 #if _WIN32
-    auto result = utilitiy::System::runCmd("dir");
+    int ret = utilitiy::System::runCmd("dir", &result);
 #else
-    auto result = utilitiy::System::runCmd("ls");
+    int ret = utilitiy::System::runCmd("ls", &result);
 #endif
+    printf("ret: %d\n", ret);
     for (auto line : result)
     {
         printf("%s\n", line.c_str());

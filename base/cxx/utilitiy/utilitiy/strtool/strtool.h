@@ -62,8 +62,8 @@ public:
      * @brief 转为16进制字符串
      * @param bytes 字节流
      * @param byteCount 字节数
-     * @param upper 是否转为大写(非必填), 默认为大写
-     * @param sep 每个16进制间的分隔符(非必填)
+     * @param upper 是否转为大写(选填), 默认为大写
+     * @param sep 每个16进制间的分隔符(选填)
      * @return 16进制字符串
      */
     static std::string toHex(const char* bytes, unsigned int byteCount, bool upper = true, const std::string& sep = "");
@@ -71,7 +71,7 @@ public:
     /**
      * @brief 16进制字符串转为字节流
      * @param hexStr 16进制字符串
-     * @param sep 每个16进制间的分隔符(非必填)
+     * @param sep 每个16进制间的分隔符(选填)
      * @return 字节流
      */
     static std::vector<char> fromHex(const std::string& hexStr, const std::string& sep = "");

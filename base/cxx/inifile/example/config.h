@@ -50,7 +50,7 @@ public:
     /**
      * @brief 初始化
      * @param path 文件路径
-     * @param writable 是否可写, 一个配置文件建议只由一个进程写操作(非必填), 默认只读
+     * @param writable 是否可写, 一个配置文件建议只由一个进程写操作(选填), 默认只读
      * @return true-成功, false-失败
      */
     static bool init(const std::string& path, bool writable = false);

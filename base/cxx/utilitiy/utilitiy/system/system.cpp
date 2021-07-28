@@ -10,12 +10,11 @@
 
 namespace utilitiy
 {
-std::vector<std::string> System::runCmd(const std::string& cmd)
+int System::runCmd(const std::string& cmd, std::vector<std::string>* result)
 {
-    std::vector<std::string> result;
     if (cmd.empty())
     {
-        return result;
+        return -1;
     }
     FILE* stream = NULL;
 #ifdef _WIN32
@@ -25,27 +24,30 @@ std::vector<std::string> System::runCmd(const std::string& cmd)
 #endif
     if (!stream)
     {
-        return result;
+        return -2;
     }
-    const size_t bufferSize = 1024;
-    char buffer[bufferSize] = {0};
-    std::string line;
-    while (memset(buffer, 0, bufferSize) && fgets(buffer, bufferSize - 1, stream))
+    if (result)
     {
-        line += buffer;
-        size_t pos = line.find('\n');
-        if (std::string::npos != pos)
+        (*result).clear();
+        const size_t bufferSize = 1024;
+        char buffer[bufferSize] = {0};
+        std::string line;
+        while (memset(buffer, 0, bufferSize) && fgets(buffer, bufferSize - 1, stream))
         {
-            result.emplace_back(line.substr(0, pos));
-            line = line.substr(pos + 1, line.size() - pos);
+            line += buffer;
+            size_t pos = line.find('\n');
+            if (std::string::npos != pos)
+            {
+                (*result).emplace_back(line.substr(0, pos));
+                line = line.substr(pos + 1, line.size() - pos);
+            }
         }
     }
 #ifdef _WIN32
-    _pclose(stream);
+    return _pclose(stream);
 #else
-    pclose(stream);
+    return pclose(stream);
 #endif
-    return result;
 }
 
 #ifndef _WIN32

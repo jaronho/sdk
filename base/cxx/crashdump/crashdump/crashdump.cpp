@@ -97,12 +97,11 @@ std::vector<std::string> stripFileInfo(const std::string& fullName)
  * @param cmd 命令
  * @return 执行结果
  */
-std::vector<std::string> shellCmd(const std::string& cmd)
+int shellCmd(const std::string& cmd, std::vector<std::string>* result = nullptr)
 {
-    std::vector<std::string> result;
     if (cmd.empty())
     {
-        return result;
+        return -1;
     }
     FILE* stream = NULL;
 #ifdef _WIN32
@@ -112,27 +111,30 @@ std::vector<std::string> shellCmd(const std::string& cmd)
 #endif
     if (!stream)
     {
-        return result;
+        return -2;
     }
-    const size_t bufferSize = 1024;
-    char buffer[bufferSize] = {0};
-    std::string line;
-    while (memset(buffer, 0, bufferSize) && fgets(buffer, bufferSize - 1, stream))
+    if (result)
     {
-        line += buffer;
-        size_t pos = line.find('\n');
-        if (std::string::npos != pos)
+        (*result).clear();
+        const size_t bufferSize = 1024;
+        char buffer[bufferSize] = {0};
+        std::string line;
+        while (memset(buffer, 0, bufferSize) && fgets(buffer, bufferSize - 1, stream))
         {
-            result.emplace_back(line.substr(0, pos));
-            line = line.substr(pos + 1, line.size() - pos);
+            line += buffer;
+            size_t pos = line.find('\n');
+            if (std::string::npos != pos)
+            {
+                (*result).emplace_back(line.substr(0, pos));
+                line = line.substr(pos + 1, line.size() - pos);
+            }
         }
     }
 #ifdef _WIN32
-    _pclose(stream);
+    return _pclose(stream);
 #else
-    pclose(stream);
+    return pclose(stream);
 #endif
-    return result;
 }
 
 #if _WIN32
@@ -207,21 +209,23 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     /* 重命名堆栈文件 */
     auto fi = stripFileInfo(descriptor.path());
     std::string dumpFile = fi[0] + g_procBasename + "_" + datetime + ms + (fi[3].empty() ? "" : "." + fi[3]);
-    auto results = shellCmd("mv " + std::string(descriptor.path()) + " " + dumpFile);
-    if (!results.empty())
+    std::string command = "mv " + std::string(descriptor.path()) + " " + dumpFile;
+    std::vector<std::string> result;
+    int ret = shellCmd(command, &result);
+    if (0 != ret || !result.empty())
     {
         dumpFile = descriptor.path();
     }
     /* 堆栈文件处理 */
-    std::string cmd = "dump_assist.sh -pname " + g_procFile + " -dname " + dumpFile;
-    results = shellCmd(cmd);
+    command = "dump_assist.sh -pname " + g_procFile + " -dname " + dumpFile;
+    ret = shellCmd(command, &result);
     /* 回调到外部 */
     if (g_callback)
     {
         std::string json;
-        if (!results.empty())
+        if (!result.empty())
         {
-            json = results[results.size() - 1];
+            json = result[result.size() - 1];
         }
         g_callback(json);
     }

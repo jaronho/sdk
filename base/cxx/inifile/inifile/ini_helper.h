@@ -25,8 +25,8 @@ void splitSectionKey(const std::string& sectionKey, std::string& sectionName, st
  * @param id 键值对所在模块id(一般传入文件名, 能够标识唯一即可)
  * @param sectionKey section和key的字符串组合, 格式为: "/section/key" 或 "/key"
  * @param value 值
- * @param sectionComment 节注释(非必填), 默认为空
- * @param comment 值注释(非必填), 默认为空
+ * @param sectionComment 节注释(选填), 默认为空
+ * @param comment 值注释(选填), 默认为空
  * @param readOnly 是否只读
  * @return 返回sectionKey
  */

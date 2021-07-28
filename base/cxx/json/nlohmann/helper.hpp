@@ -10,7 +10,7 @@ namespace nlohmann
  * @brief 字符串转为json对象
  * @param str json字符串
  * @param j [输出]转换后的json对象
- * @param errDesc [输出]错误描述
+ * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
 bool stringToJson(const std::string& str, json& j, std::string* errDesc = nullptr)
@@ -46,7 +46,7 @@ bool stringToJson(const std::string& str, json& j, std::string* errDesc = nullpt
  * @tparam DataType 类型名
  * @param j json对象
  * @param value [输出]类型值
- * @param errDesc [输出]错误描述
+ * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
 template<typename DataType>
@@ -86,7 +86,7 @@ bool jsonToValue(const nlohmann::json& j, DataType& value, std::string* errDesc 
  * @param j json对象
  * @param key 子项的key
  * @param object [输出]子对象
- * @param errDesc [输出]错误描述
+ * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
 bool getJsonObject(const json& j, const std::string& key, json& object, std::string* errDesc = nullptr)
@@ -131,7 +131,7 @@ bool getJsonObject(const json& j, const std::string& key, json& object, std::str
  * @param j json对象
  * @param key 子项的key
  * @param value [输出]子项值
- * @param errDesc [输出]错误描述
+ * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
 template<typename DataType>
