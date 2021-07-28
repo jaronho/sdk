@@ -16,12 +16,6 @@ struct FileBlockSize
     size_t blockSize; /* 块大小(单位:Kb) */
 };
 
-/* 文件/块大小映射 */
-static const int MB = 1024 * 1024;
-static const FileBlockSize s_fileBlockSizeMap[] = {{1024 * MB, 4 * MB}, {512 * MB, 4 * MB}, {256 * MB, 4 * MB},
-                                                   {128 * MB, 2 * MB},  {64 * MB, 2 * MB},  {32 * MB, 2 * MB},
-                                                   {16 * MB, 1 * MB},   {4 * MB, 1 * MB},   {1 * MB, 1 * MB}};
-
 FileInfo::FileInfo(const std::string& fullName) : m_fullName(fullName)
 {
     size_t pos = fullName.find_last_of("/\\");
@@ -103,7 +97,37 @@ bool FileInfo::remove()
     return 0 == ::remove(m_fullName.c_str());
 }
 
-bool FileInfo::copy(const std::string& destFilename, const std::function<void(size_t now, size_t total)>& progressCb, size_t blockMaxSize)
+/**
+ * @brief 计算块大小 
+ * @param fileSize 文件大小
+ * @param maxBlockSize 最大的块大小
+ */
+static size_t calcBlockSize(size_t fileSize, size_t maxBlockSize)
+{
+    /* 文件/块大小映射 */
+    static const int MB = 1024 * 1024;
+    static const FileBlockSize FILE_BLOCK_SIZE_MAP[] = {{1024 * MB, 4 * MB}, {512 * MB, 4 * MB}, {256 * MB, 4 * MB},
+                                                        {128 * MB, 2 * MB},  {64 * MB, 2 * MB},  {32 * MB, 2 * MB},
+                                                        {16 * MB, 1 * MB},   {4 * MB, 1 * MB},   {1 * MB, 1 * MB}};
+    /* 根据文件大小等级计算块大小 */
+    size_t blockSize = fileSize;
+    const int MAP_COUNT = sizeof(FILE_BLOCK_SIZE_MAP) / sizeof(FileBlockSize);
+    for (int i = 0; i < MAP_COUNT; ++i)
+    {
+        if (fileSize >= FILE_BLOCK_SIZE_MAP[i].fileSize)
+        {
+            blockSize = FILE_BLOCK_SIZE_MAP[i].blockSize;
+            break;
+        }
+    }
+    if (maxBlockSize > 0 && blockSize > maxBlockSize)
+    {
+        blockSize = maxBlockSize;
+    }
+    return blockSize;
+}
+
+bool FileInfo::copy(const std::string& destFilename, const std::function<void(size_t now, size_t total)>& progressCb, size_t maxBlockSize)
 {
     /* 打开源文件 */
     std::fstream srcFile(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
@@ -120,26 +144,22 @@ bool FileInfo::copy(const std::string& destFilename, const std::function<void(si
         srcFile.close();
         return false;
     }
-    /* 拷贝文件内容 */
-    size_t blockSize = (MB / 64); /* 16Kb */
-    const int MAP_COUNT = sizeof(s_fileBlockSizeMap) / sizeof(FileBlockSize);
-    for (int i = 0; i < MAP_COUNT; ++i)
+    /* 计算和分配块 */
+    size_t blockSize = calcBlockSize(srcFileSize, maxBlockSize);
+    if (0 == blockSize)
     {
-        if (srcFileSize >= s_fileBlockSizeMap[i].fileSize)
-        {
-            blockSize = s_fileBlockSizeMap[i].blockSize;
-            break;
-        }
-    }
-    if (blockMaxSize > 0 && blockSize > blockMaxSize)
-    {
-        blockSize = blockMaxSize;
+        srcFile.close();
+        destFile.close();
+        return false;
     }
     char* block = (char*)malloc(sizeof(char) * blockSize);
     if (!block)
     {
+        srcFile.close();
+        destFile.close();
         return false;
     }
+    /* 拷贝文件内容 */
     size_t nowSize = 0, readSize = 0;
     while (!srcFile.eof())
     {

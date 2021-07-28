@@ -66,11 +66,11 @@ public:
      * @brief 拷贝文件
      * @param destFilename 目标文件(全路径)
      * @param progressCb 进度回调, now-已拷贝字节数, total-总字节数
-     * @param blockMaxSize 设置拷贝块的最大单位(字节), 为0时表示不限制
+     * @param maxBlockSize 设置拷贝块的最大单位(字节), 为0时表示不限制
      * @return true-成功, false-失败
      */
     bool copy(const std::string& destFilename, const std::function<void(size_t now, size_t total)>& progressCb = nullptr,
-              size_t blockMaxSize = 0);
+              size_t maxBlockSize = 0);
 
     /**
      * @brief 文件大小
