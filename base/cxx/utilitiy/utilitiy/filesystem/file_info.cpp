@@ -86,6 +86,7 @@ bool FileInfo::create()
     std::fstream f(m_fullName, std::ios::out | std::ios::app);
     if (f.is_open())
     {
+        f.flush();
         f.close();
         return true;
     }
@@ -94,7 +95,14 @@ bool FileInfo::create()
 
 bool FileInfo::remove()
 {
-    return 0 == ::remove(m_fullName.c_str());
+    if (0 == ::remove(m_fullName.c_str()))
+    {
+#ifndef _WIN32
+        sync();
+#endif
+        return true;
+    }
+    return false;
 }
 
 /**

@@ -106,12 +106,22 @@ bool PathInfo::create()
 #endif
         }
     }
+#ifndef _WIN32
+    sync();
+#endif
     return true;
 }
 
 bool PathInfo::remove()
 {
-    return clearImpl(m_path, true);
+    if (clearImpl(m_path, true))
+    {
+#ifndef _WIN32
+        sync();
+#endif
+        return true;
+    }
+    return false;
 }
 
 bool PathInfo::clear(bool continueIfRoot)
@@ -120,7 +130,14 @@ bool PathInfo::clear(bool continueIfRoot)
     {
         return false;
     }
-    return clearImpl(m_path, false);
+    if (clearImpl(m_path, false))
+    {
+#ifndef _WIN32
+        sync();
+#endif
+        return true;
+    }
+    return false;
 }
 
 void PathInfo::traverse(std::function<void(const std::string& name, const FileAttribure& attr)> folderCallback,
