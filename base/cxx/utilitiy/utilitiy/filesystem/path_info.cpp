@@ -132,7 +132,7 @@ bool PathInfo::remove(bool ioSync)
 
 bool PathInfo::clear(bool continueIfRoot, bool ioSync)
 {
-    if (isRoot() && !continueIfRoot) /* 避免误清空根目录, 触发明确知道该操作 */
+    if (isRoot() && !continueIfRoot) /* 避免误清空根目录, 除非明确知道该操作 */
     {
         return false;
     }
