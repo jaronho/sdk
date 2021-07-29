@@ -7,9 +7,9 @@ set(CMAKE_CXX_STANDARD 14)
 include(../cmake/tools.cmake)
 
 ################################### 添加logger库 ###################################
-option(ENABLE_DETAIL "是否启用日志详情(包含文件名,行号,函数名)" ON)
+option(ENABLE_LOGGER_DETAIL "是否启用日志详情(包含文件名,行号,函数名)" ON)
 
-if(ENABLE_DETAIL)
+if(ENABLE_LOGGER_DETAIL)
     add_definitions(-DENABLE_LOGGER_DETAIL=2)
 else()
     add_definitions(-DENABLE_LOGGER_DETAIL=0)
