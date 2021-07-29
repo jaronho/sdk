@@ -52,22 +52,25 @@ public:
 
     /**
      * @brief 创建路径
+     * @param ioSync 是否同步I/O, 会降低效率(选填)
      * @return true-成功, false-失败
      */
-    bool create();
+    bool create(bool ioSync = false);
 
     /**
      * @brief 删除路径
+     * @param ioSync 是否同步I/O, 会降低效率(选填)
      * @return true-成功, false-失败
      */
-    bool remove();
+    bool remove(bool ioSync = false);
 
     /**
      * @brief 清空路径下的所有子项
      * @param continueIfRoot 如果路径是根目录是否继续清空(选填), 默认为不清空
+     * @param ioSync 是否同步I/O, 会降低效率(选填)
      * @return true-成功, false-失败
      */
-    bool clear(bool continueIfRoot = false);
+    bool clear(bool continueIfRoot = false, bool ioSync = false);
 
     /**
      * @brief 遍历文件夹和文件

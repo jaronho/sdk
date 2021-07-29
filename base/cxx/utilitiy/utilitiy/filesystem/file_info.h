@@ -58,9 +58,10 @@ public:
 
     /**
      * @brief 删除文件
+     * @param ioSync 是否同步I/O, 会降低效率(选填)
      * @return true-成功, false-失败
      */
-    bool remove();
+    bool remove(bool ioSync = false);
 
     /**
      * @brief 拷贝文件

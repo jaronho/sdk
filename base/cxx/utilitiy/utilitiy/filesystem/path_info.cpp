@@ -74,7 +74,7 @@ bool PathInfo::exist()
     return false;
 }
 
-bool PathInfo::create()
+bool PathInfo::create(bool ioSync)
 {
     if (m_path.empty())
     {
@@ -106,25 +106,31 @@ bool PathInfo::create()
 #endif
         }
     }
-#ifndef _WIN32
-    sync();
-#endif
-    return true;
-}
-
-bool PathInfo::remove()
-{
-    if (clearImpl(m_path, true))
+    if (ioSync)
     {
 #ifndef _WIN32
         sync();
 #endif
+    }
+    return true;
+}
+
+bool PathInfo::remove(bool ioSync)
+{
+    if (clearImpl(m_path, true))
+    {
+        if (ioSync)
+        {
+#ifndef _WIN32
+            sync();
+#endif
+        }
         return true;
     }
     return false;
 }
 
-bool PathInfo::clear(bool continueIfRoot)
+bool PathInfo::clear(bool continueIfRoot, bool ioSync)
 {
     if (isRoot() && !continueIfRoot) /* 避免误清空根目录, 触发明确知道该操作 */
     {
@@ -132,9 +138,12 @@ bool PathInfo::clear(bool continueIfRoot)
     }
     if (clearImpl(m_path, false))
     {
+        if (ioSync)
+        {
 #ifndef _WIN32
-        sync();
+            sync();
 #endif
+        }
         return true;
     }
     return false;

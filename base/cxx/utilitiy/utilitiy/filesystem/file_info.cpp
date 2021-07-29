@@ -93,13 +93,16 @@ bool FileInfo::create()
     return false;
 }
 
-bool FileInfo::remove()
+bool FileInfo::remove(bool ioSync)
 {
     if (0 == ::remove(m_fullName.c_str()))
     {
+        if (ioSync)
+        {
 #ifndef _WIN32
-        sync();
+            sync();
 #endif
+        }
         return true;
     }
     return false;
