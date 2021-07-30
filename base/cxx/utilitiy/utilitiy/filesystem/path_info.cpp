@@ -18,6 +18,12 @@ namespace utilitiy
 {
 PathInfo::PathInfo(const std::string& path) : m_path(revise(path)) {}
 
+PathInfo& PathInfo::operator=(const PathInfo& src)
+{
+    m_path = src.m_path;
+    return (*this);
+}
+
 std::string PathInfo::path()
 {
     return m_path;

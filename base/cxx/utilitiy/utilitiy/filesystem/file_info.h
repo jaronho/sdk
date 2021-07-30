@@ -17,6 +17,12 @@ public:
     virtual ~FileInfo() = default;
 
     /**
+     * @brief 赋值拷贝
+     * @return 对象自身
+     */
+    FileInfo& operator=(const FileInfo& src);
+
+    /**
      * @brief 获取全路径文件名
      * @return 全路径文件名
      */

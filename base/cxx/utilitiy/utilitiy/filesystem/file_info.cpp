@@ -40,6 +40,16 @@ FileInfo::FileInfo(const std::string& fullName) : m_fullName(fullName)
     }
 }
 
+FileInfo& FileInfo::operator=(const FileInfo& src)
+{
+    m_fullName = src.m_fullName;
+    m_path = src.m_path;
+    m_filename = src.m_filename;
+    m_basename = src.m_basename;
+    m_extname = src.m_extname;
+    return (*this);
+}
+
 std::string FileInfo::name()
 {
     return m_fullName;

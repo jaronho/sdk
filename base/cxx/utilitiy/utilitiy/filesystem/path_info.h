@@ -29,6 +29,12 @@ public:
     virtual ~PathInfo() = default;
 
     /**
+     * @brief 赋值拷贝
+     * @return 对象自身
+     */
+    PathInfo& operator=(const PathInfo& src);
+
+    /**
      * @brief 获取路径, 例如: /home/test/
      * @return 路径
      */
