@@ -67,6 +67,10 @@ std::string FileInfo::extname()
 
 bool FileInfo::exist()
 {
+    if (m_fullName.empty())
+    {
+        return false;
+    }
 #ifdef _WIN32
     struct _stat64 st;
     int ret = _stat64(m_fullName.c_str(), &st);
@@ -83,6 +87,10 @@ bool FileInfo::exist()
 
 bool FileInfo::create()
 {
+    if (m_fullName.empty())
+    {
+        return false;
+    }
     std::fstream f(m_fullName, std::ios::out | std::ios::app);
     if (f.is_open())
     {
@@ -95,6 +103,10 @@ bool FileInfo::create()
 
 bool FileInfo::remove(bool ioSync)
 {
+    if (m_fullName.empty())
+    {
+        return false;
+    }
     if (0 == ::remove(m_fullName.c_str()))
     {
         if (ioSync)
@@ -140,6 +152,10 @@ static size_t calcBlockSize(size_t fileSize, size_t maxBlockSize)
 
 bool FileInfo::copy(const std::string& destFilename, const std::function<void(size_t now, size_t total)>& progressCb, size_t maxBlockSize)
 {
+    if (m_fullName.empty())
+    {
+        return false;
+    }
     /* 打开源文件 */
     std::fstream srcFile(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
     if (!srcFile.is_open())
@@ -195,6 +211,10 @@ bool FileInfo::copy(const std::string& destFilename, const std::function<void(si
 long long FileInfo::size()
 {
     long long fileSize = -1;
+    if (m_fullName.empty())
+    {
+        return fileSize;
+    }
     std::fstream f(m_fullName, std::ios::in);
     if (f.is_open())
     {
@@ -207,6 +227,10 @@ long long FileInfo::size()
 
 char* FileInfo::data(long long& fileSize, bool isText)
 {
+    if (m_fullName.empty())
+    {
+        return NULL;
+    }
     std::fstream f(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
     if (!f.is_open())
     {
@@ -232,6 +256,10 @@ char* FileInfo::data(long long& fileSize, bool isText)
 
 char* FileInfo::read(long long offset, long long& count)
 {
+    if (m_fullName.empty())
+    {
+        return NULL;
+    }
     std::fstream f(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
     if (!f.is_open())
     {
@@ -245,6 +273,10 @@ char* FileInfo::read(long long offset, long long& count)
 bool FileInfo::write(const char* data, long long length, bool isAppend)
 {
     if (!data || length <= 0)
+    {
+        return false;
+    }
+    if (m_fullName.empty())
     {
         return false;
     }

@@ -13,6 +13,8 @@ public:
      * @param fullName 全路径文件名, 例如: /home/test/111.txt
      */
     FileInfo(const std::string& fullName);
+    FileInfo() = default;
+    virtual ~FileInfo() = default;
 
     /**
      * @brief 获取全路径文件名

@@ -25,6 +25,8 @@ public:
      * @param path 路径, 例如: /home/test
      */
     PathInfo(const std::string& path);
+    PathInfo() = default;
+    virtual ~PathInfo() = default;
 
     /**
      * @brief 获取路径, 例如: /home/test/

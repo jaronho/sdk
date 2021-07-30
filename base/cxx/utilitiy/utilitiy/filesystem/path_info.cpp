@@ -60,6 +60,10 @@ bool PathInfo::isRoot()
 
 bool PathInfo::exist()
 {
+    if (m_path.empty())
+    {
+        return false;
+    }
 #ifdef _WIN32
     struct _stat64 st;
     int ret = _stat64(m_path.c_str(), &st);
@@ -158,6 +162,10 @@ void PathInfo::traverse(std::function<void(const std::string& name, const FileAt
 
 bool PathInfo::clearImpl(const std::string& path, bool rmSelf)
 {
+    if (path.empty())
+    {
+        return false;
+    }
 #ifdef _WIN32
     struct _finddata_t fileData;
     intptr_t handle;
@@ -237,6 +245,10 @@ void PathInfo::traverseImpl(std::string path, std::function<void(const std::stri
                             std::function<void(const std::string& name, const FileAttribure& attr, long long size)> fileCallback,
                             bool recursive)
 {
+    if (path.empty())
+    {
+        return;
+    }
 #ifdef _WIN32
     struct _finddata_t fileData;
     intptr_t handle = _findfirst((path + "\\*.*").c_str(), &fileData);
@@ -349,6 +361,10 @@ void PathInfo::traverseImpl(std::string path, std::function<void(const std::stri
 
 std::string PathInfo::revise(const std::string& path)
 {
+    if (path.empty())
+    {
+        return path;
+    }
     std::string newPath;
     bool isPreSlash = false;
     for (size_t i = 0; i < path.size(); ++i)
