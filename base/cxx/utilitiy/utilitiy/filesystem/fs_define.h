@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <time.h>
 
 namespace utilitiy
 {
@@ -8,9 +9,30 @@ namespace utilitiy
  */
 typedef struct
 {
-    long createTime = 0; /* 创建时间 */
-    long modifyTime = 0; /* 修改时间 */
-    long accessTime = 0; /* 访问时间 */
+    std::string createTimeFmt(const std::string& fmtStr = "%Y-%m-%d %H:%M:%S")
+    {
+        char str[64] = {0};
+        strftime(str, sizeof(str), fmtStr.c_str(), localtime(&createTime));
+        return str;
+    };
+
+    std::string modifyTimeFmt(const std::string& fmtStr = "%Y-%m-%d %H:%M:%S")
+    {
+        char str[64] = {0};
+        strftime(str, sizeof(str), fmtStr.c_str(), localtime(&modifyTime));
+        return str;
+    };
+
+    std::string accessTimeFmt(const std::string& fmtStr = "%Y-%m-%d %H:%M:%S")
+    {
+        char str[64] = {0};
+        strftime(str, sizeof(str), fmtStr.c_str(), localtime(&accessTime));
+        return str;
+    };
+
+    time_t createTime = 0; /* 创建时间(1900年至今的秒数) */
+    time_t modifyTime = 0; /* 修改时间(1900年至今的秒数) */
+    time_t accessTime = 0; /* 访问时间(1900年至今的秒数) */
     long long size = 0; /* 文件大小(注:为目录时该字段无效) */
     bool isDir; /* 是否目录 */
     bool isFile; /* 是否文件 */

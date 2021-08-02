@@ -46,9 +46,9 @@ void testFilesystem()
             free(buffer);
         }
         utilitiy::FileAttribute attr = fi.attribute();
-        printf("- createTime: %ld\n", attr.createTime);
-        printf("- modifyTime: %ld\n", attr.modifyTime);
-        printf("- accessTime: %ld\n", attr.accessTime);
+        printf("- createTime: %s\n", attr.createTimeFmt().c_str());
+        printf("- modifyTime: %s\n", attr.modifyTimeFmt().c_str());
+        printf("- accessTime: %s\n", attr.accessTimeFmt().c_str());
         printf("- size: %lld\n", attr.size);
         printf("- isDir: %s\n", attr.isDir ? "true" : "false");
         printf("- isFile: %s\n", attr.isFile ? "true" : "false");
@@ -75,9 +75,9 @@ void testFilesystem()
     {
         printf("exist: true\n");
         utilitiy::FileAttribute attr = pi.attribute();
-        printf("- createTime: %ld\n", attr.createTime);
-        printf("- modifyTime: %ld\n", attr.modifyTime);
-        printf("- accessTime: %ld\n", attr.accessTime);
+        printf("- createTime: %s\n", attr.createTimeFmt().c_str());
+        printf("- modifyTime: %s\n", attr.modifyTimeFmt().c_str());
+        printf("- accessTime: %s\n", attr.accessTimeFmt().c_str());
         printf("- size: %lld\n", attr.size);
         printf("- isDir: %s\n", attr.isDir ? "true" : "false");
         printf("- isFile: %s\n", attr.isFile ? "true" : "false");
@@ -104,9 +104,9 @@ void testFilesystem()
         {
             printf("create: true\n");
             utilitiy::FileAttribute attr = pi.attribute();
-            printf("- createTime: %ld\n", attr.createTime);
-            printf("- modifyTime: %ld\n", attr.modifyTime);
-            printf("- accessTime: %ld\n", attr.accessTime);
+            printf("- createTime: %s\n", attr.createTimeFmt().c_str());
+            printf("- modifyTime: %s\n", attr.modifyTimeFmt().c_str());
+            printf("- accessTime: %s\n", attr.accessTimeFmt().c_str());
             printf("- isDir: %s\n", attr.isDir ? "true" : "false");
             printf("- isFile: %s\n", attr.isFile ? "true" : "false");
 #ifdef _WIN32
