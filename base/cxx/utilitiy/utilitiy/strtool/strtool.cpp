@@ -158,4 +158,16 @@ std::vector<char> StrTool::fromHex(const std::string& hexStr, const std::string&
     }
     return bytes;
 }
+
+bool StrTool::isAscii(const std::string& str)
+{
+    for (size_t i = 0; i < str.size(); ++i)
+    {
+        if (!isascii(str[i]))
+        {
+            return false;
+        }
+    }
+    return true;
+}
 } // namespace utilitiy

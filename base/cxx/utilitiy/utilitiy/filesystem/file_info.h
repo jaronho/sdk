@@ -3,6 +3,8 @@
 #include <functional>
 #include <string>
 
+#include "fs_define.h"
+
 namespace utilitiy
 {
 class FileInfo
@@ -51,6 +53,12 @@ public:
      * @return 文件扩展名
      */
     std::string extname();
+
+    /**
+     * @brief 获取文件属性
+     * @return 属性
+     */
+    FileAttribute attribute();
 
     /**
      * @brief 判断文件是否存在

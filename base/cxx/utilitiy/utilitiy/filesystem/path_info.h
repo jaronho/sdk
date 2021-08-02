@@ -2,21 +2,10 @@
 #include <functional>
 #include <string>
 
+#include "fs_define.h"
+
 namespace utilitiy
 {
-typedef struct
-{
-    long createTime; /* 创建时间 */
-    long modifyTime; /* 修改时间 */
-    long accessTime; /* 访问时间 */
-#if _WIN32
-    bool isReadOnly; /* 是否只读 */
-    bool isHidden; /* 是否隐藏 */
-    bool isSystem; /* 是否系统文件 */
-    bool isSymLink; /* 是否快捷文件 */
-#endif
-} FileAttribure;
-
 class PathInfo
 {
 public:
@@ -53,6 +42,12 @@ public:
     bool isRoot();
 
     /**
+     * @brief 获取目录属性
+     * @return 属性
+     */
+    FileAttribute attribute();
+
+    /**
      * @brief 判断路径是否存在
      * @return true-存在, false-不存在
      */
@@ -83,12 +78,11 @@ public:
     /**
      * @brief 遍历文件夹和文件
      * @param folderCallback 文件夹回调, name-名称, attr-属性
-     * @param fileCallback 文件回调, name-名称, attr-属性, size-文件大小
+     * @param fileCallback 文件回调, name-名称, attr-属性
      * @param recursive 是否递归查找(选填), 默认递归
      */
-    void traverse(std::function<void(const std::string& name, const FileAttribure& attr)> folderCallback,
-                  std::function<void(const std::string& name, const FileAttribure& attr, long long size)> fileCallback,
-                  bool recursive = true);
+    void traverse(std::function<void(const std::string& name, const FileAttribute& attr)> folderCallback,
+                  std::function<void(const std::string& name, const FileAttribute& attr)> fileCallback, bool recursive = true);
 
     /**
      * @brief 校正路径(去除多余的斜杠, 反斜杠, 左右空格)
@@ -109,11 +103,11 @@ private:
      * @brief 遍历文件夹和文件内部实现
      * @param path 路径
      * @param folderCallback 文件夹回调, name-名称, attr-属性
-     * @param fileCallback 文件回调, name-名称, attr-属性, size-文件大小
+     * @param fileCallback 文件回调, name-名称, attr-属性
      * @param recursive 是否递归查找
      */
-    void traverseImpl(std::string path, std::function<void(const std::string& name, const FileAttribure& attr)> folderCallback,
-                      std::function<void(const std::string& name, const FileAttribure& attr, long long size)> fileCallback, bool recursive);
+    void traverseImpl(std::string path, std::function<void(const std::string& name, const FileAttribute& attr)> folderCallback,
+                      std::function<void(const std::string& name, const FileAttribute& attr)> fileCallback, bool recursive);
 
 private:
     std::string m_path; /* 路径 */

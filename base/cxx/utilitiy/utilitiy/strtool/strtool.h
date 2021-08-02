@@ -75,5 +75,12 @@ public:
      * @return 字节流
      */
     static std::vector<char> fromHex(const std::string& hexStr, const std::string& sep = "");
+
+    /**
+     * @brief 是否为ASCII字符串
+     * @param str 字符串
+     * @return true-是, false-否
+     */
+    static bool isAscii(const std::string& str);
 };
 } // namespace utilitiy

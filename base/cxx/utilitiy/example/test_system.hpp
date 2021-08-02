@@ -10,7 +10,7 @@ void testSystem()
 {
     printf("\n============================== test system =============================\n");
     std::vector<std::string> result;
-#if _WIN32
+#ifdef _WIN32
     int ret = utilitiy::System::runCmd("dir", &result);
 #else
     int ret = utilitiy::System::runCmd("ls", &result);

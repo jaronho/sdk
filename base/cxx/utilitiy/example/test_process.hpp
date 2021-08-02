@@ -11,7 +11,7 @@ void testProcess()
     printf("\n============================== test process =============================\n");
     printf("process id: %d\n", utilitiy::Process::getProcessId());
     printf("process exe file: %s\n", utilitiy::Process::getProcessExeFile().c_str());
-#if _WIN32
+#ifdef _WIN32
     std::string filename = "example_utilitiy.exe";
 #else
     std::string filename = "example_utilitiy";

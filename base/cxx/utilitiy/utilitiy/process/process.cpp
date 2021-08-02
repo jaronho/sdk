@@ -4,7 +4,7 @@
 #include <sstream>
 #include <string.h>
 #include <thread>
-#if _WIN32
+#ifdef _WIN32
 #include <Windows.h>
 #include <process.h>
 #pragma warning(disable : 4996)
@@ -17,7 +17,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
-#if _WIN32
+#ifdef _WIN32
 #include <TlHelp32.h> /* 需要放在#include <Windows.h>后面, 否则编译会出错 */
 #endif
 
@@ -25,7 +25,7 @@ namespace utilitiy
 {
 int Process::getProcessId()
 {
-#if _WIN32
+#ifdef _WIN32
     return _getpid();
 #else
     return (int)getpid();
@@ -34,7 +34,7 @@ int Process::getProcessId()
 
 int Process::getThreadId()
 {
-#if _WIN32
+#ifdef _WIN32
     return GetCurrentThreadId();
 #else
     return syscall(__NR_gettid);
@@ -43,7 +43,7 @@ int Process::getThreadId()
 
 bool Process::isValidThreadId(int threadId)
 {
-#if _WIN32
+#ifdef _WIN32
     if (threadId <= 0)
     {
         return false;
@@ -108,14 +108,14 @@ static void SetThreadName(DWORD dwThreadID, const char* threadName)
 
 void Process::setThreadName(const std::string& name)
 {
-#if _WIN32
+#ifdef _WIN32
     SetThreadName(-1, name.c_str());
 #else
     pthread_setname_np(pthread_self(), name.substr(0, 15).c_str());
 #endif
 }
 
-#if _WIN32
+#ifdef _WIN32
 static std::string wstring2string(const std::wstring& wstr)
 {
     if (wstr.empty())
@@ -149,7 +149,7 @@ static std::wstring string2wstring(const std::string& str)
 
 std::string Process::getProcessExeFile()
 {
-#if _WIN32
+#ifdef _WIN32
 #ifdef UNICODE
     TCHAR exeFileW[MAX_PATH + 1] = {0};
     GetModuleFileName(NULL, exeFileW, MAX_PATH);
@@ -174,7 +174,7 @@ std::string Process::getProcessExeFile()
 int Process::searchProcess(const std::string& filename, const std::function<void(const std::string& exeFile, int pid)>& callback)
 {
     int matchCount = 0;
-#if _WIN32
+#ifdef _WIN32
     HANDLE processSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (INVALID_HANDLE_VALUE == processSnap)
     {
@@ -303,7 +303,7 @@ bool Process::runProcess(const std::string& exeFile, int flag)
     {
         return false;
     }
-#if _WIN32
+#ifdef _WIN32
     STARTUPINFO si;
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
@@ -375,7 +375,7 @@ bool Process::killProcess(int pid)
     {
         return false;
     }
-#if _WIN32
+#ifdef _WIN32
     HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
     if (!process)
     {

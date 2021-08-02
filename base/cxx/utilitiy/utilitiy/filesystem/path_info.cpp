@@ -3,8 +3,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #ifdef _WIN32
-#include <Shlobj.h>
-#include <atlstr.h>
 #include <direct.h>
 #include <io.h>
 #pragma warning(disable : 6031)
@@ -64,22 +62,22 @@ bool PathInfo::isRoot()
     return false;
 }
 
+FileAttribute PathInfo::attribute()
+{
+    FileAttribute attr;
+    getFileAttribute(m_path, attr);
+    return attr;
+}
+
 bool PathInfo::exist()
 {
-    if (m_path.empty())
+    FileAttribute attr;
+    if (getFileAttribute(m_path, attr))
     {
-        return false;
-    }
-#ifdef _WIN32
-    struct _stat64 st;
-    int ret = _stat64(m_path.c_str(), &st);
-#else
-    struct stat64 st;
-    int ret = stat64(m_path.c_str(), &st);
-#endif
-    if (0 == ret && (S_IFDIR & st.st_mode))
-    {
-        return true;
+        if (attr.isDir)
+        {
+            return true;
+        }
     }
     return false;
 }
@@ -159,9 +157,8 @@ bool PathInfo::clear(bool continueIfRoot, bool ioSync)
     return false;
 }
 
-void PathInfo::traverse(std::function<void(const std::string& name, const FileAttribure& attr)> folderCallback,
-                        std::function<void(const std::string& name, const FileAttribure& attr, long long size)> fileCallback,
-                        bool recursive)
+void PathInfo::traverse(std::function<void(const std::string& name, const FileAttribute& attr)> folderCallback,
+                        std::function<void(const std::string& name, const FileAttribute& attr)> fileCallback, bool recursive)
 {
     traverseImpl(m_path, folderCallback, fileCallback, recursive);
 }
@@ -173,13 +170,27 @@ bool PathInfo::clearImpl(const std::string& path, bool rmSelf)
         return false;
     }
 #ifdef _WIN32
-    struct _finddata_t fileData;
-    intptr_t handle;
-    if (-1 == (handle = _findfirst((path + "\\*").c_str(), &fileData)))
+#ifdef _WIN64
+    _finddatai64_t fileData;
+    __int64 handle = _findfirsti64((path + "\\*.*").c_str(), &fileData);
+#else
+    _finddata_t fileData;
+    int handle = _findfirst((path + "\\*.*").c_str(), &fileData);
+#endif
+    if (-1 == handle)
     {
         return false;
     }
+    if (!(_A_SUBDIR & fileData.attrib))
+    {
+        _findclose(handle);
+        return false;
+    }
+#ifdef _WIN64
+    while (0 == _findnexti64(handle, &fileData))
+#else
     while (0 == _findnext(handle, &fileData))
+#endif
     {
         if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
         {
@@ -230,90 +241,60 @@ bool PathInfo::clearImpl(const std::string& path, bool rmSelf)
     return true;
 }
 
-#if _WIN32
-static std::wstring string2wstring(const std::string& str)
-{
-    if (str.empty())
-    {
-        return std::wstring();
-    }
-    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
-    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
-    buf[len] = '\0';
-    std::wstring wstr(buf);
-    free(buf);
-    return wstr;
-}
-#endif
-
-void PathInfo::traverseImpl(std::string path, std::function<void(const std::string& name, const FileAttribure& attr)> folderCallback,
-                            std::function<void(const std::string& name, const FileAttribure& attr, long long size)> fileCallback,
-                            bool recursive)
+void PathInfo::traverseImpl(std::string path, std::function<void(const std::string& name, const FileAttribute& attr)> folderCallback,
+                            std::function<void(const std::string& name, const FileAttribute& attr)> fileCallback, bool recursive)
 {
     if (path.empty())
     {
         return;
     }
 #ifdef _WIN32
-    struct _finddata_t fileData;
-    intptr_t handle = _findfirst((path + "\\*.*").c_str(), &fileData);
-    if (-1 == handle || !(_A_SUBDIR & fileData.attrib))
+#ifdef _WIN64
+    _finddatai64_t fileData;
+    __int64 handle = _findfirsti64((path + "\\*.*").c_str(), &fileData);
+#else
+    _finddata_t fileData;
+    int handle = _findfirst((path + "\\*.*").c_str(), &fileData);
+#endif
+    if (-1 == handle)
     {
         return;
     }
-    while (0 == _findnext(handle, &fileData))
+    if (_A_SUBDIR & fileData.attrib)
     {
-        if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
-        {
-            continue;
-        }
-        std::string subName = path + "\\" + fileData.name;
-        FileAttribure attr;
-        attr.createTime = fileData.time_create;
-        attr.modifyTime = fileData.time_write;
-        attr.accessTime = fileData.time_access;
-#if 1 /* 方法一 */
-        SHFILEINFO shFileInfo;
-        memset(&shFileInfo, 0, sizeof(SHFILEINFO));
-#ifdef UNICODE
-        std::wstring subNameW = string2wstring(subName);
-        if (subNameW.empty())
-        {
-            continue;
-        }
-        SHGetFileInfo(subNameW.c_str(), 0, &shFileInfo, sizeof(SHFILEINFO),
-                      SHGFI_DISPLAYNAME | SHGFI_ICON | SHGFI_SMALLICON | SHGFI_TYPENAME | SHGFI_ATTRIBUTES);
+#ifdef _WIN64
+        while (0 == _findnexti64(handle, &fileData))
 #else
-        SHGetFileInfo(subName.c_str(), 0, &shFileInfo, sizeof(SHFILEINFO),
-                      SHGFI_DISPLAYNAME | SHGFI_ICON | SHGFI_SMALLICON | SHGFI_TYPENAME | SHGFI_ATTRIBUTES);
+        while (0 == _findnext(handle, &fileData))
 #endif
-        attr.isReadOnly = SFGAO_READONLY & shFileInfo.dwAttributes;
-        attr.isHidden = SFGAO_HIDDEN & shFileInfo.dwAttributes;
-        attr.isSystem = SFGAO_SYSTEM & shFileInfo.dwAttributes;
-        attr.isSymLink = SFGAO_LINK & shFileInfo.dwAttributes;
-#else /* 方法二 */
-        attr.isReadOnly = _A_RDONLY & fileData.attrib;
-        attr.isHidden = _A_HIDDEN & fileData.attrib;
-        attr.isSystem = _A_SYSTEM & fileData.attrib;
-#endif
-        if (_A_SUBDIR & fileData.attrib) /* 目录 */
         {
-            if (folderCallback)
+            if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
             {
-                folderCallback(subName, attr);
+                continue;
             }
-        }
-        else /* 文件 */
-        {
-            if (fileCallback)
+            std::string subName = path + "\\" + fileData.name;
+            FileAttribute attr;
+            if (getFileAttribute(subName, attr))
             {
-                fileCallback(subName, attr, fileData.size);
+                if (attr.isDir) /* 目录 */
+                {
+                    if (folderCallback)
+                    {
+                        folderCallback(subName, attr);
+                    }
+                }
+                else if (attr.isFile) /* 文件 */
+                {
+                    if (fileCallback)
+                    {
+                        fileCallback(subName, attr);
+                    }
+                }
+                if (recursive)
+                {
+                    traverseImpl(subName, folderCallback, fileCallback, true);
+                }
             }
-        }
-        if (recursive)
-        {
-            traverseImpl(subName, folderCallback, fileCallback, true);
         }
     }
     _findclose(handle);
@@ -331,34 +312,27 @@ void PathInfo::traverseImpl(std::string path, std::function<void(const std::stri
             continue;
         }
         std::string subName = path + "/" + dirp->d_name;
-        struct stat subStat;
-        if (0 != stat(subName.c_str(), &subStat))
+        FileAttribute attr;
+        if (getFileAttribute(subName, attr))
         {
-            continue;
-        }
-        FileAttribure attr;
-        attr.createTime = subStat.st_ctime;
-        attr.modifyTime = subStat.st_mtime;
-        attr.accessTime = subStat.st_atime;
-        DIR* subDir = opendir(subName.c_str());
-        if (subDir) /* 目录*/
-        {
-            closedir(subDir);
-            if (folderCallback)
+            if (attr.isDir) /* 目录*/
             {
-                folderCallback(subName, attr);
+                if (folderCallback)
+                {
+                    folderCallback(subName, attr);
+                }
             }
-        }
-        else /* 文件 */
-        {
-            if (fileCallback)
+            else if (attr.isFile) /* 文件 */
             {
-                fileCallback(subName, attr, subStat.st_size);
+                if (fileCallback)
+                {
+                    fileCallback(subName, attr);
+                }
             }
-        }
-        if (recursive)
-        {
-            traverseImpl(subName, folderCallback, fileCallback, true);
+            if (recursive)
+            {
+                traverseImpl(subName, folderCallback, fileCallback, true);
+            }
         }
     }
     closedir(dir);

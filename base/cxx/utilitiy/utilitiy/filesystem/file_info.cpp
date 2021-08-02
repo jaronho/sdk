@@ -1,10 +1,7 @@
 #include "file_info.h"
 
 #include <string.h>
-#include <sys/stat.h>
-#ifdef _WIN32
-#include <io.h>
-#else
+#ifndef _WIN32
 #include <unistd.h>
 #endif
 
@@ -75,22 +72,22 @@ std::string FileInfo::extname()
     return m_extname;
 }
 
+FileAttribute FileInfo::attribute()
+{
+    FileAttribute attr;
+    getFileAttribute(m_fullName, attr);
+    return attr;
+}
+
 bool FileInfo::exist()
 {
-    if (m_fullName.empty())
+    FileAttribute attr;
+    if (getFileAttribute(m_fullName, attr))
     {
-        return false;
-    }
-#ifdef _WIN32
-    struct _stat64 st;
-    int ret = _stat64(m_fullName.c_str(), &st);
-#else
-    struct stat64 st;
-    int ret = stat64(m_fullName.c_str(), &st);
-#endif
-    if (0 == ret && (S_IFREG & st.st_mode))
-    {
-        return true;
+        if (attr.isFile)
+        {
+            return true;
+        }
     }
     return false;
 }

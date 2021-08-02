@@ -45,6 +45,20 @@ void testFilesystem()
             printf("\n--------------------\n");
             free(buffer);
         }
+        utilitiy::FileAttribute attr = fi.attribute();
+        printf("- createTime: %ld\n", attr.createTime);
+        printf("- modifyTime: %ld\n", attr.modifyTime);
+        printf("- accessTime: %ld\n", attr.accessTime);
+        printf("- size: %lld\n", attr.size);
+        printf("- isDir: %s\n", attr.isDir ? "true" : "false");
+        printf("- isFile: %s\n", attr.isFile ? "true" : "false");
+#ifdef _WIN32
+        printf("- isSystem: %s\n", attr.isSystem ? "true" : "false");
+#endif
+        printf("- isSymLink: %s\n", attr.isSymLink ? "true" : "false");
+        printf("- isWritable: %s\n", attr.isWritable ? "true" : "false");
+        printf("- isExecutable: %s\n", attr.isExecutable ? "true" : "false");
+        printf("- isHidden: %s\n", attr.isHidden ? "true" : "false");
     }
     else
     {
@@ -60,6 +74,20 @@ void testFilesystem()
     if (pi.exist())
     {
         printf("exist: true\n");
+        utilitiy::FileAttribute attr = pi.attribute();
+        printf("- createTime: %ld\n", attr.createTime);
+        printf("- modifyTime: %ld\n", attr.modifyTime);
+        printf("- accessTime: %ld\n", attr.accessTime);
+        printf("- size: %lld\n", attr.size);
+        printf("- isDir: %s\n", attr.isDir ? "true" : "false");
+        printf("- isFile: %s\n", attr.isFile ? "true" : "false");
+#ifdef _WIN32
+        printf("- isSystem: %s\n", attr.isSystem ? "true" : "false");
+#endif
+        printf("- isSymLink: %s\n", attr.isSymLink ? "true" : "false");
+        printf("- isWritable: %s\n", attr.isWritable ? "true" : "false");
+        printf("- isExecutable: %s\n", attr.isExecutable ? "true" : "false");
+        printf("- isHidden: %s\n", attr.isHidden ? "true" : "false");
         if (pi.clear())
         {
             printf("clear: true\n");
@@ -75,6 +103,19 @@ void testFilesystem()
         if (pi.create())
         {
             printf("create: true\n");
+            utilitiy::FileAttribute attr = pi.attribute();
+            printf("- createTime: %ld\n", attr.createTime);
+            printf("- modifyTime: %ld\n", attr.modifyTime);
+            printf("- accessTime: %ld\n", attr.accessTime);
+            printf("- isDir: %s\n", attr.isDir ? "true" : "false");
+            printf("- isFile: %s\n", attr.isFile ? "true" : "false");
+#ifdef _WIN32
+            printf("- isSystem: %s\n", attr.isSystem ? "true" : "false");
+#endif
+            printf("- isSymLink: %s\n", attr.isSymLink ? "true" : "false");
+            printf("- isWritable: %s\n", attr.isWritable ? "true" : "false");
+            printf("- isExecutable: %s\n", attr.isExecutable ? "true" : "false");
+            printf("- isHidden: %s\n", attr.isHidden ? "true" : "false");
             if (pi.remove())
             {
                 printf("remove: true\n");
