@@ -137,7 +137,7 @@ int shellCmd(const std::string& cmd, std::vector<std::string>* result = nullptr)
 #endif
 }
 
-#if _WIN32
+#ifdef _WIN32
 static std::string wstring2string(const std::wstring& wstr)
 {
     if (wstr.empty())
@@ -160,7 +160,7 @@ static std::string wstring2string(const std::wstring& wstr)
  */
 std::string getProcFile()
 {
-#if _WIN32
+#ifdef _WIN32
 #ifdef UNICODE
     TCHAR exeFileW[MAX_PATH + 1] = {0};
     GetModuleFileName(NULL, exeFileW, MAX_PATH);
