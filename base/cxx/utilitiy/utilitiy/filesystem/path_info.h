@@ -97,7 +97,7 @@ private:
      * @param rmSelf true-删除path, false-只清空path
      * @return true-成功, false-失败
      */
-    bool clearImpl(const std::string& path, bool rmSelf);
+    bool clearImpl(std::string path, bool rmSelf);
 
     /**
      * @brief 遍历文件夹和文件内部实现

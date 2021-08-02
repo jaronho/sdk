@@ -163,19 +163,23 @@ void PathInfo::traverse(std::function<void(const std::string& name, const FileAt
     traverseImpl(m_path, folderCallback, fileCallback, recursive);
 }
 
-bool PathInfo::clearImpl(const std::string& path, bool rmSelf)
+bool PathInfo::clearImpl(std::string path, bool rmSelf)
 {
     if (path.empty())
     {
         return false;
     }
 #ifdef _WIN32
+    if ('\\' != path[path.size() - 1])
+    {
+        path.push_back('\\');
+    }
 #ifdef _WIN64
     _finddatai64_t fileData;
-    __int64 handle = _findfirsti64((path + "\\*.*").c_str(), &fileData);
+    __int64 handle = _findfirsti64((path + "*.*").c_str(), &fileData);
 #else
     _finddata_t fileData;
-    int handle = _findfirst((path + "\\*.*").c_str(), &fileData);
+    int handle = _findfirst((path + "*.*").c_str(), &fileData);
 #endif
     if (-1 == handle)
     {
@@ -196,7 +200,7 @@ bool PathInfo::clearImpl(const std::string& path, bool rmSelf)
         {
             continue;
         }
-        std::string subName = path + "\\" + fileData.name;
+        std::string subName = path + fileData.name;
         if (_A_SUBDIR & fileData.attrib)
         {
             clearImpl(subName, true);
@@ -208,6 +212,10 @@ bool PathInfo::clearImpl(const std::string& path, bool rmSelf)
     }
     _findclose(handle);
 #else
+    if ('/' != path[path.size() - 1])
+    {
+        path.push_back('/');
+    }
     DIR* dir = opendir(path.c_str());
     if (!dir)
     {
@@ -220,7 +228,7 @@ bool PathInfo::clearImpl(const std::string& path, bool rmSelf)
         {
             continue;
         }
-        std::string subName = path + "/" + dirp->d_name;
+        std::string subName = path + dirp->d_name;
         DIR* subDir = opendir(subName.c_str());
         if (!subDir)
         {
@@ -248,13 +256,18 @@ void PathInfo::traverseImpl(std::string path, std::function<void(const std::stri
     {
         return;
     }
+
 #ifdef _WIN32
+    if ('\\' != path[path.size() - 1])
+    {
+        path.push_back('\\');
+    }
 #ifdef _WIN64
     _finddatai64_t fileData;
-    __int64 handle = _findfirsti64((path + "\\*.*").c_str(), &fileData);
+    __int64 handle = _findfirsti64((path + "*.*").c_str(), &fileData);
 #else
     _finddata_t fileData;
-    int handle = _findfirst((path + "\\*.*").c_str(), &fileData);
+    int handle = _findfirst((path + "*.*").c_str(), &fileData);
 #endif
     if (-1 == handle)
     {
@@ -272,7 +285,7 @@ void PathInfo::traverseImpl(std::string path, std::function<void(const std::stri
             {
                 continue;
             }
-            std::string subName = path + "\\" + fileData.name;
+            std::string subName = path + fileData.name;
             FileAttribute attr;
             if (getFileAttribute(subName, attr))
             {
@@ -299,6 +312,10 @@ void PathInfo::traverseImpl(std::string path, std::function<void(const std::stri
     }
     _findclose(handle);
 #else
+    if ('/' != path[path.size() - 1])
+    {
+        path.push_back('/');
+    }
     DIR* dir = opendir(path.c_str());
     if (!dir)
     {
@@ -311,7 +328,7 @@ void PathInfo::traverseImpl(std::string path, std::function<void(const std::stri
         {
             continue;
         }
-        std::string subName = path + "/" + dirp->d_name;
+        std::string subName = path + dirp->d_name;
         FileAttribute attr;
         if (getFileAttribute(subName, attr))
         {
