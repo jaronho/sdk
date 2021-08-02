@@ -3,8 +3,6 @@
 #include <assert.h>
 #include <iostream>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
@@ -48,104 +46,6 @@ bool Logfile::createPath(const std::string& path)
         }
     }
     return true;
-}
-
-void Logfile::traverse(
-    std::string path, std::function<void(const std::string& name, long createTime, long writeTime, long accessTime)> folderCallback,
-    std::function<void(const std::string& name, long createTime, long writeTime, long accessTime, unsigned long size)> fileCallback,
-    bool recursive)
-{
-    const char& lastPathChar = path[path.length() - 1];
-    if ('/' == lastPathChar || '\\' == lastPathChar)
-    {
-        path.pop_back();
-    }
-#ifdef _WIN32
-#ifdef _WIN64
-    _finddatai64_t fileData;
-    __int64 handle = _findfirsti64((path + "\\*.*").c_str(), &fileData);
-#else
-    _finddata_t fileData;
-    int handle = _findfirst((path + "\\*.*").c_str(), &fileData);
-#endif
-    if (-1 == handle || !(_A_SUBDIR & fileData.attrib))
-    {
-        return;
-    }
-#ifdef _WIN64
-    while (0 == _findnexti64(handle, &fileData))
-#else
-    while (0 == _findnext(handle, &fileData))
-#endif
-    {
-        if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
-        {
-            continue;
-        }
-        std::string subName = path + "\\" + fileData.name;
-        if (_A_SUBDIR & fileData.attrib)
-        { /* is sub directory */
-            if (folderCallback)
-            {
-                folderCallback(subName, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access));
-            }
-        }
-        else
-        {
-            if (fileCallback)
-            {
-                fileCallback(subName, (long)(fileData.time_create), (long)(fileData.time_write), (long)(fileData.time_access),
-                             fileData.size);
-            }
-        }
-        if (recursive)
-        {
-            traverse(subName, folderCallback, fileCallback, true);
-        }
-    }
-    _findclose(handle);
-#else
-    DIR* dir = opendir(path.c_str());
-    if (!dir)
-    {
-        return;
-    }
-    struct dirent* dirp = NULL;
-    while ((dirp = readdir(dir)))
-    {
-        if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name))
-        {
-            continue;
-        }
-        std::string subName = path + "/" + dirp->d_name;
-        struct stat subStat;
-        if (0 != stat(subName.c_str(), &subStat))
-        {
-            continue;
-        }
-        DIR* subDir = opendir(subName.c_str());
-        if (subDir)
-        { /* is sub directory */
-            closedir(subDir);
-            if (folderCallback)
-            {
-                folderCallback(subName, subStat.st_ctime, subStat.st_mtime, subStat.st_atime);
-            }
-        }
-        else
-        {
-            if (fileCallback)
-            {
-                fileCallback(subName, subStat.st_ctime, subStat.st_mtime, subStat.st_atime, subStat.st_size);
-            }
-        }
-        if (recursive)
-        {
-            traverse(subName, folderCallback, fileCallback, true);
-        }
-    }
-    closedir(dir);
-#endif
 }
 
 Logfile::Logfile(const std::string& path, const std::string& filename, size_t maxSize)

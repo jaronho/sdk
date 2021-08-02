@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <functional>
 #include <mutex>
 #include <regex>
 #include <string>
@@ -53,6 +54,14 @@ public:
     Logfile::Result record(const std::string& content, bool newline = true);
 
 private:
+    /**
+     * @brief 遍历指定路径文件
+     * @param path 路径, 例如: "/home/workdpace/logs" 或 "/home/workdpace/logs/"
+     * @param callback 回调
+     * @param recursive 是否递归遍历
+     */
+    void traverseFile(std::string path, std::function<void(const std::string& fullName)> callback, bool recursive = true);
+
     /**
      * @brief 查找指定路径下匹配的文件名索引列表
      * @param path 路径

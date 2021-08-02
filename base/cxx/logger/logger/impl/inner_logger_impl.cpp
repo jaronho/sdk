@@ -85,7 +85,7 @@ fmt::v7::text_style getLevelTextStyle(const int level)
 
 int getProcessId()
 {
-#if _WIN32
+#ifdef _WIN32
     return _getpid();
 #else
     return (int)getpid();
@@ -94,7 +94,7 @@ int getProcessId()
 
 int getThreadId()
 {
-#if _WIN32
+#ifdef _WIN32
     return GetCurrentThreadId();
 #else
     return syscall(__NR_gettid);

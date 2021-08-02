@@ -3,6 +3,15 @@
 #include <assert.h>
 #include <iostream>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#ifdef _WIN32
+#include <direct.h>
+#include <io.h>
+#else
+#include <dirent.h>
+#include <unistd.h>
+#endif
 
 namespace logger
 {
@@ -55,14 +64,98 @@ Logfile::Result RotatingLogfile::record(const std::string& content, bool newline
     return ret;
 }
 
+void RotatingLogfile::traverseFile(std::string path, std::function<void(const std::string& fullName)> callback, bool recursive)
+{
+    if (path.empty())
+    {
+        return;
+    }
+#ifdef _WIN32
+    if ('\\' != path[path.size() - 1])
+    {
+        path.push_back('\\');
+    }
+#ifdef _WIN64
+    _finddatai64_t fileData;
+    __int64 handle = _findfirsti64((path + "*.*").c_str(), &fileData);
+#else
+    _finddata_t fileData;
+    int handle = _findfirst((path + "*.*").c_str(), &fileData);
+#endif
+    if (-1 == handle || !(_A_SUBDIR & fileData.attrib))
+    {
+        return;
+    }
+#ifdef _WIN64
+    while (0 == _findnexti64(handle, &fileData))
+#else
+    while (0 == _findnext(handle, &fileData))
+#endif
+    {
+        if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
+        {
+            continue;
+        }
+        std::string subName = path + fileData.name;
+        if (_A_ARCH & fileData.attrib) /* 文件 */
+        {
+            if (callback)
+            {
+                callback(subName);
+            }
+        }
+        if (recursive)
+        {
+            traverseFile(subName, callback, true);
+        }
+    }
+    _findclose(handle);
+#else
+    if ('/' != path[path.size() - 1])
+    {
+        path.push_back('/');
+    }
+    DIR* dir = opendir(path.c_str());
+    if (!dir)
+    {
+        return;
+    }
+    struct dirent* dirp = NULL;
+    while ((dirp = readdir(dir)))
+    {
+        if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name))
+        {
+            continue;
+        }
+        std::string subName = path + dirp->d_name;
+        struct stat64 subStat;
+        if (0 == stat64(subName.c_str(), &subStat))
+        {
+            if (S_IFREG & subStat.st_mode) /* 文件 */
+            {
+                if (callback)
+                {
+                    callback(subName);
+                }
+            }
+            if (recursive)
+            {
+                traverseFile(subName, callback, true);
+            }
+        }
+    }
+    closedir(dir);
+#endif
+}
+
 bool RotatingLogfile::findIndexList(const std::string& path, const std::regex& pattern, std::vector<int>& indexList)
 {
     bool matchFlag = false;
     std::smatch results;
-    Logfile::traverse(
-        path, nullptr,
-        [&](const std::string& name, long createTime, long writeTime, long accessTime, unsigned long size) {
-            std::string filename = name;
+    traverseFile(
+        path,
+        [&](const std::string& fullName) {
+            std::string filename = fullName;
             size_t pos = filename.find_last_of("/\\");
             if (pos < filename.size())
             {

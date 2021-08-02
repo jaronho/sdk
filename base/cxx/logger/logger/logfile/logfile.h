@@ -1,7 +1,6 @@
 #pragma once
 #include <atomic>
 #include <fstream>
-#include <functional>
 #include <mutex>
 #include <string>
 
@@ -32,18 +31,6 @@ public:
      * @return true-创建成功, false-创建失败
      */
     static bool createPath(const std::string& path);
-
-    /**
-     * @brief 遍历指定路径
-     * @param path 路径, 例如: "/home/workdpace/logs" 或 "/home/workdpace/logs/"
-     * @param folderCallback 目录回调
-     * @param fileCallback 文件回调
-     * @param recursive 是否递归遍历
-     */
-    static void traverse(
-        std::string path, std::function<void(const std::string& name, long createTime, long writeTime, long accessTime)> folderCallback,
-        std::function<void(const std::string& name, long createTime, long writeTime, long accessTime, unsigned long size)> fileCallback,
-        bool recursive = true);
 
 public:
     /**
