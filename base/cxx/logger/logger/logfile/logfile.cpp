@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <iostream>
 #include <string.h>
+#include <sys/stat.h>
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
