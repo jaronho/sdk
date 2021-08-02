@@ -44,7 +44,7 @@ void trimLeftRightCRLF(std::string& str)
 size_t getLine(std::fstream& f, std::string& line)
 {
     std::getline(f, line);
-    if (line.size() >= 3 && (0xEF == line.at(0) && 0xBB == line.at(1) && 0xBF == line.at(2)))
+    if (line.size() >= 3 && (0xEF == line[0] && 0xBB == line[1] && 0xBF == line[2]))
     {
         line = line.substr(3); /* 跳过BOM */
     }
