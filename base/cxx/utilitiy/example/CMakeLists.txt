@@ -11,49 +11,49 @@ find_package(Threads REQUIRED)
 ##########################################################################################
 
 ################################### 添加utilitiy库 ###################################
-set(utilitiy_path ..) # 设置utilitiy库路径(可修改)
-include_directories(${utilitiy_path})
+set(base_utilitiy_path ..) # 设置utilitiy库路径(可修改)
+include_directories(${base_utilitiy_path})
 
-set(utilitiy_cmdline_src_list)
-get_cxx_files(${utilitiy_path}/utilitiy/cmdline src_list)
-list(APPEND utilitiy_cmdline_src_list ${src_list})
-source_group(3rdparty/utilitiy/cmdline FILES ${utilitiy_cmdline_src_list})
+set(base_utilitiy_cmdline_src_list)
+get_cxx_files(${base_utilitiy_path}/utilitiy/cmdline src_list)
+list(APPEND base_utilitiy_cmdline_src_list ${src_list})
+source_group(3rdparty/base/utilitiy/cmdline FILES ${base_utilitiy_cmdline_src_list})
 
-set(utilitiy_filesystem_src_list)
-get_cxx_files(${utilitiy_path}/utilitiy/filesystem src_list)
-list(APPEND utilitiy_filesystem_src_list ${src_list})
-source_group(3rdparty/utilitiy/filesystem FILES ${utilitiy_filesystem_src_list})
+set(base_utilitiy_filesystem_src_list)
+get_cxx_files(${base_utilitiy_path}/utilitiy/filesystem src_list)
+list(APPEND base_utilitiy_filesystem_src_list ${src_list})
+source_group(3rdparty/base/utilitiy/filesystem FILES ${base_utilitiy_filesystem_src_list})
 
-set(utilitiy_process_src_list)
-get_cxx_files(${utilitiy_path}/utilitiy/process src_list)
-list(APPEND utilitiy_process_src_list ${src_list})
-source_group(3rdparty/utilitiy/process FILES ${utilitiy_process_src_list})
+set(base_utilitiy_process_src_list)
+get_cxx_files(${base_utilitiy_path}/utilitiy/process src_list)
+list(APPEND base_utilitiy_process_src_list ${src_list})
+source_group(3rdparty/base/utilitiy/process FILES ${base_utilitiy_process_src_list})
 
-set(utilitiy_strtool_src_list)
-get_cxx_files(${utilitiy_path}/utilitiy/strtool src_list)
-list(APPEND utilitiy_strtool_src_list ${src_list})
-source_group(3rdparty/utilitiy/strtool FILES ${utilitiy_strtool_src_list})
+set(base_utilitiy_strtool_src_list)
+get_cxx_files(${base_utilitiy_path}/utilitiy/strtool src_list)
+list(APPEND base_utilitiy_strtool_src_list ${src_list})
+source_group(3rdparty/base/utilitiy/strtool FILES ${base_utilitiy_strtool_src_list})
 
-set(utilitiy_system_src_list)
-get_cxx_files(${utilitiy_path}/utilitiy/system src_list)
-list(APPEND utilitiy_system_src_list ${src_list})
-source_group(3rdparty/utilitiy/system FILES ${utilitiy_system_src_list})
+set(base_utilitiy_system_src_list)
+get_cxx_files(${base_utilitiy_path}/utilitiy/system src_list)
+list(APPEND base_utilitiy_system_src_list ${src_list})
+source_group(3rdparty/base/utilitiy/system FILES ${base_utilitiy_system_src_list})
 
-set(utilitiy_src_list)
-get_cxx_files(${utilitiy_path}/utilitiy src_list)
-list(APPEND utilitiy_src_list ${src_list})
-source_group(3rdparty/utilitiy FILES ${utilitiy_src_list})
+set(base_utilitiy_src_list)
+get_cxx_files(${base_utilitiy_path}/utilitiy src_list)
+list(APPEND base_utilitiy_src_list ${src_list})
+source_group(3rdparty/base/utilitiy FILES ${base_utilitiy_src_list})
 
-set(utilitiy_files) # 工程中需要把utilitiy的文件添加进去
-list(APPEND utilitiy_files ${utilitiy_cmdline_src_list}
-                           ${utilitiy_filesystem_src_list}
-                           ${utilitiy_process_src_list}
-                           ${utilitiy_strtool_src_list}
-                           ${utilitiy_system_src_list}
-                           ${utilitiy_src_list})
+set(base_utilitiy_files) # 工程中需要把utilitiy的文件添加进去
+list(APPEND base_utilitiy_files ${base_utilitiy_cmdline_src_list}
+                                ${base_utilitiy_filesystem_src_list}
+                                ${base_utilitiy_process_src_list}
+                                ${base_utilitiy_strtool_src_list}
+                                ${base_utilitiy_system_src_list}
+                                ${base_utilitiy_src_list})
 
-print_info(BODY "utilitiy files:")
-foreach(filename ${utilitiy_files})
+print_info(BODY "base utilitiy files:")
+foreach(filename ${base_utilitiy_files})
     message("    " ${filename})
 endforeach()
 ##########################################################################################
@@ -69,7 +69,7 @@ foreach(filename ${example_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_utilitiy ${utilitiy_files} ${example_files})
+add_executable(example_utilitiy ${base_utilitiy_files} ${example_files})
 
 # 链接依赖库
 target_link_libraries(example_utilitiy Threads::Threads)

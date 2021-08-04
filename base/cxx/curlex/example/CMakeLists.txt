@@ -17,19 +17,19 @@ else()
     return()
 endif()
 
-set(curlex_path ..) # 设置curlex库路径(可修改)
-include_directories(${curlex_path})
+set(base_curlex_path ..) # 设置curlex库路径(可修改)
+include_directories(${base_curlex_path})
 
-set(curlex_src_list)
-get_cxx_files(${curlex_path}/curlex src_list)
-list(APPEND curlex_src_list ${src_list})
-source_group(3rdparty/curlex FILES ${curlex_src_list})
+set(base_curlex_src_list)
+get_cxx_files(${base_curlex_path}/curlex src_list)
+list(APPEND base_curlex_src_list ${src_list})
+source_group(3rdparty/base/curlex FILES ${base_curlex_src_list})
 
-set(curlex_files) # 工程中需要把curlex的文件添加进去
-list(APPEND curlex_files ${curlex_src_list})
+set(base_curlex_files) # 工程中需要把curlex的文件添加进去
+list(APPEND base_curlex_files ${base_curlex_src_list})
 
-print_info(BODY "curlex files:")
-foreach(filename ${curlex_files})
+print_info(BODY "base curlex files:")
+foreach(filename ${base_curlex_files})
     message("    " ${filename})
 endforeach()
 ##########################################################################################
@@ -45,7 +45,7 @@ foreach(filename ${example_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_curlex ${curlex_files} ${example_files})
+add_executable(example_curlex ${base_curlex_files} ${example_files})
 
 # 链接依赖库
 target_link_libraries(example_curlex CURL::libcurl)

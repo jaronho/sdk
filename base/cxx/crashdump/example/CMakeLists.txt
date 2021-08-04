@@ -16,19 +16,19 @@ list(APPEND breakpad_libraries breakpad_client)
 ##########################################################################################
 
 ################################### 添加crashdump库 ###################################
-set(crashdump_path ..) # 设置crashdump库路径(可修改)
-include_directories(${crashdump_path})
+set(base_crashdump_path ..) # 设置crashdump库路径(可修改)
+include_directories(${base_crashdump_path})
 
-set(crashdump_src_list)
-get_cxx_files(${crashdump_path}/crashdump src_list)
-list(APPEND crashdump_src_list ${src_list})
-source_group(3rdparty/crashdump FILES ${crashdump_src_list})
+set(base_crashdump_src_list)
+get_cxx_files(${base_crashdump_path}/crashdump src_list)
+list(APPEND base_crashdump_src_list ${src_list})
+source_group(3rdparty/base/crashdump FILES ${base_crashdump_src_list})
 
-set(crashdump_files) # 工程中需要把crashdump的文件添加进去
-list(APPEND crashdump_files ${crashdump_src_list})
+set(base_crashdump_files) # 工程中需要把crashdump的文件添加进去
+list(APPEND base_crashdump_files ${base_crashdump_src_list})
 
-print_info(BODY "crashdump files:")
-foreach(filename ${crashdump_files})
+print_info(BODY "base crashdump files:")
+foreach(filename ${base_crashdump_files})
     message("    " ${filename})
 endforeach()
 ##########################################################################################
@@ -44,7 +44,7 @@ foreach(filename ${example_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_crashdump ${crashdump_files} ${example_files})
+add_executable(example_crashdump ${base_crashdump_files} ${example_files})
 
 # 链接依赖库
 target_link_libraries(example_crashdump Threads::Threads ${breakpad_libraries})

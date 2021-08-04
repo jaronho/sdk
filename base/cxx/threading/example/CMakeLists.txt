@@ -32,41 +32,45 @@ else()
     return()
 endif()
 
-set(threading_path ..) # 设置threading库路径(可修改)
-include_directories(${threading_path})
+set(base_threading_path ..) # 设置threading库路径(可修改)
+include_directories(${base_threading_path})
 
-set(threading_asio_src_list)
-get_cxx_files(${threading_path}/threading/asio src_list)
-list(APPEND threading_asio_src_list ${src_list})
-source_group(3rdparty/threading/asio FILES ${threading_asio_src_list})
+set(base_threading_asio_src_list)
+get_cxx_files(${base_threading_path}/threading/asio src_list)
+list(APPEND base_threading_asio_src_list ${src_list})
+source_group(3rdparty/base/threading/asio FILES ${base_threading_asio_src_list})
 
-set(threading_diagnose_src_list)
-get_cxx_files(${threading_path}/threading/diagnose src_list)
-list(APPEND threading_diagnose_src_list ${src_list})
-source_group(3rdparty/threading/diagnose FILES ${threading_diagnose_src_list})
+set(base_threading_diagnose_src_list)
+get_cxx_files(${base_threading_path}/threading/diagnose src_list)
+list(APPEND base_threading_diagnose_src_list ${src_list})
+source_group(3rdparty/base/threading/diagnose FILES ${base_threading_diagnose_src_list})
 
-set(threading_fiber_src_list)
+set(base_threading_fiber_src_list)
 if(enable_fiber)
-    get_cxx_files(${threading_path}/threading/fiber src_list)
-    list(APPEND threading_fiber_src_list ${src_list})
-    source_group(3rdparty/threading/fiber FILES ${threading_fiber_src_list})
+    get_cxx_files(${base_threading_path}/threading/fiber src_list)
+    list(APPEND base_threading_fiber_src_list ${src_list})
+    source_group(3rdparty/base/threading/fiber FILES ${base_threading_fiber_src_list})
 endif()
 
-set(threading_task_src_list)
-get_cxx_files(${threading_path}/threading/task src_list)
-list(APPEND threading_task_src_list ${src_list})
-source_group(3rdparty/threading/task FILES ${threading_task_src_list})
+set(base_threading_task_src_list)
+get_cxx_files(${base_threading_path}/threading/task src_list)
+list(APPEND base_threading_task_src_list ${src_list})
+source_group(3rdparty/base/threading/task FILES ${base_threading_task_src_list})
 
-set(threading_src_list)
-get_cxx_files(${threading_path}/threading src_list)
-list(APPEND threading_src_list ${src_list})
-source_group(3rdparty/threading FILES ${threading_src_list})
+set(base_threading_src_list)
+get_cxx_files(${base_threading_path}/threading src_list)
+list(APPEND base_threading_src_list ${src_list})
+source_group(3rdparty/base/threading FILES ${base_threading_src_list})
 
-set(threading_files) # 工程中需要把threading的文件添加进去
-list(APPEND threading_files ${threading_asio_src_list} ${threading_diagnose_src_list} ${threading_fiber_src_list} ${threading_task_src_list} ${threading_src_list})
+set(base_threading_files) # 工程中需要把threading的文件添加进去
+list(APPEND base_threading_files ${base_threading_asio_src_list}
+                                 ${base_threading_diagnose_src_list}
+                                 ${base_threading_fiber_src_list}
+                                 ${base_threading_task_src_list}
+                                 ${base_threading_src_list})
 
-print_info(BODY "threading files:")
-foreach(filename ${threading_files})
+print_info(BODY "base threading files:")
+foreach(filename ${base_threading_files})
     message("    " ${filename})
 endforeach()
 ##########################################################################################
@@ -82,7 +86,7 @@ foreach(filename ${example_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_threading ${threading_files} ${example_files})
+add_executable(example_threading ${base_threading_files} ${example_files})
 
 # 链接依赖库
 target_link_libraries(example_threading Threads::Threads ${Boost_LIBRARIES})
