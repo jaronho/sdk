@@ -157,10 +157,10 @@ bool PathInfo::clear(bool continueIfRoot, bool ioSync)
     return false;
 }
 
-void PathInfo::traverse(std::function<bool(const std::string& name, const FileAttribute& attr)> folderCallback,
-                        std::function<void(const std::string& name, const FileAttribute& attr)> fileCallback, bool recursive)
+void PathInfo::traverse(std::function<bool(const std::string& name, const FileAttribute& attr, int depth)> folderCallback,
+                        std::function<void(const std::string& name, const FileAttribute& attr, int depth)> fileCallback, bool recursive)
 {
-    traverseImpl(m_path, folderCallback, fileCallback, recursive);
+    traverseImpl(m_path, 0, folderCallback, fileCallback, recursive);
 }
 
 bool PathInfo::clearImpl(std::string path, bool rmSelf)
@@ -249,13 +249,15 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
     return true;
 }
 
-void PathInfo::traverseImpl(std::string path, std::function<bool(const std::string& name, const FileAttribute& attr)> folderCallback,
-                            std::function<void(const std::string& name, const FileAttribute& attr)> fileCallback, bool recursive)
+void PathInfo::traverseImpl(std::string path, int depth,
+                            std::function<bool(const std::string& name, const FileAttribute& attr, int depth)> folderCallback,
+                            std::function<void(const std::string& name, const FileAttribute& attr, int depth)> fileCallback, bool recursive)
 {
     if (path.empty())
     {
         return;
     }
+    depth += 1;
 #ifdef _WIN32
     if ('\\' != path[path.size() - 1])
     {
@@ -293,18 +295,18 @@ void PathInfo::traverseImpl(std::string path, std::function<bool(const std::stri
                     bool allowEnterSub = true;
                     if (folderCallback)
                     {
-                        allowEnterSub = folderCallback(subName, attr);
+                        allowEnterSub = folderCallback(subName, attr, depth);
                     }
                     if (recursive && allowEnterSub)
                     {
-                        traverseImpl(subName, folderCallback, fileCallback, true);
+                        traverseImpl(subName, depth, folderCallback, fileCallback, true);
                     }
                 }
                 else if (attr.isFile) /* 文件 */
                 {
                     if (fileCallback)
                     {
-                        fileCallback(subName, attr);
+                        fileCallback(subName, attr, depth);
                     }
                 }
             }
@@ -337,18 +339,18 @@ void PathInfo::traverseImpl(std::string path, std::function<bool(const std::stri
                 bool allowEnterSub = true;
                 if (folderCallback)
                 {
-                    allowEnterSub = folderCallback(subName, attr);
+                    allowEnterSub = folderCallback(subName, attr, depth);
                 }
                 if (recursive && allowEnterSub)
                 {
-                    traverseImpl(subName, folderCallback, fileCallback, true);
+                    traverseImpl(subName, depth, folderCallback, fileCallback, true);
                 }
             }
             else if (attr.isFile) /* 文件 */
             {
                 if (fileCallback)
                 {
-                    fileCallback(subName, attr);
+                    fileCallback(subName, attr, depth);
                 }
             }
         }
