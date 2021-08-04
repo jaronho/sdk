@@ -10,6 +10,17 @@ namespace utilitiy
 class FileInfo
 {
 public:
+    enum class CopyResult
+    {
+        OK, /* 成功 */
+        SRC_OPEN_FAILED, /* 源文件打开失败 */
+        DEST_OPEN_FAILED, /* 目标文件打开失败 */
+        MEMORY_FAILED, /* 内存分配失败 */
+        STOP, /* 停止拷贝 */
+        NOT_EQUAL /* 源文件和目标文件大小不一致 */
+    };
+
+public:
     /**
      * @brief 构造函数
      * @param fullName 全路径文件名, 例如: /home/test/111.txt
@@ -82,12 +93,12 @@ public:
     /**
      * @brief 拷贝文件
      * @param destFilename 目标文件(全路径)
-     * @param progressCb 进度回调, now-已拷贝字节数, total-总字节数
+     * @param progressCb 进度回调, 参数: now-已拷贝字节数, total-总字节数, 返回值: true-继续, false-停止拷贝
      * @param maxBlockSize 设置拷贝块的最大单位(字节), 为0时表示不限制
-     * @return true-成功, false-失败
+     * @return 拷贝结果
      */
-    bool copy(const std::string& destFilename, const std::function<void(size_t now, size_t total)>& progressCb = nullptr,
-              size_t maxBlockSize = 0);
+    CopyResult copy(const std::string& destFilename, const std::function<bool(size_t now, size_t total)>& progressCb = nullptr,
+                    size_t maxBlockSize = 0);
 
     /**
      * @brief 文件大小

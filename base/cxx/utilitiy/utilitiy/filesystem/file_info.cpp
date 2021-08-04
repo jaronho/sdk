@@ -131,6 +131,7 @@ bool FileInfo::remove(bool ioSync)
  * @brief 计算块大小 
  * @param fileSize 文件大小
  * @param maxBlockSize 最大的块大小
+ * @return 块大小, 为0表示文件为空
  */
 static size_t calcBlockSize(size_t fileSize, size_t maxBlockSize)
 {
@@ -157,17 +158,18 @@ static size_t calcBlockSize(size_t fileSize, size_t maxBlockSize)
     return blockSize;
 }
 
-bool FileInfo::copy(const std::string& destFilename, const std::function<void(size_t now, size_t total)>& progressCb, size_t maxBlockSize)
+FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, const std::function<bool(size_t now, size_t total)>& progressCb,
+                                    size_t maxBlockSize)
 {
     if (m_fullName.empty())
     {
-        return false;
+        return CopyResult::SRC_OPEN_FAILED;
     }
     /* 打开源文件 */
     std::fstream srcFile(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
     if (!srcFile.is_open())
     {
-        return false;
+        return CopyResult::SRC_OPEN_FAILED;
     }
     size_t srcFileSize = srcFile.tellg();
     srcFile.seekg(0, std::ios::beg);
@@ -176,25 +178,26 @@ bool FileInfo::copy(const std::string& destFilename, const std::function<void(si
     if (!destFile.is_open())
     {
         srcFile.close();
-        return false;
+        return CopyResult::DEST_OPEN_FAILED;
     }
     /* 计算和分配块 */
     size_t blockSize = calcBlockSize(srcFileSize, maxBlockSize);
-    if (0 == blockSize)
+    if (0 == blockSize) /* 源文件为空 */
     {
         srcFile.close();
         destFile.close();
-        return false;
+        return CopyResult::OK;
     }
     char* block = (char*)malloc(sizeof(char) * blockSize);
     if (!block)
     {
         srcFile.close();
         destFile.close();
-        return false;
+        return CopyResult::MEMORY_FAILED;
     }
     /* 拷贝文件内容 */
     size_t nowSize = 0, readSize = 0;
+    bool stopFlag = false;
     while (!srcFile.eof())
     {
         memset(block, 0, sizeof(char) * blockSize);
@@ -204,7 +207,11 @@ bool FileInfo::copy(const std::string& destFilename, const std::function<void(si
         nowSize += readSize;
         if (progressCb)
         {
-            progressCb(nowSize, srcFileSize);
+            if (!progressCb(nowSize, srcFileSize))
+            {
+                stopFlag = true;
+                break;
+            }
         }
     }
     free(block);
@@ -212,7 +219,15 @@ bool FileInfo::copy(const std::string& destFilename, const std::function<void(si
     /* 关闭文件句柄 */
     srcFile.close();
     destFile.close();
-    return true;
+    if (stopFlag)
+    {
+        return CopyResult::STOP;
+    }
+    if (nowSize != srcFileSize)
+    {
+        return CopyResult::NOT_EQUAL;
+    }
+    return CopyResult::OK;
 }
 
 long long FileInfo::size()

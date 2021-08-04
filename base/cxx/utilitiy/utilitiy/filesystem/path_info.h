@@ -77,11 +77,11 @@ public:
 
     /**
      * @brief 遍历文件夹和文件
-     * @param folderCallback 文件夹回调, name-名称, attr-属性
-     * @param fileCallback 文件回调, name-名称, attr-属性
+     * @param folderCallback 文件夹回调, 参数: name-名称, attr-属性, 返回值: true-允许遍历子目录, false-不允许
+     * @param fileCallback 文件回调, 参数: name-名称, attr-属性 
      * @param recursive 是否递归查找(选填), 默认递归
      */
-    void traverse(std::function<void(const std::string& name, const FileAttribute& attr)> folderCallback,
+    void traverse(std::function<bool(const std::string& name, const FileAttribute& attr)> folderCallback,
                   std::function<void(const std::string& name, const FileAttribute& attr)> fileCallback, bool recursive = true);
 
     /**
@@ -102,11 +102,11 @@ private:
     /**
      * @brief 遍历文件夹和文件内部实现
      * @param path 路径
-     * @param folderCallback 文件夹回调, name-名称, attr-属性
-     * @param fileCallback 文件回调, name-名称, attr-属性
+     * @param folderCallback 文件夹回调, 参数: name-名称, attr-属性, 返回值: true-允许遍历子目录, false-不允许
+     * @param fileCallback 文件回调, 参数: name-名称, attr-属性
      * @param recursive 是否递归查找
      */
-    void traverseImpl(std::string path, std::function<void(const std::string& name, const FileAttribute& attr)> folderCallback,
+    void traverseImpl(std::string path, std::function<bool(const std::string& name, const FileAttribute& attr)> folderCallback,
                       std::function<void(const std::string& name, const FileAttribute& attr)> fileCallback, bool recursive);
 
 private:
