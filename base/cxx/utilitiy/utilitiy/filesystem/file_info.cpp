@@ -148,9 +148,13 @@ static size_t calcBlockSize(size_t fileSize, size_t maxBlockSize)
     return blockSize;
 }
 
-FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, const std::function<bool(size_t now, size_t total)>& progressCb,
-                                    size_t maxBlockSize) const
+FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCode,
+                                    const std::function<bool(size_t now, size_t total)>& progressCb, size_t maxBlockSize) const
 {
+    if (errCode)
+    {
+        *errCode = 0;
+    }
     if (m_fullName.empty())
     {
         return CopyResult::SRC_OPEN_FAILED;
@@ -159,6 +163,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, const std::
     std::fstream srcFile(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
     if (!srcFile.is_open())
     {
+        if (errCode)
+        {
+            *errCode = errno;
+        }
         return CopyResult::SRC_OPEN_FAILED;
     }
     size_t srcFileSize = srcFile.tellg();
@@ -167,6 +175,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, const std::
     std::fstream destFile(destFilename, std::ios::out | std::ios::binary);
     if (!destFile.is_open())
     {
+        if (errCode)
+        {
+            *errCode = errno;
+        }
         srcFile.close();
         return CopyResult::DEST_OPEN_FAILED;
     }
@@ -181,6 +193,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, const std::
     char* block = (char*)malloc(sizeof(char) * blockSize);
     if (!block)
     {
+        if (errCode)
+        {
+            *errCode = errno;
+        }
         srcFile.close();
         destFile.close();
         return CopyResult::MEMORY_FAILED;
@@ -282,8 +298,12 @@ char* FileInfo::read(long long offset, long long& count) const
     return buffer;
 }
 
-bool FileInfo::write(const char* data, long long length, bool isAppend) const
+bool FileInfo::write(const char* data, long long length, bool isAppend, int* errCode) const
 {
+    if (errCode)
+    {
+        *errCode = 0;
+    }
     if (!data || length <= 0)
     {
         return false;
@@ -295,6 +315,10 @@ bool FileInfo::write(const char* data, long long length, bool isAppend) const
     std::fstream f(m_fullName, std::ios::out | (isAppend ? (std::ios::binary | std::ios::app) : std::ios::binary));
     if (!f.is_open())
     {
+        if (errCode)
+        {
+            *errCode = errno;
+        }
         return false;
     }
     f.write(data, length);

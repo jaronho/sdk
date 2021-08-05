@@ -87,12 +87,13 @@ public:
     /**
      * @brief 拷贝文件
      * @param destFilename 目标文件(全路径)
+     * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
      * @param progressCb 进度回调, 参数: now-已拷贝字节数, total-总字节数, 返回值: true-继续, false-停止拷贝
      * @param maxBlockSize 设置拷贝块的最大单位(字节), 为0时表示不限制
      * @return 拷贝结果
      */
-    CopyResult copy(const std::string& destFilename, const std::function<bool(size_t now, size_t total)>& progressCb = nullptr,
-                    size_t maxBlockSize = 0) const;
+    CopyResult copy(const std::string& destFilename, int* errCode = nullptr,
+                    const std::function<bool(size_t now, size_t total)>& progressCb = nullptr, size_t maxBlockSize = 0) const;
 
     /**
      * @brief 文件大小
@@ -121,9 +122,10 @@ public:
      * @param data 数据
      * @param length 数据长度
      * @param isAppend true-在文件末尾追加, false-替换全部
+     * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
      * @return true-成功, false-失败
      */
-    bool write(const char* data, long long length, bool isAppend = false) const;
+    bool write(const char* data, long long length, bool isAppend = false, int* errCode = nullptr) const;
 
     /**
      * @brief 从文件流中读取数据
