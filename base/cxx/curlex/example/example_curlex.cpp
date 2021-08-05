@@ -53,7 +53,7 @@ bool writeDataToFile(const char* data, long dataSize, const std::string& filePat
     if (data && dataSize > 0)
     {
         f.write(data, dataSize);
-        f.flush();
+        f.sync();
     }
     f.close();
     return true;

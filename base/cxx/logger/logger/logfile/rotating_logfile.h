@@ -23,8 +23,10 @@ public:
      * @param extName 日志文件后缀名, 例如: "log" 或 ".log"
      * @param maxSize 文件最大容量值(字节), 例如: 4M = 4 * 1024 * 1024
      * @param maxFiles 最多文件个数, 为0时表示个数不受限制
+     * @param syncFreq 主动同步到磁盘的频率(单位:条数), 每记录几条就同步, 例如: 50条
      */
-    RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize, size_t maxFiles = 0);
+    RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize, size_t maxFiles = 0,
+                    size_t syncFreq = 50);
 
     virtual ~RotatingLogfile() = default;
 

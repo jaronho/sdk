@@ -16,7 +16,7 @@
 namespace logger
 {
 RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize,
-                                 size_t maxFiles)
+                                 size_t maxFiles, size_t syncFreq)
 {
     assert(!path.empty());
     assert(!baseName.empty());
@@ -30,7 +30,7 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
     m_maxFiles = maxFiles > 0 ? maxFiles : 0;
     std::vector<int> indexList;
     m_index.store(findLastIndex(path, indexList));
-    m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index.load()), maxSize);
+    m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index.load()), maxSize, syncFreq);
 }
 
 size_t RotatingLogfile::getFileIndex() const
@@ -199,6 +199,7 @@ bool RotatingLogfile::rotateFileList()
     path.append("/");
 #endif
     size_t maxSize = m_logfile->getMaxSize();
+    size_t syncFreq = m_logfile->getSyncFreq();
     std::vector<int> indexList;
     int lastIndex = findLastIndex(path, indexList);
     if (m_maxFiles > 0 && indexList.size() >= m_maxFiles) /* 已达到文件最大数 */
@@ -228,14 +229,14 @@ bool RotatingLogfile::rotateFileList()
                     return false;
                 }
             }
-            m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index.load()), maxSize);
+            m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index.load()), maxSize, syncFreq);
             m_logfile->open();
         }
     }
     else /* 不限文件个数, 或未达到最大文件数 */
     {
         lastIndex += 1;
-        m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(lastIndex), maxSize);
+        m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(lastIndex), maxSize, syncFreq);
         if (m_logfile->open())
         {
             m_index.store(lastIndex);
