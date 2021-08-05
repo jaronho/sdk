@@ -54,7 +54,6 @@ Logfile::Logfile(const std::string& path, const std::string& filename, size_t ma
     assert(!path.empty());
     assert(!filename.empty());
     assert(maxSize > 0);
-    assert(syncFreq > 0);
     m_path = path;
     const char& lastPathChar = path[path.length() - 1];
     if ('/' == lastPathChar || '\\' == lastPathChar)
@@ -68,7 +67,7 @@ Logfile::Logfile(const std::string& path, const std::string& filename, size_t ma
     m_fullName = m_path + "/" + m_filename;
 #endif
     m_maxSize = maxSize;
-    m_syncFreq = syncFreq;
+    m_syncFreq = syncFreq > 0 ? syncFreq : 1;
 }
 
 Logfile::~Logfile()
@@ -225,7 +224,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
         ++s_count;
         if (s_count >= m_syncFreq)
         {
-            m_syncFreq = 0;
+            s_count = 0;
             m_f.sync();
         }
         else
