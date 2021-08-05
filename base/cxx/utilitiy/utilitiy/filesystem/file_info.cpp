@@ -98,7 +98,7 @@ bool FileInfo::create() const
     return false;
 }
 
-bool FileInfo::remove(bool ioSync) const
+bool FileInfo::remove() const
 {
     if (m_fullName.empty())
     {
@@ -106,12 +106,6 @@ bool FileInfo::remove(bool ioSync) const
     }
     if (0 == ::remove(m_fullName.c_str()))
     {
-        if (ioSync)
-        {
-#ifndef _WIN32
-            sync();
-#endif
-        }
         return true;
     }
     return false;

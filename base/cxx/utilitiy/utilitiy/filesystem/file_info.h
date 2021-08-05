@@ -78,11 +78,10 @@ public:
     bool create() const;
 
     /**
-     * @brief 删除文件
-     * @param ioSync 是否同步I/O, 会降低效率(选填)
+     * @brief 删除文件(注: 执行后可能需要同步下磁盘I/O, 该操作耗时, linux下为"sync")
      * @return true-成功, false-失败
      */
-    bool remove(bool ioSync = false) const;
+    bool remove() const;
 
     /**
      * @brief 拷贝文件

@@ -76,7 +76,7 @@ bool PathInfo::exist() const
     return false;
 }
 
-bool PathInfo::create(bool ioSync) const
+bool PathInfo::create() const
 {
     if (m_path.empty())
     {
@@ -108,31 +108,19 @@ bool PathInfo::create(bool ioSync) const
 #endif
         }
     }
-    if (ioSync)
-    {
-#ifndef _WIN32
-        sync();
-#endif
-    }
     return true;
 }
 
-bool PathInfo::remove(bool ioSync) const
+bool PathInfo::remove() const
 {
     if (clearImpl(m_path, true))
     {
-        if (ioSync)
-        {
-#ifndef _WIN32
-            sync();
-#endif
-        }
         return true;
     }
     return false;
 }
 
-bool PathInfo::clear(bool continueIfRoot, bool ioSync) const
+bool PathInfo::clear(bool continueIfRoot) const
 {
     if (isRoot() && !continueIfRoot) /* 避免误清空根目录, 除非明确知道该操作 */
     {
@@ -140,12 +128,6 @@ bool PathInfo::clear(bool continueIfRoot, bool ioSync) const
     }
     if (clearImpl(m_path, false))
     {
-        if (ioSync)
-        {
-#ifndef _WIN32
-            sync();
-#endif
-        }
         return true;
     }
     return false;

@@ -48,26 +48,23 @@ public:
     bool exist() const;
 
     /**
-     * @brief 创建路径
-     * @param ioSync 是否同步I/O, 会降低效率(选填)
+     * @brief 创建路径(注: 执行后可能需要同步下磁盘I/O, 该操作耗时, linux下为"sync")
      * @return true-成功, false-失败
      */
-    bool create(bool ioSync = false) const;
+    bool create() const;
 
     /**
-     * @brief 删除路径
-     * @param ioSync 是否同步I/O, 会降低效率(选填)
+     * @brief 删除路径(注: 执行后可能需要同步下磁盘I/O, 该操作耗时, linux下为"sync")
      * @return true-成功, false-失败
      */
-    bool remove(bool ioSync = false) const;
+    bool remove() const;
 
     /**
-     * @brief 清空路径下的所有子项
+     * @brief 清空路径下的所有子项(注: 执行后可能需要同步下磁盘I/O, 该操作耗时, linux下为"sync")
      * @param continueIfRoot 如果路径是根目录是否继续清空(选填), 默认为不清空
-     * @param ioSync 是否同步I/O, 会降低效率(选填)
      * @return true-成功, false-失败
      */
-    bool clear(bool continueIfRoot = false, bool ioSync = false) const;
+    bool clear(bool continueIfRoot = false) const;
 
     /**
      * @brief 遍历文件夹和文件
