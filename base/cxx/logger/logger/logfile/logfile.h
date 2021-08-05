@@ -100,7 +100,7 @@ public:
      * @brief 获取文件当前大小(字节)
      * @return 当前大小
      */
-    size_t getSize();
+    size_t getSize() const;
 
     /**
      * @brief 清除日志文件内容

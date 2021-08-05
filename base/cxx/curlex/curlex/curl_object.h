@@ -82,7 +82,7 @@ public:
      * @brief 判断对象是否有效
      * @return true-有效, false-无效
      */
-    bool isValid(void);
+    bool isValid(void) const;
 
     /**
      * @brief 设置URL

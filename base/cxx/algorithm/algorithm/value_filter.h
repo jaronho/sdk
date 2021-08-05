@@ -98,7 +98,7 @@ public:
      * @brief 获取值
      * @return 值
      */
-    T get(void)
+    T get(void) const
     {
         return m_realValue;
     }

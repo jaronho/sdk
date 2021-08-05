@@ -143,7 +143,7 @@ void Logfile::setEnable(bool enable)
     m_enable.store(enable);
 }
 
-size_t Logfile::getSize()
+size_t Logfile::getSize() const
 {
     return m_size.load();
 }

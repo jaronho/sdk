@@ -29,13 +29,13 @@ public:
      * @brief 获取数据类型
      * @return 数据类型
      */
-    virtual Type getType() = 0;
+    virtual Type getType() const = 0;
 
     /**
      * @brief 转换为字符串(用于信息打印)
      * @return 字符串
      */
-    virtual std::string toString() = 0;
+    virtual std::string toString() const = 0;
 };
 
 using RequestDataPtr = std::shared_ptr<RequestData>;
@@ -55,15 +55,15 @@ public:
 
     virtual ~RawRequestData() = default;
 
-    Type getType() override;
+    Type getType() const override;
 
-    std::string toString() override;
+    std::string toString() const override;
 
     /**
      * @brief 获取字节流
      * @return 字节流
      */
-    std::vector<char> getBytes();
+    std::vector<char> getBytes() const;
 
 private:
     std::vector<char> m_bytes; /* 字节流 */
@@ -85,15 +85,15 @@ public:
 
     virtual ~FormRequestData() = default;
 
-    Type getType() override;
+    Type getType() const override;
 
-    std::string toString() override;
+    std::string toString() const override;
 
     /**
      * @brief 获取表单内容
      * @return 表单内容
      */
-    std::string getData();
+    std::string getData() const;
 
 private:
     std::string m_data; /* 表单内容 */
@@ -123,15 +123,15 @@ public:
 
     virtual ~MultipartFormRequestData() = default;
 
-    Type getType() override;
+    Type getType() const override;
 
-    std::string toString() override;
+    std::string toString() const override;
 
     /**
      * @brief 获取文本列表
      * @return 文本列表
      */
-    std::map<std::string, TextInfo> getTextMap();
+    std::map<std::string, TextInfo> getTextMap() const;
 
     /**
      * @brief 添加文本
@@ -146,7 +146,7 @@ public:
      * @brief 获取文件列表
      * @return 文件列表
      */
-    std::map<std::string, std::string> getFileMap();
+    std::map<std::string, std::string> getFileMap() const;
 
     /**
      * @brief 添加文件

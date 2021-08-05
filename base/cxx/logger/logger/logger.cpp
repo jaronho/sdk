@@ -4,13 +4,6 @@ namespace logger
 {
 Logger::Logger(const std::string& tag, const std::shared_ptr<InnerLogger>& inner) : m_tag(tag), m_inner(inner) {}
 
-Logger& Logger::operator=(const Logger& src)
-{
-    m_tag = src.m_tag;
-    m_inner = src.m_inner;
-    return (*this);
-}
-
 bool Logger::isValid() const
 {
     if (m_inner)
@@ -51,7 +44,7 @@ void Logger::setLevel(int level)
     }
 }
 
-bool Logger::isConsoleEnable()
+bool Logger::isConsoleEnable() const
 {
     if (m_inner)
     {

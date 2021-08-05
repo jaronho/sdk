@@ -4,17 +4,17 @@ namespace curlex
 {
 Request::Request(const std::string& url) : m_url(url) {}
 
-std::string Request::getUrl()
+std::string Request::getUrl() const
 {
     return m_url;
 }
 
-bool Request::isEnableRedirect()
+bool Request::isEnableRedirect() const
 {
     return m_redirect;
 }
 
-int Request::getMaxRedirects()
+int Request::getMaxRedirects() const
 {
     return m_maxRedirects;
 }
@@ -25,7 +25,7 @@ void Request::setEnableRedirect(int maxRedirects)
     m_maxRedirects = maxRedirects;
 }
 
-int Request::getConnectTimeout()
+int Request::getConnectTimeout() const
 {
     return m_connectTimeout;
 }
@@ -35,7 +35,7 @@ void Request::setConnectTimeout(size_t seconds)
     m_connectTimeout = static_cast<int>(seconds);
 }
 
-int Request::getTimeout()
+int Request::getTimeout() const
 {
     return m_timeout;
 }
@@ -45,17 +45,17 @@ void Request::setTimeout(size_t seconds)
     m_timeout = static_cast<int>(seconds);
 }
 
-bool Request::isKeepAlive()
+bool Request::isKeepAlive() const
 {
     return m_keepAlive;
 }
 
-size_t Request::getKeepAliveIdle()
+size_t Request::getKeepAliveIdle() const
 {
     return m_keepAliveIdle;
 }
 
-size_t Request::getKeepAliveInterval()
+size_t Request::getKeepAliveInterval() const
 {
     return m_keepAliveInterval;
 }
@@ -67,7 +67,7 @@ void Request::setKeepAlive(size_t idle, size_t interval)
     m_keepAliveInterval = interval;
 }
 
-std::map<std::string, std::string> Request::getHeaders()
+std::map<std::string, std::string> Request::getHeaders() const
 {
     return m_headers;
 }
@@ -86,7 +86,7 @@ void Request::appendHeader(const std::string& key, const std::string& value)
     m_headers[key] = value;
 }
 
-std::string Request::getCookieFile()
+std::string Request::getCookieFile() const
 {
     return m_cookieFilename;
 }
@@ -96,7 +96,7 @@ void Request::setCookieFile(const std::string& filename)
     m_cookieFilename = filename;
 }
 
-RequestDataPtr Request::getData()
+RequestDataPtr Request::getData() const
 {
     return m_data;
 }
@@ -108,19 +108,19 @@ void Request::setData(const RequestDataPtr& data)
 
 SimpleRequest::SimpleRequest(const std::string& url) : Request(url) {}
 
-Request::Type SimpleRequest::getType()
+Request::Type SimpleRequest::getType() const
 {
     return Type::SIMPLE;
 }
 
 CafileRequest::CafileRequest(const std::string& sslCaFilename, const std::string& url) : Request(url), m_sslCaFilename(sslCaFilename) {}
 
-Request::Type CafileRequest::getType()
+Request::Type CafileRequest::getType() const
 {
     return Type::CAFILE;
 }
 
-std::string CafileRequest::getCaFilename()
+std::string CafileRequest::getCaFilename() const
 {
     return m_sslCaFilename;
 }
@@ -130,17 +130,17 @@ UserpwdRequest::UserpwdRequest(const std::string& username, const std::string& p
 {
 }
 
-Request::Type UserpwdRequest::getType()
+Request::Type UserpwdRequest::getType() const
 {
     return Type::USERPWD;
 }
 
-std::string UserpwdRequest::getUsername()
+std::string UserpwdRequest::getUsername() const
 {
     return m_username;
 }
 
-std::string UserpwdRequest::getPassword()
+std::string UserpwdRequest::getPassword() const
 {
     return m_password;
 }

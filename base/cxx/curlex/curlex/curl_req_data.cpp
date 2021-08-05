@@ -17,12 +17,12 @@ RawRequestData::RawRequestData(const char* bytes, size_t count)
     }
 }
 
-RequestData::Type RawRequestData::getType()
+RequestData::Type RawRequestData::getType() const
 {
     return Type::RAW;
 }
 
-std::string RawRequestData::toString()
+std::string RawRequestData::toString() const
 {
     std::string str;
     str.append("{").append("\n");
@@ -32,36 +32,36 @@ std::string RawRequestData::toString()
     return str;
 }
 
-std::vector<char> RawRequestData::getBytes()
+std::vector<char> RawRequestData::getBytes() const
 {
     return m_bytes;
 }
 
 FormRequestData::FormRequestData(const std::string& data) : m_data(data) {}
 
-RequestData::Type FormRequestData::getType()
+RequestData::Type FormRequestData::getType() const
 {
     return Type::FORM;
 }
 
-std::string FormRequestData::toString()
+std::string FormRequestData::toString() const
 {
     return m_data;
 }
 
-std::string FormRequestData::getData()
+std::string FormRequestData::getData() const
 {
     return m_data;
 }
 
 MultipartFormRequestData::MultipartFormRequestData() {}
 
-RequestData::Type MultipartFormRequestData::getType()
+RequestData::Type MultipartFormRequestData::getType() const
 {
     return Type::MULTIPART_FORM;
 }
 
-std::string MultipartFormRequestData::toString()
+std::string MultipartFormRequestData::toString() const
 {
     std::string str;
     str.append("{").append("\n");
@@ -95,7 +95,7 @@ std::string MultipartFormRequestData::toString()
     return str;
 }
 
-std::map<std::string, MultipartFormRequestData::TextInfo> MultipartFormRequestData::getTextMap()
+std::map<std::string, MultipartFormRequestData::TextInfo> MultipartFormRequestData::getTextMap() const
 {
     return m_textMap;
 }
@@ -117,7 +117,7 @@ bool MultipartFormRequestData::addText(const std::string& fieldName, const std::
     return true;
 }
 
-std::map<std::string, std::string> MultipartFormRequestData::getFileMap()
+std::map<std::string, std::string> MultipartFormRequestData::getFileMap() const
 {
     return m_fileMap;
 }

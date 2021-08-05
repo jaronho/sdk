@@ -16,18 +16,12 @@ namespace utilitiy
 {
 PathInfo::PathInfo(const std::string& path) : m_path(revise(path)) {}
 
-PathInfo& PathInfo::operator=(const PathInfo& src)
-{
-    m_path = src.m_path;
-    return (*this);
-}
-
-std::string PathInfo::path()
+std::string PathInfo::path() const
 {
     return m_path;
 }
 
-bool PathInfo::isAbsolute()
+bool PathInfo::isAbsolute() const
 {
 #ifdef _WIN32
     if (m_path.size() >= 2 && ((m_path[0] >= 'a' && m_path[0] <= 'z') || (m_path[0] >= 'A' && m_path[0] <= 'Z')) && (':' == m_path[1]))
@@ -43,7 +37,7 @@ bool PathInfo::isAbsolute()
     return false;
 }
 
-bool PathInfo::isRoot()
+bool PathInfo::isRoot() const
 {
     if (isAbsolute())
     {
@@ -62,14 +56,14 @@ bool PathInfo::isRoot()
     return false;
 }
 
-FileAttribute PathInfo::attribute()
+FileAttribute PathInfo::attribute() const
 {
     FileAttribute attr;
     getFileAttribute(m_path, attr);
     return attr;
 }
 
-bool PathInfo::exist()
+bool PathInfo::exist() const
 {
     FileAttribute attr;
     if (getFileAttribute(m_path, attr))
@@ -82,7 +76,7 @@ bool PathInfo::exist()
     return false;
 }
 
-bool PathInfo::create(bool ioSync)
+bool PathInfo::create(bool ioSync) const
 {
     if (m_path.empty())
     {
@@ -123,7 +117,7 @@ bool PathInfo::create(bool ioSync)
     return true;
 }
 
-bool PathInfo::remove(bool ioSync)
+bool PathInfo::remove(bool ioSync) const
 {
     if (clearImpl(m_path, true))
     {
@@ -138,7 +132,7 @@ bool PathInfo::remove(bool ioSync)
     return false;
 }
 
-bool PathInfo::clear(bool continueIfRoot, bool ioSync)
+bool PathInfo::clear(bool continueIfRoot, bool ioSync) const
 {
     if (isRoot() && !continueIfRoot) /* 避免误清空根目录, 除非明确知道该操作 */
     {
@@ -158,7 +152,8 @@ bool PathInfo::clear(bool continueIfRoot, bool ioSync)
 }
 
 void PathInfo::traverse(std::function<bool(const std::string& name, const FileAttribute& attr, int depth)> folderCallback,
-                        std::function<void(const std::string& name, const FileAttribute& attr, int depth)> fileCallback, bool recursive)
+                        std::function<void(const std::string& name, const FileAttribute& attr, int depth)> fileCallback,
+                        bool recursive) const
 {
     traverseImpl(m_path, 0, folderCallback, fileCallback, recursive);
 }

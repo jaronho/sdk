@@ -120,7 +120,7 @@ void InnerLoggerImpl::setLevel(int level)
     }
 }
 
-bool InnerLoggerImpl::isConsoleEnable()
+bool InnerLoggerImpl::isConsoleEnable() const
 {
     return m_consoleEnable.load();
 }

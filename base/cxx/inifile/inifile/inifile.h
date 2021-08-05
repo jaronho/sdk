@@ -61,13 +61,13 @@ public:
      * @brief 获取节列表
      * @return 节列表
      */
-    std::map<std::string, IniSection> getSections();
+    std::map<std::string, IniSection> getSections() const;
 
     /**
      * @brief 获取注释标识符列表
      * @return 标识符列表
      */
-    std::vector<std::string> getCommentFlags();
+    std::vector<std::string> getCommentFlags() const;
 
     /**
      * @brief 设置注释标识符列表
@@ -81,7 +81,7 @@ public:
      * @param sectionName 节名称
      * @return true-存在, false-不存在
      */
-    bool hasSection(const std::string& sectionName);
+    bool hasSection(const std::string& sectionName) const;
 
     /**
      * @brief 删除节
@@ -96,7 +96,7 @@ public:
      * @param comment [输出]注释
      * @return true-成功, flalse-失败(不存在)
      */
-    bool getSectionComment(const std::string& sectionName, std::string& comment);
+    bool getSectionComment(const std::string& sectionName, std::string& comment) const;
 
     /**
      * @brief 设置节注释
@@ -112,7 +112,7 @@ public:
      * @param key 键
      * @return true-存在, false-不存在
      */
-    bool hasKey(const std::string& sectionName, const std::string& key);
+    bool hasKey(const std::string& sectionName, const std::string& key) const;
 
     /**
      * @brief 删除键
@@ -129,7 +129,7 @@ public:
      * @param value [输出]值
      * @return true-成功, flalse-失败(不存在)
      */
-    bool getValue(const std::string& sectionName, const std::string& key, std::string& value);
+    bool getValue(const std::string& sectionName, const std::string& key, std::string& value) const;
 
     /**
      * @brief 设置值
@@ -147,7 +147,7 @@ public:
      * @param comment [输出]注释
      * @return true-成功, flalse-失败(不存在)
      */
-    bool getComment(const std::string& sectionName, const std::string& key, std::string& comment);
+    bool getComment(const std::string& sectionName, const std::string& key, std::string& comment) const;
 
     /**
      * @brief 设置注释
@@ -165,7 +165,7 @@ public:
      * @param extra [输出]额外参数
      * @return true-成功, flalse-失败(不存在)
      */
-    bool getExtra(const std::string& sectionName, const std::string& key, std::string& extra);
+    bool getExtra(const std::string& sectionName, const std::string& key, std::string& extra) const;
 
     /**
      * @brief 设置额外参数
@@ -180,7 +180,7 @@ public:
      * @brief 是否允许创建节/项
      * @return true-允许, false-不允许
      */
-    virtual bool isAllowAutoCreate() = 0;
+    virtual bool isAllowAutoCreate() const = 0;
 
 private:
     /**
@@ -188,7 +188,7 @@ private:
      * @param str 字符串内容
      * @return true-是, false-否
      */
-    bool isComment(const std::string& str);
+    bool isComment(const std::string& str) const;
 
 private:
     std::string m_filename; /* 文件名称 */

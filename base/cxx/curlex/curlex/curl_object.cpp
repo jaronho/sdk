@@ -338,7 +338,7 @@ bool CurlObject::initialize(const std::string& user, const std::string& password
     return CURLE_OK == code;
 }
 
-bool CurlObject::isValid(void)
+bool CurlObject::isValid(void) const
 {
     return m_curl ? true : false;
 }

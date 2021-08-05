@@ -238,12 +238,12 @@ void IniFile::clear()
     m_changed = true;
 }
 
-std::map<std::string, IniSection> IniFile::getSections()
+std::map<std::string, IniSection> IniFile::getSections() const
 {
     return m_sections;
 }
 
-std::vector<std::string> IniFile::getCommentFlags(void)
+std::vector<std::string> IniFile::getCommentFlags(void) const
 {
     return m_commentFlags;
 }
@@ -259,7 +259,7 @@ bool IniFile::setCommentFlags(const std::vector<std::string>& flags)
     return true;
 }
 
-bool IniFile::hasSection(const std::string& sectionName)
+bool IniFile::hasSection(const std::string& sectionName) const
 {
     return m_sections.end() != m_sections.find(sectionName);
 }
@@ -276,7 +276,7 @@ bool IniFile::removeSection(const std::string& sectionName)
     return true;
 }
 
-bool IniFile::getSectionComment(const std::string& sectionName, std::string& comment)
+bool IniFile::getSectionComment(const std::string& sectionName, std::string& comment) const
 {
     comment.clear();
     auto sectionIter = m_sections.find(sectionName);
@@ -310,7 +310,7 @@ bool IniFile::setSectionComment(const std::string& sectionName, const std::strin
     return true;
 }
 
-bool IniFile::hasKey(const std::string& sectionName, const std::string& key)
+bool IniFile::hasKey(const std::string& sectionName, const std::string& key) const
 {
     auto sectionIter = m_sections.find(sectionName);
     if (m_sections.end() != sectionIter)
@@ -344,7 +344,7 @@ bool IniFile::removeKey(const std::string& sectionName, const std::string& key)
     return false;
 }
 
-bool IniFile::getValue(const std::string& sectionName, const std::string& key, std::string& value)
+bool IniFile::getValue(const std::string& sectionName, const std::string& key, std::string& value) const
 {
     value.clear();
     auto sectionIter = m_sections.find(sectionName);
@@ -400,7 +400,7 @@ bool IniFile::setValue(const std::string& sectionName, const std::string& key, c
     return false;
 }
 
-bool IniFile::getComment(const std::string& sectionName, const std::string& key, std::string& comment)
+bool IniFile::getComment(const std::string& sectionName, const std::string& key, std::string& comment) const
 {
     comment.clear();
     auto sectionIter = m_sections.find(sectionName);
@@ -452,7 +452,7 @@ bool IniFile::setComment(const std::string& sectionName, const std::string& key,
     return true;
 }
 
-bool IniFile::getExtra(const std::string& sectionName, const std::string& key, std::string& extra)
+bool IniFile::getExtra(const std::string& sectionName, const std::string& key, std::string& extra) const
 {
     extra.clear();
     auto sectionIter = m_sections.find(sectionName);
@@ -492,7 +492,7 @@ bool IniFile::setExtra(const std::string& sectionName, const std::string& key, c
     return false;
 }
 
-bool IniFile::isComment(const std::string& str)
+bool IniFile::isComment(const std::string& str) const
 {
     for (size_t i = 0; i < m_commentFlags.size(); ++i)
     {

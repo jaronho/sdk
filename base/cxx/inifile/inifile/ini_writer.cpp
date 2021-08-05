@@ -104,7 +104,7 @@ bool IniWriter::setValue(const std::string& section, const std::string& key, std
     return IniFile::setValue(section, key, value);
 }
 
-bool IniWriter::isAllowAutoCreate()
+bool IniWriter::isAllowAutoCreate() const
 {
     return m_allowAutoCreate;
 }

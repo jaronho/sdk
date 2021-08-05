@@ -30,65 +30,59 @@ public:
     virtual ~FileInfo() = default;
 
     /**
-     * @brief 赋值拷贝
-     * @return 对象自身
-     */
-    FileInfo& operator=(const FileInfo& src);
-
-    /**
      * @brief 获取全路径文件名
      * @return 全路径文件名
      */
-    std::string name();
+    std::string name() const;
 
     /**
      * @brief 获取文件路径, 例如: /home/test/
      * @return 文件路径
      */
-    std::string path();
+    std::string path() const;
 
     /**
      * @brief 获取文件名, 例如: 111.txt
      * @return 文件名
      */
-    std::string filename();
+    std::string filename() const;
 
     /**
      * @brief 获取文件基础名, 例如: 111
      * @return 文件基础名
      */
-    std::string basename();
+    std::string basename() const;
 
     /**
      * @brief 获取文件扩展名(不包含.), 例如: txt
      * @return 文件扩展名
      */
-    std::string extname();
+    std::string extname() const;
 
     /**
      * @brief 获取文件属性
      * @return 属性
      */
-    FileAttribute attribute();
+    FileAttribute attribute() const;
 
     /**
      * @brief 判断文件是否存在
      * @return true-存在, false-不存在
      */
-    bool exist();
+    bool exist() const;
 
     /**
      * @brief 创建文件
      * @return true-成功, false-失败
      */
-    bool create();
+    bool create() const;
 
     /**
      * @brief 删除文件
      * @param ioSync 是否同步I/O, 会降低效率(选填)
      * @return true-成功, false-失败
      */
-    bool remove(bool ioSync = false);
+    bool remove(bool ioSync = false) const;
 
     /**
      * @brief 拷贝文件
@@ -98,13 +92,13 @@ public:
      * @return 拷贝结果
      */
     CopyResult copy(const std::string& destFilename, const std::function<bool(size_t now, size_t total)>& progressCb = nullptr,
-                    size_t maxBlockSize = 0);
+                    size_t maxBlockSize = 0) const;
 
     /**
      * @brief 文件大小
      * @return -1-文件不存在, >=0-文件大小
      */
-    long long size();
+    long long size() const;
 
     /**
      * @brief 获取文件数据
@@ -112,7 +106,7 @@ public:
      * @param isText true-文本文件, false-二进制文件
      * @return 数据(需要外部调用free释放内存)
      */
-    char* data(long long& fileSize, bool isText = false);
+    char* data(long long& fileSize, bool isText = false) const;
 
     /**
      * @brief 读取文件数据
@@ -120,7 +114,7 @@ public:
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
      * @return 数据(需要外部调用free释放内存)
      */
-    char* read(long long offset, long long& count);
+    char* read(long long offset, long long& count) const;
 
     /**
      * @brief 写文件数据
@@ -129,7 +123,7 @@ public:
      * @param isAppend true-在文件末尾追加, false-替换全部
      * @return true-成功, false-失败
      */
-    bool write(const char* data, long long length, bool isAppend = false);
+    bool write(const char* data, long long length, bool isAppend = false) const;
 
     /**
      * @brief 从文件流中读取数据

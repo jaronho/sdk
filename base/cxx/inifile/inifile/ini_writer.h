@@ -47,7 +47,7 @@ public:
 
     bool setValue(const std::string& section, const std::string& key, std::string value);
 
-    bool isAllowAutoCreate() override;
+    bool isAllowAutoCreate() const override;
 
 private:
     bool m_allowAutoCreate = false;

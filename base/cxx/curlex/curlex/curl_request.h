@@ -36,25 +36,25 @@ public:
      * @brief 获取请求类型
      * @return 请求类型
      */
-    virtual Type getType() = 0;
+    virtual Type getType() const = 0;
 
     /**
      * @brief 获取URL
      * @return url
      */
-    std::string getUrl();
+    std::string getUrl() const;
 
     /**
      * @brief 是否支持重定向
      * @return true-支持, false-不支持
      */
-    bool isEnableRedirect();
+    bool isEnableRedirect() const;
 
     /**
      * @brief 获取重定向最多递归返回数量
      * @return 数量
      */
-    int getMaxRedirects();
+    int getMaxRedirects() const;
 
     /**
      * @brief 设置支持重定
@@ -66,7 +66,7 @@ public:
      * @brief 获取连接超时时间
      * @return 超时时间
      */
-    int getConnectTimeout();
+    int getConnectTimeout() const;
 
     /**
      * @brief 设置连接超时时间
@@ -78,7 +78,7 @@ public:
      * @brief 获取超时时间
      * @return 超时时间
      */
-    int getTimeout();
+    int getTimeout() const;
 
     /**
      * @brief 设置超时时间
@@ -90,19 +90,19 @@ public:
      * @brief 是否启用保活
      * @return true-启用, false-不启用
      */
-    bool isKeepAlive();
+    bool isKeepAlive() const;
 
     /**
      * @brief 获取保活空闲时间
      * @return 空闲时间
      */
-    size_t getKeepAliveIdle();
+    size_t getKeepAliveIdle() const;
 
     /**
      * @brief 获取保活探测间隔时间
      * @return 空闲时间
      */
-    size_t getKeepAliveInterval();
+    size_t getKeepAliveInterval() const;
 
     /**
      * @brief 设置保活
@@ -115,7 +115,7 @@ public:
      * @brief 获取头部
      * @return 头部
      */
-    std::map<std::string, std::string> getHeaders();
+    std::map<std::string, std::string> getHeaders() const;
 
     /**
      * @brief 设置头部
@@ -134,7 +134,7 @@ public:
      * @brief 获取cookie文件
      * @return 文件名
      */
-    std::string getCookieFile();
+    std::string getCookieFile() const;
 
     /**
      * @brief 设置cookie文件
@@ -146,7 +146,7 @@ public:
      * @brief 获取数据
      * @return 数据
      */
-    RequestDataPtr getData();
+    RequestDataPtr getData() const;
 
     /**
      * @brief 设置数据
@@ -181,7 +181,7 @@ public:
 
     virtual ~SimpleRequest() = default;
 
-    Type getType() override;
+    Type getType() const override;
 };
 
 using SimpleRequestPtr = std::shared_ptr<SimpleRequest>;
@@ -196,13 +196,13 @@ public:
 
     virtual ~CafileRequest() = default;
 
-    Type getType() override;
+    Type getType() const override;
 
     /**
      * @brief 获取证书文件名
      * @return 文件名
      */
-    std::string getCaFilename();
+    std::string getCaFilename() const;
 
 private:
     std::string m_sslCaFilename; /* 证书文件名(全路径) */
@@ -220,19 +220,19 @@ public:
 
     virtual ~UserpwdRequest() = default;
 
-    Type getType() override;
+    Type getType() const override;
 
     /**
      * @brief 获取用户名
      * @return 用户名
      */
-    std::string getUsername();
+    std::string getUsername() const;
 
     /**
      * @brief 获取密码
      * @return 密码
      */
-    std::string getPassword();
+    std::string getPassword() const;
 
 private:
     std::string m_username; /* 用户名 */

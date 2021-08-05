@@ -49,7 +49,7 @@ public:
      * @brief 是否输出到控制台
      * @return true-是, false-否
      */
-    virtual bool isConsoleEnable() = 0;
+    virtual bool isConsoleEnable() const = 0;
 
     /**
      * @brief 设置是否输出到控制台

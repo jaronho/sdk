@@ -37,49 +37,39 @@ FileInfo::FileInfo(const std::string& fullName) : m_fullName(fullName)
     }
 }
 
-FileInfo& FileInfo::operator=(const FileInfo& src)
-{
-    m_fullName = src.m_fullName;
-    m_path = src.m_path;
-    m_filename = src.m_filename;
-    m_basename = src.m_basename;
-    m_extname = src.m_extname;
-    return (*this);
-}
-
-std::string FileInfo::name()
+std::string FileInfo::name() const
 {
     return m_fullName;
 }
 
-std::string FileInfo::path()
+std::string FileInfo::path() const
 {
     return m_path;
 }
 
-std::string FileInfo::filename()
+std::string FileInfo::filename() const
 {
     return m_filename;
 }
 
-std::string FileInfo::basename()
+std::string FileInfo::basename() const
 {
     return m_basename;
 }
 
-std::string FileInfo::extname()
+std::string FileInfo::extname() const
 {
     return m_extname;
 }
 
-FileAttribute FileInfo::attribute()
+FileAttribute FileInfo::attribute() const
 {
     FileAttribute attr;
     getFileAttribute(m_fullName, attr);
     return attr;
 }
 
-bool FileInfo::exist()
+bool FileInfo::exist() const
 {
     FileAttribute attr;
     if (getFileAttribute(m_fullName, attr))
@@ -92,7 +82,7 @@ bool FileInfo::exist()
     return false;
 }
 
-bool FileInfo::create()
+bool FileInfo::create() const
 {
     if (m_fullName.empty())
     {
@@ -108,7 +98,7 @@ bool FileInfo::create()
     return false;
 }
 
-bool FileInfo::remove(bool ioSync)
+bool FileInfo::remove(bool ioSync) const
 {
     if (m_fullName.empty())
     {
@@ -159,7 +149,7 @@ static size_t calcBlockSize(size_t fileSize, size_t maxBlockSize)
 }
 
 FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, const std::function<bool(size_t now, size_t total)>& progressCb,
-                                    size_t maxBlockSize)
+                                    size_t maxBlockSize) const
 {
     if (m_fullName.empty())
     {
@@ -230,7 +220,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, const std::
     return CopyResult::OK;
 }
 
-long long FileInfo::size()
+long long FileInfo::size() const
 {
     long long fileSize = -1;
     if (m_fullName.empty())
@@ -247,7 +237,7 @@ long long FileInfo::size()
     return fileSize;
 }
 
-char* FileInfo::data(long long& fileSize, bool isText)
+char* FileInfo::data(long long& fileSize, bool isText) const
 {
     if (m_fullName.empty())
     {
@@ -276,7 +266,7 @@ char* FileInfo::data(long long& fileSize, bool isText)
     return fileData;
 }
 
-char* FileInfo::read(long long offset, long long& count)
+char* FileInfo::read(long long offset, long long& count) const
 {
     if (m_fullName.empty())
     {
@@ -292,7 +282,7 @@ char* FileInfo::read(long long offset, long long& count)
     return buffer;
 }
 
-bool FileInfo::write(const char* data, long long length, bool isAppend)
+bool FileInfo::write(const char* data, long long length, bool isAppend) const
 {
     if (!data || length <= 0)
     {

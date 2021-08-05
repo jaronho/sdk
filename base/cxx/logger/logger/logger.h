@@ -22,12 +22,6 @@ public:
     virtual ~Logger() = default;
 
     /**
-     * @brief 赋值拷贝
-     * @return 对象自身
-     */
-    Logger& operator=(const Logger& src);
-
-    /**
      * @brief 是否有效
      * @return true-有效, false-无效
      */
@@ -61,7 +55,7 @@ public:
      * @brief 是否输出到控制台
      * @return true-是, false-否
      */
-    virtual bool isConsoleEnable();
+    virtual bool isConsoleEnable() const;
 
     /**
      * @brief 设置是否输出到控制台

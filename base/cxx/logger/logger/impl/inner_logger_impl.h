@@ -38,7 +38,7 @@ public:
      * @brief 是否输出到控制台
      * @return true-是, false-否
      */
-    bool isConsoleEnable() override;
+    bool isConsoleEnable() const override;
 
     /**
      * @brief 设置是否输出到控制台
