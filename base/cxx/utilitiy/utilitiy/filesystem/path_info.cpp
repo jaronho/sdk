@@ -133,6 +133,19 @@ bool PathInfo::clear(bool continueIfRoot) const
     return false;
 }
 
+bool PathInfo::empty() const
+{
+    size_t childCount = 0;
+    traverseImpl(
+        m_path, 0,
+        [&](const std::string& name, const FileAttribute& attr, int depth) {
+            ++childCount;
+            return true;
+        },
+        [&](const std::string& name, const FileAttribute& attr, int depth) { ++childCount; }, false);
+    return (0 == childCount);
+}
+
 void PathInfo::traverse(std::function<bool(const std::string& name, const FileAttribute& attr, int depth)> folderCallback,
                         std::function<void(const std::string& name, const FileAttribute& attr, int depth)> fileCallback,
                         bool recursive) const

@@ -67,6 +67,12 @@ public:
     bool clear(bool continueIfRoot = false) const;
 
     /**
+     * @brief 判断是否为空文件夹
+     * @return true-空, false-非空
+     */
+    bool empty() const;
+
+    /**
      * @brief 遍历文件夹和文件
      * @param folderCallback 文件夹回调, 参数: name-名称, attr-属性, depth-深度(从1开始), 返回值: true-允许遍历子目录, false-不允许
      * @param fileCallback 文件回调, 参数: name-名称, attr-属性, depth-深度(从1开始)
