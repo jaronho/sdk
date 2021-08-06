@@ -50,6 +50,7 @@ struct Response
     int httpCode = -1; /* http码 */
     std::map<std::string, std::string> headers; /* 响应头 */
     std::string body; /* 响应体 */
+    int elapsed = 0; /* 响应时间(毫秒) */
 };
 
 /**

@@ -198,10 +198,11 @@ public:
      * @param curlCode curl码, 注意: 当值为42, 错误信息为"Callback aborted"时, 是由于进度函数返回true停止了执行
      * @param errorDesc 错误信息
      * @param respCode http响应码
-     * @param respHeaders - http响应头
+     * @param respHeaders http响应头
+     * @param respElapsed http响应时间(毫秒)
      * @return true-成功, false-失败
      */
-    bool perform(int& curlCode, std::string& errorDesc, int& respCode, std::map<std::string, std::string>& respHeaders);
+    bool perform(int& curlCode, std::string& errorDesc, int& respCode, std::map<std::string, std::string>& respHeaders, int& respElapsed);
 
 private:
     bool initialize();

@@ -82,7 +82,8 @@ void printResponse(const curlex::Response& resp)
         ++headerIndex;
         std::cout << "        " << headerName << ":" << headerValue << (headerCount == headerIndex ? "" : ",") << std::endl;
     }
-    std::cout << "    }" << std::endl;
+    std::cout << "    }," << std::endl;
+    std::cout << "    elapsed:" << resp.elapsed << "(ms)" << std::endl;
     std::cout << "}" << std::endl;
 }
 
@@ -111,7 +112,8 @@ void printSimpleResponse(const curlex::Response& resp)
     }
     std::cout << "    }," << std::endl;
     std::cout << "    body:" << std::endl;
-    std::cout << resp.body << std::endl;
+    std::cout << resp.body << "," << std::endl;
+    std::cout << "    elapsed:" << resp.elapsed << "(ms)" << std::endl;
     std::cout << "}" << std::endl;
 }
 

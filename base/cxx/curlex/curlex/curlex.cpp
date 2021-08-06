@@ -131,7 +131,7 @@ bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
+    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
 }
 
 bool curlGet(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
@@ -141,7 +141,7 @@ bool curlGet(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
+    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
 }
 
 bool curlPut(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
@@ -161,7 +161,7 @@ bool curlPut(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
+    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
 }
 
 bool curlPost(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
@@ -176,7 +176,7 @@ bool curlPost(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
+    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
 }
 
 bool curlDownload(const RequestPtr& req, const std::string& filename, bool recover, const FuncSet& funcSet, Response& resp)
@@ -205,7 +205,7 @@ bool curlDownload(const RequestPtr& req, const std::string& filename, bool recov
         }
         return (size_t)0;
     });
-    auto ret = obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers);
+    auto ret = obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
     f.sync();
     f.close();
     return ret;

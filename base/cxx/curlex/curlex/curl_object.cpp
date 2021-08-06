@@ -1,6 +1,7 @@
 #include "curl_object.h"
 
 #include <atomic>
+#include <chrono>
 #include <string.h>
 
 namespace curlex
@@ -544,10 +545,18 @@ bool CurlObject::addMultipartFormFile(const std::string& fieldName, const std::s
     return CURL_FORMADD_OK == code;
 }
 
-bool CurlObject::perform(int& curlCode, std::string& errorDesc, int& respCode, std::map<std::string, std::string>& respHeaders)
+bool CurlObject::perform(int& curlCode, std::string& errorDesc, int& respCode, std::map<std::string, std::string>& respHeaders,
+                         int& respElapsed)
 {
+    curlCode = -1;
+    errorDesc.clear();
+    respCode = -1;
+    respHeaders.clear();
+    respElapsed = 0;
+    auto beg = std::chrono::steady_clock::now();
     if (!m_curl)
     {
+        respElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
         return false;
     }
     CURLcode code;
@@ -643,6 +652,7 @@ bool CurlObject::perform(int& curlCode, std::string& errorDesc, int& respCode, s
     {
         curlCode = static_cast<int>(code);
         errorDesc = m_errorBuffer;
+        respElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
         return false;
     }
     code = curl_easy_perform(m_curl);
@@ -655,6 +665,7 @@ bool CurlObject::perform(int& curlCode, std::string& errorDesc, int& respCode, s
         m_httpPost = nullptr;
     }
     m_lastPost = nullptr;
+    respElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
     return CURLE_OK == code;
 }
 } // namespace curlex
