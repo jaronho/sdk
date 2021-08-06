@@ -45,6 +45,7 @@ struct FuncSet
  */
 struct Response
 {
+    std::string url; /* 对应的请求url */
     int curlCode = -1; /* curl码 */
     std::string errorDesc; /* 错误描述 */
     int httpCode = -1; /* http码 */
