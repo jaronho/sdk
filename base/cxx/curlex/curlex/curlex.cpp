@@ -2,7 +2,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <string.h>
 
 namespace curlex
 {
@@ -122,7 +121,6 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
 
 bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 {
-    memset(&resp, 0, sizeof(Response));
     resp.url = req->getUrl();
     auto obj = createCurlObject(req, funcSet);
     auto code = obj->setOption(CURLOPT_CUSTOMREQUEST, "DELETE");
@@ -139,7 +137,6 @@ bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 
 bool curlGet(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 {
-    memset(&resp, 0, sizeof(Response));
     resp.url = req->getUrl();
     auto obj = createCurlObject(req, funcSet);
     obj->setRecvFunc([&resp](void* bytes, size_t count) {
@@ -151,7 +148,6 @@ bool curlGet(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 
 bool curlPut(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 {
-    memset(&resp, 0, sizeof(Response));
     resp.url = req->getUrl();
     auto obj = createCurlObject(req, funcSet);
     auto code = obj->setOption(CURLOPT_PUT, 1L);
@@ -173,7 +169,6 @@ bool curlPut(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 
 bool curlPost(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 {
-    memset(&resp, 0, sizeof(Response));
     resp.url = req->getUrl();
     auto obj = createCurlObject(req, funcSet);
     auto code = obj->setOption(CURLOPT_POST, 1L);
@@ -190,7 +185,6 @@ bool curlPost(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
 
 bool curlDownload(const RequestPtr& req, const std::string& filename, bool recover, const FuncSet& funcSet, Response& resp)
 {
-    memset(&resp, 0, sizeof(Response));
     resp.url = req->getUrl();
     if (filename.empty())
     {
