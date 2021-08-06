@@ -74,7 +74,7 @@ void HttpClient::easyDelete(const curlex::RequestPtr& req, const curlex::FuncSet
 {
     assert(s_workers);
     threading::ThreadProxy::async(
-        "http.easy_delete",
+        "http.easy_delete|" + req->getUrl(),
         [req, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlDelete(req, funcSet, resp);
@@ -87,7 +87,7 @@ void HttpClient::easyGet(const curlex::RequestPtr& req, const curlex::FuncSet& f
 {
     assert(s_workers);
     threading::ThreadProxy::async(
-        "http.easy_get",
+        "http.easy_get|" + req->getUrl(),
         [req, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlGet(req, funcSet, resp);
@@ -100,7 +100,7 @@ void HttpClient::easyPut(const curlex::RequestPtr& req, const curlex::FuncSet& f
 {
     assert(s_workers);
     threading::ThreadProxy::async(
-        "http.easy_put",
+        "http.easy_put|" + req->getUrl(),
         [req, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlPut(req, funcSet, resp);
@@ -113,7 +113,7 @@ void HttpClient::easyPost(const curlex::RequestPtr& req, const curlex::FuncSet& 
 {
     assert(s_workers);
     threading::ThreadProxy::async(
-        "http.easy_post",
+        "http.easy_post|" + req->getUrl(),
         [req, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlPost(req, funcSet, resp);
@@ -127,7 +127,7 @@ void HttpClient::easyDownload(const curlex::RequestPtr& req, const std::string& 
 {
     assert(s_workers);
     threading::ThreadProxy::async(
-        "http.easy_download",
+        "http.easy_download|" + req->getUrl(),
         [req, filename, recover, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlDownload(req, filename, recover, funcSet, resp);

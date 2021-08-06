@@ -35,8 +35,13 @@ void AsyncProxy::execute(const AsyncTaskPtr& task)
     assert(s_workers);
     if (task && task->func)
     {
+        std::string tag;
+        if (!task->name.empty())
+        {
+            tag.append("|").append(task->name);
+        }
         threading::ThreadProxy::async(
-            "worker.async",
+            "worker.async" + tag,
             [task]() {
                 task->func();
                 if (task->finishCb)
@@ -49,12 +54,13 @@ void AsyncProxy::execute(const AsyncTaskPtr& task)
     }
 }
 
-void AsyncProxy::execute(const std::function<void()>& func, const std::function<void()>& finishCb)
+void AsyncProxy::execute(const std::function<void()>& func, const std::function<void()>& finishCb, const std::string& name)
 {
     assert(s_workers);
     if (func)
     {
         auto task = std::make_shared<AsyncTask>();
+        task->name = name;
         task->func = func;
         task->finishCb = finishCb;
         execute(task);
