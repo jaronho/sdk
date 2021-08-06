@@ -26,15 +26,20 @@ static std::wstring string2wstring(const std::string& str)
 }
 #endif
 
-bool getFileAttribute(const std::string& name, FileAttribute& attr)
+bool getFileAttribute(std::string name, FileAttribute& attr)
 {
     memset(&attr, 0, sizeof(FileAttribute));
     if (name.empty() || "." == name || ".." == name)
     {
         return false;
     }
-    std::string subName = name.substr(name.find_last_of("/\\") + 1, name.size() - 1);
-    if (subName.empty() || "." == subName || ".." == subName)
+    const char& lastChar = name[name.size() - 1];
+    if (name.size() > 1 && ('/' == lastChar || '\\' == lastChar))
+    {
+        name.pop_back();
+    }
+    std::string subName = name.substr(name.find_last_of("/\\") + 1, name.size());
+    if ("." == subName || ".." == subName)
     {
         return false;
     }

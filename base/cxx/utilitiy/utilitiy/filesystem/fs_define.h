@@ -51,5 +51,5 @@ typedef struct
  * @param attr [输出]属性
  * @return true-成功, false-失败
  */
-bool getFileAttribute(const std::string& name, FileAttribute& attr);
+bool getFileAttribute(std::string name, FileAttribute& attr);
 } // namespace utilitiy

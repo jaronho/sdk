@@ -167,11 +167,16 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
     {
         return false;
     }
-#ifdef _WIN32
-    if ('\\' != path[path.size() - 1])
+    const char& lastPathChar = path[path.size() - 1];
+    if ('/' != lastPathChar && '\\' != lastPathChar)
     {
+#ifdef _WIN32
         path.push_back('\\');
+#else
+        path.push_back('/');
+#endif
     }
+#ifdef _WIN32
 #ifdef _WIN64
     _finddatai64_t fileData;
     __int64 handle = _findfirsti64((path + "*.*").c_str(), &fileData);
@@ -210,10 +215,6 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
     }
     _findclose(handle);
 #else
-    if ('/' != path[path.size() - 1])
-    {
-        path.push_back('/');
-    }
     DIR* dir = opendir(path.c_str());
     if (!dir)
     {
@@ -261,11 +262,16 @@ void PathInfo::traverseImpl(std::string path, int depth,
         return;
     }
     depth += 1;
-#ifdef _WIN32
-    if ('\\' != path[path.size() - 1])
+    const char& lastPathChar = path[path.size() - 1];
+    if ('/' != lastPathChar && '\\' != lastPathChar)
     {
+#ifdef _WIN32
         path.push_back('\\');
+#else
+        path.push_back('/');
+#endif
     }
+#ifdef _WIN32
 #ifdef _WIN64
     _finddatai64_t fileData;
     __int64 handle = _findfirsti64((path + "*.*").c_str(), &fileData);
@@ -321,10 +327,6 @@ void PathInfo::traverseImpl(std::string path, int depth,
     }
     _findclose(handle);
 #else
-    if ('/' != path[path.size() - 1])
-    {
-        path.push_back('/');
-    }
     DIR* dir = opendir(path.c_str());
     if (!dir)
     {

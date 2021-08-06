@@ -70,11 +70,16 @@ void RotatingLogfile::traverseFile(std::string path, std::function<void(const st
     {
         return;
     }
-#ifdef _WIN32
-    if ('\\' != path[path.size() - 1])
+    const char& lastPathChar = path[path.size() - 1];
+    if ('/' != lastPathChar && '\\' != lastPathChar)
     {
+#ifdef _WIN32
         path.push_back('\\');
+#else
+        path.push_back('/');
+#endif
     }
+#ifdef _WIN32
 #ifdef _WIN64
     _finddatai64_t fileData;
     __int64 handle = _findfirsti64((path + "*.*").c_str(), &fileData);
@@ -111,10 +116,6 @@ void RotatingLogfile::traverseFile(std::string path, std::function<void(const st
     }
     _findclose(handle);
 #else
-    if ('/' != path[path.size() - 1])
-    {
-        path.push_back('/');
-    }
     DIR* dir = opendir(path.c_str());
     if (!dir)
     {
