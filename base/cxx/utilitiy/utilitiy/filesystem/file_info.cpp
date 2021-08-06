@@ -1,5 +1,6 @@
 #include "file_info.h"
 
+#include <algorithm>
 #include <string.h>
 #ifndef _WIN32
 #include <unistd.h>
@@ -60,6 +61,22 @@ std::string FileInfo::basename() const
 std::string FileInfo::extname() const
 {
     return m_extname;
+}
+
+bool FileInfo::isExtName(std::string extName) const
+{
+    if (m_extname.empty() || extName.empty())
+    {
+        return false;
+    }
+    if ('.' == extName[0])
+    {
+        extName.erase(0, 1);
+    }
+    std::transform(extName.begin(), extName.end(), extName.begin(), tolower);
+    auto tmpExtName = m_extname; /* 缓存避免修改到原始值 */
+    std::transform(tmpExtName.begin(), tmpExtName.end(), tmpExtName.begin(), tolower);
+    return (0 == tmpExtName.compare(extName));
 }
 
 FileAttribute FileInfo::attribute() const

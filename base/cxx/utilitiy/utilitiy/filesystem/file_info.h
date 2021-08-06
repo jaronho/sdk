@@ -60,6 +60,13 @@ public:
     std::string extname() const;
 
     /**
+     * @brief 判断文件扩展名是否一致(不区分大小写和.)
+     * @param extName 文件扩展名, 例如: txt 或 .txt 或 TXT 或 .TXT 等
+     * @return true-一致, false-不一致
+     */
+    bool isExtName(std::string extName) const;
+
+    /**
      * @brief 获取文件属性
      * @return 属性
      */
