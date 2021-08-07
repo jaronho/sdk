@@ -20,6 +20,7 @@ struct TaskInfo
     std::chrono::steady_clock::time_point running{}; /* 开始运行时间点 */
     std::chrono::steady_clock::time_point finished{}; /* 运行结束时间点 */
     std::chrono::steady_clock::time_point abnormal{}; /* 出现异常时间点 */
+    std::string attachExecutorName; /* 挂靠的执行者名称 */
     int64_t attachThreadId = 0; /* 挂靠的线程id */
     std::string attachThreadName; /* 挂靠的线程名称 */
     std::string exceptionMsg; /* 异常消息 */

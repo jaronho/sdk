@@ -13,6 +13,35 @@ class FiberExecutor;
 class ThreadProxy;
 
 /**
+ * @brief 任务绑定到执行者回调
+ * @param executorName 执行者名称
+ * @param taskName 任务名称
+ */
+using TaskBindCallback = std::function<void(const std::string& executorName, const std::string& taskName)>;
+
+/**
+ * @brief 任务(正常)状态回调
+ * @param executorName 执行者名称
+ * @param threadId 线程ID
+ * @param threadName 线程名称
+ * @param taskName 任务名称
+ * @param prevElapsed 前一个状态耗时
+ */
+using TaskNormalStateCallback = std::function<void(const std::string& executorName, int threadId, const std::string& threadName,
+                                                   const std::string& taskName, const std::chrono::steady_clock::duration& prevElapsed)>;
+
+/**
+ * @brief 任务(异常)状态回调
+ * @param executorName 执行者名称
+ * @param threadId 线程ID
+ * @param threadName 线程名称
+ * @param taskName 任务名称
+ * @param msg 异常消息
+ */
+using TaskExceptionStateCallback = std::function<void(const std::string& executorName, int threadId, const std::string& threadName,
+                                                      const std::string& taskName, const std::string& msg)>;
+
+/**
  * @brief 诊断信息收集模块
  */
 class Diagnose final
@@ -23,10 +52,28 @@ class Diagnose final
 
 public:
     /**
-	 * @brief 设置日志函数
-	 * @param logFunc 日志函数
+	 * @brief 设置任务绑定回调
+	 * @param taskBindCb 任务绑定回调
 	 */
-    static void setLogFunc(const std::function<void(const std::string&)>& logFunc);
+    static void setTaskBindCallback(const TaskBindCallback& taskBindCb);
+
+    /**
+	 * @brief 设置任务运行状态回调
+	 * @param taskStateCb 任务状态回调
+	 */
+    static void setTaskRunningStateCallback(const TaskNormalStateCallback& taskStateCb);
+
+    /**
+	 * @brief 设置任务结束状态回调
+	 * @param taskStateCb 任务状态回调
+	 */
+    static void setTaskFinishedStateCallback(const TaskNormalStateCallback& taskStateCb);
+
+    /**
+	 * @brief 设置任务异常状态回调
+	 * @param taskStateCb 任务状态回调
+	 */
+    static void setTaskExceptionStateCallback(const TaskExceptionStateCallback& taskStateCb);
 
     /**
      * @brief 获取诊断信息

@@ -8,15 +8,10 @@ namespace threading
 {
 static std::mutex s_mutex; /* 互斥锁 */
 static std::unordered_map<const Executor*, ExecutorInfoPtr> s_executors; /* 全局执行者 */
-static std::function<void(const std::string&)> s_logFunc;
-
-void Diagnose::printLog(const std::string& msg)
-{
-    if (s_logFunc)
-    {
-        s_logFunc(msg);
-    }
-}
+static TaskBindCallback s_taskBindCallback; /* 任务绑定回调 */
+static TaskNormalStateCallback s_taskRunningStateCallback; /* 任务运行状态回调 */
+static TaskNormalStateCallback s_taskFinishedStateCallback; /* 任务结束状态回调 */
+static TaskExceptionStateCallback s_taskExceptionStateCallback; /* 任务异常状态回调 */
 
 TaskInfoPtr Diagnose::getTaskInfo(const Task* task)
 {
@@ -101,9 +96,13 @@ void Diagnose::bindTaskToExecutor(const Task* task, const Executor* executor)
         return;
     }
     auto taskInfo = std::make_shared<TaskInfo>(task);
+    taskInfo->attachExecutorName = executor->getName();
     taskInfo->queuing = std::chrono::steady_clock::now();
     iter->second->tasks.insert(std::make_pair(task, taskInfo));
-    printLog("bind Task [" + task->getName() + "] to Executor [" + executor->getName() + "]");
+    if (s_taskBindCallback)
+    {
+        s_taskBindCallback(executor->getName(), task->getName());
+    }
 }
 
 void Diagnose::onTaskRunning(int threadId, const std::string& threadName, const Task* task)
@@ -117,7 +116,11 @@ void Diagnose::onTaskRunning(int threadId, const std::string& threadName, const 
     taskInfo->running = std::chrono::steady_clock::now();
     taskInfo->attachThreadId = threadId;
     taskInfo->attachThreadName = threadName;
-    printLog(taskInfoToString(taskInfo, false));
+    if (s_taskRunningStateCallback)
+    {
+        s_taskRunningStateCallback(taskInfo->attachExecutorName, taskInfo->attachThreadId, taskInfo->attachThreadName, task->getName(),
+                                   taskInfo->running - taskInfo->queuing);
+    }
 }
 
 void Diagnose::onTaskFinished(int threadId, const std::string& threadName, const Task* task)
@@ -131,7 +134,11 @@ void Diagnose::onTaskFinished(int threadId, const std::string& threadName, const
     taskInfo->finished = std::chrono::steady_clock::now();
     taskInfo->attachThreadId = threadId;
     taskInfo->attachThreadName = threadName;
-    printLog(taskInfoToString(taskInfo, true));
+    if (s_taskFinishedStateCallback)
+    {
+        s_taskFinishedStateCallback(taskInfo->attachExecutorName, taskInfo->attachThreadId, taskInfo->attachThreadName, task->getName(),
+                                    taskInfo->finished - taskInfo->running);
+    }
     delTaskInfo(task);
 }
 
@@ -147,7 +154,11 @@ void Diagnose::onTaskException(int threadId, const std::string& threadName, cons
     taskInfo->attachThreadId = threadId;
     taskInfo->attachThreadName = threadName;
     taskInfo->exceptionMsg = msg;
-    printLog(taskInfoToString(taskInfo, true));
+    if (s_taskExceptionStateCallback)
+    {
+        s_taskExceptionStateCallback(taskInfo->attachExecutorName, taskInfo->attachThreadId, taskInfo->attachThreadName, task->getName(),
+                                     msg);
+    }
     delTaskInfo(task);
 }
 
@@ -231,12 +242,28 @@ std::string Diagnose::executorInfoToString(const ExecutorInfoPtr& executorInfo)
     return result;
 }
 
-void Diagnose::setLogFunc(const std::function<void(const std::string&)>& logFunc)
+void Diagnose::setTaskBindCallback(const TaskBindCallback& taskBindCb)
 {
-    if (logFunc)
-    {
-        s_logFunc = logFunc;
-    }
+    std::lock_guard<std::mutex> lock(s_mutex);
+    s_taskBindCallback = taskBindCb;
+}
+
+void Diagnose::setTaskRunningStateCallback(const TaskNormalStateCallback& taskStateCb)
+{
+    std::lock_guard<std::mutex> lock(s_mutex);
+    s_taskRunningStateCallback = taskStateCb;
+}
+
+void Diagnose::setTaskFinishedStateCallback(const TaskNormalStateCallback& taskStateCb)
+{
+    std::lock_guard<std::mutex> lock(s_mutex);
+    s_taskFinishedStateCallback = taskStateCb;
+}
+
+void Diagnose::setTaskExceptionStateCallback(const TaskExceptionStateCallback& taskStateCb)
+{
+    std::lock_guard<std::mutex> lock(s_mutex);
+    s_taskExceptionStateCallback = taskStateCb;
 }
 
 std::string Diagnose::getDiagnoseInfo()
