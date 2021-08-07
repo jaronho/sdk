@@ -220,12 +220,12 @@ bool RotatingLogfile::rotateFileList()
             m_logfile->close();
             for (size_t i = discardCount + 1, count = indexList.size(); i < count; ++i)
             {
-                std::string preFullName = path + calcFilenameByIndex(indexList[i - 1]);
+                std::string prevFullName = path + calcFilenameByIndex(indexList[i - 1]);
                 std::string nowFullName = path + calcFilenameByIndex(indexList[i]);
-                remove(preFullName.c_str());
-                if (0 != rename(nowFullName.c_str(), preFullName.c_str()))
+                remove(prevFullName.c_str());
+                if (0 != rename(nowFullName.c_str(), prevFullName.c_str()))
                 {
-                    printf("move file [%s] to [%s] fail, errno[%d], desc: %s\n", nowFullName.c_str(), preFullName.c_str(), errno,
+                    printf("move file [%s] to [%s] fail, errno[%d], desc: %s\n", nowFullName.c_str(), prevFullName.c_str(), errno,
                            strerror(errno));
                     return false;
                 }
