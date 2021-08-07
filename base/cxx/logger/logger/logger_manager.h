@@ -56,6 +56,13 @@
 #define ERROR_LOG(logger, f, ...) (logger).error("", 0, "", fmt::format(FMT_STRING(f), ##__VA_ARGS__))
 #define FATAL_LOG(logger, f, ...) (logger).fatal("", 0, "", fmt::format(FMT_STRING(f), ##__VA_ARGS__))
 #endif
+/* 显示(纯净版): 内容 */
+#define TRACE_LOG_PURE(logger, f, ...) (logger).trace("", 0, "", fmt::format(FMT_STRING(f), ##__VA_ARGS__))
+#define DEBUG_LOG_PURE(logger, f, ...) (logger).debug("", 0, "", fmt::format(FMT_STRING(f), ##__VA_ARGS__))
+#define INFO_LOG_PURE(logger, f, ...) (logger).info("", 0, "", fmt::format(FMT_STRING(f), ##__VA_ARGS__))
+#define WARN_LOG_PURE(logger, f, ...) (logger).warn("", 0, "", fmt::format(FMT_STRING(f), ##__VA_ARGS__))
+#define ERROR_LOG_PURE(logger, f, ...) (logger).error("", 0, "", fmt::format(FMT_STRING(f), ##__VA_ARGS__))
+#define FATAL_LOG_PURE(logger, f, ...) (logger).fatal("", 0, "", fmt::format(FMT_STRING(f), ##__VA_ARGS__))
 
 namespace logger
 {
