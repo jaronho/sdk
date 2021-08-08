@@ -1,5 +1,6 @@
 #include "path_info.h"
 
+#include <assert.h>
 #include <string.h>
 #include <sys/stat.h>
 #ifdef _WIN32
@@ -14,11 +15,33 @@
 
 namespace utilitiy
 {
-PathInfo::PathInfo(const std::string& path) : m_path(revise(path)) {}
+PathInfo::PathInfo(const std::string& path, bool autoEndWithSlash) : m_path(revise(path))
+{
+    assert(!m_path.empty());
+    const char& lastPathChar = m_path[m_path.size() - 1];
+    if ('/' == lastPathChar || '\\' == lastPathChar)
+    {
+#ifdef _WIN32
+        m_path.push_back('\\');
+#else
+        m_path.push_back('/');
+#endif
+    }
+}
 
 std::string PathInfo::path() const
 {
     return m_path;
+}
+
+bool PathInfo::isEndWithSlash() const
+{
+    const char& lastPathChar = m_path[m_path.size() - 1];
+    if ('/' == lastPathChar || '\\' == lastPathChar)
+    {
+        return true;
+    }
+    return false;
 }
 
 bool PathInfo::isAbsolute() const

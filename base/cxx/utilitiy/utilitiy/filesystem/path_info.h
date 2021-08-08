@@ -12,8 +12,9 @@ public:
     /**
      * @brief 构造函数
      * @param path 路径, 例如: /home/test
+     * @param autoEndWithSlash 是否自动斜杠结尾(选填), 默认保留原始输入
      */
-    PathInfo(const std::string& path);
+    PathInfo(const std::string& path, bool autoEndWithSlash = false);
     PathInfo() = default;
     virtual ~PathInfo() = default;
 
@@ -22,6 +23,12 @@ public:
      * @return 路径
      */
     std::string path() const;
+
+    /**
+     * @brief 判断路径是否斜杠结尾
+     * @return true-是, false-否
+     */
+    bool isEndWithSlash() const;
 
     /**
      * @brief 判断路径是否为绝对路径
@@ -74,7 +81,7 @@ public:
 
     /**
      * @brief 遍历文件夹和文件
-     * @param folderCb 文件夹回调, 参数: name-名称, attr-属性, depth-深度(从1开始), 返回值: true-允许遍历子目录, false-不允许
+     * @param folderCb 文件夹回调, 参数: name-名称, attr-属性, depth-深度(从1开始), 返回值: true-进入子目录, false-不进入
      * @param fileCb 文件回调, 参数: name-名称, attr-属性, depth-深度(从1开始)
      * @param stopCb 停止回调, 返回值: true-停止, false-不停止
      * @param recursive 是否递归查找(选填), 默认递归
