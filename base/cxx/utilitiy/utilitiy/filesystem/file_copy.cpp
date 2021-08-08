@@ -174,7 +174,8 @@ std::string FileCopy::checkDestFile(const std::string& destFile)
     while (fi.exist())
     {
         ++num;
-        newDestFile = fi.path() + fi.basename() + "(" + std::to_string(num) + ")." + fi.extname();
+        auto suffix = fi.extname().empty() ? "" : ("." + fi.extname());
+        newDestFile = fi.path() + fi.basename() + "(" + std::to_string(num) + ")" + suffix;
         fi = utilitiy::FileInfo(newDestFile);
     }
     return newDestFile;
