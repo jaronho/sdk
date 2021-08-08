@@ -119,7 +119,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
     for (size_t index = 0; index < totalFileCount; ++index)
     {
         utilitiy::FileInfo srcFileInfo(srcFilelist[index]);
-        auto destFile = m_destPathInfo.path() + srcFileInfo.name().substr(m_destPathInfo.path().size());
+        auto destFile = m_destPathInfo.path() + srcFileInfo.name().substr(m_srcPathInfo.path().size());
         if (!m_coverDestFile)
         {
             destFile = checkDestFile(destFile); /* 检测目标文件是否已存在并重命名 */

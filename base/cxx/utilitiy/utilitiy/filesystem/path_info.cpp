@@ -18,14 +18,17 @@ namespace utilitiy
 PathInfo::PathInfo(const std::string& path, bool autoEndWithSlash) : m_path(revise(path))
 {
     assert(!m_path.empty());
-    const char& lastPathChar = m_path[m_path.size() - 1];
-    if ('/' == lastPathChar || '\\' == lastPathChar)
+    if (autoEndWithSlash)
     {
+        const char& lastPathChar = m_path[m_path.size() - 1];
+        if ('/' != lastPathChar && '\\' != lastPathChar)
+        {
 #ifdef _WIN32
-        m_path.push_back('\\');
+            m_path.push_back('\\');
 #else
-        m_path.push_back('/');
+            m_path.push_back('/');
 #endif
+        }
     }
 }
 

@@ -1,13 +1,106 @@
 #include <iostream>
 
+#include "../utilitiy/cmdline/cmdline.h"
+#include "../utilitiy/filesystem/file_copy.h"
+#include "../utilitiy/strtool/strtool.h"
 #include "test_filesystem.hpp"
 #include "test_process.hpp"
 #include "test_system.hpp"
 
+void testFileCopy(int argc, char** argv)
+{
+    cmdline::parser parser;
+    parser.add<std::string>("src", 's', "src path", true);
+    parser.add<std::string>("files", 'l', "assign copy files(split with ','), if not set will copy all src", false);
+    parser.add<std::string>("dest", 'd', "dest path", true);
+    parser.add<int>("clear", 'c', "clear dest path", false, false);
+    parser.add<int>("cover", 'r', "cover dest file", false, false);
+    parser.parse_check(argc, argv);
+    /* 解析参数 */
+    auto srcPath = parser.get<std::string>("src");
+    auto filelist = parser.get<std::string>("files");
+    auto destPath = parser.get<std::string>("dest");
+    auto clearDest = parser.get<int>("clear");
+    auto coverDest = parser.get<int>("cover");
+    /* 参数设置 */
+    auto srcFilelist = utilitiy::StrTool::split(filelist, ",");
+    auto filterFunc = [](const std::string& name, const utilitiy::FileAttribute& attr, int depth) {
+#ifdef _WIN32
+        if (attr.isSystem) /* 系统 */
+        {
+            if (attr.isDir)
+            {
+                printf("第 %d 层源目录 %s 为系统目录, 跳过\n", depth, name.c_str());
+            }
+            else
+            {
+                printf("第 %d 层源文件 %s 为系统文件, 跳过\n", depth, name.c_str());
+            }
+            return true;
+        }
+#endif
+        if (attr.isDir && std::string::npos != name.find("System Volume Information")) /* 文件系统目录(跳过) */
+        {
+            printf("第 %d 层源目录 %s 为系统目录, 跳过\n", depth, name.c_str());
+            return true;
+        }
+        if (1 == depth && attr.isHidden) /* 第1层且为隐藏的目录(跳过) */
+        {
+            if (attr.isDir)
+            {
+                printf("第 %d 层源目录 %s 为隐藏目录, 跳过\n", depth, name.c_str());
+            }
+            else
+            {
+                printf("第 %d 层源文件 %s 为隐藏文件, 跳过\n", depth, name.c_str());
+            }
+            return true;
+        }
+        return false;
+    };
+    auto beginCb = [&](int totalCount, size_t totalSize) {
+        printf("准备拷贝文件, 总共 %d 个文件, 总大小 %zu 字节\n", totalCount, totalSize);
+    };
+    auto totalProgressCb = [&](int totalCount, int index, const std::string& srcFile) {
+        printf("===== 总的拷贝进度: %d/%d, 当前文件: %s\n", (index + 1), totalCount, srcFile.c_str());
+    };
+    auto singleProgressCb = [&](const std::string& srcFile, size_t fileSize, size_t copiedSize) {
+        printf("---------- 当前文件进度: %zu/%zu\n", copiedSize, fileSize);
+    };
+    std::string failSrcFile;
+    std::string failDestFile;
+    int failCode;
+    /* 开始拷贝 */
+    utilitiy::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc);
+    fc.setCallback(beginCb, totalProgressCb, singleProgressCb);
+    auto result = fc.start(&failSrcFile, &failDestFile, &failCode);
+    switch (result)
+    {
+    case utilitiy::FileInfo::CopyResult::OK:
+        printf("文件拷贝成功\n");
+        break;
+    case utilitiy::FileInfo::CopyResult::SRC_OPEN_FAILED:
+        printf("文件拷贝失败: 源文件 %s 打开失败: %d %s\n", failSrcFile.c_str(), failCode, strerror(failCode));
+    case utilitiy::FileInfo::CopyResult::DEST_OPEN_FAILED:
+        printf("文件拷贝失败: 目标文件 %s 打开失败: %d %s\n", failDestFile.c_str(), failCode, strerror(failCode));
+    case utilitiy::FileInfo::CopyResult::MEMORY_FAILED:
+        printf("文件拷贝失败: 源文件 %s, 目标文件: %s, 内存分配失败: %d %s\n", failSrcFile.c_str(), failDestFile.c_str(), failCode,
+               strerror(failCode));
+    case utilitiy::FileInfo::CopyResult::STOP:
+        printf("文件拷贝失败: 源文件 %s, 目标文件: %s, 停止拷贝\n", failSrcFile.c_str(), failDestFile.c_str());
+    case utilitiy::FileInfo::CopyResult::NOT_EQUAL:
+        printf("文件拷贝失败: 源文件%s 和目标文件 %s 不相等\n", failSrcFile.c_str(), failDestFile.c_str());
+    }
+}
+
 int main(int argc, char** argv)
 {
+#if 1
     testFilesystem();
     testProcess();
     testSystem();
+#else
+    testFileCopy(argc, argv);
+#endif
     return 0;
 }
