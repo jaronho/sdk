@@ -27,7 +27,7 @@ using FileCopyStopFunc = std::function<bool()>;
  * @param totalCount 总文件数
  * @param totalSize 总文件大小(字节)
  */
-using FileCopyBeginCallback = std::function<void(int totalCount, long long totalSize)>;
+using FileCopyBeginCallback = std::function<void(int totalCount, size_t totalSize)>;
 
 /**
  * @brief 文件拷贝总进度回调
@@ -43,7 +43,7 @@ using FileCopyTotalProgressCallback = std::function<void(int totalCount, int ind
  * @param fileSize 当前拷贝的文件大小
  * @param copiedSize 当前已拷贝的文件大小
  */
-using FileCopySingleProgressCallback = std::function<void(const std::string& srcFile, long long fileSize, long long copiedSize)>;
+using FileCopySingleProgressCallback = std::function<void(const std::string& srcFile, size_t fileSize, size_t copiedSize)>;
 
 class FileCopy
 {
@@ -96,9 +96,11 @@ private:
 
     /**
      * @brief 拷贝源文件列表
+     * @param srcFilelist 源文件列表
+     * @param srcFileSize 源文件总大小
      * @return 拷贝结果
      */
-    FileInfo::CopyResult copySrcFileList();
+    FileInfo::CopyResult copySrcFileList(const std::vector<std::string>& srcFilelist, size_t srcFileSize);
 
     /**
      * @brief 检测目标文件是否存在同名
@@ -110,7 +112,6 @@ private:
 private:
     utilitiy::PathInfo m_srcPathInfo; /* 源目录 */
     std::vector<std::string> m_srcFilelist; /* 源文件列表 */
-    long long m_srcFileSize; /* 源文件总大小 */
     utilitiy::PathInfo m_destPathInfo; /* 目标目录 */
     std::vector<std::string> m_destFilelist; /* 已拷贝的目标文件列表 */
     bool m_clearDestPath; /* 拷贝前是否清空目标目录 */

@@ -32,8 +32,8 @@ void testFilesystem()
             printf("data:--------------------\n%s\n--------------------\n", fileData);
             free(fileData);
         }
-        long long offset = 2;
-        long long count = 4;
+        size_t offset = 2;
+        size_t count = 4;
         char* buffer = fi.read(offset, count);
         if (buffer)
         {

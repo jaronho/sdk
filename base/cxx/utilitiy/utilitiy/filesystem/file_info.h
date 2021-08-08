@@ -109,7 +109,7 @@ public:
 
     /**
      * @brief 获取文件数据
-     * @param fileSize [输出]文件大小
+     * @param fileSize [输出]文件大小, -1-文件不存在, >=0-文件大小
      * @param isText true-文本文件, false-二进制文件
      * @return 数据(需要外部调用free释放内存)
      */
@@ -121,7 +121,7 @@ public:
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
      * @return 数据(需要外部调用free释放内存)
      */
-    char* read(long long offset, long long& count) const;
+    char* read(size_t offset, size_t& count) const;
 
     /**
      * @brief 写文件数据
@@ -131,7 +131,7 @@ public:
      * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
      * @return true-成功, false-失败
      */
-    bool write(const char* data, long long length, bool isAppend = false, int* errCode = nullptr) const;
+    bool write(const char* data, size_t length, bool isAppend = false, int* errCode = nullptr) const;
 
     /**
      * @brief 从文件流中读取数据
@@ -140,7 +140,7 @@ public:
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
      * @return 数据(需要外部调用free释放内存)
      */
-    static char* read(std::fstream& f, long long offset, long long& count);
+    static char* read(std::fstream& f, size_t offset, size_t& count);
 
 private:
     std::string m_fullName; /* 全路径文件名 */

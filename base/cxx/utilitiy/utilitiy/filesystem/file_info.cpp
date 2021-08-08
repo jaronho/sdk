@@ -268,6 +268,7 @@ char* FileInfo::data(long long& fileSize, bool isText) const
 {
     if (m_fullName.empty())
     {
+        fileSize = -1;
         return NULL;
     }
     std::fstream f(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
@@ -278,7 +279,7 @@ char* FileInfo::data(long long& fileSize, bool isText) const
     }
     fileSize = f.tellg();
     f.seekg(0, std::ios::beg);
-    long long dataSize = (fileSize + (isText ? 1 : 0));
+    size_t dataSize = (fileSize + (isText ? 1 : 0));
     char* fileData = (char*)malloc(sizeof(char) * dataSize);
     if (fileData)
     {
@@ -293,7 +294,7 @@ char* FileInfo::data(long long& fileSize, bool isText) const
     return fileData;
 }
 
-char* FileInfo::read(long long offset, long long& count) const
+char* FileInfo::read(size_t offset, size_t& count) const
 {
     if (m_fullName.empty())
     {
@@ -309,7 +310,7 @@ char* FileInfo::read(long long offset, long long& count) const
     return buffer;
 }
 
-bool FileInfo::write(const char* data, long long length, bool isAppend, int* errCode) const
+bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCode) const
 {
     if (errCode)
     {
@@ -338,14 +339,14 @@ bool FileInfo::write(const char* data, long long length, bool isAppend, int* err
     return true;
 }
 
-char* FileInfo::read(std::fstream& f, long long offset, long long& count)
+char* FileInfo::read(std::fstream& f, size_t offset, size_t& count)
 {
     if (!f.is_open())
     {
         return NULL;
     }
     char* buffer = NULL;
-    long long fileSize = f.tellg();
+    size_t fileSize = f.tellg();
     if (offset < fileSize)
     {
         if (offset + count > fileSize)

@@ -33,7 +33,7 @@ typedef struct
     time_t createTime = 0; /* 创建时间(1900年至今的秒数) */
     time_t modifyTime = 0; /* 修改时间(1900年至今的秒数) */
     time_t accessTime = 0; /* 访问时间(1900年至今的秒数) */
-    long long size = 0; /* 文件大小(注:为目录时该字段无效) */
+    size_t size = 0; /* 文件大小(注:为目录时该字段无效) */
     bool isDir; /* 是否目录 */
     bool isFile; /* 是否文件 */
 #ifdef _WIN32

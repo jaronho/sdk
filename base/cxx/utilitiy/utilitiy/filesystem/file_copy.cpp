@@ -6,7 +6,6 @@ FileCopy::FileCopy(const std::string& srcPath, const std::vector<std::string>& s
                    bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc)
     : m_srcPathInfo(srcPath, true)
     , m_srcFilelist(srcFilelist)
-    , m_srcFileSize(0)
     , m_destPathInfo(destPath, true)
     , m_clearDestPath(clearDest)
     , m_coverDestFile(coverDest)
@@ -27,7 +26,6 @@ void FileCopy::setCallback(const FileCopyBeginCallback& beginCb, const FileCopyT
 FileInfo::CopyResult FileCopy::start(std::string* failSrcFile, std::string* failDestFile, int* failCode)
 {
     m_destFilelist.clear();
-    m_srcFileSize = 0;
     m_failSrcFile.clear();
     m_failDestFile.clear();
     m_failCode = 0;
@@ -64,6 +62,8 @@ FileInfo::CopyResult FileCopy::start(std::string* failSrcFile, std::string* fail
 
 FileInfo::CopyResult FileCopy::copyAllFiles()
 {
+    std::vector<std::string> srcFilelist;
+    size_t srcFileSize = 0;
     m_srcPathInfo.traverse(
         [&](const std::string& name, const utilitiy::FileAttribute& attr, int depth) {
             if (m_filterFunc && m_filterFunc(name, attr, depth)) /* 目录被过滤 */
@@ -77,8 +77,8 @@ FileInfo::CopyResult FileCopy::copyAllFiles()
             {
                 return;
             }
-            m_srcFilelist.emplace_back(name);
-            m_srcFileSize += attr.size;
+            srcFilelist.emplace_back(name);
+            srcFileSize += attr.size;
         },
         [&]() {
             if (m_stopFunc && m_stopFunc())
@@ -92,32 +92,33 @@ FileInfo::CopyResult FileCopy::copyAllFiles()
     {
         return FileInfo::CopyResult::STOP;
     }
-    return copySrcFileList();
+    return copySrcFileList(srcFilelist, srcFileSize);
 }
 
 FileInfo::CopyResult FileCopy::copyAssignFiles()
 {
+    size_t srcFileSize = 0;
     for (auto srcFile : m_srcFilelist)
     {
         if (m_stopFunc && m_stopFunc())
         {
             return FileInfo::CopyResult::STOP;
         }
-        m_srcFileSize += utilitiy::FileInfo(srcFile).size();
+        srcFileSize += utilitiy::FileInfo(srcFile).size();
     }
-    return copySrcFileList();
+    return copySrcFileList(m_srcFilelist, srcFileSize);
 }
 
-FileInfo::CopyResult FileCopy::copySrcFileList()
+FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& srcFilelist, size_t srcFileSize)
 {
-    size_t totalFileCount = m_srcFilelist.size();
+    size_t totalFileCount = srcFilelist.size();
     if (m_beginCallback)
     {
-        m_beginCallback(totalFileCount, m_srcFileSize);
+        m_beginCallback(totalFileCount, srcFileSize);
     }
     for (size_t index = 0; index < totalFileCount; ++index)
     {
-        utilitiy::FileInfo srcFileInfo(m_srcFilelist[index]);
+        utilitiy::FileInfo srcFileInfo(srcFilelist[index]);
         auto destFile = m_destPathInfo.path() + srcFileInfo.name().substr(m_destPathInfo.path().size());
         if (!m_coverDestFile)
         {
