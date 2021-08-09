@@ -75,10 +75,17 @@ void testFileCopy(int argc, char** argv)
     /* 开始拷贝 */
     if (!udisk.empty() && !destPath.empty() && "/" != destPath)
     {
-        auto command = "mount -o async,iocharset=utf8 " + udisk + " " + destPath;
+        auto command = "dosfsck -v -a " + udisk;
+        printf("执行命令: %s\n", command.c_str());
+        utilitiy::System::runCmd(command);
+        command = "ntfsfix " + udisk;
+        printf("执行命令: %s\n", command.c_str());
+        utilitiy::System::runCmd(command);
+        command = "mount -o async,iocharset=utf8 " + udisk + " " + destPath;
         printf("执行命令: %s\n", command.c_str());
         utilitiy::System::runCmd(command);
     }
+    printf("拷贝开始...\n");
     utilitiy::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc);
     fc.setCallback(beginCb, totalProgressCb, singleProgressCb);
     auto result = fc.start(&failSrcFile, &failDestFile, &failCode);
@@ -101,9 +108,10 @@ void testFileCopy(int argc, char** argv)
     }
     if (!udisk.empty() && !destPath.empty() && "/" != destPath)
     {
-        auto command = "umount -lf " + destPath;
+        auto command = "umount -f " + destPath;
         printf("执行命令: %s\n", command.c_str());
         utilitiy::System::runCmd(command);
+        printf("完毕\n");
     }
 }
 

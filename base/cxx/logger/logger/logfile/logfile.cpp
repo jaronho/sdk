@@ -49,7 +49,7 @@ bool Logfile::createPath(const std::string& path)
     return true;
 }
 
-Logfile::Logfile(const std::string& path, const std::string& filename, size_t maxSize, size_t syncFreq)
+Logfile::Logfile(const std::string& path, const std::string& filename, size_t maxSize)
 {
     assert(!path.empty());
     assert(!filename.empty());
@@ -67,7 +67,6 @@ Logfile::Logfile(const std::string& path, const std::string& filename, size_t ma
     m_fullName = m_path + "/" + m_filename;
 #endif
     m_maxSize = maxSize;
-    m_syncFreq = syncFreq > 0 ? syncFreq : 1;
 }
 
 Logfile::~Logfile()
@@ -109,7 +108,7 @@ void Logfile::close()
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_f.is_open())
     {
-        m_f.sync();
+        m_f.flush();
         m_f.close();
     }
     m_size.store(0);
@@ -133,11 +132,6 @@ std::string Logfile::getFullName() const
 size_t Logfile::getMaxSize() const
 {
     return m_maxSize;
-}
-
-size_t Logfile::getSyncFreq() const
-{
-    return m_syncFreq;
 }
 
 bool Logfile::isEnable() const
@@ -177,7 +171,6 @@ void Logfile::clear()
 
 Logfile::Result Logfile::record(const std::string& content, bool newline)
 {
-    static size_t s_count = 0;
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (!m_f.is_open())
     {
@@ -221,16 +214,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
     }
     if (needFlush)
     {
-        ++s_count;
-        if (s_count >= m_syncFreq)
-        {
-            s_count = 0;
-            m_f.sync();
-        }
-        else
-        {
-            m_f.flush();
-        }
+        m_f.flush();
         if (!m_f.good())
         {
             m_f.close();

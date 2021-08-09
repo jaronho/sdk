@@ -38,9 +38,8 @@ public:
      * @param path 日志文件路径, 例如: "/home/workdpace/logs" 或 "/home/workdpace/logs/"
      * @param filename 日志文件名, 例如: "demo.log"
      * @param maxSize 文件最大容量值(字节), 例如: 4M = 4 * 1024 * 1024
-     * @param syncFreq 主动同步到磁盘的频率(单位:条数), 每记录几条就同步, 例如: 50条
      */
-    Logfile(const std::string& path, const std::string& filename, size_t maxSize, size_t syncFreq);
+    Logfile(const std::string& path, const std::string& filename, size_t maxSize);
 
     ~Logfile();
 
@@ -86,12 +85,6 @@ public:
     size_t getMaxSize() const;
 
     /**
-     * @brief 获取日志文件同步频率
-     * @return 同步频率(条数)
-     */
-    size_t getSyncFreq() const;
-
-    /**
      * @brief 是否启用记录功能
      * @return true-启用, false-禁用
      */
@@ -127,7 +120,6 @@ private:
     std::string m_filename; /* 日志文件名 */
     std::string m_fullName; /* 日志文件全名(包含路径) */
     size_t m_maxSize; /* 文件最大容量值 */
-    size_t m_syncFreq; /* 同步到磁盘的频率 */
     std::recursive_mutex m_mutex; /* 互斥锁 */
     std::fstream m_f; /* 文件流 */
     std::atomic_size_t m_size = {0}; /* 文件当前大小 */

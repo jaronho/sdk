@@ -226,7 +226,7 @@ bool IniFile::save()
         }
     }
     f.write(data.c_str(), data.size());
-    f.sync();
+    f.flush();
     f.close();
     m_changed = false;
     return true;

@@ -211,7 +211,7 @@ bool curlDownload(const RequestPtr& req, const std::string& filename, bool recov
         return (size_t)0;
     });
     auto ret = obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
-    f.sync();
+    f.flush();
     f.close();
     return ret;
 }

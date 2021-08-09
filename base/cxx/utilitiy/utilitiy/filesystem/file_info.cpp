@@ -108,7 +108,6 @@ bool FileInfo::create() const
     std::fstream f(m_fullName, std::ios::out | std::ios::app);
     if (f.is_open())
     {
-        f.sync();
         f.close();
         return true;
     }
@@ -232,7 +231,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         }
     }
     free(block);
-    destFile.sync();
+    destFile.flush();
     /* 关闭文件句柄 */
     srcFile.close();
     destFile.close();
@@ -334,7 +333,7 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
         return false;
     }
     f.write(data, length);
-    f.sync();
+    f.flush();
     f.close();
     return true;
 }
