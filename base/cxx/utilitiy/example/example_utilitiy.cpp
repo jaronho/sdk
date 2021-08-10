@@ -1,5 +1,8 @@
 #include <chrono>
 #include <iostream>
+#ifndef _WIN32
+#include <sys/mount.h>
+#endif
 
 #include "../utilitiy/cmdline/cmdline.h"
 #include "../utilitiy/filesystem/file_copy.h"
@@ -84,13 +87,39 @@ void testFileCopy(int argc, char** argv)
         command = "ntfsfix " + udisk;
         printf("执行命令: %s\n", command.c_str());
         utilitiy::System::runCmd(command);
-        command = "mount -o async,iocharset=utf8 " + udisk + " " + destPath;
-        printf("执行命令: %s\n", command.c_str());
-        utilitiy::System::runCmd(command);
+        int ret = mount(udisk.c_str(), destPath.c_str(), "vfat", MS_SYNCHRONOUS, "utf8"); /* 方法1 */
+        if (0 == ret)
+        {
+            printf("挂载USB(vfat): %s 成功\n", udisk.c_str());
+        }
+        else
+        {
+            printf("挂载USB(vfat): %s 失败: %d %d %s\n", udisk.c_str(), ret, errno, strerror(errno));
+            command = "ntfs-3g -o sync,noatime,big_writes " + udisk + " " + destPath; /* 方法2 */
+            ret = utilitiy::System::runCmd(command);
+            if (0 == ret)
+            {
+                printf("挂载USB(ntfs-3g): %s 成功\n", command.c_str());
+            }
+            else
+            {
+                printf("挂载USB(ntfs-3g): %s 失败: %d %d %s\n", command.c_str(), ret, errno, strerror(errno));
+                command = "mount -o iocharset=utf8,sync,noatime,big_writes " + udisk + " " + destPath; /* 方法3 */
+                ret = utilitiy::System::runCmd(command);
+                if (0 == ret)
+                {
+                    printf("挂载USB(命令): %s 成功v", command.c_str());
+                }
+                else
+                {
+                    printf("挂载USB(命令): %s 失败: %d %d %s\n", command.c_str(), ret, errno, strerror(errno));
+                }
+            }
+        }
     }
     printf("拷贝开始...\n");
     std::chrono::steady_clock::time_point tm1 = std::chrono::steady_clock::now();
-    utilitiy::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc);
+    utilitiy::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc, nullptr, ".tmp");
     fc.setCallback(beginCb, totalProgressCb, singleProgressCb);
     auto result = fc.start(&failSrcFile, &failDestFile, &failCode);
     switch (result)

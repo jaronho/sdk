@@ -57,9 +57,11 @@ public:
      * @param coverDest 若目标目录已存在同名文件是否覆盖, true-覆盖, false-重命名要拷贝的文件
      * @param filterFunc 过滤函数
      * @param stopFunc 停止函数(选填)
+     * @param tmpSuffix 临时后缀名(选填), 默认不使用临时文件
      */
     FileCopy(const std::string& srcPath, const std::vector<std::string>& srcFilelist, const std::string& destPath, bool clearDest,
-             bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc = nullptr);
+             bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc = nullptr,
+             const std::string& tmpSuffix = "");
     FileCopy() = default;
     virtual ~FileCopy() = default;
 
@@ -116,6 +118,7 @@ private:
     std::vector<std::string> m_destFilelist; /* 已拷贝的目标文件列表 */
     bool m_clearDestPath; /* 拷贝前是否清空目标目录 */
     bool m_coverDestFile; /* 当目标目录已有同名文件时是否覆盖 */
+    std::string m_tmpSuffix; /* 临时后缀名 */
     FileCopyFilterFunc m_filterFunc; /* 过滤函数 */
     FileCopyStopFunc m_stopFunc; /* 停止函数 */
     FileCopyBeginCallback m_beginCallback; /* 开始回调 */

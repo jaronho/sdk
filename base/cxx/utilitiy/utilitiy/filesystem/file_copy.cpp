@@ -3,7 +3,7 @@
 namespace utilitiy
 {
 FileCopy::FileCopy(const std::string& srcPath, const std::vector<std::string>& srcFilelist, const std::string& destPath, bool clearDest,
-                   bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc)
+                   bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc, const std::string& tmpSuffix)
     : m_srcPathInfo(srcPath, true)
     , m_srcFilelist(srcFilelist)
     , m_destPathInfo(destPath, true)
@@ -13,6 +13,17 @@ FileCopy::FileCopy(const std::string& srcPath, const std::vector<std::string>& s
     , m_stopFunc(stopFunc)
     , m_failCode(0)
 {
+    if (!tmpSuffix.empty())
+    {
+        if ('.' == tmpSuffix[0])
+        {
+            m_tmpSuffix = tmpSuffix;
+        }
+        else
+        {
+            m_tmpSuffix = "." + tmpSuffix;
+        }
+    }
 }
 
 void FileCopy::setCallback(const FileCopyBeginCallback& beginCb, const FileCopyTotalProgressCallback& totalProgressCb,
@@ -120,10 +131,6 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
     {
         utilitiy::FileInfo srcFileInfo(srcFilelist[index]);
         auto destFile = m_destPathInfo.path() + srcFileInfo.name().substr(m_srcPathInfo.path().size());
-        if (!m_coverDestFile)
-        {
-            destFile = checkDestFile(destFile); /* 检测目标文件是否已存在并重命名 */
-        }
         /* 判断或创建目标目录 */
         utilitiy::PathInfo destPathInfo(utilitiy::FileInfo(destFile).path());
         if (!destPathInfo.exist() && !destPathInfo.create()) /* 目标目录不存在且创建失败 */
@@ -139,7 +146,17 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
         }
         /* 执行拷贝操作 */
         int errCode = 0;
-        auto result = srcFileInfo.copy(destFile, &errCode, [&](size_t now, size_t total) {
+        auto destFileNew = destFile;
+        if (!m_coverDestFile)
+        {
+            destFileNew = checkDestFile(destFile); /* 检测目标文件是否已存在并重命名 */
+        }
+        auto destFileTmp = destFileNew; /* 临时文件名 */
+        if (!m_tmpSuffix.empty())
+        {
+            destFileTmp = destFile + m_tmpSuffix;
+        }
+        auto result = srcFileInfo.copy(destFileTmp, &errCode, [&](size_t now, size_t total) {
             if (m_stopFunc && m_stopFunc())
             {
                 return false;
@@ -153,12 +170,22 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
         /* 拷贝结果处理 */
         if (FileInfo::CopyResult::OK == result)
         {
-            m_destFilelist.emplace_back(destFile);
+            if (0 != destFileTmp.compare(destFileNew))
+            {
+                if (0 != rename(destFileTmp.c_str(), destFileNew.c_str())) /* 临时文件名改为正式文件名 */
+                {
+                    m_failSrcFile = srcFileInfo.name();
+                    m_failDestFile = destFileNew;
+                    m_failCode = errno;
+                    return FileInfo::CopyResult::DEST_OPEN_FAILED;
+                }
+            }
+            m_destFilelist.emplace_back(destFileNew);
         }
         else
         {
             m_failSrcFile = srcFileInfo.name();
-            m_failDestFile = destFile;
+            m_failDestFile = destFileTmp;
             m_failCode = errCode;
             return result;
         }

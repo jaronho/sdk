@@ -219,6 +219,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         memset(block, 0, sizeof(char) * blockSize);
         srcFile.read(block, blockSize);
         readSize = srcFile.gcount();
+        if (0 == readSize)
+        {
+            continue;
+        }
         destFile.write(block, readSize);
         nowSize += readSize;
         if (progressCb)
