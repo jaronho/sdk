@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 
 #include "../utilitiy/cmdline/cmdline.h"
@@ -10,12 +11,13 @@
 void testFileCopy(int argc, char** argv)
 {
     cmdline::parser parser;
-    parser.add<std::string>("src", 's', "src path", true);
-    parser.add<std::string>("files", 'l', "assign copy files(split with ','), if not set will copy all src", false);
-    parser.add<std::string>("dest", 'd', "dest path", true);
-    parser.add<int>("clear", 'c', "clear dest path", false, false);
-    parser.add<int>("cover", 'r', "cover dest file", false, false);
-    parser.add<std::string>("udisk", 'u', "udisk device name", false);
+    parser.add<std::string>("src", 's', "源目录", true);
+    parser.add<std::string>("files", 'f', "指定要拷贝的源文件列表(逗号','分隔), 如果不设则表示拷贝整个源目录", false);
+    parser.add<std::string>("dest", 'd', "目标目录", true);
+    parser.add<int>("clear", 'c', "拷贝前是否清空目标目录", false, 0);
+    parser.add<int>("cover", 'r', "目标目录存在同名文件时是否覆盖", false, 0);
+    parser.add<std::string>("udisk", 'u', "USB设备名称, 如: /dev/sdb", false, "");
+    parser.add<int>("syncio", 'w', "拷贝后是否同步磁盘I/O操作", false, 0);
     parser.parse_check(argc, argv);
     /* 解析参数 */
     auto srcPath = parser.get<std::string>("src");
@@ -24,6 +26,7 @@ void testFileCopy(int argc, char** argv)
     auto clearDest = parser.get<int>("clear");
     auto coverDest = parser.get<int>("cover");
     auto udisk = parser.get<std::string>("udisk");
+    auto syncio = parser.get<int>("syncio");
     /* 参数设置 */
     auto srcFilelist = utilitiy::StrTool::split(filelist, ",");
     auto filterFunc = [](const std::string& name, const utilitiy::FileAttribute& attr, int depth) {
@@ -86,6 +89,7 @@ void testFileCopy(int argc, char** argv)
         utilitiy::System::runCmd(command);
     }
     printf("拷贝开始...\n");
+    std::chrono::steady_clock::time_point tm1 = std::chrono::steady_clock::now();
     utilitiy::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc);
     fc.setCallback(beginCb, totalProgressCb, singleProgressCb);
     auto result = fc.start(&failSrcFile, &failDestFile, &failCode);
@@ -106,13 +110,25 @@ void testFileCopy(int argc, char** argv)
     case utilitiy::FileInfo::CopyResult::NOT_EQUAL:
         printf("\n文件拷贝失败: 源文件%s 和目标文件 %s 不相等\n", failSrcFile.c_str(), failDestFile.c_str());
     }
+    std::chrono::steady_clock::time_point tm2 = std::chrono::steady_clock::now();
+    printf("耗时: %d 毫秒\n", std::chrono::duration_cast<std::chrono::milliseconds>(tm2 - tm1).count());
+    if (1 == syncio)
+    {
+        printf("同步磁盘I/O\n");
+        utilitiy::System::runCmd("sync");
+        std::chrono::steady_clock::time_point tm3 = std::chrono::steady_clock::now();
+        printf("耗时: %d 毫秒\n", std::chrono::duration_cast<std::chrono::milliseconds>(tm3 - tm2).count());
+    }
     if (!udisk.empty() && !destPath.empty() && "/" != destPath)
     {
+        std::chrono::steady_clock::time_point tm4 = std::chrono::steady_clock::now();
         auto command = "umount -f " + destPath;
         printf("执行命令: %s\n", command.c_str());
         utilitiy::System::runCmd(command);
-        printf("完毕\n");
+        std::chrono::steady_clock::time_point tm5 = std::chrono::steady_clock::now();
+        printf("耗时: %d 毫秒\n", std::chrono::duration_cast<std::chrono::milliseconds>(tm5 - tm4).count());
     }
+    printf("完毕\n");
 }
 
 int main(int argc, char** argv)
