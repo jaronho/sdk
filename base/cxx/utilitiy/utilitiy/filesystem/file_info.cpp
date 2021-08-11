@@ -349,6 +349,7 @@ char* FileInfo::read(std::fstream& f, size_t offset, size_t& count)
         return NULL;
     }
     char* buffer = NULL;
+    f.seekg(0, std::ios::end);
     size_t fileSize = f.tellg();
     if (offset < fileSize)
     {
