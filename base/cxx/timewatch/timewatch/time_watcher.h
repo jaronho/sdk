@@ -74,11 +74,11 @@ public:
 	 */
     bool check(long long timeout)
     {
-        std::chrono::steady_clock::time_point prevWatch = m_watch;
-        m_watch = std::chrono::steady_clock::now();
-        std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(m_watch - prevWatch);
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_watch);
         if (elapsed.count() >= timeout)
         {
+            m_watch = now;
             return true;
         }
         return false;
