@@ -187,6 +187,7 @@ std::string getProcFile()
 *********************************************************************/
 std::string g_procFile; /* 当前程序文件全路径名 */
 std::string g_procBasename; /* 当前程序文件基础名 */
+std::string g_procVersion; /* 当前程序版本 */
 std::string g_outputPath; /* 崩溃堆栈文件输出路径 */
 DumpCallback g_callback = nullptr; /* 崩溃回调 */
 google_breakpad::ExceptionHandler* g_execptionHandler = nullptr; /* 异常句柄 */
@@ -208,7 +209,12 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     sprintf(ms, "%03d", tb.millitm);
     /* 重命名堆栈文件 */
     auto fi = stripFileInfo(descriptor.path());
-    std::string dumpFile = fi[0] + g_procBasename + "_" + datetime + ms + (fi[3].empty() ? "" : "." + fi[3]);
+    std::string baseName = g_procBasename;
+    if (!g_procVersion.empty())
+    {
+        baseName += "(" + g_procVersion + ")";
+    }
+    std::string dumpFile = fi[0] + baseName + "_" + datetime + ms + (fi[3].empty() ? "" : "." + fi[3]);
     std::string command = "mv " + std::string(descriptor.path()) + " " + dumpFile;
     std::vector<std::string> result;
     int ret = shellCmd(command, &result);
@@ -252,5 +258,16 @@ void start(const std::string& outputPath, const DumpCallback& callback)
     /* 开始监听 */
     google_breakpad::MinidumpDescriptor descriptor(g_outputPath.c_str());
     g_execptionHandler = new google_breakpad::ExceptionHandler(descriptor, NULL, dumpHandler, NULL, true, -1);
+}
+
+void setProcVersion(const std::string& procVersion)
+{
+    static bool s_setted = false;
+    if (s_setted)
+    {
+        return;
+    }
+    s_setted = true;
+    g_procVersion = procVersion;
 }
 } // namespace crashdump

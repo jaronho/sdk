@@ -17,4 +17,10 @@ using DumpCallback = std::function<void(const std::string& json)>;
  * @param callback 崩溃回调
  */
 void start(const std::string& outputPath, const DumpCallback& callback = nullptr);
+
+/**
+ * @brief 设置程序版本(用于拼接再崩溃堆栈文件名上)
+ * @param procVersion 程序版本
+ */
+void setProcVersion(const std::string& procVersion);
 } // namespace crashdump

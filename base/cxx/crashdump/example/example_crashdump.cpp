@@ -30,6 +30,7 @@ void crash2()
 int main(int argc, char** argv)
 {
     crashdump::start("./dump", [](const std::string& json) { std::cout << json << std::endl; });
+    crashdump::setProcVersion("1.0.0");
     crash2();
     return 0;
 }
