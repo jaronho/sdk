@@ -84,5 +84,5 @@ private:
 #define TIMEOUT_MONITOR_CAPTURE(monitor, timeout, subTag) monitor.capture(timeout, subTag);
 
 /* 启动简单超时监控器(非线程安全,自动命名变量) */
-#define START_SIMPLE_TIMEOUT_MONITOR(endFunc, timeout, tag) \
-    MAKE_TIMEOUT_MONITOR(TIME_WATCHER_VAR(_timeoutMonitor_), nullptr, endFunc, timeout, tag)
+#define START_SIMPLE_TIMEOUT_MONITOR(endFunc, timeout) \
+    MAKE_TIMEOUT_MONITOR(TIME_WATCHER_VAR(_timeoutMonitor_), nullptr, endFunc, timeout, "")

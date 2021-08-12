@@ -87,4 +87,4 @@ private:
 #define TIME_WATCHER_WATCH(watcher, subTag) watcher.watch(subTag);
 
 /* 启动简单时间观察者(非线程安全,自动命名变量) */
-#define START_SIMPLE_TIME_WATCHER(endFunc, tag) MAKE_TIME_WATCHER(TIME_WATCHER_VAR(_timeWatcher_), nullptr, endFunc, tag)
+#define START_SIMPLE_TIME_WATCHER(endFunc) MAKE_TIME_WATCHER(TIME_WATCHER_VAR(_timeWatcher_), nullptr, endFunc, "")

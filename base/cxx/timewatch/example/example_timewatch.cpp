@@ -3,31 +3,31 @@
 
 #include "timewatch/timeout_monitor.h"
 
-/* ºÄÊ±¼ì²âÆ÷¹Û²ì */
+/* è€—æ—¶æ£€æµ‹å™¨è§‚å¯Ÿ */
 void onWatcherWatch(const std::string& tag, const std::string& subTag, long long elapsed)
 {
     std::cout << "watcher[watch]: [" << tag << "][" << subTag << "] " << elapsed << " ms" << std::endl;
 }
 
-/* ºÄÊ±¼ì²âÆ÷½áÊø */
+/* è€—æ—¶æ£€æµ‹å™¨ç»“æŸ */
 void onWatcherEnd(const std::string& tag, long long elapsed)
 {
     std::cout << "watcher[finish]: [" << tag << "] " << elapsed << " ms" << std::endl;
 }
 
-/* ³¬Ê±¼à¿ØÆ÷¹Û²ì */
+/* è¶…æ—¶ç›‘æŽ§å™¨è§‚å¯Ÿ */
 void onMonitorCapture(const std::string& tag, const std::string& subTag, long long elapsed)
 {
     std::cout << "monitor[watch]: [" << tag << "][" << subTag << "] " << elapsed << " ms" << std::endl;
 }
 
-/* ³¬Ê±¼à¿ØÆ÷½áÊø */
+/* è¶…æ—¶ç›‘æŽ§å™¨ç»“æŸ */
 void onMonitorEnd(const std::string& tag, long long elapsed)
 {
     std::cout << "monitor[finish]: [" << tag << "] " << elapsed << " ms" << std::endl;
 }
 
-/* ²âÊÔºÄÊ±¼ì²âÆ÷: ÆÕÍ¨ºê */
+/* æµ‹è¯•è€—æ—¶æ£€æµ‹å™¨: æ™®é€šå® */
 void testTimeWather1()
 {
     MAKE_TIME_WATCHER(watcher, onWatcherWatch, onWatcherEnd, "testTimeWather-1");
@@ -39,14 +39,16 @@ void testTimeWather1()
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
-/* ²âÊÔºÄÊ±¼ì²âÆ÷: ¼ò»¯ºóµÄºê */
+/* æµ‹è¯•è€—æ—¶æ£€æµ‹å™¨: ç®€åŒ–åŽçš„å® */
 void testTimeWather2()
 {
-    START_SIMPLE_TIME_WATCHER(onWatcherEnd, "testTimeWather-2");
+    START_SIMPLE_TIME_WATCHER([](const std::string& tag, long long elapsed) {
+        std::cout << "watcher[finish]: [testTimeWather-1] " << elapsed << " ms" << std::endl;
+    });
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
-/* ²âÊÔ³¬Ê±¼à¿ØÆ÷: ÆÕÍ¨ºê */
+/* æµ‹è¯•è¶…æ—¶ç›‘æŽ§å™¨: æ™®é€šå® */
 void testTimeoutMonitor1()
 {
     MAKE_TIMEOUT_MONITOR(monitor, onMonitorCapture, onMonitorEnd, 1000, "testTimeoutMonitor-1");
@@ -58,10 +60,14 @@ void testTimeoutMonitor1()
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
-/* ²âÊÔ³¬Ê±¼à¿ØÆ÷: ¼ò»¯ºóµÄºê, ¼òÒ×µÄºê */
+/* æµ‹è¯•è¶…æ—¶ç›‘æŽ§å™¨: ç®€åŒ–åŽçš„å®, ç®€æ˜“çš„å® */
 void testTimeoutMonitor2()
 {
-    START_SIMPLE_TIMEOUT_MONITOR(onMonitorEnd, 100, "testTimeoutMonitor-2");
+    START_SIMPLE_TIMEOUT_MONITOR(
+        [](const std::string& tag, long long elapsed) {
+            std::cout << "monitor[finish]: [testTimeoutMonitor-2] " << elapsed << " ms" << std::endl;
+        },
+        100);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
