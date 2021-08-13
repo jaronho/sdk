@@ -58,10 +58,10 @@ std::string StrTool::replace(std::string str, const std::string& rep, const std:
 
 std::vector<std::string> StrTool::split(const std::string& str, const std::string& pattern)
 {
-    std::vector<std::string> result;
+    std::vector<std::string> strList;
     if (str.empty() || pattern.empty())
     {
-        return result;
+        return strList;
     }
     std::string::size_type pos;
     for (size_t i = 0; i < str.size(); ++i)
@@ -71,10 +71,20 @@ std::vector<std::string> StrTool::split(const std::string& str, const std::strin
         {
             pos = str.size();
         }
-        result.emplace_back(str.substr(i, pos - i));
+        strList.emplace_back(str.substr(i, pos - i));
         i = pos + pattern.size() - 1;
     }
-    return result;
+    return strList;
+}
+
+std::string StrTool::join(const std::vector<std::string>& strList, const std::string& pattern)
+{
+    std::string str;
+    for (size_t i = 0; i < strList.size(); ++i)
+    {
+        str += (i > 0 ? pattern : "") + strList[i];
+    }
+    return str;
 }
 
 std::string StrTool::toHex(const char* bytes, unsigned int byteCount, bool upper, const std::string& sep)

@@ -43,7 +43,7 @@ public:
 
     /**
      * @brief 内容替换
-     * @param str 原始字符串
+     * @param str 字符串
      * @param rep 被替换的内容
      * @param dest 替换后的内容
      * @return 替换后的字符串
@@ -52,11 +52,19 @@ public:
 
     /**
      * @brief 分割
-     * @param str 原始字符串
-     * @param pattern 分割的内容
+     * @param str 字符串
+     * @param pattern 分割的符号
      * @return 分割后的子字符串列表
      */
     static std::vector<std::string> split(const std::string& str, const std::string& pattern);
+
+    /**
+     * @brief 组合
+     * @param strList 字符串列表
+     * @param pattern 组合的符号(选填), 默认为空
+     * @return 组合后的字符串
+     */
+    static std::string join(const std::vector<std::string>& strList, const std::string& pattern = "");
 
     /**
      * @brief 转为16进制字符串
