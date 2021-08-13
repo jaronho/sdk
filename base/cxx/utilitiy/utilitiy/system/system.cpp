@@ -12,6 +12,10 @@ namespace utilitiy
 {
 int System::runCmd(const std::string& cmd, std::vector<std::string>* result)
 {
+    if (result)
+    {
+        (*result).clear();
+    }
     if (cmd.empty())
     {
         return -1;
@@ -28,7 +32,6 @@ int System::runCmd(const std::string& cmd, std::vector<std::string>* result)
     }
     if (result)
     {
-        (*result).clear();
         const size_t bufferSize = 1024;
         char buffer[bufferSize] = {0};
         std::string line;
