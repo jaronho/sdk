@@ -209,11 +209,7 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     sprintf(ms, "%03d", tb.millitm);
     /* 重命名堆栈文件 */
     auto fi = stripFileInfo(descriptor.path());
-    std::string baseName = g_procBasename;
-    if (!g_procVersion.empty())
-    {
-        baseName += "(" + g_procVersion + ")";
-    }
+    std::string baseName = g_procBasename + g_procVersion;
     std::string dumpFile = fi[0] + baseName + "_" + datetime + ms + (fi[3].empty() ? "" : "." + fi[3]);
     std::string command = "mv " + std::string(descriptor.path()) + " " + dumpFile;
     std::vector<std::string> result;
@@ -223,7 +219,7 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
         dumpFile = descriptor.path();
     }
     /* 堆栈文件处理 */
-    command = "dump_assist.sh -pname " + g_procFile + " -dname " + dumpFile;
+    command = "dump_assist.sh -pname " + g_procFile + " -pver " + g_procVersion + " -dname " + dumpFile;
     ret = shellCmd(command, &result);
     /* 回调到外部 */
     if (g_callback)
