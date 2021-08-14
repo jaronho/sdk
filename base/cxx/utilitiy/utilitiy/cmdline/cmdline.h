@@ -36,7 +36,9 @@
 #include <typeinfo>
 #include <cstring>
 #include <algorithm>
+#ifdef __GNUC__
 #include <cxxabi.h>
+#endif
 #include <cstdlib>
 
 namespace cmdline{
@@ -104,11 +106,17 @@ Target lexical_cast(const Source &arg)
 
 static inline std::string demangle(const std::string &name)
 {
-  int status=0;
-  char *p=abi::__cxa_demangle(name.c_str(), 0, 0, &status);
-  std::string ret(p);
-  free(p);
-  return ret;
+#ifdef _MSC_VER
+    return name; /* 为MSVC编译器时直接返回 */
+#elif defined(__GNUC__)
+    int status=0;
+    char *p=abi::__cxa_demangle(name.c_str(), 0, 0, &status);
+    std::string ret(p);
+    free(p);
+    return ret;
+#else /* 其他不支持的编译器需要自己实现这个方法 */
+    #error unexpected c complier (msc/gcc), Need to implement this method for demangle
+#endif
 }
 
 template <class T>

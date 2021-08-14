@@ -24,6 +24,11 @@ get_cxx_files(${base_utilitiy_path}/utilitiy/filesystem src_list)
 list(APPEND base_utilitiy_filesystem_src_list ${src_list})
 source_group(3rdparty/base/utilitiy/filesystem FILES ${base_utilitiy_filesystem_src_list})
 
+set(base_utilitiy_module_src_list)
+get_cxx_files(${base_utilitiy_path}/utilitiy/module src_list)
+list(APPEND base_utilitiy_module_src_list ${src_list})
+source_group(3rdparty/base/utilitiy/module FILES ${base_utilitiy_module_src_list})
+
 set(base_utilitiy_process_src_list)
 get_cxx_files(${base_utilitiy_path}/utilitiy/process src_list)
 list(APPEND base_utilitiy_process_src_list ${src_list})
@@ -47,6 +52,7 @@ source_group(3rdparty/base/utilitiy FILES ${base_utilitiy_src_list})
 set(base_utilitiy_files) # 工程中需要把utilitiy的文件添加进去
 list(APPEND base_utilitiy_files ${base_utilitiy_cmdline_src_list}
                                 ${base_utilitiy_filesystem_src_list}
+                                ${base_utilitiy_module_src_list}
                                 ${base_utilitiy_process_src_list}
                                 ${base_utilitiy_strtool_src_list}
                                 ${base_utilitiy_system_src_list}
