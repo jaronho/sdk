@@ -3,7 +3,7 @@
 #include <functional>
 #include <string>
 
-namespace timewatch
+namespace utilitiy
 {
 /**
  * @brief 观察回调函数
@@ -32,57 +32,24 @@ public:
 	 * @param endFunc 结束函数
 	 * @param tag 标签
 	 */
-    TimeWatcher(const WatchFunc& watchFunc, const EndFunc& endFunc, const std::string& tag = "")
-        : m_begin(std::chrono::steady_clock::now()), m_watch(m_begin), m_watchFunc(watchFunc), m_endFunc(endFunc), m_tag(tag)
-    {
-    }
+    TimeWatcher(const WatchFunc& watchFunc, const EndFunc& endFunc, const std::string& tag = "");
     TimeWatcher() = default;
 
-    ~TimeWatcher()
-    {
-        if (m_endFunc)
-        {
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_begin);
-            m_endFunc(m_tag, elapsed.count());
-        }
-    }
+    ~TimeWatcher();
 
     /**
 	 * @brief 观察
 	 * @param subTag 子标签
 	 * @param watchFunc 观察函数(若有设置,则回调该函数,否则回调构造时所设置的函数)
 	 */
-    void watch(const std::string& subTag = "", const WatchFunc& watchFunc = nullptr)
-    {
-        std::chrono::steady_clock::time_point prevWatch = m_watch;
-        m_watch = std::chrono::steady_clock::now();
-        std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(m_watch - prevWatch);
-        if (watchFunc)
-        {
-            watchFunc(m_tag, subTag, elapsed.count());
-        }
-        else if (m_watchFunc)
-        {
-            m_watchFunc(m_tag, subTag, elapsed.count());
-        }
-    }
+    void watch(const std::string& subTag = "", const WatchFunc& watchFunc = nullptr);
 
     /**
 	 * @brief 检测是否超时
 	 * @param timeout 超时(毫秒)
 	 * @return true-超时, false-不超时
 	 */
-    bool check(long long timeout)
-    {
-        auto now = std::chrono::steady_clock::now();
-        std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_watch);
-        if (elapsed.count() >= timeout)
-        {
-            m_watch = now;
-            return true;
-        }
-        return false;
-    }
+    bool check(long long timeout);
 
 private:
     std::chrono::steady_clock::time_point m_begin; /* 开始时间 */
@@ -91,14 +58,14 @@ private:
     EndFunc m_endFunc; /* 结束函数 */
     std::string m_tag; /* 标签 */
 };
-} // namespace timewatch
+} // namespace utilitiy
 
 #define TIME_WATCHER_VAR_NAME_CONNECTION(var1, var2) var1##var2
 #define TIME_WATCHER_VAR_NAME(var1, var2) TIME_WATCHER_VAR_NAME_CONNECTION(var1, var2)
 #define TIME_WATCHER_VAR(var) TIME_WATCHER_VAR_NAME(var, __LINE__)
 
 /* 创建时间观察者(非线程安全) */
-#define MAKE_TIME_WATCHER(watcher, watchFunc, endFunc, tag) timewatch::TimeWatcher watcher(watchFunc, endFunc, tag);
+#define MAKE_TIME_WATCHER(watcher, watchFunc, endFunc, tag) utilitiy::TimeWatcher watcher(watchFunc, endFunc, tag);
 
 /* 时间观察者观察(非线程安全) */
 #define TIME_WATCHER_WATCH(watcher, subTag) watcher.watch(subTag);

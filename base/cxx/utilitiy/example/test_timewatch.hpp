@@ -1,7 +1,8 @@
+#pragma once
 #include <iostream>
 #include <thread>
 
-#include "timewatch/timeout_monitor.h"
+#include "../utilitiy/timewatch/timeout_monitor.h"
 
 /* 耗时检测器观察 */
 void onWatcherWatch(const std::string& tag, const std::string& subTag, long long elapsed)
@@ -71,8 +72,9 @@ void testTimeoutMonitor2()
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
-int main()
+void testTimewatch()
 {
+    printf("\n============================== test timewatch =============================\n");
     testTimeWather1();
     std::cout << std::endl;
     testTimeWather2();
@@ -80,5 +82,4 @@ int main()
     testTimeoutMonitor1();
     std::cout << std::endl;
     testTimeoutMonitor2();
-    return 0;
 }
