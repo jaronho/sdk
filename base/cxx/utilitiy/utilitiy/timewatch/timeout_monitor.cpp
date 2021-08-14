@@ -1,4 +1,3 @@
-#pragma once
 #include "timeout_monitor.h"
 
 namespace utilitiy

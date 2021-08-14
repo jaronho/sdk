@@ -1,4 +1,3 @@
-#pragma once
 #include "time_watcher.h"
 
 namespace utilitiy
