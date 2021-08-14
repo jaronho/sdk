@@ -11,6 +11,7 @@
 #include "test_module.hpp"
 #include "test_process.hpp"
 #include "test_system.hpp"
+#include "test_timewatch.hpp"
 
 void testFileCopy(int argc, char** argv)
 {
@@ -176,6 +177,7 @@ int main(int argc, char** argv)
     testModule();
     testProcess();
     testSystem();
+    testTimewatch();
 #else
     testFileCopy(argc, argv);
 #endif
