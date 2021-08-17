@@ -221,7 +221,11 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         readSize = srcFile.gcount();
         if (0 == readSize)
         {
-            continue;
+            if (errCode)
+            {
+                *errCode = errno;
+            }
+            break;
         }
         destFile.write(block, readSize);
         nowSize += readSize;
