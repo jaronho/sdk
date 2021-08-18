@@ -8,7 +8,7 @@
 
 #define INI_KEY_VAR(var) var
 #define MAKE_INI_KV(id, keyVar, keyName, value, sectionComment, comment, readOnly) \
-    const std::string INI_KEY_VAR(keyVar) = ini::makeKeyValue(id, keyName, value, sectionComment, comment, readOnly);
+    const std::string INI_KEY_VAR(keyVar) = ini::makeKeyValue(id, keyName, value, sectionComment, comment, readOnly)
 
 namespace ini
 {

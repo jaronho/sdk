@@ -65,13 +65,13 @@ private:
 #define TIME_WATCHER_VAR(var) TIME_WATCHER_VAR_NAME(var, __LINE__)
 
 /* 创建时间观察者(非线程安全) */
-#define MAKE_TIME_WATCHER(watcher, watchFunc, endFunc, tag) utilitiy::TimeWatcher watcher(watchFunc, endFunc, tag);
+#define MAKE_TIME_WATCHER(watcher, watchFunc, endFunc, tag) utilitiy::TimeWatcher watcher(watchFunc, endFunc, tag)
 
 /* 时间观察者观察(非线程安全) */
-#define TIME_WATCHER_WATCH(watcher, subTag) watcher.watch(subTag);
+#define TIME_WATCHER_WATCH(watcher, subTag) watcher.watch(subTag)
 
 /* 时间观察者观察(非线程安全) */
-#define TIME_WATCHER_CHECK(watcher, timeout) watcher.check(timeout);
+#define TIME_WATCHER_CHECK(watcher, timeout) watcher.check(timeout)
 
 /* 启动简单时间观察者(非线程安全,自动命名变量) */
 #define START_SIMPLE_TIME_WATCHER(endFunc) MAKE_TIME_WATCHER(TIME_WATCHER_VAR(_timeWatcher_), nullptr, endFunc, "")

@@ -15,12 +15,12 @@ const std::string CONFIG_FILENAME = "config.ini";
 
 namespace config_key
 {
-CONFIG_KV_SW(APPNAME, "/appname", "测试") /* 应用程序名称 */
-CONFIG_KV_SR(VERSION, "/version", "1.0.0") /* 应用程序版本 */
+CONFIG_KV_SW(APPNAME, "/appname", "测试"); /* 应用程序名称 */
+CONFIG_KV_SR(VERSION, "/version", "1.0.0"); /* 应用程序版本 */
 
-CONFIG_KV_SW(SERVER_IP, "/server/ip", "192.168.5.2") /* 服务器地址 */
-CONFIG_KV_IW(SERVER_PORT, "/server/port", 8009) /* 服务器端口 */
+CONFIG_KV_SW(SERVER_IP, "/server/ip", "192.168.5.2"); /* 服务器地址 */
+CONFIG_KV_IW(SERVER_PORT, "/server/port", 8009); /* 服务器端口 */
 
-CONFIG_KV_SW(ADMIN_ACCOUNT, "/admin/account", "root") /* 管理员账户 */
-CONFIG_KV_SW(ADMIN_PASSWORD, "/admin/password", "123456") /* 管理员密码 */
+CONFIG_KV_SW(ADMIN_ACCOUNT, "/admin/account", "root"); /* 管理员账户 */
+CONFIG_KV_SW(ADMIN_PASSWORD, "/admin/password", "123456"); /* 管理员密码 */
 } // namespace config_key

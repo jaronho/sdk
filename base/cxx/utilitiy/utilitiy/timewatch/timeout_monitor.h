@@ -41,10 +41,10 @@ private:
 
 /* 创建超时监控器(非线程安全) */
 #define MAKE_TIMEOUT_MONITOR(monitor, captureFunc, endFunc, timeout, tag) \
-    utilitiy::TimeoutMonitor monitor(captureFunc, endFunc, timeout, tag);
+    utilitiy::TimeoutMonitor monitor(captureFunc, endFunc, timeout, tag)
 
 /* 超时监控器抓拍(非线程安全) */
-#define TIMEOUT_MONITOR_CAPTURE(monitor, timeout, subTag) monitor.capture(timeout, subTag);
+#define TIMEOUT_MONITOR_CAPTURE(monitor, timeout, subTag) monitor.capture(timeout, subTag)
 
 /* 启动简单超时监控器(非线程安全,自动命名变量) */
 #define START_SIMPLE_TIMEOUT_MONITOR(endFunc, timeout) \
