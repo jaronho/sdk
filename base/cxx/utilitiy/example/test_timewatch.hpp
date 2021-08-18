@@ -31,11 +31,11 @@ void onMonitorEnd(const std::string& tag, long long elapsed)
 /* 测试耗时检测器: 普通宏 */
 void testTimeWather1()
 {
-    MAKE_TIME_WATCHER(watcher, onWatcherWatch, onWatcherEnd, "testTimeWather-1");
+    MAKE_TIME_WATCHER(watcher, onWatcherWatch, onWatcherEnd, "testTimeWather-1")
     for (int i = 0; i <= 5; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(i * 100));
-        TIME_WATCHER_WATCH(watcher, std::to_string(i));
+        TIME_WATCHER_WATCH(watcher, std::to_string(i))
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
@@ -45,18 +45,18 @@ void testTimeWather2()
 {
     START_SIMPLE_TIME_WATCHER([](const std::string& tag, long long elapsed) {
         std::cout << "watcher[finish]: [testTimeWather-1] " << elapsed << " ms" << std::endl;
-    });
+    })
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 /* 测试超时监控器: 普通宏 */
 void testTimeoutMonitor1()
 {
-    MAKE_TIMEOUT_MONITOR(monitor, onMonitorCapture, onMonitorEnd, 1000, "testTimeoutMonitor-1");
+    MAKE_TIMEOUT_MONITOR(monitor, onMonitorCapture, onMonitorEnd, 1000, "testTimeoutMonitor-1")
     for (int i = 0; i <= 5; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(i * 100));
-        TIMEOUT_MONITOR_CAPTURE(monitor, 50, std::to_string(i));
+        TIMEOUT_MONITOR_CAPTURE(monitor, 50, std::to_string(i))
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }

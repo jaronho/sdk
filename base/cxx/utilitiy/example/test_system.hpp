@@ -9,16 +9,13 @@
 void testSystem()
 {
     printf("\n============================== test system =============================\n");
-    std::vector<std::string> result;
+    std::string outStr;
 #ifdef _WIN32
-    int ret = utilitiy::System::runCmd("dir", &result);
+    int ret = utilitiy::System::runCmd("dir", &outStr);
 #else
-    int ret = utilitiy::System::runCmd("ls", &result);
+    int ret = utilitiy::System::runCmd("ls", &outStr);
 #endif
     printf("ret: %d\n", ret);
-    for (auto line : result)
-    {
-        printf("%s\n", line.c_str());
-    }
+    printf("out: %s\n", outStr.c_str());
     printf("------------------------------\n");
 }

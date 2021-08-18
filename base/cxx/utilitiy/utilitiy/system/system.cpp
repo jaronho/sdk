@@ -10,11 +10,15 @@
 
 namespace utilitiy
 {
-int System::runCmd(const std::string& cmd, std::vector<std::string>* result)
+int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std::string>* outVec)
 {
-    if (result)
+    if (outStr)
     {
-        (*result).clear();
+        (*outStr).clear();
+    }
+    if (outVec)
+    {
+        (*outVec).clear();
     }
     if (cmd.empty())
     {
@@ -30,19 +34,26 @@ int System::runCmd(const std::string& cmd, std::vector<std::string>* result)
     {
         return -2;
     }
-    if (result)
+    if (outStr || outVec)
     {
         const size_t bufferSize = 1024;
         char buffer[bufferSize] = {0};
         std::string line;
         while (memset(buffer, 0, bufferSize) && fgets(buffer, bufferSize - 1, stream))
         {
-            line += buffer;
-            size_t pos = line.find('\n');
-            if (std::string::npos != pos)
+            if (outStr)
             {
-                (*result).emplace_back(line.substr(0, pos));
-                line = line.substr(pos + 1, line.size() - pos);
+                (*outStr).append(buffer);
+            }
+            if (outVec)
+            {
+                line += buffer;
+                size_t pos = line.find('\n');
+                if (std::string::npos != pos)
+                {
+                    (*outVec).emplace_back(line.substr(0, pos));
+                    line = line.substr(pos + 1, line.size() - pos);
+                }
             }
         }
     }

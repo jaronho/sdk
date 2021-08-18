@@ -10,10 +10,11 @@ public:
     /**
      * @brief 执行命令
      * @param cmd 命令内容
-     * @param result [输出]过程输出的可打印内容(选填, 行列表)
+     * @param outStr [输出]过程输出的可打印内容(选填, 字符串)
+     * @param outVec [输出]过程输出的可打印内容(选填, 行列表)
      * @return 执行结果, 0-成功, 非0-失败
      */
-    static int runCmd(const std::string& cmd, std::vector<std::string>* result = nullptr);
+    static int runCmd(const std::string& cmd, std::string* outStr = nullptr, std::vector<std::string>* outVec = nullptr);
 
 #ifndef _WIN32
     /**
