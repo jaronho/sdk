@@ -65,43 +65,47 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
 }
 
 #ifndef _WIN32
-int System::tryLockFile(int fd, bool lock)
+bool System::tryLockFile(int fd, bool lock, bool block)
+{
+    int lockType = lock ? F_WRLCK : F_UNLCK;
+    struct flock fl;
+    fl.l_type = lockType; /* 锁的类型 */
+    fl.l_whence = SEEK_SET; /* 偏移量的起始位置 */
+    fl.l_start = 0; /* 加锁的起始偏移 */
+    fl.l_len = 0; /* 上锁的字节数, 为0时表示锁的区域从起点开始直至最大的可能位置 */
+    int ret = fcntl(fd, block ? F_SETLKW : F_SETLK, &fl);
+    if (0 == ret && lockType == fl.l_type)
+    {
+        return true;
+    }
+    return false;
+}
+
+bool System::checkFileLock(int fd)
 {
     struct flock fl;
-    fl.l_type = lock ? F_WRLCK : F_UNLCK;
+    fl.l_type = F_RDLCK;
     fl.l_whence = SEEK_SET;
     fl.l_start = 0;
     fl.l_len = 0;
-    return fcntl(fd, F_SETLK, &fl);
+    fcntl(fd, F_GETLK, &fl);
+    if (F_UNLCK == fl.l_type)
+    {
+        return false;
+    }
+    return true;
 }
 
-int System::tryLockFile(const std::string& filename, bool lock)
+bool System::checkFileLock(const std::string& filename)
 {
-    int fd = open(filename.c_str(), O_RDWR, (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH));
+    int fd = open(filename.c_str(), O_RDONLY);
     if (fd < 0) /* 文件不存在 */
     {
-        return -1;
+        return false;
     }
-    int ret = tryLockFile(fd, lock);
+    bool ret = checkFileLock(fd);
     close(fd);
     return ret;
-}
-
-int System::getFileLockStatus(const std::string& filename)
-{
-    int fd = open(filename.c_str(), O_RDWR, (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH));
-    if (fd < 0) /* 文件不存在 */
-    {
-        return 1;
-    }
-    if (-1 == tryLockFile(fd, true)) /* 文件加锁失败 */
-    {
-        close(fd);
-        return 2;
-    }
-    tryLockFile(fd, false); /* 此处要注意记得解锁和关闭文件 */
-    close(fd);
-    return 3;
 }
 #endif
 } // namespace utilitiy

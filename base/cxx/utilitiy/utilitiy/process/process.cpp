@@ -171,7 +171,7 @@ std::string Process::getProcessExeFile()
 #endif
 }
 
-int Process::searchProcess(const std::string& filename, const std::function<void(const std::string& exeFile, int pid)>& callback)
+int Process::searchProcess(const std::string& filename, const std::function<bool(const std::string& exeFile, int pid)>& callback)
 {
     int matchCount = 0;
 #ifdef _WIN32
@@ -234,7 +234,10 @@ int Process::searchProcess(const std::string& filename, const std::function<void
             ++matchCount;
             if (callback)
             {
-                callback(exeFile, moduleEntry32.th32ProcessID);
+                if (!callback(exeFile, moduleEntry32.th32ProcessID))
+                {
+                    break;
+                }
             }
         }
     } while (Process32Next(processSnap, &processEntry32));
@@ -288,7 +291,10 @@ int Process::searchProcess(const std::string& filename, const std::function<void
             ++matchCount;
             if (callback)
             {
-                callback(exeFile, atoi(dirp->d_name));
+                if (!callback(exeFile, atoi(dirp->d_name)))
+                {
+                    break;
+                }
             }
         }
     }

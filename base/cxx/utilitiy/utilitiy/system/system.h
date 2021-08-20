@@ -19,27 +19,26 @@ public:
 #ifndef _WIN32
     /**
      * @brief 对文件加锁/解锁
+     * @param fd 文件描述符(注意: 如果fd被关闭了,则自动解锁)
+     * @param lock true-加锁, false-解锁
+     * @param block true-阻塞(直到其他进程解锁), false-非阻塞
+     * @return true-成功, false-失败
+     */
+    static bool tryLockFile(int fd, bool lock, bool block = true);
+
+    /**
+     * @brief 对检测文件是否被加锁
      * @param fd 文件描述符
-     * @param lock true-加锁, false-解锁
-     * @return -1-出错, 其他值-正确
+     * @return true-被加锁, false-未加锁
      */
-    static int tryLockFile(int fd, bool lock);
+    static bool checkFileLock(int fd);
 
     /**
-     * @brief 对文件加锁/解锁
+     * @brief 对检测文件是否被加锁
      * @param filename 文件名
-     * @param lock true-加锁, false-解锁
-     * @return -1-出错, 其他值-正确
+     * @return true-被加锁, false-未加锁
      */
-    static int tryLockFile(const std::string& filename, bool lock);
-
-    /**
-     * @brief 获取文件的加锁状态
-     * @param filename 文件名
-     * @param lock true-加锁, false-解锁
-     * @return 1-文件不存在, 2-文件已被加锁, 3-文件未被加锁
-     */
-    static int getFileLockStatus(const std::string& filename);
+    static bool checkFileLock(const std::string& filename);
 #endif
 };
 } // namespace utilitiy
