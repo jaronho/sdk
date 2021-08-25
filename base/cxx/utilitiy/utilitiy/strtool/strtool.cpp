@@ -87,6 +87,50 @@ std::string StrTool::join(const std::vector<std::string>& strList, const std::st
     return str;
 }
 
+bool StrTool::isBeginWith(std::string str, std::string beg, bool caseSensitive)
+{
+    if (beg.empty())
+    {
+        return true;
+    }
+    if (beg.size() > str.size())
+    {
+        return false;
+    }
+    if (!caseSensitive)
+    {
+        std::transform(str.begin(), str.end(), str.begin(), tolower);
+        std::transform(beg.begin(), beg.end(), beg.begin(), tolower);
+    }
+    if (0 == str.compare(0, beg.size(), beg))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool StrTool::isEndWith(std::string str, std::string end, bool caseSensitive)
+{
+    if (end.empty())
+    {
+        return true;
+    }
+    if (end.size() > str.size())
+    {
+        return false;
+    }
+    if (!caseSensitive)
+    {
+        std::transform(str.begin(), str.end(), str.begin(), tolower);
+        std::transform(end.begin(), end.end(), end.begin(), tolower);
+    }
+    if (0 == str.compare(str.size() - end.size(), end.size(), end))
+    {
+        return true;
+    }
+    return false;
+}
+
 std::string StrTool::toHex(const char* bytes, unsigned int byteCount, bool upper, const std::string& sep)
 {
     std::string hexStr;

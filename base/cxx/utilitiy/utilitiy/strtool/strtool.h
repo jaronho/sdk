@@ -67,6 +67,24 @@ public:
     static std::string join(const std::vector<std::string>& strList, const std::string& pattern = "");
 
     /**
+     * @brief 是否以指定字符串开头
+     * @param str 字符串
+     * @param beg 开头字符串
+     * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
+     * @return true-是, false-否
+     */
+    static bool isBeginWith(std::string str, std::string beg, bool caseSensitive = true);
+
+    /**
+     * @brief 是否以指定字符串结尾
+     * @param str 字符串
+     * @param end 结尾字符串
+     * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
+     * @return true-是, false-否
+     */
+    static bool isEndWith(std::string str, std::string end, bool caseSensitive = true);
+
+    /**
      * @brief 转为16进制字符串
      * @param bytes 字节流
      * @param byteCount 字节数
