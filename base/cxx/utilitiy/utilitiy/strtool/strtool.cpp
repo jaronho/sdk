@@ -5,6 +5,20 @@
 
 namespace utilitiy
 {
+bool StrTool::equal(std::string str1, std::string str2, bool caseSensitive)
+{
+    if (!caseSensitive)
+    {
+        std::transform(str1.begin(), str1.end(), str1.begin(), tolower);
+        std::transform(str2.begin(), str2.end(), str2.begin(), tolower);
+    }
+    if (0 == str1.compare(str2))
+    {
+        return true;
+    }
+    return false;
+}
+
 void StrTool::trimLeft(std::string& str, char c)
 {
     if (str.empty())
@@ -56,33 +70,33 @@ std::string StrTool::replace(std::string str, const std::string& rep, const std:
     return str;
 }
 
-std::vector<std::string> StrTool::split(const std::string& str, const std::string& pattern)
+std::vector<std::string> StrTool::split(const std::string& str, const std::string& sep)
 {
     std::vector<std::string> strList;
-    if (str.empty() || pattern.empty())
+    if (str.empty() || sep.empty())
     {
         return strList;
     }
     std::string::size_type pos;
     for (size_t i = 0; i < str.size(); ++i)
     {
-        pos = str.find(pattern, i);
+        pos = str.find(sep, i);
         if (std::string::npos == pos)
         {
             pos = str.size();
         }
         strList.emplace_back(str.substr(i, pos - i));
-        i = pos + pattern.size() - 1;
+        i = pos + sep.size() - 1;
     }
     return strList;
 }
 
-std::string StrTool::join(const std::vector<std::string>& strList, const std::string& pattern)
+std::string StrTool::join(const std::vector<std::string>& strList, const std::string& sep)
 {
     std::string str;
     for (size_t i = 0; i < strList.size(); ++i)
     {
-        str += (i > 0 ? pattern : "") + strList[i];
+        str += (i > 0 ? sep : "") + strList[i];
     }
     return str;
 }
