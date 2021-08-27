@@ -7,7 +7,7 @@ namespace algorithm
  * @brief 值过滤, 用于指定相同的值需要连续重复设置多少次才成功, 过滤掉中间的一些脏数据值
  */
 template<typename T>
-using TVALUE_EQUAL_COMPARE_FUNC = std::function<bool(T a, T b)>; /* 值相等比较函数, 相等返回true, 否则返回false */
+#define TVALUE_EQUAL_COMPARE_FUNC std::function<bool(T a, T b)> /* 值相等比较函数, 相等返回true, 否则返回false */
 class TValue
 {
 public:
