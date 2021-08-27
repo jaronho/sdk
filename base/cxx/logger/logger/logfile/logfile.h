@@ -120,7 +120,7 @@ private:
     std::string m_filename; /* 日志文件名 */
     std::string m_fullName; /* 日志文件全名(包含路径) */
     size_t m_maxSize; /* 文件最大容量值 */
-    std::recursive_mutex m_mutex; /* 互斥锁 */
+    std::mutex m_mutex; /* 互斥锁 */
     std::fstream m_f; /* 文件流 */
     std::atomic_size_t m_size = {0}; /* 文件当前大小 */
     std::atomic_bool m_enable = {true}; /* 是否启用日志记录功能 */

@@ -40,19 +40,19 @@ size_t RotatingLogfile::getFileIndex() const
 
 bool RotatingLogfile::open()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     return m_logfile->open();
 }
 
 void RotatingLogfile::close()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     m_logfile->close();
 }
 
 Logfile::Result RotatingLogfile::record(const std::string& content, bool newline)
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     Logfile::Result ret = m_logfile->record(content, newline);
     if (Logfile::Result::WILL_FULL == ret)
     {

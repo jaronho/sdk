@@ -97,7 +97,7 @@ private:
     std::string m_extName; /* 日志文件后缀名 */
     size_t m_maxFiles; /* 最多文件个数 */
     std::atomic_size_t m_index; /* 当前日志文件索引值 */
-    std::recursive_mutex m_mutex; /* 互斥锁 */
+    std::mutex m_mutex; /* 互斥锁 */
     std::shared_ptr<Logfile> m_logfile; /* 基础日志文件 */
 };
 } // namespace logger

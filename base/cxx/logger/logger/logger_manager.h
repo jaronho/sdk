@@ -96,7 +96,7 @@ private:
     static InnerLoggerPtr createInnerLogger(const LogConfig& cfg);
 
 private:
-    static std::recursive_mutex m_mutex; /* 资源锁 */
+    static std::mutex m_mutex; /* 资源锁 */
     static LogConfig m_logCfg; /* 日志配置 */
     static std::unordered_map<std::string, InnerLoggerPtr> m_loggerMap; /* 内部日志记录器映射表 */
     static std::string m_defaultTagName; /* 默认日志标签名称 */

@@ -76,13 +76,13 @@ Logfile::~Logfile()
 
 bool Logfile::isOpened()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     return m_f.is_open();
 }
 
 bool Logfile::open()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (m_f.is_open())
     {
         return true;
@@ -105,7 +105,7 @@ bool Logfile::open()
 
 void Logfile::close()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (m_f.is_open())
     {
         m_f.flush();
@@ -151,7 +151,7 @@ size_t Logfile::getSize() const
 
 void Logfile::clear()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (m_f.is_open())
     {
         m_f.close();
@@ -171,7 +171,7 @@ void Logfile::clear()
 
 Logfile::Result Logfile::record(const std::string& content, bool newline)
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (!m_f.is_open())
     {
         return Result::INVALID;
