@@ -7,16 +7,11 @@ namespace algorithm
  * @brief 值过滤, 用于指定相同的值需要连续重复设置多少次才成功, 过滤掉中间的一些脏数据值
  */
 template<typename T>
-#define VALUE_FILTER_EQUAL_COMPARE_FUNC std::function<bool(T a, T b)> /* 值相等比较函数, 相等返回true, 否则返回false */
-class ValueFilter
+using TVALUE_EQUAL_COMPARE_FUNC = std::function<bool(T a, T b)>; /* 值相等比较函数, 相等返回true, 否则返回false */
+class TValue
 {
 public:
-    ValueFilter(void)
-    {
-        m_okNeedCount = 0;
-        m_repeatCount = 0;
-        m_equalCompareFunc = nullptr;
-    }
+    TValue(void) : m_okNeedCount(0), m_repeatCount(0), m_equalCompareFunc(nullptr) {}
 
     /**
      * @brief 初始化
@@ -24,7 +19,7 @@ public:
      * @param okNeedCount 成功所需次数, 当相同的值连续重复设置了该次数时, 才认为设置成功, 默认为0表示每次都设置成功
      * @param equalCompareFunc 比较函数
      */
-    void init(T value, int okNeedCount = 0, VALUE_FILTER_EQUAL_COMPARE_FUNC equalCompareFunc = nullptr)
+    void init(T value, int okNeedCount = 0, TVALUE_EQUAL_COMPARE_FUNC equalCompareFunc = nullptr)
     {
         m_realValue = value;
         m_tempValue = value;
@@ -37,7 +32,7 @@ public:
      * @brief 设置值相等比较函数
      * @param equalCompareFunc 比较函数
      */
-    void setEqualCompareFunc(VALUE_FILTER_EQUAL_COMPARE_FUNC equalCompareFunc)
+    void setEqualCompareFunc(TVALUE_EQUAL_COMPARE_FUNC equalCompareFunc)
     {
         m_equalCompareFunc = equalCompareFunc;
     }
@@ -45,7 +40,7 @@ public:
     /**
      * @brief 设置值
      * @param nowValue 当前值
-     * @return true-设置成功, false-设置失败
+     * @return true-值更新, false-值不更新
      */
     bool set(T nowValue)
     {
@@ -108,6 +103,6 @@ private:
     T m_tempValue; /* 缓存的值 */
     int m_okNeedCount; /* 成功所需要的次数 */
     int m_repeatCount; /* 连续重复次数 */
-    VALUE_FILTER_EQUAL_COMPARE_FUNC m_equalCompareFunc; /* 值比较函数 */
+    TVALUE_EQUAL_COMPARE_FUNC m_equalCompareFunc; /* 值比较函数 */
 };
 } // namespace algorithm
