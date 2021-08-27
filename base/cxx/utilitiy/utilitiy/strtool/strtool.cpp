@@ -5,20 +5,6 @@
 
 namespace utilitiy
 {
-bool StrTool::equal(std::string str1, std::string str2, bool caseSensitive)
-{
-    if (!caseSensitive)
-    {
-        std::transform(str1.begin(), str1.end(), str1.begin(), tolower);
-        std::transform(str2.begin(), str2.end(), str2.begin(), tolower);
-    }
-    if (0 == str1.compare(str2))
-    {
-        return true;
-    }
-    return false;
-}
-
 void StrTool::trimLeft(std::string& str, char c)
 {
     if (str.empty())
@@ -99,6 +85,42 @@ std::string StrTool::join(const std::vector<std::string>& strList, const std::st
         str += (i > 0 ? sep : "") + strList[i];
     }
     return str;
+}
+
+bool StrTool::equal(std::string str1, std::string str2, bool caseSensitive)
+{
+    if (!caseSensitive)
+    {
+        std::transform(str1.begin(), str1.end(), str1.begin(), tolower);
+        std::transform(str2.begin(), str2.end(), str2.begin(), tolower);
+    }
+    if (0 == str1.compare(str2))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool StrTool::contains(std::string str, std::string pattern, bool caseSensitive)
+{
+    if (pattern.empty())
+    {
+        return true;
+    }
+    if (pattern.size() > str.size())
+    {
+        return false;
+    }
+    if (!caseSensitive)
+    {
+        std::transform(str.begin(), str.end(), str.begin(), tolower);
+        std::transform(pattern.begin(), pattern.end(), pattern.begin(), tolower);
+    }
+    if (std::string::npos == str.find(pattern))
+    {
+        return false;
+    }
+    return true;
 }
 
 bool StrTool::isBeginWith(std::string str, std::string beg, bool caseSensitive)

@@ -8,15 +8,6 @@ class StrTool final
 {
 public:
     /**
-     * @brief 判断两个字符串是否相等
-     * @param str1 字符串1
-     * @param str2 字符串2
-     * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
-     * @return true-相等, false-不相等
-     */
-    static bool equal(std::string str1, std::string str2, bool caseSensitive = true);
-
-    /**
      * @brief 移除左边字符
      * @param str [输入/输出]字符串
      * @param c 要移除的字符
@@ -74,6 +65,24 @@ public:
      * @return 组合后的字符串
      */
     static std::string join(const std::vector<std::string>& strList, const std::string& sep = "");
+
+    /**
+     * @brief 判断两个字符串是否相等
+     * @param str1 字符串1
+     * @param str2 字符串2
+     * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
+     * @return true-相等, false-不相等
+     */
+    static bool equal(std::string str1, std::string str2, bool caseSensitive = true);
+
+    /**
+     * @brief 是否包含指定字符串
+     * @param str 字符串
+     * @param pattern 字符串
+     * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
+     * @return true-是, false-否
+     */
+    static bool contains(std::string str, std::string pattern, bool caseSensitive = true);
 
     /**
      * @brief 是否以指定字符串开头
