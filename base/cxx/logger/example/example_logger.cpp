@@ -12,6 +12,7 @@ int main()
     cfg.fileExtName = ".log";
     cfg.fileMaxSize = 20 * 1024 * 1024;
     cfg.fileMaxCount = 5;
+    cfg.fileIndexFixed = true;
     cfg.newFolderDaily = true;
     logger::LoggerManager::start(cfg, "who");
     auto logger1 = logger::LoggerManager::getLogger("test", "main_");

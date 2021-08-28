@@ -103,7 +103,8 @@ int getThreadId()
 
 InnerLoggerImpl::InnerLoggerImpl(const LogConfig& cfg) : InnerLogger(cfg.path, cfg.name)
 {
-    m_dailyLog = std::make_shared<DailyLogfile>(cfg.path, cfg.name, cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount, cfg.newFolderDaily);
+    m_dailyLog = std::make_shared<DailyLogfile>(cfg.path, cfg.name, cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount, cfg.fileIndexFixed,
+                                                cfg.newFolderDaily);
     m_consoleEnable.store(cfg.consoleEnable);
 }
 

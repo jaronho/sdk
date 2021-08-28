@@ -23,8 +23,10 @@ public:
      * @param extName 日志文件后缀名, 例如: "log" 或 ".log"
      * @param maxSize 文件最大容量值(字节), 例如: 4M = 4 * 1024 * 1024
      * @param maxFiles 最多文件个数, 为0时表示个数不受限制
+     * @param indexFixed 文件数最大时, true-索引值固定, false-递增
      */
-    RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize, size_t maxFiles = 0);
+    RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize, size_t maxFiles = 0,
+                    bool indexFixed = false);
 
     virtual ~RotatingLogfile() = default;
 
@@ -97,6 +99,7 @@ private:
     std::string m_extName; /* 日志文件后缀名 */
     size_t m_maxFiles; /* 最多文件个数 */
     std::atomic_size_t m_index; /* 当前日志文件索引值 */
+    bool m_indexFixed; /* 文件数最大时, 索引值固定还是递增 */
     std::mutex m_mutex; /* 互斥锁 */
     std::shared_ptr<Logfile> m_logfile; /* 基础日志文件 */
 };

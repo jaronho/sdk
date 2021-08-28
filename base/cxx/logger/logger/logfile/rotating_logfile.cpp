@@ -16,7 +16,7 @@
 namespace logger
 {
 RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize,
-                                 size_t maxFiles)
+                                 size_t maxFiles, bool indexFixed)
 {
     assert(!path.empty());
     assert(!baseName.empty());
@@ -28,6 +28,7 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
         m_extName.insert(0, ".");
     }
     m_maxFiles = maxFiles > 0 ? maxFiles : 0;
+    m_indexFixed = indexFixed;
     std::vector<int> indexList;
     m_index.store(findLastIndex(path, indexList));
     m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index.load()), maxSize);
@@ -204,6 +205,7 @@ bool RotatingLogfile::rotateFileList()
     int lastIndex = findLastIndex(path, indexList);
     if (m_maxFiles > 0 && indexList.size() >= m_maxFiles) /* 已达到文件最大数 */
     {
+        /* 删除最早的文件 */
         size_t discardCount = indexList.size() - m_maxFiles;
         for (size_t i = 0; i < discardCount; ++i)
         {
@@ -214,28 +216,41 @@ bool RotatingLogfile::rotateFileList()
         {
             m_logfile->clear();
         }
-        else /* 允许多个文件, 删除最早的文件, 把后面的文件向前移动, 留出最新的文件 */
+        else /* 允许多个文件 */
         {
             m_logfile->close();
-            for (size_t i = discardCount + 1, count = indexList.size(); i < count; ++i)
+            if (m_indexFixed) /* 把后面的文件向前移 */
             {
-                std::string prevFullName = path + calcFilenameByIndex(indexList[i - 1]);
-                std::string nowFullName = path + calcFilenameByIndex(indexList[i]);
-                remove(prevFullName.c_str());
-                if (0 != rename(nowFullName.c_str(), prevFullName.c_str()))
+                for (size_t i = discardCount + 1, count = indexList.size(); i < count; ++i)
                 {
-                    printf("move file [%s] to [%s] fail, errno[%d], desc: %s\n", nowFullName.c_str(), prevFullName.c_str(), errno,
-                           strerror(errno));
-                    return false;
+                    std::string prevFullName = path + calcFilenameByIndex(indexList[i - 1]);
+                    std::string currFullName = path + calcFilenameByIndex(indexList[i]);
+                    remove(prevFullName.c_str());
+                    if (0 != rename(currFullName.c_str(), prevFullName.c_str()))
+                    {
+                        printf("move file [%s] to [%s] fail, errno[%d], desc: %s\n", currFullName.c_str(), prevFullName.c_str(), errno,
+                               strerror(errno));
+                        return false;
+                    }
                 }
             }
-            m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index.load()), maxSize);
-            m_logfile->open();
+            else /* 文件索引值固定 */
+            {
+                std::string descardFullName = path + calcFilenameByIndex(indexList[discardCount]);
+                remove(descardFullName.c_str());
+                lastIndex += 1;
+            }
+            m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(lastIndex), maxSize);
+            if (m_logfile->open())
+            {
+                m_index.store(lastIndex);
+            }
         }
     }
     else /* 不限文件个数, 或未达到最大文件数 */
     {
         lastIndex += 1;
+        m_logfile->close();
         m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(lastIndex), maxSize);
         if (m_logfile->open())
         {

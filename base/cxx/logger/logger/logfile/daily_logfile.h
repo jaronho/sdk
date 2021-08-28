@@ -22,10 +22,11 @@ public:
      * @param extName 日志文件后缀名, 例如: "log" 或 ".log"
      * @param maxSize 文件最大容量值(字节), 例如: 4M = 4 * 1024 * 1024
      * @param maxFiles 最多文件个数, 为0时表示个数不受限制
+     * @param indexFixed 文件数最大时, true-索引值固定, false-递增
      * @param createDailyFolder 是否创建每日文件夹
      */
     DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& extName, size_t maxSize, size_t maxFiles = 0,
-                 bool createDailyFolder = true);
+                 bool indexFixed = false, bool createDailyFolder = true);
 
     virtual ~DailyLogfile() = default;
 
@@ -44,6 +45,7 @@ private:
     std::string m_extName; /* 日志文件后缀名 */
     size_t m_maxSize; /* 文件最大容量值 */
     size_t m_maxFiles; /* 最多文件个数 */
+    bool m_indexFixed; /* 文件数最大时, 索引值固定还是递增 */
     bool m_createDailyFolder; /* 是否创建每日文件夹 */
     std::recursive_mutex m_mutex; /* 互斥锁 */
     std::shared_ptr<RotatingLogfile> m_rotatingLogfile; /* 滚动日志文件 */

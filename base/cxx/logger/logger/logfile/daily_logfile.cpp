@@ -6,7 +6,7 @@
 namespace logger
 {
 DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& extName, size_t maxSize,
-                           size_t maxFiles, bool createDailyFolder)
+                           size_t maxFiles, bool indexFixed, bool createDailyFolder)
 {
     assert(!path.empty());
     assert(maxSize > 0);
@@ -15,6 +15,7 @@ DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixNam
     m_extName = extName;
     m_maxSize = maxSize;
     m_maxFiles = maxFiles > 0 ? maxFiles : 0;
+    m_indexFixed = indexFixed;
     m_createDailyFolder = createDailyFolder;
 }
 
@@ -46,7 +47,7 @@ Logfile::Result DailyLogfile::record(const std::string& content, bool newline)
 #endif
         }
         m_baseName = baseName;
-        m_rotatingLogfile = std::make_shared<RotatingLogfile>(path, baseName, m_extName, m_maxSize, m_maxFiles);
+        m_rotatingLogfile = std::make_shared<RotatingLogfile>(path, baseName, m_extName, m_maxSize, m_maxFiles, m_indexFixed);
         m_rotatingLogfile->open();
     }
     return m_rotatingLogfile->record(content, newline);
