@@ -3,15 +3,15 @@
 
 #include "../fileparse/ini/ini_helper.h"
 
-const std::string CONFIG_FILENAME = "config.ini";
+#define CONFIG_FILENAME "config.ini"
 /* 整型键值对(只读) */
-#define CONFIG_KV_IR(keyVar, keyName, val) MAKE_INI_KV(CONFIG_FILENAME, keyVar, keyName, std::to_string(val), "", "", true)
+#define CONFIG_KV_IR(keyVar, keyName, val) const MAKE_INI_KV(CONFIG_FILENAME, keyVar, keyName, std::to_string(val), "", "", true)
 /* 整型键值对(读写) */
-#define CONFIG_KV_IW(keyVar, keyName, val) MAKE_INI_KV(CONFIG_FILENAME, keyVar, keyName, std::to_string(val), "", "", false)
+#define CONFIG_KV_IW(keyVar, keyName, val) const MAKE_INI_KV(CONFIG_FILENAME, keyVar, keyName, std::to_string(val), "", "", false)
 /* 字符串键值对(只读) */
-#define CONFIG_KV_SR(keyVar, keyName, val) MAKE_INI_KV(CONFIG_FILENAME, keyVar, keyName, val, "", "", true)
+#define CONFIG_KV_SR(keyVar, keyName, val) const MAKE_INI_KV(CONFIG_FILENAME, keyVar, keyName, val, "", "", true)
 /* 字符串键值对(读写) */
-#define CONFIG_KV_SW(keyVar, keyName, val) MAKE_INI_KV(CONFIG_FILENAME, keyVar, keyName, val, "", "", false)
+#define CONFIG_KV_SW(keyVar, keyName, val) const MAKE_INI_KV(CONFIG_FILENAME, keyVar, keyName, val, "", "", false)
 
 namespace config_key
 {
