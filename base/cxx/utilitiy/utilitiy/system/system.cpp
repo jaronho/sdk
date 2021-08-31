@@ -39,7 +39,7 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
         const size_t bufferSize = 1024;
         char buffer[bufferSize] = {0};
         std::string line;
-        while (memset(buffer, 0, bufferSize) && fgets(buffer, bufferSize - 1, stream))
+        while (fread(buffer, 1, bufferSize, stream) > 0)
         {
             if (outStr)
             {
@@ -48,13 +48,26 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
             if (outVec)
             {
                 line += buffer;
-                size_t pos = line.find('\n');
-                if (std::string::npos != pos)
+                while (1)
                 {
+                    size_t pos = line.find("\r\n"), offset = 2;
+                    if (std::string::npos == pos)
+                    {
+                        pos = line.find("\n"), offset = 1;
+                    }
+                    if (std::string::npos == pos)
+                    {
+                        break;
+                    }
                     (*outVec).emplace_back(line.substr(0, pos));
-                    line = line.substr(pos + 1, line.size() - pos);
+                    line = line.substr(pos + offset, line.size() - pos - offset);
                 }
             }
+            memset(buffer, 0, bufferSize);
+        }
+        if (outVec && !line.empty())
+        {
+            (*outVec).emplace_back(line);
         }
     }
 #ifdef _WIN32
