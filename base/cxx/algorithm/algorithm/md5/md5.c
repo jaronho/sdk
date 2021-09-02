@@ -239,7 +239,11 @@ char* md5Fini(md5_ctx_t* context, unsigned char digest[16])
     digestStr[0] = 0;
     for (i = 0; i < 16; i++)
     {
+#ifdef _WIN32
+        sprintf_s(tmp, "%x", (unsigned char)digest[i]);
+#else
         sprintf(tmp, "%x", (unsigned char)digest[i]);
+#endif
         if (0 == tmp[1])
         {
             tmp[2] = 0;
