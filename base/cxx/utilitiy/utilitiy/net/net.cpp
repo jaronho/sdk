@@ -143,9 +143,9 @@ IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmask)
     return info;
 }
 
-std::vector<NetCard> Net::getNetCards()
+std::vector<NetInterface> Net::getNetInterfaces()
 {
-    std::vector<NetCard> cardList;
+    std::vector<NetInterface> interfaceList;
 #ifdef _WIN32
     PIP_ADAPTER_INFO pIpAdapterInfo = new IP_ADAPTER_INFO(); /* 存储本机网卡信息 */
     unsigned long stSize = sizeof(IP_ADAPTER_INFO);
@@ -162,7 +162,7 @@ std::vector<NetCard> Net::getNetCards()
     {
         while (pIpAdapterInfo) /* 遍历所有网卡 */
         {
-            NetCard nc;
+            NetInterface nc;
             /* 网卡名 */
             nc.name = pIpAdapterInfo->AdapterName;
             /* MAC地址 */
@@ -176,28 +176,28 @@ std::vector<NetCard> Net::getNetCards()
             switch (pIpAdapterInfo->Type)
             {
             case MIB_IF_TYPE_OTHER:
-                nc.type = NetCard::Type::OTHER;
+                nc.type = NetInterface::Type::OTHER;
                 break;
             case MIB_IF_TYPE_ETHERNET:
-                nc.type = NetCard::Type::ETHERNET;
+                nc.type = NetInterface::Type::ETHERNET;
                 break;
             case MIB_IF_TYPE_TOKENRING:
-                nc.type = NetCard::Type::TOKENRING;
+                nc.type = NetInterface::Type::TOKENRING;
                 break;
             case MIB_IF_TYPE_FDDI:
-                nc.type = NetCard::Type::FDDI;
+                nc.type = NetInterface::Type::FDDI;
                 break;
             case MIB_IF_TYPE_PPP:
-                nc.type = NetCard::Type::PPP;
+                nc.type = NetInterface::Type::PPP;
                 break;
             case MIB_IF_TYPE_LOOPBACK:
-                nc.type = NetCard::Type::LOOPBACK;
+                nc.type = NetInterface::Type::LOOPBACK;
                 break;
             case MIB_IF_TYPE_SLIP:
-                nc.type = NetCard::Type::SLIP;
+                nc.type = NetInterface::Type::SLIP;
                 break;
             default:
-                nc.type = NetCard::Type::OTHER;
+                nc.type = NetInterface::Type::OTHER;
                 break;
             }
             /* 描述 */
@@ -206,14 +206,14 @@ std::vector<NetCard> Net::getNetCards()
             IP_ADDR_STRING* pIpAddrString = &(pIpAdapterInfo->IpAddressList);
             do
             {
-                NetCard::IPv4AndMask im;
+                NetInterface::IPv4AndMask im;
                 im.ipv4 = pIpAddrString->IpAddress.String;
                 im.netmask = pIpAddrString->IpMask.String;
                 nc.ipv4List.emplace_back(im);
                 pIpAddrString = pIpAddrString->Next;
             } while (pIpAddrString);
             /* 保存并遍历下一个 */
-            cardList.emplace_back(nc);
+            interfaceList.emplace_back(nc);
             pIpAdapterInfo = pIpAdapterInfo->Next;
         }
     }
@@ -238,9 +238,9 @@ std::vector<NetCard> Net::getNetCards()
             for (struct ifaddrs* ifa = ifList; NULL != ifa; ifa = ifa->ifa_next)
             {
                 bool alreadyExist = false;
-                for (size_t i = 0; i < cardList.size(); ++i)
+                for (size_t i = 0; i < interfaceList.size(); ++i)
                 {
-                    if (0 == cardList[i].name.compare(ifa->ifa_name))
+                    if (0 == interfaceList[i].name.compare(ifa->ifa_name))
                     {
                         alreadyExist = true;
                         break;
@@ -250,7 +250,7 @@ std::vector<NetCard> Net::getNetCards()
                 {
                     continue;
                 }
-                NetCard nc;
+                NetInterface nc;
                 struct ifreq ifreq;
                 /* 网卡名 */
                 strcpy(ifreq.ifr_name, ifa->ifa_name);
@@ -262,25 +262,25 @@ std::vector<NetCard> Net::getNetCards()
                     switch (ifreq.ifr_hwaddr.sa_family)
                     {
                     case ARPHRD_ETHER:
-                        nc.type = NetCard::Type::ETHERNET;
+                        nc.type = NetInterface::Type::ETHERNET;
                         break;
                     case ARPHRD_PRONET:
-                        nc.type = NetCard::Type::TOKENRING;
+                        nc.type = NetInterface::Type::TOKENRING;
                         break;
                     case ARPHRD_FDDI:
-                        nc.type = NetCard::Type::FDDI;
+                        nc.type = NetInterface::Type::FDDI;
                         break;
                     case ARPHRD_PPP:
-                        nc.type = NetCard::Type::PPP;
+                        nc.type = NetInterface::Type::PPP;
                         break;
                     case ARPHRD_LOOPBACK:
-                        nc.type = NetCard::Type::LOOPBACK;
+                        nc.type = NetInterface::Type::LOOPBACK;
                         break;
                     case ARPHRD_SLIP:
-                        nc.type = NetCard::Type::SLIP;
+                        nc.type = NetInterface::Type::SLIP;
                         break;
                     default:
-                        nc.type = NetCard::Type::OTHER;
+                        nc.type = NetInterface::Type::OTHER;
                         break;
                     }
                     /* MAC地址 */
@@ -313,13 +313,13 @@ std::vector<NetCard> Net::getNetCards()
                     nc.broadcast = broadcast;
                 }
                 /* 保存 */
-                cardList.emplace_back(nc);
+                interfaceList.emplace_back(nc);
             }
             freeifaddrs(ifList);
         }
         close(fd);
     }
 #endif
-    return cardList;
+    return interfaceList;
 }
 } // namespace utilitiy

@@ -19,33 +19,33 @@ void testNet()
     printf("--- default gateway: %s\n", ipv4Info.defaultGateway.c_str());
     printf("--- host count: %d\n", ipv4Info.hostCount);
     printf("\n-------------------- net card:\n");
-    auto netCardList = utilitiy::Net::getNetCards();
-    for (int i = 0; i < netCardList.size(); ++i)
+    auto interfaceList = utilitiy::Net::getNetInterfaces();
+    for (int i = 0; i < interfaceList.size(); ++i)
     {
+        const auto& iface = interfaceList[i];
         printf("----- [%d]\n", i + 1);
-        printf("name: %s\n", netCardList[i].name.c_str());
+        printf("name: %s type: %s\n", iface.name.c_str(), iface.typeStr().c_str());
         printf("mac: ");
-        for (int j = 0; j < netCardList[i].mac.size(); ++j)
+        for (int j = 0; j < iface.mac.size(); ++j)
         {
             if (j > 0)
             {
                 printf(":");
             }
-            printf("%s", netCardList[i].mac[j].c_str());
+            printf("%s", iface.mac[j].c_str());
         }
         printf("\n");
-        printf("type: %s\n", netCardList[i].typeStr().c_str());
 #ifdef _WIN32
-        printf("desc: %s\n", netCardList[i].desc.c_str());
+        printf("desc: %s\n", iface.desc.c_str());
         printf("ipv4 list:\n");
-        for (int j = 0; j < netCardList[i].ipv4List.size(); ++j)
+        for (int j = 0; j < iface.ipv4List.size(); ++j)
         {
-            printf("    ip: %s netmask: %s\n", netCardList[i].ipv4List[j].ipv4.c_str(), netCardList[i].ipv4List[j].netmask.c_str());
+            printf("    ip: %s netmask: %s\n", iface.ipv4List[j].ipv4.c_str(), iface.ipv4List[j].netmask.c_str());
         }
 #else
-        printf("ipv4: %s\n", netCardList[i].ipv4.c_str());
-        printf("netmask: %s\n", netCardList[i].netmask.c_str());
-        printf("broadcast: %s\n", netCardList[i].broadcast.c_str());
+        printf("ipv4: %s\n", iface.ipv4.c_str());
+        printf("netmask: %s\n", iface.netmask.c_str());
+        printf("broadcast: %s\n", iface.broadcast.c_str());
 #endif
     }
 }

@@ -19,9 +19,9 @@ struct IPv4Info
 };
 
 /**
- * @brief 网卡信息
+ * @brief 网络接口(网卡)
  */
-struct NetCard
+struct NetInterface
 {
     enum class Type
     {
@@ -34,7 +34,7 @@ struct NetCard
         SLIP
     };
 
-    std::string typeStr()
+    std::string typeStr() const
     {
         switch (type)
         {
@@ -64,8 +64,8 @@ struct NetCard
 #endif
 
     std::string name; /* 名称 */
-    std::vector<std::string> mac; /* MAC地址 */
     Type type; /* 网卡类型 */
+    std::vector<std::string> mac; /* MAC地址 */
 #ifdef _WIN32
     std::string desc; /* 描述 */
     std::vector<IPv4AndMask> ipv4List; /* IPv4列表 */
@@ -102,9 +102,9 @@ public:
     static IPv4Info calcIPv4Info(const std::string& ip, const std::string& netmask);
 
     /**
-     * @brief 获取本机所有网卡
-     * @return 网卡列表
+     * @brief 获取本机所有网络接口(网卡)
+     * @return 网络接口(网卡)列表
      */
-    static std::vector<NetCard> getNetCards();
+    static std::vector<NetInterface> getNetInterfaces();
 };
 } // namespace utilitiy
