@@ -7,6 +7,12 @@
 #include <Iphlpapi.h>
 #pragma comment(lib, "Iphlpapi.lib")
 #else
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 #endif
 
 namespace utilitiy
@@ -154,16 +160,19 @@ std::vector<NetCard> Net::getNetCards()
     }
     if (ERROR_SUCCESS == nRel)
     {
-        while (pIpAdapterInfo) /* 可能有多网卡, 因此通过循环去判断 */
+        while (pIpAdapterInfo) /* 遍历所有网卡 */
         {
             NetCard nc;
+            /* 网卡名 */
             nc.name = pIpAdapterInfo->AdapterName;
+            /* MAC地址 */
             for (UINT i = 0; i < pIpAdapterInfo->AddressLength; ++i)
             {
                 char hex[4] = {0};
                 sprintf_s(hex, sizeof(hex), "%02x", pIpAdapterInfo->Address[i]);
                 nc.mac.emplace_back(hex);
             }
+            /* 类型 */
             switch (pIpAdapterInfo->Type)
             {
             case MIB_IF_TYPE_OTHER:
@@ -187,15 +196,23 @@ std::vector<NetCard> Net::getNetCards()
             case MIB_IF_TYPE_SLIP:
                 nc.type = NetCard::Type::SLIP;
                 break;
+            default:
+                nc.type = NetCard::Type::OTHER;
+                break;
             }
+            /* 描述 */
             nc.desc = pIpAdapterInfo->Description;
-            /* 可能网卡有多IP,因此通过循环去判断 */
+            /* IPv4地址列表(可能网卡有多IP, 因此通过循环去判断) */
             IP_ADDR_STRING* pIpAddrString = &(pIpAdapterInfo->IpAddressList);
             do
             {
-                nc.ipv4List.emplace_back(pIpAddrString->IpAddress.String);
+                NetCard::IPv4AndMask im;
+                im.ipv4 = pIpAddrString->IpAddress.String;
+                im.netmask = pIpAddrString->IpMask.String;
+                nc.ipv4List.emplace_back(im);
                 pIpAddrString = pIpAddrString->Next;
             } while (pIpAddrString);
+            /* 保存并遍历下一个 */
             cardList.emplace_back(nc);
             pIpAdapterInfo = pIpAdapterInfo->Next;
         }
@@ -212,6 +229,96 @@ std::vector<NetCard> Net::getNetCards()
         }
     }
 #else
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd >= 0)
+    {
+        struct ifaddrs* ifList = NULL;
+        if (getifaddrs(&ifList) >= 0)
+        {
+            for (struct ifaddrs* ifa = ifList; NULL != ifa; ifa = ifa->ifa_next)
+            {
+                bool alreadyExist = false;
+                for (size_t i = 0; i < cardList.size(); ++i)
+                {
+                    if (0 == cardList[i].name.compare(ifa->ifa_name))
+                    {
+                        alreadyExist = true;
+                        break;
+                    }
+                }
+                if (alreadyExist)
+                {
+                    continue;
+                }
+                NetCard nc;
+                struct ifreq ifreq;
+                /* 网卡名 */
+                strcpy(ifreq.ifr_name, ifa->ifa_name);
+                nc.name = ifa->ifa_name;
+                /* 网卡类型,MAC地址 */
+                if (!ioctl(fd, SIOCGIFHWADDR, &ifreq))
+                {
+                    /* 网卡类型 */
+                    switch (ifreq.ifr_hwaddr.sa_family)
+                    {
+                    case ARPHRD_ETHER:
+                        nc.type = NetCard::Type::ETHERNET;
+                        break;
+                    case ARPHRD_PRONET:
+                        nc.type = NetCard::Type::TOKENRING;
+                        break;
+                    case ARPHRD_FDDI:
+                        nc.type = NetCard::Type::FDDI;
+                        break;
+                    case ARPHRD_PPP:
+                        nc.type = NetCard::Type::PPP;
+                        break;
+                    case ARPHRD_LOOPBACK:
+                        nc.type = NetCard::Type::LOOPBACK;
+                        break;
+                    case ARPHRD_SLIP:
+                        nc.type = NetCard::Type::SLIP;
+                        break;
+                    default:
+                        nc.type = NetCard::Type::OTHER;
+                        break;
+                    }
+                    /* MAC地址 */
+                    for (int i = 0; i < 6; ++i)
+                    {
+                        char hex[4] = {0};
+                        snprintf(hex, sizeof(hex), "%02x", (unsigned char)ifreq.ifr_hwaddr.sa_data[i]);
+                        nc.mac.emplace_back(hex);
+                    }
+                }
+                /* IPv4地址 */
+                if (!ioctl(fd, SIOCGIFADDR, &ifreq))
+                {
+                    char ipv4[32] = {0};
+                    snprintf(ipv4, sizeof(ipv4), "%s", (char*)inet_ntoa(((struct sockaddr_in*)&(ifreq.ifr_addr))->sin_addr));
+                    nc.ipv4 = ipv4;
+                }
+                /* 子网掩码 */
+                if (!ioctl(fd, SIOCGIFNETMASK, &ifreq))
+                {
+                    char netmask[32] = {0};
+                    snprintf(netmask, sizeof(netmask), "%s", (char*)inet_ntoa(((struct sockaddr_in*)&(ifreq.ifr_netmask))->sin_addr));
+                    nc.netmask = netmask;
+                }
+                /* 广播地址 */
+                if (!ioctl(fd, SIOCGIFBRDADDR, &ifreq))
+                {
+                    char broadcast[32] = {0};
+                    snprintf(broadcast, sizeof(broadcast), "%s", (char*)inet_ntoa(((struct sockaddr_in*)&(ifreq.ifr_broadaddr))->sin_addr));
+                    nc.broadcast = broadcast;
+                }
+                /* 保存 */
+                cardList.emplace_back(nc);
+            }
+            freeifaddrs(ifList);
+        }
+        close(fd);
+    }
 #endif
     return cardList;
 }

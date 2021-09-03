@@ -39,28 +39,41 @@ struct NetCard
         switch (type)
         {
         case Type::OTHER:
-            return "OTHER";
+            return "other";
         case Type::ETHERNET:
-            return "ETHERNET";
+            return "ethernet";
         case Type::TOKENRING:
-            return "TOKENRING";
+            return "tokenring";
         case Type::FDDI:
-            return "FDDI";
+            return "fddi";
         case Type::PPP:
-            return "PPP";
+            return "ppp";
         case Type::LOOPBACK:
-            return "LOOPBACK";
+            return "loopback";
         case Type::SLIP:
-            return "SLIP";
+            return "slip";
         }
         return "";
     }
+#ifdef _WIN32
+    struct IPv4AndMask
+    {
+        std::string ipv4; /* IPv4地址 */
+        std::string netmask; /* 子网掩码 */
+    };
+#endif
 
     std::string name; /* 名称 */
     std::vector<std::string> mac; /* MAC地址 */
     Type type; /* 网卡类型 */
+#ifdef _WIN32
     std::string desc; /* 描述 */
-    std::vector<std::string> ipv4List; /* IPv4地址列表 */
+    std::vector<IPv4AndMask> ipv4List; /* IPv4列表 */
+#else
+    std::string ipv4; /* IPv4地址 */
+    std::string netmask; /* 子网掩码 */
+    std::string broadcast; /* 广播的地址 */
+#endif
 };
 
 class Net final

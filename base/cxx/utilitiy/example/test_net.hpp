@@ -35,11 +35,17 @@ void testNet()
         }
         printf("\n");
         printf("type: %s\n", netCardList[i].typeStr().c_str());
+#ifdef _WIN32
         printf("desc: %s\n", netCardList[i].desc.c_str());
-        printf("ip:\n");
+        printf("ipv4 list:\n");
         for (int j = 0; j < netCardList[i].ipv4List.size(); ++j)
         {
-            printf("    %s\n", netCardList[i].ipv4List[j].c_str());
+            printf("    ip: %s netmask: %s\n", netCardList[i].ipv4List[j].ipv4.c_str(), netCardList[i].ipv4List[j].netmask.c_str());
         }
+#else
+        printf("ipv4: %s\n", netCardList[i].ipv4.c_str());
+        printf("netmask: %s\n", netCardList[i].netmask.c_str());
+        printf("broadcast: %s\n", netCardList[i].broadcast.c_str());
+#endif
     }
 }
