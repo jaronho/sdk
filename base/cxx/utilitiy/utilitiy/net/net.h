@@ -38,8 +38,6 @@ struct NetInterface
     {
         switch (type)
         {
-        case Type::OTHER:
-            return "other";
         case Type::ETHERNET:
             return "ethernet";
         case Type::TOKENRING:
@@ -53,8 +51,9 @@ struct NetInterface
         case Type::SLIP:
             return "slip";
         }
-        return "";
+        return std::to_string(realType);
     }
+
 #ifdef _WIN32
     struct IPv4AndMask
     {
@@ -64,7 +63,8 @@ struct NetInterface
 #endif
 
     std::string name; /* 名称 */
-    Type type; /* 网卡类型 */
+    int realType; /* 网卡类型(实际的类型值, 不同平台可能不一样) */
+    Type type; /* 网卡类型(转换后的类型值) */
     std::vector<std::string> mac; /* MAC地址 */
 #ifdef _WIN32
     std::string desc; /* 描述 */

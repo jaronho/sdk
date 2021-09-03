@@ -173,7 +173,8 @@ std::vector<NetInterface> Net::getNetInterfaces()
                 nc.mac.emplace_back(hex);
             }
             /* 类型 */
-            switch (pIpAdapterInfo->Type)
+            nc.realType = pIpAdapterInfo->Type;
+            switch (nc.realType)
             {
             case MIB_IF_TYPE_OTHER:
                 nc.type = NetInterface::Type::OTHER;
@@ -259,7 +260,8 @@ std::vector<NetInterface> Net::getNetInterfaces()
                 if (!ioctl(fd, SIOCGIFHWADDR, &ifreq))
                 {
                     /* 网卡类型 */
-                    switch (ifreq.ifr_hwaddr.sa_family)
+                    nc.realType = ifreq.ifr_hwaddr.sa_family;
+                    switch (nc.realType)
                     {
                     case ARPHRD_ETHER:
                         nc.type = NetInterface::Type::ETHERNET;
