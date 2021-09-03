@@ -24,7 +24,7 @@ void testNet()
     {
         const auto& iface = interfaceList[i];
         printf("----- [%d]\n", i + 1);
-        printf("name: %s type: %s\n", iface.name.c_str(), iface.typeStr().c_str());
+        printf("name: %s type: %s(%d)\n", iface.name.c_str(), iface.typeStr().c_str(), iface.realType);
         printf("mac: ");
         for (int j = 0; j < iface.mac.size(); ++j)
         {
