@@ -77,7 +77,7 @@ bool Net::isIPv4Inner(const std::string& ip)
     return false;
 }
 
-IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmask)
+Net::IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmask)
 {
     IPv4Info info;
     int a1 = 0, a2 = 0, a3 = 0, a4 = 0;
@@ -143,9 +143,9 @@ IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmask)
     return info;
 }
 
-std::vector<NetInterface> Net::getNetInterfaces()
+std::vector<Net::IfaceInfo> Net::getAllInterfaces()
 {
-    std::vector<NetInterface> interfaceList;
+    std::vector<IfaceInfo> interfaceList;
 #ifdef _WIN32
     PIP_ADAPTER_INFO pIpAdapterInfo = new IP_ADAPTER_INFO(); /* 存储本机网卡信息 */
     unsigned long stSize = sizeof(IP_ADAPTER_INFO);
@@ -162,59 +162,59 @@ std::vector<NetInterface> Net::getNetInterfaces()
     {
         while (pIpAdapterInfo) /* 遍历所有网卡 */
         {
-            NetInterface nc;
+            IfaceInfo iface;
             /* 网卡名 */
-            nc.name = pIpAdapterInfo->AdapterName;
+            iface.name = pIpAdapterInfo->AdapterName;
             /* MAC地址 */
             for (UINT i = 0; i < pIpAdapterInfo->AddressLength; ++i)
             {
                 char hex[4] = {0};
                 sprintf_s(hex, sizeof(hex), "%02x", pIpAdapterInfo->Address[i]);
-                nc.mac.emplace_back(hex);
+                iface.mac.emplace_back(hex);
             }
             /* 类型 */
-            nc.realType = pIpAdapterInfo->Type;
-            switch (nc.realType)
+            iface.realType = pIpAdapterInfo->Type;
+            switch (iface.realType)
             {
             case MIB_IF_TYPE_OTHER:
-                nc.type = NetInterface::Type::OTHER;
+                iface.type = IfaceInfo::Type::OTHER;
                 break;
             case MIB_IF_TYPE_ETHERNET:
-                nc.type = NetInterface::Type::ETHERNET;
+                iface.type = IfaceInfo::Type::ETHERNET;
                 break;
             case MIB_IF_TYPE_TOKENRING:
-                nc.type = NetInterface::Type::TOKENRING;
+                iface.type = IfaceInfo::Type::TOKENRING;
                 break;
             case MIB_IF_TYPE_FDDI:
-                nc.type = NetInterface::Type::FDDI;
+                iface.type = IfaceInfo::Type::FDDI;
                 break;
             case MIB_IF_TYPE_PPP:
-                nc.type = NetInterface::Type::PPP;
+                iface.type = IfaceInfo::Type::PPP;
                 break;
             case MIB_IF_TYPE_LOOPBACK:
-                nc.type = NetInterface::Type::LOOPBACK;
+                iface.type = IfaceInfo::Type::LOOPBACK;
                 break;
             case MIB_IF_TYPE_SLIP:
-                nc.type = NetInterface::Type::SLIP;
+                iface.type = IfaceInfo::Type::SLIP;
                 break;
             default:
-                nc.type = NetInterface::Type::OTHER;
+                iface.type = IfaceInfo::Type::OTHER;
                 break;
             }
             /* 描述 */
-            nc.desc = pIpAdapterInfo->Description;
+            iface.desc = pIpAdapterInfo->Description;
             /* IPv4地址列表(可能网卡有多IP, 因此通过循环去判断) */
             IP_ADDR_STRING* pIpAddrString = &(pIpAdapterInfo->IpAddressList);
             do
             {
-                NetInterface::IPv4AndMask im;
+                IfaceInfo::IPv4Mask im;
                 im.ipv4 = pIpAddrString->IpAddress.String;
                 im.netmask = pIpAddrString->IpMask.String;
-                nc.ipv4List.emplace_back(im);
+                iface.ipv4List.emplace_back(im);
                 pIpAddrString = pIpAddrString->Next;
             } while (pIpAddrString);
             /* 保存并遍历下一个 */
-            interfaceList.emplace_back(nc);
+            interfaceList.emplace_back(iface);
             pIpAdapterInfo = pIpAdapterInfo->Next;
         }
     }
@@ -251,38 +251,38 @@ std::vector<NetInterface> Net::getNetInterfaces()
                 {
                     continue;
                 }
-                NetInterface nc;
+                IfaceInfo iface;
                 struct ifreq ifreq;
                 /* 网卡名 */
                 strcpy(ifreq.ifr_name, ifa->ifa_name);
-                nc.name = ifa->ifa_name;
+                iface.name = ifa->ifa_name;
                 /* 网卡类型,MAC地址 */
                 if (!ioctl(fd, SIOCGIFHWADDR, &ifreq))
                 {
                     /* 网卡类型 */
-                    nc.realType = ifreq.ifr_hwaddr.sa_family;
-                    switch (nc.realType)
+                    iface.realType = ifreq.ifr_hwaddr.sa_family;
+                    switch (iface.realType)
                     {
                     case ARPHRD_ETHER:
-                        nc.type = NetInterface::Type::ETHERNET;
+                        iface.type = IfaceInfo::Type::ETHERNET;
                         break;
                     case ARPHRD_PRONET:
-                        nc.type = NetInterface::Type::TOKENRING;
+                        iface.type = IfaceInfo::Type::TOKENRING;
                         break;
                     case ARPHRD_FDDI:
-                        nc.type = NetInterface::Type::FDDI;
+                        iface.type = IfaceInfo::Type::FDDI;
                         break;
                     case ARPHRD_PPP:
-                        nc.type = NetInterface::Type::PPP;
+                        iface.type = IfaceInfo::Type::PPP;
                         break;
                     case ARPHRD_LOOPBACK:
-                        nc.type = NetInterface::Type::LOOPBACK;
+                        iface.type = IfaceInfo::Type::LOOPBACK;
                         break;
                     case ARPHRD_SLIP:
-                        nc.type = NetInterface::Type::SLIP;
+                        iface.type = IfaceInfo::Type::SLIP;
                         break;
                     default:
-                        nc.type = NetInterface::Type::OTHER;
+                        iface.type = IfaceInfo::Type::OTHER;
                         break;
                     }
                     /* MAC地址 */
@@ -290,7 +290,7 @@ std::vector<NetInterface> Net::getNetInterfaces()
                     {
                         char hex[4] = {0};
                         snprintf(hex, sizeof(hex), "%02x", (unsigned char)ifreq.ifr_hwaddr.sa_data[i]);
-                        nc.mac.emplace_back(hex);
+                        iface.mac.emplace_back(hex);
                     }
                 }
                 /* IPv4地址 */
@@ -298,24 +298,24 @@ std::vector<NetInterface> Net::getNetInterfaces()
                 {
                     char ipv4[32] = {0};
                     snprintf(ipv4, sizeof(ipv4), "%s", (char*)inet_ntoa(((struct sockaddr_in*)&(ifreq.ifr_addr))->sin_addr));
-                    nc.ipv4 = ipv4;
+                    iface.ipv4 = ipv4;
                 }
                 /* 子网掩码 */
                 if (!ioctl(fd, SIOCGIFNETMASK, &ifreq))
                 {
                     char netmask[32] = {0};
                     snprintf(netmask, sizeof(netmask), "%s", (char*)inet_ntoa(((struct sockaddr_in*)&(ifreq.ifr_netmask))->sin_addr));
-                    nc.netmask = netmask;
+                    iface.netmask = netmask;
                 }
                 /* 广播地址 */
                 if (!ioctl(fd, SIOCGIFBRDADDR, &ifreq))
                 {
                     char broadcast[32] = {0};
                     snprintf(broadcast, sizeof(broadcast), "%s", (char*)inet_ntoa(((struct sockaddr_in*)&(ifreq.ifr_broadaddr))->sin_addr));
-                    nc.broadcast = broadcast;
+                    iface.broadcast = broadcast;
                 }
                 /* 保存 */
-                interfaceList.emplace_back(nc);
+                interfaceList.emplace_back(iface);
             }
             freeifaddrs(ifList);
         }

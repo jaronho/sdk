@@ -19,7 +19,7 @@ void testNet()
     printf("--- default gateway: %s\n", ipv4Info.defaultGateway.c_str());
     printf("--- host count: %d\n", ipv4Info.hostCount);
     printf("\n-------------------- net card:\n");
-    auto interfaceList = utilitiy::Net::getNetInterfaces();
+    auto interfaceList = utilitiy::Net::getAllInterfaces();
     for (int i = 0; i < interfaceList.size(); ++i)
     {
         const auto& iface = interfaceList[i];
