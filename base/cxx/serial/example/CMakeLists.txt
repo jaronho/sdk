@@ -36,6 +36,10 @@ foreach(filename ${base_serial_files})
 endforeach()
 ##########################################################################################
 
+################################### 添加线程库 ###################################
+find_package(Threads REQUIRED)
+##########################################################################################
+
 # 添加示例文件
 set(example_files)
 get_cxx_files(. src_list)
@@ -48,3 +52,6 @@ endforeach()
 
 # 构建可执行程序
 add_executable(example_serial ${base_serial_files} ${example_files})
+
+# 链接依赖库文件
+target_link_libraries(example_serial Threads::Threads)
