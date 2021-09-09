@@ -473,6 +473,29 @@ void SerialImpl::flushOutput()
 #endif
 }
 
+bool SerialImpl::getCD()
+{
+    if (INVALID_HANDLE_VALUE == m_fd)
+    {
+        return false;
+    }
+#ifdef _WIN32
+    DWORD dwModemStatus;
+    if (!GetCommModemStatus(m_fd, &dwModemStatus))
+    {
+        return false;
+    }
+    return 0 != (MS_RLSD_ON & dwModemStatus);
+#else
+    int status;
+    if (-1 == ioctl(m_fd, TIOCMGET, &status))
+    {
+        return false;
+    }
+    return 0 != (status & TIOCM_CD);
+#endif
+}
+
 bool SerialImpl::getCTS()
 {
     if (INVALID_HANDLE_VALUE == m_fd)
@@ -543,50 +566,14 @@ bool SerialImpl::getRI()
 #endif
 }
 
-bool SerialImpl::getCD()
-{
-    if (INVALID_HANDLE_VALUE == m_fd)
-    {
-        return false;
-    }
-#ifdef _WIN32
-    DWORD dwModemStatus;
-    if (!GetCommModemStatus(m_fd, &dwModemStatus))
-    {
-        return false;
-    }
-    return 0 != (MS_RLSD_ON & dwModemStatus);
-#else
-    int status;
-    if (-1 == ioctl(m_fd, TIOCMGET, &status))
-    {
-        return false;
-    }
-    return 0 != (status & TIOCM_CD);
-#endif
-}
-
-void SerialImpl::sendBreak(int duration)
+void SerialImpl::setBreak(bool set)
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         return;
     }
 #ifdef _WIN32
-    /* Windows平台不支持 */
-#else
-    tcsendbreak(m_fd, static_cast<int>(duration / 4));
-#endif
-}
-
-void SerialImpl::setBreak(bool level)
-{
-    if (INVALID_HANDLE_VALUE == m_fd)
-    {
-        return;
-    }
-#ifdef _WIN32
-    if (level)
+    if (set)
     {
         EscapeCommFunction(m_fd, SETBREAK);
     }
@@ -595,7 +582,7 @@ void SerialImpl::setBreak(bool level)
         EscapeCommFunction(m_fd, CLRBREAK);
     }
 #else
-    if (level)
+    if (set)
     {
         ioctl(m_fd, TIOCSBRK);
     }
@@ -606,24 +593,24 @@ void SerialImpl::setBreak(bool level)
 #endif
 }
 
-void SerialImpl::setRTS(bool level)
+void SerialImpl::setDTR(bool set)
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         return;
     }
 #ifdef _WIN32
-    if (level)
+    if (set)
     {
-        EscapeCommFunction(m_fd, SETRTS);
+        EscapeCommFunction(m_fd, SETDTR);
     }
     else
     {
-        EscapeCommFunction(m_fd, CLRRTS);
+        EscapeCommFunction(m_fd, CLRDTR);
     }
 #else
-    int command = TIOCM_RTS;
-    if (level)
+    int command = TIOCM_DTR;
+    if (set)
     {
         ioctl(m_fd, TIOCMBIS, &command);
     }
@@ -634,24 +621,24 @@ void SerialImpl::setRTS(bool level)
 #endif
 }
 
-void SerialImpl::setDTR(bool level)
+void SerialImpl::setRTS(bool set)
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         return;
     }
 #ifdef _WIN32
-    if (level)
+    if (set)
     {
-        EscapeCommFunction(m_fd, SETDTR);
+        EscapeCommFunction(m_fd, SETRTS);
     }
     else
     {
-        EscapeCommFunction(m_fd, CLRDTR);
+        EscapeCommFunction(m_fd, CLRRTS);
     }
 #else
-    int command = TIOCM_DTR;
-    if (level)
+    int command = TIOCM_RTS;
+    if (set)
     {
         ioctl(m_fd, TIOCMBIS, &command);
     }
@@ -670,7 +657,7 @@ bool SerialImpl::waitReadable(unsigned int timeout)
     }
 #ifdef _WIN32
     /* TODO: 未实现 */
-    return false;
+    return true;
 #else
     /* 设置一次select调用用于阻塞 */
     fd_set readfds;
@@ -715,7 +702,7 @@ bool SerialImpl::waitForChange()
         return false;
     }
 #ifdef _WIN32
-    if (!SetCommMask(m_fd, EV_CTS | EV_DSR | EV_RING | EV_RLSD))
+    if (!SetCommMask(m_fd, EV_RLSD | EV_CTS | EV_DSR | EV_RING))
     {
         return false;
     }
@@ -728,14 +715,14 @@ bool SerialImpl::waitForChange()
     return true;
 #else
 #ifndef TIOCMIWAIT
-    while (true)
+    while (1)
     {
         int status;
         if (-1 == ioctl(m_fd, TIOCMGET, &status))
         {
             break;
         }
-        if (0 != (status & TIOCM_CTS) || 0 != (status & TIOCM_DSR) || 0 != (status & TIOCM_RI) || 0 != (status & TIOCM_CD))
+        if (0 != (status & TIOCM_CD) || 0 != (status & TIOCM_CTS) || 0 != (status & TIOCM_DSR) || 0 != (status & TIOCM_RI))
         {
             return true;
         }
@@ -743,7 +730,7 @@ bool SerialImpl::waitForChange()
     }
     return false;
 #else
-    int command = (TIOCM_CD | TIOCM_DSR | TIOCM_RI | TIOCM_CTS);
+    int command = (TIOCM_CD | TIOCM_CTS | TIOCM_DSR | TIOCM_RI);
     if (-1 == ioctl(m_fd, TIOCMIWAIT, &command))
     {
         return false;
@@ -1074,7 +1061,7 @@ int SerialImpl::reconfig()
     bzero(&options, sizeof(options));
     /* 设置原始模式, 无ECHO, 二进制 */
     options.c_cflag |= (tcflag_t)(CLOCAL | CREAD);
-    options.c_lflag &= (tcflag_t) ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ISIG | IEXTEN); //|ECHOPRT
+    options.c_lflag &= (tcflag_t) ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ISIG | IEXTEN);
     options.c_oflag &= (tcflag_t) ~(OPOST);
     options.c_iflag &= (tcflag_t) ~(INLCR | IGNCR | ICRNL | IGNBRK);
 #ifdef IUCLC

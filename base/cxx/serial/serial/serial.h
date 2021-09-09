@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -15,7 +17,7 @@ class Serial
 public:
     Serial();
 
-    virtual ~Serial();
+    virtual ~Serial() = default;
 
     /**
      * @brief 打开串口
@@ -33,13 +35,13 @@ public:
      * @brief 是否已打开
      * @return true-是, false-否
      */
-    bool isOpened() const;
+    bool isOpened();
 
     /**
      * @brief 获取端口
      * @return 端口
      */
-    std::string getPort() const;
+    std::string getPort();
 
     /**
      * @brief 设置端口
@@ -51,7 +53,7 @@ public:
      * @brief 获取波特率
      * @return 波特率
      */
-    unsigned long getBaudrate() const;
+    unsigned long getBaudrate();
 
     /**
      * @brief 设置波特率
@@ -65,7 +67,7 @@ public:
      * @brief 获取数据位
      * @return 数据位
      */
-    Databits getDatabits() const;
+    Databits getDatabits();
 
     /**
      * @brief 设置数据位
@@ -77,7 +79,7 @@ public:
      * @brief 获取校验位
      * @return 校验位
      */
-    ParityType getParity() const;
+    ParityType getParity();
 
     /**
      * @brief 设置校验位
@@ -89,7 +91,7 @@ public:
      * @brief 获取停止位
      * @return 停止位
      */
-    Stopbits getStopbits() const;
+    Stopbits getStopbits();
 
     /**
      * @brief 设置停止位
@@ -101,7 +103,7 @@ public:
      * @brief 获取流控
      * @return 流控
      */
-    FlowcontrolType getFlowcontrol() const;
+    FlowcontrolType getFlowcontrol();
 
     /**
      * @brief 设置流控
@@ -113,7 +115,7 @@ public:
      * @brief 获取超时
      * @return 超时
      */
-    Timeout getTimeout() const;
+    Timeout getTimeout();
 
     /**
      * @brief 设置读/写超时, 有两个超时条件:
@@ -216,69 +218,67 @@ public:
     void flushOutput();
 
     /**
-     * @brief 获取CTS行的当前状态
-     */
-    bool getCTS();
-
-    /**
-     * @brief 获取DSR行的当前状态
-     */
-    bool getDSR();
-
-    /**
-     * @brief 获取RI行的当前状态
-     */
-    bool getRI();
-
-    /**
-     * @brief 获取CD行的当前状态
+     * @brief 获取CD
      */
     bool getCD();
 
     /**
-     * @brief 发送RS-232的中断信号
+     * @brief 获取CTS
      */
-    void sendBreak(int duration);
+    bool getCTS();
 
     /**
-     * @brief 设置中断条件为给定等级
+     * @brief 获取DSR
      */
-    void setBreak(bool level = true);
+    bool getDSR();
 
     /**
-     * @brief 设置RTS握手线为给定等级
+     * @brief 获取RI
      */
-    void setRTS(bool level = true);
+    bool getRI();
 
     /**
-     * @brief 设置DTR握手线为给定等级
+     * @brief 设置中断
      */
-    void setDTR(bool level = true);
+    void setBreak(bool set);
 
     /**
-     * @brief 等待可读, 将会阻塞直到有数据可读取, 或触发readTimeoutConstant超时。
-     * @return true-当处于可读状态时, false-由于触发超时或中断)
+     * @brief 设置DTR
      */
-    bool waitReadable();
+    void setDTR(bool set);
+
+    /**
+     * @brief 设置RTS
+     */
+    void setRTS(bool set);
+
+    /**
+     * @brief 等待可读, 将会阻塞直到有数据可读取, 或触发readTimeoutConstant超时
+     * @param timeout 超时时间(毫秒)
+     * @return true-当处于可读状态时, false-由于触发超时或中断
+     */
+    bool waitReadable(unsigned int timeout);
 
     /**
      * @brief 阻塞一段时间(根据传入的字节数计算), 可以和waitReadable一起使用, 以便从端口读取更大的数据块
+     * @param count 字节数
      */
     void waitByteTimes(size_t count);
 
     /**
-     * @brief 阻塞直到CTS, DSR, RI, CD改变或被中断
+     * @brief 阻塞直到CD, CTS, DSR, RI改变或被中断
      * @return true-有变化, false-无变化
      */
     bool waitForChange();
 
-private:
-    SerialImpl* m_impl;
-};
+    /**
+     * @brief 获取系统中可用的串口设备列表
+     * @return 串口设备列表
+     */
+    static std::vector<PortInfo> getAllPorts();
 
-/**
- * @brief 获取系统中可用的串口设备列表
- * @return 串口设备列表
- */
-std::vector<PortInfo> getAllPorts();
+private:
+    std::mutex m_mutex;
+    std::shared_ptr<SerialImpl> m_impl; /* 实现 */
+};
 } // namespace serial

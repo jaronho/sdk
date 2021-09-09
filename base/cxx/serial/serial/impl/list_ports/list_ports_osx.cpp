@@ -75,7 +75,7 @@ io_registry_entry_t get_parent_iousb_device(io_object_t& serial_port)
     io_registry_entry_t result = 0;
     kern_return_t kern_result = KERN_FAILURE;
     std::string name = get_class_name(device);
-    // Walk the IO Registry tree looking for this devices parent IOUSBDevice.
+    /* Walk the IO Registry tree looking for this devices parent IOUSBDevice */
     while ("IOUSBDevice" != name)
     {
         kern_result = IORegistryEntryGetParentEntry(device, kIOServicePlane, &parent);
@@ -160,7 +160,7 @@ std::string rtrim(const std::string& str)
     return result;
 }
 
-std::vector<PortInfo> getAllPorts()
+std::vector<PortInfo> Serial::getAllPorts()
 {
     std::vector<PortInfo> devices_found;
     CFMutableDictionaryRef classes_to_match;

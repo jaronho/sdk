@@ -27,7 +27,7 @@ std::string utf8Encode(const std::wstring& wstr)
     return str;
 }
 
-std::vector<PortInfo> getAllPorts()
+std::vector<PortInfo> Serial::getAllPorts()
 {
     std::vector<PortInfo> portList;
     HDEVINFO info = SetupDiGetClassDevs((const GUID*)&GUID_DEVCLASS_PORTS, NULL, NULL, DIGCF_PRESENT);

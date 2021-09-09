@@ -7,7 +7,7 @@
 
 namespace serial
 {
-class SerialImpl
+class SerialImpl final
 {
 public:
     SerialImpl();
@@ -166,58 +166,55 @@ public:
     void flushOutput();
 
     /**
-     * @brief 获取CTS的当前状态
-     */
-    bool getCTS();
-
-    /**
-     * @brief 获取DSR的当前状态
-     */
-    bool getDSR();
-
-    /**
-     * @brief 获取RI的当前状态
-     */
-    bool getRI();
-
-    /**
-     * @brief 获取CD的当前状态
+     * @brief 获取CD
      */
     bool getCD();
 
     /**
-     * @brief 发送RS-232的中断信号
+     * @brief 获取CTS
      */
-    void sendBreak(int duration);
+    bool getCTS();
 
     /**
-     * @brief 设置中断条件为给定等级
+     * @brief 获取DSR
      */
-    void setBreak(bool level);
+    bool getDSR();
 
     /**
-     * @brief 设置RTS握手线为给定等级
+     * @brief 获取RI
      */
-    void setRTS(bool level);
+    bool getRI();
 
     /**
-     * @brief 设置DTR握手线为给定等级
+     * @brief 设置中断
      */
-    void setDTR(bool level);
+    void setBreak(bool set);
 
     /**
-     * @brief 等待可读, 将会阻塞直到有数据可读取, 或触发readTimeoutConstant超时。
-     * @return true-当处于可读状态时, false-由于触发超时或中断)
+     * @brief 设置DTR
+     */
+    void setDTR(bool set);
+
+    /**
+     * @brief 设置RTS
+     */
+    void setRTS(bool set);
+
+    /**
+     * @brief 等待可读, 将会阻塞直到有数据可读取, 或触发readTimeoutConstant超时
+     * @param timeout 超时时间(毫秒)
+     * @return true-当处于可读状态时, false-由于触发超时或中断
      */
     bool waitReadable(unsigned int timeout);
 
     /**
      * @brief 阻塞一段时间(根据传入的字节数计算), 可以和waitReadable一起使用, 以便从端口读取更大的数据块
+     * @param count 字节数
      */
     void waitByteTimes(size_t count);
 
     /**
-     * @brief 阻塞直到CTS, DSR, RI, CD改变或被中断
+     * @brief 阻塞直到CD, CTS, DSR, RI改变或被中断
      * @return true-有变化, false-无变化
      */
     bool waitForChange();

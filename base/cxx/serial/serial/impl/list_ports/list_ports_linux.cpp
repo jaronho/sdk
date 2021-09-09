@@ -40,7 +40,7 @@ std::string formatStr(const char* format, ...)
         }
         else if (ret >= bufferSize)
         {
-            // Realloc and try again.
+            /* 重新分配内存并重试 */
             bufferSize = ret + 1;
             char* new_buffer_ptr = (char*)realloc(buffer, bufferSize);
             if (new_buffer_ptr)
@@ -198,7 +198,7 @@ std::vector<std::string> getSysfsInfo(const std::string& device_path)
     }
     else
     {
-        // Try to read ID string of PCI device
+        /* Try to read ID string of PCI device */
         std::string sysIdPath = sysDevicePath + "/id";
         if (isPathExist(sysIdPath))
         {
@@ -215,7 +215,7 @@ std::vector<std::string> getSysfsInfo(const std::string& device_path)
     return result;
 }
 
-std::vector<PortInfo> getAllPorts()
+std::vector<PortInfo> Serial::getAllPorts()
 {
     std::vector<PortInfo> portList;
     std::vector<std::string> globList;
