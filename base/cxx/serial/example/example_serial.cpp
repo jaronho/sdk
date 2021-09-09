@@ -27,33 +27,22 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     }
     printf("serial open success\n");
     /* 监听串口数据 */
-    const size_t BUF_SIZE = 1024;
-    char buf[BUF_SIZE] = {0};
     while (1)
     {
-        size_t canReadCount = g_com.availableForRead();
-        while (canReadCount > 0)
+        std::string bytes = g_com.readAll();
+        if (!bytes.empty())
         {
-            size_t willReadCount = BUF_SIZE;
-            if (canReadCount < willReadCount)
-            {
-                willReadCount = canReadCount;
-            }
-            size_t len = g_com.read(buf, willReadCount);
-            if (len > 0)
-            {
-                fprintf(stderr, "%s", buf);
-                g_lastRecvTimestamp = std::chrono::steady_clock::now();
-                g_totalRecvLength += len;
-            }
-            canReadCount -= len;
+            g_lastRecvTimestamp = std::chrono::steady_clock::now();
+            fprintf(stderr, "%s", bytes.c_str()); /* 坑爹: 这里打印只能输出到stderr, 用stdout的话会阻塞(不知道啥原因) */
+            g_totalRecvLength += bytes.size();
         }
         if (g_totalRecvLength > 0)
         {
-            auto nowTimestamp = std::chrono::steady_clock::now();
-            std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(nowTimestamp - g_lastRecvTimestamp);
+            std::chrono::milliseconds elapsed =
+                std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - g_lastRecvTimestamp);
             if (elapsed.count() >= 1000)
             {
+                /* 坑爹: 这里打印只能输出到stderr, 用stdout的话会阻塞(不知道啥原因) */
                 fprintf(stderr, "\n========== total receive length: %zu\n", g_totalRecvLength);
                 g_totalRecvLength = 0;
             }

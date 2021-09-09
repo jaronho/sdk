@@ -149,28 +149,24 @@ public:
 
     /**
      * @brief 读数据
-     * @param buffer 缓冲区
-     * @param size 缓冲区大小(要读的字节数)
-     * @return 读到的字节数
+     * @param size 要读的字节数
+     * @return 读到的数据
      */
-    size_t read(std::vector<char>& buffer, size_t size);
+    std::string read(size_t size);
 
     /**
-     * @brief 读数据
-     * @param buffer 缓冲区
-     * @param size 缓冲区大小(要读的字节数)
-     * @return 读到的字节数
+     * @brief 读取所有数据
+     * @return 所有数据
      */
-    size_t read(std::string& buffer, size_t size);
+    std::string readAll();
 
     /**
      * @brief 读行数据
-     * @param line 行缓冲区
      * @param maxSize 指定行的最大长度(选填), 默认: 65536=2^16
      * @param eol 行结尾标识
-     * @return 读到的字节数
+     * @return 读到的行数据
      */
-    size_t readLine(std::string& line, size_t maxSize = 65536, const std::string& eol = "\n");
+    std::string readLine(size_t maxSize = 65536, const std::string& eol = "\n");
 
     /**
      * @brief 读多行数据直到超时, 需要设置超时时间>0
@@ -178,7 +174,7 @@ public:
      * @param eol 行结尾标识
      * @return 多行列表
      */
-    std::vector<std::string> readLines(size_t size = 65536, std::string eol = "\n");
+    std::vector<std::string> readLines(size_t maxSize = 65536, std::string eol = "\n");
 
     /**
      * @brief 写数据
@@ -193,14 +189,14 @@ public:
      * @param data 数据内容
      * @return 写入的数据长度
      */
-    size_t write(const std::vector<char>& data);
+    size_t write(const std::string& data);
 
     /**
      * @brief 写数据
      * @param data 数据内容
      * @return 写入的数据长度
      */
-    size_t write(const std::string& data);
+    size_t write(const std::vector<char>& data);
 
     /**
      * @brief 刷新(输入/输出)缓冲区

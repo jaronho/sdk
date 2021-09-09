@@ -132,47 +132,59 @@ size_t Serial::read(char* buffer, size_t size)
     return m_impl->read(buffer, size);
 }
 
-size_t Serial::read(std::vector<char>& buffer, size_t size)
+std::string Serial::read(size_t size)
 {
+    std::string bytes;
     if (0 == size)
     {
-        return 0;
+        return bytes;
     }
     std::lock_guard<std::mutex> locker(m_mutex);
-    char* bytes = new char[size];
-    size_t len = m_impl->read(bytes, size);
-    buffer.insert(buffer.end(), bytes, bytes + len);
-    delete[] bytes;
-    return len;
+    char* buf = new char[size];
+    size_t len = m_impl->read(buf, size);
+    bytes.append(buf, len);
+    delete[] buf;
+    return bytes;
 }
 
-size_t Serial::read(std::string& buffer, size_t size)
+std::string Serial::readAll()
 {
-    if (0 == size)
+    static const size_t BUF_SIZE = 1024;
+    char buf[BUF_SIZE] = {0};
+    std::string bytes;
+    std::lock_guard<std::mutex> locker(m_mutex);
+    size_t canReadCount = m_impl->availableForRead();
+    while (canReadCount > 0)
     {
-        return 0;
+        size_t willReadCount = BUF_SIZE;
+        if (canReadCount < willReadCount)
+        {
+            willReadCount = canReadCount;
+        }
+        size_t len = m_impl->read(buf, willReadCount);
+        if (len > 0)
+        {
+            bytes.append(buf, len);
+        }
+        canReadCount -= len;
     }
-    std::lock_guard<std::mutex> locker(m_mutex);
-    char* bytes = new char[size];
-    size_t len = m_impl->read(bytes, size);
-    buffer.append(reinterpret_cast<const char*>(bytes), len);
-    delete[] bytes;
-    return len;
+    return bytes;
 }
 
-size_t Serial::readLine(std::string& buffer, size_t size, const std::string& eol)
+std::string Serial::readLine(size_t maxSize, const std::string& eol)
 {
+    std::string line;
     size_t eolSize = eol.size();
-    if (0 == size || 0 == eolSize)
+    if (0 == maxSize || 0 == eolSize)
     {
-        return 0;
+        return line;
     }
-    char* bytes = static_cast<char*>(alloca(size * sizeof(char)));
+    char* buf = static_cast<char*>(alloca(maxSize * sizeof(char)));
     size_t totalReadLen = 0;
     std::lock_guard<std::mutex> locker(m_mutex);
     while (1)
     {
-        size_t len = m_impl->read(bytes + totalReadLen, 1);
+        size_t len = m_impl->read(buf + totalReadLen, 1);
         totalReadLen += len;
         if (0 == len) /* 读取1字节时超时 */
         {
@@ -182,40 +194,40 @@ size_t Serial::readLine(std::string& buffer, size_t size, const std::string& eol
         {
             continue;
         }
-        if (std::string(reinterpret_cast<const char*>(bytes + totalReadLen - eolSize), eolSize) == eol) /* 找到行尾标识 */
+        if (std::string(buf + totalReadLen - eolSize, eolSize) == eol) /* 找到行尾标识 */
         {
             break;
         }
-        if (totalReadLen == size) /* 达到行指定最大长度 */
+        if (totalReadLen == maxSize) /* 达到行指定最大长度 */
         {
             break;
         }
     }
-    buffer.append(reinterpret_cast<const char*>(bytes), totalReadLen);
-    return totalReadLen;
+    line.append(buf, totalReadLen);
+    return line;
 }
 
-std::vector<std::string> Serial::readLines(size_t size, std::string eol)
+std::vector<std::string> Serial::readLines(size_t maxSize, std::string eol)
 {
     std::vector<std::string> lines;
     size_t eolSize = eol.size();
-    if (0 == size || 0 == eolSize)
+    if (0 == maxSize || 0 == eolSize)
     {
         return lines;
     }
-    char* bytes = static_cast<char*>(alloca(size * sizeof(char)));
+    char* buf = static_cast<char*>(alloca(maxSize * sizeof(char)));
     size_t totalReadLen = 0;
     size_t startOfLine = 0;
     std::lock_guard<std::mutex> locker(m_mutex);
-    while (totalReadLen < size)
+    while (totalReadLen < maxSize)
     {
-        size_t bytes_read = m_impl->read(bytes + totalReadLen, 1);
+        size_t bytes_read = m_impl->read(buf + totalReadLen, 1);
         totalReadLen += bytes_read;
         if (0 == bytes_read) /* 读取1字节时超时 */
         {
             if (startOfLine != totalReadLen)
             {
-                lines.emplace_back(std::string(reinterpret_cast<const char*>(bytes + startOfLine), totalReadLen - startOfLine));
+                lines.emplace_back(std::string(buf + startOfLine, totalReadLen - startOfLine));
             }
             break;
         }
@@ -223,16 +235,16 @@ std::vector<std::string> Serial::readLines(size_t size, std::string eol)
         {
             continue;
         }
-        if (std::string(reinterpret_cast<const char*>(bytes + totalReadLen - eolSize), eolSize) == eol) /* 找到行尾标识 */
+        if (std::string(buf + totalReadLen - eolSize, eolSize) == eol) /* 找到行尾标识 */
         {
-            lines.emplace_back(std::string(reinterpret_cast<const char*>(bytes + startOfLine), totalReadLen - startOfLine));
+            lines.emplace_back(std::string(buf + startOfLine, totalReadLen - startOfLine));
             startOfLine = totalReadLen;
         }
-        if (totalReadLen == size) /* 达到所有行之和指定最大长度 */
+        if (totalReadLen == maxSize) /* 达到所有行之和指定最大长度 */
         {
             if (startOfLine != totalReadLen)
             {
-                lines.emplace_back(std::string(reinterpret_cast<const char*>(bytes + startOfLine), totalReadLen - startOfLine));
+                lines.emplace_back(std::string(buf + startOfLine, totalReadLen - startOfLine));
             }
             break;
         }
@@ -246,6 +258,16 @@ size_t Serial::write(const char* data, size_t size)
     return m_impl->write(data, size);
 }
 
+size_t Serial::write(const std::string& data)
+{
+    if (data.empty())
+    {
+        return 0;
+    }
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_impl->write(data.c_str(), data.size());
+}
+
 size_t Serial::write(const std::vector<char>& data)
 {
     if (data.empty())
@@ -254,16 +276,6 @@ size_t Serial::write(const std::vector<char>& data)
     }
     std::lock_guard<std::mutex> locker(m_mutex);
     return m_impl->write(&data[0], data.size());
-}
-
-size_t Serial::write(const std::string& data)
-{
-    if (data.empty())
-    {
-        return 0;
-    }
-    std::lock_guard<std::mutex> locker(m_mutex);
-    return m_impl->write(reinterpret_cast<const char*>(data.c_str()), data.size());
 }
 
 void Serial::flush()
