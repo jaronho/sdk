@@ -195,8 +195,6 @@ std::vector<PortInfo> getAllPorts()
         }
         PortInfo port_info;
         port_info.port = device_path;
-        port_info.description = "n/a";
-        port_info.hardware_id = "n/a";
         std::string device_name = rtrim(get_string_property(parent, "USB Product Name"));
         std::string vendor_name = rtrim(get_string_property(parent, "USB Vendor Name"));
         std::string description = rtrim(vendor_name + " " + device_name);

@@ -209,10 +209,6 @@ std::vector<std::string> getSysfsInfo(const std::string& device_path)
     {
         friendlyName = deviceName;
     }
-    if (hardwareId.empty())
-    {
-        hardwareId = "n/a";
-    }
     std::vector<std::string> result;
     result.push_back(friendlyName);
     result.push_back(hardwareId);

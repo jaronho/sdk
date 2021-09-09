@@ -99,6 +99,6 @@ struct PortInfo
 {
     std::string port; /* 端口号 */
     std::string description; /* 人类可读的描述信息 */
-    std::string hardwareId; /* 硬件ID, 例如: USB串口设备为 VID:PID, 或者无效时为 n/a */
+    std::string hardwareId; /* 硬件ID, 例如: USB串口设备为 VID:PID */
 };
 } // namespace serial
