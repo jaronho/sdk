@@ -15,11 +15,8 @@ struct Timeout
      */
     static unsigned int maxMS()
     {
-#ifdef _WIN32
-        return UINT_MAX;
-#else
-        return std::numeric_limits<unsigned int>::max();
-#endif
+        static const unsigned int MAX_MS = (std::numeric_limits<unsigned int>::max)();
+        return MAX_MS;
     }
 
     /**
@@ -40,6 +37,20 @@ struct Timeout
         , writeTimeoutConstant(writeConstant)
         , writeTimeoutMultiplier(writeMultiplier)
     {
+    }
+
+    bool operator==(const Timeout& other) const
+    {
+        return other.interByteTimeout == interByteTimeout && other.readTimeoutConstant == readTimeoutConstant
+               && other.readTimeoutMultiplier == readTimeoutMultiplier && other.writeTimeoutConstant == writeTimeoutConstant
+               && other.writeTimeoutMultiplier == writeTimeoutMultiplier;
+    }
+
+    bool operator!=(const Timeout& other) const
+    {
+        return other.interByteTimeout != interByteTimeout || other.readTimeoutConstant != readTimeoutConstant
+               || other.readTimeoutMultiplier != readTimeoutMultiplier || other.writeTimeoutConstant != writeTimeoutConstant
+               || other.writeTimeoutMultiplier != writeTimeoutMultiplier;
     }
 
     unsigned int interByteTimeout; /* 接收到的字节之间的超时时间(单位:毫秒) */

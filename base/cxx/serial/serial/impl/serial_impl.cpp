@@ -46,9 +46,24 @@
 namespace serial
 {
 #ifdef _WIN32
-inline std::wstring getPrefixPortIfNeeded(const std::wstring& input)
+inline std::wstring string2wstring(const std::string& str)
 {
-    static const std::wstring winComPortPrefix = L"\\\\.\\";
+    if (str.empty())
+    {
+        return std::wstring();
+    }
+    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
+    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
+    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
+    buf[len] = '\0';
+    std::wstring wstr(buf);
+    free(buf);
+    return wstr;
+}
+
+inline std::string getPrefixPortIfNeeded(const std::string& input)
+{
+    static const std::string winComPortPrefix = "\\\\.\\";
     if (0 != input.compare(0, winComPortPrefix.size(), winComPortPrefix))
     {
         return winComPortPrefix + input;
@@ -61,25 +76,26 @@ class MillisecondTimer
 public:
     MillisecondTimer(unsigned int millis)
     {
-        int64_t nsec = m_expiry.tv_nsec + (millis * 1e6);
+        timespec now = timespecNow();
+        unsigned long long nsec = now.tv_nsec + (millis * 1e6);
         if (nsec >= 1e9)
         {
-            int64_t secDiff = nsec / static_cast<int>(1e9);
-            m_expiry.tv_nsec = nsec % static_cast<int>(1e9);
-            m_expiry.tv_sec += secDiff;
+            m_expiry.tv_sec = now.tv_sec + nsec / static_cast<unsigned int>(1e9);
+            m_expiry.tv_nsec = nsec % static_cast<unsigned int>(1e9);
         }
         else
         {
+            m_expiry.tv_sec = now.tv_sec;
             m_expiry.tv_nsec = nsec;
         }
     }
 
-    int64_t remaining()
+    long remaining()
     {
-        timespec now(timespecNow());
-        int64_t millis = (m_expiry.tv_sec - now.tv_sec) * 1e3;
-        millis += (m_expiry.tv_nsec - now.tv_nsec) / 1e6;
-        return millis;
+        timespec now = timespecNow();
+        long long nowNsec = now.tv_sec * 1e9 + now.tv_nsec;
+        long long expiryNsec = m_expiry.tv_sec * 1e9 + m_expiry.tv_nsec;
+        return (expiryNsec - nowNsec) / 1e6;
     }
 
     static timespec timespecNow()
@@ -103,7 +119,7 @@ private:
     timespec m_expiry;
 };
 
-timespec timespecFromMS(const unsigned int millis)
+timespec timespecFromMS(unsigned int millis)
 {
     timespec time;
     time.tv_sec = millis / 1e3;
@@ -119,7 +135,7 @@ SerialImpl::SerialImpl()
     , m_parity(ParityType::NONE)
     , m_stopbits(Stopbits::ONE)
     , m_flowcontrol(FlowcontrolType::NONE)
-    , m_timeout(Timeout::simpleTimeout(Timeout::maxMS()))
+    , m_timeout(Timeout::simpleTimeout(0))
 {
 }
 
@@ -139,10 +155,13 @@ int SerialImpl::open()
         return 0;
     }
 #ifdef _WIN32
-    /* 参考: https://github.com/wjwwood/serial/issues/84 */
-    std::wstring portWithPrefix = getPrefixPortIfNeeded(m_port);
-    LPCWSTR lp_port = portWithPrefix.c_str();
-    m_fd = CreateFileW(lp_port, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    std::string portWithPrefix = getPrefixPortIfNeeded(m_port);
+#ifdef UNICODE
+    LPCWSTR portName = string2wstring(portWithPrefix).c_str();
+#else
+    LPCSTR portName = portWithPrefix.c_str();
+#endif
+    m_fd = CreateFile(portName, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         DWORD lastError = GetLastError();
@@ -153,7 +172,7 @@ int SerialImpl::open()
         return 3;
     }
 #else
-    m_fd = ::open(m_port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+    m_fd = ::open(m_port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK); /* 非阻塞 */
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         switch (errno)
@@ -205,25 +224,20 @@ bool SerialImpl::isOpened() const
 
 std::string SerialImpl::getPort() const
 {
-#ifdef _WIN32
-    return std::string(m_port.begin(), m_port.end());
-#else
     return m_port;
-#endif
 }
 
 void SerialImpl::setPort(const std::string& port)
 {
-#ifdef _WIN32
-    m_port = std::wstring(port.begin(), port.end());
-#else
-    m_port = port;
-#endif
-    if (INVALID_HANDLE_VALUE != m_fd)
+    if (0 != port.compare(m_port))
     {
-        if (close())
+        m_port = port;
+        if (INVALID_HANDLE_VALUE != m_fd)
         {
-            open();
+            if (close())
+            {
+                open();
+            }
         }
     }
 }
@@ -235,8 +249,11 @@ unsigned long SerialImpl::getBaudrate() const
 
 void SerialImpl::setBaudrate(unsigned long baudrate)
 {
-    m_baudrate = baudrate;
-    reconfig();
+    if (baudrate != m_baudrate)
+    {
+        m_baudrate = baudrate;
+        reconfig();
+    }
 }
 
 Databits SerialImpl::getDatabits() const
@@ -246,8 +263,11 @@ Databits SerialImpl::getDatabits() const
 
 void SerialImpl::setDatabits(const Databits& databits)
 {
-    m_databits = databits;
-    reconfig();
+    if (databits != m_databits)
+    {
+        m_databits = databits;
+        reconfig();
+    }
 }
 
 ParityType SerialImpl::getParity() const
@@ -257,8 +277,11 @@ ParityType SerialImpl::getParity() const
 
 void SerialImpl::setParity(const ParityType& parity)
 {
-    m_parity = parity;
-    reconfig();
+    if (parity != m_parity)
+    {
+        m_parity = parity;
+        reconfig();
+    }
 }
 
 Stopbits SerialImpl::getStopbits() const
@@ -268,8 +291,11 @@ Stopbits SerialImpl::getStopbits() const
 
 void SerialImpl::setStopbits(const Stopbits& stopbits)
 {
-    m_stopbits = stopbits;
-    reconfig();
+    if (stopbits != m_stopbits)
+    {
+        m_stopbits = stopbits;
+        reconfig();
+    }
 }
 
 FlowcontrolType SerialImpl::getFlowcontrol() const
@@ -279,8 +305,11 @@ FlowcontrolType SerialImpl::getFlowcontrol() const
 
 void SerialImpl::setFlowcontrol(const FlowcontrolType& flowcontrol)
 {
-    m_flowcontrol = flowcontrol;
-    reconfig();
+    if (flowcontrol != m_flowcontrol)
+    {
+        m_flowcontrol = flowcontrol;
+        reconfig();
+    }
 }
 
 Timeout SerialImpl::getTimeout() const
@@ -290,8 +319,11 @@ Timeout SerialImpl::getTimeout() const
 
 void SerialImpl::setTimeout(const Timeout& timeout)
 {
-    m_timeout = timeout;
-    reconfig();
+    if (timeout != m_timeout)
+    {
+        m_timeout = timeout;
+        reconfig();
+    }
 }
 
 size_t SerialImpl::availableForRead()
@@ -334,58 +366,25 @@ size_t SerialImpl::read(char* buffer, size_t size)
     {
         return 0;
     }
-    return (size_t)(len);
+    return static_cast<size_t>(len);
 #else
     size_t len = 0;
     /* 计算总超时时间(单位:毫秒), 常数 + (乘数 * 请求字节数) */
-    long totalTimeout = m_timeout.readTimeoutConstant + m_timeout.readTimeoutMultiplier * static_cast<long>(size);
-    MillisecondTimer totalTimeoutTimer(totalTimeout);
-    /* 预先读取数据 */
-    {
-        ssize_t cnt = ::read(m_fd, buffer, size);
-        if (cnt > 0)
-        {
-            len = cnt;
-        }
-    }
+    unsigned int totalTimeout = m_timeout.readTimeoutConstant + m_timeout.readTimeoutMultiplier * static_cast<unsigned int>(size);
+    MillisecondTimer timeoutTimer(totalTimeout);
     while (len < size)
     {
-        int64_t remainTimeout = totalTimeoutTimer.remaining();
-        if (remainTimeout <= 0) /* 超时 */
+        ssize_t count = ::read(m_fd, buffer + len, size - len);
+        if (count <= 0)
         {
-            break;
-        }
-        /* 下一个select的超时是剩余的总超时和字节间超时的最小值 */
-        unsigned int timeout = std::min(static_cast<unsigned int>(remainTimeout), m_timeout.interByteTimeout);
-        /* 等待可读数据 */
-        if (waitReadable(timeout))
-        {
-            /* 如果它是一个固定长度的多字节读取, 在这里插入一个等待, 这样就可以尝试在单个IO调用中获取全部内容.
-               如果指定的interByteTimeout不是最大的, 则跳过此等待. */
-            if (size > 1 && m_timeout.interByteTimeout == Timeout::maxMS())
-            {
-                size_t cnt = availableForRead();
-                if (cnt + len < size)
-                {
-                    waitByteTimes(size - (cnt + len));
-                }
-            }
-            ssize_t cnt = ::read(m_fd, buffer + len, size - len);
-            if (cnt < 1)
-            {
-                assert(0); /* 除非逻辑错误, 否则不可能进入该条件 */
-            }
-            len += static_cast<size_t>(cnt); /* 更新已读字节数 */
-            if (len == size) /* 请求的字节数全部读完 */
+            /* 超时时间为剩余的总超时和字节间超时的最小值 */
+            if (std::min(timeoutTimer.remaining(), static_cast<long>(m_timeout.interByteTimeout)) <= 0)
             {
                 break;
             }
-            else if (len < size) /* 请求的字节数未读完, 继续 */
-            {
-                continue;
-            }
-            assert(0); /* 除非逻辑错误, 否则不可能进入该条件 */
+            continue;
         }
+        len += static_cast<size_t>(count); /* 更新已读字节数 */
     }
     return len;
 #endif
@@ -407,64 +406,25 @@ size_t SerialImpl::write(const char* data, size_t length)
     {
         return 0;
     }
-    return (size_t)(len);
+    return static_cast<size_t>(len);
 #else
-    fd_set writefds;
     size_t len = 0;
     /* 计算总超时时间(单位:毫秒), 常数 + (乘数 * 请求字节数) */
-    long totalTimeout = m_timeout.writeTimeoutConstant + m_timeout.writeTimeoutMultiplier * static_cast<long>(length);
-    MillisecondTimer totalTimeoutTimer(totalTimeout);
-    bool firstFlag = true;
+    unsigned int totalTimeout = m_timeout.writeTimeoutConstant + m_timeout.writeTimeoutMultiplier * static_cast<unsigned int>(length);
+    MillisecondTimer timeoutTimer(totalTimeout);
     while (len < length)
     {
-        int64_t remainTimeout = totalTimeoutTimer.remaining();
-        /* 如果不是循环的第一次迭代, 则只考虑超时, 否则不允许超时为0 */
-        if (!firstFlag && (remainTimeout <= 0)) /* 超时 */
+        ssize_t count = ::write(m_fd, data + len, length - len);
+        if (count <= 0)
         {
-            break;
-        }
-        firstFlag = false;
-        timespec ts(timespecFromMS(remainTimeout));
-        FD_ZERO(&writefds);
-        FD_SET(m_fd, &writefds);
-        int ret = pselect(m_fd + 1, NULL, &writefds, NULL, &ts, NULL);
-        if (ret < 0)
-        {
-            if (EINTR == errno) /* 中断, 继续尝试 */
+            /* 超时时间为剩余的总超时和字节间超时的最小值 */
+            if (std::min(timeoutTimer.remaining(), static_cast<long>(m_timeout.interByteTimeout)) <= 0)
             {
-                continue;
+                break;
             }
-            assert(0); /* 其他错误 */
+            continue;
         }
-        if (0 == ret) /* 超时 */
-        {
-            break;
-        }
-        else if (ret > 0) /* 端口准备写数据 */
-        {
-            if (FD_ISSET(m_fd, &writefds)) /* 确保文件描述符在写入列表中 */
-            {
-                ssize_t cnt = ::write(m_fd, data + len, length - len);
-                if (-1 == cnt && EINTR == errno) /* 即使pselect返回了就绪状态, 调用仍然可能被中断, 在这种情况下简单地重试 */
-                {
-                    continue;
-                }
-                if (cnt < 1)
-                {
-                    assert(0); /* 除非逻辑错误, 否则不可能进入该条件 */
-                }
-                len += static_cast<size_t>(cnt); /* 更新已写字节数 */
-                if (len == length) /* 请求的字节数全部写完 */
-                {
-                    break;
-                }
-                else if (len < length) /* 请求的字节数未写完, 继续 */
-                {
-                    continue;
-                }
-            }
-            assert(0); /* 除非逻辑错误, 否则不可能进入该条件 */
-        }
+        len += static_cast<size_t>(count); /* 更新已写字节数 */
     }
     return len;
 #endif
@@ -712,7 +672,7 @@ bool SerialImpl::waitReadable(unsigned int timeout)
     fd_set readfds;
     FD_ZERO(&readfds);
     FD_SET(m_fd, &readfds);
-    timespec ts(timespecFromMS(timeout));
+    timespec ts = timespecFromMS(timeout);
     int ret = pselect(m_fd + 1, &readfds, NULL, NULL, &ts, NULL);
     if (ret < 0)
     {
@@ -722,7 +682,7 @@ bool SerialImpl::waitReadable(unsigned int timeout)
         }
         return false;
     }
-    if (0 == ret) /* 超时 */
+    else if (0 == ret) /* 超时 */
     {
         return false;
     }
@@ -1449,10 +1409,9 @@ int SerialImpl::reconfig()
 #else
 #error "OS Support seems wrong."
 #endif
-    /* 参考: http://www.unixwiz.net/techtips/termios-vmin-vtime.html
-       这基本上将read调用设置为轮询读取, 但我们使用select来确保在每次调用之前有可用的数据可以读取, 因此我们永远不应该进行不必要的轮询 */
-    options.c_cc[VMIN] = 0;
-    options.c_cc[VTIME] = 0;
+    /* 参考: http://www.unixwiz.net/techtips/termios-vmin-vtime.html, 基本上将read调用设置为轮询读取 */
+    options.c_cc[VMIN] = 0; /* 非规范模式读取时的超时时间(单位:百毫秒) */
+    options.c_cc[VTIME] = 0; /* 非规范模式读取时的最小字符数 */
     /* 使设置生效 */
     if (-1 == tcsetattr(m_fd, TCSANOW, &options))
     {

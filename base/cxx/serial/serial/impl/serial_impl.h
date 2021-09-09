@@ -232,11 +232,10 @@ protected:
 private:
 #ifdef _WIN32
     HANDLE m_fd; /* 串口句柄 */
-    std::wstring m_port; /* 串口端口 */
 #else
     int m_fd; /* 串口句柄 */
-    std::string m_port; /* 串口端口 */
 #endif
+    std::string m_port; /* 串口端口 */
     unsigned long m_baudrate; /* 波特率 */
     Databits m_databits; /* 数据位 */
     ParityType m_parity; /* 校验位 */
