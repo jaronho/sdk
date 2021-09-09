@@ -360,15 +360,15 @@ size_t SerialImpl::read(char* buffer, size_t size)
         return 0;
     }
     memset(buffer, 0, size);
+    size_t len = 0;
 #ifdef _WIN32
-    DWORD len;
-    if (!ReadFile(m_fd, buffer, static_cast<DWORD>(size), &len, NULL))
+    DWORD count;
+    if (!ReadFile(m_fd, buffer, static_cast<DWORD>(size), &count, NULL))
     {
         return 0;
     }
-    return static_cast<size_t>(len);
+    len = static_cast<size_t>(count);
 #else
-    size_t len = 0;
     /* 计算总超时时间(单位:毫秒), 常数 + (乘数 * 请求字节数) */
     unsigned int totalTimeout = m_timeout.readTimeoutConstant + m_timeout.readTimeoutMultiplier * static_cast<unsigned int>(size);
     MillisecondTimer timeoutTimer(totalTimeout);
@@ -386,8 +386,12 @@ size_t SerialImpl::read(char* buffer, size_t size)
         }
         len += static_cast<size_t>(count); /* 更新已读字节数 */
     }
-    return len;
 #endif
+    if (len > 0)
+    {
+        *(buffer + len) = '\0';
+    }
+    return len;
 }
 
 size_t SerialImpl::write(const char* data, size_t length)
@@ -1067,6 +1071,7 @@ int SerialImpl::reconfig()
     {
         return 2; /* 获取串口状态错误 */
     }
+    bzero(&options, sizeof(options));
     /* 设置原始模式, 无ECHO, 二进制 */
     options.c_cflag |= (tcflag_t)(CLOCAL | CREAD);
     options.c_lflag &= (tcflag_t) ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ISIG | IEXTEN); //|ECHOPRT
@@ -1413,6 +1418,7 @@ int SerialImpl::reconfig()
     options.c_cc[VMIN] = 0; /* 非规范模式读取时的超时时间(单位:百毫秒) */
     options.c_cc[VTIME] = 0; /* 非规范模式读取时的最小字符数 */
     /* 使设置生效 */
+    tcflush(m_fd, TCIFLUSH);
     if (-1 == tcsetattr(m_fd, TCSANOW, &options))
     {
         return 7; /* 串口设置失败 */
