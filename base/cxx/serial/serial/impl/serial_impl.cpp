@@ -52,8 +52,12 @@ inline std::wstring string2wstring(const std::string& str)
     {
         return std::wstring();
     }
-    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
+    size_t len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
     wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
+    if (!buf)
+    {
+        return std::wstring();
+    }
     MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
     buf[len] = '\0';
     std::wstring wstr(buf);
