@@ -28,11 +28,11 @@ void showAllPorts(const std::vector<serial::PortInfo> portList)
         }
         else if (portCount < 100)
         {
-            printf("[% 2zu]       Name: %s\n", (i + 1), portList[i].port.c_str());
+            printf("[%02zu]       Name: %s\n", (i + 1), portList[i].port.c_str());
         }
         else
         {
-            printf("[% 3zu]      Name: %s\n", (i + 1), portList[i].port.c_str());
+            printf("[%03zu]      Name: %s\n", (i + 1), portList[i].port.c_str());
         }
         printf("    Description: %s\n", portList[i].description.c_str());
         printf("    Hardware ID: %s\n", portList[i].hardwareId.c_str());
@@ -68,11 +68,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         while (1)
         {
             char str[1024] = {0};
-#ifdef _WIN32
-            gets_s(str);
-#else
-            gets(str);
-#endif
+            std::cin.getline(str, sizeof(str));
             g_com.write(str, strlen(str));
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
