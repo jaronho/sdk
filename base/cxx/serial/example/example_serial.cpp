@@ -305,7 +305,7 @@ int main(int argc, char** argv)
         showAllPorts(portList);
     }
     /* 临时调试数据 */
-#if 1
+#if 0
     flagBaurate = 2;
     flagDatabits = 2;
     flagParity = 2;
