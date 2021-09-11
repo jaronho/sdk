@@ -168,27 +168,32 @@ int SerialImpl::open()
     m_fd = CreateFile(portName, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (INVALID_HANDLE_VALUE == m_fd)
     {
-        DWORD lastError = GetLastError();
-        if (ERROR_FILE_NOT_FOUND == lastError)
-        {
-            return 2;
-        }
-        return 3;
+        return 2;
     }
 #else
+    bool portAlreadyOpened = false;
+    FILE* stream = popen(("fuser " + m_port).c_str(), "r"); /* 判断串口文件是否已被其他进程打开 */
+    if (stream)
+    {
+        char buf[1] = {0};
+        if (fread(buf, 1, 1, stream) > 0)
+        {
+            portAlreadyOpened = true;
+        }
+        pclose(stream);
+    }
+    if (portAlreadyOpened)
+    {
+        return 2;
+    }
     m_fd = ::open(m_port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK); /* 非阻塞 */
     if (INVALID_HANDLE_VALUE == m_fd)
     {
-        switch (errno)
+        if (EINTR == errno) /* 这里递归调用, 因为这是一个可恢复错误 */
         {
-        case EINTR: /* 这里递归调用, 因为这是一个可恢复错误 */
             return open();
-        case ENFILE:
-        case EMFILE:
-            return 2; /* 太多文件句柄打开 */
-        default:
-            return 3;
         }
+        return 2;
     }
 #endif
     if (0 != reconfig())
@@ -199,7 +204,7 @@ int SerialImpl::open()
         ::close(m_fd);
 #endif
         m_fd = INVALID_HANDLE_VALUE;
-        return 4;
+        return 3;
     }
     return 0;
 }

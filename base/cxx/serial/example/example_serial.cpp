@@ -56,8 +56,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     g_com.setParity(parity);
     g_com.setStopbits(stopbits);
     g_com.setFlowcontrol(flowcontrol);
-    bool ret = g_com.open();
-    if (!ret)
+    if (!g_com.open())
     {
         printf("serial open failed!\n");
         return;
