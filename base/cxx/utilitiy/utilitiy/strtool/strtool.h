@@ -62,9 +62,10 @@ public:
      * @brief 组合
      * @param strList 字符串列表
      * @param sep 组合的符号(选填), 默认为空
+     * @param count 指定要组合字符串列表中的元素个数(选填), 默认为0表示组合所有元素
      * @return 组合后的字符串
      */
-    static std::string join(const std::vector<std::string>& strList, const std::string& sep = "");
+    static std::string join(const std::vector<std::string>& strList, const std::string& sep = "", size_t count = 0);
 
     /**
      * @brief 判断两个字符串是否相等

@@ -77,10 +77,14 @@ std::vector<std::string> StrTool::split(const std::string& str, const std::strin
     return strList;
 }
 
-std::string StrTool::join(const std::vector<std::string>& strList, const std::string& sep)
+std::string StrTool::join(const std::vector<std::string>& strList, const std::string& sep, size_t count)
 {
+    if (0 == count || count > strList.size())
+    {
+        count = strList.size();
+    }
     std::string str;
-    for (size_t i = 0; i < strList.size(); ++i)
+    for (size_t i = 0; i < count; ++i)
     {
         str += (i > 0 ? sep : "") + strList[i];
     }
