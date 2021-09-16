@@ -23,10 +23,32 @@ void StrTool::trimRight(std::string& str, char c)
     str.erase(str.find_last_not_of(c) + 1);
 }
 
-void StrTool::trimLeftRightSpace(std::string& str)
+void StrTool::trimLeftRight(std::string& str, char c)
 {
-    trimLeft(str, ' ');
-    trimRight(str, ' ');
+    trimLeft(str, c);
+    trimRight(str, c);
+}
+
+void StrTool::trimDuplicate(std::string& str, char c)
+{
+    std::string tmp;
+    size_t sameCount = 0;
+    for (size_t i = 0; i < str.size(); ++i)
+    {
+        if (c == str[i])
+        {
+            if (++sameCount > 1)
+            {
+                continue;
+            }
+        }
+        else
+        {
+            sameCount = 0;
+        }
+        tmp.push_back(str[i]);
+    }
+    str = tmp;
 }
 
 std::string StrTool::toLower(std::string str)

@@ -22,10 +22,18 @@ public:
     static void trimRight(std::string& str, char c);
 
     /**
-     * @brief 移除左右两边空格
+     * @brief 移除左右两边字符
      * @param str [输入/输出]字符串
+     * @param c 要移除的字符(选填), 默认空格
      */
-    static void trimLeftRightSpace(std::string& str);
+    static void trimLeftRight(std::string& str, char c = ' ');
+
+    /**
+     * @brief 移除连续重复字符, 例如: aaabbccddaaabcd 对 a 进行去重得到 abbccddabcd
+     * @param str [输入/输出]字符串
+     * @param c 要移除的字符
+     */
+    static void trimDuplicate(std::string& str, char c);
 
     /**
      * @brief 转为小写
