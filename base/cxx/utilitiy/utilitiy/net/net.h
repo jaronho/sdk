@@ -1,5 +1,4 @@
 #pragma once
-#include <functional>
 #include <string>
 #include <vector>
 
@@ -104,9 +103,9 @@ public:
     static IPv4Info calcIPv4Info(const std::string& ip, const std::string& netmask);
 
     /**
-     * @brief 搜索本机网络接口(网卡)
-     * @param func 回调, 参数: info-网络接口(网卡)列表, 返回值: true-继续搜索, false-搜索停止
+     * @brief 获取本机所有网络接口(网卡)
+     * @return 网络接口列表
      */
-    static void searchInterface(const std::function<bool(const IfaceInfo& info)>& func);
+    static std::vector<IfaceInfo> getAllInterfaces();
 };
 } // namespace utilitiy

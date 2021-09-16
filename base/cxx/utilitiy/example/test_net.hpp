@@ -19,18 +19,14 @@ void testNet()
     printf("--- default gateway: %s\n", ipv4Info.defaultGateway.c_str());
     printf("--- host count: %d\n", ipv4Info.hostCount);
     printf("\n-------------------- net card:\n");
-    std::vector<utilitiy::Net::IfaceInfo> interfaceList;
-    utilitiy::Net::searchInterface([&](const utilitiy::Net::IfaceInfo& info) {
-        interfaceList.emplace_back(info);
-        return true;
-    });
-    for (int i = 0; i < interfaceList.size(); ++i)
+    auto interfaceList = utilitiy::Net::getAllInterfaces();
+    for (size_t i = 0; i < interfaceList.size(); ++i)
     {
         const auto& iface = interfaceList[i];
-        printf("----- [%d]\n", i + 1);
+        printf("----- [%zu]\n", i + 1);
         printf("name: %s type: %s(%d)\n", iface.name.c_str(), iface.typeStr().c_str(), iface.realType);
         printf("mac: ");
-        for (int j = 0; j < iface.mac.size(); ++j)
+        for (size_t j = 0; j < iface.mac.size(); ++j)
         {
             if (j > 0)
             {

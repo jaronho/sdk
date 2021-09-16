@@ -143,8 +143,9 @@ Net::IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmas
     return info;
 }
 
-void Net::searchInterface(const std::function<bool(const Net::IfaceInfo& info)>& func)
+std::vector<Net::IfaceInfo> Net::getAllInterfaces()
 {
+    std::vector<IfaceInfo> ifaceList;
 #ifdef _WIN32
     PIP_ADAPTER_INFO pIpAdapterInfo = new IP_ADAPTER_INFO(); /* 存储本机网卡信息 */
     unsigned long stSize = sizeof(IP_ADAPTER_INFO);
@@ -212,15 +213,8 @@ void Net::searchInterface(const std::function<bool(const Net::IfaceInfo& info)>&
                 iface.ipv4List.emplace_back(im);
                 pIpAddrString = pIpAddrString->Next;
             } while (pIpAddrString);
-            /* 触发回调 */
-            if (func)
-            {
-                if (!func(iface))
-                {
-                    break; /* 停止搜索 */
-                }
-            }
-            /* 遍历下一个 */
+            /* 保存并遍历下一个 */
+            ifaceList.emplace_back(iface);
             pIpAdapterInfo = pIpAdapterInfo->Next;
         }
     }
@@ -242,13 +236,12 @@ void Net::searchInterface(const std::function<bool(const Net::IfaceInfo& info)>&
         struct ifaddrs* ifList = NULL;
         if (getifaddrs(&ifList) >= 0)
         {
-            std::vector<std::string> nameList;
             for (struct ifaddrs* ifa = ifList; NULL != ifa; ifa = ifa->ifa_next)
             {
                 bool alreadyExist = false;
-                for (size_t i = 0; i < nameList.size(); ++i)
+                for (size_t i = 0; i < ifaceList.size(); ++i)
                 {
-                    if (0 == nameList[i].compare(ifa->ifa_name))
+                    if (0 == ifaceList[i].name.compare(ifa->ifa_name))
                     {
                         alreadyExist = true;
                         break;
@@ -258,7 +251,6 @@ void Net::searchInterface(const std::function<bool(const Net::IfaceInfo& info)>&
                 {
                     continue;
                 }
-                nameList.emplace_back(ifa->ifa_name); /* 保存已找到的名字 */
                 IfaceInfo iface;
                 struct ifreq ifreq;
                 /* 网卡名 */
@@ -322,19 +314,14 @@ void Net::searchInterface(const std::function<bool(const Net::IfaceInfo& info)>&
                     snprintf(broadcast, sizeof(broadcast), "%s", (char*)inet_ntoa(((struct sockaddr_in*)&(ifreq.ifr_broadaddr))->sin_addr));
                     iface.broadcast = broadcast;
                 }
-                /* 触发回调 */
-                if (func)
-                {
-                    if (!func(iface))
-                    {
-                        break; /* 停止搜索 */
-                    }
-                }
+                /* 保存到列表 */
+                ifaceList.emplace_back(iface);
             }
             freeifaddrs(ifList);
         }
         close(fd);
     }
 #endif
+    return ifaceList;
 }
 } // namespace utilitiy
