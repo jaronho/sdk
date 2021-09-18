@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 14)
 include(../cmake/tools.cmake)
 
 ################################### 添加database库 ###################################
-option(enable_database_crypto "是否启用数据库加解密" OFF)
+option(enable_database_crypto "是否启用数据库加解密" ON)
 
 set(base_database_path ..) # 设置database库路径(可修改)
 include_directories(${base_database_path})

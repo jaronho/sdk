@@ -40,7 +40,7 @@ bool Sqlite::connect(bool readOnly)
 #ifdef SQLITE_HAS_CODEC
     if (!m_password.empty())
     {
-        ret = sqlite3_key_renamed_v2(m_db, "main", m_password.c_str(), (int)m_password.size());
+        ret = sqlite3_rekey_v2(m_db, "main", m_password.c_str(), (int)m_password.size());
         if (SQLITE_OK != ret)
         {
             sqlite3_close_v2(m_db);
