@@ -6,6 +6,7 @@
 
 #include "../utilitiy/charset/charset.h"
 #include "../utilitiy/cmdline/cmdline.h"
+#include "../utilitiy/filesystem/file_info.h"
 #include "../utilitiy/filesystem/path_info.h"
 
 void testCharset(int argc, char** argv)
@@ -69,6 +70,26 @@ void testCharset(int argc, char** argv)
                         printf(" Unknown\n");
                         break;
                     }
+                }
+                utilitiy::FileInfo fi(name);
+                long long size;
+                char* buf = fi.data(size, true);
+                if (buf)
+                {
+                    printf("    file content charset:");
+                    switch (utilitiy::Charset::getCoding(buf))
+                    {
+                    case utilitiy::Charset::Coding::GBK:
+                        printf(" GBK\n");
+                        break;
+                    case utilitiy::Charset::Coding::UTF8:
+                        printf(" UTF8\n");
+                        break;
+                    case utilitiy::Charset::Coding::UNKOWN:
+                        printf(" Unknown\n");
+                        break;
+                    }
+                    free(buf);
                 }
             },
             nullptr, true);
