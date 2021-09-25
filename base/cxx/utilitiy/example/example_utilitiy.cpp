@@ -14,7 +14,7 @@ int main(int argc, char** argv)
 #if 0
     testFileCopy(argc, argv);
 #else
-#if 1
+#if 0
     testCharset(argc, argv);
 #else
     testFilesystem();
