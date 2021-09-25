@@ -399,6 +399,113 @@ static int unicode_to_gbk(const wchar* wstr, int wlen, char* outbuf, int osize)
     return ret;
 }
 
+static bool is_gbk(const char* str, int len)
+{
+    /* 需要说明的是: 
+       is_gbk是通过双字节是否落在GBK的编码范围内实现的, 而UTF8编码格式的每个字节都是落在GBK的编码范围内,
+       所以只有先调用is_utf8先判断不是UTF8编码，再调用is_gbk才有意义. */
+    if (str)
+    {
+        unsigned int byteCount = 0; /* GBK可用1-2个字节编码, 中文2个, 英文1个 */
+        for (size_t i = 0; i < len; ++i)
+        {
+            unsigned char ch = str[i];
+            if ('\0' == ch)
+            {
+                break;
+            }
+            if (0 == byteCount)
+            {
+                if (ch >= 0x80)
+                {
+                    if (ch >= 0x81 && ch <= 0xFE)
+                    {
+                        byteCount = 2;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                    byteCount--;
+                }
+            }
+            else
+            {
+                if (ch < 0x40 || ch > 0xFE)
+                {
+                    return false;
+                }
+                byteCount--;
+            }
+        }
+        if (0 != byteCount) /* 违反GBK编码规则 */
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool is_utf8(const char* str, int len)
+{
+    if (str)
+    {
+        unsigned int byteCount = 0; /* UTF8可用1-6个字节编码, ASCII用1个字节 */
+        for (size_t i = 0; i < len; ++i)
+        {
+            unsigned char ch = str[i];
+            if ('\0' == ch)
+            {
+                break;
+            }
+            if (0 == byteCount)
+            {
+                if (ch >= 0x80) /* 如果不是ASCII码, 应该是多字节符, 计算字节数 */
+                {
+                    if (ch >= 0xFC && ch <= 0xFD)
+                    {
+                        byteCount = 6;
+                    }
+                    else if (ch >= 0xF8)
+                    {
+                        byteCount = 5;
+                    }
+                    else if (ch >= 0xF0)
+                    {
+                        byteCount = 4;
+                    }
+                    else if (ch >= 0xE0)
+                    {
+                        byteCount = 3;
+                    }
+                    else if (ch >= 0xC0)
+                    {
+                        byteCount = 2;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                    byteCount--;
+                }
+            }
+            else
+            {
+                if (0x80 != (ch & 0xC0)) /* 多字节符的非首字节, 应为10xxxxxx */
+                {
+                    return false;
+                }
+                byteCount--; /* 减到为零为止 */
+            }
+        }
+        if (0 != byteCount) /* 违反UTF8编码规则 */
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 //////////////////////////////////////////////////////////////////////
 // 字符集操作接口封装
 //////////////////////////////////////////////////////////////////////
@@ -414,102 +521,17 @@ bool Charset::isAscii(const std::string& str)
     return true;
 }
 
-bool Charset::isGbk(const std::string& str)
+Charset::Coding Charset::getCoding(const std::string& str)
 {
-    unsigned int byteCount = 0; /* GBK可用1-2个字节编码, 中文2个, 英文1个 */
-    for (size_t i = 0; i < str.size(); ++i)
+    if (is_utf8(str.c_str(), str.size()))
     {
-        unsigned char ch = str[i];
-        if ('\0' == ch)
-        {
-            break;
-        }
-        if (0 == byteCount)
-        {
-            if (ch >= 0x80)
-            {
-                if (ch >= 0x81 && ch <= 0xFE)
-                {
-                    byteCount = 2;
-                }
-                else
-                {
-                    return false;
-                }
-                byteCount--;
-            }
-        }
-        else
-        {
-            if (ch < 0x40 || ch > 0xFE)
-            {
-                return false;
-            }
-            byteCount--;
-        }
+        return Coding::UTF8;
     }
-    if (0 != byteCount) /* 违反GBK编码规则 */
+    else if (is_gbk(str.c_str(), str.size()))
     {
-        return false;
+        return Coding::GBK;
     }
-    return true;
-}
-
-bool Charset::isUtf8(const std::string& str)
-{
-    unsigned int byteCount = 0; /* UTF8可用1-6个字节编码, ASCII用1个字节 */
-    for (size_t i = 0; i < str.size(); ++i)
-    {
-        unsigned char ch = str[i];
-        if ('\0' == ch)
-        {
-            break;
-        }
-        if (0 == byteCount)
-        {
-            if (ch >= 0x80) /* 如果不是ASCII码, 应该是多字节符, 计算字节数 */
-            {
-                if (ch >= 0xFC && ch <= 0xFD)
-                {
-                    byteCount = 6;
-                }
-                else if (ch >= 0xF8)
-                {
-                    byteCount = 5;
-                }
-                else if (ch >= 0xF0)
-                {
-                    byteCount = 4;
-                }
-                else if (ch >= 0xE0)
-                {
-                    byteCount = 3;
-                }
-                else if (ch >= 0xC0)
-                {
-                    byteCount = 2;
-                }
-                else
-                {
-                    return false;
-                }
-                byteCount--;
-            }
-        }
-        else
-        {
-            if (0x80 != (ch & 0xC0)) /* 多字节符的非首字节, 应为10xxxxxx */
-            {
-                return false;
-            }
-            byteCount--; /* 减到为零为止 */
-        }
-    }
-    if (0 != byteCount) /* 违反UTF8编码规则 */
-    {
-        return false;
-    }
-    return true;
+    return Coding::UNKOWN;
 }
 
 std::wstring Charset::utf8ToUnicode(const std::string& str)

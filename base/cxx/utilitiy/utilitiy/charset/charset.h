@@ -6,6 +6,14 @@ namespace utilitiy
 class Charset final
 {
 public:
+    enum class Coding
+    {
+        GBK,
+        UTF8,
+        UNKOWN
+    };
+
+public:
     /**
      * @brief 是否为ASCII
      * @param str 字符串
@@ -14,18 +22,11 @@ public:
     static bool isAscii(const std::string& str);
 
     /**
-     * @brief 是否为GBK
+     * @brief 获取编码
      * @param str 字符串
-     * @return true-是, false-否
+     * @return 编码
      */
-    static bool isGbk(const std::string& str);
-
-    /**
-     * @brief 是否为UTF8
-     * @param str 字符串
-     * @return true-是, false-否
-     */
-    static bool isUtf8(const std::string& str);
+    static Coding getCoding(const std::string& str);
 
     /**
      * @brief UTF8转Unicode
