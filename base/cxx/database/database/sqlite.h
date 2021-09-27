@@ -131,10 +131,9 @@ public:
     /**
      * @brief 构造函数
      * @param path 数据库路径
-     * @param curPassword 当前数据库密码(选填)
-     * @param newPassword 新的数据库密码(选填) 
+     * @param password 数据库密码(选填), 为空表示没有密码
      */
-    Sqlite(const std::string& path, const std::string& curPassword = "", const std::string newPassword = "");
+    Sqlite(const std::string& path, const std::string& password = "");
 
     ~Sqlite();
 
@@ -223,6 +222,18 @@ public:
      */
     int64_t getLastInsertRowId();
 
+    /**
+     * @brief 获取上一次的错误码
+     * @return 错误码
+     */
+    int getLastErrorCode();
+
+    /**
+     * @brief 获取上一次的错误消息
+     * @return 错误消息
+     */
+    std::string getLastErrorMsg();
+
 private:
     /**
      * @brief 执行sql语句
@@ -241,7 +252,6 @@ private:
     sqlite3* m_db; /* 数据库指针 */
     bool m_inTransaction; /* 是否在事务中 */
     std::string m_path; /* 数据库路径(全路径) */
-    std::string m_curPassword; /* 当前数据库密码 */
-    std::string m_newPassword; /* 新的数据库密码 */
+    std::string m_password; /* 数据库密码 */
 };
 } // namespace database

@@ -100,7 +100,7 @@ bool Sqlite::Stmt::step()
             {
                 continue;
             }
-            else if (SQLITE_ROW == ret || SQLITE_DONE == ret) /* 正常返回 */
+            else if (SQLITE_ROW == ret) /* 正常返回 */
             {
                 return true;
             }
@@ -185,8 +185,8 @@ std::string Sqlite::Stmt::toString()
     return sql;
 }
 
-Sqlite::Sqlite(const std::string& path, const std::string& curPassword, const std::string newPassword)
-    : m_db(nullptr), m_inTransaction(false), m_path(path), m_curPassword(curPassword), m_newPassword(newPassword)
+Sqlite::Sqlite(const std::string& path, const std::string& password)
+    : m_db(nullptr), m_inTransaction(false), m_path(path), m_password(password)
 {
 }
 
@@ -224,24 +224,9 @@ bool Sqlite::connect(bool readOnly)
         return false;
     }
 #ifdef SQLITE_HAS_CODEC
-    if (m_curPassword.empty()) /* 数据库未加密 */
+    if (!m_password.empty()) /* 密码非空 */
     {
-        if (!m_newPassword.empty())
-        {
-            char pwd[] = "123456\0";
-            ret = sqlite3_key(m_db, pwd, strlen(pwd)); /* 设置密钥 */
-        }
-    }
-    else
-    {
-        ret = sqlite3_key(m_db, m_curPassword.c_str(), (int)m_curPassword.size()); /* 使用密钥打开 */
-        if (SQLITE_OK == ret) /* 密钥打开成功 */
-        {
-            if (!m_newPassword.empty() && m_newPassword != m_curPassword)
-            {
-                ret = sqlite3_rekey(m_db, m_newPassword.c_str(), (int)m_newPassword.size()); /* 变更密钥 */
-            }
-        }
+        ret = sqlite3_key(m_db, m_password.c_str(), m_password.size()); /* 设置密钥 */
     }
     if (SQLITE_OK != ret)
     {
@@ -374,6 +359,32 @@ int64_t Sqlite::getLastInsertRowId()
         return -1;
     }
     return sqlite3_last_insert_rowid(m_db);
+}
+
+int Sqlite::getLastErrorCode()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (!m_db)
+    {
+        return 0;
+    }
+    return sqlite3_errcode(m_db);
+}
+
+std::string Sqlite::getLastErrorMsg()
+{
+    std::string msg;
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (!m_db)
+    {
+        return msg;
+    }
+    const char* str = sqlite3_errmsg(m_db);
+    if (str)
+    {
+        msg = str;
+    }
+    return msg;
 }
 
 int Sqlite::execImpl(sqlite3* db, const std::string& sql,
