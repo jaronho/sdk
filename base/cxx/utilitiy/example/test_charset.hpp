@@ -8,9 +8,12 @@
 #include "../utilitiy/cmdline/cmdline.h"
 #include "../utilitiy/filesystem/file_info.h"
 #include "../utilitiy/filesystem/path_info.h"
+#include "../utilitiy/strtool/strtool.h"
+#include "../utilitiy/system/system.h"
 
 void testCharset(int argc, char** argv)
 {
+    printf("current locale: %s\n\n", utilitiy::Charset::getLocale().c_str());
     cmdline::parser parser;
     parser.add<std::string>("dir", 'd', "directory", true);
     parser.add<int>("recursive", 'r', "whether recursive sub directory", false, 0);
@@ -72,24 +75,31 @@ void testCharset(int argc, char** argv)
                     }
                 }
                 utilitiy::FileInfo fi(name);
-                long long size;
-                char* buf = fi.data(size, true);
-                if (buf)
+                if (fi.isTextFile())
                 {
-                    printf("    file content charset:");
-                    switch (utilitiy::Charset::getCoding(buf))
+                    long long contentLen;
+                    char* content = fi.data(contentLen, true);
+                    if (content)
                     {
-                    case utilitiy::Charset::Coding::GBK:
-                        printf(" GBK\n");
-                        break;
-                    case utilitiy::Charset::Coding::UTF8:
-                        printf(" UTF8\n");
-                        break;
-                    case utilitiy::Charset::Coding::UNKOWN:
-                        printf(" Unknown\n");
-                        break;
+                        printf("      text file content charset:");
+                        switch (utilitiy::Charset::getCoding(content))
+                        {
+                        case utilitiy::Charset::Coding::GBK:
+                            printf(" GBK\n");
+                            break;
+                        case utilitiy::Charset::Coding::UTF8:
+                            printf(" UTF8\n");
+                            break;
+                        case utilitiy::Charset::Coding::UNKOWN:
+                            printf(" Unknown\n");
+                            break;
+                        }
+                        free(content);
                     }
-                    free(buf);
+                    else
+                    {
+                        printf("    file content empty\n");
+                    }
                 }
             },
             nullptr, true);

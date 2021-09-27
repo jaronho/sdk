@@ -22,6 +22,18 @@ public:
     static bool isAscii(const std::string& str);
 
     /**
+     * @brief 获取当前默认地域编码
+     * @return 编码, 例如: Linux下为'zh_CN.UTF-8', Windows下为'Chinese (Simplified)_China.936'
+     */
+    static std::string getLocale();
+
+    /**
+     * @brief 设置当前默认地域编码
+     * @return true-成功, false-失败
+     */
+    static bool setLocale(const std::string& locale);
+
+    /**
      * @brief 获取编码
      * @param str 字符串
      * @return 编码

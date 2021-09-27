@@ -51,6 +51,12 @@ foreach(filename ${base_database_files})
 endforeach()
 ##########################################################################################
 
+################################### 添加openssl库 ###################################
+if(enable_database_crypto)
+    find_package(OpenSSL REQUIRED)
+endif()
+##########################################################################################
+
 # 添加示例文件
 set(example_files)
 get_cxx_files(. src_list)
@@ -63,3 +69,8 @@ endforeach()
 
 # 构建可执行程序
 add_executable(example_database ${base_database_files} ${example_files})
+
+# 链接依赖库
+if(enable_database_crypto)
+    target_link_libraries(example_database OpenSSL::Crypto OpenSSL::SSL)
+endif()

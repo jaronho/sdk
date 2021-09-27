@@ -110,18 +110,25 @@ public:
     /**
      * @brief 获取文件数据
      * @param fileSize [输出]文件大小, -1-文件不存在, >=0-文件大小
-     * @param isText true-文本文件, false-二进制文件
+     * @param textFlag true-文本, false-二进制
      * @return 数据(需要外部调用free释放内存)
      */
-    char* data(long long& fileSize, bool isText = false) const;
+    char* data(long long& fileSize, bool textFlag = false) const;
 
     /**
      * @brief 读取文件数据
      * @param offset 读取的偏移值, 为0时表示从头开始
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
+     * @param textFlag true-文本, false-二进制
      * @return 数据(需要外部调用free释放内存)
      */
-    char* read(size_t offset, size_t& count) const;
+    char* read(size_t offset, size_t& count, bool textFlag = false) const;
+
+    /**
+     * @brief 判断是否为文本文件
+     * @return true-文本文件, false-非文本文件
+     */
+    bool isTextFile() const;
 
     /**
      * @brief 写文件数据
@@ -138,9 +145,17 @@ public:
      * @param f 文件流
      * @param offset 读取的偏移值, 为0时表示从头开始
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
+     * @param textFlag true-文本, false-二进制
      * @return 数据(需要外部调用free释放内存)
      */
-    static char* read(std::fstream& f, size_t offset, size_t& count);
+    static char* read(std::fstream& f, size_t offset, size_t& count, bool textFlag = false);
+
+    /**
+     * @brief 判断文件流是否为文本数据
+     * @param f 文件流
+     * @return true-文本数据, false-二进制数据
+     */
+    static bool isTextData(std::fstream& f);
 
 private:
     std::string m_fullName; /* 全路径文件名 */

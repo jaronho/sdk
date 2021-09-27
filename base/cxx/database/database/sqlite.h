@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <sqlite3.h>
 #include <string>
@@ -12,11 +13,128 @@ class Sqlite
 {
 public:
     /**
+     * @brief SQL预编译(主要用于批量操作, 可以提高效率), 注意: 非线程安全
+     */
+    class Stmt
+    {
+    public:
+        /**
+         * @brief 构造函数
+         * @param db 数据库句柄
+         * @param sql SQL语句
+         */
+        Stmt(sqlite3* db, const std::string& sql);
+
+        ~Stmt();
+
+        /**
+         * @brief 预编译指令(默认构造函数中已执行)
+         * @param db 数据库句柄
+         * @param sql SQL语句
+         * @return true-成功, false-失败
+         */
+        bool prepare(sqlite3* db, const std::string& sql);
+
+        /**
+         * @brief 绑定SQL语句中的int参数
+         * @param index 参数的索引值(从0开始)
+         * @param val 值
+         * @return true-成功, false-失败
+         */
+        bool bind(int index, int val);
+
+        /**
+         * @brief 绑定SQL语句中的int64参数
+         * @param index 参数的索引值(从0开始)
+         * @param val 值
+         * @return true-成功, false-失败
+         */
+        bool bind(int index, int64_t val);
+
+        /**
+         * @brief 绑定SQL语句中的double参数
+         * @param index 参数的索引值(从0开始)
+         * @param val 值
+         * @return true-成功, false-失败
+         */
+        bool bind(int index, double val);
+
+        /**
+         * @brief 绑定SQL语句中的string参数
+         * @param index 参数的索引值(从0开始)
+         * @param val 值
+         * @return true-成功, false-失败
+         */
+        bool bind(int index, const std::string& val);
+
+        /**
+         * @brief 执行一次预编译指令
+         * @return true-成功, false-失败
+         */
+        bool step();
+
+        /**
+         * @brief 获取执行后返回的列数(字段数)
+         * @return 数量
+         */
+        int columnCount();
+
+        /**
+         * @brief 获取执行后的字段int值
+         * @param index 字段的索引值(从0开始)
+         * @param defVal 默认值(选填)
+         * @return 值
+         */
+        int getColumnInt(int index, int defVal = 0);
+
+        /**
+         * @brief 获取执行后的字段int64值
+         * @param index 字段的索引值(从0开始)
+         * @param defVal 默认值(选填)
+         * @return 值
+         */
+        int64_t getColumnInt64(int index, int64_t defVal = 0);
+
+        /**
+         * @brief 获取执行后的字段double值
+         * @param index 字段的索引值(从0开始)
+         * @param defVal 默认值(选填)
+         * @return 值
+         */
+        double getColumnDouble(int index, double defVal = 0.0);
+
+        /**
+         * @brief 获取执行后的字段string值
+         * @param index 字段的索引值(从0开始)
+         * @param defVal 默认值(选填)
+         * @return 值
+         */
+        std::string getColumnString(int index, const std::string& defVal = "");
+
+        /**
+         * @brief 重置预编译指令(使复用)
+         * @return true-成功, false-失败
+         */
+        bool reset();
+
+        /**
+         * @brief 预编译指令转为字符串
+         * @return SQL字符串
+         */
+        std::string toString();
+
+    private:
+        sqlite3_stmt* m_stmt; /* SQL预编译指令 */
+    };
+
+public:
+    /**
      * @brief 构造函数
      * @param path 数据库路径
-     * @param password 数据库密码(选填) 
+     * @param curPassword 当前数据库密码(选填)
+     * @param newPassword 新的数据库密码(选填) 
      */
-    Sqlite(const std::string& path, const std::string& password = "");
+    Sqlite(const std::string& path, const std::string& curPassword = "", const std::string newPassword = "");
 
     ~Sqlite();
 
@@ -40,19 +158,64 @@ public:
     bool connect(bool readOnly = false);
 
     /**
-     * @brief 断开连接数据库
+     * @brief 断开数据库
      */
     void disconnect();
+
+    /**
+     * @brief 创建预编译指令
+     */
+    std::shared_ptr<Stmt> createStmt(const std::string& sql);
 
     /**
      * @brief 执行sql语句
      * @param sql sql语句
      * @param callback 每一行的回调(选填), 参数: columns-列数据(key:字段名, value:字段值), 返回值: true-继续, false-停止
+     *                 注意: 禁止在回调中执行其他接口(会造成循环锁)
      * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
      */
-    int64_t execSql(const std::string& sql,
-                    const std::function<bool(const std::unordered_map<std::string, std::string>& columns)>& callback = nullptr,
-                    std::string* errorMsg = nullptr);
+    bool execSql(const std::string& sql,
+                 const std::function<bool(const std::unordered_map<std::string, std::string>& columns)>& callback = nullptr,
+                 std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 开始事务
+     * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
+     */
+    bool beginTransaction(std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 提交事务
+     * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
+     */
+    bool commitTransaction(std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 回滚事务
+     * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
+     */
+    bool rollbackTransaction(std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 获取PRAGMA值
+     * @param key 字段名
+     * @param errorMsg 错误消息(选填)
+     * @return 值
+     */
+    std::string getPragma(const std::string& key, std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 设置PRAGMA值
+     * @param key 字段名, 例如: user_version(可以设置数据库版本), journal_mode, synchronous
+     * @param value 值
+     * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
+     */
+    bool setPragma(const std::string& key, const std::string& value, std::string* errorMsg = nullptr);
 
     /**
      * @brief 获取最后一次插入成功的表的行号
@@ -61,9 +224,24 @@ public:
     int64_t getLastInsertRowId();
 
 private:
-    std::mutex m_mutex;
+    /**
+     * @brief 执行sql语句
+     * @param db 数据库句柄
+     * @param sql sql语句
+     * @param callback 每一行的回调(选填), 参数: columns-列数据(key:字段名, value:字段值), 返回值: true-继续, false-停止
+     * @param errorMsg 错误消息(选填)
+     * @return -1.参数错误, 0.执行成功, >0.其他SQL错误(Result Codes) 
+     */
+    int execImpl(sqlite3* db, const std::string& sql,
+                 const std::function<bool(const std::unordered_map<std::string, std::string>& columns)>& callback = nullptr,
+                 std::string* errorMsg = nullptr);
+
+private:
+    std::mutex m_mutex; /* 互斥锁 */
     sqlite3* m_db; /* 数据库指针 */
+    bool m_inTransaction; /* 是否在事务中 */
     std::string m_path; /* 数据库路径(全路径) */
-    std::string m_password; /* 数据库密码 */
+    std::string m_curPassword; /* 当前数据库密码 */
+    std::string m_newPassword; /* 新的数据库密码 */
 };
 } // namespace database
