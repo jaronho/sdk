@@ -1,6 +1,7 @@
 #include "charset.h"
 
 #include <locale>
+#include <string.h>
 
 #include "charset_codes.h"
 
