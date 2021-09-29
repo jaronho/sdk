@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "test_bytearry.hpp"
 #include "test_charset.hpp"
 #include "test_filecopy.hpp"
 #include "test_filesystem.hpp"
@@ -11,6 +12,7 @@
 
 int main(int argc, char** argv)
 {
+    testBytearry();
 #if 0
     testFileCopy(argc, argv);
 #else

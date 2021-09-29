@@ -14,6 +14,11 @@ find_package(Threads REQUIRED)
 set(base_utilitiy_path ..) # 设置utilitiy库路径(可修改)
 include_directories(${base_utilitiy_path})
 
+set(base_utilitiy_bytearray_src_list)
+get_cxx_files(${base_utilitiy_path}/utilitiy/bytearray src_list)
+list(APPEND base_utilitiy_bytearray_src_list ${src_list})
+source_group(3rdparty/base/utilitiy/bytearray FILES ${base_utilitiy_bytearray_src_list})
+
 set(base_utilitiy_charset_src_list)
 get_cxx_files(${base_utilitiy_path}/utilitiy/charset src_list)
 list(APPEND base_utilitiy_charset_src_list ${src_list})
@@ -65,7 +70,8 @@ list(APPEND base_utilitiy_src_list ${src_list})
 source_group(3rdparty/base/utilitiy FILES ${base_utilitiy_src_list})
 
 set(base_utilitiy_files) # 工程中需要把utilitiy的文件添加进去
-list(APPEND base_utilitiy_files ${base_utilitiy_charset_src_list}
+list(APPEND base_utilitiy_files ${base_utilitiy_bytearray_src_list}
+                                ${base_utilitiy_charset_src_list}
                                 ${base_utilitiy_cmdline_src_list}
                                 ${base_utilitiy_filesystem_src_list}
                                 ${base_utilitiy_module_src_list}
