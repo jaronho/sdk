@@ -9,7 +9,7 @@ void testDb1()
     if (db.connect())
     {
         printf("===== connect database %s ok\n", name.c_str());
-        /* ´´½¨±í */
+        /* åˆ›å»ºè¡¨ */
         bool ret;
         ret = db.execSql("CREATE TABLE IF NOT EXISTS `version`(`key` TEXT PRIMARY KEY NOT NULL, `value` INTEGER NOT NULL)");
         if (!ret)
@@ -27,7 +27,7 @@ void testDb1()
             printf("create table 'department' fail\n");
             return;
         }
-        /* ÉèÖÃ±íÊı¾İ */
+        /* è®¾ç½®è¡¨æ•°æ® */
         {
             static const std::string sql = "INSERT INTO `version`(`key`,`value`) VALUES('major',3)";
             db.execSql(sql);
@@ -85,7 +85,7 @@ void testDb1()
                 st->step();
             }
         }
-        /* ²éÑ¯±íÊı¾İ */
+        /* æŸ¥è¯¢è¡¨æ•°æ® */
         {
             printf("===== query version table\n");
             static const std::string sql = "SELECT * from `version`";

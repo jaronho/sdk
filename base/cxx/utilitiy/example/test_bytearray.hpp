@@ -7,13 +7,14 @@
 
 void testBytearry()
 {
+    printf("\n");
     if (utilitiy::ByteArray::isBigEndium())
     {
-        printf("Host: Big Endium\n");
+        printf("Host byte order: Big-Endium\n");
     }
     else
     {
-        printf("Host: Little Endium\n");
+        printf("Host byte order: Little-Endium\n");
     }
     printf("\n");
 }

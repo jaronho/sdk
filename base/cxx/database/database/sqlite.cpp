@@ -37,7 +37,7 @@ bool Sqlite::Stmt::bind(int index, int val)
 {
     if (m_stmt && index >= 0)
     {
-        index += 1; /* Ö¸¶¨Íâ²¿´«ÈëµÄindex´Ó0¿ªÊ¼, ÕâÀï×Ô¶¯+1 */
+        index += 1; /* æŒ‡å®šå¤–éƒ¨ä¼ å…¥çš„indexä»0å¼€å§‹, è¿™é‡Œè‡ªåŠ¨+1 */
         int ret = sqlite3_bind_int(m_stmt, index, val);
         if (SQLITE_OK == ret)
         {
@@ -51,7 +51,7 @@ bool Sqlite::Stmt::bind(int index, int64_t val)
 {
     if (m_stmt && index >= 0)
     {
-        index += 1; /* Ö¸¶¨Íâ²¿´«ÈëµÄindex´Ó0¿ªÊ¼, ÕâÀï×Ô¶¯+1 */
+        index += 1; /* æŒ‡å®šå¤–éƒ¨ä¼ å…¥çš„indexä»0å¼€å§‹, è¿™é‡Œè‡ªåŠ¨+1 */
         int ret = sqlite3_bind_int64(m_stmt, index, val);
         if (SQLITE_OK == ret)
         {
@@ -65,7 +65,7 @@ bool Sqlite::Stmt::bind(int index, double val)
 {
     if (m_stmt && index >= 0)
     {
-        index += 1; /* Ö¸¶¨Íâ²¿´«ÈëµÄindex´Ó0¿ªÊ¼, ÕâÀï×Ô¶¯+1 */
+        index += 1; /* æŒ‡å®šå¤–éƒ¨ä¼ å…¥çš„indexä»0å¼€å§‹, è¿™é‡Œè‡ªåŠ¨+1 */
         int ret = sqlite3_bind_double(m_stmt, index, val);
         if (SQLITE_OK == ret)
         {
@@ -79,7 +79,7 @@ bool Sqlite::Stmt::bind(int index, const std::string& val)
 {
     if (m_stmt && index >= 0)
     {
-        index += 1; /* Ö¸¶¨Íâ²¿´«ÈëµÄindex´Ó0¿ªÊ¼, ÕâÀï×Ô¶¯+1 */
+        index += 1; /* æŒ‡å®šå¤–éƒ¨ä¼ å…¥çš„indexä»0å¼€å§‹, è¿™é‡Œè‡ªåŠ¨+1 */
         int ret = sqlite3_bind_text(m_stmt, index, val.c_str(), -1, SQLITE_TRANSIENT);
         if (SQLITE_OK == ret)
         {
@@ -96,15 +96,15 @@ bool Sqlite::Stmt::step()
         while (true)
         {
             int ret = sqlite3_step(m_stmt);
-            if (SQLITE_BUSY == ret) /* BUSYÔòÖØÊÔ */
+            if (SQLITE_BUSY == ret) /* BUSYåˆ™é‡è¯• */
             {
                 continue;
             }
-            else if (SQLITE_ROW == ret) /* Õı³£·µ»Ø */
+            else if (SQLITE_ROW == ret) /* æ­£å¸¸è¿”å› */
             {
                 return true;
             }
-            /* ÆäÓàÇé¿ö¶¼ÊÇÒì³£ */
+            /* å…¶ä½™æƒ…å†µéƒ½æ˜¯å¼‚å¸¸ */
             break;
         }
     }
@@ -224,9 +224,9 @@ bool Sqlite::connect(bool readOnly)
         return false;
     }
 #ifdef SQLITE_HAS_CODEC
-    if (!m_password.empty()) /* ÃÜÂë·Ç¿Õ */
+    if (!m_password.empty()) /* å¯†ç éç©º */
     {
-        ret = sqlite3_key(m_db, m_password.c_str(), m_password.size()); /* ÉèÖÃÃÜÔ¿ */
+        ret = sqlite3_key(m_db, m_password.c_str(), m_password.size()); /* è®¾ç½®å¯†é’¥ */
     }
     if (SQLITE_OK != ret)
     {
@@ -412,7 +412,7 @@ int Sqlite::execImpl(sqlite3* db, const std::string& sql,
             {
                 return 0;
             }
-            std::unordered_map<std::string, std::string> columns; /* Ã¿Ò»ĞĞµÄÁĞÊı¾İ, key: ×Ö¶ÎÃû, value: ×Ö¶ÎÖµ */
+            std::unordered_map<std::string, std::string> columns; /* æ¯ä¸€è¡Œçš„åˆ—æ•°æ®, key: å­—æ®µå, value: å­—æ®µå€¼ */
             for (int i = 0; i < colCount; ++i)
             {
                 columns[header[i]] = values[i];
@@ -421,7 +421,7 @@ int Sqlite::execImpl(sqlite3* db, const std::string& sql,
             {
                 return 0;
             }
-            return 1; /* Í£Ö¹ */
+            return 1; /* åœæ­¢ */
         },
         (void*)&callback, &szErrorMsg);
     if (szErrorMsg)

@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "test_bytearry.hpp"
+#include "test_bytearray.hpp"
 #include "test_charset.hpp"
 #include "test_filecopy.hpp"
 #include "test_filesystem.hpp"

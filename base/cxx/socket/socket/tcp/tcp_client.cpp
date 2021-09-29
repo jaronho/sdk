@@ -1,0 +1,180 @@
+#include "tcp_client.h"
+
+#include <functional>
+
+namespace socket
+{
+TcpClient::TcpClient()
+    : m_sslContext(nullptr)
+    , m_tcpSession(nullptr)
+    , m_onConnectCallback(nullptr)
+    , m_onRecvDataCallback(nullptr)
+    , m_runStatus(RunStatus::RUN_NONE)
+{
+}
+
+void TcpClient::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)
+{
+    m_onConnectCallback = onConnectCb;
+}
+
+void TcpClient::setRecvDataCallback(const TCP_RECV_DATA_CALLBACK& onRecvDataCb)
+{
+    m_onRecvDataCallback = onRecvDataCb;
+}
+
+void TcpClient::run(const std::string& server, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext)
+{
+    if (isRunning())
+    {
+        return;
+    }
+    boost::system::error_code code;
+    m_endpoints = boost::asio::ip::tcp::resolver(m_ioContext).resolve(server, std::to_string(port), code);
+    if (!code && !m_endpoints.empty())
+    {
+        boost::asio::ip::tcp::socket socket(m_ioContext);
+        if (sslContext) /* 启用SSL */
+        {
+            m_sslContext = sslContext;
+            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTls>(socket, *m_sslContext));
+        }
+        else /* 不启用SSL */
+        {
+            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(socket));
+        }
+        m_tcpSession->setRecvDataCallback(m_onRecvDataCallback);
+        startConnect(m_endpoints.begin());
+        if (RunStatus::RUN_NONE == m_runStatus)
+        {
+            m_runStatus = RunStatus::RUN_START;
+        }
+        else if (RunStatus::RUN_STOP == m_runStatus)
+        {
+            stop();
+            return;
+        }
+        m_ioContext.run();
+    }
+}
+
+void TcpClient::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
+{
+    if (m_ioContext.stopped())
+    {
+        if (onSendCb)
+        {
+            onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+        }
+    }
+    else
+    {
+        const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
+        boost::asio::post(m_ioContext, [wpSelf, data, onSendCb]() {
+            const auto self = wpSelf.lock();
+            if (self)
+            {
+                if (self->m_tcpSession && self->isRunning())
+                {
+                    /**
+                     *  1.根据boost中async_send说明, data最好保证生命周期存在到回调执行前, 这里将data绑定到回调中.
+                     *  2.单元测纯TCP试验没绑到回调时确实会崩.
+                     */
+                    self->m_tcpSession->send(data, [onSendCb, data](const boost::system::error_code& code, std::size_t length) {
+                        if (onSendCb)
+                        {
+                            onSendCb(code, length);
+                        }
+                    });
+                }
+            }
+        });
+    }
+}
+
+void TcpClient::stop()
+{
+    if (!m_ioContext.stopped())
+    {
+        const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
+        boost::asio::post(m_ioContext, [wpSelf]() {
+            const auto self = wpSelf.lock();
+            if (self)
+            {
+                const auto lastStatus = self->m_runStatus;
+                self->m_runStatus = RunStatus::RUN_STOP;
+                if (RunStatus::RUN_START != lastStatus)
+                {
+                    return;
+                }
+                if (self->m_tcpSession)
+                {
+                    self->m_tcpSession->close();
+                }
+                self->m_ioContext.stop();
+            }
+        });
+    }
+}
+
+bool TcpClient::isRunning() const
+{
+    return RunStatus::RUN_START == m_runStatus;
+}
+
+void TcpClient::startConnect(boost::asio::ip::tcp::resolver::iterator iter)
+{
+    const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
+    m_tcpSession->connect(iter->endpoint(), [wpSelf, iter](const boost::system::error_code& code) {
+        const auto self = wpSelf.lock();
+        if (self)
+        {
+            self->handleConnection(code, iter);
+        }
+    });
+}
+
+void TcpClient::handleConnection(const boost::system::error_code& code, boost::asio::ip::tcp::resolver::iterator iter)
+{
+    if (m_tcpSession)
+    {
+        if (code) /* 连接失败 */
+        {
+            if (m_endpoints.end() == iter) /* 没有下一个 */
+            {
+                stop();
+                if (m_onConnectCallback)
+                {
+                    m_onConnectCallback(code);
+                }
+            }
+            else /* 尝试下一个 */
+            {
+                startConnect(++iter);
+            }
+        }
+        else /* 连接成功 */
+        {
+            if (m_tcpSession->isEnableSSL()) /* 启用SSL */
+            {
+                m_tcpSession->handshake(boost::asio::ssl::stream_base::handshake_type::client, m_onConnectCallback); /* 需要握手 */
+            }
+            else /* 没有启用SSL */
+            {
+                if (m_onConnectCallback)
+                {
+                    m_onConnectCallback(code);
+                }
+            }
+        }
+    }
+    else /* 会话为空, 失败 */
+    {
+        stop();
+        if (m_onConnectCallback)
+        {
+            m_onConnectCallback(code);
+        }
+    }
+}
+} // namespace socket
