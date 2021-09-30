@@ -6,7 +6,7 @@
 
 #include "tcp_session.h"
 
-namespace socket
+namespace nsocket
 {
 /**
  * @brief TCP连接发送回调
@@ -84,8 +84,11 @@ public:
      * @brief 运行(进入循环, 占用调用线程)
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      */
+#if (1 == ENABLE_SOCKET_OPENSSL)
     void run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
-
+#else
+    void run();
+#endif
     /**
      * @brief 停止
      */
@@ -109,9 +112,11 @@ private:
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
     std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor; /* 接收器 */
+#if (1 == ENABLE_SOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
+#endif
     TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
     TCP_CONN_RECV_DATA_CALLBACK m_onRecvConnectionDataCallback; /* 收到数据回调 */
     TCP_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */
 };
-} // namespace socket
+} // namespace nsocket

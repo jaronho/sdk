@@ -1,11 +1,13 @@
 #pragma once
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#if (1 == ENABLE_SOCKET_OPENSSL)
 #include <boost/asio/ssl.hpp>
+#endif
 #include <boost/system/system_error.hpp>
 #include <functional>
 
-namespace socket
+namespace nsocket
 {
 /**
  * @brief TCP连接回调
@@ -78,6 +80,7 @@ private:
     boost::asio::ip::tcp::socket m_socket;
 };
 
+#if (1 == ENABLE_SOCKET_OPENSSL)
 /**
  * @brief TLS套接字(安全的TCP)
  */
@@ -107,4 +110,5 @@ public:
 private:
     boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sslStream;
 };
-} // namespace socket
+#endif
+} // namespace nsocket

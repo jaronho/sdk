@@ -1,8 +1,11 @@
 #include "tcp_server.h"
 
-namespace socket
+namespace nsocket
 {
-TcpServer::TcpServer(const std::string& host, unsigned int port) : m_sslContext(nullptr)
+TcpServer::TcpServer(const std::string& host, unsigned int port)
+#if (1 == ENABLE_SOCKET_OPENSSL)
+    : m_sslContext(nullptr)
+#endif
 {
     try
     {
@@ -15,11 +18,17 @@ TcpServer::TcpServer(const std::string& host, unsigned int port) : m_sslContext(
     }
 }
 
+#if (1 == ENABLE_SOCKET_OPENSSL)
 void TcpServer::run(const std::shared_ptr<boost::asio::ssl::context>& sslContext)
+#else
+void TcpServer::run()
+#endif
 {
     if (m_acceptor)
     {
+#if (1 == ENABLE_SOCKET_OPENSSL)
         m_sslContext = sslContext;
+#endif
         doAccept();
         m_ioContext.run();
     }
@@ -56,14 +65,18 @@ void TcpServer::doAccept()
             {
                 /* 创建新会话 */
                 std::shared_ptr<TcpSession> session;
+#if (1 == ENABLE_SOCKET_OPENSSL)
                 if (self->m_sslContext) /* 启用TLS */
                 {
-                    session = std::make_shared<TcpSession>(std::make_shared<SocketTls>(socket, *(self->m_sslContext)));
+                    session = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *(self->m_sslContext)));
                 }
                 else /* 不启用TLS */
                 {
-                    session = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(socket));
+#endif
+                    session = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)));
+#if (1 == ENABLE_SOCKET_OPENSSL)
                 }
+#endif
                 auto remoteEndpoint = session->getRemoteEndpoint();
                 /* 创建发送处理句柄 */
                 auto sendHandler = [wpSelf, session](const std::vector<unsigned char>& data, const TCP_CONN_SEND_CALLBACK& onSendCb) {
@@ -93,6 +106,7 @@ void TcpServer::doAccept()
                     }
                 });
                 /* 开始会话 */
+#if (1 == ENABLE_SOCKET_OPENSSL)
                 if (self->m_sslContext) /* 启用TLS */
                 {
                     session->handshake(boost::asio::ssl::stream_base::server,
@@ -113,12 +127,15 @@ void TcpServer::doAccept()
                 }
                 else /* 不启用TLS */
                 {
+#endif
                     if (self->m_onNewConnectionCallback)
                     {
                         self->m_onNewConnectionCallback(remoteEndpoint, sendHandler);
                     }
                     session->recv(); /* 开始接收数据 */
+#if (1 == ENABLE_SOCKET_OPENSSL)
                 }
+#endif
             }
             /* 继续接收下一个连接 */
             self->doAccept();
@@ -153,4 +170,4 @@ void TcpServer::doSend(const std::shared_ptr<TcpSession>& connection, const std:
         });
     }
 }
-} // namespace socket
+} // namespace nsocket

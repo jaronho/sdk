@@ -1,10 +1,14 @@
 #include "tcp_session.h"
 
-namespace socket
+namespace nsocket
 {
 TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket) : m_socketTcpBase(socket)
 {
+#if (1 == ENABLE_SOCKET_OPENSSL)
     m_isEnableTLS = (std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase) ? true : false);
+#else
+    m_isEnableTLS = false;
+#endif
     m_isConnected = false;
     m_recvBuf.resize(1024);
 }
@@ -68,6 +72,7 @@ void TcpSession::connect(const boost::asio::ip::tcp::endpoint& point)
     }
 }
 
+#if (1 == ENABLE_SOCKET_OPENSSL)
 void TcpSession::handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb)
 {
     std::shared_ptr<SocketTls> tlsPtr = std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase);
@@ -106,6 +111,7 @@ void TcpSession::handshake(boost::asio::ssl::stream_base::handshake_type type, c
         }
     }
 }
+#endif
 
 void TcpSession::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
@@ -193,4 +199,4 @@ boost::asio::ip::tcp::endpoint TcpSession::getRemoteEndpoint() const
     }
     return boost::asio::ip::tcp::endpoint();
 }
-} // namespace socket
+} // namespace nsocket

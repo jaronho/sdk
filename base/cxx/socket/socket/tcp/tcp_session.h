@@ -5,7 +5,7 @@
 
 #include "../core/socket_tcp.h"
 
-namespace socket
+namespace nsocket
 {
 /**
  * @brief TCP接收数据回调
@@ -45,12 +45,14 @@ public:
      */
     void connect(const boost::asio::ip::tcp::endpoint& point);
 
+#if (1 == ENABLE_SOCKET_OPENSSL)
     /**
      * @brief 握手(启用TLS才需要)
      * @param type 类型, 客户端或服务端
      * @param onHandshakeCb 握手回调
      */
     void handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb);
+#endif
 
     /**
      * @brief 发送数据
@@ -95,4 +97,4 @@ private:
     TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
     TCP_RECV_DATA_CALLBACK m_onRecvDataCallback; /* 接收数据回调 */
 };
-} // namespace socket
+} // namespace nsocket

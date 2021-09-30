@@ -3,7 +3,7 @@
 
 #include "tcp_session.h"
 
-namespace socket
+namespace nsocket
 {
 /**
  * @brief TCP客户端
@@ -33,8 +33,11 @@ public:
      * @param port 端口
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      */
+#if (1 == ENABLE_SOCKET_OPENSSL)
     void run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
-
+#else
+    void run(const std::string& host, unsigned int port);
+#endif
     /**
      * @brief 发送数据
      * @param data 数据
@@ -64,7 +67,9 @@ private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
     boost::asio::ip::tcp::resolver::results_type m_endpoints; /* 端点 */
     boost::asio::ip::tcp::resolver::iterator m_endpointIter; /* 当前端点迭代器 */
+#if (1 == ENABLE_SOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
+#endif
     std::shared_ptr<TcpSession> m_tcpSession; /* TCP会话 */
     TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
     TCP_RECV_DATA_CALLBACK m_onRecvDataCallback; /* 数据接收回调 */
@@ -76,4 +81,4 @@ private:
     };
     RunStatus m_runStatus; /* 运行状态 */
 };
-} // namespace socket
+} // namespace nsocket

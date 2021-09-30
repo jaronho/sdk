@@ -2,11 +2,13 @@
 
 #include <functional>
 
-namespace socket
+namespace nsocket
 {
 TcpClient::TcpClient()
-    : m_sslContext(nullptr)
-    , m_tcpSession(nullptr)
+    : m_tcpSession(nullptr)
+#if (1 == ENABLE_SOCKET_OPENSSL)
+    , m_sslContext(nullptr)
+#endif
     , m_onConnectCallback(nullptr)
     , m_onRecvDataCallback(nullptr)
     , m_runStatus(RunStatus::RUN_NONE)
@@ -23,7 +25,11 @@ void TcpClient::setRecvDataCallback(const TCP_RECV_DATA_CALLBACK& onRecvDataCb)
     m_onRecvDataCallback = onRecvDataCb;
 }
 
+#if (1 == ENABLE_SOCKET_OPENSSL)
 void TcpClient::run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext)
+#else
+void TcpClient::run(const std::string& host, unsigned int port)
+#endif
 {
     if (isRunning())
     {
@@ -42,15 +48,19 @@ void TcpClient::run(const std::string& host, unsigned int port, const std::share
     else
     {
         boost::asio::ip::tcp::socket socket(m_ioContext);
+#if (1 == ENABLE_SOCKET_OPENSSL)
         if (sslContext) /* 启用TLS */
         {
             m_sslContext = sslContext;
-            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTls>(socket, *m_sslContext));
+            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *m_sslContext));
         }
         else /* 不启用TLS */
         {
-            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(socket));
+#endif
+            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)));
+#if (1 == ENABLE_SOCKET_OPENSSL)
         }
+#endif
         const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
         m_tcpSession->setConnectCallback([wpSelf](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
@@ -162,6 +172,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
         {
             if (m_tcpSession->isEnableTLS()) /* 启用TLS */
             {
+#if (1 == ENABLE_SOCKET_OPENSSL)
                 const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
                 m_tcpSession->handshake(boost::asio::ssl::stream_base::handshake_type::client,
                                         [wpSelf](const boost::system::error_code& code) {
@@ -185,6 +196,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
                                                 }
                                             }
                                         }); /* 需要握手 */
+#endif
             }
             else /* 没有启用TLS */
             {
@@ -205,4 +217,4 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
         }
     }
 }
-} // namespace socket
+} // namespace nsocket

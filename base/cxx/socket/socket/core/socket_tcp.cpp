@@ -1,6 +1,6 @@
 #include "socket_tcp.h"
 
-namespace socket
+namespace nsocket
 {
 SocketTcp::SocketTcp(boost::asio::ip::tcp::socket socket) : m_socket(std::move(socket)) {}
 
@@ -58,6 +58,7 @@ boost::asio::ip::tcp::endpoint SocketTcp::getRemoteEndpoint() const
     return m_socket.remote_endpoint(code);
 }
 
+#if (1 == ENABLE_SOCKET_OPENSSL)
 SocketTls::SocketTls(boost::asio::ip::tcp::socket socket, boost::asio::ssl::context& sslContext) : sslStream(std::move(socket), sslContext)
 {
 }
@@ -127,4 +128,5 @@ void SocketTls::handshake(boost::asio::ssl::stream_base::handshake_type type, co
         onHandshakeCb(boost::system::errc::make_error_code(boost::system::errc::not_connected));
     }
 }
-} // namespace socket
+#endif
+} // namespace nsocket
