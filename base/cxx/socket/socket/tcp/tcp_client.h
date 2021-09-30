@@ -29,11 +29,11 @@ public:
 
     /**
      * @brief 运行(进入循环, 占用调用线程)
-     * @param server 服务器
+     * @param host 服务器
      * @param port 端口
-     * @param sslContext SSL上下文(选填), 为空表示不启用SSL
+     * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      */
-    void run(const std::string& server, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
+    void run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
 
     /**
      * @brief 发送数据
@@ -55,22 +55,16 @@ public:
 
 private:
     /**
-     * @brief 开始连接
-     * @param iter 端点迭代器
-     */
-    void startConnect(boost::asio::ip::tcp::resolver::iterator iter);
-
-    /**
      * @brief 处理连接结果
      * @param code 错误码
-     * @param iter 端点迭代器
      */
-    void handleConnection(const boost::system::error_code& code, boost::asio::ip::tcp::resolver::iterator iter);
+    void handleConnect(const boost::system::error_code& code);
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
     boost::asio::ip::tcp::resolver::results_type m_endpoints; /* 端点 */
-    std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* SSL上下文 */
+    boost::asio::ip::tcp::resolver::iterator m_endpointIter; /* 当前端点迭代器 */
+    std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
     std::shared_ptr<TcpSession> m_tcpSession; /* TCP会话 */
     TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
     TCP_RECV_DATA_CALLBACK m_onRecvDataCallback; /* 数据接收回调 */

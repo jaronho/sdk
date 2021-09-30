@@ -23,28 +23,44 @@ void TcpClient::setRecvDataCallback(const TCP_RECV_DATA_CALLBACK& onRecvDataCb)
     m_onRecvDataCallback = onRecvDataCb;
 }
 
-void TcpClient::run(const std::string& server, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext)
+void TcpClient::run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext)
 {
     if (isRunning())
     {
         return;
     }
     boost::system::error_code code;
-    m_endpoints = boost::asio::ip::tcp::resolver(m_ioContext).resolve(server, std::to_string(port), code);
-    if (!code && !m_endpoints.empty())
+    m_endpoints = boost::asio::ip::tcp::resolver(m_ioContext).resolve(host, std::to_string(port), code);
+    m_endpointIter = m_endpoints.begin();
+    if (code || m_endpoints.empty())
+    {
+        if (m_onConnectCallback)
+        {
+            m_onConnectCallback(code ? code : boost::system::errc::make_error_code(boost::system::errc::address_not_available));
+        }
+    }
+    else
     {
         boost::asio::ip::tcp::socket socket(m_ioContext);
-        if (sslContext) /* 启用SSL */
+        if (sslContext) /* 启用TLS */
         {
             m_sslContext = sslContext;
             m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTls>(socket, *m_sslContext));
         }
-        else /* 不启用SSL */
+        else /* 不启用TLS */
         {
             m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(socket));
         }
+        const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
+        m_tcpSession->setConnectCallback([wpSelf](const boost::system::error_code& code) {
+            const auto self = wpSelf.lock();
+            if (self)
+            {
+                self->handleConnect(code);
+            }
+        });
         m_tcpSession->setRecvDataCallback(m_onRecvDataCallback);
-        startConnect(m_endpoints.begin());
+        m_tcpSession->connect(m_endpointIter->endpoint());
         if (RunStatus::RUN_NONE == m_runStatus)
         {
             m_runStatus = RunStatus::RUN_START;
@@ -122,25 +138,13 @@ bool TcpClient::isRunning() const
     return RunStatus::RUN_START == m_runStatus;
 }
 
-void TcpClient::startConnect(boost::asio::ip::tcp::resolver::iterator iter)
-{
-    const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
-    m_tcpSession->connect(iter->endpoint(), [wpSelf, iter](const boost::system::error_code& code) {
-        const auto self = wpSelf.lock();
-        if (self)
-        {
-            self->handleConnection(code, iter);
-        }
-    });
-}
-
-void TcpClient::handleConnection(const boost::system::error_code& code, boost::asio::ip::tcp::resolver::iterator iter)
+void TcpClient::handleConnect(const boost::system::error_code& code)
 {
     if (m_tcpSession)
     {
         if (code) /* 连接失败 */
         {
-            if (m_endpoints.end() == iter) /* 没有下一个 */
+            if (m_endpoints.end() == m_endpointIter) /* 没有下一个 */
             {
                 stop();
                 if (m_onConnectCallback)
@@ -150,21 +154,45 @@ void TcpClient::handleConnection(const boost::system::error_code& code, boost::a
             }
             else /* 尝试下一个 */
             {
-                startConnect(++iter);
+                ++m_endpointIter;
+                m_tcpSession->connect(m_endpointIter->endpoint());
             }
         }
         else /* 连接成功 */
         {
-            if (m_tcpSession->isEnableSSL()) /* 启用SSL */
+            if (m_tcpSession->isEnableTLS()) /* 启用TLS */
             {
-                m_tcpSession->handshake(boost::asio::ssl::stream_base::handshake_type::client, m_onConnectCallback); /* 需要握手 */
+                const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
+                m_tcpSession->handshake(boost::asio::ssl::stream_base::handshake_type::client,
+                                        [wpSelf](const boost::system::error_code& code) {
+                                            const auto self = wpSelf.lock();
+                                            if (self)
+                                            {
+                                                if (code) /* 握手失败 */
+                                                {
+                                                    self->handleConnect(code);
+                                                }
+                                                else /* 握手成功 */
+                                                {
+                                                    if (self->m_onConnectCallback)
+                                                    {
+                                                        self->m_onConnectCallback(code);
+                                                    }
+                                                    if (self->m_tcpSession)
+                                                    {
+                                                        self->m_tcpSession->recv(); /* 握手成功后开始接收数据 */
+                                                    }
+                                                }
+                                            }
+                                        }); /* 需要握手 */
             }
-            else /* 没有启用SSL */
+            else /* 没有启用TLS */
             {
                 if (m_onConnectCallback)
                 {
                     m_onConnectCallback(code);
                 }
+                m_tcpSession->recv(); /* 连接成功后开始接收数据 */
             }
         }
     }

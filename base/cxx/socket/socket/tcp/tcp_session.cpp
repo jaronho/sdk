@@ -4,7 +4,7 @@ namespace socket
 {
 TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket) : m_socketTcpBase(socket)
 {
-    m_isEnableSSL = (std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase) ? true : false);
+    m_isEnableTLS = (std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase) ? true : false);
     m_isConnected = false;
     m_recvBuf.resize(1024);
 }
@@ -14,54 +14,57 @@ TcpSession::~TcpSession()
     close();
 }
 
+void TcpSession::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)
+{
+    m_onConnectCallback = onConnectCb;
+}
+
 void TcpSession::setRecvDataCallback(const TCP_RECV_DATA_CALLBACK& onRecvDataCb)
 {
     m_onRecvDataCallback = onRecvDataCb;
 }
 
-void TcpSession::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb)
+void TcpSession::connect(const boost::asio::ip::tcp::endpoint& point)
 {
     if (m_socketTcpBase)
     {
         const std::weak_ptr<TcpSession> wpSelf = shared_from_this();
-        m_onConnectCallback = onConnectCb;
-        m_socketTcpBase->connect(point, [wpSelf, onConnectCb](const boost::system::error_code& code) {
+        m_socketTcpBase->connect(point, [wpSelf](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             if (self)
             {
                 if (code) /* 连接失败 */
                 {
                     self->close();
-                    if (onConnectCb)
+                    if (self->m_onConnectCallback)
                     {
-                        onConnectCb(code);
+                        self->m_onConnectCallback(code);
                     }
                 }
                 else /* 连接成功 */
                 {
-                    if (self->m_isEnableSSL) /* TLS, 需要握手 */
+                    if (self->m_isEnableTLS) /* TLS, 需要握手 */
                     {
-                        if (onConnectCb)
+                        if (self->m_onConnectCallback)
                         {
-                            onConnectCb(code);
+                            self->m_onConnectCallback(code);
                         }
                     }
                     else /* TCP, 成功后开始接收数据 */
                     {
                         self->m_isConnected = true;
-                        if (onConnectCb)
+                        if (self->m_onConnectCallback)
                         {
-                            onConnectCb(code);
+                            self->m_onConnectCallback(code);
                         }
-                        self->recv();
                     }
                 }
             }
         });
     }
-    else if (onConnectCb)
+    else if (m_onConnectCallback)
     {
-        onConnectCb(boost::system::errc::make_error_code(boost::system::errc::not_a_socket));
+        m_onConnectCallback(boost::system::errc::make_error_code(boost::system::errc::not_a_socket));
     }
 }
 
@@ -90,7 +93,6 @@ void TcpSession::handshake(boost::asio::ssl::stream_base::handshake_type type, c
                     {
                         onHandshakeCb(code);
                     }
-                    self->recv();
                 }
             }
         });
@@ -118,35 +120,6 @@ void TcpSession::send(const std::vector<unsigned char>& data, const TCP_SEND_CAL
             onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
         }
     }
-}
-
-void TcpSession::close()
-{
-    m_isConnected = false;
-    if (m_socketTcpBase)
-    {
-        m_socketTcpBase->close();
-    }
-    m_onRecvDataCallback = nullptr;
-}
-
-bool TcpSession::isEnableSSL() const
-{
-    return m_isEnableSSL;
-}
-
-bool TcpSession::isConnected() const
-{
-    return m_isConnected;
-}
-
-boost::asio::ip::tcp::endpoint TcpSession::getRemoteEndpoint() const
-{
-    if (m_socketTcpBase)
-    {
-        return m_socketTcpBase->getRemoteEndpoint();
-    }
-    return boost::asio::ip::tcp::endpoint();
 }
 
 void TcpSession::TcpSession::recv()
@@ -191,5 +164,33 @@ void TcpSession::TcpSession::recv()
             m_onConnectCallback(boost::system::errc::make_error_code(boost::system::errc::not_a_socket));
         }
     }
+}
+
+void TcpSession::close()
+{
+    m_isConnected = false;
+    if (m_socketTcpBase)
+    {
+        m_socketTcpBase->close();
+    }
+}
+
+bool TcpSession::isEnableTLS() const
+{
+    return m_isEnableTLS;
+}
+
+bool TcpSession::isConnected() const
+{
+    return m_isConnected;
+}
+
+boost::asio::ip::tcp::endpoint TcpSession::getRemoteEndpoint() const
+{
+    if (m_socketTcpBase)
+    {
+        return m_socketTcpBase->getRemoteEndpoint();
+    }
+    return boost::asio::ip::tcp::endpoint();
 }
 } // namespace socket

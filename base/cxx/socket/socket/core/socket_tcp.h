@@ -79,7 +79,7 @@ private:
 };
 
 /**
- * @brief TLS套接字(基于SSL的TCP)
+ * @brief TLS套接字(安全的TCP)
  */
 class SocketTls : public SocketTcpBase
 {
