@@ -2,14 +2,14 @@
 
 namespace nsocket
 {
-TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket) : m_socketTcpBase(socket)
+TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected) : m_socketTcpBase(socket)
 {
 #if (1 == ENABLE_SOCKET_OPENSSL)
     m_isEnableTLS = (std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase) ? true : false);
 #else
     m_isEnableTLS = false;
 #endif
-    m_isConnected = false;
+    m_isConnected = alreadyConnected;
     m_recvBuf.resize(1024);
 }
 
@@ -151,7 +151,7 @@ void TcpSession::TcpSession::recv()
                     {
                         std::vector<unsigned char> data;
                         const unsigned char* rawData = (const unsigned char*)self->m_recvBuf.data();
-                        if (!rawData && length > 0)
+                        if (rawData && length > 0)
                         {
                             data.insert(data.end(), rawData, rawData + length);
                         }

@@ -37,7 +37,7 @@ using TCP_CONN_NEW_CALLBACK = std::function<void(const boost::asio::ip::tcp::end
  * @param data 数据
  * @param sendHandler 发送句柄
  */
-using TCP_CONN_RECV_DATA_CALLBACK = std::function<void(const boost::asio::ip::tcp::endpoint& code, const std::vector<unsigned char>& data,
+using TCP_CONN_RECV_DATA_CALLBACK = std::function<void(const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
                                                        const TCP_CONN_SEND_HANDLER& sendHandler)>;
 
 /**
@@ -48,7 +48,7 @@ using TCP_CONN_RECV_DATA_CALLBACK = std::function<void(const boost::asio::ip::tc
 using TCP_CONN_CLOSE_CALLBACK = std::function<void(const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
 
 /**
- * @brief TCP服务端
+ * @brief TCP服务端(注意: 需要实例化为共享指针否则会报错)
  */
 class TcpServer final : public std::enable_shared_from_this<TcpServer>
 {

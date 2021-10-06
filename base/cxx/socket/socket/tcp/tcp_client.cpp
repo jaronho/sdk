@@ -154,6 +154,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
     {
         if (code) /* 连接失败 */
         {
+            ++m_endpointIter;
             if (m_endpoints.end() == m_endpointIter) /* 没有下一个 */
             {
                 stop();
@@ -164,7 +165,6 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
             }
             else /* 尝试下一个 */
             {
-                ++m_endpointIter;
                 m_tcpSession->connect(m_endpointIter->endpoint());
             }
         }

@@ -68,12 +68,12 @@ void TcpServer::doAccept()
 #if (1 == ENABLE_SOCKET_OPENSSL)
                 if (self->m_sslContext) /* 启用TLS */
                 {
-                    session = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *(self->m_sslContext)));
+                    session = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *(self->m_sslContext)), true);
                 }
                 else /* 不启用TLS */
                 {
 #endif
-                    session = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)));
+                    session = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)), true);
 #if (1 == ENABLE_SOCKET_OPENSSL)
                 }
 #endif

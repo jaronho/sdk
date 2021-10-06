@@ -22,8 +22,9 @@ public:
     /**
      * @brief 构造函数
      * @param socket 套接字
+     * @param alreadyConnected 是否已经连接上(选填), 服务器中接收到新连接时需要设置该参数为true
      */
-    TcpSession(const std::shared_ptr<SocketTcpBase>& socket);
+    TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected = false);
 
     ~TcpSession();
 
