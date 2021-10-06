@@ -170,7 +170,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
         }
         else /* 连接成功 */
         {
-            if (m_tcpSession->isEnableTLS()) /* 启用TLS */
+            if (m_tcpSession->isEnableSSL()) /* 启用SSL */
             {
 #if (1 == ENABLE_SOCKET_OPENSSL)
                 const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
@@ -198,7 +198,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
                                         }); /* 需要握手 */
 #endif
             }
-            else /* 没有启用TLS */
+            else /* 没有启用SSL */
             {
                 if (m_onConnectCallback)
                 {

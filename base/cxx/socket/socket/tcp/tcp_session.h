@@ -73,10 +73,10 @@ public:
     void close();
 
     /**
-     * @brief 是否启动用TLS
+     * @brief 是否启动用SSL
      * @return true-是, false-否
      */
-    bool isEnableTLS() const;
+    bool isEnableSSL() const;
 
     /**
      * @brief 是否已连接
@@ -92,7 +92,7 @@ public:
 
 private:
     std::shared_ptr<SocketTcpBase> m_socketTcpBase; /* 套接字 */
-    bool m_isEnableTLS; /* 是否启用TLS */
+    bool m_isEnableSSL; /* 是否启用SSL */
     bool m_isConnected; /* 是否已连接上 */
     std::vector<unsigned char> m_recvBuf; /* 接收缓冲区 */
     TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */

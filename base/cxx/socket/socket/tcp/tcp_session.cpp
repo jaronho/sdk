@@ -5,9 +5,9 @@ namespace nsocket
 TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected) : m_socketTcpBase(socket)
 {
 #if (1 == ENABLE_SOCKET_OPENSSL)
-    m_isEnableTLS = (std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase) ? true : false);
+    m_isEnableSSL = (std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase) ? true : false);
 #else
-    m_isEnableTLS = false;
+    m_isEnableSSL = false;
 #endif
     m_isConnected = alreadyConnected;
     m_recvBuf.resize(1024);
@@ -47,7 +47,7 @@ void TcpSession::connect(const boost::asio::ip::tcp::endpoint& point)
                 }
                 else /* 连接成功 */
                 {
-                    if (self->m_isEnableTLS) /* TLS, 需要握手 */
+                    if (self->m_isEnableSSL) /* TLS, 需要握手 */
                     {
                         if (self->m_onConnectCallback)
                         {
@@ -181,9 +181,9 @@ void TcpSession::close()
     }
 }
 
-bool TcpSession::isEnableTLS() const
+bool TcpSession::isEnableSSL() const
 {
-    return m_isEnableTLS;
+    return m_isEnableSSL;
 }
 
 bool TcpSession::isConnected() const
