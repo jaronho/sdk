@@ -49,30 +49,43 @@ int main(int argc, char* argv[])
     /* 创建线程专门用于网络I/O事件轮询 */
     printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
     std::thread th([&]() {
+        /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
+        try
+        {
 #if (1 == ENABLE_SOCKET_OPENSSL)
-        std::string certFile = "client.crt";
-        std::string privateKeyFilePwd = "qq123456";
-        std::string privateKeyFile = "client.key";
-        /* 设置SSL上下文对象 */
-        auto sslContext = std::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23_client);
-        sslContext->use_certificate_file(certFile, boost::asio::ssl::context::pem);
-        /* 注意: 需要先调用`set_password_callback`再调用`use_private_key_file` */
-        sslContext->set_password_callback(
-            [privateKeyFilePwd](std::size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
-                return privateKeyFilePwd;
+            std::string certFile = "client.crt";
+            std::string privateKeyFilePwd = "qq123456";
+            std::string privateKeyFile = "client.key";
+            /* 设置SSL上下文对象 */
+            auto sslContext = std::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23_client);
+            sslContext->use_certificate_file(certFile, boost::asio::ssl::context::pem);
+            /* 注意: 需要先调用`set_password_callback`再调用`use_private_key_file` */
+            sslContext->set_password_callback(
+                [privateKeyFilePwd](std::size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
+                    return privateKeyFilePwd;
+                });
+            sslContext->use_private_key_file(privateKeyFile, boost::asio::ssl::context::pem);
+            sslContext->set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert);
+            sslContext->set_verify_callback([](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
+                char subject_name[256];
+                X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+                X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
+                return true; /* 注意: 这里要返回true */
             });
-        sslContext->use_private_key_file(privateKeyFile, boost::asio::ssl::context::pem);
-        sslContext->set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert);
-        sslContext->set_verify_callback([](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
-            char subject_name[256];
-            X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
-            X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
-            return true; /* 注意: 这里要返回true */
-        });
-        client->run(serverHost, serverPort, sslContext);
+            client->run(serverHost, serverPort, sslContext);
+
 #else
-        client->run(serverHost, serverPort);
+            client->run(serverHost, serverPort);
 #endif
+        }
+        catch (const std::exception& e)
+        {
+            printf("========== execption: %s\n", e.what());
+        }
+        catch (...)
+        {
+            printf("========== execption: unknown\n");
+        }
     });
     th.detach();
     /* 主线程 */
