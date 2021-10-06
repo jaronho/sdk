@@ -69,7 +69,6 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
             char str[1024] = {0};
             std::cin.getline(str, sizeof(str));
             g_com.write(str, strlen(str));
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
     });
     th.detach();

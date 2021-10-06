@@ -363,6 +363,36 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
     return true;
 }
 
+bool FileInfo::write(const char* data, size_t length, size_t pos, int* errCode)
+{
+    if (errCode)
+    {
+        *errCode = 0;
+    }
+    if (!data || length <= 0)
+    {
+        return false;
+    }
+    if (m_fullName.empty())
+    {
+        return false;
+    }
+    std::fstream f(m_fullName, std::ios::in | std::ios::out);
+    if (!f.is_open())
+    {
+        if (errCode)
+        {
+            *errCode = errno;
+        }
+        return false;
+    }
+    f.seekp(pos, std::ios::beg);
+    f.write(data, length);
+    f.flush();
+    f.close();
+    return true;
+}
+
 char* FileInfo::read(std::fstream& f, size_t offset, size_t& count, bool textFlag)
 {
     if (!f.is_open())

@@ -141,6 +141,16 @@ public:
     bool write(const char* data, size_t length, bool isAppend = false, int* errCode = nullptr) const;
 
     /**
+     * @brief 写文件数据
+     * @param data 数据
+     * @param length 数据长度
+     * @param pos 写入的位置, 说明: 若写入位置大于原文件长度, 则原文件末尾到写入位置会被NUL占位
+     * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
+     * @return true-成功, false-失败
+     */
+    bool write(const char* data, size_t length, size_t pos, int* errCode = nullptr);
+
+    /**
      * @brief 从文件流中读取数据
      * @param f 文件流
      * @param offset 读取的偏移值, 为0时表示从头开始
