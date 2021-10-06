@@ -1,4 +1,6 @@
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 #include "../../socket/tcp/tcp_server.h"
 
@@ -70,6 +72,13 @@ int main(int argc, char* argv[])
             printf("-------------------- on connection closed [%s:%d]\n", clientHost.c_str(), clientPort);
         }
     });
-    server->run();
+    /* 创建线程专门用于网络I/O事件轮询 */
+    std::thread th([&]() { server->run(); });
+    th.detach();
+    /* 主线程 */
+    while (1)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     return 0;
 }

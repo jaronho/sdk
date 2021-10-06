@@ -50,11 +50,16 @@ int main(int argc, char* argv[])
     printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
     std::thread th([&]() { client->run(serverHost, serverPort); });
     th.detach();
-    /* 接收输入数据并发送 */
+    /* 主线程 */
     while (1)
     {
+        /* 接收输入数据并发送 */
         char str[1024] = {0};
         std::cin.getline(str, sizeof(str));
+        if (0 == strlen(str)) /* 输入为空继续等待 */
+        {
+            continue;
+        }
         printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
         std::vector<unsigned char> data;
         data.insert(data.end(), str, str + strlen(str));
