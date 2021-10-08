@@ -199,4 +199,32 @@ boost::asio::ip::tcp::endpoint TcpSession::getRemoteEndpoint() const
     }
     return boost::asio::ip::tcp::endpoint();
 }
+
+#if (1 == ENABLE_SOCKET_OPENSSL)
+std::shared_ptr<boost::asio::ssl::context> TcpSession::makeSslContext(boost::asio::ssl::context::method m, const std::string& certFile,
+                                                                      const std::string& privateKeyFile,
+                                                                      const std::string& privateKeyFilePwd)
+{
+    if (certFile.empty() && privateKeyFile.empty() && privateKeyFilePwd.empty())
+    {
+        return nullptr;
+    }
+    auto sslContext = std::make_shared<boost::asio::ssl::context>(m);
+    sslContext->use_certificate_file(certFile, boost::asio::ssl::context::pem);
+    /* 注意: 需要先调用`set_password_callback`再调用`use_private_key_file`自动填充密码, 否则若有密码时会提示需要输入密码 */
+    sslContext->set_password_callback(
+        [privateKeyFilePwd](std::size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
+            return privateKeyFilePwd;
+        });
+    sslContext->use_private_key_file(privateKeyFile, boost::asio::ssl::context::pem);
+    sslContext->set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert);
+    sslContext->set_verify_callback([](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
+        char subjectName[256];
+        X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+        X509_NAME_oneline(X509_get_subject_name(cert), subjectName, 256);
+        return true; /* 注意: 这里需要强制返回true, 否则验证不通过 */
+    });
+    return sslContext;
+}
+#endif
 } // namespace nsocket

@@ -56,6 +56,18 @@ public:
      */
     bool isRunning() const;
 
+#if (1 == ENABLE_SOCKET_OPENSSL)
+    /**
+     * @brief 获取SSL上下文(当证书文件,私钥文件,私钥文件密码都为空时返回空)
+     * @param certFile 证书文件, 例如: client.crt
+     * @param privateKeyFile 私钥文件, 例如: client.key
+     * @param privateKeyFilePwd 私钥文件密码, 例如: 123456
+     * @return SSL上下文
+     */
+    static std::shared_ptr<boost::asio::ssl::context> getSslContext(const std::string& certFile, const std::string& privateKeyFile,
+                                                                    const std::string& privateKeyFilePwd);
+#endif
+
 private:
     /**
      * @brief 处理连接结果

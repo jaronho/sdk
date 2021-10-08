@@ -170,4 +170,12 @@ void TcpServer::doSend(const std::shared_ptr<TcpSession>& connection, const std:
         });
     }
 }
+
+#if (1 == ENABLE_SOCKET_OPENSSL)
+std::shared_ptr<boost::asio::ssl::context> TcpServer::getSslContext(const std::string& certFile, const std::string& privateKeyFile,
+                                                                    const std::string& privateKeyFilePwd)
+{
+    return TcpSession::makeSslContext(boost::asio::ssl::context::sslv23_server, certFile, privateKeyFile, privateKeyFilePwd);
+}
+#endif
 } // namespace nsocket

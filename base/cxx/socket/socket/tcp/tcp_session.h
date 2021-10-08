@@ -90,6 +90,20 @@ public:
      */
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const;
 
+#if (1 == ENABLE_SOCKET_OPENSSL)
+    /**
+     * @brief 创建SSL上下文(当证书文件,私钥文件,私钥文件密码都为空时返回空)
+     * @param m 方法, 例如: 客户端可以用sslv23_client, 服务端可以用sslv23_server
+     * @param certFile 证书文件, 例如: client.crt 或 server.crt
+     * @param privateKeyFile 私钥文件, 例如: client.key 或 server.key
+     * @param privateKeyFilePwd 私钥文件密码, 例如: 123456
+     * @return SSL上下文
+     */
+    static std::shared_ptr<boost::asio::ssl::context> makeSslContext(boost::asio::ssl::context::method m, const std::string& certFile,
+                                                                     const std::string& privateKeyFile,
+                                                                     const std::string& privateKeyFilePwd);
+#endif
+
 private:
     std::shared_ptr<SocketTcpBase> m_socketTcpBase; /* 套接字 */
     bool m_isEnableSSL; /* 是否启用SSL */
