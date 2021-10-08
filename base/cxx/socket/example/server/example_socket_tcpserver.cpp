@@ -13,8 +13,8 @@ int main(int argc, char* argv[])
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
     printf("** [-p]                   server port, default: 4335                                                     **\n");
 #if (1 == ENABLE_SOCKET_OPENSSL)
-    printf("** [-cf]                  specify certificate file. e.g. client.crt                                      **\n");
-    printf("** [-pkf]                 specify private key file, e.g. client.key                                      **\n");
+    printf("** [-cf]                  specify certificate file. e.g. server.crt                                      **\n");
+    printf("** [-pkf]                 specify private key file, e.g. server.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
 #endif
     printf("**                                                                                                       **\n");
