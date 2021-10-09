@@ -46,7 +46,7 @@ public:
      */
     void connect(const boost::asio::ip::tcp::endpoint& point);
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 握手(启用TLS才需要)
      * @param type 类型, 客户端或服务端
@@ -90,7 +90,7 @@ public:
      */
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const;
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 创建SSL上下文(当证书文件,私钥文件,私钥文件密码都为空时返回空)
      * @param m 方法, 例如: 客户端可以用sslv23_client, 服务端可以用sslv23_server

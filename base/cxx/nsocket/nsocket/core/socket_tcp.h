@@ -1,7 +1,7 @@
 #pragma once
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
 #include <boost/asio/ssl.hpp>
 #endif
 #include <boost/system/system_error.hpp>
@@ -80,7 +80,7 @@ private:
     boost::asio::ip::tcp::socket m_socket;
 };
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
 /**
  * @brief TLS套接字(安全的TCP)
  */

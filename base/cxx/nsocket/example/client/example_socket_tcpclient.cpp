@@ -1,7 +1,7 @@
 #include <iostream>
 #include <thread>
 
-#include "../../socket/tcp/tcp_client.h"
+#include "../../nsocket/tcp/tcp_client.h"
 
 int main(int argc, char* argv[])
 {
@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
     printf("**                                                                                                       **\n");
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
     printf("** [-p]                   server port, default: 4335                                                     **\n");
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     printf("** [-cf]                  specify certificate file. e.g. client.crt                                      **\n");
     printf("** [-pkf]                 specify private key file, e.g. client.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
         else if (0 == strcmp(key, "-cf")) /* 证书文件 */
         {
             ++i;
@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
             auto sslContext = nsocket::TcpClient::getSslContext(certFile, privateKeyFile, privateKeyFilePwd);
             client->run(serverHost, serverPort, sslContext);
 #else

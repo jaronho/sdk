@@ -6,7 +6,7 @@ namespace nsocket
 {
 TcpClient::TcpClient()
     : m_tcpSession(nullptr)
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     , m_sslContext(nullptr)
 #endif
     , m_onConnectCallback(nullptr)
@@ -25,7 +25,7 @@ void TcpClient::setRecvDataCallback(const TCP_RECV_DATA_CALLBACK& onRecvDataCb)
     m_onRecvDataCallback = onRecvDataCb;
 }
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
 void TcpClient::run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext)
 #else
 void TcpClient::run(const std::string& host, unsigned int port)
@@ -48,7 +48,7 @@ void TcpClient::run(const std::string& host, unsigned int port)
     else
     {
         boost::asio::ip::tcp::socket socket(m_ioContext);
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
         if (sslContext) /* 启用TLS */
         {
             m_sslContext = sslContext;
@@ -58,7 +58,7 @@ void TcpClient::run(const std::string& host, unsigned int port)
         {
 #endif
             m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)));
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
         }
 #endif
         const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
@@ -172,7 +172,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
         {
             if (m_tcpSession->isEnableSSL()) /* 启用SSL */
             {
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
                 const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
                 m_tcpSession->handshake(boost::asio::ssl::stream_base::handshake_type::client,
                                         [wpSelf](const boost::system::error_code& code) {
@@ -218,7 +218,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
     }
 }
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
 std::shared_ptr<boost::asio::ssl::context> TcpClient::getSslContext(const std::string& certFile, const std::string& privateKeyFile,
                                                                     const std::string& privateKeyFilePwd)
 {

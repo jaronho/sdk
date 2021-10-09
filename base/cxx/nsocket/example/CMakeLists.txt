@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18.0)
 
-project(example_socket)
+project(example_nsocket)
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -10,11 +10,11 @@ include(../cmake/tools.cmake)
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-################################### 添加socket库 ###################################
-option(enable_socket_openssl "是否启用套接字OpenSSL依赖" ON)
+################################### 添加nsocket库 ###################################
+option(enable_nsocket_openssl "是否启用套接字OpenSSL依赖" ON)
 
-if(enable_socket_openssl)
-    add_definitions(-DENABLE_SOCKET_OPENSSL=1)
+if(enable_nsocket_openssl)
+    add_definitions(-DENABLE_NSOCKET_OPENSSL=1)
     find_package(OpenSSL 1.1.1 REQUIRED)
     if (OpenSSL_FOUND)
         message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
@@ -25,7 +25,7 @@ if(enable_socket_openssl)
         return()
     endif()
 else()
-    add_definitions(-DENABLE_SOCKET_OPENSSL=0)
+    add_definitions(-DENABLE_NSOCKET_OPENSSL=0)
 endif()
 
 find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time)
@@ -41,31 +41,31 @@ else()
     return()
 endif()
 
-set(base_socket_path ..) # 设置socket库路径(可修改)
-include_directories(${base_socket_path})
+set(base_nsocket_path ..) # 设置nsocket库路径(可修改)
+include_directories(${base_nsocket_path})
 
-set(base_socket_core_src_list)
-get_cxx_files(${base_socket_path}/socket/core src_list)
-list(APPEND base_socket_core_src_list ${src_list})
-source_group(3rdparty/base/socket/core FILES ${base_socket_core_src_list})
+set(base_nsocket_core_src_list)
+get_cxx_files(${base_nsocket_path}/nsocket/core src_list)
+list(APPEND base_nsocket_core_src_list ${src_list})
+source_group(3rdparty/base/nsocket/core FILES ${base_nsocket_core_src_list})
 
-set(base_socket_tcp_src_list)
-get_cxx_files(${base_socket_path}/socket/tcp src_list)
-list(APPEND base_socket_tcp_src_list ${src_list})
-source_group(3rdparty/base/socket/tcp FILES ${base_socket_tcp_src_list})
+set(base_nsocket_tcp_src_list)
+get_cxx_files(${base_nsocket_path}/nsocket/tcp src_list)
+list(APPEND base_nsocket_tcp_src_list ${src_list})
+source_group(3rdparty/base/nsocket/tcp FILES ${base_nsocket_tcp_src_list})
 
-set(base_threading_src_list)
-get_cxx_files(${base_socket_path}/socket src_list)
-list(APPEND base_threading_src_list ${src_list})
-source_group(3rdparty/base/socket FILES ${base_threading_src_list})
+set(base_nsocket_src_list)
+get_cxx_files(${base_nsocket_path}/nsocket src_list)
+list(APPEND base_nsocket_src_list ${src_list})
+source_group(3rdparty/base/nsocket FILES ${base_nsocket_src_list})
 
-set(base_socket_files) # 工程中需要把socket的文件添加进去
-list(APPEND base_socket_files ${base_socket_core_src_list}
-                              ${base_socket_tcp_src_list}
-                              ${base_threading_src_list})
+set(base_nsocket_files) # 工程中需要把nsocket的文件添加进去
+list(APPEND base_nsocket_files ${base_nsocket_core_src_list}
+                               ${base_nsocket_tcp_src_list}
+                               ${base_nsocket_src_list})
 
-print_info(BODY "base socket files:")
-foreach(filename ${base_socket_files})
+print_info(BODY "base nsocket files:")
+foreach(filename ${base_nsocket_files})
     message("    " ${filename})
 endforeach()
 ##########################################################################################
@@ -91,9 +91,9 @@ foreach(filename ${example_server_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_socket_tcpclient ${base_socket_files} ${example_client_files})
-add_executable(example_socket_tcpserver ${base_socket_files} ${example_server_files})
+add_executable(example_nsocket_tcpclient ${base_nsocket_files} ${example_client_files})
+add_executable(example_nsocket_tcpserver ${base_nsocket_files} ${example_server_files})
 
 # 链接依赖库
-target_link_libraries(example_socket_tcpclient Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
-target_link_libraries(example_socket_tcpserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(example_nsocket_tcpclient Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(example_nsocket_tcpserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})

@@ -4,7 +4,7 @@ namespace nsocket
 {
 TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected) : m_socketTcpBase(socket)
 {
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     m_isEnableSSL = (std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase) ? true : false);
 #else
     m_isEnableSSL = false;
@@ -72,7 +72,7 @@ void TcpSession::connect(const boost::asio::ip::tcp::endpoint& point)
     }
 }
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
 void TcpSession::handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb)
 {
     std::shared_ptr<SocketTls> tlsPtr = std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase);
@@ -200,7 +200,7 @@ boost::asio::ip::tcp::endpoint TcpSession::getRemoteEndpoint() const
     return boost::asio::ip::tcp::endpoint();
 }
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
 std::shared_ptr<boost::asio::ssl::context> TcpSession::makeSslContext(boost::asio::ssl::context::method m, const std::string& certFile,
                                                                       const std::string& privateKeyFile,
                                                                       const std::string& privateKeyFilePwd)

@@ -58,7 +58,7 @@ boost::asio::ip::tcp::endpoint SocketTcp::getRemoteEndpoint() const
     return m_socket.remote_endpoint(code);
 }
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
 SocketTls::SocketTls(boost::asio::ip::tcp::socket socket, boost::asio::ssl::context& sslContext) : sslStream(std::move(socket), sslContext)
 {
 }

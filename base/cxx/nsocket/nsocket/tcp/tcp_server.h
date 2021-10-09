@@ -84,7 +84,7 @@ public:
      * @brief 运行(进入循环, 占用调用线程)
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      */
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     void run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
 #else
     void run();
@@ -94,7 +94,7 @@ public:
      */
     void stop();
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 获取SSL上下文(当证书文件,私钥文件,私钥文件密码都为空时返回空)
      * @param certFile 证书文件, 例如: server.crt
@@ -124,7 +124,7 @@ private:
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
     std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor; /* 接收器 */
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
 #endif
     TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */

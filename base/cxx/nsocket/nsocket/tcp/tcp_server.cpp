@@ -3,7 +3,7 @@
 namespace nsocket
 {
 TcpServer::TcpServer(const std::string& host, unsigned int port)
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     : m_sslContext(nullptr)
 #endif
 {
@@ -18,7 +18,7 @@ TcpServer::TcpServer(const std::string& host, unsigned int port)
     }
 }
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
 void TcpServer::run(const std::shared_ptr<boost::asio::ssl::context>& sslContext)
 #else
 void TcpServer::run()
@@ -26,7 +26,7 @@ void TcpServer::run()
 {
     if (m_acceptor)
     {
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
         m_sslContext = sslContext;
 #endif
         doAccept();
@@ -65,7 +65,7 @@ void TcpServer::doAccept()
             {
                 /* 创建新会话 */
                 std::shared_ptr<TcpSession> session;
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
                 if (self->m_sslContext) /* 启用TLS */
                 {
                     session = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *(self->m_sslContext)), true);
@@ -74,7 +74,7 @@ void TcpServer::doAccept()
                 {
 #endif
                     session = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)), true);
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
                 }
 #endif
                 auto remoteEndpoint = session->getRemoteEndpoint();
@@ -106,7 +106,7 @@ void TcpServer::doAccept()
                     }
                 });
                 /* 开始会话 */
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
                 if (self->m_sslContext) /* 启用TLS */
                 {
                     session->handshake(boost::asio::ssl::stream_base::server,
@@ -133,7 +133,7 @@ void TcpServer::doAccept()
                         self->m_onNewConnectionCallback(remoteEndpoint, sendHandler);
                     }
                     session->recv(); /* 开始接收数据 */
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
                 }
 #endif
             }
@@ -171,7 +171,7 @@ void TcpServer::doSend(const std::shared_ptr<TcpSession>& connection, const std:
     }
 }
 
-#if (1 == ENABLE_SOCKET_OPENSSL)
+#if (1 == ENABLE_NSOCKET_OPENSSL)
 std::shared_ptr<boost::asio::ssl::context> TcpServer::getSslContext(const std::string& certFile, const std::string& privateKeyFile,
                                                                     const std::string& privateKeyFilePwd)
 {
