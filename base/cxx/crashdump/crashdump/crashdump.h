@@ -14,7 +14,7 @@ using DumpCallback = std::function<void(const std::string& json)>;
 /**
  * @brief 开始崩溃监听(需要在程序一启动就开始, 提前于其他逻辑)
  * @param outputPath 崩溃堆栈文件输出路径
- * @param callback 崩溃回调
+ * @param callback 崩溃回调(选填), 当非空时, 将把堆栈文件回调出去
  */
 void start(const std::string& outputPath, const DumpCallback& callback = nullptr);
 

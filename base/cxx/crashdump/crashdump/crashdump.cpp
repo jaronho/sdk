@@ -3,11 +3,14 @@
 #include <sys/stat.h>
 #include <sys/timeb.h>
 #include <sys/types.h>
+#include <time.h>
 #include <vector>
 #ifdef _WIN32
 #include <Windows.h>
 #include <direct.h>
 #include <io.h>
+
+#include "client/windows/handler/exception_handler.h"
 #else
 #include <dirent.h>
 #include <unistd.h>
@@ -145,12 +148,35 @@ static std::string wstring2string(const std::wstring& wstr)
         return std::string();
     }
     int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-    char* buf = (char*)malloc(sizeof(char) * (len + 1));
+    char* buf = (char*)malloc(sizeof(char) * (len + (size_t)1));
+    if (!buf)
+    {
+        return std::string();
+    }
     WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
     buf[len] = '\0';
     std::string str(buf);
     free(buf);
     return str;
+}
+
+static std::wstring string2wstring(const std::string& str)
+{
+    if (str.empty())
+    {
+        return std::wstring();
+    }
+    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
+    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + (size_t)1));
+    if (!buf)
+    {
+        return std::wstring();
+    }
+    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
+    buf[len] = '\0';
+    std::wstring wstr(buf);
+    free(buf);
+    return wstr;
 }
 #endif
 
@@ -195,8 +221,18 @@ google_breakpad::ExceptionHandler* g_execptionHandler = nullptr; /* 异常句柄
 /**
  * @brief 崩溃处理回调
  */
+#ifdef _WIN32
+bool dumpHandler(const wchar_t* dump_dir, const wchar_t* minidump_id, void* context, EXCEPTION_POINTERS* exinfo,
+                 MDRawAssertionInfo* assertion, bool succeeded)
+#else
 bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* context, bool succeeded)
+#endif
 {
+#ifdef _WIN32
+    std::string oldDumpFile = wstring2string(dump_dir + std::wstring(L"/") + minidump_id + std::wstring(L".dmp"));
+#else
+    std::string oldDumpFile = descriptor.path();
+#endif
     /* 获取当前时间戳 */
     time_t now;
     time(&now);
@@ -208,22 +244,27 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     char ms[4] = {0};
     sprintf(ms, "%03d", tb.millitm);
     /* 重命名堆栈文件 */
-    auto fi = stripFileInfo(descriptor.path());
-    std::string baseName = g_procBasename + g_procVersion;
-    std::string dumpFile = fi[0] + baseName + "_" + datetime + ms + (fi[3].empty() ? "" : "." + fi[3]);
-    std::string command = "mv " + std::string(descriptor.path()) + " " + dumpFile;
-    std::vector<std::string> result;
-    int ret = shellCmd(command, &result);
-    if (0 != ret || !result.empty())
+    auto fi = stripFileInfo(oldDumpFile);
+    std::string baseName = g_procBasename + "_" + g_procVersion;
+    std::string newDumpFile = fi[0] + baseName + "_" + datetime + ms + (fi[3].empty() ? "" : "." + fi[3]);
+    if (0 != rename(oldDumpFile.c_str(), newDumpFile.c_str()))
     {
-        dumpFile = descriptor.path();
+        newDumpFile = oldDumpFile;
     }
     /* 堆栈文件处理 */
-    command = "dump_assist.sh -pname " + g_procFile + " -pver " + g_procVersion + " -dname " + dumpFile;
-    ret = shellCmd(command, &result);
-    /* 回调到外部 */
+#ifdef _WIN32
     if (g_callback)
     {
+        std::string json = "{\"code\":0,\"file\":\"" + newDumpFile + "\",\"msg\":\"ok\"}";
+        g_callback(json);
+    }
+#else
+    std::string command = "dump_assist.sh -pname " + g_procFile + " -pver " + g_procVersion + " -dname " + newDumpFile;
+    if (g_callback)
+    {
+        std::vector<std::string> result;
+        shellCmd(command, &result);
+        /* 回调到外部 */
         std::string json;
         if (!result.empty())
         {
@@ -231,6 +272,11 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
         }
         g_callback(json);
     }
+    else
+    {
+        shellCmd(command + " &");
+    }
+#endif
     return succeeded;
 }
 
@@ -252,8 +298,13 @@ void start(const std::string& outputPath, const DumpCallback& callback)
     /* 创建路径 */
     createPath(g_outputPath);
     /* 开始监听 */
+#ifdef _WIN32
+    g_execptionHandler = new google_breakpad::ExceptionHandler(string2wstring(g_outputPath), NULL, dumpHandler, NULL,
+                                                               google_breakpad::ExceptionHandler::HANDLER_ALL);
+#else
     google_breakpad::MinidumpDescriptor descriptor(g_outputPath.c_str());
     g_execptionHandler = new google_breakpad::ExceptionHandler(descriptor, NULL, dumpHandler, NULL, true, -1);
+#endif
 }
 
 void setProcVersion(const std::string& procVersion)

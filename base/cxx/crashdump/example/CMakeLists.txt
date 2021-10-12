@@ -12,7 +12,11 @@ find_package(Threads REQUIRED)
 
 ################################### 添加breakpad库 ###################################
 set(breakpad_libraries)
-list(APPEND breakpad_libraries breakpad_client)
+if (CMAKE_SYSTEM_NAME MATCHES "Windows") # Windows平台需要在VS工程中手动指定`头文件搜索路径`和`库文件搜索路径`
+    list(APPEND breakpad_libraries common crash_generation_client exception_handler)
+else()
+    list(APPEND breakpad_libraries breakpad_client)
+endif()
 ##########################################################################################
 
 ################################### 添加crashdump库 ###################################
