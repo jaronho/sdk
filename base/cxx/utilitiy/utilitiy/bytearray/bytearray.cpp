@@ -1,6 +1,5 @@
 #include "bytearray.h"
 
-#include <assert.h>
 #include <string.h>
 
 namespace utilitiy
@@ -28,7 +27,10 @@ short ByteArray::swab16(short n)
 
 short ByteArray::swab16(unsigned char* p)
 {
-    assert(p);
+    if (!p)
+    {
+        throw std::exception("arg 'p' is null");
+    }
     short ret = ((p[0] << 8) | p[1]);
     return ret;
 }
@@ -40,7 +42,10 @@ int ByteArray::swab32(int n)
 
 int ByteArray::swab32(unsigned char* p)
 {
-    assert(p);
+    if (!p)
+    {
+        throw std::exception("arg 'p' is null");
+    }
     int ret = ((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
     return ret;
 }
@@ -51,9 +56,15 @@ ByteArray::ByteArray(int maxSize)
     {
         maxSize = MAX_SIZE;
     }
-    assert(maxSize <= MAX_SIZE);
+    if (maxSize > MAX_SIZE)
+    {
+        throw std::exception("arg 'maxSize' out of maximum");
+    }
     m_buffer = (unsigned char*)malloc(maxSize);
-    assert(m_buffer);
+    if (!m_buffer)
+    {
+        throw std::exception("var 'm_buffer' is null");
+    }
     memset(m_buffer, 0, maxSize);
     m_maxSize = maxSize;
     m_readIndex = 0;
@@ -438,7 +449,10 @@ unsigned char* ByteArray::readBytes(unsigned int& len)
         return nullptr;
     }
     unsigned char* r = (unsigned char*)malloc(len);
-    assert(r);
+    if (!r)
+    {
+        throw std::exception("var 'r' is null");
+    }
     memcpy(r, p, len);
     return r;
 }
@@ -469,7 +483,10 @@ char* ByteArray::readString(unsigned int& len)
         return nullptr;
     }
     char* r = (char*)malloc(len + 1);
-    assert(r);
+    if (!r)
+    {
+        throw std::exception("var 'r' is null");
+    }
     strcpy(r, (char*)p);
     *(r + len) = '\0';
     return r;

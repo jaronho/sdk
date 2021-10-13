@@ -1,6 +1,5 @@
 #include "path_info.h"
 
-#include <assert.h>
 #include <string.h>
 #include <sys/stat.h>
 #ifdef _WIN32
@@ -17,7 +16,10 @@ namespace utilitiy
 {
 PathInfo::PathInfo(const std::string& path, bool autoEndWithSlash) : m_path(revise(path))
 {
-    assert(!m_path.empty());
+    if (m_path.empty())
+    {
+        throw std::exception("var 'm_path' is empty");
+    }
     if (autoEndWithSlash)
     {
         const char& lastPathChar = m_path[m_path.size() - 1];

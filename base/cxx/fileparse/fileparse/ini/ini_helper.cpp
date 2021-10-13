@@ -1,7 +1,6 @@
 #include "ini_helper.h"
 
 #include <algorithm>
-#include <assert.h>
 #include <mutex>
 
 namespace ini
@@ -12,10 +11,19 @@ INI_MAP_TYPE* g_iniMap = nullptr; /* 全局ini映射表 */
 
 void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& key)
 {
-    assert(sectionKey.size() >= 2);
-    assert('/' == sectionKey[0] && '/' != sectionKey[sectionKey.size() - 1]); /* 首个字符不为/或最后一个字符为/ */
+    if (sectionKey.size() < 2) /* 键值长度需要小于2 */
+    {
+        throw std::exception("arg 'sectionKey.size' < 2");
+    }
+    if ('/' != sectionKey[0] || '/' == sectionKey[sectionKey.size() - 1]) /* 首个字符不为/或最后一个字符为/ */
+    {
+        throw std::exception("arg 'sectionKey' format error");
+    }
     auto count = std::count(sectionKey.begin(), sectionKey.end(), '/');
-    assert(count <= 2); /* 超过两级 */
+    if (count > 2) /* 超过两级 */
+    {
+        throw std::exception("arg 'sectionKey' layer > 2");
+    }
     auto pos = sectionKey.find_last_of('/');
     if (0 == pos) /* 全局键值 */
     {

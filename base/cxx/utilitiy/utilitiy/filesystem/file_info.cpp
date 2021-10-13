@@ -1,7 +1,6 @@
 #include "file_info.h"
 
 #include <algorithm>
-#include <assert.h>
 #include <string.h>
 #ifndef _WIN32
 #include <unistd.h>
@@ -430,7 +429,10 @@ char* FileInfo::read(std::fstream& f, size_t offset, size_t& count, bool textFla
 
 bool FileInfo::isTextData(std::fstream& f)
 {
-    assert(f.is_open());
+    if (!f.is_open())
+    {
+        throw std::exception("arg 'f' is not opened");
+    }
     f.seekg(0, std::ios::beg);
     char ch[1] = {0};
     while (!f.eof())

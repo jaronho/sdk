@@ -1,6 +1,5 @@
 #include "logfile.h"
 
-#include <assert.h>
 #include <iostream>
 #include <string.h>
 #include <sys/stat.h>
@@ -51,9 +50,18 @@ bool Logfile::createPath(const std::string& path)
 
 Logfile::Logfile(const std::string& path, const std::string& filename, size_t maxSize)
 {
-    assert(!path.empty());
-    assert(!filename.empty());
-    assert(maxSize > 0);
+    if (path.empty())
+    {
+        throw std::exception("arg 'path' is empty");
+    }
+    if (filename.empty())
+    {
+        throw std::exception("arg 'filename' is empty");
+    }
+    if (maxSize <= 0)
+    {
+        throw std::exception("arg 'maxSize' <= 0");
+    }
     m_path = path;
     const char& lastPathChar = path[path.length() - 1];
     if ('/' == lastPathChar || '\\' == lastPathChar)

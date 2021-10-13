@@ -1,6 +1,5 @@
 #include "daily_logfile.h"
 
-#include <assert.h>
 #include <stdio.h>
 
 namespace logger
@@ -8,8 +7,14 @@ namespace logger
 DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& extName, size_t maxSize,
                            size_t maxFiles, bool indexFixed, bool createDailyFolder)
 {
-    assert(!path.empty());
-    assert(maxSize > 0);
+    if (path.empty())
+    {
+        throw std::exception("arg 'path' is empty");
+    }
+    if (maxSize <= 0)
+    {
+        throw std::exception("arg 'maxSize' <= 0");
+    }
     m_path = path;
     m_prefixName = m_baseName = prefixName;
     m_extName = extName;

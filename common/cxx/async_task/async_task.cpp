@@ -1,7 +1,5 @@
 #include "async_task.h"
 
-#include <assert.h>
-
 threading::ExecutorPtr AsyncProxy::s_workers = nullptr;
 std::mutex AsyncProxy::s_finishMutex;
 std::list<AsyncTaskPtr> AsyncProxy::s_finishList;
@@ -32,7 +30,10 @@ void AsyncProxy::runOnce()
 
 void AsyncProxy::execute(const AsyncTaskPtr& task)
 {
-    assert(s_workers);
+    if (!s_workers)
+    {
+        throw std::exception("var 's_workers' is null");
+    }
     if (task && task->func)
     {
         std::string tag;
@@ -56,7 +57,10 @@ void AsyncProxy::execute(const AsyncTaskPtr& task)
 
 void AsyncProxy::execute(const std::function<void()>& func, const std::function<void()>& finishCb, const std::string& name)
 {
-    assert(s_workers);
+    if (!s_workers)
+    {
+        throw std::exception("var 's_workers' is null");
+    }
     if (func)
     {
         auto task = std::make_shared<AsyncTask>();

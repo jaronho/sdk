@@ -1,6 +1,5 @@
 #include "rotating_logfile.h"
 
-#include <assert.h>
 #include <iostream>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -18,9 +17,18 @@ namespace logger
 RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize,
                                  size_t maxFiles, bool indexFixed)
 {
-    assert(!path.empty());
-    assert(!baseName.empty());
-    assert(maxSize > 0);
+    if (path.empty())
+    {
+        throw std::exception("arg 'path' is empty");
+    }
+    if (baseName.empty())
+    {
+        throw std::exception("arg 'filebaseNamename' is empty");
+    }
+    if (maxSize <= 0)
+    {
+        throw std::exception("arg 'maxSize' <= 0");
+    }
     m_baseName = baseName;
     m_extName = extName;
     if (!extName.empty() && '.' != extName[0])

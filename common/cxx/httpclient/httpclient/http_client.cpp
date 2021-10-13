@@ -1,7 +1,5 @@
 #include "http_client.h"
 
-#include <assert.h>
-
 namespace http
 {
 threading::ExecutorPtr HttpClient::s_workers = nullptr;
@@ -72,7 +70,10 @@ curlex::MultipartFormRequestDataPtr HttpClient::makeMultipartFormData()
 
 void HttpClient::easyDelete(const curlex::RequestPtr& req, const curlex::FuncSet& funcSet, const ResponseCallback& respCb)
 {
-    assert(s_workers);
+    if (!s_workers)
+    {
+        throw std::exception("var 's_workers' is null");
+    }
     threading::ThreadProxy::async(
         "http.easy_delete|" + req->getUrl(),
         [req, funcSet, respCb]() {
@@ -85,7 +86,10 @@ void HttpClient::easyDelete(const curlex::RequestPtr& req, const curlex::FuncSet
 
 void HttpClient::easyGet(const curlex::RequestPtr& req, const curlex::FuncSet& funcSet, const ResponseCallback& respCb)
 {
-    assert(s_workers);
+    if (!s_workers)
+    {
+        throw std::exception("var 's_workers' is null");
+    }
     threading::ThreadProxy::async(
         "http.easy_get|" + req->getUrl(),
         [req, funcSet, respCb]() {
@@ -98,7 +102,10 @@ void HttpClient::easyGet(const curlex::RequestPtr& req, const curlex::FuncSet& f
 
 void HttpClient::easyPut(const curlex::RequestPtr& req, const curlex::FuncSet& funcSet, const ResponseCallback& respCb)
 {
-    assert(s_workers);
+    if (!s_workers)
+    {
+        throw std::exception("var 's_workers' is null");
+    }
     threading::ThreadProxy::async(
         "http.easy_put|" + req->getUrl(),
         [req, funcSet, respCb]() {
@@ -111,7 +118,10 @@ void HttpClient::easyPut(const curlex::RequestPtr& req, const curlex::FuncSet& f
 
 void HttpClient::easyPost(const curlex::RequestPtr& req, const curlex::FuncSet& funcSet, const ResponseCallback& respCb)
 {
-    assert(s_workers);
+    if (!s_workers)
+    {
+        throw std::exception("var 's_workers' is null");
+    }
     threading::ThreadProxy::async(
         "http.easy_post|" + req->getUrl(),
         [req, funcSet, respCb]() {
@@ -125,7 +135,10 @@ void HttpClient::easyPost(const curlex::RequestPtr& req, const curlex::FuncSet& 
 void HttpClient::easyDownload(const curlex::RequestPtr& req, const std::string& filename, bool recover, const curlex::FuncSet& funcSet,
                               const ResponseCallback& respCb)
 {
-    assert(s_workers);
+    if (!s_workers)
+    {
+        throw std::exception("var 's_workers' is null");
+    }
     threading::ThreadProxy::async(
         "http.easy_download|" + req->getUrl(),
         [req, filename, recover, funcSet, respCb]() {

@@ -1,6 +1,5 @@
 #include "module_manager.h"
 
-#include <assert.h>
 #include <chrono>
 #include <iostream>
 
@@ -24,7 +23,10 @@ bool ModuleManager::registerCreator(const std::type_info& type, const Creator& c
 {
     printLog("register module [" + std::string(type.name()) + "] creator");
     auto iter = m_creators.find(type);
-    assert(m_creators.end() == iter);
+    if (m_creators.end() != iter)
+    {
+        throw std::exception(("already exist '" + std::string(type.name()) + "' creator").c_str());
+    }
     m_creators[type] = creator;
     return true;
 }
