@@ -1,6 +1,7 @@
 #include "logfile.h"
 
 #include <iostream>
+#include <stdexcept>
 #include <string.h>
 #include <sys/stat.h>
 #ifdef _WIN32
@@ -52,15 +53,15 @@ Logfile::Logfile(const std::string& path, const std::string& filename, size_t ma
 {
     if (path.empty())
     {
-        throw std::exception("arg 'path' is empty");
+        throw std::exception(std::logic_error("arg 'path' is empty"));
     }
     if (filename.empty())
     {
-        throw std::exception("arg 'filename' is empty");
+        throw std::exception(std::logic_error("arg 'filename' is empty"));
     }
     if (maxSize <= 0)
     {
-        throw std::exception("arg 'maxSize' <= 0");
+        throw std::exception(std::logic_error("arg 'maxSize' <= 0"));
     }
     m_path = path;
     const char& lastPathChar = path[path.length() - 1];

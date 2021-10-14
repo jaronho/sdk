@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <stdexcept>
 
 namespace utilitiy
 {
@@ -25,7 +26,7 @@ bool ModuleManager::registerCreator(const std::type_info& type, const Creator& c
     auto iter = m_creators.find(type);
     if (m_creators.end() != iter)
     {
-        throw std::exception(("already exist '" + std::string(type.name()) + "' creator").c_str());
+        throw std::exception(std::logic_error("already exist '" + std::string(type.name()) + "' creator"));
     }
     m_creators[type] = creator;
     return true;

@@ -1,5 +1,6 @@
 #include "path_info.h"
 
+#include <stdexcept>
 #include <string.h>
 #include <sys/stat.h>
 #ifdef _WIN32
@@ -18,7 +19,7 @@ PathInfo::PathInfo(const std::string& path, bool autoEndWithSlash) : m_path(revi
 {
     if (m_path.empty())
     {
-        throw std::exception("var 'm_path' is empty");
+        throw std::exception(std::logic_error("var 'm_path' is empty"));
     }
     if (autoEndWithSlash)
     {
@@ -432,5 +433,33 @@ std::string PathInfo::revise(const std::string& path)
     newPath.erase(0, newPath.find_first_not_of(' '));
     newPath.erase(newPath.find_last_not_of(' ') + 1);
     return newPath;
+}
+
+std::string PathInfo::getcwd(bool autoEndWithSlash)
+{
+#ifdef _WIN32
+    char* buffer = ::_getcwd(NULL, 0);
+#else
+    char* buffer = ::getcwd(NULL, 0);
+#endif
+    std::string currDir;
+    if (buffer)
+    {
+        currDir = buffer;
+        free(buffer);
+        if (!currDir.empty() && autoEndWithSlash)
+        {
+            const char& lastPathChar = currDir[currDir.size() - 1];
+            if ('/' != lastPathChar && '\\' != lastPathChar)
+            {
+#ifdef _WIN32
+                currDir.push_back('\\');
+#else
+                currDir.push_back('/');
+#endif
+            }
+        }
+    }
+    return currDir;
 }
 } // namespace utilitiy

@@ -1,6 +1,7 @@
 #include "rotating_logfile.h"
 
 #include <iostream>
+#include <stdexcept>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -19,15 +20,15 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
 {
     if (path.empty())
     {
-        throw std::exception("arg 'path' is empty");
+        throw std::exception(std::logic_error("arg 'path' is empty"));
     }
     if (baseName.empty())
     {
-        throw std::exception("arg 'filebaseNamename' is empty");
+        throw std::exception(std::logic_error("arg 'baseName' is empty"));
     }
     if (maxSize <= 0)
     {
-        throw std::exception("arg 'maxSize' <= 0");
+        throw std::exception(std::logic_error("arg 'maxSize' <= 0"));
     }
     m_baseName = baseName;
     m_extName = extName;

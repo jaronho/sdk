@@ -96,6 +96,13 @@ public:
      */
     static std::string revise(const std::string& path);
 
+    /**
+     * @brief 获取当前工作目录
+     * @param autoEndWithSlash 是否自动斜杠结尾(选填), 默认保留原始
+     * @return 当前工作目录
+     */
+    static std::string getcwd(bool autoEndWithSlash = false);
+
 private:
     /**
      * @brief 清空内部实现

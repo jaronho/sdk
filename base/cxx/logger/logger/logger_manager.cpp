@@ -1,5 +1,7 @@
 #include "logger_manager.h"
 
+#include <stdexcept>
+
 #include "impl/inner_logger_impl.h"
 
 namespace logger
@@ -13,11 +15,11 @@ void LoggerManager::start(const LogConfig& cfg, const std::string& defultTagName
 {
     if (cfg.path.empty())
     {
-        throw std::exception("arg 'cfg.path' is empty");
+        throw std::exception(std::logic_error("arg 'cfg.path' is empty"));
     }
     if (cfg.name.empty())
     {
-        throw std::exception("arg 'cfg.name' is empty");
+        throw std::exception(std::logic_error("arg 'cfg.name' is empty"));
     }
     std::lock_guard<std::mutex> locker(m_mutex);
     m_logCfg = cfg;
@@ -37,7 +39,7 @@ Logger LoggerManager::getLogger(const std::string& tagName, const std::string& l
     /* 默认日志器找不到则创建 */
     if (m_logCfg.path.empty())
     {
-        throw std::exception("var 'm_logCfg.path' is empty");
+        throw std::exception(std::logic_error("var 'm_logCfg.path' is empty"));
     }
     LogConfig cfg = m_logCfg;
     cfg.name = name;

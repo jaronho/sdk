@@ -1,5 +1,6 @@
 #include "daily_logfile.h"
 
+#include <stdexcept>
 #include <stdio.h>
 
 namespace logger
@@ -9,11 +10,11 @@ DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixNam
 {
     if (path.empty())
     {
-        throw std::exception("arg 'path' is empty");
+        throw std::exception(std::logic_error("arg 'path' is empty"));
     }
     if (maxSize <= 0)
     {
-        throw std::exception("arg 'maxSize' <= 0");
+        throw std::exception(std::logic_error("arg 'maxSize' <= 0"));
     }
     m_path = path;
     m_prefixName = m_baseName = prefixName;

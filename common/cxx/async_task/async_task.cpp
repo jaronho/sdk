@@ -1,5 +1,7 @@
 #include "async_task.h"
 
+#include <stdexcept>
+
 threading::ExecutorPtr AsyncProxy::s_workers = nullptr;
 std::mutex AsyncProxy::s_finishMutex;
 std::list<AsyncTaskPtr> AsyncProxy::s_finishList;
@@ -32,7 +34,7 @@ void AsyncProxy::execute(const AsyncTaskPtr& task)
 {
     if (!s_workers)
     {
-        throw std::exception("var 's_workers' is null");
+        throw std::exception(std::logic_error("var 's_workers' is null"));
     }
     if (task && task->func)
     {
@@ -59,7 +61,7 @@ void AsyncProxy::execute(const std::function<void()>& func, const std::function<
 {
     if (!s_workers)
     {
-        throw std::exception("var 's_workers' is null");
+        throw std::exception(std::logic_error("var 's_workers' is null"));
     }
     if (func)
     {

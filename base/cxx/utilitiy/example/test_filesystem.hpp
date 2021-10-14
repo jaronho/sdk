@@ -64,7 +64,7 @@ void testFilesystem()
     {
         printf("exist: false\n");
     }
-    printf("---------- path info\n");
+    printf("---------- path info, current: %s\n", utilitiy::PathInfo::getcwd().c_str());
 #ifdef _WIN32
     utilitiy::PathInfo pi("D:\\workspace\\test\\111\\222\\333");
 #else
