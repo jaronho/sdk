@@ -4,12 +4,12 @@
 #include "net_msg_type.hpp"
 
 /**
- * @brief ÍøÂç°ü: ÇëÇóÉèÖÃ×ÔÉíID 
+ * @brief ç½‘ç»œåŒ…: è¯·æ±‚è®¾ç½®è‡ªèº«ID 
  */
 struct req_set_self_id
 {
     /**
-     * @brief »ñÈ¡ÏûÏ¢ÀàĞÍ 
+     * @brief è·å–æ¶ˆæ¯ç±»å‹ 
      */
     NetMsgType getMsgType()
     {
@@ -17,30 +17,30 @@ struct req_set_self_id
     }
 
     /**
-     * @brief ±àÂë(½á¹¹Ìå×ªÎª×Ö½ÚÁ÷) 
+     * @brief ç¼–ç (ç»“æ„ä½“è½¬ä¸ºå­—èŠ‚æµ) 
      */
     std::vector<unsigned char> encode()
     {
         std::vector<unsigned char> bytes;
-        /* ±àÂëÊ±ĞèÒª´æÈëÏûÏ¢ÀàĞÍ(Ğ¡¶Ë) */
+        /* ç¼–ç æ—¶éœ€è¦å­˜å…¥æ¶ˆæ¯ç±»å‹(å°ç«¯) */
         size_t msgType = getMsgType();
         bytes.emplace_back((msgType >> 0) & 0xFF);
         bytes.emplace_back((msgType >> 8) & 0xFF);
         bytes.emplace_back((msgType >> 16) & 0xFF);
         bytes.emplace_back((msgType >> 24) & 0xFF);
-        /* ´æÈë`self_id`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* å­˜å…¥`self_id`çš„é•¿åº¦(å°ç«¯) */
         size_t selfIdLen = self_id.size();
         bytes.emplace_back((selfIdLen >> 0) & 0xFF);
         bytes.emplace_back((selfIdLen >> 8) & 0xFF);
         bytes.emplace_back((selfIdLen >> 16) & 0xFF);
         bytes.emplace_back((selfIdLen >> 24) & 0xFF);
-        /* ´æÈë`self_id`µÄÖµ */
+        /* å­˜å…¥`self_id`çš„å€¼ */
         bytes.insert(bytes.end(), self_id.begin(), self_id.end());
         return bytes;
     };
 
     /**
-     * @brief ½âÂë(×Ö½ÚÁ÷×ªÎª½á¹¹Ìå)
+     * @brief è§£ç (å­—èŠ‚æµè½¬ä¸ºç»“æ„ä½“)
      */
     void decode(const std::vector<unsigned char>& bytes)
     {
@@ -49,14 +49,14 @@ struct req_set_self_id
             return;
         }
         size_t offset = 0;
-        /* ¶ÁÈ¡`self_id`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* è¯»å–`self_id`çš„é•¿åº¦(å°ç«¯) */
         size_t selfIdLen = 0;
         selfIdLen += bytes[offset + 0];
         selfIdLen += bytes[offset + 1];
         selfIdLen += bytes[offset + 2];
         selfIdLen += bytes[offset + 3];
         offset += 4;
-        /* ¶ÁÈ¡`self_id`µÄÖµ */
+        /* è¯»å–`self_id`çš„å€¼ */
         if (selfIdLen > bytes.size() - offset)
         {
             return;
@@ -68,12 +68,12 @@ struct req_set_self_id
 };
 
 /**
- * @brief ÍøÂç°ü: ÇëÇó·¢ËÍÊı¾İ 
+ * @brief ç½‘ç»œåŒ…: è¯·æ±‚å‘é€æ•°æ® 
  */
 struct req_send_data
 {
     /**
-     * @brief »ñÈ¡ÏûÏ¢ÀàĞÍ 
+     * @brief è·å–æ¶ˆæ¯ç±»å‹ 
      */
     NetMsgType getMsgType()
     {
@@ -81,38 +81,38 @@ struct req_send_data
     }
 
     /**
-     * @brief ±àÂë(½á¹¹Ìå×ªÎª×Ö½ÚÁ÷) 
+     * @brief ç¼–ç (ç»“æ„ä½“è½¬ä¸ºå­—èŠ‚æµ) 
      */
     std::vector<unsigned char> encode()
     {
         std::vector<unsigned char> bytes;
-        /* ±àÂëÊ±ĞèÒª´æÈëÏûÏ¢ÀàĞÍ(Ğ¡¶Ë) */
+        /* ç¼–ç æ—¶éœ€è¦å­˜å…¥æ¶ˆæ¯ç±»å‹(å°ç«¯) */
         size_t msgType = getMsgType();
         bytes.emplace_back((msgType >> 0) & 0xFF);
         bytes.emplace_back((msgType >> 8) & 0xFF);
         bytes.emplace_back((msgType >> 16) & 0xFF);
         bytes.emplace_back((msgType >> 24) & 0xFF);
-        /* ´æÈë`target_id`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* å­˜å…¥`target_id`çš„é•¿åº¦(å°ç«¯) */
         size_t targetIdLen = target_id.size();
         bytes.emplace_back((targetIdLen >> 0) & 0xFF);
         bytes.emplace_back((targetIdLen >> 8) & 0xFF);
         bytes.emplace_back((targetIdLen >> 16) & 0xFF);
         bytes.emplace_back((targetIdLen >> 24) & 0xFF);
-        /* ´æÈë`target_id`µÄÖµ */
+        /* å­˜å…¥`target_id`çš„å€¼ */
         bytes.insert(bytes.end(), target_id.begin(), target_id.end());
-        /* ´æÈë`data`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* å­˜å…¥`data`çš„é•¿åº¦(å°ç«¯) */
         size_t dataLen = data.size();
         bytes.emplace_back((dataLen >> 0) & 0xFF);
         bytes.emplace_back((dataLen >> 8) & 0xFF);
         bytes.emplace_back((dataLen >> 16) & 0xFF);
         bytes.emplace_back((dataLen >> 24) & 0xFF);
-        /* ´æÈë`data`µÄÖµ */
+        /* å­˜å…¥`data`çš„å€¼ */
         bytes.insert(bytes.end(), data.begin(), data.end());
         return bytes;
     }
 
     /**
-     * @brief ½âÂë(×Ö½ÚÁ÷×ªÎª½á¹¹Ìå)
+     * @brief è§£ç (å­—èŠ‚æµè½¬ä¸ºç»“æ„ä½“)
      */
     void decode(const std::vector<unsigned char>& bytes)
     {
@@ -121,21 +121,21 @@ struct req_send_data
             return;
         }
         size_t offset = 0;
-        /* ¶ÁÈ¡`target_id`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* è¯»å–`target_id`çš„é•¿åº¦(å°ç«¯) */
         size_t targetIdLen = 0;
         targetIdLen += bytes[offset + 0];
         targetIdLen += bytes[offset + 1];
         targetIdLen += bytes[offset + 2];
         targetIdLen += bytes[offset + 3];
         offset += 4;
-        /* ¶ÁÈ¡`target_id`µÄÖµ */
+        /* è¯»å–`target_id`çš„å€¼ */
         if (targetIdLen > bytes.size() - offset)
         {
             return;
         }
         target_id = std::string(bytes.begin() + offset, bytes.begin() + offset + targetIdLen);
         offset += targetIdLen;
-        /* ¶ÁÈ¡`data`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* è¯»å–`data`çš„é•¿åº¦(å°ç«¯) */
         if (4 > bytes.size() - offset)
         {
             return;
@@ -146,7 +146,7 @@ struct req_send_data
         dataLen += bytes[offset + 2];
         dataLen += bytes[offset + 3];
         offset += 4;
-        /* ¶ÁÈ¡`data`µÄÖµ */
+        /* è¯»å–`data`çš„å€¼ */
         if (dataLen > bytes.size() - offset)
         {
             return;
@@ -159,12 +159,12 @@ struct req_send_data
 };
 
 /**
- * @brief ÍøÂç°ü: Í¨Öª½ÓÊÕÊı¾İ 
+ * @brief ç½‘ç»œåŒ…: é€šçŸ¥æ¥æ”¶æ•°æ® 
  */
 struct notify_recv_data
 {
     /**
-     * @brief »ñÈ¡ÏûÏ¢ÀàĞÍ 
+     * @brief è·å–æ¶ˆæ¯ç±»å‹ 
      */
     NetMsgType getMsgType()
     {
@@ -172,38 +172,38 @@ struct notify_recv_data
     }
 
     /**
-     * @brief ±àÂë(½á¹¹Ìå×ªÎª×Ö½ÚÁ÷) 
+     * @brief ç¼–ç (ç»“æ„ä½“è½¬ä¸ºå­—èŠ‚æµ) 
      */
     std::vector<unsigned char> encode()
     {
         std::vector<unsigned char> bytes;
-        /* ±àÂëÊ±ĞèÒª´æÈëÏûÏ¢ÀàĞÍ(Ğ¡¶Ë) */
+        /* ç¼–ç æ—¶éœ€è¦å­˜å…¥æ¶ˆæ¯ç±»å‹(å°ç«¯) */
         size_t msgType = getMsgType();
         bytes.emplace_back((msgType >> 0) & 0xFF);
         bytes.emplace_back((msgType >> 8) & 0xFF);
         bytes.emplace_back((msgType >> 16) & 0xFF);
         bytes.emplace_back((msgType >> 24) & 0xFF);
-        /* ´æÈë`src_id`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* å­˜å…¥`src_id`çš„é•¿åº¦(å°ç«¯) */
         size_t srcIdLen = src_id.size();
         bytes.emplace_back((srcIdLen >> 0) & 0xFF);
         bytes.emplace_back((srcIdLen >> 8) & 0xFF);
         bytes.emplace_back((srcIdLen >> 16) & 0xFF);
         bytes.emplace_back((srcIdLen >> 24) & 0xFF);
-        /* ´æÈë`src_id`µÄÖµ */
+        /* å­˜å…¥`src_id`çš„å€¼ */
         bytes.insert(bytes.end(), src_id.begin(), src_id.end());
-        /* ´æÈë`data`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* å­˜å…¥`data`çš„é•¿åº¦(å°ç«¯) */
         size_t dataLen = data.size();
         bytes.emplace_back((dataLen >> 0) & 0xFF);
         bytes.emplace_back((dataLen >> 8) & 0xFF);
         bytes.emplace_back((dataLen >> 16) & 0xFF);
         bytes.emplace_back((dataLen >> 24) & 0xFF);
-        /* ´æÈë`data`µÄÖµ */
+        /* å­˜å…¥`data`çš„å€¼ */
         bytes.insert(bytes.end(), data.begin(), data.end());
         return bytes;
     }
 
     /**
-     * @brief ½âÂë(×Ö½ÚÁ÷×ªÎª½á¹¹Ìå)
+     * @brief è§£ç (å­—èŠ‚æµè½¬ä¸ºç»“æ„ä½“)
      */
     void decode(const std::vector<unsigned char>& bytes)
     {
@@ -212,21 +212,21 @@ struct notify_recv_data
             return;
         }
         size_t offset = 0;
-        /* ¶ÁÈ¡`src_id`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* è¯»å–`src_id`çš„é•¿åº¦(å°ç«¯) */
         size_t srcIdLen = 0;
         srcIdLen += bytes[offset + 0];
         srcIdLen += bytes[offset + 1];
         srcIdLen += bytes[offset + 2];
         srcIdLen += bytes[offset + 3];
         offset += 4;
-        /* ¶ÁÈ¡`src_id`µÄÖµ */
+        /* è¯»å–`src_id`çš„å€¼ */
         if (srcIdLen > bytes.size() - offset)
         {
             return;
         }
         src_id = std::string(bytes.begin() + offset, bytes.begin() + offset + srcIdLen);
         offset += srcIdLen;
-        /* ¶ÁÈ¡`data`µÄ³¤¶È(Ğ¡¶Ë) */
+        /* è¯»å–`data`çš„é•¿åº¦(å°ç«¯) */
         if (4 > bytes.size() - offset)
         {
             return;
@@ -237,7 +237,7 @@ struct notify_recv_data
         dataLen += bytes[offset + 2];
         dataLen += bytes[offset + 3];
         offset += 4;
-        /* ¶ÁÈ¡`data`µÄÖµ */
+        /* è¯»å–`data`çš„å€¼ */
         if (dataLen > bytes.size() - offset)
         {
             return;

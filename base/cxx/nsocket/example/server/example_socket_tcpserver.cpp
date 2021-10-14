@@ -9,10 +9,10 @@
 class ClientInfo;
 
 std::recursive_mutex g_mutex;
-std::map<boost::asio::ip::tcp::endpoint, std::shared_ptr<ClientInfo>> g_clientMap; /* ¿Í»§¶ËÁ¬½ÓÓ³Éä±í */
+std::map<boost::asio::ip::tcp::endpoint, std::shared_ptr<ClientInfo>> g_clientMap; /* å®¢æˆ·ç«¯è¿æ¥æ˜ å°„è¡¨ */
 
 /**
- * @brief ¿Í»§¶ËĞÅÏ¢ 
+ * @brief å®¢æˆ·ç«¯ä¿¡æ¯ 
  */
 class ClientInfo
 {
@@ -22,7 +22,7 @@ public:
     void handleSend(const std::vector<unsigned char>& data)
     {
         std::vector<unsigned char> buffer;
-        /* ×é×°°üÍ·, °üÍ·4¸ö×Ö½Ú, ´æ·Å°üÌå³¤¶È(´ó¶Ë) */
+        /* ç»„è£…åŒ…å¤´, åŒ…å¤´4ä¸ªå­—èŠ‚, å­˜æ”¾åŒ…ä½“é•¿åº¦(å¤§ç«¯) */
         size_t pktBodyLen = data.size();
         buffer.emplace_back((pktBodyLen >> 24) & 0xFF);
         buffer.emplace_back((pktBodyLen >> 16) & 0xFF);
@@ -48,17 +48,17 @@ public:
         m_recvBuffer.insert(m_recvBuffer.end(), data.begin(), data.end());
         while (m_recvBuffer.size() > 0)
         {
-            if (0 == m_pktBodyLen) /* ½âÎö°üÍ· */
+            if (0 == m_pktBodyLen) /* è§£æåŒ…å¤´ */
             {
                 if (m_recvBuffer.size() >= 4)
                 {
-                    /* °üÍ·4¸ö×Ö½Ú, ´æ·Å°üÌå³¤¶È(´ó¶Ë) */
+                    /* åŒ…å¤´4ä¸ªå­—èŠ‚, å­˜æ”¾åŒ…ä½“é•¿åº¦(å¤§ç«¯) */
                     unsigned int pktHead = 0;
                     pktHead += (unsigned int)m_recvBuffer[0] << 24;
                     pktHead += (unsigned int)m_recvBuffer[1] << 16;
                     pktHead += (unsigned int)m_recvBuffer[2] << 8;
                     pktHead += (unsigned int)m_recvBuffer[3];
-                    if (pktHead > 10 * 1024 * 1024) /* °üÌå³¤¶È´óÓÚ10MÈÏÎªÊÇ´íÎóµÄ */
+                    if (pktHead > 10 * 1024 * 1024) /* åŒ…ä½“é•¿åº¦å¤§äº10Mè®¤ä¸ºæ˜¯é”™è¯¯çš„ */
                     {
                         printf("+ protocol illegal\n");
                         m_recvBuffer.clear();
@@ -72,22 +72,22 @@ public:
                     break;
                 }
             }
-            else /* ½âÎö°üÌå */
+            else /* è§£æåŒ…ä½“ */
             {
                 unsigned int needBodyLen = m_pktBodyLen - m_pktBody.size();
-                if (needBodyLen > m_recvBuffer.size()) /* °ü²»ÍêÕû */
+                if (needBodyLen > m_recvBuffer.size()) /* åŒ…ä¸å®Œæ•´ */
                 {
                     m_pktBody.insert(m_pktBody.end(), m_recvBuffer.begin(), m_recvBuffer.end());
                     m_recvBuffer.clear();
                 }
-                else /* °üÍêÕû */
+                else /* åŒ…å®Œæ•´ */
                 {
                     m_pktBody.insert(m_pktBody.end(), m_recvBuffer.begin(), m_recvBuffer.begin() + needBodyLen);
                     m_recvBuffer.erase(m_recvBuffer.begin(), m_recvBuffer.begin() + needBodyLen);
-                    /* °ü´¦Àí */
+                    /* åŒ…å¤„ç† */
                     if (m_pktBody.size() >= 4)
                     {
-                        /* ½âÎöÏûÏ¢ÀàĞÍ(Ğ¡¶Ë) */
+                        /* è§£ææ¶ˆæ¯ç±»å‹(å°ç«¯) */
                         unsigned int msgType = 0;
                         msgType += m_pktBody[0];
                         msgType += m_pktBody[1];
@@ -113,7 +113,7 @@ public:
                             break;
                         }
                     }
-                    /* ÖØÖÃ°ü */
+                    /* é‡ç½®åŒ… */
                     m_pktBodyLen = 0;
                     m_pktBody.clear();
                 }
@@ -147,11 +147,11 @@ private:
     }
 
 private:
-    std::string m_id; /* ¿Í»§¶ËID */
-    nsocket::TCP_CONN_SEND_HANDLER m_sendHandler; /* ¿Í»§¶Ë·¢ËÍ¾ä±ú */
-    std::vector<unsigned char> m_recvBuffer; /* ¿Í»§¶Ë½ÓÊÕ»º³åÇø */
-    unsigned int m_pktBodyLen; /* ĞèÒª½ÓÊÕµÄ¿Í»§¶Ë°üÌå×Ü³¤¶È */
-    std::vector<unsigned char> m_pktBody; /* ÒÑ½ÓÊÕµÄ¿Í»§¶Ë°üÌåÄÚÈİ */
+    std::string m_id; /* å®¢æˆ·ç«¯ID */
+    nsocket::TCP_CONN_SEND_HANDLER m_sendHandler; /* å®¢æˆ·ç«¯å‘é€å¥æŸ„ */
+    std::vector<unsigned char> m_recvBuffer; /* å®¢æˆ·ç«¯æ¥æ”¶ç¼“å†²åŒº */
+    unsigned int m_pktBodyLen; /* éœ€è¦æ¥æ”¶çš„å®¢æˆ·ç«¯åŒ…ä½“æ€»é•¿åº¦ */
+    std::vector<unsigned char> m_pktBody; /* å·²æ¥æ”¶çš„å®¢æˆ·ç«¯åŒ…ä½“å†…å®¹ */
 };
 
 int main(int argc, char* argv[])
@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
     for (int i = 1; i < argc;)
     {
         const char* key = argv[i];
-        if (0 == strcmp(key, "-s")) /* ·şÎñÆ÷µØÖ· */
+        if (0 == strcmp(key, "-s")) /* æœåŠ¡å™¨åœ°å€ */
         {
             ++i;
             if (i < argc)
@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-p")) /* ·şÎñÆ÷¶Ë¿Ú */
+        else if (0 == strcmp(key, "-p")) /* æœåŠ¡å™¨ç«¯å£ */
         {
             ++i;
             if (i < argc)
@@ -199,7 +199,7 @@ int main(int argc, char* argv[])
             }
         }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        else if (0 == strcmp(key, "-cf")) /* Ö¤ÊéÎÄ¼ş */
+        else if (0 == strcmp(key, "-cf")) /* è¯ä¹¦æ–‡ä»¶ */
         {
             ++i;
             if (i < argc)
@@ -208,7 +208,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-pkf")) /* Ë½Ô¿ÎÄ¼ş */
+        else if (0 == strcmp(key, "-pkf")) /* ç§é’¥æ–‡ä»¶ */
         {
             ++i;
             if (i < argc)
@@ -217,7 +217,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-pkp")) /* Ë½Ô¿ÎÄ¼şÃÜÂë */
+        else if (0 == strcmp(key, "-pkp")) /* ç§é’¥æ–‡ä»¶å¯†ç  */
         {
             ++i;
             if (i < argc)
@@ -227,7 +227,7 @@ int main(int argc, char* argv[])
             }
         }
 #endif
-        else if (0 == strcmp(key, "-t")) /* ÀàĞÍ: ack(¿Í»§¶Ë·¢Ê²Ã´¾Í·µ»ØÊ²Ã´), broker(´úÀí, ÓÃÓÚ½ø³Ì¼äÍ¨ĞÅ) */
+        else if (0 == strcmp(key, "-t")) /* ç±»å‹: ack(å®¢æˆ·ç«¯å‘ä»€ä¹ˆå°±è¿”å›ä»€ä¹ˆ), broker(ä»£ç†, ç”¨äºè¿›ç¨‹é—´é€šä¿¡) */
         {
             ++i;
             if (i < argc)
@@ -251,7 +251,7 @@ int main(int argc, char* argv[])
     }
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
     auto server = std::make_shared<nsocket::TcpServer>(serverHost, serverPort);
-    /* ÉèÖÃĞÂÁ¬½Ó»Øµ÷ */
+    /* è®¾ç½®æ–°è¿æ¥å›è°ƒ */
     server->setNewConnectionCallback([&](const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler) {
         std::string clientHost = point.address().to_string().c_str();
         int clientPort = (int)point.port();
@@ -263,27 +263,27 @@ int main(int argc, char* argv[])
             g_clientMap.insert(std::make_pair(point, std::make_shared<ClientInfo>(sendHandler)));
         }
     });
-    /* ÉèÖÃ½ÓÊÕÁ¬½ÓÊı¾İ»Øµ÷ */
+    /* è®¾ç½®æ¥æ”¶è¿æ¥æ•°æ®å›è°ƒ */
     server->setRecvConnectionDataCallback([&, type](const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
                                                     const nsocket::TCP_CONN_SEND_HANDLER& sendHandler) {
         std::string clientHost = point.address().to_string().c_str();
         int clientPort = (int)point.port();
         printf("++++++++++ on recv data [%s:%d], length: %d\n", clientHost.c_str(), clientPort, (int)data.size());
-        /* ÒÔÊ®Áù½øÖÆ¸ñÊ½´òÓ¡Êı¾İ */
+        /* ä»¥åå…­è¿›åˆ¶æ ¼å¼æ‰“å°æ•°æ® */
         printf("+++++ [hex format]\n");
         for (size_t i = 0; i < data.size(); ++i)
         {
             printf("%02X ", data[i]);
         }
         printf("\n");
-        /* ÒÔ×Ö·û´®¸ñÊ½´òÓ¡Êı¾İ */
+        /* ä»¥å­—ç¬¦ä¸²æ ¼å¼æ‰“å°æ•°æ® */
         printf("+++++ [string format]\n");
         std::string str(data.begin(), data.end());
         printf("%s", str.c_str());
         printf("\n");
         if (0 == type.compare("ack"))
         {
-            /* °ÑÊÕµ½µÄÊı¾İÔ­·â²»¶¯·µ»Ø¸ø¿Í»§¶Ë */
+            /* æŠŠæ”¶åˆ°çš„æ•°æ®åŸå°ä¸åŠ¨è¿”å›ç»™å®¢æˆ·ç«¯ */
             sendHandler(data, [&](const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code, std::size_t length) {
                 std::string clientHost = point.address().to_string().c_str();
                 int clientPort = (int)point.port();
@@ -308,7 +308,7 @@ int main(int argc, char* argv[])
             }
         }
     });
-    /* ÉèÖÃÁ¬½Ó¹Ø±Õ»Øµ÷ */
+    /* è®¾ç½®è¿æ¥å…³é—­å›è°ƒ */
     server->setConnectionCloseCallback([&](const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
         std::string clientHost = point.address().to_string().c_str();
         int clientPort = (int)point.port();
@@ -328,9 +328,9 @@ int main(int argc, char* argv[])
             g_clientMap.erase(iter);
         }
     });
-    /* ´´½¨Ïß³Ì×¨ÃÅÓÃÓÚÍøÂçI/OÊÂ¼şÂÖÑ¯ */
+    /* åˆ›å»ºçº¿ç¨‹ä¸“é—¨ç”¨äºç½‘ç»œI/Oäº‹ä»¶è½®è¯¢ */
     std::thread th([&, certFile, privateKeyFile, privateKeyFilePwd]() {
-        /* ×¢Òâ: ×îºÃÔö¼ÓÒì³£²¶»ñ, ÒòÎªµ±ÃÜÂë²»¶ÔÊ±»áÅ×Òì³£ */
+        /* æ³¨æ„: æœ€å¥½å¢åŠ å¼‚å¸¸æ•è·, å› ä¸ºå½“å¯†ç ä¸å¯¹æ—¶ä¼šæŠ›å¼‚å¸¸ */
         try
         {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -350,7 +350,7 @@ int main(int argc, char* argv[])
         }
     });
     th.detach();
-    /* Ö÷Ïß³Ì */
+    /* ä¸»çº¿ç¨‹ */
     while (1)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
