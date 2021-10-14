@@ -10,6 +10,34 @@ include(../cmake/tools.cmake)
 find_package(Threads REQUIRED)
 ##########################################################################################
 
+################################### 添加curlex库 ###################################
+find_package(CURL 7.76.1 REQUIRED)
+
+if(CURL_FOUND)
+    message(STATUS "CURL include path: ${CURL_INCLUDE_DIRS}")
+    include_directories(${CURL_INCLUDE_DIRS})
+else()
+    message(WARNING "CURL not found")
+    return()
+endif()
+
+set(base_curlex_path ../../../../base/cxx/curlex) # 设置curlex库路径(可修改)
+include_directories(${base_curlex_path})
+
+set(base_curlex_src_list)
+get_cxx_files(${base_curlex_path}/curlex src_list)
+list(APPEND base_curlex_src_list ${src_list})
+source_group(3rdparty/base/curlex FILES ${base_curlex_src_list})
+
+set(base_curlex_files) # 工程中需要把curlex的文件添加进去
+list(APPEND base_curlex_files ${base_curlex_src_list})
+
+print_info(BODY "base curlex files:")
+foreach(filename ${base_curlex_files})
+    message("    " ${filename})
+endforeach()
+##########################################################################################
+
 ################################### 添加threading库 ###################################
 option(enable_fiber "是否启用Boost库的Fiber模块" ON)
 
@@ -32,7 +60,7 @@ else()
     return()
 endif()
 
-set(base_threading_path ../../../../3rdparty/cxx_base_threading) # 设置threading库路径(可修改)
+set(base_threading_path ../../../../base/cxx/threading) # 设置threading库路径(可修改)
 include_directories(${base_threading_path})
 
 set(base_threading_asio_src_list)
@@ -75,34 +103,6 @@ foreach(filename ${base_threading_files})
 endforeach()
 ##########################################################################################
 
-################################### 添加curlex库 ###################################
-find_package(CURL 7.76.1 REQUIRED)
-
-if(CURL_FOUND)
-    message(STATUS "CURL include path: ${CURL_INCLUDE_DIRS}")
-    include_directories(${CURL_INCLUDE_DIRS})
-else()
-    message(WARNING "CURL not found")
-    return()
-endif()
-
-set(base_curlex_path ../../../../3rdparty/cxx_base_curlex) # 设置curlex库路径(可修改)
-include_directories(${base_curlex_path})
-
-set(base_curlex_src_list)
-get_cxx_files(${base_curlex_path}/curlex src_list)
-list(APPEND base_curlex_src_list ${src_list})
-source_group(3rdparty/base/curlex FILES ${base_curlex_src_list})
-
-set(base_curlex_files) # 工程中需要把curlex的文件添加进去
-list(APPEND base_curlex_files ${base_curlex_src_list})
-
-print_info(BODY "base curlex files:")
-foreach(filename ${base_curlex_files})
-    message("    " ${filename})
-endforeach()
-##########################################################################################
-
 ################################### 添加httpclient模块 ###################################
 set(httpclient_path ..) # 设置httpclient模块路径(可修改)
 include_directories(${httpclient_path})
@@ -110,7 +110,7 @@ include_directories(${httpclient_path})
 set(httpclient_src_list)
 get_cxx_files(${httpclient_path}/httpclient src_list)
 list(APPEND httpclient_src_list ${src_list})
-source_group(common/httpclient FILES ${httpclient_src_list})
+source_group(3rdparty/common/httpclient FILES ${httpclient_src_list})
 
 set(httpclient_files) # 工程中需要把httpclient的文件添加进去
 list(APPEND httpclient_files ${httpclient_src_list})
