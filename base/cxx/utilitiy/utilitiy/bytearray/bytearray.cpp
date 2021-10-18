@@ -5,8 +5,6 @@
 
 namespace utilitiy
 {
-static const int MAX_SIZE = 1024 * 1024; /* 默认字节流大小(单个网络消息最大长度, 超过极易导致物理服务器收发队列阻塞) */
-
 bool ByteArray::isBigEndium(void)
 {
     /**
@@ -51,23 +49,32 @@ int ByteArray::swab32(unsigned char* p)
     return ret;
 }
 
-ByteArray::ByteArray(int maxSize)
+int ByteArray::bsize(const std::string& value)
 {
-    if (maxSize <= 0)
+    return sizeof(int) + value.size();
+}
+
+int ByteArray::bsize(const unsigned char* value, int len)
+{
+    if (len >= 0)
     {
-        maxSize = MAX_SIZE;
+        return sizeof(int) + len;
     }
-    if (maxSize > MAX_SIZE)
+    return sizeof(int);
+}
+
+int ByteArray::bsize(const std::vector<unsigned char>& value)
+{
+    return sizeof(int) + value.size();
+}
+
+ByteArray::ByteArray(int totalSize)
+{
+    if (!allocate(totalSize))
     {
-        throw std::exception(std::logic_error("arg 'maxSize' out of maximum"));
+        m_buffer = nullptr;
+        m_totalSize = 0;
     }
-    m_buffer = (unsigned char*)malloc(maxSize);
-    if (!m_buffer)
-    {
-        throw std::exception(std::logic_error("var 'm_buffer' is null"));
-    }
-    memset(m_buffer, 0, maxSize);
-    m_maxSize = maxSize;
     m_readIndex = 0;
     m_writeIndex = 0;
 }
@@ -81,9 +88,40 @@ ByteArray::~ByteArray(void)
     }
 }
 
-void ByteArray::print(void)
+bool ByteArray::allocate(int totalSize)
 {
-    printf("==================== byte array: max=%d, length=%d, space=%d\n", m_maxSize, getCurrentSize(), getSpaceSize());
+    if (totalSize <= 0)
+    {
+        return false;
+    }
+    if (m_buffer)
+    {
+        if (totalSize != m_totalSize)
+        {
+            void* p = realloc(m_buffer, totalSize);
+            if (!p)
+            {
+                throw std::exception(std::logic_error("var 'p' is null"));
+            }
+            m_buffer = (unsigned char*)p;
+        }
+    }
+    else
+    {
+        m_buffer = (unsigned char*)malloc(totalSize);
+    }
+    if (!m_buffer)
+    {
+        throw std::exception(std::logic_error("var 'm_buffer' is null"));
+    }
+    memset(m_buffer, 0, totalSize);
+    m_totalSize = totalSize;
+    return true;
+}
+
+void ByteArray::print()
+{
+    printf("==================== byte array: max=%d, length=%d, space=%d\n", m_totalSize, getCurrentSize(), getSpaceSize());
     for (int i = 0, len = getCurrentSize(); i < len; ++i)
     {
         if (i > 0)
@@ -98,14 +136,17 @@ void ByteArray::print(void)
 
 void ByteArray::reset(void)
 {
-    memset(m_buffer, 0, m_maxSize);
+    if (m_buffer)
+    {
+        memset(m_buffer, 0, m_totalSize);
+    }
     m_readIndex = 0;
     m_writeIndex = 0;
 }
 
-int ByteArray::getMaxSize(void)
+int ByteArray::getTotalSize(void)
 {
-    return m_maxSize;
+    return m_totalSize;
 }
 
 int ByteArray::getCurrentSize(void)
@@ -115,7 +156,7 @@ int ByteArray::getCurrentSize(void)
 
 int ByteArray::getSpaceSize()
 {
-    return m_maxSize - m_writeIndex;
+    return m_totalSize - m_writeIndex;
 }
 
 const unsigned char* ByteArray::getBuffer(void)
@@ -129,13 +170,13 @@ bool ByteArray::setBuffer(const unsigned char* buffer, int len)
     {
         return false;
     }
-    if (len > m_maxSize)
+    if (allocate(len))
     {
-        return false;
+        memcpy(m_buffer, buffer, len);
+        m_writeIndex = len;
+        return true;
     }
-    memcpy(m_buffer, buffer, len);
-    m_writeIndex = len;
-    return true;
+    return false;
 }
 
 bool ByteArray::readBool(void)
@@ -471,6 +512,27 @@ bool ByteArray::writeBytes(const unsigned char* value, unsigned int len)
     return copy(value, len);
 }
 
+void ByteArray::readBytes(std::vector<unsigned char>& bytes)
+{
+    bytes.clear();
+    unsigned int len = readUint();
+    if (0 == len)
+    {
+        return;
+    }
+    unsigned char* p = read(len);
+    if (!p)
+    {
+        return;
+    }
+    bytes.insert(bytes.end(), p, p + len);
+}
+
+bool ByteArray::writeBytes(const std::vector<unsigned char>& value)
+{
+    return writeBytes(value.data(), value.size());
+}
+
 char* ByteArray::readString(unsigned int& len)
 {
     len = readUint();
@@ -483,7 +545,7 @@ char* ByteArray::readString(unsigned int& len)
     {
         return nullptr;
     }
-    char* r = (char*)malloc(len + 1);
+    char* r = (char*)malloc(len + (size_t)1);
     if (!r)
     {
         throw std::exception(std::logic_error("var 'r' is null"));
@@ -506,19 +568,20 @@ bool ByteArray::writeString(const char* value, unsigned int len)
     return copy((const unsigned char*)value, len);
 }
 
-std::string ByteArray::readString(void)
+void ByteArray::readString(std::string& str)
 {
+    str.clear();
     unsigned int len = readUint();
     if (0 == len)
     {
-        return "";
+        return;
     }
     unsigned char* p = read(len);
     if (!p)
     {
-        return "";
+        return;
     }
-    return std::string((char*)p, len);
+    str.insert(str.end(), (char*)p, (char*)p + len);
 }
 
 bool ByteArray::writeString(const std::string& value)
@@ -547,7 +610,7 @@ bool ByteArray::copy(const unsigned char* buf, int n)
 
 unsigned char* ByteArray::read(int n)
 {
-    if (m_readIndex + n > m_maxSize)
+    if (m_readIndex + n > m_totalSize)
     {
         return nullptr;
     }
@@ -558,7 +621,7 @@ unsigned char* ByteArray::read(int n)
 
 unsigned char* ByteArray::write(int n)
 {
-    if (m_writeIndex + n > m_maxSize)
+    if (m_writeIndex + n > m_totalSize)
     {
         return nullptr;
     }

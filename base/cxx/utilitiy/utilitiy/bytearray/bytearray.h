@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 
 namespace utilitiy
 {
@@ -24,7 +25,7 @@ public:
 
     /**
      * @brief 大小端转换(字节流转为短整型值)
-     * @param p 字节流
+     * @param p 字节流(2个字节)
      * @return 短整型值
      */
     static short swab16(unsigned char* p);
@@ -37,19 +38,61 @@ public:
 
     /**
      * @brief 大小端转换(字节流转为整型值)
-     * @param p 字节流
+     * @param p 字节流(4个字节)
      * @return 整型值
      */
     static int swab32(unsigned char* p);
 
+    /**
+     * @brief 获取类型所占字节数
+     * @tparam T 类型
+     * @return 占用字节数
+     */
+    template<typename T>
+    static int bsize(T v)
+    {
+        return sizeof(T);
+    }
+
+    /**
+     * @brief 获取字符串所占字节数
+     * @param value 字符串值
+     * @return 占用字节数
+     */
+    static int bsize(const std::string& value);
+
+    /**
+     * @brief 获取字节流所占字节数
+     * @param value 字节流
+     * @param len 长度
+     * @return 占用字节数=头(4个字节)+长度
+     */
+    static int bsize(const unsigned char* value, int len);
+
+    /**
+     * @brief 获取字节流所占字节数
+     * @param value 字节流
+     * @return 占用字节数=头(4个字节)+长度
+     */
+    static int bsize(const std::vector<unsigned char>& value);
+
 public:
     /**
      * @brief 构造函数
-     * @param maxSize 字节流缓冲区最大长度(单位:字节), 不允许超过1024*1024
+     * @param totalSize 字节流缓冲区总长度(字节, 选填), <=0时不预先分配内存
+     *                  建议: 字节流长度上限(单个网络消息最大长度不超过1M, 超过极易导致物理服务器收发队列阻塞)
      */
-    ByteArray(int maxSize = 0);
+    ByteArray(int totalSize = 0);
 
     virtual ~ByteArray();
+
+    /**
+     * @brief 分配字节流缓冲区内存
+     * @param totalSize 字节流缓冲区总长度(字节)
+     *                  建议: 字节流长度上限(单个网络消息最大长度不超过1M, 超过极易导致物理服务器收发队列阻塞)
+     * @return true-成功, false-失败
+     */
+    bool allocate(int totalSize);
 
     /**
      * @brief 打印字节流内容(十六进制), 输出到控制台
@@ -62,10 +105,10 @@ public:
     void reset();
 
     /**
-     * @brief 获取缓冲区最大长度
-     * @return 最大长度
+     * @brief 获取缓冲区总长度
+     * @return 总长度
      */
-    int getMaxSize();
+    int getTotalSize();
 
     /**
      * @brief 获取缓冲区当前长度
@@ -278,6 +321,19 @@ public:
     bool writeBytes(const unsigned char* value, unsigned int len);
 
     /**
+     * @brief 从缓冲区读取字节流
+     * @param bytes [输出]字节流
+     */
+    void readBytes(std::vector<unsigned char>& bytes);
+
+    /**
+     * @brief 向缓冲区写入字节流
+     * @param value 字节流
+     * @return true-成功, false-失败
+     */
+    bool writeBytes(const std::vector<unsigned char>& value);
+
+    /**
      * @brief 从缓冲区读取字符串
      * @param len [输出]字符串长度
      * @return 字符串(需要外部调用free释放内存)
@@ -294,9 +350,9 @@ public:
 
     /**
      * @brief 从缓冲区读取字符串
-     * @return 字符串
+     * @param str [输出]字符串
      */
-    std::string readString();
+    void readString(std::string& str);
 
     /**
      * @brief 向缓冲区写入字符串
@@ -314,7 +370,7 @@ private:
 
 private:
     unsigned char* m_buffer; /* 字节流缓冲区 */
-    int m_maxSize; /* 缓冲区最大长度 */
+    int m_totalSize; /* 缓冲区总长度 */
     int m_readIndex; /* 读取位置 */
     int m_writeIndex; /* 写入位置 */
 };
