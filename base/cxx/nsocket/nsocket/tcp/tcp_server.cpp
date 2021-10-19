@@ -2,7 +2,7 @@
 
 namespace nsocket
 {
-TcpServer::TcpServer(const std::string& host, unsigned int port)
+TcpServer::TcpServer(const std::string& host, unsigned int port, bool reuseAddr)
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     : m_sslContext(nullptr)
 #endif
@@ -10,7 +10,8 @@ TcpServer::TcpServer(const std::string& host, unsigned int port)
     try
     {
         m_acceptor = std::make_shared<boost::asio::ip::tcp::acceptor>(
-            m_ioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(host.c_str()), port));
+            m_ioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(host.c_str()), port), reuseAddr);
+        m_host = host;
     }
     catch (...)
     {
@@ -28,6 +29,13 @@ void TcpServer::run()
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
         m_sslContext = sslContext;
+        if (m_sslContext)
+        {
+            auto sessionIdCtx = std::to_string(m_acceptor->local_endpoint().port()) + ':';
+            sessionIdCtx.append(m_host.rbegin(), m_host.rend());
+            SSL_CTX_set_session_id_context(m_sslContext->native_handle(), (const unsigned char*)sessionIdCtx.data(),
+                                           std::min<size_t>(sessionIdCtx.size(), SSL_MAX_SSL_SESSION_ID_LENGTH));
+        }
 #endif
         doAccept();
         m_ioContext.run();
@@ -36,6 +44,10 @@ void TcpServer::run()
 
 void TcpServer::stop()
 {
+    if (m_acceptor)
+    {
+        m_acceptor->close();
+    }
     m_ioContext.stop();
 }
 
@@ -78,7 +90,7 @@ void TcpServer::doAccept()
                 }
 #endif
                 auto remoteEndpoint = session->getRemoteEndpoint();
-                /* 创建发送处理句柄 */
+                /* 创建发送句柄 */
                 auto sendHandler = [wpSelf, session](const std::vector<unsigned char>& data, const TCP_CONN_SEND_CALLBACK& onSendCb) {
                     const auto self = wpSelf.lock();
                     if (self)
@@ -86,8 +98,15 @@ void TcpServer::doAccept()
                         self->doSend(session, data, onSendCb);
                     }
                 };
+                /* 创建关闭句柄 */
+                auto closeHandler = [session]() {
+                    if (session)
+                    {
+                        session->close();
+                    }
+                };
                 /* 设置连接回调 */
-                session->setConnectCallback([wpSelf, remoteEndpoint, sendHandler](const boost::system::error_code& code) {
+                session->setConnectCallback([wpSelf, remoteEndpoint, sendHandler, closeHandler](const boost::system::error_code& code) {
                     if (code) /* 断开连接 */
                     {
                         const auto self = wpSelf.lock();
@@ -98,11 +117,11 @@ void TcpServer::doAccept()
                     }
                 });
                 /* 设置接收数据回调 */
-                session->setRecvDataCallback([wpSelf, remoteEndpoint, sendHandler](const std::vector<unsigned char>& data) {
+                session->setRecvDataCallback([wpSelf, remoteEndpoint, sendHandler, closeHandler](const std::vector<unsigned char>& data) {
                     const auto self = wpSelf.lock();
                     if (self && self->m_onRecvConnectionDataCallback)
                     {
-                        self->m_onRecvConnectionDataCallback(remoteEndpoint, data, sendHandler);
+                        self->m_onRecvConnectionDataCallback(remoteEndpoint, data, sendHandler, closeHandler);
                     }
                 });
                 /* 开始会话 */
@@ -110,13 +129,13 @@ void TcpServer::doAccept()
                 if (self->m_sslContext) /* 启用TLS */
                 {
                     session->handshake(boost::asio::ssl::stream_base::server,
-                                       [wpSelf, remoteEndpoint, session, sendHandler](const boost::system::error_code& code) {
+                                       [wpSelf, remoteEndpoint, session, sendHandler, closeHandler](const boost::system::error_code& code) {
                                            if (!code) /* 握手成功 */
                                            {
                                                const auto self = wpSelf.lock();
                                                if (self && self->m_onNewConnectionCallback)
                                                {
-                                                   self->m_onNewConnectionCallback(remoteEndpoint, sendHandler);
+                                                   self->m_onNewConnectionCallback(remoteEndpoint, sendHandler, closeHandler);
                                                }
                                                if (session)
                                                {
@@ -130,7 +149,7 @@ void TcpServer::doAccept()
 #endif
                     if (self->m_onNewConnectionCallback)
                     {
-                        self->m_onNewConnectionCallback(remoteEndpoint, sendHandler);
+                        self->m_onNewConnectionCallback(remoteEndpoint, sendHandler, closeHandler);
                     }
                     session->recv(); /* 开始接收数据 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)

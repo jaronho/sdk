@@ -43,6 +43,7 @@ void SocketTcp::close()
     if (m_socket.is_open())
     {
         boost::system::error_code code;
+        m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, code);
         m_socket.close(code);
     }
 }
@@ -102,6 +103,7 @@ void SocketTls::close()
     if (isOpened())
     {
         boost::system::error_code code;
+        sslStream.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, code);
         sslStream.lowest_layer().close(code);
     }
 }

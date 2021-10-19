@@ -95,7 +95,8 @@ int main(int argc, char* argv[])
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
     auto server = std::make_shared<nsocket::TcpServer>(serverHost, serverPort);
     /* 设置新连接回调 */
-    server->setNewConnectionCallback([&](const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler) {
+    server->setNewConnectionCallback([&](const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
+                                         const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) {
         std::string clientHost = point.address().to_string().c_str();
         int clientPort = (int)point.port();
         printf("============================== on new connection [%s:%d]\n", clientHost.c_str(), clientPort);
@@ -108,7 +109,8 @@ int main(int argc, char* argv[])
     });
     /* 设置接收连接数据回调 */
     server->setRecvConnectionDataCallback([&](const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
-                                              const nsocket::TCP_CONN_SEND_HANDLER& sendHandler) {
+                                              const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
+                                              const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) {
         std::string clientHost = point.address().to_string().c_str();
         int clientPort = (int)point.port();
         printf("++++++++++ on recv data [%s:%d], length: %d\n", clientHost.c_str(), clientPort, (int)data.size());

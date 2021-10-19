@@ -217,7 +217,8 @@ std::shared_ptr<boost::asio::ssl::context> TcpSession::makeSslContext(boost::asi
             return privateKeyFilePwd;
         });
     sslContext->use_private_key_file(privateKeyFile, boost::asio::ssl::context::pem);
-    sslContext->set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert);
+    sslContext->set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert
+                                | boost::asio::ssl::verify_client_once);
     sslContext->set_verify_callback([](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
         char subjectName[256];
         X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());

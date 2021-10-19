@@ -25,20 +25,29 @@ using TCP_CONN_SEND_CALLBACK =
 using TCP_CONN_SEND_HANDLER = std::function<void(const std::vector<unsigned char>& data, const TCP_CONN_SEND_CALLBACK& onSendCb)>;
 
 /**
+ * @brief TCP连接关闭句柄
+ */
+using TCP_CONN_CLOSE_HANDLER = std::function<void()>;
+
+/**
  * @brief TCP新连接回调
  * @param point 端点
  * @param sendHandler 发送句柄
+ * @param closeHandler 关闭句柄
  */
-using TCP_CONN_NEW_CALLBACK = std::function<void(const boost::asio::ip::tcp::endpoint& point, const TCP_CONN_SEND_HANDLER& sendHandler)>;
+using TCP_CONN_NEW_CALLBACK = std::function<void(const boost::asio::ip::tcp::endpoint& point, const TCP_CONN_SEND_HANDLER& sendHandler,
+                                                 const TCP_CONN_CLOSE_HANDLER& closeHandler)>;
 
 /**
  * @brief TCP接收数据回调
  * @param point 端点
  * @param data 数据
  * @param sendHandler 发送句柄
+ * @param closeHandler 关闭句柄
  */
-using TCP_CONN_RECV_DATA_CALLBACK = std::function<void(const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
-                                                       const TCP_CONN_SEND_HANDLER& sendHandler)>;
+using TCP_CONN_RECV_DATA_CALLBACK =
+    std::function<void(const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
+                       const TCP_CONN_SEND_HANDLER& sendHandler, const TCP_CONN_CLOSE_HANDLER& closeHandler)>;
 
 /**
  * @brief TCP连接关闭回调
@@ -57,8 +66,9 @@ public:
      * @brief 构造函数
      * @param host 主机
      * @param port 端口
+     * @param reuseAddr 是否允许复用地址(选填)
      */
-    TcpServer(const std::string& host, unsigned int port);
+    TcpServer(const std::string& host, unsigned int port, bool reuseAddr = true);
 
     virtual ~TcpServer() = default;
 
@@ -130,5 +140,6 @@ private:
     TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
     TCP_CONN_RECV_DATA_CALLBACK m_onRecvConnectionDataCallback; /* 收到数据回调 */
     TCP_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */
+    std::string m_host; /* 主机 */
 };
 } // namespace nsocket
