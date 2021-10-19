@@ -141,12 +141,12 @@ public:
     {
         m_tcpServer = std::make_shared<nsocket::TcpServer>(serverHost, serverPort);
         m_tcpServer->setNewConnectionCallback(
-            [&](const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler) {
-                handleNewConnection(point, sendHandler);
-            });
+            [&](const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
+                const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) { handleNewConnection(point, sendHandler); });
         m_tcpServer->setRecvConnectionDataCallback(
             [&](const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
-                const nsocket::TCP_CONN_SEND_HANDLER& sendHandler) { handleRecvConnectionData(point, data, sendHandler); });
+                const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
+                const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) { handleRecvConnectionData(point, data, sendHandler); });
         m_tcpServer->setConnectionCloseCallback([&](const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
             handleConnectionClose(point, code);
         });
