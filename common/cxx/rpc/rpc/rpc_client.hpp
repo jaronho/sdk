@@ -77,7 +77,7 @@ public:
                 m_payload->reset();
                 m_tcpClient = std::make_shared<nsocket::TcpClient>();
                 m_tcpClient->setConnectCallback([&](const boost::system::error_code& code) { handleConnection(code); });
-                m_tcpClient->setRecvDataCallback([&](const std::vector<unsigned char>& data) { handleRecvData(data); });
+                m_tcpClient->setDataCallback([&](const std::vector<unsigned char>& data) { handleRecvData(data); });
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                 auto sslContext = nsocket::TcpClient::getSslContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd);
                 m_tcpClient->run(m_brokerHost, m_serverPort, sslContext);

@@ -141,15 +141,14 @@ public:
     {
         m_tcpServer = std::make_shared<nsocket::TcpServer>(serverHost, serverPort);
         m_tcpServer->setNewConnectionCallback(
-            [&](const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
+            [&](int64_t sid, const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
                 const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) { handleNewConnection(point, sendHandler); });
-        m_tcpServer->setRecvConnectionDataCallback(
-            [&](const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
+        m_tcpServer->setConnectionDataCallback(
+            [&](int64_t sid, const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
                 const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
                 const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) { handleRecvConnectionData(point, data, sendHandler); });
-        m_tcpServer->setConnectionCloseCallback([&](const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
-            handleConnectionClose(point, code);
-        });
+        m_tcpServer->setConnectionCloseCallback([&](int64_t sid, const boost::asio::ip::tcp::endpoint& point,
+                                                    const boost::system::error_code& code) { handleConnectionClose(point, code); });
 #if (1 == ENABLE_NSOCKET_OPENSSL)
         m_certFile = certFile;
         m_privateKeyFile = privateKeyFile;
