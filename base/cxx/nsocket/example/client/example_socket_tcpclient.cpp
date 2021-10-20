@@ -100,8 +100,8 @@ int main(int argc, char* argv[])
             printf("============================== on connect ok\n");
         }
     });
-    /* 设置接收数据回调 */
-    client->setRecvDataCallback([&](const std::vector<unsigned char>& data) {
+    /* 设置数据回调 */
+    client->setDataCallback([&](const std::vector<unsigned char>& data) {
         printf("++++++++++++++++++++ on recv data, length: %d\n", (int)data.size());
         /* 以十六进制格式打印数据 */
         printf("+++++ [hex format]\n");

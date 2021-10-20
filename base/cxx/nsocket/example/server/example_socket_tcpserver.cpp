@@ -2,11 +2,12 @@
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 
 #include "../../nsocket/tcp/tcp_server.h"
 
 std::recursive_mutex g_mutex;
-std::map<boost::asio::ip::tcp::endpoint, nsocket::TCP_CONN_SEND_HANDLER> g_clientMap; /* 客户端映射表 */
+std::unordered_map<boost::asio::ip::tcp::endpoint, nsocket::TCP_CONN_SEND_HANDLER> g_clientMap; /* 客户端映射表 */
 
 int main(int argc, char* argv[])
 {
@@ -95,11 +96,12 @@ int main(int argc, char* argv[])
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
     auto server = std::make_shared<nsocket::TcpServer>(serverHost, serverPort);
     /* 设置新连接回调 */
-    server->setNewConnectionCallback([&](const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
+    server->setNewConnectionCallback([&](int64_t sid, const boost::asio::ip::tcp::endpoint& point,
+                                         const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
                                          const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) {
         std::string clientHost = point.address().to_string().c_str();
         int clientPort = (int)point.port();
-        printf("============================== on new connection [%s:%d]\n", clientHost.c_str(), clientPort);
+        printf("============================== on new connection [%lld] [%s:%d]\n", sid, clientHost.c_str(), clientPort);
         std::lock_guard<std::recursive_mutex> locker(g_mutex);
         auto iter = g_clientMap.find(point);
         if (g_clientMap.end() == iter)
@@ -107,13 +109,13 @@ int main(int argc, char* argv[])
             g_clientMap.insert(std::make_pair(point, sendHandler));
         }
     });
-    /* 设置接收连接数据回调 */
-    server->setRecvConnectionDataCallback([&](const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
-                                              const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
-                                              const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) {
+    /* 设置连接数据回调 */
+    server->setConnectionDataCallback([&](int64_t sid, const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
+                                          const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
+                                          const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) {
         std::string clientHost = point.address().to_string().c_str();
         int clientPort = (int)point.port();
-        printf("++++++++++ on recv data [%s:%d], length: %d\n", clientHost.c_str(), clientPort, (int)data.size());
+        printf("++++++++++ on recv data [%lld] [%s:%d], length: %d\n", sid, clientHost.c_str(), clientPort, (int)data.size());
         /* 以十六进制格式打印数据 */
         printf("+++++ [hex format]\n");
         for (size_t i = 0; i < data.size(); ++i)
@@ -141,25 +143,26 @@ int main(int argc, char* argv[])
         });
     });
     /* 设置连接关闭回调 */
-    server->setConnectionCloseCallback([&](const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
-        std::string clientHost = point.address().to_string().c_str();
-        int clientPort = (int)point.port();
-        if (code)
-        {
-            printf("-------------------- on connection closed [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort, code.value(),
-                   code.message().c_str());
-        }
-        else
-        {
-            printf("-------------------- on connection closed [%s:%d]\n", clientHost.c_str(), clientPort);
-        }
-        std::lock_guard<std::recursive_mutex> locker(g_mutex);
-        auto iter = g_clientMap.find(point);
-        if (g_clientMap.end() != iter)
-        {
-            g_clientMap.erase(iter);
-        }
-    });
+    server->setConnectionCloseCallback(
+        [&](int64_t sid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+            std::string clientHost = point.address().to_string().c_str();
+            int clientPort = (int)point.port();
+            if (code)
+            {
+                printf("-------------------- on connection closed [%lld] [%s:%d] fail, %d, %s\n", sid, clientHost.c_str(), clientPort,
+                       code.value(), code.message().c_str());
+            }
+            else
+            {
+                printf("-------------------- on connection closed [%lld] [%s:%d]\n", sid, clientHost.c_str(), clientPort);
+            }
+            std::lock_guard<std::recursive_mutex> locker(g_mutex);
+            auto iter = g_clientMap.find(point);
+            if (g_clientMap.end() != iter)
+            {
+                g_clientMap.erase(iter);
+            }
+        });
     /* 创建线程专门用于网络I/O事件轮询 */
     std::thread th([&, certFile, privateKeyFile, privateKeyFilePwd]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */

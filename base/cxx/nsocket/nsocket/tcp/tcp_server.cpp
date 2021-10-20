@@ -15,7 +15,7 @@ TcpServer::TcpServer(const std::string& host, unsigned int port, bool reuseAddr)
     }
     catch (...)
     {
-        m_acceptor.reset();
+        m_acceptor = nullptr;
     }
 }
 
@@ -47,8 +47,10 @@ void TcpServer::stop()
     if (m_acceptor)
     {
         m_acceptor->close();
+        m_acceptor = nullptr;
     }
     m_ioContext.stop();
+    m_sessionMap.clear();
 }
 
 void TcpServer::setNewConnectionCallback(const TCP_CONN_NEW_CALLBACK& onNewCb)
@@ -56,9 +58,9 @@ void TcpServer::setNewConnectionCallback(const TCP_CONN_NEW_CALLBACK& onNewCb)
     m_onNewConnectionCallback = onNewCb;
 }
 
-void TcpServer::setRecvConnectionDataCallback(const TCP_CONN_RECV_DATA_CALLBACK& onRecvDataCb)
+void TcpServer::setConnectionDataCallback(const TCP_CONN_DATA_CALLBACK& onDataCb)
 {
-    m_onRecvConnectionDataCallback = onRecvDataCb;
+    m_onConnectionDataCallback = onDataCb;
 }
 
 void TcpServer::setConnectionCloseCallback(const TCP_CONN_CLOSE_CALLBACK& onCloseCb)
@@ -89,39 +91,54 @@ void TcpServer::doAccept()
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                 }
 #endif
-                auto remoteEndpoint = session->getRemoteEndpoint();
+                if (self->m_sessionMap.end() == self->m_sessionMap.find(session->getId()))
+                {
+                    self->m_sessionMap.insert(std::make_pair(session->getId(), session));
+                }
+                const std::weak_ptr<TcpSession> wpSession = session;
                 /* 创建发送句柄 */
-                auto sendHandler = [wpSelf, session](const std::vector<unsigned char>& data, const TCP_CONN_SEND_CALLBACK& onSendCb) {
+                auto sendHandler = [wpSelf, wpSession](const std::vector<unsigned char>& data, const TCP_CONN_SEND_CALLBACK& onSendCb) {
                     const auto self = wpSelf.lock();
                     if (self)
                     {
-                        self->doSend(session, data, onSendCb);
+                        self->doSend(wpSession, data, onSendCb);
                     }
                 };
                 /* 创建关闭句柄 */
-                auto closeHandler = [session]() {
+                auto closeHandler = [wpSession]() {
+                    const auto session = wpSession.lock();
                     if (session)
                     {
                         session->close();
                     }
                 };
                 /* 设置连接回调 */
-                session->setConnectCallback([wpSelf, remoteEndpoint, sendHandler, closeHandler](const boost::system::error_code& code) {
+                session->setConnectCallback([wpSelf, wpSession](const boost::system::error_code& code) {
                     if (code) /* 断开连接 */
                     {
                         const auto self = wpSelf.lock();
-                        if (self && self->m_onConnectionCloseCallback)
+                        const auto session = wpSession.lock();
+                        if (self && session)
                         {
-                            self->m_onConnectionCloseCallback(remoteEndpoint, code);
+                            auto iter = self->m_sessionMap.find(session->getId());
+                            if (self->m_sessionMap.end() != iter)
+                            {
+                                self->m_sessionMap.erase(iter);
+                            }
+                            if (self->m_onConnectionCloseCallback)
+                            {
+                                self->m_onConnectionCloseCallback(session->getId(), session->getRemoteEndpoint(), code);
+                            }
                         }
                     }
                 });
-                /* 设置接收数据回调 */
-                session->setRecvDataCallback([wpSelf, remoteEndpoint, sendHandler, closeHandler](const std::vector<unsigned char>& data) {
+                /* 设置数据回调 */
+                session->setDataCallback([wpSelf, wpSession, sendHandler, closeHandler](const std::vector<unsigned char>& data) {
                     const auto self = wpSelf.lock();
-                    if (self && self->m_onRecvConnectionDataCallback)
+                    const auto session = wpSession.lock();
+                    if (self && self->m_onConnectionDataCallback && session)
                     {
-                        self->m_onRecvConnectionDataCallback(remoteEndpoint, data, sendHandler, closeHandler);
+                        self->m_onConnectionDataCallback(session->getId(), session->getRemoteEndpoint(), data, sendHandler, closeHandler);
                     }
                 });
                 /* 开始会话 */
@@ -129,16 +146,18 @@ void TcpServer::doAccept()
                 if (self->m_sslContext) /* 启用TLS */
                 {
                     session->handshake(boost::asio::ssl::stream_base::server,
-                                       [wpSelf, remoteEndpoint, session, sendHandler, closeHandler](const boost::system::error_code& code) {
+                                       [wpSelf, wpSession, sendHandler, closeHandler](const boost::system::error_code& code) {
                                            if (!code) /* 握手成功 */
                                            {
-                                               const auto self = wpSelf.lock();
-                                               if (self && self->m_onNewConnectionCallback)
-                                               {
-                                                   self->m_onNewConnectionCallback(remoteEndpoint, sendHandler, closeHandler);
-                                               }
+                                               const auto session = wpSession.lock();
                                                if (session)
                                                {
+                                                   const auto self = wpSelf.lock();
+                                                   if (self && self->m_onNewConnectionCallback)
+                                                   {
+                                                       self->m_onNewConnectionCallback(session->getId(), session->getRemoteEndpoint(),
+                                                                                       sendHandler, closeHandler);
+                                                   }
                                                    session->recv(); /* 开始接收数据 */
                                                }
                                            }
@@ -149,7 +168,7 @@ void TcpServer::doAccept()
 #endif
                     if (self->m_onNewConnectionCallback)
                     {
-                        self->m_onNewConnectionCallback(remoteEndpoint, sendHandler, closeHandler);
+                        self->m_onNewConnectionCallback(session->getId(), session->getRemoteEndpoint(), sendHandler, closeHandler);
                     }
                     session->recv(); /* 开始接收数据 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -162,27 +181,37 @@ void TcpServer::doAccept()
     });
 }
 
-void TcpServer::doSend(const std::shared_ptr<TcpSession>& connection, const std::vector<unsigned char>& data,
+void TcpServer::doSend(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data,
                        const TCP_CONN_SEND_CALLBACK& onSendCb)
 {
-    if (connection)
+    const auto session = wpSession.lock();
+    if (session)
     {
         const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
-        connection->send(data, [wpSelf, connection, onSendCb](const boost::system::error_code& code, std::size_t length) {
-            if (connection)
+        session->send(data, [wpSelf, wpSession, onSendCb](const boost::system::error_code& code, std::size_t length) {
+            const auto session = wpSession.lock();
+            if (session)
             {
-                auto remoteEndpoint = connection->getRemoteEndpoint();
                 if (onSendCb)
                 {
-                    onSendCb(remoteEndpoint, code, length);
+                    onSendCb(session->getRemoteEndpoint(), code, length);
                 }
                 if (code) /* 发送错误 */
                 {
-                    connection->close(); /* 断开连接 */
+                    auto remoteEndpoint = session->getRemoteEndpoint();
+                    session->close(); /* 断开连接 */
                     const auto self = wpSelf.lock();
-                    if (self && self->m_onConnectionCloseCallback)
+                    if (self)
                     {
-                        self->m_onConnectionCloseCallback(remoteEndpoint, code);
+                        auto iter = self->m_sessionMap.find(session->getId());
+                        if (self->m_sessionMap.end() != iter)
+                        {
+                            self->m_sessionMap.erase(iter);
+                        }
+                        if (self->m_onConnectionCloseCallback)
+                        {
+                            self->m_onConnectionCloseCallback(session->getId(), remoteEndpoint, code);
+                        }
                     }
                 }
             }

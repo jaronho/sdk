@@ -8,10 +8,10 @@
 namespace nsocket
 {
 /**
- * @brief TCP接收数据回调
+ * @brief TCP数据回调
  * @param data 数据
  */
-using TCP_RECV_DATA_CALLBACK = std::function<void(const std::vector<unsigned char>& data)>;
+using TCP_DATA_CALLBACK = std::function<void(const std::vector<unsigned char>& data)>;
 
 /**
  * @brief TCP会话
@@ -29,16 +29,22 @@ public:
     ~TcpSession();
 
     /**
+     * @brief 获取会话ID
+     * @return 会话ID
+     */
+    int64_t getId() const;
+
+    /**
      * @brief 设置连接回调
-     * @param onRecvDataCb 接收数据回调
+     * @param onDataCb 数据回调
      */
     void setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb);
 
     /**
-     * @brief 设置接收数据回调
-     * @param onRecvDataCb 接收数据回调
+     * @brief 设置数据回调
+     * @param onDataCb 数据回调
      */
-    void setRecvDataCallback(const TCP_RECV_DATA_CALLBACK& onRecvDataCb);
+    void setDataCallback(const TCP_DATA_CALLBACK& onDataCb);
 
     /**
      * @brief 连接
@@ -105,11 +111,12 @@ public:
 #endif
 
 private:
+    int64_t m_id; /* ID */
     std::shared_ptr<SocketTcpBase> m_socketTcpBase; /* 套接字 */
     bool m_isEnableSSL; /* 是否启用SSL */
     bool m_isConnected; /* 是否已连接上 */
     std::vector<unsigned char> m_recvBuf; /* 接收缓冲区 */
     TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
-    TCP_RECV_DATA_CALLBACK m_onRecvDataCallback; /* 接收数据回调 */
+    TCP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */
 };
 } // namespace nsocket

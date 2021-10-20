@@ -1,9 +1,26 @@
 #include "tcp_session.h"
 
+#include <atomic>
+#include <chrono>
+
 namespace nsocket
 {
+static std::atomic_int64_t s_timestamp = 0;
+static std::atomic_int s_count = 0;
+
 TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected) : m_socketTcpBase(socket)
 {
+    auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
+    if (nt == s_timestamp)
+    {
+        ++s_count;
+    }
+    else
+    {
+        s_count = 0;
+        s_timestamp = nt;
+    }
+    m_id = (s_timestamp << 12) + (s_count & 0xFFF);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     m_isEnableSSL = (std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase) ? true : false);
 #else
@@ -18,14 +35,19 @@ TcpSession::~TcpSession()
     close();
 }
 
+int64_t TcpSession::getId() const
+{
+    return m_id;
+}
+
 void TcpSession::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)
 {
     m_onConnectCallback = onConnectCb;
 }
 
-void TcpSession::setRecvDataCallback(const TCP_RECV_DATA_CALLBACK& onRecvDataCb)
+void TcpSession::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
 {
-    m_onRecvDataCallback = onRecvDataCb;
+    m_onDataCallback = onDataCb;
 }
 
 void TcpSession::connect(const boost::asio::ip::tcp::endpoint& point)
@@ -147,7 +169,7 @@ void TcpSession::TcpSession::recv()
                 }
                 else /* 接收成功 */
                 {
-                    if (self->m_onRecvDataCallback)
+                    if (self->m_onDataCallback)
                     {
                         std::vector<unsigned char> data;
                         const unsigned char* rawData = (const unsigned char*)self->m_recvBuf.data();
@@ -155,7 +177,7 @@ void TcpSession::TcpSession::recv()
                         {
                             data.insert(data.end(), rawData, rawData + length);
                         }
-                        self->m_onRecvDataCallback(data);
+                        self->m_onDataCallback(data);
                     }
                     self->recv(); /* 继续接收 */
                 }

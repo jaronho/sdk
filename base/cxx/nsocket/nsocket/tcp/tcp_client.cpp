@@ -10,7 +10,7 @@ TcpClient::TcpClient()
     , m_sslContext(nullptr)
 #endif
     , m_onConnectCallback(nullptr)
-    , m_onRecvDataCallback(nullptr)
+    , m_onDataCallback(nullptr)
     , m_runStatus(RunStatus::RUN_NONE)
 {
 }
@@ -20,9 +20,9 @@ void TcpClient::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)
     m_onConnectCallback = onConnectCb;
 }
 
-void TcpClient::setRecvDataCallback(const TCP_RECV_DATA_CALLBACK& onRecvDataCb)
+void TcpClient::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
 {
-    m_onRecvDataCallback = onRecvDataCb;
+    m_onDataCallback = onDataCb;
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -69,7 +69,7 @@ void TcpClient::run(const std::string& host, unsigned int port)
                 self->handleConnect(code);
             }
         });
-        m_tcpSession->setRecvDataCallback(m_onRecvDataCallback);
+        m_tcpSession->setDataCallback(m_onDataCallback);
         m_tcpSession->connect(m_endpointIter->endpoint());
         if (RunStatus::RUN_NONE == m_runStatus)
         {

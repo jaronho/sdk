@@ -2,7 +2,7 @@
 #include <boost/asio/ip/address.hpp>
 #include <memory>
 #include <mutex>
-#include <set>
+#include <unordered_map>
 
 #include "tcp_session.h"
 
@@ -31,30 +31,34 @@ using TCP_CONN_CLOSE_HANDLER = std::function<void()>;
 
 /**
  * @brief TCP新连接回调
+ * @param sid 会话ID
  * @param point 端点
  * @param sendHandler 发送句柄
  * @param closeHandler 关闭句柄
  */
-using TCP_CONN_NEW_CALLBACK = std::function<void(const boost::asio::ip::tcp::endpoint& point, const TCP_CONN_SEND_HANDLER& sendHandler,
-                                                 const TCP_CONN_CLOSE_HANDLER& closeHandler)>;
+using TCP_CONN_NEW_CALLBACK = std::function<void(int64_t sid, const boost::asio::ip::tcp::endpoint& point,
+                                                 const TCP_CONN_SEND_HANDLER& sendHandler, const TCP_CONN_CLOSE_HANDLER& closeHandler)>;
 
 /**
- * @brief TCP接收数据回调
+ * @brief TCP数据回调
+ * @param sid 会话ID
  * @param point 端点
  * @param data 数据
  * @param sendHandler 发送句柄
  * @param closeHandler 关闭句柄
  */
-using TCP_CONN_RECV_DATA_CALLBACK =
-    std::function<void(const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
+using TCP_CONN_DATA_CALLBACK =
+    std::function<void(int64_t sid, const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
                        const TCP_CONN_SEND_HANDLER& sendHandler, const TCP_CONN_CLOSE_HANDLER& closeHandler)>;
 
 /**
  * @brief TCP连接关闭回调
+ * @param sid 会话ID
  * @param point 端点
  * @param code 错误码
  */
-using TCP_CONN_CLOSE_CALLBACK = std::function<void(const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
+using TCP_CONN_CLOSE_CALLBACK =
+    std::function<void(int64_t sid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
 
 /**
  * @brief TCP服务端(注意: 需要实例化为共享指针否则会报错, 2.停止后需要重新实例化, 不可复用之前的实例)
@@ -79,10 +83,10 @@ public:
     void setNewConnectionCallback(const TCP_CONN_NEW_CALLBACK& onNewCb);
 
     /**
-     * @brief 设置接收数据回调
-     * @param onRecvDataCb 接收数据回调
+     * @brief 设置数据回调
+     * @param onDataCb 数据回调
      */
-    void setRecvConnectionDataCallback(const TCP_CONN_RECV_DATA_CALLBACK& onRecvDataCb);
+    void setConnectionDataCallback(const TCP_CONN_DATA_CALLBACK& onDataCb);
 
     /**
      * @brief 设置连接关闭回调
@@ -99,6 +103,7 @@ public:
 #else
     void run();
 #endif
+
     /**
      * @brief 停止
      */
@@ -124,12 +129,11 @@ private:
 
     /**
      * @brief 发送数据到客户端
-     * @param connection 客户端连接
+     * @param wpSession 会话
      * @param data 数据
      * @param onSendCb 发送回调
      */
-    void doSend(const std::shared_ptr<TcpSession>& connection, const std::vector<unsigned char>& data,
-                const TCP_CONN_SEND_CALLBACK& onSendCb);
+    void doSend(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data, const TCP_CONN_SEND_CALLBACK& onSendCb);
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
@@ -137,8 +141,9 @@ private:
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
 #endif
+    std::unordered_map<int64_t, std::shared_ptr<TcpSession>> m_sessionMap; /* 会话表 */
     TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
-    TCP_CONN_RECV_DATA_CALLBACK m_onRecvConnectionDataCallback; /* 收到数据回调 */
+    TCP_CONN_DATA_CALLBACK m_onConnectionDataCallback; /* 连接数据回调 */
     TCP_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */
     std::string m_host; /* 主机 */
 };

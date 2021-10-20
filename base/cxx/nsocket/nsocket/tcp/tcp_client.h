@@ -22,10 +22,10 @@ public:
     void setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb);
 
     /**
-     * @brief 设置接收数据回调
-     * @param onRecvDataCb 接收数据回调
+     * @brief 设置数据回调
+     * @param onDataCb 数据回调
      */
-    void setRecvDataCallback(const TCP_RECV_DATA_CALLBACK& onRecvDataCb);
+    void setDataCallback(const TCP_DATA_CALLBACK& onDataCb);
 
     /**
      * @brief 运行(进入循环, 占用调用线程)
@@ -38,6 +38,7 @@ public:
 #else
     void run(const std::string& host, unsigned int port);
 #endif
+
     /**
      * @brief 发送数据
      * @param data 数据
@@ -84,7 +85,7 @@ private:
 #endif
     std::shared_ptr<TcpSession> m_tcpSession; /* TCP会话 */
     TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
-    TCP_RECV_DATA_CALLBACK m_onRecvDataCallback; /* 数据接收回调 */
+    TCP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */
     enum class RunStatus
     {
         RUN_NONE, /* 未开始 */
