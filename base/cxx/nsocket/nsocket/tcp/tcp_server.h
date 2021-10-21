@@ -71,8 +71,9 @@ public:
      * @param host 主机
      * @param port 端口
      * @param reuseAddr 是否允许复用地址(选填)
+     * @param bz 数据缓冲区大小(字节, 选填)
      */
-    TcpServer(const std::string& host, unsigned int port, bool reuseAddr = true);
+    TcpServer(const std::string& host, unsigned int port, bool reuseAddr = true, size_t bz = 1024);
 
     virtual ~TcpServer() = default;
 
@@ -141,6 +142,7 @@ private:
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
 #endif
+    size_t m_bufferSize; /* 数据接收缓冲区大小 */
     std::unordered_map<int64_t, std::shared_ptr<TcpSession>> m_sessionMap; /* 会话表 */
     TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
     TCP_CONN_DATA_CALLBACK m_onConnectionDataCallback; /* 连接数据回调 */

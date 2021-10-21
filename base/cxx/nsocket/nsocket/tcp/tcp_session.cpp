@@ -8,7 +8,7 @@ namespace nsocket
 static std::atomic_int64_t s_timestamp = 0;
 static std::atomic_int s_count = 0;
 
-TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected) : m_socketTcpBase(socket)
+TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected, size_t bz) : m_socketTcpBase(socket)
 {
     auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
     if (nt == s_timestamp)
@@ -27,7 +27,7 @@ TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alread
     m_isEnableSSL = false;
 #endif
     m_isConnected = alreadyConnected;
-    m_recvBuf.resize(1024);
+    resizeBuffer(bz);
 }
 
 TcpSession::~TcpSession()
@@ -38,6 +38,11 @@ TcpSession::~TcpSession()
 int64_t TcpSession::getId() const
 {
     return m_id;
+}
+
+void TcpSession::resizeBuffer(size_t bz)
+{
+    m_recvBuf.resize(bz > 128 ? bz : 128);
 }
 
 void TcpSession::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)

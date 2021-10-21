@@ -11,7 +11,11 @@ namespace nsocket
 class TcpClient final : public std::enable_shared_from_this<TcpClient>
 {
 public:
-    TcpClient();
+    /**
+     * @brief 构造函数
+     * @param bz 数据缓冲区大小(字节, 选填)
+     */
+    TcpClient(size_t bz = 1024);
 
     virtual ~TcpClient() = default;
 
@@ -84,6 +88,7 @@ private:
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
 #endif
     std::shared_ptr<TcpSession> m_tcpSession; /* TCP会话 */
+    size_t m_bufferSize; /* 数据接收缓冲区大小 */
     TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
     TCP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */
     enum class RunStatus

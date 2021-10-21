@@ -4,8 +4,9 @@
 
 namespace nsocket
 {
-TcpClient::TcpClient()
+TcpClient::TcpClient(size_t bz)
     : m_tcpSession(nullptr)
+    , m_bufferSize(bz)
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     , m_sslContext(nullptr)
 #endif
@@ -52,12 +53,12 @@ void TcpClient::run(const std::string& host, unsigned int port)
         if (sslContext) /* 启用TLS */
         {
             m_sslContext = sslContext;
-            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *m_sslContext));
+            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *m_sslContext), false, m_bufferSize);
         }
         else /* 不启用TLS */
         {
 #endif
-            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)));
+            m_tcpSession = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)), false, m_bufferSize);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
         }
 #endif

@@ -2,11 +2,12 @@
 
 namespace nsocket
 {
-TcpServer::TcpServer(const std::string& host, unsigned int port, bool reuseAddr)
+TcpServer::TcpServer(const std::string& host, unsigned int port, bool reuseAddr, size_t bz)
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     : m_sslContext(nullptr)
 #endif
 {
+    m_bufferSize = bz;
     try
     {
         m_acceptor = std::make_shared<boost::asio::ip::tcp::acceptor>(
@@ -82,12 +83,13 @@ void TcpServer::doAccept()
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                 if (self->m_sslContext) /* 启用TLS */
                 {
-                    session = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *(self->m_sslContext)), true);
+                    session = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *(self->m_sslContext)), true,
+                                                           self->m_bufferSize);
                 }
                 else /* 不启用TLS */
                 {
 #endif
-                    session = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)), true);
+                    session = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)), true, self->m_bufferSize);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                 }
 #endif
@@ -187,8 +189,7 @@ void TcpServer::doSend(const std::weak_ptr<TcpSession>& wpSession, const std::ve
     const auto session = wpSession.lock();
     if (session)
     {
-        const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
-        session->send(data, [wpSelf, wpSession, onSendCb](const boost::system::error_code& code, std::size_t length) {
+        session->send(data, [wpSession, onSendCb](const boost::system::error_code& code, std::size_t length) {
             const auto session = wpSession.lock();
             if (session)
             {
@@ -198,21 +199,7 @@ void TcpServer::doSend(const std::weak_ptr<TcpSession>& wpSession, const std::ve
                 }
                 if (code) /* 发送错误 */
                 {
-                    auto remoteEndpoint = session->getRemoteEndpoint();
                     session->close(); /* 断开连接 */
-                    const auto self = wpSelf.lock();
-                    if (self)
-                    {
-                        auto iter = self->m_sessionMap.find(session->getId());
-                        if (self->m_sessionMap.end() != iter)
-                        {
-                            self->m_sessionMap.erase(iter);
-                        }
-                        if (self->m_onConnectionCloseCallback)
-                        {
-                            self->m_onConnectionCloseCallback(session->getId(), remoteEndpoint, code);
-                        }
-                    }
                 }
             }
         });

@@ -23,8 +23,9 @@ public:
      * @brief 构造函数
      * @param socket 套接字
      * @param alreadyConnected 是否已经连接上(选填), 服务器中接收到新连接时需要设置该参数为true
+     * @param bz 数据缓冲区大小(字节, 选填)
      */
-    TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected = false);
+    TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected = false, size_t bz = 1024);
 
     ~TcpSession();
 
@@ -33,6 +34,12 @@ public:
      * @return 会话ID
      */
     int64_t getId() const;
+
+    /**
+     * @brief 调整数据缓冲区大小
+     * @param bz 缓冲区大小(字节)
+     */
+    void resizeBuffer(size_t bz);
 
     /**
      * @brief 设置连接回调
