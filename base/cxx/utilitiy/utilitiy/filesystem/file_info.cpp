@@ -11,9 +11,40 @@ namespace utilitiy
 {
 struct FileBlockSize
 {
-    size_t fileSize; /* 文件大小(单位:Kb) */
-    size_t blockSize; /* 块大小(单位:Kb) */
+    size_t fileSize; /* 文件大小(单位:字节) */
+    size_t blockSize; /* 块大小(单位:字节) */
 };
+
+/**
+ * @brief 计算块大小 
+ * @param fileSize 文件大小
+ * @param maxBlockSize 最大的块大小
+ * @return 块大小, 为0表示文件为空
+ */
+static size_t calcBlockSize(size_t fileSize, size_t maxBlockSize)
+{
+    /* 文件/块大小映射 */
+    static const int MB = 1024 * 1024;
+    static const FileBlockSize FILE_BLOCK_SIZE_MAP[] = {{1024 * MB, 4 * MB}, {512 * MB, 4 * MB}, {256 * MB, 4 * MB},
+                                                        {128 * MB, 2 * MB},  {64 * MB, 2 * MB},  {32 * MB, 2 * MB},
+                                                        {16 * MB, 1 * MB},   {4 * MB, 1 * MB},   {1 * MB, 1 * MB}};
+    /* 根据文件大小等级计算块大小 */
+    size_t blockSize = fileSize;
+    const int MAP_COUNT = sizeof(FILE_BLOCK_SIZE_MAP) / sizeof(FileBlockSize);
+    for (int i = 0; i < MAP_COUNT; ++i)
+    {
+        if (fileSize >= FILE_BLOCK_SIZE_MAP[i].fileSize)
+        {
+            blockSize = FILE_BLOCK_SIZE_MAP[i].blockSize;
+            break;
+        }
+    }
+    if (maxBlockSize > 0 && blockSize > maxBlockSize)
+    {
+        blockSize = maxBlockSize;
+    }
+    return blockSize;
+}
 
 FileInfo::FileInfo(const std::string& fullName) : m_fullName(fullName)
 {
@@ -126,37 +157,6 @@ bool FileInfo::remove() const
         return true;
     }
     return false;
-}
-
-/**
- * @brief 计算块大小 
- * @param fileSize 文件大小
- * @param maxBlockSize 最大的块大小
- * @return 块大小, 为0表示文件为空
- */
-static size_t calcBlockSize(size_t fileSize, size_t maxBlockSize)
-{
-    /* 文件/块大小映射 */
-    static const int MB = 1024 * 1024;
-    static const FileBlockSize FILE_BLOCK_SIZE_MAP[] = {{1024 * MB, 4 * MB}, {512 * MB, 4 * MB}, {256 * MB, 4 * MB},
-                                                        {128 * MB, 2 * MB},  {64 * MB, 2 * MB},  {32 * MB, 2 * MB},
-                                                        {16 * MB, 1 * MB},   {4 * MB, 1 * MB},   {1 * MB, 1 * MB}};
-    /* 根据文件大小等级计算块大小 */
-    size_t blockSize = fileSize;
-    const int MAP_COUNT = sizeof(FILE_BLOCK_SIZE_MAP) / sizeof(FileBlockSize);
-    for (int i = 0; i < MAP_COUNT; ++i)
-    {
-        if (fileSize >= FILE_BLOCK_SIZE_MAP[i].fileSize)
-        {
-            blockSize = FILE_BLOCK_SIZE_MAP[i].blockSize;
-            break;
-        }
-    }
-    if (maxBlockSize > 0 && blockSize > maxBlockSize)
-    {
-        blockSize = maxBlockSize;
-    }
-    return blockSize;
 }
 
 FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCode,
