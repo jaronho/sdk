@@ -23,7 +23,7 @@ private:
         /**
          * @brief 构造函数
          */
-        Client(const nsocket::TCP_CONN_SEND_HANDLER& sendHandler) : m_sendHandler(sendHandler)
+        Client(const std::weak_ptr<nsocket::TcpSession>& wpSession) : m_wpTcpSession(wpSession)
         {
             m_payload = std::make_shared<nsocket::Payload>(msg_base::maxsize());
         }
@@ -61,31 +61,37 @@ private:
          */
         void send(msg_base* msg, const std::function<void(bool ret)>& callback = nullptr)
         {
-            if (m_sendHandler)
+            const auto tcpSession = m_wpTcpSession.lock();
+            if (tcpSession)
             {
                 utilitiy::ByteArray ba;
                 msg->encode(ba);
                 std::vector<unsigned char> data;
                 nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);
-                m_sendHandler(data, [&, callback](const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code,
-                                                  std::size_t length) {
-                    std::string clientHost = point.address().to_string().c_str();
-                    int clientPort = (int)point.port();
-                    if (code)
+                tcpSession->send(data, [&, callback](const boost::system::error_code& code, std::size_t length) {
+                    const auto tcpSession = m_wpTcpSession.lock();
+                    if (tcpSession)
                     {
-                        printf(">>>>>>>>>> on send [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort, code.value(),
-                               code.message().c_str());
-                        if (callback)
+                        auto point = tcpSession->getRemoteEndpoint();
+                        std::string clientHost = point.address().to_string().c_str();
+                        int clientPort = (int)point.port();
+                        if (code)
                         {
-                            callback(false);
+                            printf(">>>>>>>>>> on send [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort, code.value(),
+                                   code.message().c_str());
+                            if (callback)
+                            {
+                                callback(false);
+                            }
                         }
-                    }
-                    else
-                    {
-                        printf(">>>>>>>>>> on send [%s:%d] ok, length: %d\n", clientHost.c_str(), clientPort, (int)length);
-                        if (callback)
+                        else
                         {
-                            callback(true);
+                            printf(">>>>>>>>>> on send [%s:%d] ok, length: %d\n", clientHost.c_str(), clientPort, (int)length);
+                            if (callback)
+                            {
+                                callback(true);
+                            }
+                            tcpSession->close();
                         }
                     }
                 });
@@ -123,7 +129,7 @@ private:
 
     private:
         std::shared_ptr<nsocket::Payload> m_payload; /* 负载 */
-        nsocket::TCP_CONN_SEND_HANDLER m_sendHandler; /* 发送句柄 */
+        std::weak_ptr<nsocket::TcpSession> m_wpTcpSession; /* 会话 */
         MSG_HANDLER m_msgHandler; /* 消息句柄 */
         std::string m_id; /* 客户端ID */
     };
@@ -140,13 +146,9 @@ public:
 #endif
     {
         m_tcpServer = std::make_shared<nsocket::TcpServer>(serverHost, serverPort);
-        m_tcpServer->setNewConnectionCallback(
-            [&](int64_t sid, const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
-                const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) { handleNewConnection(point, sendHandler); });
-        m_tcpServer->setConnectionDataCallback(
-            [&](int64_t sid, const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
-                const nsocket::TCP_CONN_SEND_HANDLER& sendHandler,
-                const nsocket::TCP_CONN_CLOSE_HANDLER& closeHandler) { handleRecvConnectionData(point, data, sendHandler); });
+        m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpSession>& wpSession) { handleNewConnection(wpSession); });
+        m_tcpServer->setConnectionDataCallback([&](const std::weak_ptr<nsocket::TcpSession>& wpSession,
+                                                   const std::vector<unsigned char>& data) { handleRecvConnectionData(wpSession, data); });
         m_tcpServer->setConnectionCloseCallback([&](int64_t sid, const boost::asio::ip::tcp::endpoint& point,
                                                     const boost::system::error_code& code) { handleConnectionClose(point, code); });
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -185,55 +187,64 @@ private:
     /**
      * @brief 处理新连接
      */
-    void handleNewConnection(const boost::asio::ip::tcp::endpoint& point, const nsocket::TCP_CONN_SEND_HANDLER& sendHandler)
+    void handleNewConnection(const std::weak_ptr<nsocket::TcpSession>& wpSession)
     {
-        /* 信息打印 */
+        const auto tcpSession = wpSession.lock();
+        if (tcpSession)
         {
-            std::string clientHost = point.address().to_string().c_str();
-            int clientPort = (int)point.port();
-            printf("++++++++++++++++++++++++++++++ on new connection [%s:%d]\n", clientHost.c_str(), clientPort);
-        }
-        /* 逻辑处理 */
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        auto iter = m_clientMap.find(point);
-        if (m_clientMap.end() == iter)
-        {
-            auto client = std::make_shared<Client>(sendHandler);
-            client->setMsgHandler([&, client](MsgType type, utilitiy::ByteArray& ba) { handleClientMsg(client, type, ba); });
-            m_clientMap.insert(std::make_pair(point, client));
+            auto point = tcpSession->getRemoteEndpoint();
+            /* 信息打印 */
+            {
+                std::string clientHost = point.address().to_string().c_str();
+                int clientPort = (int)point.port();
+                printf("++++++++++++++++++++++++++++++ on new connection [%s:%d]\n", clientHost.c_str(), clientPort);
+            }
+            /* 逻辑处理 */
+            std::lock_guard<std::recursive_mutex> locker(m_mutex);
+            auto iter = m_clientMap.find(point);
+            if (m_clientMap.end() == iter)
+            {
+                auto client = std::make_shared<Client>(wpSession);
+                client->setMsgHandler([&, client](MsgType type, utilitiy::ByteArray& ba) { handleClientMsg(client, type, ba); });
+                m_clientMap.insert(std::make_pair(point, client));
+            }
         }
     }
 
     /**
      * @brief 处理接收到连接数据
      */
-    void handleRecvConnectionData(const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
-                                  const nsocket::TCP_CONN_SEND_HANDLER& sendHandler)
+    void handleRecvConnectionData(const std::weak_ptr<nsocket::TcpSession>& wpSession, const std::vector<unsigned char>& data)
     {
-        /* 信息打印 */
+        const auto tcpSession = wpSession.lock();
+        if (tcpSession)
         {
-            std::string clientHost = point.address().to_string().c_str();
-            int clientPort = (int)point.port();
-            printf("<<<<<<<<<<<<<<<<<<< on recv data [%s:%d], length: %d\n", clientHost.c_str(), clientPort, (int)data.size());
-            /* 以十六进制格式打印数据 */
-            printf("<<<<<<<<<< [hex format]\n");
-            for (size_t i = 0; i < data.size(); ++i)
+            auto point = tcpSession->getRemoteEndpoint();
+            /* 信息打印 */
             {
-                printf("%02X ", data[i]);
+                std::string clientHost = point.address().to_string().c_str();
+                int clientPort = (int)point.port();
+                printf("<<<<<<<<<<<<<<<<<<< on recv data [%s:%d], length: %d\n", clientHost.c_str(), clientPort, (int)data.size());
+                /* 以十六进制格式打印数据 */
+                printf("<<<<<<<<<< [hex format]\n");
+                for (size_t i = 0; i < data.size(); ++i)
+                {
+                    printf("%02X ", data[i]);
+                }
+                printf("\n");
+                /* 以字符串格式打印数据 */
+                printf("<<<<<<<<<< [string format]\n");
+                std::string str(data.begin(), data.end());
+                printf("%s", str.c_str());
+                printf("\n");
             }
-            printf("\n");
-            /* 以字符串格式打印数据 */
-            printf("<<<<<<<<<< [string format]\n");
-            std::string str(data.begin(), data.end());
-            printf("%s", str.c_str());
-            printf("\n");
-        }
-        /* 逻辑处理 */
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        auto iter = m_clientMap.find(point);
-        if (m_clientMap.end() != iter)
-        {
-            iter->second->handleRecv(data);
+            /* 逻辑处理 */
+            std::lock_guard<std::recursive_mutex> locker(m_mutex);
+            auto iter = m_clientMap.find(point);
+            if (m_clientMap.end() != iter)
+            {
+                iter->second->handleRecv(data);
+            }
         }
     }
 

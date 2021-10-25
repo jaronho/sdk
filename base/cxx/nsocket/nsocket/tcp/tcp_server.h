@@ -9,47 +9,17 @@
 namespace nsocket
 {
 /**
- * @brief TCP连接发送回调
- * @param point 端点
- * @param code 错误码
- * @param length 数据长度
- */
-using TCP_CONN_SEND_CALLBACK =
-    std::function<void(const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code, std::size_t length)>;
-
-/**
- * @brief TCP连接发送句柄
- * @param data 数据
- * @param onSendCb 发送回调
- */
-using TCP_CONN_SEND_HANDLER = std::function<void(const std::vector<unsigned char>& data, const TCP_CONN_SEND_CALLBACK& onSendCb)>;
-
-/**
- * @brief TCP连接关闭句柄
- */
-using TCP_CONN_CLOSE_HANDLER = std::function<void()>;
-
-/**
  * @brief TCP新连接回调
- * @param sid 会话ID
- * @param point 端点
- * @param sendHandler 发送句柄
- * @param closeHandler 关闭句柄
+ * @param wpSession 会话
  */
-using TCP_CONN_NEW_CALLBACK = std::function<void(int64_t sid, const boost::asio::ip::tcp::endpoint& point,
-                                                 const TCP_CONN_SEND_HANDLER& sendHandler, const TCP_CONN_CLOSE_HANDLER& closeHandler)>;
+using TCP_CONN_NEW_CALLBACK = std::function<void(const std::weak_ptr<TcpSession>& wpSession)>;
 
 /**
  * @brief TCP数据回调
- * @param sid 会话ID
- * @param point 端点
+ * @param wpSession 会话
  * @param data 数据
- * @param sendHandler 发送句柄
- * @param closeHandler 关闭句柄
  */
-using TCP_CONN_DATA_CALLBACK =
-    std::function<void(int64_t sid, const boost::asio::ip::tcp::endpoint& point, const std::vector<unsigned char>& data,
-                       const TCP_CONN_SEND_HANDLER& sendHandler, const TCP_CONN_CLOSE_HANDLER& closeHandler)>;
+using TCP_CONN_DATA_CALLBACK = std::function<void(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data)>;
 
 /**
  * @brief TCP连接关闭回调
@@ -127,14 +97,6 @@ private:
      * @brief 接收客户端连接请求
      */
     void doAccept();
-
-    /**
-     * @brief 发送数据到客户端
-     * @param wpSession 会话
-     * @param data 数据
-     * @param onSendCb 发送回调
-     */
-    void doSend(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data, const TCP_CONN_SEND_CALLBACK& onSendCb);
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */

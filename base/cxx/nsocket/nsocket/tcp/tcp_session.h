@@ -14,7 +14,7 @@ namespace nsocket
 using TCP_DATA_CALLBACK = std::function<void(const std::vector<unsigned char>& data)>;
 
 /**
- * @brief TCP会话
+ * @brief TCP会话, 注意: 调用close后示例不可再使用
  */
 class TcpSession : public std::enable_shared_from_this<TcpSession>
 {
