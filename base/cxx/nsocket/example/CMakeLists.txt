@@ -49,6 +49,11 @@ get_cxx_files(${base_nsocket_path}/nsocket/core src_list)
 list(APPEND base_nsocket_core_src_list ${src_list})
 source_group(3rdparty/base/nsocket/core FILES ${base_nsocket_core_src_list})
 
+set(base_nsocket_http_src_list)
+get_cxx_files(${base_nsocket_path}/nsocket/http src_list)
+list(APPEND base_nsocket_http_src_list ${src_list})
+source_group(3rdparty/base/nsocket/http FILES ${base_nsocket_http_src_list})
+
 set(base_nsocket_tcp_src_list)
 get_cxx_files(${base_nsocket_path}/nsocket/tcp src_list)
 list(APPEND base_nsocket_tcp_src_list ${src_list})
@@ -61,6 +66,7 @@ source_group(3rdparty/base/nsocket FILES ${base_nsocket_src_list})
 
 set(base_nsocket_files) # 工程中需要把nsocket的文件添加进去
 list(APPEND base_nsocket_files ${base_nsocket_core_src_list}
+                               ${base_nsocket_http_src_list}
                                ${base_nsocket_tcp_src_list}
                                ${base_nsocket_src_list})
 
@@ -70,30 +76,39 @@ foreach(filename ${base_nsocket_files})
 endforeach()
 ##########################################################################################
 
-# 添加客户端示例文件
-set(example_client_files)
-get_cxx_files(./client src_list)
-list(APPEND example_client_files ${src_list})
+# 添加HTTP服务端示例文件
+set(example_httpserver_files)
+list(APPEND example_httpserver_files ./server/example_socket_httpserver.cpp)
 
-print_info(BODY "example client files:")
-foreach(filename ${example_client_files})
+print_info(BODY "example http server files:")
+foreach(filename ${example_httpserver_files})
     message("    " ${filename})
 endforeach()
 
-# 添加服务端示例文件
-set(example_server_files)
-get_cxx_files(./server src_list)
-list(APPEND example_server_files ${src_list})
+# 添加TCP客户端示例文件
+set(example_tcpclient_files)
+list(APPEND example_tcpclient_files ./client/example_socket_tcpclient.cpp)
 
-print_info(BODY "example server files:")
-foreach(filename ${example_server_files})
+print_info(BODY "example tcp client files:")
+foreach(filename ${example_tcpclient_files})
+    message("    " ${filename})
+endforeach()
+
+# 添加TCP服务端示例文件
+set(example_tcpserver_files)
+list(APPEND example_tcpserver_files ./server/example_socket_tcpserver.cpp)
+
+print_info(BODY "example tcp server files:")
+foreach(filename ${example_tcpserver_files})
     message("    " ${filename})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_nsocket_tcpclient ${base_nsocket_files} ${example_client_files})
-add_executable(example_nsocket_tcpserver ${base_nsocket_files} ${example_server_files})
+add_executable(example_nsocket_httpserver ${base_nsocket_files} ${example_httpserver_files})
+add_executable(example_nsocket_tcpclient ${base_nsocket_files} ${example_tcpclient_files})
+add_executable(example_nsocket_tcpserver ${base_nsocket_files} ${example_tcpserver_files})
 
 # 链接依赖库
+target_link_libraries(example_nsocket_httpserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
 target_link_libraries(example_nsocket_tcpclient Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
 target_link_libraries(example_nsocket_tcpserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
