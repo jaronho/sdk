@@ -150,6 +150,11 @@ int main(int argc, char* argv[])
             continue;
         }
         printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
+        if (0 == strcmp(str, "quit") || 0 == strcmp(str, "close"))
+        {
+            client->stop();
+            break;
+        }
         client->send(std::vector<unsigned char>(str, str + strlen(str)), [&](const boost::system::error_code& code, std::size_t length) {
             if (code)
             {

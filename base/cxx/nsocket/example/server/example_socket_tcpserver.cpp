@@ -136,24 +136,31 @@ int main(int argc, char* argv[])
             printf("%s", str.c_str());
             printf("\n");
             /* 把收到的数据原封不动返回给客户端 */
-            tcpSession->send(data, [&, wpSession](const boost::system::error_code& code, std::size_t length) {
-                const auto tcpSession = wpSession.lock();
-                if (tcpSession)
-                {
-                    auto point = tcpSession->getRemoteEndpoint();
-                    std::string clientHost = point.address().to_string().c_str();
-                    int clientPort = (int)point.port();
-                    if (code)
+            if (0 == str.compare("error"))
+            {
+                tcpSession->close();
+            }
+            else
+            {
+                tcpSession->send(data, [&, wpSession](const boost::system::error_code& code, std::size_t length) {
+                    const auto tcpSession = wpSession.lock();
+                    if (tcpSession)
                     {
-                        printf("---------- on send [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort, code.value(),
-                               code.message().c_str());
+                        auto point = tcpSession->getRemoteEndpoint();
+                        std::string clientHost = point.address().to_string().c_str();
+                        int clientPort = (int)point.port();
+                        if (code)
+                        {
+                            printf("---------- on send [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort, code.value(),
+                                   code.message().c_str());
+                        }
+                        else
+                        {
+                            printf("---------- on send [%s:%d] ok, length: %d\n", clientHost.c_str(), clientPort, (int)length);
+                        }
                     }
-                    else
-                    {
-                        printf("---------- on send [%s:%d] ok, length: %d\n", clientHost.c_str(), clientPort, (int)length);
-                    }
-                }
-            });
+                });
+            }
         }
     });
     /* 设置连接关闭回调 */
