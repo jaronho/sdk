@@ -59,6 +59,11 @@ get_cxx_files(${base_nsocket_path}/nsocket/tcp src_list)
 list(APPEND base_nsocket_tcp_src_list ${src_list})
 source_group(3rdparty/base/nsocket/tcp FILES ${base_nsocket_tcp_src_list})
 
+set(base_nsocket_websocket_src_list)
+get_cxx_files(${base_nsocket_path}/nsocket/websocket src_list)
+list(APPEND base_nsocket_websocket_src_list ${src_list})
+source_group(3rdparty/base/nsocket/websocket FILES ${base_nsocket_websocket_src_list})
+
 set(base_nsocket_src_list)
 get_cxx_files(${base_nsocket_path}/nsocket src_list)
 list(APPEND base_nsocket_src_list ${src_list})
@@ -68,6 +73,7 @@ set(base_nsocket_files) # 工程中需要把nsocket的文件添加进去
 list(APPEND base_nsocket_files ${base_nsocket_core_src_list}
                                ${base_nsocket_http_src_list}
                                ${base_nsocket_tcp_src_list}
+                               ${base_nsocket_websocket_src_list}
                                ${base_nsocket_src_list})
 
 print_info(BODY "base nsocket files:")
@@ -75,15 +81,6 @@ foreach(filename ${base_nsocket_files})
     message("    " ${filename})
 endforeach()
 ##########################################################################################
-
-# 添加HTTP服务端示例文件
-set(example_httpserver_files)
-list(APPEND example_httpserver_files ./server/example_socket_httpserver.cpp)
-
-print_info(BODY "example http server files:")
-foreach(filename ${example_httpserver_files})
-    message("    " ${filename})
-endforeach()
 
 # 添加TCP客户端示例文件
 set(example_tcpclient_files)
@@ -103,12 +100,32 @@ foreach(filename ${example_tcpserver_files})
     message("    " ${filename})
 endforeach()
 
+# 添加HTTP服务端示例文件
+set(example_httpserver_files)
+list(APPEND example_httpserver_files ./server/example_socket_httpserver.cpp)
+
+print_info(BODY "example http server files:")
+foreach(filename ${example_httpserver_files})
+    message("    " ${filename})
+endforeach()
+
+# 添加WebSocket服务端示例文件
+set(example_websocketserver_files)
+list(APPEND example_websocketserver_files ./server/example_socket_websocketserver.cpp)
+
+print_info(BODY "example websocket server files:")
+foreach(filename ${example_websocketserver_files})
+    message("    " ${filename})
+endforeach()
+
 # 构建可执行程序
-add_executable(example_nsocket_httpserver ${base_nsocket_files} ${example_httpserver_files})
 add_executable(example_nsocket_tcpclient ${base_nsocket_files} ${example_tcpclient_files})
 add_executable(example_nsocket_tcpserver ${base_nsocket_files} ${example_tcpserver_files})
+add_executable(example_nsocket_httpserver ${base_nsocket_files} ${example_httpserver_files})
+add_executable(example_nsocket_websocketserver ${base_nsocket_files} ${example_websocketserver_files})
 
 # 链接依赖库
-target_link_libraries(example_nsocket_httpserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
 target_link_libraries(example_nsocket_tcpclient Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
 target_link_libraries(example_nsocket_tcpserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(example_nsocket_httpserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(example_nsocket_websocketserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
