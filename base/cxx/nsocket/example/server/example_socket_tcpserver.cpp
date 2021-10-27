@@ -151,7 +151,6 @@ int main(int argc, char* argv[])
                     else
                     {
                         printf("---------- on send [%s:%d] ok, length: %d\n", clientHost.c_str(), clientPort, (int)length);
-                        tcpSession->close();
                     }
                 }
             });

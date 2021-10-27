@@ -196,7 +196,7 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             const auto tcpSession = wpTcpSession.lock();
             if (tcpSession)
             {
-                tcpSession->close();
+                tcpSession->close(); /* 响应结束后, 需要关闭连接(某些客户端不会主动关闭连接) */
             }
         });
     }
