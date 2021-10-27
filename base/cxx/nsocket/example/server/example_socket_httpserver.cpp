@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
     }
     {
         auto r = std::make_shared<nsocket::http::Router_x_www_form_urlencoded>();
-        r->respHandler = [&](const nsocket::http::REQUEST_PTR& req, const nsocket::http::CaseInsensitiveMultimap& fields) {
+        r->respHandler = [&](const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields) {
             printf("--------------------------- Form Router ---------------------------\n");
             printf("---  Method: %s\n", req->method.c_str());
             printf("---     Uri: %s\n", req->uri.c_str());

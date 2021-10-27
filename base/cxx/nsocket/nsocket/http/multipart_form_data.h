@@ -8,98 +8,98 @@ namespace nsocket
 namespace http
 {
 /**
- * @brief ±íµ¥Êı¾İ
+ * @brief è¡¨å•æ•°æ®
  */
 class MultipartFormData
 {
 public:
     /**
-     * @brief ÎÄ±¾»Øµ÷
-     * @param name Ãû³Æ
-     * @param contentType ÄÚÈİÀàĞÍ
-     * @param text ÎÄ±¾ÄÚÈİ
+     * @brief æ–‡æœ¬å›è°ƒ
+     * @param name åç§°
+     * @param contentType å†…å®¹ç±»å‹
+     * @param text æ–‡æœ¬å†…å®¹
      */
     using TEXT_CALLBACK = std::function<void(const std::string& name, const std::string& contentType, const std::string& text)>;
 
     /**
-     * @brief ÎÄ¼ş»Øµ÷
-     * @param name Ãû³Æ
-     * @param filename ÎÄ¼şÃû
-     * @param contentType ÄÚÈİÀàĞÍ
-     * @param offset ÎÄ¼şÊı¾İÔÚÎÄ¼şÖĞµÄÆ«ÒÆÖµ
-     * @param data ÎÄ¼şÊı¾İ
-     * @param dataLen Êı¾İ³¤¶È
-     * @param finish ÊÇ·ñ½áÊø
+     * @brief æ–‡ä»¶å›è°ƒ
+     * @param name åç§°
+     * @param filename æ–‡ä»¶å
+     * @param contentType å†…å®¹ç±»å‹
+     * @param offset æ–‡ä»¶æ•°æ®åœ¨æ–‡ä»¶ä¸­çš„åç§»å€¼
+     * @param data æ–‡ä»¶æ•°æ®
+     * @param dataLen æ•°æ®é•¿åº¦
+     * @param finish æ˜¯å¦ç»“æŸ
      */
     using FILE_CALLBACK = std::function<void(const std::string& name, const std::string& filename, const std::string& contentType,
                                              size_t offset, const unsigned char* data, int dataLen, bool finish)>;
 
 public:
     /**
-     * @brief ¹¹Ôìº¯Êı
-     * @param boundary ±ß½çÏß
+     * @brief æ„é€ å‡½æ•°
+     * @param boundary è¾¹ç•Œçº¿
      */
     MultipartFormData(const std::string& boundary);
 
     /**
-     * @brief ½âÎö
-     * @param data ±íµ¥Êı¾İ
-     * @param length Êı¾İ³¤¶È
-     * @param textCb ÎÄ±¾»Øµ÷
-     * @param fileCb ÎÄ¼ş»Øµ÷
-     * @return ÒÑ½âÎöµÄÊı¾İ³¤¶È, <=0±íÊ¾½âÎö³ö´í
+     * @brief è§£æ
+     * @param data è¡¨å•æ•°æ®
+     * @param length æ•°æ®é•¿åº¦
+     * @param textCb æ–‡æœ¬å›è°ƒ
+     * @param fileCb æ–‡ä»¶å›è°ƒ
+     * @return å·²è§£æçš„æ•°æ®é•¿åº¦, <=0è¡¨ç¤ºè§£æå‡ºé”™
      */
     int parse(const unsigned char* data, int length, const TEXT_CALLBACK& textCb, const FILE_CALLBACK& fileCb);
 
 private:
     /**
-     * @brief ½âÎö±ß½çÏß
+     * @brief è§£æè¾¹ç•Œçº¿
      */
     int parseBoundary(const unsigned char* data, int length);
 
     /**
-     * @brief ½âÎöÄÚÈİ´¦ÀíĞÅÏ¢
+     * @brief è§£æå†…å®¹å¤„ç†ä¿¡æ¯
      */
     int parseContentDisposition(const unsigned char* data, int length);
 
     /**
-     * @brief ½âÎöÃû³ÆºÍÎÄ¼şÃû
+     * @brief è§£æåç§°å’Œæ–‡ä»¶å
      */
     bool parseNameAndFilename();
 
     /**
-     * @brief ½âÎöÄÚÈİÀàĞÍ
+     * @brief è§£æå†…å®¹ç±»å‹
      */
     int parseContentType(const unsigned char* data, int length);
 
     /**
-     * @brief ½âÎö¿ÕĞĞ
+     * @brief è§£æç©ºè¡Œ
      */
     int parseEmptyLine(const unsigned char* data, int length);
 
     /**
-     * @brief ½âÎöÄÚÈİ
+     * @brief è§£æå†…å®¹
      */
     int parseContent(const unsigned char* data, int length, const TEXT_CALLBACK& textCb, const FILE_CALLBACK& fileCb);
 
     /**
-     * @brief ½âÎöÎÄ±¾ÄÚÈİ
+     * @brief è§£ææ–‡æœ¬å†…å®¹
      */
     int parseTextContent(const unsigned char* data, int length, const TEXT_CALLBACK& textCb);
 
     /**
-     * @brief ½âÎöÎÄ¼şÄÚÈİ
+     * @brief è§£ææ–‡ä»¶å†…å®¹
      */
     int parseFileContent(const unsigned char* data, int length, const FILE_CALLBACK& fileCb);
 
     /**
-     * @brief ´¦ÀíÇ°Ò»ĞĞÒÅÁôÊı¾İ
+     * @brief å¤„ç†å‰ä¸€è¡Œé—ç•™æ•°æ®
      */
     void handlePrevLine(std::string& prevLine, const FILE_CALLBACK& fileCb);
 
 private:
     /**
-     * @brief ·Ö¸î·û
+     * @brief åˆ†å‰²ç¬¦
      */
     enum class SepFlag
     {
@@ -109,26 +109,26 @@ private:
     };
 
     /**
-     * @brief ½âÎö²½Öè
+     * @brief è§£ææ­¥éª¤
      */
     enum class ParseStep
     {
-        BOUNDARY, /* ±ß½çÏß */
-        CONTENT_DISPOSITION, /* ÄÚÈİ´¦ÀíĞÅÏ¢ */
-        CONTENT_TYPE, /* ÄÚÈİÀàĞÍ */
-        EMPTY_LINE, /* ¿ÕĞĞ */
-        CONTENT, /* ÄÚÈİ */
-        ENDING /* ±íµ¥½áÊø */
+        BOUNDARY, /* è¾¹ç•Œçº¿ */
+        CONTENT_DISPOSITION, /* å†…å®¹å¤„ç†ä¿¡æ¯ */
+        CONTENT_TYPE, /* å†…å®¹ç±»å‹ */
+        EMPTY_LINE, /* ç©ºè¡Œ */
+        CONTENT, /* å†…å®¹ */
+        ENDING /* è¡¨å•ç»“æŸ */
     };
 
-    std::string m_boundary; /* ±ß½çÏß */
-    SepFlag m_sepFlag = SepFlag::NONE; /* ·Ö¸ô·û */
-    ParseStep m_parseStep = ParseStep::BOUNDARY; /* ½âÎö²½Öè */
-    std::string m_nowLine; /* µ±Ç°ĞĞÊı¾İ */
-    std::string m_name; /* ±íµ¥ÏîÃû */
-    std::string m_filename; /* ÎÄ¼şÃû */
-    std::string m_contentType; /* ±íµ¥ÏîÄÚÈİÀàĞÍ */
-    size_t m_fileOffset = 0; /* ÎÄ¼şÆ«ÒÆ */
+    std::string m_boundary; /* è¾¹ç•Œçº¿ */
+    SepFlag m_sepFlag = SepFlag::NONE; /* åˆ†éš”ç¬¦ */
+    ParseStep m_parseStep = ParseStep::BOUNDARY; /* è§£ææ­¥éª¤ */
+    std::string m_nowLine; /* å½“å‰è¡Œæ•°æ® */
+    std::string m_name; /* è¡¨å•é¡¹å */
+    std::string m_filename; /* æ–‡ä»¶å */
+    std::string m_contentType; /* è¡¨å•é¡¹å†…å®¹ç±»å‹ */
+    size_t m_fileOffset = 0; /* æ–‡ä»¶åç§» */
 };
 } // namespace http
 } // namespace nsocket

@@ -13,33 +13,33 @@ namespace nsocket
 namespace http
 {
 /**
- * @brief HTTP·şÎñÆ÷
+ * @brief HTTPæœåŠ¡å™¨
  */
 class Server final : public std::enable_shared_from_this<Server>
 {
 public:
     /**
-     * @brief ¹¹Ôìº¯Êı
-     * @param host Ö÷»úµØÖ·
-     * @param port ¶Ë¿Ú
+     * @brief æ„é€ å‡½æ•°
+     * @param host ä¸»æœºåœ°å€
+     * @param port ç«¯å£
      */
     Server(const std::string& host, unsigned int port);
 
     /**
-     * @brief ÉèÖÃÂ·ÓÉÎ´ÕÒµ½»Øµ÷
-     * @param cb »Øµ÷
+     * @brief è®¾ç½®è·¯ç”±æœªæ‰¾åˆ°å›è°ƒ
+     * @param cb å›è°ƒ
      */
     void setRouterNotFoundCallback(const std::function<void(const REQUEST_PTR& req)>& cb);
 
     /**
-     * @brief Ìí¼ÓÂ·ÓÉ
+     * @brief æ·»åŠ è·¯ç”±
      * @param uri URI
-     * @param router Â·ÓÉ
+     * @param router è·¯ç”±
      */
     void addRouter(const std::string& uri, const std::shared_ptr<Router>& router);
 
     /**
-     * @brief ÔËĞĞ
+     * @brief è¿è¡Œ
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     void run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
@@ -49,51 +49,51 @@ public:
 
 private:
     /**
-     * @brief HTTP»á»°
+     * @brief HTTPä¼šè¯
      */
     struct Session
     {
-        std::weak_ptr<TcpSession> wpTcpSession; /* TCP»á»° */
-        std::shared_ptr<Request> req; /* ÇëÇó */
+        std::weak_ptr<TcpSession> wpTcpSession; /* TCPä¼šè¯ */
+        std::shared_ptr<Request> req; /* è¯·æ±‚ */
     };
 
 private:
     /**
-     * @brief ´¦ÀíĞÂÁ¬½Ó
+     * @brief å¤„ç†æ–°è¿æ¥
      */
     void handleNewConnection(const std::weak_ptr<TcpSession>& wpSession);
 
     /**
-     * @brief ´¦ÀíÁ¬½ÓÊı¾İ
+     * @brief å¤„ç†è¿æ¥æ•°æ®
      */
     void handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data);
 
     /**
-     * @brief ´¦ÀíÁ¬½Ó¶Ï¿ª
+     * @brief å¤„ç†è¿æ¥æ–­å¼€
      */
     void handleConnectionClose(int64_t sid);
 
     /**
-     * @brief ´¦ÀíÇëÇóÍ·
+     * @brief å¤„ç†è¯·æ±‚å¤´
      */
     void handleReqHead(const std::shared_ptr<Session>& session);
 
     /**
-     * @brief ´¦ÀíÇëÇóÄÚÈİ
+     * @brief å¤„ç†è¯·æ±‚å†…å®¹
      */
     void handleReqContent(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen);
 
     /**
-     * @brief ´¦ÀíÇëÇó½áÊø
+     * @brief å¤„ç†è¯·æ±‚ç»“æŸ
      */
     void handleReqFinish(const std::shared_ptr<Session>& session);
 
 private:
-    std::shared_ptr<TcpServer> m_tcpServer; /* TCP·şÎñÆ÷ */
+    std::shared_ptr<TcpServer> m_tcpServer; /* TCPæœåŠ¡å™¨ */
     std::mutex m_mutex;
-    std::unordered_map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* »á»°±í */
-    std::function<void(const REQUEST_PTR& req)> m_routerNotFoundCb; /* Â·ÓÉÎ´ÕÒµ½»Øµ÷ */
-    std::unordered_map<std::string, std::shared_ptr<Router>> m_routerMap; /* Â·ÓÉ±í */
+    std::unordered_map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* ä¼šè¯è¡¨ */
+    std::function<void(const REQUEST_PTR& req)> m_routerNotFoundCb; /* è·¯ç”±æœªæ‰¾åˆ°å›è°ƒ */
+    std::unordered_map<std::string, std::shared_ptr<Router>> m_routerMap; /* è·¯ç”±è¡¨ */
 };
 } // namespace http
 } // namespace nsocket

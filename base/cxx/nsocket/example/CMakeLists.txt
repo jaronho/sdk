@@ -59,6 +59,16 @@ get_cxx_files(${base_nsocket_path}/nsocket/tcp src_list)
 list(APPEND base_nsocket_tcp_src_list ${src_list})
 source_group(3rdparty/base/nsocket/tcp FILES ${base_nsocket_tcp_src_list})
 
+set(base_nsocket_websocket_base64_src_list)
+get_cxx_files(${base_nsocket_path}/nsocket/websocket/base64 src_list)
+list(APPEND base_nsocket_websocket_base64_src_list ${src_list})
+source_group(3rdparty/base/nsocket/websocket/base64 FILES ${base_nsocket_websocket_base64_src_list})
+
+set(base_nsocket_websocket_sha1_src_list)
+get_cxx_files(${base_nsocket_path}/nsocket/websocket/sha1 src_list)
+list(APPEND base_nsocket_websocket_sha1_src_list ${src_list})
+source_group(3rdparty/base/nsocket/websocket/sha1 FILES ${base_nsocket_websocket_sha1_src_list})
+
 set(base_nsocket_websocket_src_list)
 get_cxx_files(${base_nsocket_path}/nsocket/websocket src_list)
 list(APPEND base_nsocket_websocket_src_list ${src_list})
@@ -73,6 +83,8 @@ set(base_nsocket_files) # 工程中需要把nsocket的文件添加进去
 list(APPEND base_nsocket_files ${base_nsocket_core_src_list}
                                ${base_nsocket_http_src_list}
                                ${base_nsocket_tcp_src_list}
+                               ${base_nsocket_websocket_base64_src_list}
+                               ${base_nsocket_websocket_sha1_src_list}
                                ${base_nsocket_websocket_src_list}
                                ${base_nsocket_src_list})
 

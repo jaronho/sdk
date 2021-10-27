@@ -5,7 +5,7 @@ namespace nsocket
 namespace http
 {
 /**
- * @brief »ñÈ¡Ö¸¶¨±êÖ¾ÔÚ×Ö·û´®ÖĞµÄ½áÊøÎ»ÖÃ(²»Çø·Ö´óĞ¡Ğ´)
+ * @brief è·å–æŒ‡å®šæ ‡å¿—åœ¨å­—ç¬¦ä¸²ä¸­çš„ç»“æŸä½ç½®(ä¸åŒºåˆ†å¤§å°å†™)
  */
 static size_t getMarkEndPos(const std::string& str, const std::string& mark)
 {
@@ -14,7 +14,7 @@ static size_t getMarkEndPos(const std::string& str, const std::string& mark)
     {
         if (tmp.size() == mark.size())
         {
-            /* ²»Çø·Ö´óĞ¡Ğ´ */
+            /* ä¸åŒºåˆ†å¤§å°å†™ */
             if (std::equal(tmp.begin(), tmp.end(), mark.begin(), [](char a, char b) { return tolower(a) == tolower(b); }))
             {
                 return i;
@@ -33,7 +33,7 @@ MultipartFormData::MultipartFormData(const std::string& boundary)
 {
     if (!boundary.empty())
     {
-        m_boundary = "--" + boundary; /* Êµ¼ÊµÄ±ß½çÏßĞèÒª¶à2¸ö'-' */
+        m_boundary = "--" + boundary; /* å®é™…çš„è¾¹ç•Œçº¿éœ€è¦å¤š2ä¸ª'-' */
     }
 }
 
@@ -111,7 +111,7 @@ int MultipartFormData::parseBoundary(const unsigned char* data, int length)
         {
             if (SepFlag::R == m_sepFlag)
             {
-                if (0 == m_nowLine.compare(m_boundary)) /* ·¢ÏÖ±ß½çÏß */
+                if (0 == m_nowLine.compare(m_boundary)) /* å‘ç°è¾¹ç•Œçº¿ */
                 {
                     m_sepFlag = SepFlag::NONE;
                     m_parseStep = ParseStep::CONTENT_DISPOSITION;
@@ -130,7 +130,7 @@ int MultipartFormData::parseBoundary(const unsigned char* data, int length)
             if (SepFlag::NONE == m_sepFlag)
             {
                 m_nowLine.push_back(ch);
-                if (0 == m_nowLine.compare(m_boundary + "--")) /* ·¢ÏÖ±íµ¥½áÊø */
+                if (0 == m_nowLine.compare(m_boundary + "--")) /* å‘ç°è¡¨å•ç»“æŸ */
                 {
                     m_parseStep = ParseStep::ENDING;
                     m_nowLine.clear();
@@ -171,7 +171,7 @@ int MultipartFormData::parseContentDisposition(const unsigned char* data, int le
         {
             if (SepFlag::R == m_sepFlag)
             {
-                if (parseNameAndFilename()) /* Ãû×ÖºÍÎÄ¼şÃû½âÎö³É¹¦ */
+                if (parseNameAndFilename()) /* åå­—å’Œæ–‡ä»¶åè§£ææˆåŠŸ */
                 {
                     m_sepFlag = SepFlag::NONE;
                     m_parseStep = ParseStep::CONTENT_TYPE;
@@ -211,7 +211,7 @@ bool MultipartFormData::parseNameAndFilename()
     static const std::string NAME_TAG = "name=\"";
     static const std::string FILENAME_TAG = "; filename=\"";
     pos = sec.rfind(FILENAME_TAG);
-    if (std::string::npos != pos) /* ÓĞÎÄ¼şÃû */
+    if (std::string::npos != pos) /* æœ‰æ–‡ä»¶å */
     {
         m_filename = sec.substr(pos + FILENAME_TAG.size(), sec.size() - pos - FILENAME_TAG.size() - 1);
         sec = sec.substr(0, pos);
@@ -402,23 +402,23 @@ int MultipartFormData::parseFileContent(const unsigned char* data, int length, c
         }
         else
         {
-            if (SepFlag::RN == m_sepFlag) /* ³¢ÊÔÆ´½Ó±ß½çÏß */
+            if (SepFlag::RN == m_sepFlag) /* å°è¯•æ‹¼æ¥è¾¹ç•Œçº¿ */
             {
                 m_nowLine.push_back(ch);
-                if (prevLine.size() + m_nowLine.size() == m_boundary.size()) /* Æ¥ÅäÁË±ß½çÏß³¤¶È */
+                if (prevLine.size() + m_nowLine.size() == m_boundary.size()) /* åŒ¹é…äº†è¾¹ç•Œçº¿é•¿åº¦ */
                 {
-                    if (0 == (prevLine + m_nowLine).compare(m_boundary)) /* ±ß½çÏß */
+                    if (0 == (prevLine + m_nowLine).compare(m_boundary)) /* è¾¹ç•Œçº¿ */
                     {
                         if (fileCb)
                         {
-                            fileCb(m_name, m_filename, m_contentType, m_fileOffset, data, rpos, true); /* ÎÄ¼ş½ÓÊÕ½áÊø */
+                            fileCb(m_name, m_filename, m_contentType, m_fileOffset, data, rpos, true); /* æ–‡ä»¶æ¥æ”¶ç»“æŸ */
                         }
                         m_sepFlag = SepFlag::NONE;
                         m_parseStep = ParseStep::BOUNDARY;
                         m_nowLine.clear();
                         return rpos + 2;
                     }
-                    /* ·Ç±ß½çÏß */
+                    /* éè¾¹ç•Œçº¿ */
                     handlePrevLine(prevLine, fileCb);
                     m_sepFlag = SepFlag::NONE;
                     m_nowLine.clear();
@@ -430,7 +430,7 @@ int MultipartFormData::parseFileContent(const unsigned char* data, int length, c
             }
         }
     }
-    if (m_nowLine.empty()) /* ²»´æÔÚ¿ÉÒÉµÄ±ß½çÏß, ÔòÕû¿éÊı¾İ¶¼ÊÇÎÄ¼şÄÚÈİ */
+    if (m_nowLine.empty()) /* ä¸å­˜åœ¨å¯ç–‘çš„è¾¹ç•Œçº¿, åˆ™æ•´å—æ•°æ®éƒ½æ˜¯æ–‡ä»¶å†…å®¹ */
     {
         if (fileCb)
         {
@@ -438,7 +438,7 @@ int MultipartFormData::parseFileContent(const unsigned char* data, int length, c
         }
         m_fileOffset += used;
     }
-    else /* ¿ÉÄÜÓĞ±ß½çÏß, ÔòÏÈ´¦ÀíÈ·¶¨µÄÎÄ¼şÊı¾İ¿é */
+    else /* å¯èƒ½æœ‰è¾¹ç•Œçº¿, åˆ™å…ˆå¤„ç†ç¡®å®šçš„æ–‡ä»¶æ•°æ®å— */
     {
         if (rpos > 0)
         {
@@ -456,7 +456,7 @@ void MultipartFormData::handlePrevLine(std::string& prevLine, const FILE_CALLBAC
 {
     if (!prevLine.empty())
     {
-        /* Ç°Ò»ĞĞĞèÒªÆ´½ÓÉÏ"\r\n" */
+        /* å‰ä¸€è¡Œéœ€è¦æ‹¼æ¥ä¸Š"\r\n" */
         prevLine.insert(prevLine.begin(), '\n');
         prevLine.insert(prevLine.begin(), '\r');
         if (fileCb)
@@ -464,7 +464,7 @@ void MultipartFormData::handlePrevLine(std::string& prevLine, const FILE_CALLBAC
             fileCb(m_name, m_filename, m_contentType, m_fileOffset, (const unsigned char*)prevLine.data(), prevLine.size(), false);
         }
         m_fileOffset += prevLine.size();
-        prevLine.clear(); /* Ç°Ò»ĞĞÊı¾İÒÑ´¦Àí, ÔòÒªÇå¿Õ */
+        prevLine.clear(); /* å‰ä¸€è¡Œæ•°æ®å·²å¤„ç†, åˆ™è¦æ¸…ç©º */
     }
 }
 } // namespace http

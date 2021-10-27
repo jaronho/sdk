@@ -2,9 +2,9 @@
 
 namespace nsocket
 {
-namespace http
+namespace ws
 {
-static const std::vector<std::string> METHOD_NAMES = {"GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "OPTIONS", "CONNECT", "PATCH"};
+static const std::vector<std::string> METHOD_NAMES = {"GET"};
 static const std::vector<std::string> VERSION_NAMES = {"HTTP/0.9", "HTTP/1.0", "HTTP/1.1", "HTTP/2"};
 
 /**
@@ -59,8 +59,7 @@ static std::string percentDecode(const std::string& value) noexcept
     return result;
 }
 
-int Request::parse(const unsigned char* data, int length, const HEAD_CALLBACK& headCb, const CONTENT_CALLBACK& contentCb,
-                   const FINISH_CALLBACK& finishCb)
+int Request::parse(const unsigned char* data, int length, const HEAD_CALLBACK& headCb)
 {
     if (!data || length <= 0)
     {
@@ -99,16 +98,13 @@ int Request::parse(const unsigned char* data, int length, const HEAD_CALLBACK& h
             }
             break;
         case ParseStep::HEADER: /* 解析头部 */
-            if ((used = parseHeader(remainData, remainLen, headCb, finishCb)) <= 0)
+            if ((used = parseHeader(remainData, remainLen, headCb)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::CONTENT: /* 解析内容 */
-            if ((used = parseContent(remainData, remainLen, contentCb, finishCb)) <= 0)
-            {
-                return 0;
-            }
+        case ParseStep::ENDING:
+            used = remainLen;
             break;
         }
         totalUsed += used;
@@ -116,14 +112,19 @@ int Request::parse(const unsigned char* data, int length, const HEAD_CALLBACK& h
     return totalUsed;
 }
 
-std::string Request::getContentType()
+bool Request::isEnding()
 {
-    return m_contentType;
+    return (ParseStep::ENDING == m_parseStep);
 }
 
-size_t Request::getContentLength()
+int Request::getSecWebSocketVersion()
 {
-    return m_contentLength;
+    return m_secWebSocketVersion;
+}
+
+std::string Request::getSecWebSocketKey()
+{
+    return m_secWebSocketKey;
 }
 
 int Request::parseMethod(const unsigned char* data, int length)
@@ -288,7 +289,7 @@ int Request::parseVersion(const unsigned char* data, int length)
     return used;
 }
 
-int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLBACK& headCb, const FINISH_CALLBACK& finishCb)
+int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLBACK& headCb)
 {
     int used = 0;
     for (; used < length; ++used)
@@ -336,19 +337,16 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                     headers.insert(std::make_pair(m_tmpKey, m_tmpValue));
                     parseContentTypeAndLength();
                 }
+                if (!checkHeader())
+                {
+                    return 0;
+                }
                 resetTmpKV();
                 m_sepFlag = SepFlag::NONE;
-                m_parseStep = ParseStep::CONTENT;
+                m_parseStep = ParseStep::ENDING;
                 if (headCb)
                 {
                     headCb();
-                }
-                if (0 == m_contentLength)
-                {
-                    if (finishCb)
-                    {
-                        finishCb();
-                    }
                 }
                 return (used + 1);
             }
@@ -401,55 +399,10 @@ void Request::parseContentTypeAndLength()
 {
     if (case_insensitive_equal("Content-Type", m_tmpKey)) /* 内容类型 */
     {
-        m_contentType = m_tmpValue;
     }
     else if (case_insensitive_equal("Content-Length", m_tmpKey)) /* 内容长度 */
     {
-        try
-        {
-            m_contentLength = atoll(m_tmpValue.c_str());
-        }
-        catch (...)
-        {
-            m_contentLength = 0;
-        }
     }
-}
-
-int Request::parseContent(const unsigned char* data, int length, const CONTENT_CALLBACK& contentCb, const FINISH_CALLBACK& finishCb)
-{
-    int used = length;
-    if (m_contentReceived + used > m_contentLength)
-    {
-        used = m_contentLength - m_contentReceived;
-    }
-    if (contentCb)
-    {
-        contentCb(m_contentReceived, data, used);
-    }
-    m_contentReceived += used;
-    if (m_contentReceived == m_contentLength) /* 数据都已接收完毕 */
-    {
-        if (finishCb)
-        {
-            finishCb();
-        }
-    }
-    if (length - used > 0) /* 有剩余数据, 解析下一个请求(这是只是预防性判断, 几乎不会有一个数据包存在多个请求) */
-    {
-        method.clear();
-        uri.clear();
-        queries.clear();
-        version.clear();
-        headers.clear();
-        m_sepFlag = SepFlag::NONE;
-        m_parseStep = ParseStep::METHOD;
-        resetTmpKV();
-        m_contentType.clear();
-        m_contentLength = 0;
-        m_contentReceived = 0;
-    }
-    return used;
 }
 
 int Request::maxMethodLength()
@@ -508,11 +461,45 @@ bool Request::checkVersion()
     return false;
 }
 
+bool Request::checkHeader()
+{
+    auto iter = headers.find("Connection");
+    if (headers.end() == iter || !case_insensitive_equal("Upgrade", iter->second))
+    {
+        return false;
+    }
+    iter = headers.find("Upgrade");
+    if (headers.end() == iter || !case_insensitive_equal("websocket", iter->second))
+    {
+        return false;
+    }
+    iter = headers.find("Sec-WebSocket-Version");
+    if (headers.end() == iter || iter->second.empty())
+    {
+        return false;
+    }
+    try
+    {
+        m_secWebSocketVersion = atoi(iter->second.c_str());
+    }
+    catch (...)
+    {
+        m_secWebSocketVersion = 0;
+    }
+    iter = headers.find("Sec-WebSocket-Key");
+    if (headers.end() == iter || iter->second.empty())
+    {
+        return false;
+    }
+    m_secWebSocketKey = iter->second;
+    return true;
+}
+
 void Request::resetTmpKV()
 {
     m_tmpKeyFlag = true;
     m_tmpKey.clear();
     m_tmpValue.clear();
 }
-} // namespace http
+} // namespace ws
 } // namespace nsocket

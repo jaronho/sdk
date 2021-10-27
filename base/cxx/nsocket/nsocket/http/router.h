@@ -12,7 +12,7 @@ namespace nsocket
 namespace http
 {
 /**
- * @brief Â·ÓÉ
+ * @brief è·¯ç”±
  */
 class Router
 {
@@ -20,23 +20,23 @@ class Router
 
 protected:
     /**
-     * @brief ÊÕµ½¿Í»§¶ËÇëÇóÍ·
+     * @brief æ”¶åˆ°å®¢æˆ·ç«¯è¯·æ±‚å¤´
      */
     virtual void onReqHead(int64_t sid, const REQUEST_PTR& req);
 
     /**
-     * @brief ÊÕµ½¿Í»§¶ËÇëÇóÄÚÈİ
+     * @brief æ”¶åˆ°å®¢æˆ·ç«¯è¯·æ±‚å†…å®¹
      */
     virtual void onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen);
 
     /**
-     * @brief ÏìÓ¦¿Í»§¶Ë
+     * @brief å“åº”å®¢æˆ·ç«¯
      */
     virtual RESPONSE_PTR onResponse(int64_t sid, const REQUEST_PTR& req);
 };
 
 /**
- * @brief Â·ÓÉ(¶ÔÄÚÈİÅú´Î½ÓÊÕ, Õë¶Ô´óÊıÁ¿µÄÇëÇó, ±ÈÈçÉÏ´«ÎÄ¼şÖ®ÀàµÄ)
+ * @brief è·¯ç”±(å¯¹å†…å®¹æ‰¹æ¬¡æ¥æ”¶, é’ˆå¯¹å¤§æ•°é‡çš„è¯·æ±‚, æ¯”å¦‚ä¸Šä¼ æ–‡ä»¶ä¹‹ç±»çš„)
  */
 class Router_batch : public Router
 {
@@ -52,7 +52,7 @@ protected:
 };
 
 /**
- * @brief Â·ÓÉ(ÄÚÈİÒ»´ÎĞÔ½ÓÊÕ, Õë¶ÔĞ¡Êı¾İÁ¿µÄÇëÇó)
+ * @brief è·¯ç”±(å†…å®¹ä¸€æ¬¡æ€§æ¥æ”¶, é’ˆå¯¹å°æ•°æ®é‡çš„è¯·æ±‚)
  */
 class Router_simple : public Router
 {
@@ -69,7 +69,7 @@ private:
 };
 
 /**
- * @brief Â·ÓÉ(application/x-www-form-urlencoded)
+ * @brief è·¯ç”±(application/x-www-form-urlencoded)
  */
 class Router_x_www_form_urlencoded : public Router
 {
@@ -94,7 +94,7 @@ private:
 };
 
 /**
- * @brief Â·ÓÉ(multipart/form-data)
+ * @brief è·¯ç”±(multipart/form-data)
  */
 class Router_multipart_form_data : public Router
 {

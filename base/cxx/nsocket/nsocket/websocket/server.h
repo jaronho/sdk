@@ -4,26 +4,39 @@
 #include <unordered_map>
 
 #include "../tcp/tcp_server.h"
+#include "request.h"
+#include "response.h"
+#include "session.h"
 
 namespace nsocket
 {
 namespace ws
 {
+using WS_REQUEST_CALLBACK = std::function<std::shared_ptr<Response>(const SESSION_PTR& session)>;
+using WS_OPEN_CALLBACK = std::function<void(const SESSION_PTR& session)>;
+using WS_CLOSE_CALLBACK = std::function<void(const SESSION_PTR& session)>;
+
 /**
- * @brief WebSocket·şÎñÆ÷
+ * @brief WebSocketæœåŠ¡å™¨
  */
 class Server final : public std::enable_shared_from_this<Server>
 {
 public:
     /**
-     * @brief ¹¹Ôìº¯Êı
-     * @param host Ö÷»úµØÖ·
-     * @param port ¶Ë¿Ú
+     * @brief æ„é€ å‡½æ•°
+     * @param host ä¸»æœºåœ°å€
+     * @param port ç«¯å£
      */
     Server(const std::string& host, unsigned int port);
 
+    void setRequestCallback(const WS_REQUEST_CALLBACK& cb);
+
+    void setOpenCallback(const WS_OPEN_CALLBACK& cb);
+
+    void setCloseCallback(const WS_CLOSE_CALLBACK& cb);
+
     /**
-     * @brief ÔËĞĞ
+     * @brief è¿è¡Œ
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     void run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
@@ -33,22 +46,32 @@ public:
 
 private:
     /**
-     * @brief ´¦ÀíĞÂÁ¬½Ó
+     * @brief å¤„ç†æ–°è¿æ¥
      */
     void handleNewConnection(const std::weak_ptr<TcpSession>& wpSession);
 
     /**
-     * @brief ´¦ÀíÁ¬½ÓÊı¾İ
+     * @brief å¤„ç†è¿æ¥æ•°æ®
      */
     void handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data);
 
     /**
-     * @brief ´¦ÀíÁ¬½Ó¶Ï¿ª
+     * @brief å¤„ç†è¿æ¥æ–­å¼€
      */
-    void handleConnectionClose(int64_t sid);
+    void handleConnectionClose(int64_t sid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code);
+
+    /**
+     * @brief å¤„ç†è¯·æ±‚
+     */
+    void handleRequest(const std::shared_ptr<Session>& session);
 
 private:
-    std::shared_ptr<TcpServer> m_tcpServer; /* TCP·şÎñÆ÷ */
+    std::shared_ptr<TcpServer> m_tcpServer; /* TCPæœåŠ¡å™¨ */
+    std::mutex m_mutex;
+    std::unordered_map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* ä¼šè¯è¡¨ */
+    WS_REQUEST_CALLBACK m_onRequestCallback;
+    WS_OPEN_CALLBACK m_onOpenCallback;
+    WS_CLOSE_CALLBACK m_onCloseCallback;
 };
 } // namespace ws
 } // namespace nsocket

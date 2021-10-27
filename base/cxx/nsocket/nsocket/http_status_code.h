@@ -3,12 +3,10 @@
 
 namespace nsocket
 {
-namespace http
-{
 /**
- * @brief ×´Ì¬ÂëÀàĞÍ
+ * @brief HTTPçŠ¶æ€ç ç±»å‹
  */
-enum class StatusCode
+enum class HttpStatusCode
 {
     unknown = 0,
     information_continue = 100,
@@ -75,17 +73,16 @@ enum class StatusCode
 };
 
 /**
- * @brief »ñÈ¡×´Ì¬Âë
- * @param desc ×´Ì¬ÃèÊö
- * @return ×´Ì¬Âë
+ * @brief è·å–HTTPçŠ¶æ€ç 
+ * @param desc çŠ¶æ€æè¿°
+ * @return çŠ¶æ€ç 
  */
-StatusCode status_code(const std::string& desc);
+HttpStatusCode http_status_code(const std::string& desc);
 
 /**
- * @brief »ñÈ¡×´Ì¬ÃèÊö
- * @param code ×´Ì¬Âë
- * @return ×´Ì¬ÃèÊö
+ * @brief è·å–HTTPçŠ¶æ€æè¿°
+ * @param code çŠ¶æ€ç 
+ * @return çŠ¶æ€æè¿°
  */
-std::string status_desc(const StatusCode& code);
-} // namespace http
+std::string http_status_desc(const HttpStatusCode& code);
 } // namespace nsocket

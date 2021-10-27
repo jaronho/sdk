@@ -8,10 +8,10 @@
 
 namespace nsocket
 {
-namespace http
+namespace ws
 {
 /**
- * @brief HTTP请求
+ * @brief WebSocket请求
  */
 class Request
 {
@@ -21,43 +21,33 @@ public:
      */
     using HEAD_CALLBACK = std::function<void()>;
 
-    /**
-     * @brief 内容回调
-     * @param offset 当前分段数据的偏移值
-     * @param data 分段数据
-     * @param dataLen 分段数据长度 
-     */
-    using CONTENT_CALLBACK = std::function<void(size_t offset, const unsigned char* data, int dataLen)>;
-
-    /**
-     * @brief 结束回调
-     */
-    using FINISH_CALLBACK = std::function<void()>;
-
 public:
     /**
      * @brief 解析
      * @param data 收到的数据
      * @param length 数据长度
      * @param headCb 头部回调
-     * @param contentCb 内容回调
-     * @param finishCb 结束回调
      * @return 已解析的数据长度, <=0表示解析出错
      */
-    int parse(const unsigned char* data, int length, const HEAD_CALLBACK& headCb, const CONTENT_CALLBACK& contentCb,
-              const FINISH_CALLBACK& finishCb);
+    int parse(const unsigned char* data, int length, const HEAD_CALLBACK& headCb);
 
     /**
-     * @brief 获取内容类型
-     * @return 内容类型
+     * @brief 是否解析结束
+     * @return true-结束, false-未结束
      */
-    std::string getContentType();
+    bool isEnding();
 
     /**
-     * @brief 获取内容长度
-     * @return 内容长度
+     * @brief 获取Sec-WebSocket-Version值
+     * @return 值
      */
-    size_t getContentLength();
+    int getSecWebSocketVersion();
+
+    /**
+     * @brief 获取Sec-WebSocket-Key值
+     * @return 值
+     */
+    std::string getSecWebSocketKey();
 
 public:
     std::string method; /* 方法 */
@@ -103,26 +93,15 @@ private:
      * @brief 解析头部
      * @param data 数据
      * @param length 数据长度
-     * @param headCb 头部回调
      * @param finishCb 结束回调
      * @return 已解析的数据长度, <=0表示解析出错
      */
-    int parseHeader(const unsigned char* data, int length, const HEAD_CALLBACK& headCb, const FINISH_CALLBACK& finishCb);
+    int parseHeader(const unsigned char* data, int length, const HEAD_CALLBACK& headCb);
 
     /**
      * @brief 解析内容类型和长度
      */
     void parseContentTypeAndLength();
-
-    /**
-     * @brief 解析内容
-     * @param data 数据
-     * @param length 数据长度
-     * @param contentCb 内容回调
-     * @param finishCb 结束回调
-     * @return 已解析的数据长度, <=0表示解析出错
-     */
-    int parseContent(const unsigned char* data, int length, const CONTENT_CALLBACK& contentCb, const FINISH_CALLBACK& finishCb);
 
     /**
      * @brief 获取方法名最大长度
@@ -147,6 +126,12 @@ private:
      * @return true-合法, false-非法
      */
     bool checkVersion();
+
+    /**
+     * @brief 检查头部是否合法
+     * @return true-合法, false-非法
+     */
+    bool checkHeader();
 
     /**
      * @brief 重置键值缓存
@@ -175,7 +160,7 @@ private:
         QUERIES, /* 请求参数 */
         VERSION, /* 版本 */
         HEADER, /* 头部 */
-        CONTENT /* 内容 */
+        ENDING /* 结束 */
     };
 
     SepFlag m_sepFlag = SepFlag::NONE; /* 分隔符 */
@@ -183,10 +168,9 @@ private:
     bool m_tmpKeyFlag = true; /* 是否键 */
     std::string m_tmpKey; /* 键名 */
     std::string m_tmpValue; /* 键值 */
-    std::string m_contentType; /* 内容类型 */
-    size_t m_contentLength = 0; /* 内容长度 */
-    size_t m_contentReceived = 0; /* 内容已接收长度 */
+    int m_secWebSocketVersion = 0; /* Sec-WebSocket-Version值 */
+    std::string m_secWebSocketKey; /* Sec-WebSocket-Key值 */
 };
 using REQUEST_PTR = std::shared_ptr<Request>;
-} // namespace http
+} // namespace ws
 } // namespace nsocket

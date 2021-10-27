@@ -9,10 +9,10 @@
 
 namespace nsocket
 {
-namespace http
+namespace ws
 {
 /**
- * @brief HTTP响应
+ * @brief WebSocket响应
  */
 class Response
 {
@@ -21,13 +21,16 @@ public:
      * @brief 创建响应数据
      * @param data [输出]响应数据
      */
-    void create(std::vector<unsigned char>& data);
+    void create(std::vector<unsigned char>& data, const std::string& secWebSocketKey);
+
+private:
+    std::string calcSecWebSocketAccept(const std::string& secWebSocketKey);
 
 public:
     std::string version = "HTTP/1.1"; /* 版本 */
-    HttpStatusCode statusCode = HttpStatusCode::success_ok; /* 状态码 */
+    HttpStatusCode statusCode = HttpStatusCode::information_switching_protocols; /* 状态码 */
     CaseInsensitiveMultimap headers; /* 头部 */
 };
 using RESPONSE_PTR = std::shared_ptr<Response>;
-} // namespace http
+} // namespace ws
 } // namespace nsocket

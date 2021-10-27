@@ -71,12 +71,11 @@ void Server::handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, co
             return;
         }
         auto session = iter->second;
-        auto req = session->req;
-        int used = req->parse(
+        int used = session->req->parse(
             data.data(), data.size(), [&]() { handleReqHead(session); },
             [&](size_t offset, const unsigned char* data, int dataLen) { handleReqContent(session, offset, data, dataLen); },
             [&]() { handleReqFinish(session); });
-        if (used <= 0) /* ½âÎöÊ§°Ü */
+        if (used <= 0) /* è§£æå¤±è´¥ */
         {
             tcpSession->close();
         }
@@ -97,7 +96,7 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
 {
     auto req = session->req;
 #if 0
-    /* ĞÅÏ¢´òÓ¡ */
+    /* ä¿¡æ¯æ‰“å° */
     printf("\n======================================================================\n");
     printf("===  Method: %s\n", req->method.c_str());
     printf("===     Uri: %s\n", req->uri.c_str());
@@ -125,29 +124,29 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
     const auto tcpSession = session->wpTcpSession.lock();
     if (tcpSession)
     {
-        /* Â·ÓÉ */
+        /* è·¯ç”± */
         auto iter = m_routerMap.find(req->uri);
-        if (m_routerMap.end() == iter) /* Î´ÕÒµ½ */
+        if (m_routerMap.end() == iter) /* æœªæ‰¾åˆ° */
         {
             if (m_routerNotFoundCb)
             {
                 m_routerNotFoundCb(req);
             }
         }
-        else /* ÕÒµ½ */
+        else /* æ‰¾åˆ° */
         {
-            /* À©Õ¹Êı¾İ½ÓÊÕ»º³åÇø */
+            /* æ‰©å±•æ•°æ®æ¥æ”¶ç¼“å†²åŒº */
             int bufferSize = req->getContentLength();
             if (bufferSize > 1024)
             {
                 static const int MB = 1024 * 1024;
-                if (bufferSize > MB) /* ÉÏÏŞÎª1Mb */
+                if (bufferSize > MB) /* ä¸Šé™ä¸º1Mb */
                 {
                     bufferSize = MB;
                 }
                 tcpSession->resizeBuffer(bufferSize);
             }
-            /* ÏìÓ¦Í·Êı¾İ */
+            /* å“åº”å¤´æ•°æ® */
             iter->second->onReqHead(tcpSession->getId(), req);
         }
     }
@@ -158,7 +157,7 @@ void Server::handleReqContent(const std::shared_ptr<Session>& session, size_t of
     const auto tcpSession = session->wpTcpSession.lock();
     if (tcpSession)
     {
-        /* Â·ÓÉ */
+        /* è·¯ç”± */
         auto iter = m_routerMap.find(session->req->uri);
         if (m_routerMap.end() != iter)
         {
@@ -172,13 +171,13 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
     const auto tcpSession = session->wpTcpSession.lock();
     if (tcpSession)
     {
-        /* Â·ÓÉ */
+        /* è·¯ç”± */
         auto iter = m_routerMap.find(session->req->uri);
         std::shared_ptr<Response> resp = nullptr;
         if (m_routerMap.end() == iter)
         {
             resp = std::make_shared<Response>();
-            resp->statusCode = StatusCode::client_error_not_found;
+            resp->statusCode = HttpStatusCode::client_error_not_found;
         }
         else
         {
@@ -186,17 +185,17 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             if (!resp)
             {
                 resp = std::make_shared<Response>();
-                resp->statusCode = StatusCode::success_ok;
+                resp->statusCode = HttpStatusCode::success_ok;
             }
         }
-        /* ÏìÓ¦ */
+        /* å“åº” */
         std::vector<unsigned char> data;
         resp->create(data);
         tcpSession->send(data, [&, wpTcpSession = session->wpTcpSession](const boost::system::error_code& code, std::size_t length) {
             const auto tcpSession = wpTcpSession.lock();
             if (tcpSession)
             {
-                tcpSession->close(); /* ÏìÓ¦½áÊøºó, ĞèÒª¹Ø±ÕÁ¬½Ó(Ä³Ğ©¿Í»§¶Ë²»»áÖ÷¶¯¹Ø±ÕÁ¬½Ó) */
+                tcpSession->close(); /* å“åº”ç»“æŸå, éœ€è¦å…³é—­è¿æ¥(æŸäº›å®¢æˆ·ç«¯ä¸ä¼šä¸»åŠ¨å…³é—­è¿æ¥) */
             }
         });
     }
