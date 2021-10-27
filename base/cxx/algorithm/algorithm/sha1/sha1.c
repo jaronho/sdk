@@ -205,7 +205,7 @@ void sha1Update(sha1_ctx_t* context, const unsigned char* input, unsigned int in
     memcpy(&context->buffer[j], &input[i], inputLen - i);
 }
 
-char* sha1Final(sha1_ctx_t* context, unsigned char digest[20])
+char* sha1Final(sha1_ctx_t* context, unsigned char digest[20], int convertToStr)
 {
     unsigned int i, t;
     int j;
@@ -250,6 +250,10 @@ char* sha1Final(sha1_ctx_t* context, unsigned char digest[20])
     /* Wipe variables */
     memset(context, '\0', sizeof(*context));
     memset(&finalcount, '\0', sizeof(finalcount));
+    if (convertToStr <= 0) /* 不转字符串 */
+    {
+        return NULL;
+    }
     /* 把20位哈希转为十六进制字符串(40位小写) */
     digestStr = (char*)malloc(sizeof(char) * (SHA1STR_LEN + 1));
     if (!digestStr)
@@ -270,11 +274,19 @@ char* sha1Final(sha1_ctx_t* context, unsigned char digest[20])
     return digestStr;
 }
 
-char* sha1Sign(const unsigned char* input, int inputLen)
+void sha1Sign(const unsigned char* input, int inputLen, unsigned char digest[20])
 {
-    unsigned char hash[20];
     sha1_ctx_t ctx;
     sha1Init(&ctx);
     sha1Update(&ctx, input, inputLen);
-    return sha1Final(&ctx, hash);
+    sha1Final(&ctx, digest, 0);
+}
+
+char* sha1SignStr(const unsigned char* input, int inputLen)
+{
+    unsigned char digest[20];
+    sha1_ctx_t ctx;
+    sha1Init(&ctx);
+    sha1Update(&ctx, input, inputLen);
+    return sha1Final(&ctx, digest, 1);
 }

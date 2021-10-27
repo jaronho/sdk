@@ -215,7 +215,7 @@ void md5Update(md5_ctx_t* context, const unsigned char* input, unsigned int inpu
 }
 
 /* md5 finalization. Ends an md5 message-digest operation, writing the message digest and zeroizing the context. */
-char* md5Fini(md5_ctx_t* context, unsigned char digest[16])
+char* md5Fini(md5_ctx_t* context, unsigned char digest[16], int convertToStr)
 {
     unsigned char bits[8];
     unsigned int index, padLen;
@@ -234,6 +234,10 @@ char* md5Fini(md5_ctx_t* context, unsigned char digest[16])
     _encode(digest, context->state, 16);
     /* Zeroize sensitive information.*/
     memset((void*)context, 0, sizeof(*context));
+    if (convertToStr <= 0) /* 不转字符串 */
+    {
+        return NULL;
+    }
     /* 把16位哈希转为十六进制字符串(32位小写) */
     digestStr = (char*)malloc(sizeof(char) * (MD5STR_LEN + 1));
     if (!digestStr)
@@ -254,11 +258,19 @@ char* md5Fini(md5_ctx_t* context, unsigned char digest[16])
     return digestStr;
 }
 
-char* md5Sign(const unsigned char* input, unsigned int inputLen)
+void md5Sign(const unsigned char* input, unsigned int inputLen, unsigned char digest[16])
 {
-    unsigned char hash[16];
     md5_ctx_t md5;
     md5Init(&md5);
     md5Update(&md5, input, inputLen);
-    return md5Fini(&md5, hash);
+    md5Fini(&md5, digest, 0);
+}
+
+char* md5SignStr(const unsigned char* input, unsigned int inputLen)
+{
+    unsigned char digest[16];
+    md5_ctx_t md5;
+    md5Init(&md5);
+    md5Update(&md5, input, inputLen);
+    return md5Fini(&md5, digest, 1);
 }
