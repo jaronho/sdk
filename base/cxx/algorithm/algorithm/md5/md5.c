@@ -236,20 +236,19 @@ char* md5Fini(md5_ctx_t* context, unsigned char digest[16])
     memset((void*)context, 0, sizeof(*context));
     /* 把16位哈希转为十六进制字符串(32位小写) */
     digestStr = (char*)malloc(sizeof(char) * (MD5STR_LEN + 1));
+    if (!digestStr)
+    {
+        return NULL;
+    }
     digestStr[0] = 0;
     for (i = 0; i < 16; i++)
     {
+        memset(tmp, 0, sizeof(tmp));
 #ifdef _WIN32
-        sprintf_s(tmp, "%x", (unsigned char)digest[i]);
+        sprintf_s(tmp, sizeof(tmp), "%02x", (unsigned char)digest[i]);
 #else
-        sprintf(tmp, "%x", (unsigned char)digest[i]);
+        sprintf(tmp, sizeof(tmp), "%02x", (unsigned char)digest[i]);
 #endif
-        if (0 == tmp[1])
-        {
-            tmp[2] = 0;
-            tmp[1] = tmp[0];
-            tmp[0] = '0';
-        }
         strcat(digestStr, tmp);
     }
     return digestStr;
@@ -257,9 +256,9 @@ char* md5Fini(md5_ctx_t* context, unsigned char digest[16])
 
 char* md5Sign(const unsigned char* input, unsigned int inputLen)
 {
-    char hash[16];
+    unsigned char hash[16];
     md5_ctx_t md5;
     md5Init(&md5);
     md5Update(&md5, input, inputLen);
-    return md5Fini(&md5, (unsigned char*)hash);
+    return md5Fini(&md5, hash);
 }

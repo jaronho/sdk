@@ -25,6 +25,11 @@ get_cxx_files(${base_algorithm_path}/algorithm/rc4 src_list)
 list(APPEND base_algorithm_rc4_src_list ${src_list})
 source_group(3rdparty/base/algorithm/rc4 FILES ${base_algorithm_rc4_src_list})
 
+set(base_algorithm_sha1_src_list)
+get_cxx_files(${base_algorithm_path}/algorithm/sha1 src_list)
+list(APPEND base_algorithm_sha1_src_list ${src_list})
+source_group(3rdparty/base/algorithm/sha1 FILES ${base_algorithm_sha1_src_list})
+
 set(base_algorithm_sm3_src_list)
 get_cxx_files(${base_algorithm_path}/algorithm/sm3 src_list)
 list(APPEND base_algorithm_sm3_src_list ${src_list})
@@ -44,6 +49,7 @@ set(base_algorithm_files) # 工程中需要把algorithm的文件添加进去
 list(APPEND base_algorithm_files ${base_algorithm_base64_src_list}
                                  ${base_algorithm_md5_src_list}
                                  ${base_algorithm_rc4_src_list}
+                                 ${base_algorithm_sha1_src_list}
                                  ${base_algorithm_sm3_src_list}
                                  ${base_algorithm_snowflake_src_list}
                                  ${base_algorithm_src_list})

@@ -22,7 +22,7 @@ extern "C"
      * @brief 对字节流进行md5加密(支持大数据分段)
      * @param context 上下文
      * @param input 原始字节流
-     * @param inLength 输入的字节流长度
+     * @param inputLen 输入的字节流长度
      */
     void md5Update(md5_ctx_t* context, const unsigned char* input, unsigned int inputLen);
 
@@ -37,7 +37,7 @@ extern "C"
     /** 
      * @brief md5加密, 内部集成了md5Init, md5Update, md5Fini三个接口的调用(一般直接调用该接口即可)
      * @param input 原始字节流
-     * @param inLength 输入的字节流长度
+     * @param inputLen 输入的字节流长度
      * @return md5字符串(32位小写)(需要外部调用free释放内存)
      */
     char* md5Sign(const unsigned char* input, unsigned int inputLen);
