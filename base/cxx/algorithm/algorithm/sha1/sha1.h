@@ -39,7 +39,7 @@ extern "C"
      * @brief sha1加密, 内部集成了sha1Init, sha1Update, sha1Fini三个接口的调用(一般直接调用该接口即可)
      * @param input 原始字节流
      * @param inputLen 输入的字节流长度
-     * @param digest [输出]16位哈希值
+     * @param digest [输出]20位哈希值
      */
     void sha1Sign(const unsigned char* input, int inputLen, unsigned char digest[20]);
 
