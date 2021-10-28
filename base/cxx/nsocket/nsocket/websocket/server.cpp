@@ -24,6 +24,11 @@ void Server::setOpenCallback(const WS_OPEN_CALLBACK& cb)
     m_onOpenCallback = cb;
 }
 
+void Server::setMessageCalllback(const WS_MESSAGE_CALLBACK& cb)
+{
+    m_onMessageCallback = cb;
+}
+
 void Server::setCloseCallback(const WS_CLOSE_CALLBACK& cb)
 {
     m_onCloseCallback = cb;
@@ -60,6 +65,7 @@ void Server::handleNewConnection(const std::weak_ptr<TcpSession>& wpSession)
             auto session = std::make_shared<Session>();
             session->wpTcpSession = wpSession;
             session->req = std::make_shared<Request>();
+            session->frame = std::make_shared<Frame>();
             m_sessionMap.insert(std::make_pair(tcpSession->getId(), session));
         }
     }
@@ -75,17 +81,10 @@ void Server::handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, co
         int clientPort = (int)point.port();
         printf("++++++++++ on recv data [%lld] [%s:%d], length: %d\n", tcpSession->getId(), clientHost.c_str(), clientPort,
                (int)data.size());
-        /* 以十六进制格式打印数据 */
-        printf("+++++ [hex format]\n");
         for (size_t i = 0; i < data.size(); ++i)
         {
             printf("%02X ", data[i]);
         }
-        printf("\n");
-        /* 以字符串格式打印数据 */
-        printf("+++++ [string format]\n");
-        std::string str(data.begin(), data.end());
-        printf("%s", str.c_str());
         printf("\n");
         std::lock_guard<std::mutex> locker(m_mutex);
         auto iter = m_sessionMap.find(tcpSession->getId());
@@ -128,10 +127,9 @@ void Server::handleConnectionClose(int64_t sid, const boost::asio::ip::tcp::endp
     {
         m_sessionMap.erase(iter);
     }
-    auto session = iter->second;
     if (m_onCloseCallback)
     {
-        m_onCloseCallback(session);
+        m_onCloseCallback(sid);
     }
 }
 
@@ -152,8 +150,6 @@ void Server::handleRequest(const std::shared_ptr<Session>& session)
         }
         std::vector<unsigned char> data;
         resp->create(data, session->req->getSecWebSocketKey());
-        printf("+++++++++++++++++++++++++++++++++ response\n");
-        printf("%s\n", std::string(data.begin(), data.end()).c_str());
         /* 响应客户端, 用于通知客户端WebSocket连接建立成功 */
         std::weak_ptr<Session> wpSession = session;
         tcpSession->send(data,

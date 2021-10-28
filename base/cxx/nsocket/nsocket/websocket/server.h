@@ -14,7 +14,8 @@ namespace ws
 {
 using WS_REQUEST_CALLBACK = std::function<std::shared_ptr<Response>(const SESSION_PTR& session)>;
 using WS_OPEN_CALLBACK = std::function<void(const SESSION_PTR& session)>;
-using WS_CLOSE_CALLBACK = std::function<void(const SESSION_PTR& session)>;
+using WS_MESSAGE_CALLBACK = std::function<void(const SESSION_PTR& session, const std::vector<unsigned char>& data)>;
+using WS_CLOSE_CALLBACK = std::function<void(int64_t sid)>;
 
 /**
  * @brief WebSocket服务器
@@ -32,6 +33,8 @@ public:
     void setRequestCallback(const WS_REQUEST_CALLBACK& cb);
 
     void setOpenCallback(const WS_OPEN_CALLBACK& cb);
+
+    void setMessageCalllback(const WS_MESSAGE_CALLBACK& cb);
 
     void setCloseCallback(const WS_CLOSE_CALLBACK& cb);
 
@@ -71,6 +74,7 @@ private:
     std::unordered_map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
     WS_REQUEST_CALLBACK m_onRequestCallback;
     WS_OPEN_CALLBACK m_onOpenCallback;
+    WS_MESSAGE_CALLBACK m_onMessageCallback;
     WS_CLOSE_CALLBACK m_onCloseCallback;
 };
 } // namespace ws

@@ -20,10 +20,16 @@ public:
     /**
      * @brief 创建响应数据
      * @param data [输出]响应数据
+     * @param secWebSocketKey key值
      */
     void create(std::vector<unsigned char>& data, const std::string& secWebSocketKey);
 
 private:
+    /**
+     * @brief 计算Accept值
+     * @param secWebSocketKey key值
+     * @return Accept值
+     */
     std::string calcSecWebSocketAccept(const std::string& secWebSocketKey);
 
 public:

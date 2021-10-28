@@ -44,6 +44,7 @@ void Response::create(std::vector<unsigned char>& data, const std::string& secWe
 
 std::string Response::calcSecWebSocketAccept(const std::string& secWebSocketKey)
 {
+    /* Ëã·¨: accept = base64(sha1(key + MAGIC)) */
     static const std::string MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
     std::string accept;
     std::string str = secWebSocketKey + MAGIC;
