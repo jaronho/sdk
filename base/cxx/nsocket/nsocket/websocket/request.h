@@ -35,7 +35,7 @@ public:
      * @brief 是否解析结束
      * @return true-结束, false-未结束
      */
-    bool isEnding();
+    bool isParseEnd();
 
     /**
      * @brief 获取Sec-WebSocket-Version值
@@ -134,9 +134,9 @@ private:
     bool checkHeader();
 
     /**
-     * @brief 重置键值缓存
+     * @brief 清空临时数据
      */
-    void resetTmpKV();
+    void clearTmp();
 
 private:
     /**
@@ -160,7 +160,7 @@ private:
         QUERIES, /* 请求参数 */
         VERSION, /* 版本 */
         HEADER, /* 头部 */
-        ENDING /* 结束 */
+        FRAME /* 帧数据 */
     };
 
     SepFlag m_sepFlag = SepFlag::NONE; /* 分隔符 */

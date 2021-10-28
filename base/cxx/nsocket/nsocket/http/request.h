@@ -68,6 +68,11 @@ public:
 
 private:
     /**
+     * @brief 重置
+     */
+    void reset();
+
+    /**
      * @brief 解析方法
      * @param data 数据
      * @param length 数据长度
@@ -149,9 +154,9 @@ private:
     bool checkVersion();
 
     /**
-     * @brief 重置键值缓存
+     * @brief 清空临时数据
      */
-    void resetTmpKV();
+    void clearTmp();
 
 private:
     /**

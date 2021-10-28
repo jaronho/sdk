@@ -103,18 +103,17 @@ int Request::parse(const unsigned char* data, int length, const HEAD_CALLBACK& h
                 return 0;
             }
             break;
-        case ParseStep::ENDING:
-            used = remainLen;
-            break;
+        case ParseStep::FRAME:
+            return totalUsed;
         }
         totalUsed += used;
     }
     return totalUsed;
 }
 
-bool Request::isEnding()
+bool Request::isParseEnd()
 {
-    return (ParseStep::ENDING == m_parseStep);
+    return (ParseStep::FRAME == m_parseStep);
 }
 
 int Request::getSecWebSocketVersion()
@@ -194,7 +193,7 @@ int Request::parseQueries(const unsigned char* data, int length)
             {
                 queries.insert(std::make_pair(m_tmpKey, percentDecode(m_tmpValue)));
             }
-            resetTmpKV();
+            clearTmp();
             m_parseStep = ParseStep::VERSION;
             return (used + 1);
         }
@@ -222,7 +221,7 @@ int Request::parseQueries(const unsigned char* data, int length)
                     return 0;
                 }
                 queries.insert(std::make_pair(m_tmpKey, percentDecode(m_tmpValue)));
-                resetTmpKV();
+                clearTmp();
             }
             else
             {
@@ -326,7 +325,7 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                     }
                     headers.insert(std::make_pair(m_tmpKey, m_tmpValue));
                     parseContentTypeAndLength();
-                    resetTmpKV();
+                    clearTmp();
                     m_sepFlag = SepFlag::NONE;
                 }
             }
@@ -341,9 +340,9 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                 {
                     return 0;
                 }
-                resetTmpKV();
+                clearTmp();
                 m_sepFlag = SepFlag::NONE;
-                m_parseStep = ParseStep::ENDING;
+                m_parseStep = ParseStep::FRAME;
                 if (headCb)
                 {
                     headCb();
@@ -495,7 +494,7 @@ bool Request::checkHeader()
     return true;
 }
 
-void Request::resetTmpKV()
+void Request::clearTmp()
 {
     m_tmpKeyFlag = true;
     m_tmpKey.clear();

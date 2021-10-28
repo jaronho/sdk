@@ -14,9 +14,9 @@ Server::Server(const std::string& host, unsigned int port)
                                                 const boost::system::error_code& code) { handleConnectionClose(sid, point, code); });
 }
 
-void Server::setRequestCallback(const WS_REQUEST_CALLBACK& cb)
+void Server::setConnectingCallback(const WS_CONNECTING_CALLBACK& cb)
 {
-    m_onRequestCallback = cb;
+    m_onConnectingCallback = cb;
 }
 
 void Server::setOpenCallback(const WS_OPEN_CALLBACK& cb)
@@ -93,17 +93,49 @@ void Server::handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, co
             return;
         }
         auto session = iter->second;
-        if (session->req->isEnding()) /* 请求处理完毕, 后续收到的都是业务数据 */
+        int used = 0;
+        auto frameHeadCb = [&]() {
+            /* 扩展数据接收缓冲区 */
+            int bufferSize = session->frame->payloadLen;
+            if (bufferSize > 1024)
+            {
+                static const int MAX_BUFFER_SIZE = (65535 - 20 - 20);
+                if (bufferSize > MAX_BUFFER_SIZE) /* 限制上限 */
+                {
+                    bufferSize = MAX_BUFFER_SIZE;
+                }
+                tcpSession->resizeBuffer(bufferSize);
+            }
+            handleFrameHead(session);
+        };
+        auto framePayloadCb = [&](size_t offset, const unsigned char* data, int dataLen) {
+            handleFramePayload(session, offset, data, dataLen);
+        };
+        auto frameFinishCb = [&]() {
+            /* 调回数据接收缓冲区空间 */
+            if (tcpSession->getBufferSize() > 1024)
+            {
+                tcpSession->resizeBuffer(1024);
+            }
+            handleFrameFinish(session);
+        };
+        if (session->req->isParseEnd()) /* 请求处理完毕, 后续收到的都是帧数据 */
         {
-            printf("=========== xxxxx\n");
+            used = session->frame->parse(data.data(), data.size(), frameHeadCb, framePayloadCb, frameFinishCb);
         }
         else /* 请求未处理结束, 需要继续解析 */
         {
-            int used = session->req->parse(data.data(), data.size(), [&]() { handleRequest(session); });
-            if (used <= 0) /* 解析失败 */
+            used = session->req->parse(data.data(), data.size(), [&]() { handleRequest(session); });
+            int remainLen = data.size() - used;
+            if (remainLen > 0 && session->req->isParseEnd()) /* 有剩余数据, 则视为帧数据(该情况几乎不会出现, 这里只是防御性处理) */
             {
-                tcpSession->close();
+                const unsigned char* remainData = data.data() + used;
+                used = session->frame->parse(remainData, remainLen, frameHeadCb, framePayloadCb, frameFinishCb);
             }
+        }
+        if (used <= 0) /* 解析失败 */
+        {
+            session->sendClose(CloseCode::close_protocol_error);
         }
     }
 }
@@ -140,9 +172,9 @@ void Server::handleRequest(const std::shared_ptr<Session>& session)
     {
         /* 收到客户端请求 */
         std::shared_ptr<Response> resp = nullptr;
-        if (m_onRequestCallback)
+        if (m_onConnectingCallback)
         {
-            resp = m_onRequestCallback(session);
+            resp = m_onConnectingCallback(session);
         }
         if (!resp)
         {
@@ -152,28 +184,45 @@ void Server::handleRequest(const std::shared_ptr<Session>& session)
         resp->create(data, session->req->getSecWebSocketKey());
         /* 响应客户端, 用于通知客户端WebSocket连接建立成功 */
         std::weak_ptr<Session> wpSession = session;
-        tcpSession->send(data,
-                         [&, wpSession, wpTcpSession = session->wpTcpSession](const boost::system::error_code& code, std::size_t length) {
-                             if (code) /* 失败, 则需要关闭连接 */
-                             {
-                                 const auto tcpSession = wpTcpSession.lock();
-                                 if (tcpSession)
-                                 {
-                                     tcpSession->close(); /* 响应结束后, 需要关闭连接(某些客户端不会主动关闭连接) */
-                                 }
-                             }
-                             else /* 成功, 表示连接建立成功 */
-                             {
-                                 const auto session = wpSession.lock();
-                                 if (session)
-                                 {
-                                     if (m_onOpenCallback)
-                                     {
-                                         m_onOpenCallback(session);
-                                     }
-                                 }
-                             }
-                         });
+        tcpSession->send(data, [&, wpSession](const boost::system::error_code& code, std::size_t length) {
+            const auto session = wpSession.lock();
+            if (session)
+            {
+                if (code) /* 失败, 则需要关闭连接 */
+                {
+                    session->sendClose(CloseCode::close_no_status);
+                }
+                else /* 成功, 表示连接建立成功 */
+                {
+                    if (m_onOpenCallback)
+                    {
+                        m_onOpenCallback(session);
+                    }
+                }
+            }
+        });
+    }
+}
+
+void Server::handleFrameHead(const std::shared_ptr<Session>& session) {}
+
+void Server::handleFramePayload(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen) {}
+
+void Server::handleFrameFinish(const std::shared_ptr<Session>& session)
+{
+    const auto tcpSession = session->wpTcpSession.lock();
+    if (tcpSession)
+    {
+        if (0x8 == session->frame->opcode) /* 连接关闭 */
+        {
+            session->sendClose(CloseCode::close_normal);
+        }
+        else if (0x9 == session->frame->opcode) /* ping */
+        {
+        }
+        else if (0xA == session->frame->opcode) /* pong */
+        {
+        }
     }
 }
 } // namespace ws

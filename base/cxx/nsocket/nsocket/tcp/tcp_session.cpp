@@ -40,6 +40,11 @@ int64_t TcpSession::getId() const
     return m_id;
 }
 
+size_t TcpSession::getBufferSize() const
+{
+    return m_recvBuf.size();
+}
+
 void TcpSession::resizeBuffer(size_t bz)
 {
     m_recvBuf.resize(bz > 128 ? bz : 128);

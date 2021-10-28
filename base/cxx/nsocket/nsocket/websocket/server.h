@@ -12,7 +12,7 @@ namespace nsocket
 {
 namespace ws
 {
-using WS_REQUEST_CALLBACK = std::function<std::shared_ptr<Response>(const SESSION_PTR& session)>;
+using WS_CONNECTING_CALLBACK = std::function<std::shared_ptr<Response>(const SESSION_PTR& session)>;
 using WS_OPEN_CALLBACK = std::function<void(const SESSION_PTR& session)>;
 using WS_MESSAGE_CALLBACK = std::function<void(const SESSION_PTR& session, const std::vector<unsigned char>& data)>;
 using WS_CLOSE_CALLBACK = std::function<void(int64_t sid)>;
@@ -30,7 +30,7 @@ public:
      */
     Server(const std::string& host, unsigned int port);
 
-    void setRequestCallback(const WS_REQUEST_CALLBACK& cb);
+    void setConnectingCallback(const WS_CONNECTING_CALLBACK& cb);
 
     void setOpenCallback(const WS_OPEN_CALLBACK& cb);
 
@@ -68,11 +68,26 @@ private:
      */
     void handleRequest(const std::shared_ptr<Session>& session);
 
+    /**
+     * @brief 处理帧头
+     */
+    void handleFrameHead(const std::shared_ptr<Session>& session);
+
+    /**
+     * @brief 处理帧负载
+     */
+    void handleFramePayload(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen);
+
+    /**
+     * @brief 处理帧结束
+     */
+    void handleFrameFinish(const std::shared_ptr<Session>& session);
+
 private:
     std::shared_ptr<TcpServer> m_tcpServer; /* TCP服务器 */
     std::mutex m_mutex;
     std::unordered_map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
-    WS_REQUEST_CALLBACK m_onRequestCallback;
+    WS_CONNECTING_CALLBACK m_onConnectingCallback;
     WS_OPEN_CALLBACK m_onOpenCallback;
     WS_MESSAGE_CALLBACK m_onMessageCallback;
     WS_CLOSE_CALLBACK m_onCloseCallback;

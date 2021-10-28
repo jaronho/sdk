@@ -139,10 +139,10 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
             int bufferSize = req->getContentLength();
             if (bufferSize > 1024)
             {
-                static const int MB = 1024 * 1024;
-                if (bufferSize > MB) /* 上限为1Mb */
+                static const int MAX_BUFFER_SIZE = (65535 - 20 - 20);
+                if (bufferSize > MAX_BUFFER_SIZE) /* 限制上限 */
                 {
-                    bufferSize = MB;
+                    bufferSize = MAX_BUFFER_SIZE;
                 }
                 tcpSession->resizeBuffer(bufferSize);
             }

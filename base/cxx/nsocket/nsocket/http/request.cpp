@@ -126,6 +126,23 @@ size_t Request::getContentLength()
     return m_contentLength;
 }
 
+void Request::reset()
+{
+    method.clear();
+    uri.clear();
+    queries.clear();
+    version.clear();
+    headers.clear();
+    m_sepFlag = SepFlag::NONE;
+    m_parseStep = ParseStep::METHOD;
+    m_tmpKeyFlag = true;
+    m_tmpKey.clear();
+    m_tmpValue.clear();
+    m_contentType.clear();
+    m_contentLength = 0;
+    m_contentReceived = 0;
+}
+
 int Request::parseMethod(const unsigned char* data, int length)
 {
     int used = 0;
@@ -193,7 +210,7 @@ int Request::parseQueries(const unsigned char* data, int length)
             {
                 queries.insert(std::make_pair(m_tmpKey, percentDecode(m_tmpValue)));
             }
-            resetTmpKV();
+            clearTmp();
             m_parseStep = ParseStep::VERSION;
             return (used + 1);
         }
@@ -221,7 +238,7 @@ int Request::parseQueries(const unsigned char* data, int length)
                     return 0;
                 }
                 queries.insert(std::make_pair(m_tmpKey, percentDecode(m_tmpValue)));
-                resetTmpKV();
+                clearTmp();
             }
             else
             {
@@ -325,7 +342,7 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                     }
                     headers.insert(std::make_pair(m_tmpKey, m_tmpValue));
                     parseContentTypeAndLength();
-                    resetTmpKV();
+                    clearTmp();
                     m_sepFlag = SepFlag::NONE;
                 }
             }
@@ -336,7 +353,7 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                     headers.insert(std::make_pair(m_tmpKey, m_tmpValue));
                     parseContentTypeAndLength();
                 }
-                resetTmpKV();
+                clearTmp();
                 m_sepFlag = SepFlag::NONE;
                 m_parseStep = ParseStep::CONTENT;
                 if (headCb)
@@ -349,6 +366,7 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                     {
                         finishCb();
                     }
+                    reset();
                 }
                 return (used + 1);
             }
@@ -434,20 +452,7 @@ int Request::parseContent(const unsigned char* data, int length, const CONTENT_C
         {
             finishCb();
         }
-    }
-    if (length - used > 0) /* 有剩余数据, 解析下一个请求(这是只是预防性判断, 几乎不会有一个数据包存在多个请求) */
-    {
-        method.clear();
-        uri.clear();
-        queries.clear();
-        version.clear();
-        headers.clear();
-        m_sepFlag = SepFlag::NONE;
-        m_parseStep = ParseStep::METHOD;
-        resetTmpKV();
-        m_contentType.clear();
-        m_contentLength = 0;
-        m_contentReceived = 0;
+        reset();
     }
     return used;
 }
@@ -508,7 +513,7 @@ bool Request::checkVersion()
     return false;
 }
 
-void Request::resetTmpKV()
+void Request::clearTmp()
 {
     m_tmpKeyFlag = true;
     m_tmpKey.clear();
