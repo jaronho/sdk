@@ -100,15 +100,15 @@ int main(int argc, char* argv[])
         printf("============================== client [%lld] on open\n", session->getId());
     });
     auto msger = std::make_shared<nsocket::ws::Messager_simple>();
-    msger->onMessage = [&](bool isText, const std::string& msg) {
-        if (isText)
+    msger->onMessage = [&](const std::shared_ptr<nsocket::ws::Session>& session, const std::string& msg) {
+        if (session->isMsgText())
         {
-            printf("++++++++++++++++++++ on message(Text)\n");
+            printf("++++++++++++++++++++ on message(Text), length: %zu\n", msg.size());
             printf("%s", msg.c_str());
         }
         else
         {
-            printf("++++++++++++++++++++ on message(Binary)\n");
+            printf("++++++++++++++++++++ on message(Binary), length: %zu\n", msg.size());
         }
         printf("\n");
     };

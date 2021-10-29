@@ -55,7 +55,7 @@ protected:
 class Messager_simple final : public Messager
 {
 public:
-    std::function<void(bool isText, const std::string& msg)> onMessage;
+    std::function<void(const std::shared_ptr<Session>& session, const std::string& msg)> onMessage;
 
 protected:
     void onMessageBegin(const std::shared_ptr<Session>& session) override;

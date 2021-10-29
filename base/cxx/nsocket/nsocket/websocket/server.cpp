@@ -111,14 +111,7 @@ void Server::handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, co
         auto framePayloadCb = [&](size_t offset, const unsigned char* data, int dataLen) {
             handleFramePayload(session, offset, data, dataLen);
         };
-        auto frameFinishCb = [&]() {
-            /* 调回数据接收缓冲区空间 */
-            if (conn->getBufferSize() > 1024)
-            {
-                conn->resizeBuffer(1024);
-            }
-            handleFrameFinish(session);
-        };
+        auto frameFinishCb = [&]() { handleFrameFinish(session); };
         if (session->m_req->isParseEnd()) /* 请求处理完毕, 后续收到的都是帧数据 */
         {
             used = session->m_frame->parse(data.data(), data.size(), frameHeadCb, framePayloadCb, frameFinishCb);
@@ -258,6 +251,11 @@ void Server::handleFrameFinish(const std::shared_ptr<Session>& session)
         {
             if (1 == session->m_frame->fin) /* 尾帧 */
             {
+                /* 调回数据接收缓冲区空间 */
+                if (conn->getBufferSize() > 1024)
+                {
+                    conn->resizeBuffer(1024);
+                }
                 if (m_messager)
                 {
                     m_messager->onMessageEnd(session);
