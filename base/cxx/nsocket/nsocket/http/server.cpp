@@ -183,7 +183,7 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
         if (m_routerMap.end() == iter)
         {
             resp = std::make_shared<Response>();
-            resp->statusCode = HttpStatusCode::client_error_not_found;
+            resp->statusCode = StatusCode::client_error_not_found;
         }
         else
         {
@@ -191,7 +191,7 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             if (!resp)
             {
                 resp = std::make_shared<Response>();
-                resp->statusCode = HttpStatusCode::success_ok;
+                resp->statusCode = StatusCode::success_ok;
             }
         }
         /* 响应 */

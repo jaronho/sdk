@@ -3,10 +3,12 @@
 
 namespace nsocket
 {
+namespace http
+{
 /**
  * @brief HTTP状态码类型
  */
-enum class HttpStatusCode
+enum class StatusCode
 {
     unknown = 0,
     information_continue = 100,
@@ -77,12 +79,13 @@ enum class HttpStatusCode
  * @param desc 状态描述
  * @return 状态码
  */
-HttpStatusCode http_status_code(const std::string& desc);
+StatusCode status_code(const std::string& desc);
 
 /**
  * @brief 获取HTTP状态描述
  * @param code 状态码
  * @return 状态描述
  */
-std::string http_status_desc(const HttpStatusCode& code);
+std::string status_desc(const StatusCode& code);
+} // namespace http
 } // namespace nsocket

@@ -264,7 +264,7 @@ int Frame::parseMaskPayloadLen(const unsigned char* data, int length)
         payloadLen = 0;
         m_parseStep = ParseStep::PAYLOAD_LEN_8;
     }
-    else /* 协议错误 */
+    else /* 协议错误: 数据量太大 */
     {
         return 0;
     }

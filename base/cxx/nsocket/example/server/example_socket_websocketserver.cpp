@@ -92,6 +92,28 @@ int main(int argc, char* argv[])
     }
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
     nsocket::ws::Server server(serverHost, serverPort);
+    server.setConnectingCallback([&](const std::shared_ptr<nsocket::ws::Session>& session) {
+        printf("============================== client [%lld] on connecting\n", session->getId());
+        return nullptr;
+    });
+    server.setOpenCallback([&](const std::shared_ptr<nsocket::ws::Session>& session) {
+        printf("============================== client [%lld] on open\n", session->getId());
+    });
+    auto msger = std::make_shared<nsocket::ws::Messager_simple>();
+    msger->onMessage = [&](bool isText, const std::string& msg) {
+        if (isText)
+        {
+            printf("++++++++++++++++++++ on message(Text)\n");
+            printf("%s", msg.c_str());
+        }
+        else
+        {
+            printf("++++++++++++++++++++ on message(Binary)\n");
+        }
+        printf("\n");
+    };
+    server.setMessager(msger);
+    server.setCloseCallback([&](int64_t cid) { printf("------------------------------ client [%lld] on closed\n", cid); });
     try
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)

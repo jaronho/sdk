@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include "../tcp/tcp_server.h"
+#include "messager.h"
 #include "request.h"
 #include "response.h"
 #include "session.h"
@@ -12,9 +13,23 @@ namespace nsocket
 {
 namespace ws
 {
+/**
+ * @brief 连接中回调
+ * @param session 会话
+ * @return 服务端发给客户端的响应
+ */
 using WS_CONNECTING_CALLBACK = std::function<std::shared_ptr<Response>(const SESSION_PTR& session)>;
+
+/**
+ * @brief 连接打开回调
+ * @param session 会话
+ */
 using WS_OPEN_CALLBACK = std::function<void(const SESSION_PTR& session)>;
-using WS_MESSAGE_CALLBACK = std::function<void(const SESSION_PTR& session, const std::vector<unsigned char>& data)>;
+
+/**
+ * @brief 连接关闭回调
+ * @param cid 连接ID
+ */
 using WS_CLOSE_CALLBACK = std::function<void(int64_t cid)>;
 
 /**
@@ -30,12 +45,28 @@ public:
      */
     Server(const std::string& host, unsigned int port);
 
+    /**
+     * @brief 设置连接中回调
+     * @param cb 连接中回调
+     */
     void setConnectingCallback(const WS_CONNECTING_CALLBACK& cb);
 
+    /**
+     * @brief 设置连接打开回调
+     * @param cb 连接打开回调
+     */
     void setOpenCallback(const WS_OPEN_CALLBACK& cb);
 
-    void setMessageCalllback(const WS_MESSAGE_CALLBACK& cb);
+    /**
+     * @brief 设置消息接收者
+     * @param msger 消息接收者
+     */
+    void setMessager(const std::shared_ptr<Messager>& msger);
 
+    /**
+     * @brief 设置连接关闭回调
+     * @param cb 连接关闭回调
+     */
     void setCloseCallback(const WS_CLOSE_CALLBACK& cb);
 
     /**
@@ -87,10 +118,10 @@ private:
     std::shared_ptr<TcpServer> m_tcpServer; /* TCP服务器 */
     std::mutex m_mutex;
     std::unordered_map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
-    WS_CONNECTING_CALLBACK m_onConnectingCallback;
-    WS_OPEN_CALLBACK m_onOpenCallback;
-    WS_MESSAGE_CALLBACK m_onMessageCallback;
-    WS_CLOSE_CALLBACK m_onCloseCallback;
+    WS_CONNECTING_CALLBACK m_onConnectingCallback; /* 连接中回调 */
+    WS_OPEN_CALLBACK m_onOpenCallback; /* 连接打开回调 */
+    std::shared_ptr<Messager> m_messager; /* 消息接收者 */
+    WS_CLOSE_CALLBACK m_onCloseCallback; /* 连接关闭回调 */
 };
 } // namespace ws
 } // namespace nsocket

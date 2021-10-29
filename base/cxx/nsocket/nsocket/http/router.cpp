@@ -74,9 +74,10 @@ RESPONSE_PTR Router_batch::onResponse(int64_t cid, const REQUEST_PTR& req)
 
 void Router_simple::onReqHead(int64_t cid, const REQUEST_PTR& req)
 {
-    if (m_dataMap.end() == m_dataMap.find(cid))
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_contentMap.end() == m_contentMap.find(cid))
     {
-        m_dataMap.insert(std::make_pair(cid, std::string()));
+        m_contentMap.insert(std::make_pair(cid, std::make_shared<std::string>()));
     }
 }
 
@@ -86,27 +87,43 @@ void Router_simple::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t off
     {
         return;
     }
-    auto iter = m_dataMap.find(cid);
-    if (m_dataMap.end() == iter)
+    std::shared_ptr<std::string> content = nullptr;
     {
-        return;
+        /* 限定锁区间, 避免阻塞其他路由, 提高并发性 */
+        std::lock_guard<std::mutex> locker(m_mutex);
+        auto iter = m_contentMap.find(cid);
+        if (m_contentMap.end() != iter)
+        {
+            content = iter->second;
+        }
     }
-    iter->second.insert(iter->second.end(), data, data + dataLen);
+    if (content)
+    {
+        content->insert(content->end(), data, data + dataLen);
+    }
 }
 
 RESPONSE_PTR Router_simple::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
-    auto iter = m_dataMap.find(cid);
-    if (m_dataMap.end() == iter)
+    std::shared_ptr<std::string> content = nullptr;
     {
-        return nullptr;
+        /* 限定锁区间, 避免阻塞其他路由, 提高并发性 */
+        std::lock_guard<std::mutex> locker(m_mutex);
+        auto iter = m_contentMap.find(cid);
+        if (m_contentMap.end() != iter)
+        {
+            content = iter->second;
+            m_contentMap.erase(iter);
+        }
     }
     RESPONSE_PTR resp = nullptr;
-    if (respHandler)
+    if (content)
     {
-        resp = respHandler(req, iter->second);
+        if (respHandler)
+        {
+            resp = respHandler(req, *content.get());
+        }
     }
-    m_dataMap.erase(iter);
     return resp;
 }
 
@@ -116,6 +133,7 @@ void Router_x_www_form_urlencoded::onReqHead(int64_t cid, const REQUEST_PTR& req
     {
         return;
     }
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (m_wrapperMap.end() == m_wrapperMap.find(cid))
     {
         m_wrapperMap.insert(std::make_pair(cid, std::make_shared<Wrapper>()));
@@ -128,12 +146,20 @@ void Router_x_www_form_urlencoded::onReqContent(int64_t cid, const REQUEST_PTR& 
     {
         return;
     }
-    auto iter = m_wrapperMap.find(cid);
-    if (m_wrapperMap.end() == iter)
+    std::shared_ptr<Wrapper> wrapper = nullptr;
+    {
+        /* 限定锁区间, 避免阻塞其他路由, 提高并发性 */
+        std::lock_guard<std::mutex> locker(m_mutex);
+        auto iter = m_wrapperMap.find(cid);
+        if (m_wrapperMap.end() != iter)
+        {
+            wrapper = iter->second;
+        }
+    }
+    if (!wrapper)
     {
         return;
     }
-    auto wrapper = iter->second;
     for (int i = 0; i < dataLen; ++i)
     {
         const auto& ch = data[i];
@@ -179,12 +205,21 @@ void Router_x_www_form_urlencoded::onReqContent(int64_t cid, const REQUEST_PTR& 
 
 RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
-    auto iter = m_wrapperMap.find(cid);
-    if (m_wrapperMap.end() == iter)
+    std::shared_ptr<Wrapper> wrapper = nullptr;
+    {
+        /* 限定锁区间, 避免阻塞其他路由, 提高并发性 */
+        std::lock_guard<std::mutex> locker(m_mutex);
+        auto iter = m_wrapperMap.find(cid);
+        if (m_wrapperMap.end() != iter)
+        {
+            wrapper = iter->second;
+            m_wrapperMap.erase(iter);
+        }
+    }
+    if (!wrapper)
     {
         return nullptr;
     }
-    auto wrapper = iter->second;
     if (!wrapper->tmpKey.empty())
     {
         wrapper->fields.insert(std::make_pair(wrapper->tmpKey, wrapper->tmpValue));
@@ -194,7 +229,6 @@ RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST
     {
         resp = respHandler(req, wrapper->fields);
     }
-    m_wrapperMap.erase(iter);
     return resp;
 }
 
@@ -209,6 +243,7 @@ void Router_multipart_form_data::onReqHead(int64_t cid, const REQUEST_PTR& req)
     {
         headCb(cid, req);
     }
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (m_formMap.end() == m_formMap.find(cid))
     {
         m_formMap.insert(std::make_pair(cid, std::make_shared<MultipartFormData>(boundary)));
@@ -221,12 +256,21 @@ void Router_multipart_form_data::onReqContent(int64_t cid, const REQUEST_PTR& re
     {
         return;
     }
-    auto iter = m_formMap.find(cid);
-    if (m_formMap.end() == iter)
+    std::shared_ptr<MultipartFormData> formData = nullptr;
+    {
+        /* 限定锁区间, 避免阻塞其他路由, 提高并发性 */
+        std::lock_guard<std::mutex> locker(m_mutex);
+        auto iter = m_formMap.find(cid);
+        if (m_formMap.end() != iter)
+        {
+            formData = iter->second;
+        }
+    }
+    if (!formData)
     {
         return;
     }
-    int used = iter->second->parse(
+    int used = formData->parse(
         data, dataLen,
         [&](const std::string& name, const std::string& contentType, const std::string& text) {
             if (textCb)
@@ -243,23 +287,31 @@ void Router_multipart_form_data::onReqContent(int64_t cid, const REQUEST_PTR& re
         });
     if (used <= 0) /* 解析失败 */
     {
-        m_formMap.erase(iter);
+        std::lock_guard<std::mutex> locker(m_mutex);
+        auto iter = m_formMap.find(cid);
+        if (m_formMap.end() != iter)
+        {
+            m_formMap.erase(iter);
+        }
     }
 }
 
 RESPONSE_PTR Router_multipart_form_data::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
-    auto iter = m_formMap.find(cid);
-    if (m_formMap.end() == iter)
     {
-        return nullptr;
+        /* 限定锁区间, 避免阻塞其他路由, 提高并发性 */
+        std::lock_guard<std::mutex> locker(m_mutex);
+        auto iter = m_formMap.find(cid);
+        if (m_formMap.end() != iter)
+        {
+            m_formMap.erase(iter);
+        }
     }
     RESPONSE_PTR resp = nullptr;
     if (respHandler)
     {
         resp = respHandler(cid, req);
     }
-    m_formMap.erase(iter);
     return resp;
 }
 } // namespace http

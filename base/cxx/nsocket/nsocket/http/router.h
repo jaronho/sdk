@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -38,7 +39,7 @@ protected:
 /**
  * @brief 路由(对内容批次接收, 针对大数量的请求, 比如上传文件之类的)
  */
-class Router_batch : public Router
+class Router_batch final : public Router
 {
 public:
     std::function<void(int64_t cid, const REQUEST_PTR& req)> headCb;
@@ -54,7 +55,7 @@ protected:
 /**
  * @brief 路由(内容一次性接收, 针对小数据量的请求)
  */
-class Router_simple : public Router
+class Router_simple final : public Router
 {
 public:
     std::function<RESPONSE_PTR(const REQUEST_PTR& req, const std::string& data)> respHandler;
@@ -65,13 +66,14 @@ protected:
     RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
 
 private:
-    std::unordered_map<int64_t, std::string> m_dataMap;
+    std::mutex m_mutex;
+    std::unordered_map<int64_t, std::shared_ptr<std::string>> m_contentMap;
 };
 
 /**
  * @brief 路由(application/x-www-form-urlencoded)
  */
-class Router_x_www_form_urlencoded : public Router
+class Router_x_www_form_urlencoded final : public Router
 {
 public:
     std::function<RESPONSE_PTR(const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields)> respHandler;
@@ -90,13 +92,14 @@ private:
         std::string tmpValue;
     };
 
+    std::mutex m_mutex;
     std::unordered_map<int64_t, std::shared_ptr<Wrapper>> m_wrapperMap;
 };
 
 /**
  * @brief 路由(multipart/form-data)
  */
-class Router_multipart_form_data : public Router
+class Router_multipart_form_data final : public Router
 {
 public:
     std::function<void(int64_t cid, const REQUEST_PTR& req)> headCb;
@@ -114,6 +117,7 @@ protected:
     RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
 
 private:
+    std::mutex m_mutex;
     std::unordered_map<int64_t, std::shared_ptr<MultipartFormData>> m_formMap;
 };
 } // namespace http

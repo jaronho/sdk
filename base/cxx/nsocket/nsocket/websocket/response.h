@@ -4,7 +4,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "../http_status_code.h"
 #include "../multimap.hpp"
 
 namespace nsocket
@@ -33,8 +32,6 @@ private:
     std::string calcSecWebSocketAccept(const std::string& secWebSocketKey);
 
 public:
-    std::string version = "HTTP/1.1"; /* 版本 */
-    HttpStatusCode statusCode = HttpStatusCode::information_switching_protocols; /* 状态码 */
     CaseInsensitiveMultimap headers; /* 头部 */
 };
 using RESPONSE_PTR = std::shared_ptr<Response>;

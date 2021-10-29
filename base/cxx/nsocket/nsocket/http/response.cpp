@@ -11,7 +11,7 @@ void Response::create(std::vector<unsigned char>& data)
     data.clear();
     data.insert(data.end(), version.begin(), version.end());
     data.push_back(' ');
-    auto statusStr = http_status_desc(statusCode);
+    auto statusStr = status_desc(statusCode);
     data.insert(data.end(), statusStr.begin(), statusStr.end());
     data.insert(data.end(), CRLF.begin(), CRLF.end());
     if (headers.end() == headers.find("Content-Length"))

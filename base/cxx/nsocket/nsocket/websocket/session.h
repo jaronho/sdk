@@ -2,7 +2,7 @@
 #include <memory>
 #include <string>
 
-#include "../tcp/tcp_server.h"
+#include "../tcp/tcp_connection.h"
 #include "frame.h"
 #include "request.h"
 
@@ -15,7 +15,14 @@ namespace ws
  */
 class Session
 {
+    friend class Server;
+
 public:
+    /**
+     * @brief 获取会话ID
+     */
+    int64_t getId();
+
     /**
      * @brief 发送文本
      */
@@ -41,10 +48,16 @@ public:
      */
     void sendPong();
 
-public:
-    std::weak_ptr<TcpConnection> wpConn; /* TCP连接 */
-    std::shared_ptr<Request> req; /* 请求 */
-    std::shared_ptr<Frame> frame; /* 数据帧 */
+    /**
+     * @brief 当前消息是否为文本
+     */
+    bool isMsgText();
+
+protected:
+    std::weak_ptr<TcpConnection> m_wpConn; /* TCP连接 */
+    std::shared_ptr<Request> m_req; /* 请求 */
+    std::shared_ptr<Frame> m_frame; /* 数据帧 */
+    bool m_isMsgText = false; /* 当前消息是否为文本 */
 };
 using SESSION_PTR = std::shared_ptr<Session>;
 } // namespace ws

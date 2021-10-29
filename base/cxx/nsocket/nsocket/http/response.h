@@ -4,8 +4,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "../http_status_code.h"
 #include "../multimap.hpp"
+#include "status_code.h"
 
 namespace nsocket
 {
@@ -25,7 +25,7 @@ public:
 
 public:
     std::string version = "HTTP/1.1"; /* 版本 */
-    HttpStatusCode statusCode = HttpStatusCode::success_ok; /* 状态码 */
+    StatusCode statusCode = StatusCode::success_ok; /* 状态码 */
     CaseInsensitiveMultimap headers; /* 头部 */
 };
 using RESPONSE_PTR = std::shared_ptr<Response>;
