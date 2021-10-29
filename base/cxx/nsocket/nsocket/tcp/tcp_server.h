@@ -4,31 +4,31 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "tcp_session.h"
+#include "tcp_connection.h"
 
 namespace nsocket
 {
 /**
  * @brief TCP新连接回调
- * @param wpSession 会话
+ * @param wpConn 连接
  */
-using TCP_CONN_NEW_CALLBACK = std::function<void(const std::weak_ptr<TcpSession>& wpSession)>;
+using TCP_CONN_NEW_CALLBACK = std::function<void(const std::weak_ptr<TcpConnection>& wpConn)>;
 
 /**
  * @brief TCP数据回调
- * @param wpSession 会话
+ * @param wpConn 连接
  * @param data 数据
  */
-using TCP_CONN_DATA_CALLBACK = std::function<void(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data)>;
+using TCP_CONN_DATA_CALLBACK = std::function<void(const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data)>;
 
 /**
  * @brief TCP连接关闭回调
- * @param sid 会话ID
+ * @param cid 连接ID
  * @param point 端点
  * @param code 错误码
  */
 using TCP_CONN_CLOSE_CALLBACK =
-    std::function<void(int64_t sid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
+    std::function<void(int64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
 
 /**
  * @brief TCP服务端(注意: 需要实例化为共享指针否则会报错, 2.停止后需要重新实例化, 不可复用之前的实例)
@@ -105,7 +105,7 @@ private:
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
 #endif
     size_t m_bufferSize; /* 数据接收缓冲区大小 */
-    std::unordered_map<int64_t, std::shared_ptr<TcpSession>> m_sessionMap; /* 会话表 */
+    std::unordered_map<int64_t, std::shared_ptr<TcpConnection>> m_connectionMap; /* 连接表 */
     TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
     TCP_CONN_DATA_CALLBACK m_onConnectionDataCallback; /* 连接数据回调 */
     TCP_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */

@@ -15,7 +15,7 @@ namespace ws
 using WS_CONNECTING_CALLBACK = std::function<std::shared_ptr<Response>(const SESSION_PTR& session)>;
 using WS_OPEN_CALLBACK = std::function<void(const SESSION_PTR& session)>;
 using WS_MESSAGE_CALLBACK = std::function<void(const SESSION_PTR& session, const std::vector<unsigned char>& data)>;
-using WS_CLOSE_CALLBACK = std::function<void(int64_t sid)>;
+using WS_CLOSE_CALLBACK = std::function<void(int64_t cid)>;
 
 /**
  * @brief WebSocket服务器
@@ -51,17 +51,17 @@ private:
     /**
      * @brief 处理新连接
      */
-    void handleNewConnection(const std::weak_ptr<TcpSession>& wpSession);
+    void handleNewConnection(const std::weak_ptr<TcpConnection>& wpConn);
 
     /**
      * @brief 处理连接数据
      */
-    void handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data);
+    void handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data);
 
     /**
      * @brief 处理连接断开
      */
-    void handleConnectionClose(int64_t sid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code);
+    void handleConnectionClose(int64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code);
 
     /**
      * @brief 处理请求

@@ -7,11 +7,11 @@ namespace http
 Server::Server(const std::string& host, unsigned int port)
 {
     m_tcpServer = std::make_shared<TcpServer>(host, port, true, 1024);
-    m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpSession>& wpSession) { handleNewConnection(wpSession); });
+    m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) { handleNewConnection(wpConn); });
     m_tcpServer->setConnectionDataCallback(
-        [&](const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data) { handleConnectionData(wpSession, data); });
-    m_tcpServer->setConnectionCloseCallback([&](int64_t sid, const boost::asio::ip::tcp::endpoint& point,
-                                                const boost::system::error_code& code) { handleConnectionClose(sid); });
+        [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
+    m_tcpServer->setConnectionCloseCallback([&](int64_t cid, const boost::asio::ip::tcp::endpoint& point,
+                                                const boost::system::error_code& code) { handleConnectionClose(cid); });
 }
 
 void Server::setRouterNotFoundCallback(const std::function<void(const REQUEST_PTR& req)>& cb)
@@ -43,49 +43,55 @@ void Server::run()
     }
 }
 
-void Server::handleNewConnection(const std::weak_ptr<TcpSession>& wpSession)
+void Server::handleNewConnection(const std::weak_ptr<TcpConnection>& wpConn)
 {
-    const auto tcpSession = wpSession.lock();
-    if (tcpSession)
+    const auto conn = wpConn.lock();
+    if (conn)
     {
         std::lock_guard<std::mutex> locker(m_mutex);
-        if (m_sessionMap.end() == m_sessionMap.find(tcpSession->getId()))
+        if (m_sessionMap.end() == m_sessionMap.find(conn->getId()))
         {
             auto session = std::make_shared<Session>();
-            session->wpTcpSession = wpSession;
+            session->wpConn = wpConn;
             session->req = std::make_shared<Request>();
-            m_sessionMap.insert(std::make_pair(tcpSession->getId(), session));
+            m_sessionMap.insert(std::make_pair(conn->getId(), session));
         }
     }
 }
 
-void Server::handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data)
+void Server::handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data)
 {
-    const auto tcpSession = wpSession.lock();
-    if (tcpSession)
+    const auto conn = wpConn.lock();
+    if (conn)
     {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        auto iter = m_sessionMap.find(tcpSession->getId());
-        if (m_sessionMap.end() == iter)
+        std::shared_ptr<Session> session = nullptr;
         {
-            return;
+            /* 限定锁区间, 避免阻塞其他连接, 提高并发性 */
+            std::lock_guard<std::mutex> locker(m_mutex);
+            auto iter = m_sessionMap.find(conn->getId());
+            if (m_sessionMap.end() != iter)
+            {
+                session = iter->second;
+            }
         }
-        auto session = iter->second;
-        int used = session->req->parse(
-            data.data(), data.size(), [&]() { handleReqHead(session); },
-            [&](size_t offset, const unsigned char* data, int dataLen) { handleReqContent(session, offset, data, dataLen); },
-            [&]() { handleReqFinish(session); });
-        if (used <= 0) /* 解析失败 */
+        if (session)
         {
-            tcpSession->close();
+            int used = session->req->parse(
+                data.data(), data.size(), [&]() { handleReqHead(session); },
+                [&](size_t offset, const unsigned char* data, int dataLen) { handleReqContent(session, offset, data, dataLen); },
+                [&]() { handleReqFinish(session); });
+            if (used <= 0) /* 解析失败 */
+            {
+                conn->close();
+            }
         }
     }
 }
 
-void Server::handleConnectionClose(int64_t sid)
+void Server::handleConnectionClose(int64_t cid)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    auto iter = m_sessionMap.find(sid);
+    auto iter = m_sessionMap.find(cid);
     if (m_sessionMap.end() != iter)
     {
         m_sessionMap.erase(iter);
@@ -121,8 +127,8 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
     {
         printf("=== Content:\n");
 #endif
-    const auto tcpSession = session->wpTcpSession.lock();
-    if (tcpSession)
+    const auto conn = session->wpConn.lock();
+    if (conn)
     {
         /* 路由 */
         auto iter = m_routerMap.find(req->uri);
@@ -139,37 +145,37 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
             int bufferSize = req->getContentLength();
             if (bufferSize > 1024)
             {
-                static const int MAX_BUFFER_SIZE = (65535 - 20 - 20);
+                static const int MAX_BUFFER_SIZE = 65536; /* 64Kb */
                 if (bufferSize > MAX_BUFFER_SIZE) /* 限制上限 */
                 {
                     bufferSize = MAX_BUFFER_SIZE;
                 }
-                tcpSession->resizeBuffer(bufferSize);
+                conn->resizeBuffer(bufferSize);
             }
             /* 响应头数据 */
-            iter->second->onReqHead(tcpSession->getId(), req);
+            iter->second->onReqHead(conn->getId(), req);
         }
     }
 }
 
 void Server::handleReqContent(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen)
 {
-    const auto tcpSession = session->wpTcpSession.lock();
-    if (tcpSession)
+    const auto conn = session->wpConn.lock();
+    if (conn)
     {
         /* 路由 */
         auto iter = m_routerMap.find(session->req->uri);
         if (m_routerMap.end() != iter)
         {
-            iter->second->onReqContent(tcpSession->getId(), session->req, offset, data, dataLen);
+            iter->second->onReqContent(conn->getId(), session->req, offset, data, dataLen);
         }
     }
 }
 
 void Server::handleReqFinish(const std::shared_ptr<Session>& session)
 {
-    const auto tcpSession = session->wpTcpSession.lock();
-    if (tcpSession)
+    const auto conn = session->wpConn.lock();
+    if (conn)
     {
         /* 路由 */
         auto iter = m_routerMap.find(session->req->uri);
@@ -181,7 +187,7 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
         }
         else
         {
-            resp = iter->second->onResponse(tcpSession->getId(), session->req);
+            resp = iter->second->onResponse(conn->getId(), session->req);
             if (!resp)
             {
                 resp = std::make_shared<Response>();
@@ -191,11 +197,11 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
         /* 响应 */
         std::vector<unsigned char> data;
         resp->create(data);
-        tcpSession->send(data, [&, wpTcpSession = session->wpTcpSession](const boost::system::error_code& code, std::size_t length) {
-            const auto tcpSession = wpTcpSession.lock();
-            if (tcpSession)
+        conn->send(data, [&, wpConn = session->wpConn](const boost::system::error_code& code, std::size_t length) {
+            const auto conn = wpConn.lock();
+            if (conn)
             {
-                tcpSession->close(); /* 响应结束后, 需要关闭连接(有些客户端不会主动关闭连接), TODO: 后续可能要做Keep-Alive */
+                conn->close(); /* 响应结束后, 需要关闭连接(有些客户端不会主动关闭连接), TODO: 后续可能要做Keep-Alive */
             }
         });
     }

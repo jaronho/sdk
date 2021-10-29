@@ -51,7 +51,7 @@ void TcpServer::stop()
         m_acceptor = nullptr;
     }
     m_ioContext.stop();
-    m_sessionMap.clear();
+    m_connectionMap.clear();
 }
 
 void TcpServer::setNewConnectionCallback(const TCP_CONN_NEW_CALLBACK& onNewCb)
@@ -76,72 +76,72 @@ void TcpServer::doAccept()
         const auto self = wpSelf.lock();
         if (self)
         {
-            if (!code) /* 有新连接进来 */
+            if (!code) /* 有新连接请求 */
             {
-                /* 创建新会话 */
-                std::shared_ptr<TcpSession> session;
+                /* 创建新连接 */
+                std::shared_ptr<TcpConnection> conn;
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                 if (self->m_sslContext) /* 启用TLS */
                 {
-                    session = std::make_shared<TcpSession>(std::make_shared<SocketTls>(std::move(socket), *(self->m_sslContext)), true,
+                    conn = std::make_shared<TcpConnection>(std::make_shared<SocketTls>(std::move(socket), *(self->m_sslContext)), true,
                                                            self->m_bufferSize);
                 }
                 else /* 不启用TLS */
                 {
 #endif
-                    session = std::make_shared<TcpSession>(std::make_shared<SocketTcp>(std::move(socket)), true, self->m_bufferSize);
+                    conn = std::make_shared<TcpConnection>(std::make_shared<SocketTcp>(std::move(socket)), true, self->m_bufferSize);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                 }
 #endif
-                if (self->m_sessionMap.end() == self->m_sessionMap.find(session->getId()))
+                if (self->m_connectionMap.end() == self->m_connectionMap.find(conn->getId()))
                 {
-                    self->m_sessionMap.insert(std::make_pair(session->getId(), session));
+                    self->m_connectionMap.insert(std::make_pair(conn->getId(), conn));
                 }
-                const std::weak_ptr<TcpSession> wpSession = session;
+                const std::weak_ptr<TcpConnection> wpConn = conn;
                 /* 设置连接回调 */
-                session->setConnectCallback([wpSelf, wpSession](const boost::system::error_code& code) {
+                conn->setConnectCallback([wpSelf, wpConn](const boost::system::error_code& code) {
                     if (code) /* 断开连接 */
                     {
                         const auto self = wpSelf.lock();
-                        const auto session = wpSession.lock();
-                        if (self && session)
+                        const auto conn = wpConn.lock();
+                        if (self && conn)
                         {
-                            auto iter = self->m_sessionMap.find(session->getId());
-                            if (self->m_sessionMap.end() != iter)
+                            auto iter = self->m_connectionMap.find(conn->getId());
+                            if (self->m_connectionMap.end() != iter)
                             {
-                                self->m_sessionMap.erase(iter);
+                                self->m_connectionMap.erase(iter);
                             }
                             if (self->m_onConnectionCloseCallback)
                             {
-                                self->m_onConnectionCloseCallback(session->getId(), session->getRemoteEndpoint(), code);
+                                self->m_onConnectionCloseCallback(conn->getId(), conn->getRemoteEndpoint(), code);
                             }
                         }
                     }
                 });
                 /* 设置数据回调 */
-                session->setDataCallback([wpSelf, wpSession](const std::vector<unsigned char>& data) {
+                conn->setDataCallback([wpSelf, wpConn](const std::vector<unsigned char>& data) {
                     const auto self = wpSelf.lock();
                     if (self && self->m_onConnectionDataCallback)
                     {
-                        self->m_onConnectionDataCallback(wpSession, data);
+                        self->m_onConnectionDataCallback(wpConn, data);
                     }
                 });
-                /* 开始会话 */
+                /* 开始连接 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                 if (self->m_sslContext) /* 启用TLS */
                 {
-                    session->handshake(boost::asio::ssl::stream_base::server, [wpSelf, wpSession](const boost::system::error_code& code) {
+                    conn->handshake(boost::asio::ssl::stream_base::server, [wpSelf, wpConn](const boost::system::error_code& code) {
                         if (!code) /* 握手成功 */
                         {
-                            const auto session = wpSession.lock();
-                            if (session)
+                            const auto conn = wpConn.lock();
+                            if (conn)
                             {
                                 const auto self = wpSelf.lock();
                                 if (self && self->m_onNewConnectionCallback)
                                 {
-                                    self->m_onNewConnectionCallback(wpSession);
+                                    self->m_onNewConnectionCallback(wpConn);
                                 }
-                                session->recv(); /* 开始接收数据 */
+                                conn->recv(); /* 开始接收数据 */
                             }
                         }
                     }); /* 需要握手 */
@@ -151,9 +151,9 @@ void TcpServer::doAccept()
 #endif
                     if (self->m_onNewConnectionCallback)
                     {
-                        self->m_onNewConnectionCallback(wpSession);
+                        self->m_onNewConnectionCallback(wpConn);
                     }
-                    session->recv(); /* 开始接收数据 */
+                    conn->recv(); /* 开始接收数据 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                 }
 #endif
@@ -168,7 +168,7 @@ void TcpServer::doAccept()
 std::shared_ptr<boost::asio::ssl::context> TcpServer::getSslContext(const std::string& certFile, const std::string& privateKeyFile,
                                                                     const std::string& privateKeyFilePwd)
 {
-    return TcpSession::makeSslContext(boost::asio::ssl::context::sslv23_server, certFile, privateKeyFile, privateKeyFilePwd);
+    return TcpConnection::makeSslContext(boost::asio::ssl::context::sslv23_server, certFile, privateKeyFile, privateKeyFilePwd);
 }
 #endif
 } // namespace nsocket

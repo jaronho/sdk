@@ -14,9 +14,9 @@ namespace nsocket
 using TCP_DATA_CALLBACK = std::function<void(const std::vector<unsigned char>& data)>;
 
 /**
- * @brief TCP会话, 注意: 调用close后示例不可再使用
+ * @brief TCP连接, 注意: 调用close后示例不可再使用
  */
-class TcpSession : public std::enable_shared_from_this<TcpSession>
+class TcpConnection : public std::enable_shared_from_this<TcpConnection>
 {
 public:
     /**
@@ -25,13 +25,13 @@ public:
      * @param alreadyConnected 是否已经连接上(选填), 服务器中接收到新连接时需要设置该参数为true
      * @param bz 数据缓冲区大小(字节, 选填)
      */
-    TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected = false, size_t bz = 1024);
+    TcpConnection(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected = false, size_t bz = 1024);
 
-    ~TcpSession();
+    ~TcpConnection();
 
     /**
-     * @brief 获取会话ID
-     * @return 会话ID
+     * @brief 获取连接ID
+     * @return 连接ID
      */
     int64_t getId() const;
 

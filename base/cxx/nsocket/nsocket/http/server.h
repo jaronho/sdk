@@ -53,7 +53,7 @@ private:
      */
     struct Session
     {
-        std::weak_ptr<TcpSession> wpTcpSession; /* TCP会话 */
+        std::weak_ptr<TcpConnection> wpConn; /* TCP连接 */
         std::shared_ptr<Request> req; /* 请求 */
     };
 
@@ -61,17 +61,17 @@ private:
     /**
      * @brief 处理新连接
      */
-    void handleNewConnection(const std::weak_ptr<TcpSession>& wpSession);
+    void handleNewConnection(const std::weak_ptr<TcpConnection>& wpConn);
 
     /**
      * @brief 处理连接数据
      */
-    void handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data);
+    void handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data);
 
     /**
      * @brief 处理连接断开
      */
-    void handleConnectionClose(int64_t sid);
+    void handleConnectionClose(int64_t cid);
 
     /**
      * @brief 处理请求头

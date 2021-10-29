@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-#include "tcp_session.h"
+#include "tcp_connection.h"
 
 namespace nsocket
 {
@@ -87,7 +87,7 @@ private:
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
 #endif
-    std::shared_ptr<TcpSession> m_tcpSession; /* TCP会话 */
+    std::shared_ptr<TcpConnection> m_tcpConn; /* TCP连接 */
     size_t m_bufferSize; /* 数据接收缓冲区大小 */
     TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
     TCP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */

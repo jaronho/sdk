@@ -22,17 +22,17 @@ protected:
     /**
      * @brief 收到客户端请求头
      */
-    virtual void onReqHead(int64_t sid, const REQUEST_PTR& req);
+    virtual void onReqHead(int64_t cid, const REQUEST_PTR& req);
 
     /**
      * @brief 收到客户端请求内容
      */
-    virtual void onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen);
+    virtual void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen);
 
     /**
      * @brief 响应客户端
      */
-    virtual RESPONSE_PTR onResponse(int64_t sid, const REQUEST_PTR& req);
+    virtual RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req);
 };
 
 /**
@@ -41,14 +41,14 @@ protected:
 class Router_batch : public Router
 {
 public:
-    std::function<void(int64_t sid, const REQUEST_PTR& req)> headCb;
-    std::function<void(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)> contentCb;
-    std::function<RESPONSE_PTR(int64_t sid, const REQUEST_PTR& req)> respHandler;
+    std::function<void(int64_t cid, const REQUEST_PTR& req)> headCb;
+    std::function<void(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)> contentCb;
+    std::function<RESPONSE_PTR(int64_t cid, const REQUEST_PTR& req)> respHandler;
 
 protected:
-    void onReqHead(int64_t sid, const REQUEST_PTR& req) override;
-    void onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    RESPONSE_PTR onResponse(int64_t sid, const REQUEST_PTR& req) override;
+    void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
+    void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
+    RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
 };
 
 /**
@@ -60,9 +60,9 @@ public:
     std::function<RESPONSE_PTR(const REQUEST_PTR& req, const std::string& data)> respHandler;
 
 protected:
-    void onReqHead(int64_t sid, const REQUEST_PTR& req) override;
-    void onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    RESPONSE_PTR onResponse(int64_t sid, const REQUEST_PTR& req) override;
+    void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
+    void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
+    RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
 
 private:
     std::unordered_map<int64_t, std::string> m_dataMap;
@@ -77,9 +77,9 @@ public:
     std::function<RESPONSE_PTR(const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields)> respHandler;
 
 protected:
-    void onReqHead(int64_t sid, const REQUEST_PTR& req) override;
-    void onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    RESPONSE_PTR onResponse(int64_t sid, const REQUEST_PTR& req) override;
+    void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
+    void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
+    RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
 
 private:
     struct Wrapper
@@ -99,19 +99,19 @@ private:
 class Router_multipart_form_data : public Router
 {
 public:
-    std::function<void(int64_t sid, const REQUEST_PTR& req)> headCb;
-    std::function<void(int64_t sid, const REQUEST_PTR& req, const std::string& name, const std::string& contentType,
+    std::function<void(int64_t cid, const REQUEST_PTR& req)> headCb;
+    std::function<void(int64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& contentType,
                        const std::string& text)>
         textCb;
-    std::function<void(int64_t sid, const REQUEST_PTR& req, const std::string& name, const std::string& filename,
+    std::function<void(int64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& filename,
                        const std::string& contentType, size_t offset, const unsigned char* data, int dataLen, bool finish)>
         fileCb;
-    std::function<RESPONSE_PTR(int64_t sid, const REQUEST_PTR& req)> respHandler;
+    std::function<RESPONSE_PTR(int64_t cid, const REQUEST_PTR& req)> respHandler;
 
 protected:
-    void onReqHead(int64_t sid, const REQUEST_PTR& req) override;
-    void onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    RESPONSE_PTR onResponse(int64_t sid, const REQUEST_PTR& req) override;
+    void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
+    void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
+    RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
 
 private:
     std::unordered_map<int64_t, std::shared_ptr<MultipartFormData>> m_formMap;

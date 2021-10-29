@@ -7,7 +7,7 @@
 #include "../../nsocket/tcp/tcp_server.h"
 
 std::recursive_mutex g_mutex;
-std::unordered_map<boost::asio::ip::tcp::endpoint, std::weak_ptr<nsocket::TcpSession>> g_clientMap; /* 客户端映射表 */
+std::unordered_map<boost::asio::ip::tcp::endpoint, std::weak_ptr<nsocket::TcpConnection>> g_clientMap; /* 客户端映射表 */
 
 int main(int argc, char* argv[])
 {
@@ -96,33 +96,31 @@ int main(int argc, char* argv[])
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
     auto server = std::make_shared<nsocket::TcpServer>(serverHost, serverPort);
     /* 设置新连接回调 */
-    server->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpSession>& wpSession) {
-        const auto tcpSession = wpSession.lock();
-        if (tcpSession)
+    server->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
+        const auto conn = wpConn.lock();
+        if (conn)
         {
-            auto point = tcpSession->getRemoteEndpoint();
+            auto point = conn->getRemoteEndpoint();
             std::string clientHost = point.address().to_string().c_str();
             int clientPort = (int)point.port();
-            printf("============================== on new connection [%lld] [%s:%d]\n", tcpSession->getId(), clientHost.c_str(),
-                   clientPort);
+            printf("============================== on new connection [%lld] [%s:%d]\n", conn->getId(), clientHost.c_str(), clientPort);
             std::lock_guard<std::recursive_mutex> locker(g_mutex);
             auto iter = g_clientMap.find(point);
             if (g_clientMap.end() == iter)
             {
-                g_clientMap.insert(std::make_pair(point, wpSession));
+                g_clientMap.insert(std::make_pair(point, wpConn));
             }
         }
     });
     /* 设置连接数据回调 */
-    server->setConnectionDataCallback([&](const std::weak_ptr<nsocket::TcpSession>& wpSession, const std::vector<unsigned char>& data) {
-        const auto tcpSession = wpSession.lock();
-        if (tcpSession)
+    server->setConnectionDataCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn, const std::vector<unsigned char>& data) {
+        const auto conn = wpConn.lock();
+        if (conn)
         {
-            auto point = tcpSession->getRemoteEndpoint();
+            auto point = conn->getRemoteEndpoint();
             std::string clientHost = point.address().to_string().c_str();
             int clientPort = (int)point.port();
-            printf("++++++++++ on recv data [%lld] [%s:%d], length: %d\n", tcpSession->getId(), clientHost.c_str(), clientPort,
-                   (int)data.size());
+            printf("++++++++++ on recv data [%lld] [%s:%d], length: %d\n", conn->getId(), clientHost.c_str(), clientPort, (int)data.size());
             /* 以十六进制格式打印数据 */
             printf("+++++ [hex format]\n");
             for (size_t i = 0; i < data.size(); ++i)
@@ -138,15 +136,15 @@ int main(int argc, char* argv[])
             /* 把收到的数据原封不动返回给客户端 */
             if (0 == str.compare("error"))
             {
-                tcpSession->close();
+                conn->close();
             }
             else
             {
-                tcpSession->send(data, [&, wpSession](const boost::system::error_code& code, std::size_t length) {
-                    const auto tcpSession = wpSession.lock();
-                    if (tcpSession)
+                conn->send(data, [&, wpConn](const boost::system::error_code& code, std::size_t length) {
+                    const auto conn = wpConn.lock();
+                    if (conn)
                     {
-                        auto point = tcpSession->getRemoteEndpoint();
+                        auto point = conn->getRemoteEndpoint();
                         std::string clientHost = point.address().to_string().c_str();
                         int clientPort = (int)point.port();
                         if (code)
@@ -165,17 +163,17 @@ int main(int argc, char* argv[])
     });
     /* 设置连接关闭回调 */
     server->setConnectionCloseCallback(
-        [&](int64_t sid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+        [&](int64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
             std::string clientHost = point.address().to_string().c_str();
             int clientPort = (int)point.port();
             if (code)
             {
-                printf("-------------------- on connection closed [%lld] [%s:%d] fail, %d, %s\n", sid, clientHost.c_str(), clientPort,
+                printf("-------------------- on connection closed [%lld] [%s:%d] fail, %d, %s\n", cid, clientHost.c_str(), clientPort,
                        code.value(), code.message().c_str());
             }
             else
             {
-                printf("-------------------- on connection closed [%lld] [%s:%d]\n", sid, clientHost.c_str(), clientPort);
+                printf("-------------------- on connection closed [%lld] [%s:%d]\n", cid, clientHost.c_str(), clientPort);
             }
             std::lock_guard<std::recursive_mutex> locker(g_mutex);
             auto iter = g_clientMap.find(point);

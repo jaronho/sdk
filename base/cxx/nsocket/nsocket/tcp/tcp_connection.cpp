@@ -1,4 +1,4 @@
-#include "tcp_session.h"
+#include "tcp_connection.h"
 
 #include <atomic>
 #include <chrono>
@@ -8,7 +8,7 @@ namespace nsocket
 static std::atomic_int64_t s_timestamp = 0;
 static std::atomic_int s_count = 0;
 
-TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected, size_t bz) : m_socketTcpBase(socket)
+TcpConnection::TcpConnection(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected, size_t bz) : m_socketTcpBase(socket)
 {
     auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
     if (nt == s_timestamp)
@@ -30,41 +30,41 @@ TcpSession::TcpSession(const std::shared_ptr<SocketTcpBase>& socket, bool alread
     resizeBuffer(bz);
 }
 
-TcpSession::~TcpSession()
+TcpConnection::~TcpConnection()
 {
     close();
 }
 
-int64_t TcpSession::getId() const
+int64_t TcpConnection::getId() const
 {
     return m_id;
 }
 
-size_t TcpSession::getBufferSize() const
+size_t TcpConnection::getBufferSize() const
 {
     return m_recvBuf.size();
 }
 
-void TcpSession::resizeBuffer(size_t bz)
+void TcpConnection::resizeBuffer(size_t bz)
 {
     m_recvBuf.resize(bz > 128 ? bz : 128);
 }
 
-void TcpSession::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)
+void TcpConnection::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)
 {
     m_onConnectCallback = onConnectCb;
 }
 
-void TcpSession::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
+void TcpConnection::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
 {
     m_onDataCallback = onDataCb;
 }
 
-void TcpSession::connect(const boost::asio::ip::tcp::endpoint& point)
+void TcpConnection::connect(const boost::asio::ip::tcp::endpoint& point)
 {
     if (m_socketTcpBase)
     {
-        const std::weak_ptr<TcpSession> wpSelf = shared_from_this();
+        const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
         m_socketTcpBase->connect(point, [wpSelf](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             if (self)
@@ -105,12 +105,12 @@ void TcpSession::connect(const boost::asio::ip::tcp::endpoint& point)
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-void TcpSession::handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb)
+void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb)
 {
     std::shared_ptr<SocketTls> tlsPtr = std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase);
     if (tlsPtr)
     {
-        const std::weak_ptr<TcpSession> wpSelf = shared_from_this();
+        const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
         tlsPtr->handshake(type, [wpSelf, onHandshakeCb](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             if (self)
@@ -145,7 +145,7 @@ void TcpSession::handshake(boost::asio::ssl::stream_base::handshake_type type, c
 }
 #endif
 
-void TcpSession::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
+void TcpConnection::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
     if (m_socketTcpBase && m_isConnected)
     {
@@ -160,11 +160,11 @@ void TcpSession::send(const std::vector<unsigned char>& data, const TCP_SEND_CAL
     }
 }
 
-void TcpSession::TcpSession::recv()
+void TcpConnection::TcpConnection::recv()
 {
     if (m_socketTcpBase)
     {
-        const std::weak_ptr<TcpSession> wpSelf = shared_from_this();
+        const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
         m_socketTcpBase->recv(boost::asio::buffer(m_recvBuf), [wpSelf](const boost::system::error_code& code, std::size_t length) {
             const auto self = wpSelf.lock();
             if (self)
@@ -204,7 +204,7 @@ void TcpSession::TcpSession::recv()
     }
 }
 
-void TcpSession::close()
+void TcpConnection::close()
 {
     m_isConnected = false;
     if (m_socketTcpBase)
@@ -213,17 +213,17 @@ void TcpSession::close()
     }
 }
 
-bool TcpSession::isEnableSSL() const
+bool TcpConnection::isEnableSSL() const
 {
     return m_isEnableSSL;
 }
 
-bool TcpSession::isConnected() const
+bool TcpConnection::isConnected() const
 {
     return m_isConnected;
 }
 
-boost::asio::ip::tcp::endpoint TcpSession::getRemoteEndpoint() const
+boost::asio::ip::tcp::endpoint TcpConnection::getRemoteEndpoint() const
 {
     if (m_socketTcpBase)
     {
@@ -233,9 +233,9 @@ boost::asio::ip::tcp::endpoint TcpSession::getRemoteEndpoint() const
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-std::shared_ptr<boost::asio::ssl::context> TcpSession::makeSslContext(boost::asio::ssl::context::method m, const std::string& certFile,
-                                                                      const std::string& privateKeyFile,
-                                                                      const std::string& privateKeyFilePwd)
+std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSslContext(boost::asio::ssl::context::method m, const std::string& certFile,
+                                                                         const std::string& privateKeyFile,
+                                                                         const std::string& privateKeyFilePwd)
 {
     if (certFile.empty() && privateKeyFile.empty() && privateKeyFilePwd.empty())
     {

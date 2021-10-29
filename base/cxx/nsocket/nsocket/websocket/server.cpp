@@ -7,11 +7,11 @@ namespace ws
 Server::Server(const std::string& host, unsigned int port)
 {
     m_tcpServer = std::make_shared<TcpServer>(host, port, true, 1024);
-    m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpSession>& wpSession) { handleNewConnection(wpSession); });
+    m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) { handleNewConnection(wpConn); });
     m_tcpServer->setConnectionDataCallback(
-        [&](const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data) { handleConnectionData(wpSession, data); });
-    m_tcpServer->setConnectionCloseCallback([&](int64_t sid, const boost::asio::ip::tcp::endpoint& point,
-                                                const boost::system::error_code& code) { handleConnectionClose(sid, point, code); });
+        [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
+    m_tcpServer->setConnectionCloseCallback([&](int64_t cid, const boost::asio::ip::tcp::endpoint& point,
+                                                const boost::system::error_code& code) { handleConnectionClose(cid, point, code); });
 }
 
 void Server::setConnectingCallback(const WS_CONNECTING_CALLBACK& cb)
@@ -50,61 +50,58 @@ void Server::run()
     }
 }
 
-void Server::handleNewConnection(const std::weak_ptr<TcpSession>& wpSession)
+void Server::handleNewConnection(const std::weak_ptr<TcpConnection>& wpConn)
 {
-    const auto tcpSession = wpSession.lock();
-    if (tcpSession)
+    const auto conn = wpConn.lock();
+    if (conn)
     {
-        auto point = tcpSession->getRemoteEndpoint();
+        auto point = conn->getRemoteEndpoint();
         std::string clientHost = point.address().to_string().c_str();
         int clientPort = (int)point.port();
-        printf("============================== on new connection [%lld] [%s:%d]\n", tcpSession->getId(), clientHost.c_str(), clientPort);
+        printf("============================== on new connection [%lld] [%s:%d]\n", conn->getId(), clientHost.c_str(), clientPort);
         std::lock_guard<std::mutex> locker(m_mutex);
-        if (m_sessionMap.end() == m_sessionMap.find(tcpSession->getId()))
+        if (m_sessionMap.end() == m_sessionMap.find(conn->getId()))
         {
             auto session = std::make_shared<Session>();
-            session->wpTcpSession = wpSession;
+            session->wpConn = wpConn;
             session->req = std::make_shared<Request>();
             session->frame = std::make_shared<Frame>();
-            m_sessionMap.insert(std::make_pair(tcpSession->getId(), session));
+            m_sessionMap.insert(std::make_pair(conn->getId(), session));
         }
     }
 }
 
-void Server::handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, const std::vector<unsigned char>& data)
+void Server::handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data)
 {
-    const auto tcpSession = wpSession.lock();
-    if (tcpSession)
+    const auto conn = wpConn.lock();
+    if (conn)
     {
-        auto point = tcpSession->getRemoteEndpoint();
-        std::string clientHost = point.address().to_string().c_str();
-        int clientPort = (int)point.port();
-        printf("++++++++++ on recv data [%lld] [%s:%d], length: %d\n", tcpSession->getId(), clientHost.c_str(), clientPort,
-               (int)data.size());
-        for (size_t i = 0; i < data.size(); ++i)
+        std::shared_ptr<Session> session = nullptr;
         {
-            printf("%02X ", data[i]);
+            /* 限定锁区间, 避免阻塞其他连接, 提高并发性 */
+            std::lock_guard<std::mutex> locker(m_mutex);
+            auto iter = m_sessionMap.find(conn->getId());
+            if (m_sessionMap.end() != iter)
+            {
+                session = iter->second;
+            }
         }
-        printf("\n");
-        std::lock_guard<std::mutex> locker(m_mutex);
-        auto iter = m_sessionMap.find(tcpSession->getId());
-        if (m_sessionMap.end() == iter)
+        if (!session)
         {
             return;
         }
-        auto session = iter->second;
         int used = 0;
         auto frameHeadCb = [&]() {
             /* 扩展数据接收缓冲区 */
             int bufferSize = session->frame->payloadLen;
             if (bufferSize > 1024)
             {
-                static const int MAX_BUFFER_SIZE = (65535 - 20 - 20);
+                static const int MAX_BUFFER_SIZE = 65536; /* 64Kb */
                 if (bufferSize > MAX_BUFFER_SIZE) /* 限制上限 */
                 {
                     bufferSize = MAX_BUFFER_SIZE;
                 }
-                tcpSession->resizeBuffer(bufferSize);
+                conn->resizeBuffer(bufferSize);
             }
             handleFrameHead(session);
         };
@@ -113,9 +110,9 @@ void Server::handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, co
         };
         auto frameFinishCb = [&]() {
             /* 调回数据接收缓冲区空间 */
-            if (tcpSession->getBufferSize() > 1024)
+            if (conn->getBufferSize() > 1024)
             {
-                tcpSession->resizeBuffer(1024);
+                conn->resizeBuffer(1024);
             }
             handleFrameFinish(session);
         };
@@ -140,35 +137,38 @@ void Server::handleConnectionData(const std::weak_ptr<TcpSession>& wpSession, co
     }
 }
 
-void Server::handleConnectionClose(int64_t sid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)
+void Server::handleConnectionClose(int64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)
 {
     std::string clientHost = point.address().to_string().c_str();
     int clientPort = (int)point.port();
     if (code)
     {
-        printf("-------------------- on connection closed [%lld] [%s:%d] fail, %d, %s\n", sid, clientHost.c_str(), clientPort, code.value(),
+        printf("-------------------- on connection closed [%lld] [%s:%d] fail, %d, %s\n", cid, clientHost.c_str(), clientPort, code.value(),
                code.message().c_str());
     }
     else
     {
-        printf("-------------------- on connection closed [%lld] [%s:%d]\n", sid, clientHost.c_str(), clientPort);
+        printf("-------------------- on connection closed [%lld] [%s:%d]\n", cid, clientHost.c_str(), clientPort);
     }
-    std::lock_guard<std::mutex> locker(m_mutex);
-    auto iter = m_sessionMap.find(sid);
-    if (m_sessionMap.end() != iter)
     {
-        m_sessionMap.erase(iter);
+        /* 限定锁区间, 避免阻塞其他连接, 提高并发性 */
+        std::lock_guard<std::mutex> locker(m_mutex);
+        auto iter = m_sessionMap.find(cid);
+        if (m_sessionMap.end() != iter)
+        {
+            m_sessionMap.erase(iter);
+        }
     }
     if (m_onCloseCallback)
     {
-        m_onCloseCallback(sid);
+        m_onCloseCallback(cid);
     }
 }
 
 void Server::handleRequest(const std::shared_ptr<Session>& session)
 {
-    const auto tcpSession = session->wpTcpSession.lock();
-    if (tcpSession)
+    const auto conn = session->wpConn.lock();
+    if (conn)
     {
         /* 收到客户端请求 */
         std::shared_ptr<Response> resp = nullptr;
@@ -184,7 +184,7 @@ void Server::handleRequest(const std::shared_ptr<Session>& session)
         resp->create(data, session->req->getSecWebSocketKey());
         /* 响应客户端, 用于通知客户端WebSocket连接建立成功 */
         std::weak_ptr<Session> wpSession = session;
-        tcpSession->send(data, [&, wpSession](const boost::system::error_code& code, std::size_t length) {
+        conn->send(data, [&, wpSession](const boost::system::error_code& code, std::size_t length) {
             const auto session = wpSession.lock();
             if (session)
             {
@@ -204,24 +204,51 @@ void Server::handleRequest(const std::shared_ptr<Session>& session)
     }
 }
 
-void Server::handleFrameHead(const std::shared_ptr<Session>& session) {}
+void Server::handleFrameHead(const std::shared_ptr<Session>& session)
+{
+    if (0 == session->frame->fin && (1 == session->frame->opcode || 2 == session->frame->opcode)) /* 首帧 */
+    {
+    }
+}
 
-void Server::handleFramePayload(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen) {}
+void Server::handleFramePayload(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen)
+{
+    const auto conn = session->wpConn.lock();
+    if (conn)
+    {
+        auto point = conn->getRemoteEndpoint();
+        std::string clientHost = point.address().to_string().c_str();
+        int clientPort = (int)point.port();
+        printf("++++++++++ on recv frame [%lld] [%s:%d], offset: %zu, length: %d\n", conn->getId(), clientHost.c_str(), clientPort, offset,
+               dataLen);
+    }
+}
 
 void Server::handleFrameFinish(const std::shared_ptr<Session>& session)
 {
-    const auto tcpSession = session->wpTcpSession.lock();
-    if (tcpSession)
+    const auto conn = session->wpConn.lock();
+    if (conn)
     {
+        auto point = conn->getRemoteEndpoint();
+        std::string clientHost = point.address().to_string().c_str();
+        int clientPort = (int)point.port();
+        printf("========== on recv frame [%lld] [%s:%d] finish\n", conn->getId(), clientHost.c_str(), clientPort);
         if (0x8 == session->frame->opcode) /* 连接关闭 */
         {
             session->sendClose(CloseCode::close_normal);
         }
         else if (0x9 == session->frame->opcode) /* ping */
         {
+            session->sendPong();
         }
         else if (0xA == session->frame->opcode) /* pong */
         {
+        }
+        else
+        {
+            if (1 == session->frame->fin) /* 尾帧 */
+            {
+            }
         }
     }
 }

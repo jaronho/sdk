@@ -38,55 +38,55 @@ static bool parseMultipartFormDataBoundary(const std::string& contentType, std::
     return true;
 }
 
-void Router::onReqHead(int64_t sid, const REQUEST_PTR& req) {}
+void Router::onReqHead(int64_t cid, const REQUEST_PTR& req) {}
 
-void Router::onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) {}
+void Router::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) {}
 
-RESPONSE_PTR Router::onResponse(int64_t sid, const REQUEST_PTR& req)
+RESPONSE_PTR Router::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
     return std::make_shared<Response>();
 }
 
-void Router_batch::onReqHead(int64_t sid, const REQUEST_PTR& req)
+void Router_batch::onReqHead(int64_t cid, const REQUEST_PTR& req)
 {
     if (headCb)
     {
-        headCb(sid, req);
+        headCb(cid, req);
     }
 }
 
-void Router_batch::onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
+void Router_batch::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
 {
     if (contentCb)
     {
-        contentCb(sid, req, offset, data, dataLen);
+        contentCb(cid, req, offset, data, dataLen);
     }
 }
 
-RESPONSE_PTR Router_batch::onResponse(int64_t sid, const REQUEST_PTR& req)
+RESPONSE_PTR Router_batch::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
     if (respHandler)
     {
-        return respHandler(sid, req);
+        return respHandler(cid, req);
     }
     return nullptr;
 }
 
-void Router_simple::onReqHead(int64_t sid, const REQUEST_PTR& req)
+void Router_simple::onReqHead(int64_t cid, const REQUEST_PTR& req)
 {
-    if (m_dataMap.end() == m_dataMap.find(sid))
+    if (m_dataMap.end() == m_dataMap.find(cid))
     {
-        m_dataMap.insert(std::make_pair(sid, std::string()));
+        m_dataMap.insert(std::make_pair(cid, std::string()));
     }
 }
 
-void Router_simple::onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
+void Router_simple::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
 {
     if (!data || dataLen <= 0)
     {
         return;
     }
-    auto iter = m_dataMap.find(sid);
+    auto iter = m_dataMap.find(cid);
     if (m_dataMap.end() == iter)
     {
         return;
@@ -94,9 +94,9 @@ void Router_simple::onReqContent(int64_t sid, const REQUEST_PTR& req, size_t off
     iter->second.insert(iter->second.end(), data, data + dataLen);
 }
 
-RESPONSE_PTR Router_simple::onResponse(int64_t sid, const REQUEST_PTR& req)
+RESPONSE_PTR Router_simple::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
-    auto iter = m_dataMap.find(sid);
+    auto iter = m_dataMap.find(cid);
     if (m_dataMap.end() == iter)
     {
         return nullptr;
@@ -110,25 +110,25 @@ RESPONSE_PTR Router_simple::onResponse(int64_t sid, const REQUEST_PTR& req)
     return resp;
 }
 
-void Router_x_www_form_urlencoded::onReqHead(int64_t sid, const REQUEST_PTR& req)
+void Router_x_www_form_urlencoded::onReqHead(int64_t cid, const REQUEST_PTR& req)
 {
     if (!case_insensitive_equal("application/x-www-form-urlencoded", req->getContentType()))
     {
         return;
     }
-    if (m_wrapperMap.end() == m_wrapperMap.find(sid))
+    if (m_wrapperMap.end() == m_wrapperMap.find(cid))
     {
-        m_wrapperMap.insert(std::make_pair(sid, std::make_shared<Wrapper>()));
+        m_wrapperMap.insert(std::make_pair(cid, std::make_shared<Wrapper>()));
     }
 }
 
-void Router_x_www_form_urlencoded::onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
+void Router_x_www_form_urlencoded::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
 {
     if (!data || dataLen <= 0)
     {
         return;
     }
-    auto iter = m_wrapperMap.find(sid);
+    auto iter = m_wrapperMap.find(cid);
     if (m_wrapperMap.end() == iter)
     {
         return;
@@ -177,9 +177,9 @@ void Router_x_www_form_urlencoded::onReqContent(int64_t sid, const REQUEST_PTR& 
     }
 }
 
-RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t sid, const REQUEST_PTR& req)
+RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
-    auto iter = m_wrapperMap.find(sid);
+    auto iter = m_wrapperMap.find(cid);
     if (m_wrapperMap.end() == iter)
     {
         return nullptr;
@@ -198,7 +198,7 @@ RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t sid, const REQUEST
     return resp;
 }
 
-void Router_multipart_form_data::onReqHead(int64_t sid, const REQUEST_PTR& req)
+void Router_multipart_form_data::onReqHead(int64_t cid, const REQUEST_PTR& req)
 {
     std::string boundary;
     if (!parseMultipartFormDataBoundary(req->getContentType(), boundary))
@@ -207,21 +207,21 @@ void Router_multipart_form_data::onReqHead(int64_t sid, const REQUEST_PTR& req)
     }
     if (headCb)
     {
-        headCb(sid, req);
+        headCb(cid, req);
     }
-    if (m_formMap.end() == m_formMap.find(sid))
+    if (m_formMap.end() == m_formMap.find(cid))
     {
-        m_formMap.insert(std::make_pair(sid, std::make_shared<MultipartFormData>(boundary)));
+        m_formMap.insert(std::make_pair(cid, std::make_shared<MultipartFormData>(boundary)));
     }
 }
 
-void Router_multipart_form_data::onReqContent(int64_t sid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
+void Router_multipart_form_data::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
 {
     if (!data || dataLen <= 0)
     {
         return;
     }
-    auto iter = m_formMap.find(sid);
+    auto iter = m_formMap.find(cid);
     if (m_formMap.end() == iter)
     {
         return;
@@ -231,14 +231,14 @@ void Router_multipart_form_data::onReqContent(int64_t sid, const REQUEST_PTR& re
         [&](const std::string& name, const std::string& contentType, const std::string& text) {
             if (textCb)
             {
-                textCb(sid, req, name, contentType, text);
+                textCb(cid, req, name, contentType, text);
             }
         },
         [&](const std::string& name, const std::string& filename, const std::string& contentType, size_t offset, const unsigned char* data,
             int dataLen, bool finish) {
             if (fileCb)
             {
-                fileCb(sid, req, name, filename, contentType, offset, data, dataLen, finish);
+                fileCb(cid, req, name, filename, contentType, offset, data, dataLen, finish);
             }
         });
     if (used <= 0) /* 解析失败 */
@@ -247,9 +247,9 @@ void Router_multipart_form_data::onReqContent(int64_t sid, const REQUEST_PTR& re
     }
 }
 
-RESPONSE_PTR Router_multipart_form_data::onResponse(int64_t sid, const REQUEST_PTR& req)
+RESPONSE_PTR Router_multipart_form_data::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
-    auto iter = m_formMap.find(sid);
+    auto iter = m_formMap.find(cid);
     if (m_formMap.end() == iter)
     {
         return nullptr;
@@ -257,7 +257,7 @@ RESPONSE_PTR Router_multipart_form_data::onResponse(int64_t sid, const REQUEST_P
     RESPONSE_PTR resp = nullptr;
     if (respHandler)
     {
-        resp = respHandler(sid, req);
+        resp = respHandler(cid, req);
     }
     m_formMap.erase(iter);
     return resp;

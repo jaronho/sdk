@@ -350,7 +350,7 @@ int Frame::parsePayload(const unsigned char* data, int length, const PAYLOAD_CAL
         }
     }
     m_payloadReceived += used;
-    if (m_payloadReceived == payloadLen || 1 == fin) /* 数据都已接收完毕, 或已经是最后一个帧数据 */
+    if (m_payloadReceived == payloadLen) /* 数据都已接收完毕, 或已经是最后一个帧数据 */
     {
         if (finishCb)
         {
