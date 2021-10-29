@@ -23,7 +23,7 @@ private:
         /**
          * @brief 构造函数
          */
-        Client(const std::weak_ptr<nsocket::TcpSession>& wpSession) : m_wpTcpSession(wpSession)
+        Client(const std::weak_ptr<nsocket::TcpConnection>& wpConn) : m_wpConn(wpConn)
         {
             m_payload = std::make_shared<nsocket::Payload>(msg_base::maxsize());
         }
@@ -61,18 +61,18 @@ private:
          */
         void send(msg_base* msg, const std::function<void(bool ret)>& callback = nullptr)
         {
-            const auto tcpSession = m_wpTcpSession.lock();
-            if (tcpSession)
+            const auto conn = m_wpConn.lock();
+            if (conn)
             {
                 utilitiy::ByteArray ba;
                 msg->encode(ba);
                 std::vector<unsigned char> data;
                 nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);
-                tcpSession->send(data, [&, callback](const boost::system::error_code& code, std::size_t length) {
-                    const auto tcpSession = m_wpTcpSession.lock();
-                    if (tcpSession)
+                conn->send(data, [&, callback](const boost::system::error_code& code, std::size_t length) {
+                    const auto conn = m_wpConn.lock();
+                    if (conn)
                     {
-                        auto point = tcpSession->getRemoteEndpoint();
+                        auto point = conn->getRemoteEndpoint();
                         std::string clientHost = point.address().to_string().c_str();
                         int clientPort = (int)point.port();
                         if (code)
@@ -91,7 +91,7 @@ private:
                             {
                                 callback(true);
                             }
-                            tcpSession->close();
+                            conn->close();
                         }
                     }
                 });
@@ -129,7 +129,7 @@ private:
 
     private:
         std::shared_ptr<nsocket::Payload> m_payload; /* 负载 */
-        std::weak_ptr<nsocket::TcpSession> m_wpTcpSession; /* 会话 */
+        std::weak_ptr<nsocket::TcpConnection> m_wpConn; /* 连接 */
         MSG_HANDLER m_msgHandler; /* 消息句柄 */
         std::string m_id; /* 客户端ID */
     };
@@ -146,9 +146,9 @@ public:
 #endif
     {
         m_tcpServer = std::make_shared<nsocket::TcpServer>(serverHost, serverPort);
-        m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpSession>& wpSession) { handleNewConnection(wpSession); });
-        m_tcpServer->setConnectionDataCallback([&](const std::weak_ptr<nsocket::TcpSession>& wpSession,
-                                                   const std::vector<unsigned char>& data) { handleRecvConnectionData(wpSession, data); });
+        m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) { handleNewConnection(wpConn); });
+        m_tcpServer->setConnectionDataCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn,
+                                                   const std::vector<unsigned char>& data) { handleRecvConnectionData(wpConn, data); });
         m_tcpServer->setConnectionCloseCallback([&](int64_t sid, const boost::asio::ip::tcp::endpoint& point,
                                                     const boost::system::error_code& code) { handleConnectionClose(point, code); });
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -187,12 +187,12 @@ private:
     /**
      * @brief 处理新连接
      */
-    void handleNewConnection(const std::weak_ptr<nsocket::TcpSession>& wpSession)
+    void handleNewConnection(const std::weak_ptr<nsocket::TcpConnection>& wpConn)
     {
-        const auto tcpSession = wpSession.lock();
-        if (tcpSession)
+        const auto conn = wpConn.lock();
+        if (conn)
         {
-            auto point = tcpSession->getRemoteEndpoint();
+            auto point = conn->getRemoteEndpoint();
             /* 信息打印 */
             {
                 std::string clientHost = point.address().to_string().c_str();
@@ -204,7 +204,7 @@ private:
             auto iter = m_clientMap.find(point);
             if (m_clientMap.end() == iter)
             {
-                auto client = std::make_shared<Client>(wpSession);
+                auto client = std::make_shared<Client>(wpConn);
                 client->setMsgHandler([&, client](MsgType type, utilitiy::ByteArray& ba) { handleClientMsg(client, type, ba); });
                 m_clientMap.insert(std::make_pair(point, client));
             }
@@ -214,12 +214,12 @@ private:
     /**
      * @brief 处理接收到连接数据
      */
-    void handleRecvConnectionData(const std::weak_ptr<nsocket::TcpSession>& wpSession, const std::vector<unsigned char>& data)
+    void handleRecvConnectionData(const std::weak_ptr<nsocket::TcpConnection>& wpConn, const std::vector<unsigned char>& data)
     {
-        const auto tcpSession = wpSession.lock();
-        if (tcpSession)
+        const auto conn = wpConn.lock();
+        if (conn)
         {
-            auto point = tcpSession->getRemoteEndpoint();
+            auto point = conn->getRemoteEndpoint();
             /* 信息打印 */
             {
                 std::string clientHost = point.address().to_string().c_str();

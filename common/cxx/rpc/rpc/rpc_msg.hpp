@@ -74,7 +74,7 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize(0);
+        sz += utilitiy::ByteArray::bsize((int)type());
         sz += utilitiy::ByteArray::bsize(self_id);
         return sz;
     }
@@ -108,7 +108,7 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize(0);
+        sz += utilitiy::ByteArray::bsize((int)type());
         sz += utilitiy::ByteArray::bsize(ok);
         sz += utilitiy::ByteArray::bsize(desc);
         return sz;
@@ -146,7 +146,7 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize(0);
+        sz += utilitiy::ByteArray::bsize((int)type());
         sz += utilitiy::ByteArray::bsize(seq_id);
         sz += utilitiy::ByteArray::bsize(target_id);
         sz += utilitiy::ByteArray::bsize(data);
@@ -188,7 +188,7 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize(0);
+        sz += utilitiy::ByteArray::bsize((int)type());
         sz += utilitiy::ByteArray::bsize(seq_id);
         sz += utilitiy::ByteArray::bsize(target_id);
         sz += utilitiy::ByteArray::bsize(ok);
@@ -234,7 +234,7 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize(0);
+        sz += utilitiy::ByteArray::bsize((int)type());
         sz += utilitiy::ByteArray::bsize(src_id);
         sz += utilitiy::ByteArray::bsize(data);
         return sz;
