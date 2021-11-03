@@ -1,5 +1,5 @@
 #pragma once
-#define _XKEYCHECK_H
+#define _XKEYCHECK_H /* 防止在Windows平台编译报错 */
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -8,6 +8,9 @@
 #include <thread>
 #include <vector>
 
+/**
+ * @brief pcap设备(对网络适配器的抽象)
+ */
 class PcapDevice final
 {
 public:
