@@ -2,23 +2,13 @@
 
 #include <chrono>
 
-#ifdef LINUX
-#include <arpa/inet.h>
-#include <in.h>
-#endif
-#ifdef MAC_OS_X
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#endif
-#if defined(WIN32) || defined(WINx64) || defined(PCAPPP_MINGW_ENV)
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
-#endif
-#ifdef FREEBSD
+#else
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <sys/socket.h>
 #endif
 
 /* On Mac OS X and FreeBSD timeout of -1 causes pcap_open_live to fail so value of 1ms is set here.
@@ -57,9 +47,9 @@ std::string PcapDevice::getDescribe() const
     return m_describe;
 }
 
-std::string PcapDevice::getAddress() const
+std::string PcapDevice::getIpv4Address() const
 {
-    return m_address;
+    return m_ipv4Address;
 }
 
 bool PcapDevice::isLoopback() const
@@ -177,22 +167,22 @@ std::vector<std::shared_ptr<PcapDevice>> PcapDevice::getAllDevices(std::string* 
         {
             if (addr->addr)
             {
-                in_addr* ipv4Addr = nullptr;
                 if (AF_INET == addr->addr->sa_family)
                 {
-                    ipv4Addr = &(((struct sockaddr_in*)addr->addr)->sin_addr);
-                }
-                char addrString[INET6_ADDRSTRLEN];
-                if (ipv4Addr)
-                {
-                    inet_ntop(AF_INET, &(((sockaddr_in*)addr->addr)->sin_addr), addrString, INET_ADDRSTRLEN);
+                    in_addr* ipv4Addr = &(((struct sockaddr_in*)addr->addr)->sin_addr);
+                    if (ipv4Addr)
+                    {
+                        char addrString[INET_ADDRSTRLEN];
+                        inet_ntop(AF_INET, &(((sockaddr_in*)addr->addr)->sin_addr), addrString, INET_ADDRSTRLEN);
+                        pd->m_ipv4Address = addrString;
+                    }
                 }
                 else
                 {
+                    char addrString[INET6_ADDRSTRLEN];
                     inet_ntop(AF_INET6, &(((sockaddr_in6*)addr->addr)->sin6_addr), addrString, INET6_ADDRSTRLEN);
+                    // TODO: IPv6
                 }
-                pd->m_address = addrString;
-                break;
             }
             addr = addr->next;
         }

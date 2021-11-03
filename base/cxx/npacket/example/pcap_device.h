@@ -26,10 +26,10 @@ public:
     std::string getDescribe() const;
 
     /**
-     * @brief 获取IP地址
-     * @return IP地址
+     * @brief 获取IPv4地址
+     * @return IPv4地址
      */
-    std::string getAddress() const;
+    std::string getIpv4Address() const;
 
     /**
      * @brief 是否回环
@@ -86,7 +86,7 @@ private:
 private:
     std::string m_name; /* 名字 */
     std::string m_describe; /* 描述 */
-    std::string m_address; /* IP地址 */
+    std::string m_ipv4Address; /* IPv4地址 */
     bool m_isLoopback = false; /* 是否回环 */
     pcap_t* m_pcap = nullptr; /* pcap指针 */
     std::thread* m_captureThread = nullptr; /* 数据包捕获线程 */
