@@ -27,6 +27,18 @@ using WS_CONNECTING_CALLBACK = std::function<std::shared_ptr<Response>(const SES
 using WS_OPEN_CALLBACK = std::function<void(const SESSION_PTR& session)>;
 
 /**
+ * @brief ping回调
+ * @param session 会话
+ */
+using WS_PING_CALLBACK = std::function<void(const SESSION_PTR& session)>;
+
+/**
+ * @brief pong回调
+ * @param session 会话
+ */
+using WS_PONG_CALLBACK = std::function<void(const SESSION_PTR& session)>;
+
+/**
  * @brief 连接关闭回调
  * @param cid 连接ID
  */
@@ -56,6 +68,18 @@ public:
      * @param cb 连接打开回调
      */
     void setOpenCallback(const WS_OPEN_CALLBACK& cb);
+
+    /**
+     * @brief 设置ping回调
+     * @param cb ping回调
+     */
+    void setPingCallback(const WS_PING_CALLBACK& cb);
+
+    /**
+     * @brief 设置pong回调
+     * @param cb pong回调
+     */
+    void setPongCallback(const WS_PONG_CALLBACK& cb);
 
     /**
      * @brief 设置消息接收者
@@ -120,6 +144,8 @@ private:
     std::unordered_map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
     WS_CONNECTING_CALLBACK m_onConnectingCallback; /* 连接中回调 */
     WS_OPEN_CALLBACK m_onOpenCallback; /* 连接打开回调 */
+    WS_PING_CALLBACK m_onPingCallback; /* ping回调 */
+    WS_PONG_CALLBACK m_onPongCallback; /* pong回调 */
     std::shared_ptr<Messager> m_messager; /* 消息接收者 */
     WS_CLOSE_CALLBACK m_onCloseCallback; /* 连接关闭回调 */
 };

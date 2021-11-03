@@ -25,6 +25,16 @@ void Server::setOpenCallback(const WS_OPEN_CALLBACK& cb)
     m_onOpenCallback = cb;
 }
 
+void Server::setPingCallback(const WS_PING_CALLBACK& cb)
+{
+    m_onPingCallback = cb;
+}
+
+void Server::setPongCallback(const WS_PONG_CALLBACK& cb)
+{
+    m_onPongCallback = cb;
+}
+
 void Server::setMessager(const std::shared_ptr<Messager>& msger)
 {
     m_messager = msger;
@@ -268,10 +278,21 @@ void Server::handleFrameFinish(const std::shared_ptr<Session>& session)
         }
         else if (0x9 == session->m_frame->opcode) /* ping */
         {
-            session->sendPong(); /* 需要回复pong给客户端 */
+            if (m_onPingCallback)
+            {
+                m_onPingCallback(session);
+            }
+            else
+            {
+                session->sendPong(); /* 需要回复pong给客户端 */
+            }
         }
         else if (0xA == session->m_frame->opcode) /* pong */
         {
+            if (m_onPongCallback)
+            {
+                m_onPongCallback(session);
+            }
         }
     }
 }
