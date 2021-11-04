@@ -131,10 +131,26 @@ foreach(filename ${example_websocketserver_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_nsocket_tcpclient ${base_nsocket_files} ${example_tcpclient_files})
-add_executable(example_nsocket_tcpserver ${base_nsocket_files} ${example_tcpserver_files})
-add_executable(example_nsocket_httpserver ${base_nsocket_files} ${example_httpserver_files})
-add_executable(example_nsocket_websocketserver ${base_nsocket_files} ${example_websocketserver_files})
+add_executable(example_nsocket_tcpclient ${base_nsocket_core_src_list}
+                                         ${base_nsocket_tcp_src_list}
+                                         ${base_nsocket_src_list}
+                                         ${example_tcpclient_files})
+add_executable(example_nsocket_tcpserver ${base_nsocket_core_src_list}
+                                         ${base_nsocket_tcp_src_list}
+                                         ${base_nsocket_src_list}
+                                         ${example_tcpserver_files})
+add_executable(example_nsocket_httpserver ${base_nsocket_core_src_list}
+                                          ${base_nsocket_http_src_list}
+                                          ${base_nsocket_tcp_src_list}
+                                          ${base_nsocket_src_list}
+                                          ${example_httpserver_files})
+add_executable(example_nsocket_websocketserver ${base_nsocket_core_src_list}
+                                               ${base_nsocket_tcp_src_list}
+                                               ${base_nsocket_websocket_base64_src_list}
+                                               ${base_nsocket_websocket_sha1_src_list}
+                                               ${base_nsocket_websocket_src_list}
+                                               ${base_nsocket_src_list}
+                                               ${example_websocketserver_files})
 
 # 链接依赖库
 target_link_libraries(example_nsocket_tcpclient Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
