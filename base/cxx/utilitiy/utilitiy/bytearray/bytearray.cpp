@@ -24,14 +24,13 @@ short ByteArray::swab16(short n)
     return (((n & 0x00FF) << 8) | ((n & 0xFF00) >> 8));
 }
 
-short ByteArray::swab16(unsigned char* p)
+short ByteArray::swab16(unsigned char p[2])
 {
     if (!p)
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    short ret = ((p[0] << 8) | p[1]);
-    return ret;
+    return ((p[0] << 8) | p[1]);
 }
 
 int ByteArray::swab32(int n)
@@ -39,14 +38,33 @@ int ByteArray::swab32(int n)
     return (((n & 0x000000FF) << 24) | ((n & 0x0000FF00) << 8) | ((n & 0x00FF0000) >> 8) | ((n & 0xFF000000) >> 24));
 }
 
-int ByteArray::swab32(unsigned char* p)
+int ByteArray::swab32(unsigned char p[4])
 {
     if (!p)
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    int ret = ((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
-    return ret;
+    return ((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
+}
+
+long long ByteArray::swab64(long long n)
+{
+    int low = n & 0xFFFFFFFF;
+    int high = (n >> 32) & 0xFFFFFFFF;
+    low = ((low & 0x000000FF) << 24) | ((low & 0x0000FF00) << 8) | ((low & 0x00FF0000) >> 8) | ((low & 0xFF000000) >> 24);
+    high = ((high & 0x000000FF) << 24) | ((high & 0x0000FF00) << 8) | ((high & 0x00FF0000) >> 8) | ((high & 0xFF000000) >> 24);
+    return ((long long)low << 32) | high;
+}
+
+long long ByteArray::swab64(unsigned char p[8])
+{
+    if (!p)
+    {
+        throw std::exception(std::logic_error("arg 'p' is null"));
+    }
+    int low = p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
+    int high = p[4] | (p[5] << 8) | (p[6] << 16) | (p[7] << 24);
+    return ((long long)high << 32) | low;
 }
 
 int ByteArray::bcount(const std::string& value)

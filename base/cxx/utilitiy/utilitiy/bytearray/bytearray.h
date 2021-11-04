@@ -28,7 +28,7 @@ public:
      * @param p 字节流(2个字节)
      * @return 短整型值
      */
-    static short swab16(unsigned char* p);
+    static short swab16(unsigned char p[2]);
 
     /**
      * @brief 大小端转换(整型值转为整型值)
@@ -41,7 +41,20 @@ public:
      * @param p 字节流(4个字节)
      * @return 整型值
      */
-    static int swab32(unsigned char* p);
+    static int swab32(unsigned char p[4]);
+
+    /**
+     * @brief 大小端转换(长整型值转为长整型值)
+     * @return 长整型值
+     */
+    static long long swab64(long long n);
+
+    /**
+     * @brief 大小端转换(字节流转为长整型值)
+     * @param p 字节流(8个字节)
+     * @return 长整型值
+     */
+    static long long swab64(unsigned char p[8]);
 
     /**
      * @brief 获取数据类型所占字节数
