@@ -49,12 +49,12 @@ int ByteArray::swab32(unsigned char* p)
     return ret;
 }
 
-int ByteArray::bsize(const std::string& value)
+int ByteArray::bcount(const std::string& value)
 {
     return sizeof(int) + value.size();
 }
 
-int ByteArray::bsize(const unsigned char* value, int len)
+int ByteArray::bcount(const unsigned char* value, int len)
 {
     if (len >= 0)
     {
@@ -63,7 +63,7 @@ int ByteArray::bsize(const unsigned char* value, int len)
     return sizeof(int);
 }
 
-int ByteArray::bsize(const std::vector<unsigned char>& value)
+int ByteArray::bcount(const std::vector<unsigned char>& value)
 {
     return sizeof(int) + value.size();
 }

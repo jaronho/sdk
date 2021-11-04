@@ -10,7 +10,8 @@ namespace rpc
  */
 enum class MsgType
 {
-    REQ_REGISTER = 0, /* 请求注册 */
+    HEARTBEAT = 0, /* 心跳 */
+    REQ_REGISTER, /* 请求注册 */
     NOTIFY_REGISTER_RESULT, /* 通知注册结果 */
     REQ_SEND_DATA, /* 请求发送数据 */
     NOTIFY_SEND_DATA_RESULT, /* 请求发送数据结果 */
@@ -61,6 +62,33 @@ protected:
 };
 
 /**
+ * @brief 心跳
+ */
+class msg_heartbeat final : public msg_base
+{
+public:
+    MsgType type() const override
+    {
+        return MsgType::HEARTBEAT;
+    }
+
+    int size() const override
+    {
+        int sz = 0;
+        sz += utilitiy::ByteArray::bcount((int)type());
+        return sz;
+    }
+
+    void encode(utilitiy::ByteArray& ba) override
+    {
+        ba.allocate(size());
+        ba.writeInt((int)type());
+    };
+
+    void decode(utilitiy::ByteArray& ba) override{};
+};
+
+/**
  * @brief 请求注册
  */
 class msg_req_register final : public msg_base
@@ -74,8 +102,8 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize((int)type());
-        sz += utilitiy::ByteArray::bsize(self_id);
+        sz += utilitiy::ByteArray::bcount((int)type());
+        sz += utilitiy::ByteArray::bcount(self_id);
         return sz;
     }
 
@@ -108,9 +136,9 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize((int)type());
-        sz += utilitiy::ByteArray::bsize(ok);
-        sz += utilitiy::ByteArray::bsize(desc);
+        sz += utilitiy::ByteArray::bcount((int)type());
+        sz += utilitiy::ByteArray::bcount(ok);
+        sz += utilitiy::ByteArray::bcount(desc);
         return sz;
     }
 
@@ -146,10 +174,10 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize((int)type());
-        sz += utilitiy::ByteArray::bsize(seq_id);
-        sz += utilitiy::ByteArray::bsize(target_id);
-        sz += utilitiy::ByteArray::bsize(data);
+        sz += utilitiy::ByteArray::bcount((int)type());
+        sz += utilitiy::ByteArray::bcount(seq_id);
+        sz += utilitiy::ByteArray::bcount(target_id);
+        sz += utilitiy::ByteArray::bcount(data);
         return sz;
     }
 
@@ -188,11 +216,11 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize((int)type());
-        sz += utilitiy::ByteArray::bsize(seq_id);
-        sz += utilitiy::ByteArray::bsize(target_id);
-        sz += utilitiy::ByteArray::bsize(ok);
-        sz += utilitiy::ByteArray::bsize(desc);
+        sz += utilitiy::ByteArray::bcount((int)type());
+        sz += utilitiy::ByteArray::bcount(seq_id);
+        sz += utilitiy::ByteArray::bcount(target_id);
+        sz += utilitiy::ByteArray::bcount(ok);
+        sz += utilitiy::ByteArray::bcount(desc);
         return sz;
     }
 
@@ -234,9 +262,9 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bsize((int)type());
-        sz += utilitiy::ByteArray::bsize(src_id);
-        sz += utilitiy::ByteArray::bsize(data);
+        sz += utilitiy::ByteArray::bcount((int)type());
+        sz += utilitiy::ByteArray::bcount(src_id);
+        sz += utilitiy::ByteArray::bcount(data);
         return sz;
     }
 

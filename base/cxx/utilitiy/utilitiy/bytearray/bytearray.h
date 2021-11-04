@@ -44,12 +44,12 @@ public:
     static int swab32(unsigned char* p);
 
     /**
-     * @brief 获取类型所占字节数
-     * @tparam T 类型
+     * @brief 获取数据类型所占字节数
+     * @tparam T 数据类型
      * @return 占用字节数
      */
     template<typename T>
-    static int bsize(T v)
+    static int bcount(T v)
     {
         return sizeof(T);
     }
@@ -59,7 +59,7 @@ public:
      * @param value 字符串值
      * @return 占用字节数
      */
-    static int bsize(const std::string& value);
+    static int bcount(const std::string& value);
 
     /**
      * @brief 获取字节流所占字节数
@@ -67,14 +67,14 @@ public:
      * @param len 长度
      * @return 占用字节数=头(4个字节)+长度
      */
-    static int bsize(const unsigned char* value, int len);
+    static int bcount(const unsigned char* value, int len);
 
     /**
      * @brief 获取字节流所占字节数
      * @param value 字节流
      * @return 占用字节数=头(4个字节)+长度
      */
-    static int bsize(const std::vector<unsigned char>& value);
+    static int bcount(const std::vector<unsigned char>& value);
 
 public:
     /**
