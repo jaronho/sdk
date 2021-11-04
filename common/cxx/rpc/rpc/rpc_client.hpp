@@ -127,6 +127,7 @@ public:
             if (code)
             {
                 printf(">>>>>>>>>> on send fail, %d, %s\n", code.value(), code.message().c_str());
+                m_registered = false;
                 m_tcpClient->stop();
                 if (onSendCb)
                 {

@@ -23,7 +23,8 @@ private:
         /**
          * @brief 构造函数
          */
-        Client(const std::weak_ptr<nsocket::TcpConnection>& wpConn) : m_wpConn(wpConn)
+        Client(const std::weak_ptr<nsocket::TcpConnection>& wpConn, const std::string& host, int port)
+            : m_wpConn(wpConn), m_host(host), m_port(port)
         {
             m_payload = std::make_shared<nsocket::Payload>(msg_base::maxsize());
         }
@@ -34,6 +35,24 @@ private:
         void setMsgHandler(const MSG_HANDLER& handler)
         {
             m_msgHandler = handler;
+        }
+
+        /**
+         * @brief 获取客户端地址
+         * @return 客户端地址
+         */
+        std::string getHost() const
+        {
+            return m_host;
+        }
+
+        /**
+         * @brief 获取客户端端口
+         * @return 客户端端口
+         */
+        int getPort() const
+        {
+            return m_port;
         }
 
         /**
@@ -57,7 +76,7 @@ private:
         /**
          * @brief 发送消息
          * @param msg 消息
-         * @param callback 回调
+         * @param callback 回调, 参数: ret-true(成功)/false(失败)
          */
         void send(msg_base* msg, const std::function<void(bool ret)>& callback = nullptr)
         {
@@ -131,6 +150,8 @@ private:
         std::shared_ptr<nsocket::Payload> m_payload; /* 负载 */
         std::weak_ptr<nsocket::TcpConnection> m_wpConn; /* 连接 */
         MSG_HANDLER m_msgHandler; /* 消息句柄 */
+        std::string m_host; /* 主机地址 */
+        int m_port; /* 主机端口 */
         std::string m_id; /* 客户端ID */
     };
 
@@ -193,18 +214,16 @@ private:
         if (conn)
         {
             auto point = conn->getRemoteEndpoint();
+            std::string clientHost = point.address().to_string().c_str();
+            int clientPort = (int)point.port();
             /* 信息打印 */
-            {
-                std::string clientHost = point.address().to_string().c_str();
-                int clientPort = (int)point.port();
-                printf("++++++++++++++++++++++++++++++ on new connection [%s:%d]\n", clientHost.c_str(), clientPort);
-            }
+            printf("++++++++++++++++++++++++++++++ on new connection [%s:%d]\n", clientHost.c_str(), clientPort);
             /* 逻辑处理 */
             std::lock_guard<std::recursive_mutex> locker(m_mutex);
             auto iter = m_clientMap.find(point);
             if (m_clientMap.end() == iter)
             {
-                auto client = std::make_shared<Client>(wpConn);
+                auto client = std::make_shared<Client>(wpConn, clientHost, clientPort);
                 client->setMsgHandler([&, client](MsgType type, utilitiy::ByteArray& ba) { handleClientMsg(client, type, ba); });
                 m_clientMap.insert(std::make_pair(point, client));
             }
@@ -283,6 +302,10 @@ private:
     {
         switch (type)
         {
+        case MsgType::HEARTBEAT: {
+            printf("<<<<< msg [HEARTBEAT] [%s:%d], client id: %s\n", client->getHost().c_str(), client->getPort(), client->getId().c_str());
+        }
+        break;
         case MsgType::REQ_REGISTER: {
             msg_req_register req;
             req.decode(ba);
