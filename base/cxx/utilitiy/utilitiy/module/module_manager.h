@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <memory>
+#include <string>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
