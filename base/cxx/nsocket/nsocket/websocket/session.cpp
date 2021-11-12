@@ -25,7 +25,7 @@ void Session::sendText(const std::string& text, bool isFin)
             const auto conn = m_wpConn.lock();
             if (conn)
             {
-                if (code) /* ·¢ËÍÊ§°Ü */
+                if (code) /* å‘é€å¤±è´¥ */
                 {
                     conn->close();
                 }
@@ -45,7 +45,7 @@ void Session::sendBytes(const std::vector<unsigned char>& bytes, bool isFin)
             const auto conn = m_wpConn.lock();
             if (conn)
             {
-                if (code) /* ·¢ËÍÊ§°Ü */
+                if (code) /* å‘é€å¤±è´¥ */
                 {
                     conn->close();
                 }
@@ -63,7 +63,7 @@ void Session::sendClose(const CloseCode& code)
         Frame::createCloseFrame(data, code);
         conn->send(data, [&](const boost::system::error_code& code, std::size_t length) {
             const auto conn = m_wpConn.lock();
-            if (conn) /* ÎÞÐèÅÐ¶Ï·¢ËÍ½á¹û, Ö±½Ó¶Ï¿ªÁ¬½Ó */
+            if (conn) /* æ— éœ€åˆ¤æ–­å‘é€ç»“æžœ, ç›´æŽ¥æ–­å¼€è¿žæŽ¥ */
             {
                 conn->close();
             }
@@ -82,7 +82,7 @@ void Session::sendPing()
             const auto conn = m_wpConn.lock();
             if (conn)
             {
-                if (code) /* ·¢ËÍÊ§°Ü */
+                if (code) /* å‘é€å¤±è´¥ */
                 {
                     conn->close();
                 }
@@ -102,7 +102,7 @@ void Session::sendPong()
             const auto conn = m_wpConn.lock();
             if (conn)
             {
-                if (code) /* ·¢ËÍÊ§°Ü */
+                if (code) /* å‘é€å¤±è´¥ */
                 {
                     conn->close();
                 }

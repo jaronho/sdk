@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
     for (int i = 1; i < argc;)
     {
         const char* key = argv[i];
-        if (0 == strcmp(key, "-s")) /* ·şÎñÆ÷µØÖ· */
+        if (0 == strcmp(key, "-s")) /* æœåŠ¡å™¨åœ°å€ */
         {
             ++i;
             if (i < argc)
@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-p")) /* ·şÎñÆ÷¶Ë¿Ú */
+        else if (0 == strcmp(key, "-p")) /* æœåŠ¡å™¨ç«¯å£ */
         {
             ++i;
             if (i < argc)
@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
             }
         }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        else if (0 == strcmp(key, "-cf")) /* Ö¤ÊéÎÄ¼ş */
+        else if (0 == strcmp(key, "-cf")) /* è¯ä¹¦æ–‡ä»¶ */
         {
             ++i;
             if (i < argc)
@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-pkf")) /* Ë½Ô¿ÎÄ¼ş */
+        else if (0 == strcmp(key, "-pkf")) /* ç§é’¥æ–‡ä»¶ */
         {
             ++i;
             if (i < argc)
@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-pkp")) /* Ë½Ô¿ÎÄ¼şÃÜÂë */
+        else if (0 == strcmp(key, "-pkp")) /* ç§é’¥æ–‡ä»¶å¯†ç  */
         {
             ++i;
             if (i < argc)
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
         }
         printf("************************************************************************\n");
     });
-    /* Ìí¼ÓÂ·ÓÉ±í */
+    /* æ·»åŠ è·¯ç”±è¡¨ */
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
         r->respHandler = [&](const nsocket::http::REQUEST_PTR& req, const std::string& data) {
@@ -195,7 +195,7 @@ int main(int argc, char* argv[])
         server.addRouter("/form", r);
     }
     {
-        /* ´´½¨ÎÄ¼şÂ·¾¶ */
+        /* åˆ›å»ºæ–‡ä»¶è·¯å¾„ */
 #ifdef _WIN32
         if (0 != _access(UPLOAD_PATH.c_str(), 0))
         {
@@ -245,7 +245,7 @@ int main(int argc, char* argv[])
             printf("--- cid: %lld, name: %s, filename: %s, content type: %s, offset: %zu, data len: %d, finish: %s\n", cid, name.c_str(),
                    filename.c_str(), contentType.c_str(), offset, dataLen, finish ? "true" : "false");
             printf("--------------------------------------------------------------------\n");
-            /* ´´½¨ºÍ²éÕÒÎÄ¼ş¾ä±ú */
+            /* åˆ›å»ºå’ŒæŸ¥æ‰¾æ–‡ä»¶å¥æŸ„ */
             std::shared_ptr<std::fstream> fs = nullptr;
             auto iter = g_fileHandlerMap.find(cid);
             if (g_fileHandlerMap.end() == iter)
@@ -262,12 +262,12 @@ int main(int argc, char* argv[])
             {
                 fs = iter->second;
             }
-            /* Ğ´ÎÄ¼şÊı¾İ */
+            /* å†™æ–‡ä»¶æ•°æ® */
             if (fs)
             {
                 fs->seekp(offset, std::ios::beg);
                 fs->write((const char*)data, dataLen);
-                /* ÎÄ¼şĞ´Íê±Ï */
+                /* æ–‡ä»¶å†™å®Œæ¯• */
                 if (finish)
                 {
                     fs->flush();
@@ -277,7 +277,7 @@ int main(int argc, char* argv[])
             }
         };
         r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
-            /* ÎªÁË°²È«ĞÔÆğ¼û, ÔÚÇëÇó½áÊøºó, ÔÙÒ»´Î²éÕÒÊÇ·ñÓĞÎ´¹Ø±ÕµÄÎÄ¼ş¾ä±ú, ÓĞµÄ»°Ôò¹Ø±Õ */
+            /* ä¸ºäº†å®‰å…¨æ€§èµ·è§, åœ¨è¯·æ±‚ç»“æŸå, å†ä¸€æ¬¡æŸ¥æ‰¾æ˜¯å¦æœ‰æœªå…³é—­çš„æ–‡ä»¶å¥æŸ„, æœ‰çš„è¯åˆ™å…³é—­ */
             auto iter = g_fileHandlerMap.find(cid);
             if (g_fileHandlerMap.end() != iter)
             {

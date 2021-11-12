@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
     for (int i = 1; i < argc;)
     {
         const char* key = argv[i];
-        if (0 == strcmp(key, "-s")) /* ·þÎñÆ÷µØÖ· */
+        if (0 == strcmp(key, "-s")) /* æœåŠ¡å™¨åœ°å€ */
         {
             ++i;
             if (i < argc)
@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-p")) /* ·þÎñÆ÷¶Ë¿Ú */
+        else if (0 == strcmp(key, "-p")) /* æœåŠ¡å™¨ç«¯å£ */
         {
             ++i;
             if (i < argc)
@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
             }
         }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        else if (0 == strcmp(key, "-cf")) /* Ö¤ÊéÎÄ¼þ */
+        else if (0 == strcmp(key, "-cf")) /* è¯ä¹¦æ–‡ä»¶ */
         {
             ++i;
             if (i < argc)
@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-pkf")) /* Ë½Ô¿ÎÄ¼þ */
+        else if (0 == strcmp(key, "-pkf")) /* ç§é’¥æ–‡ä»¶ */
         {
             ++i;
             if (i < argc)
@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-pkp")) /* Ë½Ô¿ÎÄ¼þÃÜÂë */
+        else if (0 == strcmp(key, "-pkp")) /* ç§é’¥æ–‡ä»¶å¯†ç  */
         {
             ++i;
             if (i < argc)

@@ -125,7 +125,7 @@ void Frame::createCloseFrame(std::vector<unsigned char>& data, const CloseCode& 
     }
     f.payloadLen = 2;
     f.create(data);
-    /* ¸ºÔØĞ´Èë×´Ì¬Âë */
+    /* è´Ÿè½½å†™å…¥çŠ¶æ€ç  */
     for (int i = 2 - 1; i >= 0; --i)
     {
         unsigned char ch = ((int)code >> (8 * i)) % 256;
@@ -176,7 +176,7 @@ void Frame::createPongFrame(std::vector<unsigned char>& data, unsigned char mask
 void Frame::create(std::vector<unsigned char>& data)
 {
     data.clear();
-    /* µÚ1¸ö×Ö½Ú: FIN + RSV + OPCODE */
+    /* ç¬¬1ä¸ªå­—èŠ‚: FIN + RSV + OPCODE */
     unsigned char byte1 = 0;
     byte1 += fin << 7;
     byte1 += rsv[0] << 6;
@@ -184,34 +184,34 @@ void Frame::create(std::vector<unsigned char>& data)
     byte1 += rsv[2] << 4;
     byte1 += opcode;
     data.push_back(byte1);
-    /* µÚ2¸ö×Ö½Ú: MASK + PAYLOAD_LEN */
+    /* ç¬¬2ä¸ªå­—èŠ‚: MASK + PAYLOAD_LEN */
     unsigned char byte2 = 0;
     byte2 += mask << 7;
     int extByteCount = 0;
-    if (payloadLen <= 125) /* ±¾×Ö½Ú×ãÒÔ´æ·Å¸ºÔØ³¤¶È */
+    if (payloadLen <= 125) /* æœ¬å­—èŠ‚è¶³ä»¥å­˜æ”¾è´Ÿè½½é•¿åº¦ */
     {
         byte2 += payloadLen;
     }
-    else if (payloadLen <= 0xFFFF) /* ĞèÒªÀ©Õ¹2¸ö×Ö½ÚÓÃÓÚ´æ·Å¸ºÔØ³¤¶È */
+    else if (payloadLen <= 0xFFFF) /* éœ€è¦æ‰©å±•2ä¸ªå­—èŠ‚ç”¨äºå­˜æ”¾è´Ÿè½½é•¿åº¦ */
     {
         byte2 += 126;
         extByteCount = 2;
     }
-    else /* ĞèÒªÀ©Õ¹8¸ö×Ö½ÚÓÃÓÚ´æ·Å¸ºÔØ³¤¶È */
+    else /* éœ€è¦æ‰©å±•8ä¸ªå­—èŠ‚ç”¨äºå­˜æ”¾è´Ÿè½½é•¿åº¦ */
     {
         byte2 += 127;
         extByteCount = 8;
     }
     data.push_back(byte2);
-    /* À©Õ¹¸ºÔØ³¤¶È(´ó¶Ë×Ö½ÚĞò) */
+    /* æ‰©å±•è´Ÿè½½é•¿åº¦(å¤§ç«¯å­—èŠ‚åº) */
     for (int i = extByteCount - 1; i >= 0; --i)
     {
         unsigned char ch = ((unsigned long long)payloadLen >> (8 * i)) % 256;
         data.push_back(ch);
     }
-    if (1 == mask) /* ÓĞÑÚÂëÊ±²ÅĞèÒªĞ´Èë */
+    if (1 == mask) /* æœ‰æ©ç æ—¶æ‰éœ€è¦å†™å…¥ */
     {
-        /* ÑÚÂë(4¸ö×Ö½Ú): MASKING_KEY */
+        /* æ©ç (4ä¸ªå­—èŠ‚): MASKING_KEY */
         for (int i = 0; i < 4; ++i)
         {
             data.push_back(maskingKey[i]);
@@ -234,7 +234,7 @@ void Frame::reset()
 
 int Frame::parseFinRsvOpcode(const unsigned char* data, int length)
 {
-    unsigned char byte = data[0]; /* Ö»½âÎö1¸ö×Ö½Ú */
+    unsigned char byte = data[0]; /* åªè§£æ1ä¸ªå­—èŠ‚ */
     fin = byte >> 7;
     rsv[0] = (byte >> 6) & 0x1;
     rsv[1] = (byte >> 5) & 0x1;
@@ -246,25 +246,25 @@ int Frame::parseFinRsvOpcode(const unsigned char* data, int length)
 
 int Frame::parseMaskPayloadLen(const unsigned char* data, int length)
 {
-    unsigned char byte = data[0]; /* Ö»½âÎö1¸ö×Ö½Ú */
+    unsigned char byte = data[0]; /* åªè§£æ1ä¸ªå­—èŠ‚ */
     mask = byte >> 7;
     unsigned char len = byte & 0x7F;
-    if (len <= 125) /* Á¢¼´µÃµ½¸ºÔØ³¤¶È */
+    if (len <= 125) /* ç«‹å³å¾—åˆ°è´Ÿè½½é•¿åº¦ */
     {
         payloadLen = len;
         m_parseStep = ParseStep::MASKING_KEY;
     }
-    else if (126 == len) /* ĞèÒª½âÎöºóÃæµÄ2¸ö×Ö½Ú×÷Îª¸ºÔØ³¤¶È */
+    else if (126 == len) /* éœ€è¦è§£æåé¢çš„2ä¸ªå­—èŠ‚ä½œä¸ºè´Ÿè½½é•¿åº¦ */
     {
         payloadLen = 0;
         m_parseStep = ParseStep::PAYLOAD_LEN_2;
     }
-    else if (127 == len) /* ĞèÒª½âÎöºóÃæµÄ8¸ö×Ö½Ú×÷Îª¸ºÔØ³¤¶È */
+    else if (127 == len) /* éœ€è¦è§£æåé¢çš„8ä¸ªå­—èŠ‚ä½œä¸ºè´Ÿè½½é•¿åº¦ */
     {
         payloadLen = 0;
         m_parseStep = ParseStep::PAYLOAD_LEN_8;
     }
-    else /* Ğ­Òé´íÎó: Êı¾İÁ¿Ì«´ó */
+    else /* åè®®é”™è¯¯: æ•°æ®é‡å¤ªå¤§ */
     {
         return 0;
     }
@@ -279,11 +279,11 @@ int Frame::parsePayloadLen(const unsigned char* data, int length, int needByteCo
     for (; used < length; ++used)
     {
         m_tmpBytes.push_back(data[used]);
-        if (needByteCount == m_tmpBytes.size()) /* ×Ö½ÚÊıÒÑµ½ */
+        if (needByteCount == m_tmpBytes.size()) /* å­—èŠ‚æ•°å·²åˆ° */
         {
-            for (size_t i = 0; i < m_tmpBytes.size(); ++i) /* ¼ÆËã¸ºÔØ³¤¶È */
+            for (size_t i = 0; i < m_tmpBytes.size(); ++i) /* è®¡ç®—è´Ÿè½½é•¿åº¦ */
             {
-                payloadLen += m_tmpBytes[i] << (8 * (needByteCount - 1 - (int)i)); /* ´ó¶Ë×Ö½ÚĞò */
+                payloadLen += m_tmpBytes[i] << (8 * (needByteCount - 1 - (int)i)); /* å¤§ç«¯å­—èŠ‚åº */
             }
             m_tmpBytes.clear();
             m_parseStep = ParseStep::MASKING_KEY;
@@ -299,7 +299,7 @@ int Frame::parseMaskingKey(const unsigned char* data, int length, const HEAD_CAL
     for (; used < length; ++used)
     {
         m_tmpBytes.push_back(data[used]);
-        if (4 == m_tmpBytes.size()) /* Ö»½âÎö4¸ö×Ö½Ú */
+        if (4 == m_tmpBytes.size()) /* åªè§£æ4ä¸ªå­—èŠ‚ */
         {
             for (size_t i = 0; i < m_tmpBytes.size(); ++i)
             {
@@ -343,14 +343,14 @@ int Frame::parsePayload(const unsigned char* data, int length, const PAYLOAD_CAL
             std::vector<unsigned char> payload;
             for (int i = 0; i < used; ++i)
             {
-                unsigned char ch = data[i] ^ maskingKey[(m_payloadReceived + i) % 4]; /* ¶Ô¸ºÔØÊı¾İĞèÒªÊ¹ÓÃÑÚÂë½øĞĞÒì»ò½âÂë³öÕıÈ·Êı¾İ */
+                unsigned char ch = data[i] ^ maskingKey[(m_payloadReceived + i) % 4]; /* å¯¹è´Ÿè½½æ•°æ®éœ€è¦ä½¿ç”¨æ©ç è¿›è¡Œå¼‚æˆ–è§£ç å‡ºæ­£ç¡®æ•°æ® */
                 payload.push_back(ch);
             }
             payloadCb(m_payloadReceived, payload.data(), used);
         }
     }
     m_payloadReceived += used;
-    if (m_payloadReceived == payloadLen) /* Êı¾İ¶¼ÒÑ½ÓÊÕÍê±Ï, »òÒÑ¾­ÊÇ×îºóÒ»¸öÖ¡Êı¾İ */
+    if (m_payloadReceived == payloadLen) /* æ•°æ®éƒ½å·²æ¥æ”¶å®Œæ¯•, æˆ–å·²ç»æ˜¯æœ€åä¸€ä¸ªå¸§æ•°æ® */
     {
         if (finishCb)
         {
