@@ -32,13 +32,13 @@ AsioExecutor::AsioExecutor(const std::string& name, size_t threadCount) : Execut
 
 AsioExecutor::~AsioExecutor()
 {
-    stop();
     join();
     Diagnose::onExecutorDestroyed(this);
 }
 
 void AsioExecutor::join()
 {
+    m_context.stop();
     m_worker.reset();
     m_threads.join();
 }
@@ -83,10 +83,5 @@ TaskPtr AsioExecutor::post(const TaskPtr& task)
         }
     });
     return task;
-}
-
-void AsioExecutor::stop()
-{
-    m_context.stop();
 }
 } // namespace threading

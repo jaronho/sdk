@@ -36,11 +36,6 @@ public:
      */
     TaskPtr post(const TaskPtr& task) override;
 
-    /**
-     * @brief 停止异步任务的处理
-     */
-    void stop();
-
 private:
     std::atomic_int m_threadIndex = {0}; /* 线程索引 */
     boost::asio::detail::thread_group m_threads; /* 线程组 */

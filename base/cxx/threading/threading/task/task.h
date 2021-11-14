@@ -26,7 +26,7 @@ public:
     };
 
     /**
-	 * @brief 创建任务
+	 * @brief 构造函数
 	 * @param name 任务名称
 	 */
     Task(const std::string& name);

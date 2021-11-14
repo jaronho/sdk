@@ -30,7 +30,7 @@ void AsyncProxy::runOnce()
     }
 }
 
-void AsyncProxy::execute(const AsyncTaskPtr& task)
+void AsyncProxy::execute(const AsyncTaskPtr& task, const threading::ExecutorPtr& finishExecutor)
 {
     if (!s_workers)
     {
@@ -45,19 +45,27 @@ void AsyncProxy::execute(const AsyncTaskPtr& task)
         }
         threading::ThreadProxy::async(
             "worker.async" + tag,
-            [task]() {
+            [task, finishExecutor, tag]() {
                 task->func();
                 if (task->finishCb)
                 {
-                    std::unique_lock<std::mutex> locker(s_finishMutex);
-                    s_finishList.emplace_back(task);
+                    if (finishExecutor)
+                    {
+                        threading::ThreadProxy::async("worker.async" + tag + ".finish", task->finishCb, finishExecutor);
+                    }
+                    else
+                    {
+                        std::unique_lock<std::mutex> locker(s_finishMutex);
+                        s_finishList.emplace_back(task);
+                    }
                 }
             },
             s_workers);
     }
 }
 
-void AsyncProxy::execute(const std::function<void()>& func, const std::function<void()>& finishCb, const std::string& name)
+void AsyncProxy::execute(const std::function<void()>& func, const std::function<void()>& finishCb, const std::string& name,
+                         const threading::ExecutorPtr& finishExecutor)
 {
     if (!s_workers)
     {
@@ -69,6 +77,6 @@ void AsyncProxy::execute(const std::function<void()>& func, const std::function<
         task->name = name;
         task->func = func;
         task->finishCb = finishCb;
-        execute(task);
+        execute(task, finishExecutor);
     }
 }
