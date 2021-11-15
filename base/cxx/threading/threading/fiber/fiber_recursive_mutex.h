@@ -6,8 +6,8 @@
 namespace threading
 {
 /**
- * @brief 协程递归锁
- * @note 如果在同一个协程栈中, 会多次上锁, 请使用这个锁
+ * @brief 纤程递归锁
+ * @note 如果在同一个纤程栈中, 会多次上锁, 请使用这个锁
  */
 class FiberRecursiveMutex final
 {
