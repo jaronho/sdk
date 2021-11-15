@@ -57,6 +57,11 @@ get_cxx_files(${base_threading_path}/threading/task src_list)
 list(APPEND base_threading_task_src_list ${src_list})
 source_group(3rdparty/base/threading/task FILES ${base_threading_task_src_list})
 
+set(base_threading_timer_src_list)
+get_cxx_files(${base_threading_path}/threading/timer src_list)
+list(APPEND base_threading_timer_src_list ${src_list})
+source_group(3rdparty/base/threading/timer FILES ${base_threading_timer_src_list})
+
 set(base_threading_src_list)
 get_cxx_files(${base_threading_path}/threading src_list)
 list(APPEND base_threading_src_list ${src_list})
@@ -67,6 +72,7 @@ list(APPEND base_threading_files ${base_threading_asio_src_list}
                                  ${base_threading_diagnose_src_list}
                                  ${base_threading_fiber_src_list}
                                  ${base_threading_task_src_list}
+                                 ${base_threading_timer_src_list}
                                  ${base_threading_src_list})
 
 print_info(BODY "base threading files:")

@@ -84,4 +84,9 @@ TaskPtr AsioExecutor::post(const TaskPtr& task)
     });
     return task;
 }
+
+boost::asio::io_context* AsioExecutor::getContext()
+{
+    return &m_context;
+}
 } // namespace threading

@@ -15,7 +15,7 @@
 namespace threading
 {
 /**
- * @brief 线程代理(实现对外接口的封装)
+ * @brief 线程代理(实现线程对外接口的封装)
  */
 class ThreadProxy final
 {
@@ -87,6 +87,16 @@ public:
             }
         }
         return future.get();
+    }
+
+    /**
+     * @brief 异步接口
+     * @param task 任务
+     * @param executor 指定要执行的线程
+     */
+    static void async(const TaskPtr& task, const ExecutorPtr& executor)
+    {
+        executor->post(task);
     }
 
     /**
