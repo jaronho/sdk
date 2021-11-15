@@ -1,8 +1,9 @@
 #pragma once
 
 #include <atomic>
-#include <functional>
 #include <string>
+
+#include "http_client.h"
 
 namespace http
 {
