@@ -22,6 +22,8 @@ void HttpClient::stop()
     {
         s_workers.reset();
     }
+    std::unique_lock<std::mutex> locker(s_respMutex);
+    s_respList.clear();
 }
 
 void HttpClient::runOnce()

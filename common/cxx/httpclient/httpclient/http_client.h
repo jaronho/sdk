@@ -33,7 +33,7 @@ public:
     static void stop();
 
     /**
-     * @brief 运行单次(用于监听响应回调, 在主线程中循环调用)
+     * @brief 运行单次(用于监听响应回调, 在主逻辑线程中循环调用, 一般是在主线程)
      */
     static void runOnce();
 

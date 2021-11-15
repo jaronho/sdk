@@ -1,5 +1,7 @@
 #include "connection.h"
 
+#include "http_client.h"
+
 namespace http
 {
 Connection::Connection(const std::string& url)
