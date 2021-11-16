@@ -125,7 +125,7 @@ void printSimpleResponse(const curlex::Response& resp)
  * @param speed 速度
  */
 #ifdef _WIN32
-#define SPRINTF(buffer, f, ...) sprintf_s(buffer, f, ##__VA_ARGS__)
+#define SPRINTF(buffer, f, ...) sprintf_s(buffer, sizeof(buffer), f, ##__VA_ARGS__)
 #else
 #define SPRINTF(buffer, f, ...) sprintf(buffer, f, ##__VA_ARGS__)
 #endif

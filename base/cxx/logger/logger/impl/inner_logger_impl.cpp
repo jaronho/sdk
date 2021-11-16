@@ -36,7 +36,7 @@ DateTime getDateTime()
     struct timeb tb;
     ftime(&tb);
 #ifdef _WIN32
-    sprintf_s(dt.ms, "%03d", tb.millitm);
+    sprintf_s(dt.ms, sizeof(dt.ms), "%03d", tb.millitm);
 #else
     sprintf(dt.ms, "%03d", tb.millitm);
 #endif

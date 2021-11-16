@@ -242,7 +242,11 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     struct timeb tb;
     ftime(&tb);
     char ms[4] = {0};
+#ifdef _WIN32
+    sprintf_s(ms, sizeof(ms), "%03d", tb.millitm);
+#else
     sprintf(ms, "%03d", tb.millitm);
+#endif
     /* 重命名堆栈文件 */
     auto fi = stripFileInfo(oldDumpFile);
     std::string baseName = g_procBasename + "_" + g_procVersion;

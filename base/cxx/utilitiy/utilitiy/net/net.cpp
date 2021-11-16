@@ -104,7 +104,7 @@ Net::IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmas
     unsigned char n1 = a1 & m1, n2 = a2 & m2, n3 = a3 & m3, n4 = a4 & m4;
     char network[16] = {0};
 #ifdef _WIN32
-    sprintf_s(network, "%d.%d.%d.%d", n1, n2, n3, n4);
+    sprintf_s(network, sizeof(network), "%d.%d.%d.%d", n1, n2, n3, n4);
 #else
     sprintf(network, "%d.%d.%d.%d", n1, n2, n3, n4);
 #endif
@@ -113,7 +113,7 @@ Net::IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmas
     unsigned char h1 = a1 & (~m1), h2 = a2 & (~m2), h3 = a3 & (~m3), h4 = a4 & (~m4);
     char host[16] = {0};
 #ifdef _WIN32
-    sprintf_s(host, "%d.%d.%d.%d", h1, h2, h3, h4);
+    sprintf_s(host, sizeof(host), "%d.%d.%d.%d", h1, h2, h3, h4);
 #else
     sprintf(host, "%d.%d.%d.%d", h1, h2, h3, h4);
 #endif
@@ -122,7 +122,7 @@ Net::IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmas
     unsigned char b1 = n1 | ~m1, b2 = n2 | ~m2, b3 = n3 | ~m3, b4 = n4 | ~m4;
     char broadcast[16] = {0};
 #ifdef _WIN32
-    sprintf_s(broadcast, "%d.%d.%d.%d", b1, b2, b3, b4);
+    sprintf_s(broadcast, sizeof(broadcast), "%d.%d.%d.%d", b1, b2, b3, b4);
 #else
     sprintf(broadcast, "%d.%d.%d.%d", b1, b2, b3, b4);
 #endif
@@ -131,7 +131,7 @@ Net::IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmas
     unsigned char g1 = n1 + h1, g2 = n2 + h2, g3 = n3 + h3, g4 = n4 + (h4 | 0xFE);
     char defaultGateway[16] = {0};
 #ifdef _WIN32
-    sprintf_s(defaultGateway, "%d.%d.%d.%d", g1, g2, g3, g4);
+    sprintf_s(defaultGateway, sizeof(defaultGateway), "%d.%d.%d.%d", g1, g2, g3, g4);
 #else
     sprintf(defaultGateway, "%d.%d.%d.%d", g1, g2, g3, g4);
 #endif

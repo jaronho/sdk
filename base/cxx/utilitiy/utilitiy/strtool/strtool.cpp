@@ -205,7 +205,7 @@ std::string StrTool::toHex(const char* bytes, unsigned int byteCount, bool upper
     {
         memset(tmp, 0, sizeof(tmp));
 #ifdef _WIN32
-        sprintf_s(tmp, upper ? "%02X" : "%02x", (unsigned char)bytes[i]);
+        sprintf_s(tmp, sizeof(tmp), upper ? "%02X" : "%02x", (unsigned char)bytes[i]);
 #else
         sprintf(tmp, upper ? "%02X" : "%02x", (unsigned char)bytes[i]);
 #endif
