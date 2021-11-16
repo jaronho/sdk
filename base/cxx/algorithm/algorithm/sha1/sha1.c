@@ -265,9 +265,9 @@ char* sha1Final(sha1_ctx_t* context, unsigned char digest[20], int convertToStr)
     {
         memset(tmp, 0, sizeof(tmp));
 #ifdef _WIN32
-        sprintf_s(tmp, sizeof(tmp), "%02x", (unsigned char)digest[i]);
+        sprintf_s(tmp, "%02x", (unsigned char)digest[i]);
 #else
-        sprintf(tmp, sizeof(tmp), "%02x", (unsigned char)digest[i]);
+        sprintf(tmp, "%02x", (unsigned char)digest[i]);
 #endif
         strcat(digestStr, tmp);
     }
