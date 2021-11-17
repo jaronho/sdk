@@ -51,44 +51,42 @@ public:
      * @brief 创建文本帧
      * @param data [输出]帧数据
      * @param text 文本内容
-     * @param maskingKey 掩码值(选填), 服务端发送的不填, 客户端发送的必填
-     * @param isFin 是否最后一个帧
+     * @param isClient 是否为客户端帧数据(选填)
+     * @param isFin 是否最后一个帧(选填)
      */
-    static void createTextFrame(std::vector<unsigned char>& data, const std::string& text, unsigned char maskingKey[4] = nullptr,
-                                bool isFin = true);
+    static void createTextFrame(std::vector<unsigned char>& data, const std::string& text, bool isisClient = false, bool isFin = true);
 
     /**
      * @brief 创建二进制帧
      * @param data [输出]帧数据
      * @param bytes 帧数据(字节流)
-     * @param maskingKey 掩码值(选填), 服务端发送的不填, 客户端发送的必填
-     * @param isFin 是否最后一个帧
+     * @param isClient 是否为客户端帧数据(选填)
+     * @param isFin 是否最后一个帧(选填)
      */
-    static void createBinaryFrame(std::vector<unsigned char>& data, const std::vector<unsigned char>& bytes,
-                                  unsigned char maskingKey[4] = nullptr, bool isFin = true);
+    static void createBinaryFrame(std::vector<unsigned char>& data, const std::vector<unsigned char>& bytes, bool isClient = false,
+                                  bool isFin = true);
 
     /**
      * @brief 创建关闭帧
      * @param data [输出]帧数据
      * @param code 关闭状态码
-     * @param maskingKey 掩码值(选填), 服务端发送的不填, 客户端发送的必填
+     * @param isClient 是否为客户端帧数据(选填)
      */
-    static void createCloseFrame(std::vector<unsigned char>& data, const CloseCode& code = CloseCode::close_normal,
-                                 unsigned char maskingKey[4] = nullptr);
+    static void createCloseFrame(std::vector<unsigned char>& data, const CloseCode& code = CloseCode::close_normal, bool isClient = false);
 
     /**
      * @brief 创建ping帧
      * @param data [输出]帧数据
-     * @param maskingKey 掩码值(选填), 服务端发送的不填, 客户端发送的必填
+     * @param isClient 是否为客户端帧数据(选填)
      */
-    static void createPingFrame(std::vector<unsigned char>& data, unsigned char maskingKey[4] = nullptr);
+    static void createPingFrame(std::vector<unsigned char>& data, bool isClient = false);
 
     /**
      * @brief 创建pong帧
      * @param data [输出]帧数据
-     * @param maskingKey 掩码值(选填), 服务端发送的不填, 客户端发送的必填
+     * @param isClient 是否为客户端帧数据(选填)
      */
-    static void createPongFrame(std::vector<unsigned char>& data, unsigned char maskingKey[4] = nullptr);
+    static void createPongFrame(std::vector<unsigned char>& data, bool isClient = false);
 
 public:
     unsigned char fin; /* 是否为最后一帧数据, 0: 后面还有数据, 1: 后面没有数据了 */

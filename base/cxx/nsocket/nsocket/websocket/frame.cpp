@@ -1,9 +1,25 @@
 #include "frame.h"
 
+#include <random>
+
 namespace nsocket
 {
 namespace ws
 {
+/**
+ * @brief 创建掩码值
+ * @param maskingKey [输出]掩码值
+ */
+static void createMaskingKey(unsigned char maskingKey[4])
+{
+    std::uniform_int_distribution<unsigned short> dist(0, 255);
+    std::random_device rd;
+    for (int i = 0; i < 4; ++i)
+    {
+        maskingKey[i] = (unsigned char)dist(rd);
+    }
+}
+
 int Frame::parse(const unsigned char* data, int length, const HEAD_CALLBACK& headCb, const PAYLOAD_CALLBACK& payloadCb,
                  const FINISH_CALLBACK& finishCb)
 {
@@ -61,18 +77,15 @@ int Frame::parse(const unsigned char* data, int length, const HEAD_CALLBACK& hea
     return totalUsed;
 }
 
-void Frame::createTextFrame(std::vector<unsigned char>& data, const std::string& text, unsigned char maskingKey[4], bool isFin)
+void Frame::createTextFrame(std::vector<unsigned char>& data, const std::string& text, bool isClient, bool isFin)
 {
     Frame f;
     f.fin = isFin ? 1 : 0;
     f.opcode = 0x1;
-    if (maskingKey)
+    if (isClient)
     {
         f.mask = 1;
-        for (int i = 0; i < 4; ++i)
-        {
-            f.maskingKey[i] = maskingKey[i];
-        }
+        createMaskingKey(f.maskingKey);
     }
     else
     {
@@ -80,22 +93,28 @@ void Frame::createTextFrame(std::vector<unsigned char>& data, const std::string&
     }
     f.payloadLen = text.size();
     f.create(data);
-    data.insert(data.end(), text.begin(), text.end());
+    if (isClient)
+    {
+        for (size_t i = 0; i < text.size(); ++i)
+        {
+            data.push_back(text[i] ^ f.maskingKey[i % 4]);
+        }
+    }
+    else
+    {
+        data.insert(data.end(), text.begin(), text.end());
+    }
 }
 
-void Frame::createBinaryFrame(std::vector<unsigned char>& data, const std::vector<unsigned char>& bytes, unsigned char maskingKey[4],
-                              bool isFin)
+void Frame::createBinaryFrame(std::vector<unsigned char>& data, const std::vector<unsigned char>& bytes, bool isClient, bool isFin)
 {
     Frame f;
     f.fin = isFin ? 1 : 0;
     f.opcode = 0x2;
-    if (maskingKey)
+    if (isClient)
     {
         f.mask = 1;
-        for (int i = 0; i < 4; ++i)
-        {
-            f.maskingKey[i] = maskingKey[i];
-        }
+        createMaskingKey(f.maskingKey);
     }
     else
     {
@@ -103,21 +122,28 @@ void Frame::createBinaryFrame(std::vector<unsigned char>& data, const std::vecto
     }
     f.payloadLen = bytes.size();
     f.create(data);
-    data.insert(data.end(), bytes.begin(), bytes.end());
+    if (isClient)
+    {
+        for (size_t i = 0; i < bytes.size(); ++i)
+        {
+            data.push_back(bytes[i] ^ f.maskingKey[i % 4]);
+        }
+    }
+    else
+    {
+        data.insert(data.end(), bytes.begin(), bytes.end());
+    }
 }
 
-void Frame::createCloseFrame(std::vector<unsigned char>& data, const CloseCode& code, unsigned char maskingKey[4])
+void Frame::createCloseFrame(std::vector<unsigned char>& data, const CloseCode& code, bool isClient)
 {
     Frame f;
     f.fin = 1;
     f.opcode = 0x8;
-    if (maskingKey)
+    if (isClient)
     {
         f.mask = 1;
-        for (int i = 0; i < 4; ++i)
-        {
-            f.maskingKey[i] = maskingKey[i];
-        }
+        createMaskingKey(f.maskingKey);
     }
     else
     {
@@ -126,25 +152,27 @@ void Frame::createCloseFrame(std::vector<unsigned char>& data, const CloseCode& 
     f.payloadLen = 2;
     f.create(data);
     /* 负载写入状态码 */
-    for (int i = 2 - 1; i >= 0; --i)
+    if (isClient)
     {
-        unsigned char ch = ((int)code >> (8 * i)) % 256;
-        data.push_back(ch);
+        data.push_back(((int)code >> 8) ^ f.maskingKey[0]);
+        data.push_back(((int)code % 256) ^ f.maskingKey[1]);
+    }
+    else
+    {
+        data.push_back((int)code >> 8);
+        data.push_back((int)code % 256);
     }
 }
 
-void Frame::createPingFrame(std::vector<unsigned char>& data, unsigned char maskingKey[4])
+void Frame::createPingFrame(std::vector<unsigned char>& data, bool isClient)
 {
     Frame f;
     f.fin = 1;
     f.opcode = 0x9;
-    if (maskingKey)
+    if (isClient)
     {
         f.mask = 1;
-        for (int i = 0; i < 4; ++i)
-        {
-            f.maskingKey[i] = maskingKey[i];
-        }
+        createMaskingKey(f.maskingKey);
     }
     else
     {
@@ -153,18 +181,15 @@ void Frame::createPingFrame(std::vector<unsigned char>& data, unsigned char mask
     f.create(data);
 }
 
-void Frame::createPongFrame(std::vector<unsigned char>& data, unsigned char maskingKey[4])
+void Frame::createPongFrame(std::vector<unsigned char>& data, bool isClient)
 {
     Frame f;
     f.fin = 1;
     f.opcode = 0xA;
-    if (maskingKey)
+    if (isClient)
     {
         f.mask = 1;
-        for (int i = 0; i < 4; ++i)
-        {
-            f.maskingKey[i] = maskingKey[i];
-        }
+        createMaskingKey(f.maskingKey);
     }
     else
     {
