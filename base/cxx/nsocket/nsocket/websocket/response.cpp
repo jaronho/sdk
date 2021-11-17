@@ -42,14 +42,14 @@ void Response::create(std::vector<unsigned char>& data, const std::string& secWe
 
 std::string Response::calcSecWebSocketAccept(const std::string& secWebSocketKey)
 {
-    /* ╦сие: accept = base64(sha1(key + MAGIC)) */
+    /* 算法: accept = base64(sha1(key + MAGIC)) */
     static const std::string MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
     std::string accept;
     std::string str = secWebSocketKey + MAGIC;
     unsigned char digest[20];
     sha1Sign((const unsigned char*)str.c_str(), str.size(), digest);
     unsigned char* out;
-    unsigned int len = base64Encode(digest, 20, &out);
+    unsigned int len = base64Encode(digest, sizeof(digest), &out);
     if (out && len > 0)
     {
         accept = (char*)out;

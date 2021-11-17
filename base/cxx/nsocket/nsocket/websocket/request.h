@@ -49,6 +49,12 @@ public:
      */
     std::string getSecWebSocketKey();
 
+    /**
+     * @brief 创建请求数据
+     * @param data [输出]请求数据
+     */
+    void create(std::vector<unsigned char>& data);
+
 public:
     std::string method; /* 方法 */
     std::string uri; /* URI */
@@ -137,6 +143,12 @@ private:
      * @brief 清空临时数据
      */
     void clearTmp();
+
+    /**
+     * @brief 计算Key值
+     * @return Key值
+     */
+    std::string calcSecWebSocketKey();
 
 private:
     /**

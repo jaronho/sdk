@@ -1,5 +1,9 @@
 #include "request.h"
 
+#include <random>
+
+#include "base64/base64.h"
+
 namespace nsocket
 {
 namespace ws
@@ -124,6 +128,63 @@ int Request::getSecWebSocketVersion()
 std::string Request::getSecWebSocketKey()
 {
     return m_secWebSocketKey;
+}
+
+void Request::create(std::vector<unsigned char>& data)
+{
+    static const std::string CRLF = "\r\n";
+    static const std::string SEP = ": ";
+    data.clear();
+    std::string firstLine;
+    firstLine += "GET " + (uri.empty() ? "/" : uri);
+    if (!queries.empty())
+    {
+        firstLine += "?";
+        bool firstQuery = true;
+        for (auto iter = queries.begin(); queries.end() != iter; ++iter)
+        {
+            if (firstQuery)
+            {
+                firstQuery = false;
+            }
+            else
+            {
+                firstLine += "&";
+            }
+            firstLine += iter->first + "=" + iter->second;
+        }
+    }
+    firstLine += " HTTP/1.1";
+    data.insert(data.end(), firstLine.begin(), firstLine.end());
+    data.insert(data.end(), CRLF.begin(), CRLF.end());
+    auto iter = headers.find("Upgrade");
+    if (headers.end() == iter)
+    {
+        headers.insert(std::make_pair("Upgrade", "websocket"));
+    }
+    iter = headers.find("Connection");
+    if (headers.end() == iter)
+    {
+        headers.insert(std::make_pair("Connection", "Upgrade"));
+    }
+    iter = headers.find("Sec-WebSocket-Version");
+    if (headers.end() == iter)
+    {
+        headers.insert(std::make_pair("Sec-WebSocket-Version", "13"));
+    }
+    iter = headers.find("Sec-WebSocket-Key");
+    if (headers.end() == iter)
+    {
+        headers.insert(std::make_pair("Sec-WebSocket-Key", calcSecWebSocketKey()));
+    }
+    for (auto iter = headers.begin(); headers.end() != iter; ++iter)
+    {
+        data.insert(data.end(), iter->first.begin(), iter->first.end());
+        data.insert(data.end(), SEP.begin(), SEP.end());
+        data.insert(data.end(), iter->second.begin(), iter->second.end());
+        data.insert(data.end(), CRLF.begin(), CRLF.end());
+    }
+    data.insert(data.end(), CRLF.begin(), CRLF.end());
 }
 
 int Request::parseMethod(const unsigned char* data, int length)
@@ -499,6 +560,27 @@ void Request::clearTmp()
     m_tmpKeyFlag = true;
     m_tmpKey.clear();
     m_tmpValue.clear();
+}
+
+std::string Request::calcSecWebSocketKey()
+{
+    std::string nonce;
+    nonce.reserve(16);
+    std::uniform_int_distribution<unsigned short> dist(0, 255);
+    std::random_device rd;
+    for (int i = 0; i < 16; ++i)
+    {
+        nonce += (char)(dist(rd));
+    }
+    std::string secWebSocketKey;
+    unsigned char* out;
+    unsigned int len = base64Encode((const unsigned char*)nonce.c_str(), nonce.size(), &out);
+    if (out && len > 0)
+    {
+        secWebSocketKey = (char*)out;
+        free(out);
+    }
+    return secWebSocketKey;
 }
 } // namespace ws
 } // namespace nsocket
