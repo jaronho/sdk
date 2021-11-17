@@ -18,10 +18,11 @@ class Response
 public:
     /**
      * @brief 创建响应数据
-     * @param data [输出]响应数据
+     * @param resp 响应对象
      * @param secWebSocketKey key值
+     * @param data [输出]响应数据
      */
-    void create(std::vector<unsigned char>& data, const std::string& secWebSocketKey);
+    static void create(Response resp, const std::string& secWebSocketKey, std::vector<unsigned char>& data);
 
 private:
     /**
@@ -29,7 +30,7 @@ private:
      * @param secWebSocketKey key值
      * @return Accept值
      */
-    std::string calcSecWebSocketAccept(const std::string& secWebSocketKey);
+    static std::string calcSecWebSocketAccept(const std::string& secWebSocketKey);
 
 public:
     CaseInsensitiveMultimap headers; /* 头部 */

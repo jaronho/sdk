@@ -19,12 +19,13 @@ class Response
 public:
     /**
      * @brief 创建响应数据
+     * @param resp 响应对象
      * @param data [输出]响应数据
      */
-    void create(std::vector<unsigned char>& data);
+    static void create(Response resp, std::vector<unsigned char>& data);
 
 public:
-    std::string version = "HTTP/1.1"; /* 版本 */
+    std::string version; /* 版本 */
     StatusCode statusCode = StatusCode::success_ok; /* 状态码 */
     CaseInsensitiveMultimap headers; /* 头部 */
 };

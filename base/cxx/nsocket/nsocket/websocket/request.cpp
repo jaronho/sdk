@@ -130,18 +130,18 @@ std::string Request::getSecWebSocketKey()
     return m_secWebSocketKey;
 }
 
-void Request::create(std::vector<unsigned char>& data)
+void Request::create(Request req, std::vector<unsigned char>& data)
 {
     static const std::string CRLF = "\r\n";
     static const std::string SEP = ": ";
     data.clear();
     std::string firstLine;
-    firstLine += "GET " + (uri.empty() ? "/" : uri);
-    if (!queries.empty())
+    firstLine += "GET " + (req.uri.empty() ? "/" : req.uri);
+    if (!req.queries.empty())
     {
         firstLine += "?";
         bool firstQuery = true;
-        for (auto iter = queries.begin(); queries.end() != iter; ++iter)
+        for (auto iter = req.queries.begin(); req.queries.end() != iter; ++iter)
         {
             if (firstQuery)
             {
@@ -157,27 +157,27 @@ void Request::create(std::vector<unsigned char>& data)
     firstLine += " HTTP/1.1";
     data.insert(data.end(), firstLine.begin(), firstLine.end());
     data.insert(data.end(), CRLF.begin(), CRLF.end());
-    auto iter = headers.find("Upgrade");
-    if (headers.end() == iter)
+    auto iter = req.headers.find("Upgrade");
+    if (req.headers.end() == iter)
     {
-        headers.insert(std::make_pair("Upgrade", "websocket"));
+        req.headers.insert(std::make_pair("Upgrade", "websocket"));
     }
-    iter = headers.find("Connection");
-    if (headers.end() == iter)
+    iter = req.headers.find("Connection");
+    if (req.headers.end() == iter)
     {
-        headers.insert(std::make_pair("Connection", "Upgrade"));
+        req.headers.insert(std::make_pair("Connection", "Upgrade"));
     }
-    iter = headers.find("Sec-WebSocket-Version");
-    if (headers.end() == iter)
+    iter = req.headers.find("Sec-WebSocket-Version");
+    if (req.headers.end() == iter)
     {
-        headers.insert(std::make_pair("Sec-WebSocket-Version", "13"));
+        req.headers.insert(std::make_pair("Sec-WebSocket-Version", "13"));
     }
-    iter = headers.find("Sec-WebSocket-Key");
-    if (headers.end() == iter)
+    iter = req.headers.find("Sec-WebSocket-Key");
+    if (req.headers.end() == iter)
     {
-        headers.insert(std::make_pair("Sec-WebSocket-Key", calcSecWebSocketKey()));
+        req.headers.insert(std::make_pair("Sec-WebSocket-Key", calcSecWebSocketKey()));
     }
-    for (auto iter = headers.begin(); headers.end() != iter; ++iter)
+    for (auto iter = req.headers.begin(); req.headers.end() != iter; ++iter)
     {
         data.insert(data.end(), iter->first.begin(), iter->first.end());
         data.insert(data.end(), SEP.begin(), SEP.end());

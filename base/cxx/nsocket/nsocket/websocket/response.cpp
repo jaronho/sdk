@@ -7,7 +7,7 @@ namespace nsocket
 {
 namespace ws
 {
-void Response::create(std::vector<unsigned char>& data, const std::string& secWebSocketKey)
+void Response::create(Response resp, const std::string& secWebSocketKey, std::vector<unsigned char>& data)
 {
     static const std::string FIRST_LINE = "HTTP/1.1 101 Switching Protocols";
     static const std::string CRLF = "\r\n";
@@ -15,22 +15,22 @@ void Response::create(std::vector<unsigned char>& data, const std::string& secWe
     data.clear();
     data.insert(data.end(), FIRST_LINE.begin(), FIRST_LINE.end());
     data.insert(data.end(), CRLF.begin(), CRLF.end());
-    auto iter = headers.find("Upgrade");
-    if (headers.end() == iter)
+    auto iter = resp.headers.find("Upgrade");
+    if (resp.headers.end() == iter)
     {
-        headers.insert(std::make_pair("Upgrade", "websocket"));
+        resp.headers.insert(std::make_pair("Upgrade", "websocket"));
     }
-    iter = headers.find("Connection");
-    if (headers.end() == iter)
+    iter = resp.headers.find("Connection");
+    if (resp.headers.end() == iter)
     {
-        headers.insert(std::make_pair("Connection", "Upgrade"));
+        resp.headers.insert(std::make_pair("Connection", "Upgrade"));
     }
-    iter = headers.find("Sec-WebSocket-Accept");
-    if (headers.end() == iter)
+    iter = resp.headers.find("Sec-WebSocket-Accept");
+    if (resp.headers.end() == iter)
     {
-        headers.insert(std::make_pair("Sec-WebSocket-Accept", calcSecWebSocketAccept(secWebSocketKey)));
+        resp.headers.insert(std::make_pair("Sec-WebSocket-Accept", calcSecWebSocketAccept(secWebSocketKey)));
     }
-    for (auto iter = headers.begin(); headers.end() != iter; ++iter)
+    for (auto iter = resp.headers.begin(); resp.headers.end() != iter; ++iter)
     {
         data.insert(data.end(), iter->first.begin(), iter->first.end());
         data.insert(data.end(), SEP.begin(), SEP.end());

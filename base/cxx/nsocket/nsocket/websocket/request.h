@@ -51,9 +51,10 @@ public:
 
     /**
      * @brief 创建请求数据
+     * @param req 请求对象
      * @param data [输出]请求数据
      */
-    void create(std::vector<unsigned char>& data);
+    static void create(Request req, std::vector<unsigned char>& data);
 
 public:
     std::string method; /* 方法 */
@@ -148,7 +149,7 @@ private:
      * @brief 计算Key值
      * @return Key值
      */
-    std::string calcSecWebSocketKey();
+    static std::string calcSecWebSocketKey();
 
 private:
     /**

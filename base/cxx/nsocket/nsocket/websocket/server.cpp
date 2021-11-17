@@ -200,7 +200,7 @@ void Server::handleRequest(const std::shared_ptr<Session>& session)
             resp = std::make_shared<Response>();
         }
         std::vector<unsigned char> data;
-        resp->create(data, session->m_req->getSecWebSocketKey());
+        Response::create(*resp, session->m_req->getSecWebSocketKey(), data);
         /* 响应客户端, 用于通知客户端WebSocket连接建立成功 */
         std::weak_ptr<Session> wpSession = session;
         conn->send(data, [&, wpSession](const boost::system::error_code& code, std::size_t length) {
