@@ -92,30 +92,52 @@ int main(int argc, char* argv[])
     }
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
     nsocket::ws::Server server(serverHost, serverPort);
-    server.setConnectingCallback([&](const nsocket::ws::SESSION_PTR& session) {
-        printf("============================== client [%lld] on connecting\n", session->getId());
+    server.setConnectingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+        const auto session = wpSession.lock();
+        if (session)
+        {
+            printf("============================== client [%lld] on connecting\n", session->getId());
+        }
         return nullptr;
     });
-    server.setOpenCallback([&](const nsocket::ws::SESSION_PTR& session) {
-        printf("============================== client [%lld] on open\n", session->getId());
+    server.setOpenCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+        const auto session = wpSession.lock();
+        if (session)
+        {
+            printf("============================== client [%lld] on open\n", session->getId());
+        }
     });
-    server.setPingCallback([&](const nsocket::ws::SESSION_PTR& session) {
-        printf("==================== on ping\n");
-        session->sendPong();
+    server.setPingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+        const auto session = wpSession.lock();
+        if (session)
+        {
+            printf("==================== on ping\n");
+            session->sendPong();
+        }
     });
-    server.setPongCallback([&](const nsocket::ws::SESSION_PTR& session) { printf("==================== on pong\n"); });
+    server.setPongCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+        const auto session = wpSession.lock();
+        if (session)
+        {
+            printf("==================== on pong\n");
+        }
+    });
     auto msger = std::make_shared<nsocket::ws::Messager_simple>();
-    msger->onMessage = [&](const nsocket::ws::SESSION_PTR& session, const std::string& msg) {
-        if (session->isMsgText())
+    msger->onMessage = [&](const std::weak_ptr<nsocket::ws::Session>& wpSession, const std::string& msg) {
+        const auto session = wpSession.lock();
+        if (session)
         {
-            printf("++++++++++++++++++++ on message(Text), length: %zu\n", msg.size());
-            printf("%s", msg.c_str());
+            if (session->isMsgText())
+            {
+                printf("++++++++++++++++++++ on message(Text), length: %zu\n", msg.size());
+                printf("%s", msg.c_str());
+            }
+            else
+            {
+                printf("++++++++++++++++++++ on message(Binary), length: %zu\n", msg.size());
+            }
+            printf("\n");
         }
-        else
-        {
-            printf("++++++++++++++++++++ on message(Binary), length: %zu\n", msg.size());
-        }
-        printf("\n");
     };
     server.setMessager(msger);
     server.setCloseCallback([&](int64_t cid) { printf("------------------------------ client [%lld] on closed\n", cid); });

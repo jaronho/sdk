@@ -61,6 +61,17 @@ void Server::run()
     }
 }
 
+std::unordered_map<int64_t, std::weak_ptr<Session>> Server::getSessionMap()
+{
+    std::unordered_map<int64_t, std::weak_ptr<Session>> sessionMap;
+    std::lock_guard<std::mutex> locker(m_mutex);
+    for (auto iter = m_sessionMap.begin(); m_sessionMap.end() != iter; ++iter)
+    {
+        sessionMap.insert(std::make_pair(iter->first, iter->second));
+    }
+    return sessionMap;
+}
+
 void Server::handleNewConnection(const std::weak_ptr<TcpConnection>& wpConn)
 {
     const auto conn = wpConn.lock();

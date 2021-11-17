@@ -15,28 +15,28 @@ namespace ws
 {
 /**
  * @brief 连接中回调
- * @param session 会话
+ * @param wpSession 会话
  * @return 服务端发给客户端的响应
  */
-using WS_CONNECTING_CALLBACK = std::function<std::shared_ptr<Response>(const SESSION_PTR& session)>;
+using WS_CONNECTING_CALLBACK = std::function<std::shared_ptr<Response>(const std::weak_ptr<Session>& wpSession)>;
 
 /**
  * @brief 连接打开回调
- * @param session 会话
+ * @param wpSession 会话
  */
-using WS_OPEN_CALLBACK = std::function<void(const SESSION_PTR& session)>;
+using WS_OPEN_CALLBACK = std::function<void(const std::weak_ptr<Session>& wpSession)>;
 
 /**
  * @brief ping回调
- * @param session 会话
+ * @param wpSession 会话
  */
-using WS_PING_CALLBACK = std::function<void(const SESSION_PTR& session)>;
+using WS_PING_CALLBACK = std::function<void(const std::weak_ptr<Session>& wpSession)>;
 
 /**
  * @brief pong回调
- * @param session 会话
+ * @param wpSession 会话
  */
-using WS_PONG_CALLBACK = std::function<void(const SESSION_PTR& session)>;
+using WS_PONG_CALLBACK = std::function<void(const std::weak_ptr<Session>& wpSession)>;
 
 /**
  * @brief 连接关闭回调
@@ -101,6 +101,12 @@ public:
 #else
     void run();
 #endif
+
+    /**
+     * @brief 获取会话表
+     * @return 会话表
+     */
+    std::unordered_map<int64_t, std::weak_ptr<Session>> getSessionMap();
 
 private:
     /**

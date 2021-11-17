@@ -59,6 +59,5 @@ protected:
     std::shared_ptr<Frame> m_frame; /* 数据帧 */
     bool m_isMsgText = false; /* 当前消息是否为文本 */
 };
-using SESSION_PTR = std::shared_ptr<Session>;
 } // namespace ws
 } // namespace nsocket
