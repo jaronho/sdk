@@ -377,6 +377,23 @@ bool FileInfo::write(const char* data, size_t length, size_t pos, int* errCode)
     {
         return false;
     }
+    {
+        /* 需要保证文件已存在 */
+        FileAttribute attr;
+        if (!getFileAttribute(m_fullName, attr) || !attr.isFile) /* 文件不存在则先创建 */
+        {
+            std::fstream f(m_fullName, std::ios::out);
+            if (!f.is_open())
+            {
+                if (errCode)
+                {
+                    *errCode = errno;
+                }
+                return false;
+            }
+            f.close();
+        }
+    }
     std::fstream f(m_fullName, std::ios::in | std::ios::out); /* 该模式下需要文件已经存在 */
     if (!f.is_open())
     {

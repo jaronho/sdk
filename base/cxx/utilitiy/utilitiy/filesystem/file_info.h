@@ -141,7 +141,7 @@ public:
     bool write(const char* data, size_t length, bool isAppend = false, int* errCode = nullptr) const;
 
     /**
-     * @brief 写文件数据(需要文件已经存在, 否则会失败)
+     * @brief 写文件数据
      * @param data 数据
      * @param length 数据长度
      * @param pos 写入的位置, 说明: 若写入位置大于原文件长度, 则原文件末尾到写入位置会被NUL占位
