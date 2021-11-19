@@ -11,25 +11,25 @@ int main()
 {
     g_workers = threading::ThreadProxy::createAsioExecutor("workers", 6);
     threading::TimerProxy::start();
-    /* ¶¨Ê±Æ÷1 */
+    /* å®šæ—¶å™¨1 */
     int count1 = 0;
     auto tm1 = std::make_shared<threading::SteadyTimer>(std::chrono::seconds(0), std::chrono::milliseconds(3000), "", [&count1]() {
         ++count1;
         printf("===== SteadyTimer[1] === %d\n", count1);
     });
     tm1->start();
-    /* ¶¨Ê±Æ÷2 */
+    /* å®šæ—¶å™¨2 */
     int count2 = 0;
     auto tm2 = std::make_shared<threading::SteadyTimer>(std::chrono::seconds(0), std::chrono::milliseconds(2000), "", [&count2]() {
         ++count2;
         printf("===== SteadyTimer[2] === %d\n", count2);
     });
     tm2->start();
-    /* ¶¨Ê±Æ÷3 */
+    /* å®šæ—¶å™¨3 */
     auto tm3 = std::make_shared<threading::DeadlineTimer>(std::chrono::system_clock::now() + std::chrono::seconds(10), "",
                                                           [&]() { printf("========== DeadlineTimer over\n"); });
     tm3->start();
-    /* Ö÷Ñ­»· */
+    /* ä¸»å¾ªç¯ */
     int64_t index = 0;
     while (1)
     {
@@ -37,7 +37,7 @@ int main()
         {
             index = 0;
         }
-        /* Å×ÈÎÎñµ½¹¤×÷Ïß³ÌÖ´ĞĞ */
+        /* æŠ›ä»»åŠ¡åˆ°å·¥ä½œçº¿ç¨‹æ‰§è¡Œ */
         threading::ThreadProxy::async(
             "task_" + std::to_string(++index),
             [index]() {
@@ -45,7 +45,7 @@ int main()
                 std::this_thread::sleep_for(std::chrono::milliseconds(2000));
             },
             g_workers);
-        /* ¼àÌı¶¨Ê±Æ÷»Øµ÷ */
+        /* ç›‘å¬å®šæ—¶å™¨å›è°ƒ */
         threading::TimerProxy::runOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
