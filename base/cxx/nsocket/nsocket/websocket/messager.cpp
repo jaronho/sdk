@@ -83,7 +83,7 @@ void Messager_simple::onMessageEnd(const std::shared_ptr<Session>& session)
     {
         if (onMessage)
         {
-            onMessage(session, *msg.get());
+            onMessage(session, session->isMsgText(), *msg.get());
         }
     }
 }

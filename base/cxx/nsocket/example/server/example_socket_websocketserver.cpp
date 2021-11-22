@@ -123,11 +123,11 @@ int main(int argc, char* argv[])
         }
     });
     auto msger = std::make_shared<nsocket::ws::Messager_simple>();
-    msger->onMessage = [&](const std::weak_ptr<nsocket::ws::Session>& wpSession, const std::string& msg) {
+    msger->onMessage = [&](const std::weak_ptr<nsocket::ws::Session>& wpSession, bool isText, const std::string& msg) {
         const auto session = wpSession.lock();
         if (session)
         {
-            if (session->isMsgText())
+            if (isText)
             {
                 printf("++++++++++++++++++++ on message(Text), length: %zu\n", msg.size());
                 printf("%s", msg.c_str());
