@@ -105,6 +105,7 @@ bool PcapDevice::startCapture()
         while (m_pcap && m_captureStarted)
         {
             pcap_dispatch(m_pcap, -1, onPacketArrived, (u_char*)this);
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
         m_captureStarted = false;
     });
