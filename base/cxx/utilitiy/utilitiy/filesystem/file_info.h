@@ -142,13 +142,13 @@ public:
 
     /**
      * @brief 写文件数据
+     * @param pos 写入的位置, 说明: 若写入位置大于原文件长度, 则原文件末尾到写入位置会被NUL占位
      * @param data 数据
      * @param length 数据长度
-     * @param pos 写入的位置, 说明: 若写入位置大于原文件长度, 则原文件末尾到写入位置会被NUL占位
      * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
      * @return true-成功, false-失败
      */
-    bool write(const char* data, size_t length, size_t pos, int* errCode = nullptr);
+    bool write(size_t pos, const char* data, size_t length, int* errCode = nullptr);
 
     /**
      * @brief 从文件流中读取数据

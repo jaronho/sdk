@@ -363,7 +363,7 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
     return true;
 }
 
-bool FileInfo::write(const char* data, size_t length, size_t pos, int* errCode)
+bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode)
 {
     if (errCode)
     {
