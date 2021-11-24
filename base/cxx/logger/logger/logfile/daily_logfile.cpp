@@ -37,7 +37,7 @@ Logfile::Result DailyLogfile::record(const std::string& content, bool newline)
 #endif
     char dateStr[12] = {0};
     strftime(dateStr, sizeof(dateStr), "%Y%m%d", &t);
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     std::string baseName = m_prefixName + dateStr;
     if (!m_rotatingLogfile || 0 != baseName.compare(m_baseName))
     {

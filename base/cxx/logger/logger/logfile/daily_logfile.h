@@ -47,7 +47,7 @@ private:
     size_t m_maxFiles; /* 最多文件个数 */
     bool m_indexFixed; /* 文件数最大时, 索引值固定还是递增 */
     bool m_createDailyFolder; /* 是否创建每日文件夹 */
-    std::recursive_mutex m_mutex; /* 互斥锁 */
+    std::mutex m_mutex; /* 互斥锁 */
     std::shared_ptr<RotatingLogfile> m_rotatingLogfile; /* 滚动日志文件 */
 };
 } // namespace logger
