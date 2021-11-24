@@ -18,26 +18,30 @@ SteadyTimer::~SteadyTimer()
 
 void SteadyTimer::setDelay(const std::chrono::steady_clock::duration& delay)
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     m_delay = delay;
 }
 
 void SteadyTimer::setInterval(const std::chrono::steady_clock::duration& interval)
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     m_interval = interval;
 }
 
 bool SteadyTimer::isStarted()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     return m_started;
 }
 
 void SteadyTimer::start()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
-    stop();
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_started)
+    {
+        m_timer->cancel();
+        m_started = false;
+    }
     const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
     m_timer->expires_from_now(m_delay);
     m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
@@ -52,7 +56,7 @@ void SteadyTimer::start()
 
 void SteadyTimer::stop()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (m_started)
     {
         m_timer->cancel();
@@ -62,20 +66,23 @@ void SteadyTimer::stop()
 
 void SteadyTimer::onTrigger()
 {
+    std::lock_guard<std::mutex> locker(m_mutex);
     /* 触发 */
-    if (m_func)
+    if (m_started)
     {
-        if (m_executor)
+        if (m_func)
         {
-            m_executor->post(m_name, m_func);
-        }
-        else
-        {
-            TimerProxy::addToTriggerList(m_func);
+            if (m_executor)
+            {
+                m_executor->post(m_name, m_func);
+            }
+            else
+            {
+                TimerProxy::addToTriggerList(m_func);
+            }
         }
     }
     /* 继续 */
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started && m_interval > std::chrono::steady_clock::duration::zero())
     {
         const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();

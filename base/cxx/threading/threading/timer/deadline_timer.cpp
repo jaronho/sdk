@@ -18,20 +18,24 @@ DeadlineTimer::~DeadlineTimer()
 
 void DeadlineTimer::setDeadline(const std::chrono::system_clock::time_point& deadline)
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     m_deadline = deadline;
 }
 
 bool DeadlineTimer::isStarted()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     return m_started;
 }
 
 void DeadlineTimer::start()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
-    stop();
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_started)
+    {
+        m_timer->cancel();
+        m_started = false;
+    }
     const std::weak_ptr<DeadlineTimer> wpSelf = shared_from_this();
     m_timer->expires_at(m_deadline);
     m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
@@ -50,7 +54,7 @@ void DeadlineTimer::start()
 
 void DeadlineTimer::stop()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (m_started)
     {
         m_timer->cancel();
@@ -60,15 +64,19 @@ void DeadlineTimer::stop()
 
 void DeadlineTimer::onTrigger()
 {
-    if (m_func)
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_started)
     {
-        if (m_executor)
+        if (m_func)
         {
-            m_executor->post(m_name, m_func);
-        }
-        else
-        {
-            TimerProxy::addToTriggerList(m_func);
+            if (m_executor)
+            {
+                m_executor->post(m_name, m_func);
+            }
+            else
+            {
+                TimerProxy::addToTriggerList(m_func);
+            }
         }
     }
 }

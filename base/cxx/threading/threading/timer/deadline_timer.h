@@ -56,7 +56,7 @@ private:
     void onTrigger();
 
 private:
-    std::recursive_mutex m_mutex;
+    std::mutex m_mutex;
     std::atomic<std::chrono::system_clock::time_point> m_deadline; /* 触发时间点 */
     std::string m_name; /* 定时器名称 */
     std::function<void()> m_func; /* 触发执行函数 */
