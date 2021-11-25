@@ -1,5 +1,7 @@
 #include "request.h"
 
+#include <vector>
+
 namespace nsocket
 {
 namespace http

@@ -1,6 +1,7 @@
 #include "frame.h"
 
 #include <random>
+#include <string.h>
 
 namespace nsocket
 {

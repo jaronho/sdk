@@ -5,8 +5,8 @@
 
 namespace nsocket
 {
-static std::atomic_int64_t s_timestamp = 0;
-static std::atomic_int s_count = 0;
+static std::atomic<int64_t> s_timestamp{0}; /* 注意: std::atomic_int64_t在某些平台下未定义 */
+static std::atomic_int s_count{0};
 
 TcpConnection::TcpConnection(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected, size_t bz) : m_socketTcpBase(socket)
 {

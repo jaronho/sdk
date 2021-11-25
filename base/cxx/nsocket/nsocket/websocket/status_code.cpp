@@ -9,30 +9,29 @@ namespace ws
 /**
  * @brief WebSocket关闭状态码描述表
  */
-const std::unordered_map<CloseCode, std::string>& close_code_strings()
+const std::unordered_map<int, std::string>& close_code_strings()
 {
-    static const std::unordered_map<CloseCode, std::string> s_closeCodeMap = {
-        {CloseCode::reserve, "0 Reserve"},
-        {CloseCode::close_normal, "1000 Close Normal"},
-        {CloseCode::close_going_away, "1001 Close Going Away"},
-        {CloseCode::close_protocol_error, "1002 Close Protocol Error"},
-        {CloseCode::close_unsupported, "1003 Close Unsupported"},
-        {CloseCode::close_no_status, "1005 Close No Status"},
-        {CloseCode::close_abnormal, "1006 Close Abnormal"},
-        {CloseCode::unsupported_data, "1007 Unsupported Data"},
-        {CloseCode::policy_violation, "1008 Policy Violation"},
-        {CloseCode::close_too_large, "1009 Close Too Large"},
-        {CloseCode::missing_extension, "1010 Missing Extension"},
-        {CloseCode::internal_error, "1011 Internal Error"},
-        {CloseCode::service_restart, "1012 Service Restart"},
-        {CloseCode::try_again_later, "1013 Try Again Later"},
-        {CloseCode::tls_handshake, "1015 TLS Handshake"}};
+    static const std::unordered_map<int, std::string> s_closeCodeMap = {{(int)CloseCode::reserve, "0 Reserve"},
+                                                                        {(int)CloseCode::close_normal, "1000 Close Normal"},
+                                                                        {(int)CloseCode::close_going_away, "1001 Close Going Away"},
+                                                                        {(int)CloseCode::close_protocol_error, "1002 Close Protocol Error"},
+                                                                        {(int)CloseCode::close_unsupported, "1003 Close Unsupported"},
+                                                                        {(int)CloseCode::close_no_status, "1005 Close No Status"},
+                                                                        {(int)CloseCode::close_abnormal, "1006 Close Abnormal"},
+                                                                        {(int)CloseCode::unsupported_data, "1007 Unsupported Data"},
+                                                                        {(int)CloseCode::policy_violation, "1008 Policy Violation"},
+                                                                        {(int)CloseCode::close_too_large, "1009 Close Too Large"},
+                                                                        {(int)CloseCode::missing_extension, "1010 Missing Extension"},
+                                                                        {(int)CloseCode::internal_error, "1011 Internal Error"},
+                                                                        {(int)CloseCode::service_restart, "1012 Service Restart"},
+                                                                        {(int)CloseCode::try_again_later, "1013 Try Again Later"},
+                                                                        {(int)CloseCode::tls_handshake, "1015 TLS Handshake"}};
     return s_closeCodeMap;
 }
 
 CloseCode close_code(const std::string& desc)
 {
-    class StringToCloseCode : public std::unordered_map<std::string, CloseCode>
+    class StringToCloseCode : public std::unordered_map<std::string, int>
     {
     public:
         StringToCloseCode()
@@ -49,12 +48,12 @@ CloseCode close_code(const std::string& desc)
     {
         return CloseCode::reserve;
     }
-    return iter->second;
+    return (CloseCode)iter->second;
 }
 
 std::string close_desc(const CloseCode& code)
 {
-    auto iter = close_code_strings().find(code);
+    auto iter = close_code_strings().find((int)code);
     if (close_code_strings().end() == iter)
     {
         return std::string();
