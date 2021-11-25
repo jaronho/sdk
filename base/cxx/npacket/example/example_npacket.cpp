@@ -70,6 +70,7 @@ int main(int argc, char* argv[])
     dev->startCapture();
     while (1)
     {
+        dev->captureOnce();
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     dev->close();

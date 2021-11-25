@@ -5,7 +5,6 @@
 #include <memory>
 #include <pcap.h>
 #include <string>
-#include <thread>
 #include <vector>
 
 /**
@@ -57,7 +56,13 @@ public:
     void setDataCallback(const std::function<void(const unsigned char* data, int dataLen)>& cb);
 
     /**
-     * @brief 开始捕获(非阻塞)
+     * @brief 捕获单次(需要在循环调用)
+     */
+    bool captureOnce();
+
+    /**
+     * @brief 开始捕获
+     * @return true-成功, false-失败
      */
     bool startCapture();
 
@@ -92,7 +97,6 @@ private:
     std::string m_ipv4Address; /* IPv4地址 */
     bool m_isLoopback = false; /* 是否回环 */
     pcap_t* m_pcap = nullptr; /* pcap指针 */
-    std::thread* m_captureThread = nullptr; /* 数据包捕获线程 */
     std::atomic_bool m_captureStarted{false}; /* 是否已经开始捕获 */
     std::function<void(const unsigned char* data, int dataLen)> m_onDataCallback = nullptr; /* 数据回调 */
 };

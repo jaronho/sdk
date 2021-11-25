@@ -1,7 +1,5 @@
 #include "pcap_device.h"
 
-#include <chrono>
-
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -90,37 +88,33 @@ void PcapDevice::setDataCallback(const std::function<void(const unsigned char* d
     m_onDataCallback = cb;
 }
 
+bool PcapDevice::captureOnce()
+{
+    if (!m_pcap)
+    {
+        return false;
+    }
+    if (!m_captureStarted)
+    {
+        return false;
+    }
+    pcap_dispatch(m_pcap, -1, onPacketArrived, (u_char*)this);
+    return true;
+}
+
 bool PcapDevice::startCapture()
 {
     if (!m_pcap)
     {
         return false;
     }
-    if (m_captureThread)
-    {
-        return true;
-    }
     m_captureStarted = true;
-    m_captureThread = new std::thread([&]() {
-        while (m_pcap && m_captureStarted)
-        {
-            pcap_dispatch(m_pcap, -1, onPacketArrived, (u_char*)this);
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-        m_captureStarted = false;
-    });
     return true;
 }
 
 void PcapDevice::stopCapture()
 {
     m_captureStarted = false;
-    if (m_captureThread)
-    {
-        m_captureThread->join();
-        m_captureThread = nullptr;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
 }
 
 void PcapDevice::close()
