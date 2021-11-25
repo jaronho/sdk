@@ -47,9 +47,9 @@ std::string Response::calcSecWebSocketAccept(const std::string& secWebSocketKey)
     std::string accept;
     std::string str = secWebSocketKey + MAGIC;
     unsigned char digest[20];
-    sha1Sign((const unsigned char*)str.c_str(), str.size(), digest);
+    Sha1::sign((const unsigned char*)str.c_str(), str.size(), digest);
     unsigned char* out;
-    unsigned int len = base64Encode(digest, sizeof(digest), &out);
+    unsigned int len = Base64::encode(digest, sizeof(digest), &out);
     if (out && len > 0)
     {
         accept = (char*)out;

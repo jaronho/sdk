@@ -574,7 +574,7 @@ std::string Request::calcSecWebSocketKey()
     }
     std::string secWebSocketKey;
     unsigned char* out;
-    unsigned int len = base64Encode((const unsigned char*)nonce.c_str(), nonce.size(), &out);
+    unsigned int len = Base64::encode((const unsigned char*)nonce.c_str(), nonce.size(), &out);
     if (out && len > 0)
     {
         secWebSocketKey = (char*)out;

@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+namespace nsocket
+{
 #define SHA1STR_LEN 40
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
@@ -49,13 +51,11 @@
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 static void _sha1_transform(unsigned int state[5], const unsigned char buffer[64])
 {
-    unsigned int a, b, c, d, e;
     typedef union
     {
         unsigned char c[64];
         unsigned int l[16];
     } CHAR64LONG16;
-
 #ifdef SHA1HANDSOFF
     CHAR64LONG16 block[1]; /* use array to appear as a pointer */
     memcpy(block, buffer, 64);
@@ -65,14 +65,14 @@ static void _sha1_transform(unsigned int state[5], const unsigned char buffer[64
      * And the result is written through.  I threw a "const" in, hoping
      * this will cause a diagnostic.
      */
-    CHAR64LONG16* block = (const CHAR64LONG16*)buffer;
+    CHAR64LONG16* block = (CHAR64LONG16*)buffer;
 #endif
     /* Copy context->state[] to working vars */
-    a = state[0];
-    b = state[1];
-    c = state[2];
-    d = state[3];
-    e = state[4];
+    unsigned int a = state[0];
+    unsigned int b = state[1];
+    unsigned int c = state[2];
+    unsigned int d = state[3];
+    unsigned int e = state[4];
     /* 4 rounds of 20 operations each. Loop unrolled. */
     R0(a, b, c, d, e, 0);
     R0(e, a, b, c, d, 1);
@@ -167,126 +167,114 @@ static void _sha1_transform(unsigned int state[5], const unsigned char buffer[64
 #endif
 }
 
-void sha1Init(sha1_ctx_t* context)
+void Sha1::init()
 {
     /* SHA1 initialization constants */
-    context->state[0] = 0x67452301;
-    context->state[1] = 0xEFCDAB89;
-    context->state[2] = 0x98BADCFE;
-    context->state[3] = 0x10325476;
-    context->state[4] = 0xC3D2E1F0;
-    context->count[0] = context->count[1] = 0;
+    m_state[0] = 0x67452301;
+    m_state[1] = 0xEFCDAB89;
+    m_state[2] = 0x98BADCFE;
+    m_state[3] = 0x10325476;
+    m_state[4] = 0xC3D2E1F0;
+    m_count[0] = m_count[1] = 0;
 }
 
-void sha1Update(sha1_ctx_t* context, const unsigned char* input, unsigned int inputLen)
+void Sha1::update(const unsigned char* input, unsigned int inputLen)
 {
-    unsigned int i, j;
-    j = context->count[0];
-    if ((context->count[0] += inputLen << 3) < j)
+    unsigned int j = m_count[0];
+    if ((m_count[0] += inputLen << 3) < j)
     {
-        context->count[1]++;
+        m_count[1]++;
     }
-    context->count[1] += (inputLen >> 29);
+    m_count[1] += (inputLen >> 29);
     j = (j >> 3) & 63;
+    unsigned int i = 0;
     if ((j + inputLen) > 63)
     {
-        memcpy(&context->buffer[j], input, (i = 64 - j));
-        _sha1_transform(context->state, context->buffer);
+        memcpy(&m_buffer[j], input, (i = 64 - j));
+        _sha1_transform(m_state, m_buffer);
         for (; i + 63 < inputLen; i += 64)
         {
-            _sha1_transform(context->state, &input[i]);
+            _sha1_transform(m_state, &input[i]);
         }
         j = 0;
     }
-    else
-    {
-        i = 0;
-    }
-    memcpy(&context->buffer[j], &input[i], inputLen - i);
+    memcpy(&m_buffer[j], &input[i], inputLen - i);
 }
 
-char* sha1Final(sha1_ctx_t* context, unsigned char digest[20], int convertToStr)
+std::string Sha1::final(unsigned char digest[20], bool convertToStr)
 {
-    unsigned int i, t;
-    int j;
     unsigned char finalcount[8];
-    unsigned char c;
-    unsigned char* fcp;
-    char tmp[3];
-    char* digestStr;
 #if 0 /* untested "improvement" by DHR */
-    /* Convert context->count to a sequence of bytes
+    /* Convert m_count to a sequence of bytes
      * in finalcount.  Second element first, but
      * big-endian order within element.
      * But we do it all backwards.
      */
-    fcp = &finalcount[8];
-    for (i = 0; i < 2; i++)
+    unsigned char* fcp = &finalcount[8];
+    for (int i = 0; i < 2; i++)
     {
-        t = context->count[i];
-        for (j = 0; j < 4; t >>= 8, j++)
+        unsigned int t = m_ount[i];
+        for (int j = 0; j < 4; t >>= 8, j++)
         {
             *--fcp = (unsigned char)t;
         }
     }
 #else
-    for (i = 0; i < 8; i++)
+    for (int i = 0; i < 8; i++)
     {
-        finalcount[i] = (unsigned char)((context->count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 255); /* Endian independent */
+        finalcount[i] = (unsigned char)((m_count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 255); /* Endian independent */
     }
 #endif
-    c = 0200;
-    sha1Update(context, &c, 1);
-    while ((context->count[0] & 504) != 448)
+    unsigned char c = 0200;
+    update(&c, 1);
+    while ((m_count[0] & 504) != 448)
     {
         c = 0000;
-        sha1Update(context, &c, 1);
+        update(&c, 1);
     }
-    sha1Update(context, finalcount, 8); /* Should cause a _sha1_transform() */
-    for (i = 0; i < 20; i++)
+    update(finalcount, 8); /* Should cause a _sha1_transform() */
+    for (int i = 0; i < 20; i++)
     {
-        digest[i] = (unsigned char)((context->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 255);
+        digest[i] = (unsigned char)((m_state[i >> 2] >> ((3 - (i & 3)) * 8)) & 255);
     }
     /* Wipe variables */
-    memset(context, '\0', sizeof(*context));
+    memset(m_state, 0, sizeof(m_state));
+    memset(m_count, 0, sizeof(m_count));
+    memset(m_buffer, 0, sizeof(m_buffer));
     memset(&finalcount, '\0', sizeof(finalcount));
-    if (convertToStr <= 0) /* 不转字符串 */
+    if (!convertToStr) /* 不转字符串 */
     {
-        return NULL;
+        return std::string();
     }
     /* 把20位哈希转为十六进制字符串(40位小写) */
-    digestStr = (char*)malloc(sizeof(char) * (SHA1STR_LEN + 1));
-    if (!digestStr)
+    std::string digestStr;
+    for (int i = 0; i < 20; i++)
     {
-        return NULL;
-    }
-    digestStr[0] = 0;
-    for (i = 0; i < 20; i++)
-    {
-        memset(tmp, 0, sizeof(tmp));
+        char tmp[3] = {0};
 #ifdef _WIN32
         sprintf_s(tmp, sizeof(tmp), "%02x", (unsigned char)digest[i]);
 #else
         sprintf(tmp, "%02x", (unsigned char)digest[i]);
 #endif
-        strcat(digestStr, tmp);
+        digestStr += tmp;
     }
     return digestStr;
 }
 
-void sha1Sign(const unsigned char* input, int inputLen, unsigned char digest[20])
+void Sha1::sign(const unsigned char* input, int inputLen, unsigned char digest[20])
 {
-    sha1_ctx_t ctx;
-    sha1Init(&ctx);
-    sha1Update(&ctx, input, inputLen);
-    sha1Final(&ctx, digest, 0);
+    Sha1 s;
+    s.init();
+    s.update(input, inputLen);
+    s.final(digest, false);
 }
 
-char* sha1SignStr(const unsigned char* input, int inputLen)
+std::string Sha1::sign(const unsigned char* input, int inputLen)
 {
     unsigned char digest[20];
-    sha1_ctx_t ctx;
-    sha1Init(&ctx);
-    sha1Update(&ctx, input, inputLen);
-    return sha1Final(&ctx, digest, 1);
+    Sha1 s;
+    s.init();
+    s.update(input, inputLen);
+    return s.final(digest, true);
 }
+} // namespace nsocket

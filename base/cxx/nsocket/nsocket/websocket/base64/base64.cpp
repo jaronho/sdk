@@ -2,6 +2,8 @@
 
 #include <stdlib.h>
 
+namespace nsocket
+{
 #define BASE64_PAD '='
 #define BASE64DE_FIRST '+'
 #define BASE64DE_LAST 'z'
@@ -32,26 +34,21 @@ static const unsigned char base64de[] = {255, 255, 255, 255, 255, 255, 255, 255,
                                          41,  42,  43,  44,  45,  46,  47,  48, /* 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', */
                                          49,  50,  51,  255, 255, 255, 255, 255}; /* 'x', 'y', 'z', '{', '|', '}', '~', del, */
 
-unsigned int base64Encode(const unsigned char* in, unsigned int inLength, unsigned char** out)
+unsigned int Base64::encode(const unsigned char* in, unsigned int inLength, unsigned char** out)
 {
-    int flag;
-    unsigned int i;
-    unsigned int outLength;
-    unsigned char ch;
-    unsigned char prevCh;
     if (!in || 0 == inLength)
     {
         return 0;
     }
-    flag = 0;
-    outLength = 0;
-    prevCh = 0;
+    int flag = 0;
+    unsigned int outLength = 0;
+    unsigned char prevCh = 0;
     *out = (unsigned char*)malloc(BASE64_ENCODE_OUT_SIZE(inLength));
     if (*out)
     {
-        for (i = 0; i < inLength; ++i)
+        for (unsigned int i = 0; i < inLength; ++i)
         {
-            ch = in[i];
+            unsigned char ch = in[i];
             switch (flag)
             {
             case 0:
@@ -87,20 +84,17 @@ unsigned int base64Encode(const unsigned char* in, unsigned int inLength, unsign
     return outLength;
 }
 
-unsigned int base64Decode(const unsigned char* in, unsigned int inLength, unsigned char** out)
+unsigned int Base64::decode(const unsigned char* in, unsigned int inLength, unsigned char** out)
 {
-    unsigned int i;
-    unsigned int outLength;
-    unsigned char ch;
     if (!in || 0 == inLength || (inLength & 0x3))
     {
         return 0;
     }
-    outLength = 0;
+    unsigned int outLength = 0;
     *out = (unsigned char*)malloc(BASE64_DECODE_OUT_SIZE(inLength));
     if (*out)
     {
-        for (i = 0; i < inLength; ++i)
+        for (unsigned int i = 0; i < inLength; ++i)
         {
             if (in[i] == BASE64_PAD)
             {
@@ -110,7 +104,7 @@ unsigned int base64Decode(const unsigned char* in, unsigned int inLength, unsign
             {
                 return 0;
             }
-            ch = base64de[(unsigned char)in[i]];
+            unsigned char ch = base64de[(unsigned char)in[i]];
             if (255 == ch)
             {
                 return 0;
@@ -136,3 +130,4 @@ unsigned int base64Decode(const unsigned char* in, unsigned int inLength, unsign
     }
     return outLength;
 }
+} // namespace nsocket
