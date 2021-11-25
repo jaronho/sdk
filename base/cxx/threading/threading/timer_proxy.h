@@ -34,8 +34,8 @@ public:
 
 protected:
     /**
-     * @brief 获取定时器执行者
-     * @return 定时器执行者
+     * @brief 获取执行者I/O上下文
+     * @return 执行者I/O上下文
      */
     static boost::asio::io_context* getContext();
 
