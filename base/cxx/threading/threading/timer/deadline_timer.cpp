@@ -31,22 +31,32 @@ bool DeadlineTimer::isStarted()
 void DeadlineTimer::start()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
+    bool preCancel = false; /* 预先取消状态 */
     if (m_started)
     {
+        preCancel = true;
         m_timer->cancel();
-        m_started = false;
     }
     const std::weak_ptr<DeadlineTimer> wpSelf = shared_from_this();
     m_timer->expires_at(m_deadline);
-    m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
+    m_timer->async_wait([wpSelf, preCancel](const boost::system::error_code& code) {
         const auto self = wpSelf.lock();
         if (self)
         {
-            if (!code)
+            if (code)
+            {
+                /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
+                if (preCancel) /* 预先取消导致停止, 所以需要恢复 */
+                {
+                    self->onRecover();
+                    return;
+                }
+            }
+            else
             {
                 self->onTrigger();
             }
-            self->stop();
+            self->onStop();
         }
     });
     m_started = true;
@@ -62,22 +72,45 @@ void DeadlineTimer::stop()
     }
 }
 
-void DeadlineTimer::onTrigger()
+void DeadlineTimer::onRecover()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     if (m_started)
     {
-        if (m_func)
+        const std::weak_ptr<DeadlineTimer> wpSelf = shared_from_this();
+        m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
+            const auto self = wpSelf.lock();
+            if (self)
+            {
+                if (!code)
+                {
+                    self->onTrigger();
+                }
+                self->onStop();
+            }
+        });
+    }
+}
+
+void DeadlineTimer::onTrigger()
+{
+    if (m_func)
+    {
+        if (m_executor)
         {
-            if (m_executor)
-            {
-                m_executor->post(m_name, m_func);
-            }
-            else
-            {
-                TimerProxy::addToTriggerList(m_func);
-            }
+            m_executor->post(m_name, m_func);
+        }
+        else
+        {
+            TimerProxy::addToTriggerList(m_func);
         }
     }
+}
+
+void DeadlineTimer::onStop()
+{
+    /* 只做状态改变, 不调用实际取消接口 */
+    std::lock_guard<std::mutex> locker(m_mutex);
+    m_started = false;
 }
 } // namespace threading

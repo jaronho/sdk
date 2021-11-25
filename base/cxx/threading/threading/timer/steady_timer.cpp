@@ -37,18 +37,30 @@ bool SteadyTimer::isStarted()
 void SteadyTimer::start()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
+    bool preCancel = false; /* 预先取消状态 */
     if (m_started)
     {
+        preCancel = true;
         m_timer->cancel();
-        m_started = false;
     }
     const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
     m_timer->expires_from_now(m_delay);
-    m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
+    m_timer->async_wait([wpSelf, preCancel](const boost::system::error_code& code) {
         const auto self = wpSelf.lock();
-        if (self && !code)
+        if (self)
         {
-            self->onTrigger();
+            if (code)
+            {
+                /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
+                if (preCancel) /* 预先取消导致停止, 所以需要恢复 */
+                {
+                    self->onRecover();
+                }
+            }
+            else
+            {
+                self->onTrigger();
+            }
         }
     });
     m_started = true;
@@ -64,31 +76,43 @@ void SteadyTimer::stop()
     }
 }
 
-void SteadyTimer::onTrigger()
+void SteadyTimer::onRecover()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    /* 触发 */
     if (m_started)
     {
-        if (m_func)
+        const std::weak_ptr<SteadyTimer> wpSelf = shared_from_this();
+        m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
+            const auto self = wpSelf.lock();
+            if (self && !code)
+            {
+                self->onTrigger();
+            }
+        });
+    }
+}
+
+void SteadyTimer::onTrigger()
+{
+    /* 触发 */
+    if (m_func)
+    {
+        if (m_executor)
         {
-            if (m_executor)
-            {
-                m_executor->post(m_name, m_func);
-            }
-            else
-            {
-                TimerProxy::addToTriggerList(m_func);
-            }
+            m_executor->post(m_name, m_func);
+        }
+        else
+        {
+            TimerProxy::addToTriggerList(m_func);
         }
     }
     /* 继续 */
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (m_started && m_interval > std::chrono::steady_clock::duration::zero())
     {
         const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
         m_timer->expires_from_now(m_interval);
         m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
-            /* 如果`stop`之后立即`start`, 前一次`stop`的最后一次回调可能晚于`start`执行, 会导致`m_started`状态错误 */
             const auto self = wpSelf.lock();
             if (self && !code)
             {

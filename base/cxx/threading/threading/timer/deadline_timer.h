@@ -40,7 +40,7 @@ public:
     bool isStarted();
 
     /**
-     * @brief 启动
+     * @brief 启动, 说明: 尽量不要在`stop`后立即调用
      */
     void start();
 
@@ -51,9 +51,19 @@ public:
 
 private:
     /**
+     * @brief 触发恢复
+     */
+    void onRecover();
+
+    /**
      * @brief 定时器触发
      */
     void onTrigger();
+
+    /**
+     * @brief 触发停止
+     */
+    void onStop();
 
 private:
     std::mutex m_mutex;

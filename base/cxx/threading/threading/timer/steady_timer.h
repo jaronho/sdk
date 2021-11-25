@@ -58,6 +58,11 @@ public:
 
 private:
     /**
+     * @brief 触发恢复
+     */
+    void onRecover();
+
+    /**
      * @brief 定时器触发
      */
     void onTrigger();
