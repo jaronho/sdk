@@ -22,7 +22,7 @@
     }
 #endif
 
-void sm3Start(sm3_context* ctx)
+void sm3Start(sm3_context_t* ctx)
 {
     ctx->total[0] = 0;
     ctx->total[1] = 0;
@@ -36,7 +36,7 @@ void sm3Start(sm3_context* ctx)
     ctx->state[7] = 0xB0FB0E4E;
 }
 
-static void sm3Process(sm3_context* ctx, const unsigned char data[64])
+static void sm3Process(sm3_context_t* ctx, const unsigned char data[64])
 {
     unsigned long SS1, SS2, TT1, TT2, W[68], W1[64];
     unsigned long A, B, C, D, E, F, G, H;
@@ -144,7 +144,7 @@ static void sm3Process(sm3_context* ctx, const unsigned char data[64])
     ctx->state[7] ^= H;
 }
 
-void sm3Update(sm3_context* ctx, const unsigned char* input, int ilen)
+void sm3Update(sm3_context_t* ctx, const unsigned char* input, int ilen)
 {
     int fill;
     unsigned long left;
@@ -184,7 +184,7 @@ static const unsigned char sm3_padding[64] = {0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
                                               0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                               0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-void sm3Finish(sm3_context* ctx, unsigned char output[32])
+void sm3Finish(sm3_context_t* ctx, unsigned char output[32])
 {
     unsigned long last, padn;
     unsigned long high, low;
@@ -209,18 +209,18 @@ void sm3Finish(sm3_context* ctx, unsigned char output[32])
 
 void sm3Sign(const unsigned char* input, int ilen, unsigned char output[32])
 {
-    sm3_context ctx;
+    sm3_context_t ctx;
     sm3Start(&ctx);
     sm3Update(&ctx, input, ilen);
     sm3Finish(&ctx, output);
-    memset(&ctx, 0, sizeof(sm3_context));
+    memset(&ctx, 0, sizeof(sm3_context_t));
 }
 
 int sm3File(char* path, unsigned char output[32])
 {
     FILE* f;
     size_t n;
-    sm3_context ctx;
+    sm3_context_t ctx;
     unsigned char buf[1024];
     if ((f = fopen(path, "rb")) == NULL)
     {
@@ -232,7 +232,7 @@ int sm3File(char* path, unsigned char output[32])
         sm3Update(&ctx, buf, (int)n);
     }
     sm3Finish(&ctx, output);
-    memset(&ctx, 0, sizeof(sm3_context));
+    memset(&ctx, 0, sizeof(sm3_context_t));
     if (ferror(f) != 0)
     {
         fclose(f);
@@ -242,7 +242,7 @@ int sm3File(char* path, unsigned char output[32])
     return 0;
 }
 
-void sm3HmacStart(sm3_context* ctx, const unsigned char* key, int keylen)
+void sm3HmacStart(sm3_context_t* ctx, const unsigned char* key, int keylen)
 {
     int i;
     int flag;
@@ -268,12 +268,12 @@ void sm3HmacStart(sm3_context* ctx, const unsigned char* key, int keylen)
     memset(sum, 0, sizeof(sum));
 }
 
-void sm3HmacUpdate(sm3_context* ctx, const unsigned char* input, int ilen)
+void sm3HmacUpdate(sm3_context_t* ctx, const unsigned char* input, int ilen)
 {
     sm3Update(ctx, input, ilen);
 }
 
-void sm3HmacFinish(sm3_context* ctx, unsigned char output[32])
+void sm3HmacFinish(sm3_context_t* ctx, unsigned char output[32])
 {
     int hlen;
     unsigned char tmpbuf[32];
@@ -288,9 +288,9 @@ void sm3HmacFinish(sm3_context* ctx, unsigned char output[32])
 
 void sm3Hmac(unsigned char* key, int keylen, const unsigned char* input, int ilen, unsigned char output[32])
 {
-    sm3_context ctx;
+    sm3_context_t ctx;
     sm3HmacStart(&ctx, key, keylen);
     sm3HmacUpdate(&ctx, input, ilen);
     sm3HmacFinish(&ctx, output);
-    memset(&ctx, 0, sizeof(sm3_context));
+    memset(&ctx, 0, sizeof(sm3_context_t));
 }

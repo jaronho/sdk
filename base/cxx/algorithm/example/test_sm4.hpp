@@ -12,8 +12,8 @@ void testSm4()
     std::string key = "beyondinfo@2020k";
     std::string input = "qq12345678901234567890";
     printf("[ECB]   input: %s\n", input.c_str());
-    sm4_context ctx;
-    /* ECB¼ÓÃÜ */
+    sm4_context_t ctx;
+    /* ECBï¿½ï¿½ï¿½ï¿½ */
     sm4SetKeyEnc(&ctx, (const unsigned char*)key.c_str());
     unsigned char* out1 = NULL;
     int len1 = sm4CryptEcb(&ctx, (const unsigned char*)input.c_str(), input.size(), &out1);
@@ -24,11 +24,11 @@ void testSm4()
         printf("%c", out1[i]);
     }
     printf("\n");
-    /* ECB½âÃÜ */
+    /* ECBï¿½ï¿½ï¿½ï¿½ */
     sm4SetKeyDec(&ctx, (const unsigned char*)key.c_str());
     unsigned char* out2 = NULL;
     int len2 = sm4CryptEcb(&ctx, out1, len1, &out2);
-    len2 -= pad1; /* ½âÃÜºóµÄ³¤¶ÈÐèÒª¼õÈ¥²¹Î»³¤¶È */
+    len2 -= pad1; /* ï¿½ï¿½ï¿½Üºï¿½Ä³ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½È¥ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½ */
     printf("[ECB] decrypt: ");
     for (int i = 0; i < len2; i++)
     {
@@ -45,7 +45,7 @@ void testSm4()
     printf("\n");
     printf("\n");
 #if 1
-    /* CBC½âÃÜ */
+    /* CBCï¿½ï¿½ï¿½ï¿½ */
     unsigned char ivec[16] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10};
     printf("[CBC]   input: %s\n", input.c_str());
     sm4SetKeyEnc(&ctx, (const unsigned char*)key.c_str());
@@ -61,7 +61,7 @@ void testSm4()
     sm4SetKeyDec(&ctx, (const unsigned char*)key.c_str());
     unsigned char* out4 = NULL;
     int len4 = sm4CryptCbc(&ctx, ivec, out3, len3, &out4);
-    len4 -= pad2; /* ½âÃÜºóµÄ³¤¶ÈÐèÒª¼õÈ¥²¹Î»³¤¶È */
+    len4 -= pad2; /* ï¿½ï¿½ï¿½Üºï¿½Ä³ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½È¥ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½ */
     printf("[CBC] decrypt: ");
     for (int i = 0; i < len4; ++i)
     {

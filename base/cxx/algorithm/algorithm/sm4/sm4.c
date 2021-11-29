@@ -177,7 +177,7 @@ static void sm4OneRound(const unsigned long sk[32], const unsigned char input[16
     PUT_ULONG_BE(ulbuf[32], output, 12);
 }
 
-void sm4SetKeyEnc(sm4_context* ctx, const unsigned char key[16])
+void sm4SetKeyEnc(sm4_context_t* ctx, const unsigned char key[16])
 {
     if (!ctx | !key)
     {
@@ -187,7 +187,7 @@ void sm4SetKeyEnc(sm4_context* ctx, const unsigned char key[16])
     sm4SetKey(ctx->sk, key);
 }
 
-void sm4SetKeyDec(sm4_context* ctx, const unsigned char key[16])
+void sm4SetKeyDec(sm4_context_t* ctx, const unsigned char key[16])
 {
     int i;
     if (!ctx || !key)
@@ -202,7 +202,7 @@ void sm4SetKeyDec(sm4_context* ctx, const unsigned char key[16])
     }
 }
 
-int sm4CryptEcb(sm4_context* ctx, const unsigned char* in, int inLength, unsigned char** out)
+int sm4CryptEcb(sm4_context_t* ctx, const unsigned char* in, int inLength, unsigned char** out)
 {
     int paddingCount = 0;
     unsigned char temp[16];
@@ -240,7 +240,7 @@ int sm4CryptEcb(sm4_context* ctx, const unsigned char* in, int inLength, unsigne
     return outLength;
 }
 
-int sm4CryptCbc(sm4_context* ctx, const unsigned char ivec[16], const unsigned char* in, int inLength, unsigned char** out)
+int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned char* in, int inLength, unsigned char** out)
 {
     unsigned char iv[16];
     int paddingCount = 0;

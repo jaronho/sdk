@@ -171,7 +171,7 @@ static void _md5_transform(unsigned int state[4], const unsigned char block[64])
 }
 
 /* md5 initialization. Begins an md5 operation, writing a new context. */
-void md5Init(md5_ctx_t* context)
+void md5Init(md5_context_t* context)
 {
     context->count[0] = context->count[1] = 0;
     /* Load magic initialization constants. */
@@ -183,7 +183,7 @@ void md5Init(md5_ctx_t* context)
 
 /* md5 block update operation. Continues an md5 message-digest operation, 
    processing another message block, and updating the context. */
-void md5Update(md5_ctx_t* context, const unsigned char* input, unsigned int inputLen)
+void md5Update(md5_context_t* context, const unsigned char* input, unsigned int inputLen)
 {
     unsigned int i, index, partLen;
     /* Compute number of bytes mod 64 */
@@ -215,7 +215,7 @@ void md5Update(md5_ctx_t* context, const unsigned char* input, unsigned int inpu
 }
 
 /* md5 finalization. Ends an md5 message-digest operation, writing the message digest and zeroizing the context. */
-char* md5Fini(md5_ctx_t* context, unsigned char digest[16], int convertToStr)
+char* md5Fini(md5_context_t* context, unsigned char digest[16], int convertToStr)
 {
     unsigned char bits[8];
     unsigned int index, padLen;
@@ -260,7 +260,7 @@ char* md5Fini(md5_ctx_t* context, unsigned char digest[16], int convertToStr)
 
 void md5Sign(const unsigned char* input, unsigned int inputLen, unsigned char digest[16])
 {
-    md5_ctx_t md5;
+    md5_context_t md5;
     md5Init(&md5);
     md5Update(&md5, input, inputLen);
     md5Fini(&md5, digest, 0);
@@ -269,7 +269,7 @@ void md5Sign(const unsigned char* input, unsigned int inputLen, unsigned char di
 char* md5SignStr(const unsigned char* input, unsigned int inputLen)
 {
     unsigned char digest[16];
-    md5_ctx_t md5;
+    md5_context_t md5;
     md5Init(&md5);
     md5Update(&md5, input, inputLen);
     return md5Fini(&md5, digest, 1);

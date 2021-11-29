@@ -10,7 +10,7 @@ typedef struct
     unsigned char buffer[64]; /* data block being processed */
     unsigned char ipad[64]; /* HMAC: inner padding */
     unsigned char opad[64]; /* HMAC: outer padding */
-} sm3_context;
+} sm3_context_t;
 
 #ifdef __cplusplus
 extern "C"
@@ -20,7 +20,7 @@ extern "C"
      * @brief SM3 context setup
      * @param ctx context to be initialized
      */
-    void sm3Start(sm3_context* ctx);
+    void sm3Start(sm3_context_t* ctx);
 
     /**
      * @brief SM3 process buffer
@@ -28,13 +28,13 @@ extern "C"
      * @param input buffer holding the  data
      * @param ilen length of the input data
      */
-    void sm3Update(sm3_context* ctx, const unsigned char* input, int ilen);
+    void sm3Update(sm3_context_t* ctx, const unsigned char* input, int ilen);
 
     /**
      * @brief SM3 final digest
      * @param ctx SM3 context
      */
-    void sm3Finish(sm3_context* ctx, unsigned char output[32]);
+    void sm3Finish(sm3_context_t* ctx, unsigned char output[32]);
 
     /**
      * @brief Output = SM3(input buffer)
@@ -58,7 +58,7 @@ extern "C"
      * @param key HMAC secret key
      * @param keylen length of the HMAC key
      */
-    void sm3HmacStart(sm3_context* ctx, const unsigned char* key, int keylen);
+    void sm3HmacStart(sm3_context_t* ctx, const unsigned char* key, int keylen);
 
     /**
      * @brief SM3 HMAC process buffer
@@ -66,14 +66,14 @@ extern "C"
      * @param input buffer holding the data
      * @param ilen length of the input data
      */
-    void sm3HmacUpdate(sm3_context* ctx, const unsigned char* input, int ilen);
+    void sm3HmacUpdate(sm3_context_t* ctx, const unsigned char* input, int ilen);
 
     /**
      * @brief SM3 HMAC final digest
      * @param ctx HMAC context
      * @param output SM3 HMAC checksum result
      */
-    void sm3HmacFinish(sm3_context* ctx, unsigned char output[32]);
+    void sm3HmacFinish(sm3_context_t* ctx, unsigned char output[32]);
 
     /**
      * @brief Output = HMAC-SM3(hmac key, input buffer)
