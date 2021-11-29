@@ -35,6 +35,11 @@ get_cxx_files(${base_algorithm_path}/algorithm/sm3 src_list)
 list(APPEND base_algorithm_sm3_src_list ${src_list})
 source_group(3rdparty/base/algorithm/sm3 FILES ${base_algorithm_sm3_src_list})
 
+set(base_algorithm_sm4_src_list)
+get_cxx_files(${base_algorithm_path}/algorithm/sm4 src_list)
+list(APPEND base_algorithm_sm4_src_list ${src_list})
+source_group(3rdparty/base/algorithm/sm4 FILES ${base_algorithm_sm4_src_list})
+
 set(base_algorithm_snowflake_src_list)
 get_cxx_files(${base_algorithm_path}/algorithm/snowflake src_list)
 list(APPEND base_algorithm_snowflake_src_list ${src_list})
@@ -51,6 +56,7 @@ list(APPEND base_algorithm_files ${base_algorithm_base64_src_list}
                                  ${base_algorithm_rc4_src_list}
                                  ${base_algorithm_sha1_src_list}
                                  ${base_algorithm_sm3_src_list}
+                                 ${base_algorithm_sm4_src_list}
                                  ${base_algorithm_snowflake_src_list}
                                  ${base_algorithm_src_list})
 

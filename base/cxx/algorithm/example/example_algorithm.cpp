@@ -5,6 +5,7 @@
 #include "test_rc4.hpp"
 #include "test_sha1.hpp"
 #include "test_sm3.hpp"
+#include "test_sm4.hpp"
 #include "test_snowflake.hpp"
 
 int main(int argc, char** argv)
@@ -14,6 +15,7 @@ int main(int argc, char** argv)
     testRc4();
     testSha1();
     testSm3();
+    testSm4();
     testSnowflake();
     return 0;
 }
