@@ -4,7 +4,9 @@
 extern "C"
 {
 #endif
-    /* md5上下文 */
+    /**
+     * @brief md5上下文
+     */
     typedef struct
     {
         unsigned int state[4]; /* state (ABCD) */
