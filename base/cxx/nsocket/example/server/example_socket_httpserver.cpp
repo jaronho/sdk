@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
         serverPort = 4335;
     }
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
-    nsocket::http::Server server(serverHost, serverPort);
+    nsocket::http::Server server("http_server", 10, serverHost, serverPort);
     server.setRouterNotFoundCallback([&](const nsocket::http::REQUEST_PTR& req) {
         printf("************************* Not Found URI Router *************************\n");
         printf("***  Method: %s\n", req->method.c_str());
@@ -297,6 +297,10 @@ int main(int argc, char* argv[])
 #else
         server.run();
 #endif
+        while (1)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
     }
     catch (const std::exception& e)
     {

@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <boost/asio/ip/address.hpp>
 #include <memory>
 #include <mutex>
@@ -38,14 +39,17 @@ class TcpServer final : public std::enable_shared_from_this<TcpServer>
 public:
     /**
      * @brief 构造函数
+     * @param name 服务器名称
+     * @param threadCount 线程个数
      * @param host 主机
      * @param port 端口
      * @param reuseAddr 是否允许复用地址(选填)
      * @param bz 数据缓冲区大小(字节, 选填)
      */
-    TcpServer(const std::string& host, unsigned int port, bool reuseAddr = true, size_t bz = 1024);
+    TcpServer(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr = true,
+              size_t bz = 1024);
 
-    virtual ~TcpServer() = default;
+    virtual ~TcpServer();
 
     /**
      * @brief 设置新连接回调
@@ -66,7 +70,7 @@ public:
     void setConnectionCloseCallback(const TCP_CONN_CLOSE_CALLBACK& onCloseCb);
 
     /**
-     * @brief 运行(进入循环, 占用调用线程)
+     * @brief 运行(异步)
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -99,16 +103,23 @@ private:
     void doAccept();
 
 private:
+    std::atomic_int m_threadIndex = {0}; /* 线程索引 */
+    boost::asio::detail::thread_group m_threads; /* 线程组 */
     boost::asio::io_context m_ioContext; /* IO上下文 */
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_worker;
     std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor; /* 接收器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
 #endif
     size_t m_bufferSize; /* 数据接收缓冲区大小 */
+    std::mutex m_mutex;
     std::unordered_map<int64_t, std::shared_ptr<TcpConnection>> m_connectionMap; /* 连接表 */
     TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
     TCP_CONN_DATA_CALLBACK m_onConnectionDataCallback; /* 连接数据回调 */
     TCP_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */
+    std::string m_name; /* 服务名称 */
+    size_t m_threadCount = {1}; /* 线程个数 */
     std::string m_host; /* 主机 */
+    std::atomic_bool m_running = {false}; /* 是否运行中 */
 };
 } // namespace nsocket

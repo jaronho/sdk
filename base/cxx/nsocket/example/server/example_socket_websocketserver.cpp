@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
         serverPort = 4335;
     }
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
-    nsocket::ws::Server server(serverHost, serverPort);
+    nsocket::ws::Server server("ws_server", 20, serverHost, serverPort);
     server.setConnectingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
         const auto session = wpSession.lock();
         if (session)
@@ -149,6 +149,10 @@ int main(int argc, char* argv[])
 #else
         server.run();
 #endif
+        while (1)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
     }
     catch (const std::exception& e)
     {

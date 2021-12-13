@@ -20,10 +20,12 @@ class Server final : public std::enable_shared_from_this<Server>
 public:
     /**
      * @brief 构造函数
+     * @param name 服务器名称
+     * @param threadCount 线程个数
      * @param host 主机地址
      * @param port 端口
      */
-    Server(const std::string& host, unsigned int port);
+    Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port);
 
     /**
      * @brief 设置路由未找到回调

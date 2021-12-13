@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
         serverPort = 4335;
     }
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
-    auto server = std::make_shared<nsocket::TcpServer>(serverHost, serverPort);
+    auto server = std::make_shared<nsocket::TcpServer>("tcp_server", 5, serverHost, serverPort);
     /* 设置新连接回调 */
     server->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
         const auto conn = wpConn.lock();
