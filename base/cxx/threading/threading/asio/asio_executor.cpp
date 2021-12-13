@@ -27,7 +27,7 @@ AsioExecutor::AsioExecutor(const std::string& name, size_t threadCount) : Execut
             }
             m_context.run();
         },
-        threadCount);
+        std::max<size_t>(1U, threadCount));
 }
 
 AsioExecutor::~AsioExecutor()
