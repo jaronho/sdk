@@ -28,6 +28,7 @@ else()
     add_definitions(-DENABLE_NSOCKET_OPENSSL=0)
 endif()
 
+set(Boost_USE_STATIC_LIBS ON) # ON表示链接Boost静态库, OFF或者不设置表示链接动态库
 find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time)
 
 if(Boost_FOUND)

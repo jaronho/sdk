@@ -13,6 +13,7 @@ find_package(Threads REQUIRED)
 ################################### 添加threading库 ###################################
 option(enable_fiber "是否启用Boost库的Fiber模块" ON)
 
+set(Boost_USE_STATIC_LIBS ON) # ON表示链接Boost静态库, OFF或者不设置表示链接动态库
 if(enable_fiber)
     find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time fiber)
     add_definitions(-DENABLE_THREADING_FIBER=1)
