@@ -54,8 +54,8 @@ io_context_pool::io_context_pool(const std::string& name, size_t poolSize) : m_n
     {
         auto context = std::make_shared<boost::asio::io_context>();
         auto worker = std::make_shared<boost::asio::io_context::work>(*context);
-        m_contexts.push_back(context);
-        m_workers.push_back(worker);
+        m_contexts.emplace_back(context);
+        m_workers.emplace_back(worker);
     }
 }
 
@@ -74,7 +74,7 @@ void io_context_pool::start()
             setThreadName(threadName);
             context->run();
         });
-        m_threads.push_back(th);
+        m_threads.emplace_back(th);
     }
 }
 

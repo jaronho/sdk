@@ -2,6 +2,7 @@
 #include <boost/asio/ip/address.hpp>
 #include <memory>
 #include <mutex>
+#include <thread>
 #include <unordered_map>
 
 #include "tcp_connection.h"
