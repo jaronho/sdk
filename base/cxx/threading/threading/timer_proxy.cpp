@@ -22,20 +22,22 @@ void TimerProxy::stop()
     {
         s_timerThread.reset();
     }
-    std::unique_lock<std::mutex> locker(s_triggerMutex);
+    std::lock_guard<std::mutex> locker(s_triggerMutex);
     s_triggerList.clear();
 }
 
 void TimerProxy::runOnce()
 {
-    std::unique_lock<std::mutex> locker(s_triggerMutex);
-    if (s_triggerList.empty())
+    std::function<void()> func = nullptr;
     {
-        return;
+        std::lock_guard<std::mutex> locker(s_triggerMutex);
+        if (s_triggerList.empty())
+        {
+            return;
+        }
+        func = *(s_triggerList.begin());
+        s_triggerList.pop_front();
     }
-    auto func = *(s_triggerList.begin());
-    s_triggerList.pop_front();
-    locker.unlock();
     if (func)
     {
         func();
@@ -55,7 +57,7 @@ void TimerProxy::addToTriggerList(const std::function<void()>& func)
 {
     if (s_timerThread)
     {
-        std::unique_lock<std::mutex> locker(s_triggerMutex);
+        std::lock_guard<std::mutex> locker(s_triggerMutex);
         s_triggerList.emplace_back(func);
     }
 }

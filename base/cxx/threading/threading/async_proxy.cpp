@@ -22,21 +22,23 @@ void AsyncProxy::stop()
     {
         s_workerThreads.reset();
     }
-    std::unique_lock<std::mutex> locker(s_finishMutex);
+    std::lock_guard<std::mutex> locker(s_finishMutex);
     s_finishList.clear();
 }
 
 void AsyncProxy::runOnce()
 {
-    std::unique_lock<std::mutex> locker(s_finishMutex);
-    if (s_finishList.empty())
+    AsyncTaskPtr task = nullptr;
     {
-        return;
+        std::lock_guard<std::mutex> locker(s_finishMutex);
+        if (s_finishList.empty())
+        {
+            return;
+        }
+        task = *(s_finishList.begin());
+        s_finishList.pop_front();
     }
-    auto task = *(s_finishList.begin());
-    s_finishList.pop_front();
-    locker.unlock();
-    if (task->finishCb)
+    if (task && task->finishCb)
     {
         task->finishCb();
     }
@@ -67,7 +69,7 @@ void AsyncProxy::execute(const AsyncTaskPtr& task, const ExecutorPtr& finishExec
                     }
                     else
                     {
-                        std::unique_lock<std::mutex> locker(s_finishMutex);
+                        std::lock_guard<std::mutex> locker(s_finishMutex);
                         s_finishList.emplace_back(task);
                     }
                 }

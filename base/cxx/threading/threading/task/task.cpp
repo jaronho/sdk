@@ -32,7 +32,7 @@ void Task::cancel()
 
 void Task::join()
 {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> lock(m_mutex); /* 和条件变量一同使用需要使用unique_lock */
     m_cv.wait(lock, [this] { return State::RUNNING != m_state.load(); });
 }
 } // namespace threading
