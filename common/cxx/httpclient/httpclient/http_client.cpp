@@ -22,21 +22,23 @@ void HttpClient::stop()
     {
         s_workers.reset();
     }
-    std::unique_lock<std::mutex> locker(s_respMutex);
+    std::lock_guard<std::mutex> locker(s_respMutex);
     s_respList.clear();
 }
 
 void HttpClient::runOnce()
 {
-    std::unique_lock<std::mutex> locker(s_respMutex);
-    if (s_respList.empty())
+    std::shared_ptr<RespParam> param = nullptr;
     {
-        return;
+        std::lock_guard<std::mutex> locker(s_respMutex);
+        if (s_respList.empty())
+        {
+            return;
+        }
+        param = *(s_respList.begin());
+        s_respList.pop_front();
     }
-    std::shared_ptr<RespParam> param = *(s_respList.begin());
-    s_respList.pop_front();
-    locker.unlock();
-    if (param->respCb)
+    if (param && param->respCb)
     {
         param->respCb(param->resp);
     }
@@ -155,10 +157,10 @@ void HttpClient::easyDownload(const curlex::RequestPtr& req, const std::string& 
 
 void HttpClient::insertRespList(const curlex::Response& resp, const ResponseCallback& respCb)
 {
-    std::unique_lock<std::mutex> locker(s_respMutex);
     std::shared_ptr<RespParam> param = std::make_shared<RespParam>();
     param->resp = resp;
     param->respCb = respCb;
+    std::lock_guard<std::mutex> locker(s_respMutex);
     s_respList.emplace_back(param);
 }
 } // namespace http
