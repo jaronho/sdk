@@ -1,5 +1,4 @@
 #pragma once
-#include <atomic>
 #include <boost/asio/ip/address.hpp>
 #include <memory>
 #include <mutex>
@@ -30,6 +29,46 @@ using TCP_CONN_DATA_CALLBACK = std::function<void(const std::weak_ptr<TcpConnect
  */
 using TCP_CONN_CLOSE_CALLBACK =
     std::function<void(int64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
+
+/**
+ * @brief 上下文线程池
+ */
+class io_context_pool
+{
+public:
+    /**
+     * @brief 构造函数
+     * @param name 池名称
+     * @param poolSize 池大小(线程个数)
+     */
+    explicit io_context_pool(const std::string& name, size_t poolSize = 1);
+
+    virtual ~io_context_pool();
+
+    /**
+     * @brief 开始
+     */
+    void start();
+
+    /**
+     * @brief 等待退出
+     */
+    void join();
+
+    /**
+     * @brief 获取IO上下文
+     * @return IO上下文
+     */
+    boost::asio::io_context& getContext();
+
+private:
+    std::mutex m_mutex;
+    std::vector<std::shared_ptr<boost::asio::io_context>> m_contexts; /* 上下文列表 */
+    std::vector<std::shared_ptr<boost::asio::io_context::work>> m_workers; /* 工作列表 */
+    std::vector<std::shared_ptr<std::thread>> m_threads; /* 线程列表 */
+    size_t m_index = 0; /* 当前上下文索引 */
+    std::string m_name; /* 名称 */
+};
 
 /**
  * @brief TCP服务端(注意: 需要实例化为共享指针否则会报错, 2.停止后需要重新实例化, 不可复用之前的实例)
@@ -103,10 +142,7 @@ private:
     void doAccept();
 
 private:
-    std::atomic_int m_threadIndex = {0}; /* 线程索引 */
-    boost::asio::detail::thread_group m_threads; /* 线程组 */
-    boost::asio::io_context m_ioContext; /* IO上下文 */
-    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_worker;
+    std::shared_ptr<io_context_pool> m_contextPool; /* 上下文线程池 */
     std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor; /* 接收器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
@@ -117,8 +153,6 @@ private:
     TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
     TCP_CONN_DATA_CALLBACK m_onConnectionDataCallback; /* 连接数据回调 */
     TCP_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */
-    std::string m_name; /* 服务名称 */
-    size_t m_threadCount = {1}; /* 线程个数 */
     std::string m_host; /* 主机 */
     std::atomic_bool m_running = {false}; /* 是否运行中 */
 };

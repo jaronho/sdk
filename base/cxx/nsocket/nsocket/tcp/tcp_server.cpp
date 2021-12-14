@@ -1,5 +1,7 @@
 #include "tcp_server.h"
 
+namespace nsocket
+{
 #ifdef _WIN32
 namespace
 {
@@ -45,12 +47,68 @@ void setThreadName(const std::string& name)
 #endif
 }
 
-namespace nsocket
+io_context_pool::io_context_pool(const std::string& name, size_t poolSize) : m_name(name)
 {
+    poolSize = std::max<size_t>(1U, poolSize);
+    for (size_t i = 0; i < poolSize; ++i)
+    {
+        auto context = std::make_shared<boost::asio::io_context>();
+        auto worker = std::make_shared<boost::asio::io_context::work>(*context);
+        m_contexts.push_back(context);
+        m_workers.push_back(worker);
+    }
+}
+
+io_context_pool::~io_context_pool()
+{
+    join();
+}
+
+void io_context_pool::start()
+{
+    for (size_t i = 0; i < m_contexts.size(); ++i)
+    {
+        auto th = std::make_shared<std::thread>([name = m_name, i, context = m_contexts[i]]() {
+            /* 设置线程名称 */
+            auto threadName = name + "-" + std::to_string(i + 1);
+            setThreadName(threadName);
+            context->run();
+        });
+        m_threads.push_back(th);
+    }
+}
+
+void io_context_pool::join()
+{
+    for (size_t i = 0; i < m_contexts.size(); ++i)
+    {
+        m_contexts[i]->stop();
+    }
+    for (size_t i = 0; i < m_workers.size(); ++i)
+    {
+        m_workers[i].reset();
+    }
+    for (size_t i = 0; i < m_threads.size(); ++i)
+    {
+        m_threads[i]->join();
+    }
+    m_threads.clear();
+}
+
+boost::asio::io_context& io_context_pool::getContext()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    boost::asio::io_context& context = *m_contexts[m_index];
+    ++m_index;
+    if (m_contexts.size() == m_index)
+    {
+        m_index = 0;
+    }
+    return context;
+}
+
 TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz)
-    : m_name(name)
-    , m_threadCount(threadCount)
-    , m_worker(boost::asio::make_work_guard(m_ioContext))
+    : m_contextPool(std::make_shared<io_context_pool>(name, threadCount))
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     , m_sslContext(nullptr)
 #endif
@@ -59,7 +117,7 @@ TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::str
     try
     {
         m_acceptor = std::make_shared<boost::asio::ip::tcp::acceptor>(
-            m_ioContext, boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(host.c_str()), port), reuseAddr);
+            m_contextPool->getContext(), boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(host.c_str()), port), reuseAddr);
         m_host = host;
     }
     catch (...)
@@ -96,15 +154,7 @@ void TcpServer::run()
         }
 #endif
         doAccept();
-        m_threads.create_threads(
-            [this] {
-                /* 设置线程名称 */
-                ++m_threadIndex;
-                auto threadName = m_name + "-" + std::to_string(m_threadIndex);
-                setThreadName(threadName);
-                m_ioContext.run();
-            },
-            std::max<size_t>(1U, m_threadCount));
+        m_contextPool->start();
         m_running = true;
     }
 }
@@ -120,9 +170,7 @@ void TcpServer::stop()
         m_acceptor->close();
         m_acceptor = nullptr;
     }
-    m_ioContext.stop();
-    m_worker.reset();
-    m_threads.join();
+    m_contextPool->join();
     std::lock_guard<std::mutex> locker(m_mutex);
     m_connectionMap.clear();
     m_running = false;
@@ -146,7 +194,7 @@ void TcpServer::setConnectionCloseCallback(const TCP_CONN_CLOSE_CALLBACK& onClos
 void TcpServer::doAccept()
 {
     const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
-    m_acceptor->async_accept([wpSelf](boost::system::error_code code, boost::asio::ip::tcp::socket socket) {
+    m_acceptor->async_accept(m_contextPool->getContext(), [wpSelf](boost::system::error_code code, boost::asio::ip::tcp::socket socket) {
         const auto self = wpSelf.lock();
         if (self)
         {
