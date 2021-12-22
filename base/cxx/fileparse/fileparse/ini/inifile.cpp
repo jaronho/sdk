@@ -96,8 +96,9 @@ int IniFile::open(const std::string& filename, bool allowTailComment, std::strin
     std::string line;
     std::string comment;
     size_t lineNumber = 0;
-    while (!f.eof() && getLine(f, line) > 0)
+    while (!f.eof())
     {
+        getLine(f, line);
         ++lineNumber;
         trimLeftRightSpace(line);
         trimLeftRightCRLF(line);
@@ -189,6 +190,7 @@ int IniFile::open(const std::string& filename, bool allowTailComment, std::strin
                 }
             }
         }
+        line.clear();
     }
     f.close();
     return 0;
