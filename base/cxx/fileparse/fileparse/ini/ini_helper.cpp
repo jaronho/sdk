@@ -64,7 +64,14 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     /* 添加键值 */
     if (!sectionComment.empty())
     {
-        section.comment = sectionComment;
+        if ('#' == sectionComment[0])
+        {
+            section.comment = sectionComment;
+        }
+        else
+        {
+            section.comment = "# " + sectionComment;
+        }
     }
     for (size_t i = 0; i < section.items.size(); ++i)
     {
@@ -77,7 +84,17 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     IniItem item;
     item.key = key;
     item.value = value;
-    item.comment = comment;
+    if (!comment.empty())
+    {
+        if ('#' == comment[0])
+        {
+            item.comment = comment;
+        }
+        else
+        {
+            item.comment = "# " + comment;
+        }
+    }
     item.extra = readOnly ? "1" : "0"; /* 这里额外参数用作只读属性 */
     section.items.emplace_back(item);
     return sectionKey;

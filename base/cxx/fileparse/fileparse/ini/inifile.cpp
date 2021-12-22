@@ -208,6 +208,10 @@ bool IniFile::save()
     std::string data;
     for (auto sectionIter = m_sections.begin(); m_sections.end() != sectionIter; ++sectionIter)
     {
+        if (m_sections.begin() != sectionIter)
+        {
+            data.append("\n");
+        }
         if (!sectionIter->second.comment.empty())
         {
             data.append(sectionIter->second.comment).append("\n"); /* 写节注释 */

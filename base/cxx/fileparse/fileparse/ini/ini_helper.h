@@ -7,8 +7,12 @@
 #include "ini_writer.h"
 
 #define INI_KEY_VAR(var) var
-#define MAKE_INI_KV(id, keyVar, keyName, value, sectionComment, comment, readOnly) \
+/* 创建字符串键值对 */
+#define MAKE_INI_KV_STRING(id, keyVar, keyName, value, sectionComment, comment, readOnly) \
     std::string INI_KEY_VAR(keyVar) = ini::makeKeyValue(id, keyName, value, sectionComment, comment, readOnly)
+/* 创建数值键值对 */
+#define MAKE_INI_KV_NUMBER(id, keyVar, keyName, value, sectionComment, comment, readOnly) \
+    std::string INI_KEY_VAR(keyVar) = ini::makeKeyValue(id, keyName, std::to_string(value), sectionComment, comment, readOnly)
 
 namespace ini
 {
