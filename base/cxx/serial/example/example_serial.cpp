@@ -11,6 +11,59 @@ std::chrono::steady_clock::time_point g_lastRecvTimestamp; /* 上次接收的时
 size_t g_totalRecvLength = 0; /* 总的接收长度(字节) */
 
 /**
+ * @brief 十六进制字符串转字节流
+ * @param hexStr 待转换的十六进制字符串
+ * @param bytes 保存转换后的字节流
+ */
+int hexStrToBytes(const std::string& hexStr, char** bytes)
+{
+    std::string str;
+    for (size_t i = 0; i < hexStr.size(); ++i)
+    {
+        if (' ' != hexStr[i])
+        {
+            str.push_back(hexStr[i]);
+        }
+    }
+    if (0 != (str.size() % 2))
+    {
+        return 0;
+    }
+    *bytes = (char*)malloc(str.size() / 2);
+    if (!(*bytes))
+    {
+        return 0;
+    }
+    unsigned char highByte, lowByte;
+    for (size_t i = 0; i < str.size(); i += 2)
+    {
+        /* 转换成大写字母 */
+        highByte = toupper(str[i]);
+        lowByte = toupper(str[i + 1]);
+        /* 转换编码 */
+        if (highByte > 0x39)
+        {
+            highByte -= 0x37;
+        }
+        else
+        {
+            highByte -= 0x30;
+        }
+        if (lowByte > 0x39)
+        {
+            lowByte -= 0x37;
+        }
+        else
+        {
+            lowByte -= 0x30;
+        }
+        /* 高4位和低4位合并成一个字节 */
+        (*bytes)[i / 2] = (highByte << 4) | lowByte;
+    }
+    return (str.size() / 2);
+}
+
+/**
  * @brief 显示所有串口端口 
  */
 void showAllPorts(const std::vector<serial::PortInfo> portList)
@@ -47,7 +100,7 @@ void showAllPorts(const std::vector<serial::PortInfo> portList)
  * @brief 打开串口 
  */
 void openSerial(const std::string& port, unsigned long baudrate, const serial::Databits& databits, const serial::ParityType& parity,
-                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, bool showHex, bool autoLine)
+                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, bool sendHex, bool showHex, bool autoLine)
 {
     /* 串口设置及打开 */
     g_com.setPort(port);
@@ -68,7 +121,20 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         {
             char str[1024] = {0};
             std::cin.getline(str, sizeof(str));
-            g_com.write(str, strlen(str));
+            if (sendHex)
+            {
+                char* bytes;
+                int len = hexStrToBytes(str, &bytes);
+                if (bytes)
+                {
+                    g_com.write(bytes, len);
+                    free(bytes);
+                }
+            }
+            else
+            {
+                g_com.write(str, strlen(str));
+            }
         }
     });
     th.detach();
@@ -130,6 +196,7 @@ int main(int argc, char** argv)
     printf("** [-parity parity]       specify the parity, [ None: N|n, Even: E|e, Odd: O|o, Mark: M|m, Space: S|s ]. **\n");
     printf("** [-stop stopbits]       specify the stop bits, [ 1, 1.5, 2 ].                                          **\n");
     printf("** [-flow flowcontrol]    specify the flow control, [ None: N|n, Software: S|s, Hardware: H|h ].         **\n");
+    printf("** [-txhex]               specify the send format with hex.                                              **\n");
     printf("** [-rxhex]               specify the receive show with hex.                                             **\n");
     printf("** [-rxline]              specify the receive auto new line.                                             **\n");
     printf("**                                                                                                       **\n");
@@ -138,11 +205,12 @@ int main(int argc, char** argv)
     /* 参数标识: 0-没有找到, 1-值错误, 2-值正确 */
     int flagShow = 0;
     int flagPortName = 0;
-    int flagBaurate = 0;
-    int flagDatabits = 0;
-    int flagParity = 0;
-    int flagStopbits = 0;
-    int flagFlowcontrol = 0;
+    int flagBaurate = 2;
+    int flagDatabits = 2;
+    int flagParity = 2;
+    int flagStopbits = 2;
+    int flagFlowcontrol = 2;
+    int flagTxHex = 0;
     int flagRxHex = 0;
     int flagRxAutoLine = 0;
     /* 错误的参数值 */
@@ -152,11 +220,11 @@ int main(int argc, char** argv)
     std::string valFlowcontrol;
     /* 参数值 */
     std::string portName;
-    unsigned long baudrate = 9600;
-    serial::Databits databits;
-    serial::ParityType pariry;
-    serial::Stopbits stopbits;
-    serial::FlowcontrolType flowcontrol;
+    unsigned long baudrate = 115200;
+    serial::Databits databits = serial::Databits::EIGHT;
+    serial::ParityType pariry = serial::ParityType::EVEN;
+    serial::Stopbits stopbits = serial::Stopbits::ONE;
+    serial::FlowcontrolType flowcontrol = serial::FlowcontrolType::NONE;
     /* 解析参数 */
     for (int i = 1; i < argc;)
     {
@@ -164,6 +232,12 @@ int main(int argc, char** argv)
         if (0 == key.compare("-s")) /* 显示 */
         {
             flagShow = 2;
+            i += 1;
+            continue;
+        }
+        else if (0 == key.compare("-txhex")) /* 发送十六进制 */
+        {
+            flagTxHex = 2;
             i += 1;
             continue;
         }
@@ -305,6 +379,7 @@ int main(int argc, char** argv)
     flagParity = 2;
     flagStopbits = 2;
     flagFlowcontrol = 2;
+    flagTxHex = 0;
     flagRxHex = 0;
     flagRxAutoLine = 0;
     portName = "COM26";
@@ -388,7 +463,7 @@ int main(int argc, char** argv)
         return 0;
     }
     /* 打开串口 */
-    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, 2 == flagRxHex, 2 == flagRxAutoLine);
+    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, 2 == flagTxHex, 2 == flagRxHex, 2 == flagRxAutoLine);
 
     return 0;
 }
