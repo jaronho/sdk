@@ -17,6 +17,7 @@ size_t g_totalRecvLength = 0; /* 总的接收长度(字节) */
  */
 int hexStrToBytes(const std::string& hexStr, char** bytes)
 {
+    *bytes = nullptr;
     std::string str;
     for (size_t i = 0; i < hexStr.size(); ++i)
     {
@@ -121,6 +122,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         {
             char str[1024] = {0};
             std::cin.getline(str, sizeof(str));
+            fprintf(stderr, "=====%s=====\n", str);
             if (sendHex)
             {
                 char* bytes;
