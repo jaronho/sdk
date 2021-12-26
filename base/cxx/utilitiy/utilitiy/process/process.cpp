@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string.h>
 #include <thread>
+#include <vector>
 #ifdef _WIN32
 #include <Windows.h>
 #include <process.h>
@@ -146,6 +147,55 @@ static std::wstring string2wstring(const std::string& str)
     return wstr;
 }
 #endif
+
+char** args2argv(const std::string exeFile, const std::string& args, int& argvCount)
+{
+    argvCount = 0;
+    if (exeFile.empty())
+    {
+        return NULL;
+    }
+    std::vector<std::string> vec;
+    vec.emplace_back(exeFile);
+    std::string seg;
+    for (size_t i = 0; i < args.size(); ++i)
+    {
+        if (' ' == args[i])
+        {
+            if (!seg.empty())
+            {
+                vec.emplace_back(seg);
+                seg.clear();
+            }
+        }
+        else
+        {
+            seg.push_back(args[i]);
+        }
+    }
+    if (!seg.empty())
+    {
+        vec.emplace_back(seg);
+        seg.clear();
+    }
+    argvCount = vec.size();
+    char** argv = (char**)malloc(sizeof(char*) * (argvCount + (size_t)1));
+    if (argv)
+    {
+        for (size_t i = 0; i < argvCount; ++i)
+        {
+            char* arg = (char*)malloc(sizeof(char) * (vec[i].size() + 1));
+            if (arg)
+            {
+                memset(arg, 0, vec[i].size() + 1);
+                memcpy(arg, vec[i].c_str(), vec[i].size());
+            }
+            *(argv + i) = arg;
+        }
+        *(argv + argvCount) = NULL; /* */
+    }
+    return argv;
+}
 
 std::string Process::getProcessExeFile()
 {
@@ -303,11 +353,15 @@ int Process::searchProcess(const std::string& filename, const std::function<bool
     return matchCount;
 }
 
-bool Process::runProcess(const std::string& exeFile, int flag)
+void Process::runProcess(const std::string& exeFile, const std::string& args, int flag, const std::function<void(int pid)>& callback)
 {
     if (exeFile.empty())
     {
-        return false;
+        if (callback)
+        {
+            callback(-1);
+        }
+        return;
     }
 #ifdef _WIN32
     STARTUPINFO si;
@@ -315,21 +369,38 @@ bool Process::runProcess(const std::string& exeFile, int flag)
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi;
     ZeroMemory(&pi, sizeof(pi));
-#ifdef UNICODE
-    std::wstring exeFileW = string2wstring(exeFile);
-    if (exeFileW.empty())
+    std::string cmdline = exeFile;
+    if (!args.empty())
     {
-        return false;
+        cmdline.append(" ").append(args);
     }
-    if (!CreateProcess(NULL, (WCHAR*)exeFileW.c_str(), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
+#ifdef UNICODE
+    std::wstring cmdlineW = string2wstring(cmdline);
+    if (cmdlineW.empty())
+    {
+        if (callback)
+        {
+            callback(-1);
+        }
+        return;
+    }
+    if (!CreateProcess(NULL, (WCHAR*)cmdlineW.c_str(), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
 #else
-    if (!CreateProcess(NULL, (CHAR*)(exeFile.c_str()), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
+    if (!CreateProcess(NULL, (CHAR*)(cmdline.c_str()), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
 #endif
     {
-        return false;
+        if (callback)
+        {
+            callback(-1);
+        }
+        return;
     }
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
+    if (callback)
+    {
+        callback(pi.dwProcessId);
+    }
 #else
     /* 
      * 这里要fork两次, 利用系统孤儿进程的回收机制来处理, 否则会出现僵尸进程.
@@ -337,19 +408,31 @@ bool Process::runProcess(const std::string& exeFile, int flag)
      */
     if (0 != access(exeFile.c_str(), F_OK | R_OK | X_OK)) /* 文件必须具有可读, 可执行权限 */
     {
-        return false;
+        if (callback)
+        {
+            callback(-1);
+        }
+        return;
     }
     pid_t firstPid = fork(); /* 创建一代子进程 */
     if (firstPid < 0) /* 一代子进程创建失败 */
     {
-        return false;
+        if (callback)
+        {
+            callback(-1);
+        }
+        return;
     }
     else if (0 == firstPid) /* 创建成功, 此处是一代子进程的代码 */
     {
         pid_t secondPid = fork(); /* 创建二代孙进程 */
         if (secondPid < 0) /* 二代孙进程创建失败 */
         {
-            return false;
+            if (callback)
+            {
+                callback(-1);
+            }
+            return;
         }
         else if (0 == secondPid) /* 创建成功, 此处是二代孙进程的代码 */
         {
@@ -357,11 +440,43 @@ bool Process::runProcess(const std::string& exeFile, int flag)
             {
                 fcntl(1, F_SETFD, FD_CLOEXEC); /* 1-关闭标准输出, 子进程的输出将无法显示 */
             }
-            if (-1 != execl(exeFile.c_str(), exeFile.c_str(), (char*)0)) /* 在子进程中执行该程序 */
+            if (callback)
             {
-                return true; /* 执行完毕直接退出 */
+                callback((int)getpid());
             }
-            return false;
+            int argCount = 0;
+            char** argv = args2argv(exeFile, args, argCount);
+            if (-1 != execvp(exeFile.c_str(), argv)) /* 在子进程中执行该程序 */
+            {
+                if (argv) /* 参数内存回收 */
+                {
+                    for (int i = 0; i < argCount; ++i)
+                    {
+                        if (argv[i])
+                        {
+                            free(argv[i]);
+                        }
+                    }
+                    free(argv);
+                }
+                return; /* 执行完毕直接退出 */
+            }
+            if (argv) /* 参数内存回收 */
+            {
+                for (int i = 0; i < argCount; ++i)
+                {
+                    if (argv[i])
+                    {
+                        free(argv[i]);
+                    }
+                }
+                free(argv);
+            }
+            if (callback)
+            {
+                callback(-1);
+            }
+            return;
         }
         exit(1); /* 创建成功, 此处是一代子进程的代码 */
     }
@@ -372,7 +487,6 @@ bool Process::runProcess(const std::string& exeFile, int flag)
         }
     }
 #endif
-    return true;
 }
 
 bool Process::killProcess(int pid)
