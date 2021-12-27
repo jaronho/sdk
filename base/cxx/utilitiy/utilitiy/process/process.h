@@ -50,12 +50,11 @@ public:
     /**
      * @brief 启动进程
      * @param exeFile 程序文件名(全路径)
-     * @param args 带入进程执行的参数, 如: "-s 127.0.0.1 -p 4335"
+     * @param args 参数
      * @param flag WIN32: 0-不使用新控制台, 1-使用新控制台; Unix: 0-默认子进程标准输出, 1-关闭子进程标准输出
-     * @param callback 回调函数, pid-进程ID
+     * @return 进程ID
      */
-    static void runProcess(const std::string& exeFile, const std::string& args = "", int flag = 1,
-                           const std::function<void(int pid)>& callback = nullptr);
+    static int runProcess(const std::string& exeFile, const std::string& args = "", int flag = 1);
 
     /**
      * @brief 杀死进程

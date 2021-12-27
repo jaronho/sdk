@@ -148,51 +148,45 @@ static std::wstring string2wstring(const std::string& str)
 }
 #endif
 
-char** args2argv(const std::string exeFile, const std::string& args, int& argvCount)
+char** string2argv(const std::string& str, int& argvCount)
 {
-    argvCount = 0;
-    if (exeFile.empty())
+    std::vector<std::string> argVec;
+    std::string arg;
+    for (size_t i = 0; i < str.size(); ++i)
     {
-        return NULL;
-    }
-    std::vector<std::string> vec;
-    vec.emplace_back(exeFile);
-    std::string seg;
-    for (size_t i = 0; i < args.size(); ++i)
-    {
-        if (' ' == args[i])
+        if (' ' == str[i])
         {
-            if (!seg.empty())
+            if (!arg.empty())
             {
-                vec.emplace_back(seg);
-                seg.clear();
+                argVec.emplace_back(arg);
+                arg.clear();
             }
         }
         else
         {
-            seg.push_back(args[i]);
+            arg.push_back(str[i]);
         }
     }
-    if (!seg.empty())
+    if (!arg.empty())
     {
-        vec.emplace_back(seg);
-        seg.clear();
+        argVec.emplace_back(arg);
+        arg.clear();
     }
-    argvCount = vec.size();
+    argvCount = argVec.size();
     char** argv = (char**)malloc(sizeof(char*) * (argvCount + (size_t)1));
     if (argv)
     {
         for (size_t i = 0; i < argvCount; ++i)
         {
-            char* arg = (char*)malloc(sizeof(char) * (vec[i].size() + 1));
+            char* arg = (char*)malloc(sizeof(char) * (argVec[i].size() + 1));
             if (arg)
             {
-                memset(arg, 0, vec[i].size() + 1);
-                memcpy(arg, vec[i].c_str(), vec[i].size());
+                memset(arg, 0, argVec[i].size() + 1);
+                memcpy(arg, argVec[i].c_str(), argVec[i].size());
             }
             *(argv + i) = arg;
         }
-        *(argv + argvCount) = NULL; /* */
+        *(argv + argvCount) = NULL; /* 最后一个必须设置为NULL */
     }
     return argv;
 }
@@ -353,15 +347,16 @@ int Process::searchProcess(const std::string& filename, const std::function<bool
     return matchCount;
 }
 
-void Process::runProcess(const std::string& exeFile, const std::string& args, int flag, const std::function<void(int pid)>& callback)
+int Process::runProcess(const std::string& exeFile, const std::string& str, int flag)
 {
     if (exeFile.empty())
     {
-        if (callback)
-        {
-            callback(-1);
-        }
-        return;
+        return -1;
+    }
+    std::string cmdline = exeFile;
+    if (!str.empty())
+    {
+        cmdline.append(" ").append(str);
     }
 #ifdef _WIN32
     STARTUPINFO si;
@@ -369,101 +364,66 @@ void Process::runProcess(const std::string& exeFile, const std::string& args, in
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi;
     ZeroMemory(&pi, sizeof(pi));
-    std::string cmdline = exeFile;
-    if (!args.empty())
-    {
-        cmdline.append(" ").append(args);
-    }
 #ifdef UNICODE
     std::wstring cmdlineW = string2wstring(cmdline);
     if (cmdlineW.empty())
     {
-        if (callback)
-        {
-            callback(-1);
-        }
-        return;
+        return -1;
     }
     if (!CreateProcess(NULL, (WCHAR*)cmdlineW.c_str(), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
 #else
     if (!CreateProcess(NULL, (CHAR*)(cmdline.c_str()), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
 #endif
     {
-        if (callback)
-        {
-            callback(-1);
-        }
-        return;
+        return -1;
     }
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
-    if (callback)
-    {
-        callback(pi.dwProcessId);
-    }
+    return pi.dwProcessId;
 #else
+    if (0 != access(exeFile.c_str(), F_OK | R_OK | X_OK)) /* 文件必须具有可读, 可执行权限 */
+    {
+        return -1;
+    }
     /* 
      * 这里要fork两次, 利用系统孤儿进程的回收机制来处理, 否则会出现僵尸进程.
      * 具体做法是: 利用一代子进程再产生二代子进程, 同时将一代子进程结束掉, 并在父进程中进行收尸处理.
      */
-    if (0 != access(exeFile.c_str(), F_OK | R_OK | X_OK)) /* 文件必须具有可读, 可执行权限 */
+    int fd[2];
+    if (0 != pipe(fd))
     {
-        if (callback)
-        {
-            callback(-1);
-        }
-        return;
+        return -1;
     }
     pid_t firstPid = fork(); /* 创建一代子进程 */
-    if (firstPid < 0) /* 一代子进程创建失败 */
+    if (firstPid < 0) /* 一代进程创建失败 */
     {
-        if (callback)
-        {
-            callback(-1);
-        }
-        return;
+        return firstPid;
     }
-    else if (0 == firstPid) /* 创建成功, 此处是一代子进程的代码 */
+    else if (0 == firstPid) /* 创建成功, 进入一代进程空间 */
     {
-        pid_t secondPid = fork(); /* 创建二代孙进程 */
-        if (secondPid < 0) /* 二代孙进程创建失败 */
+        pid_t secondPid = fork(); /* 创建二代进程 */
+        if (secondPid < 0) /* 二代进程创建失败 */
         {
-            if (callback)
-            {
-                callback(-1);
-            }
-            return;
+            /* 通知父进程二代进程ID */
+            char buf[8] = {0};
+            sprintf(buf, "%d", secondPid);
+            write(fd[1], buf, sizeof(buf));
+            close(fd[0]);
+            close(fd[1]);
+            return secondPid;
         }
-        else if (0 == secondPid) /* 创建成功, 此处是二代孙进程的代码 */
+        else if (0 == secondPid) /* 创建成功, 进入二代进程空间 */
         {
             if (1 == flag)
             {
                 fcntl(1, F_SETFD, FD_CLOEXEC); /* 1-关闭标准输出, 子进程的输出将无法显示 */
             }
-            if (callback)
+            int argvCount;
+            char** argv = string2argv(cmdline, argvCount);
+            execvp(exeFile.c_str(), argv); /* 在子进程中执行该程序 */
+            if (argv)
             {
-                callback((int)getpid());
-            }
-            int argCount = 0;
-            char** argv = args2argv(exeFile, args, argCount);
-            if (-1 != execvp(exeFile.c_str(), argv)) /* 在子进程中执行该程序 */
-            {
-                if (argv) /* 参数内存回收 */
-                {
-                    for (int i = 0; i < argCount; ++i)
-                    {
-                        if (argv[i])
-                        {
-                            free(argv[i]);
-                        }
-                    }
-                    free(argv);
-                }
-                return; /* 执行完毕直接退出 */
-            }
-            if (argv) /* 参数内存回收 */
-            {
-                for (int i = 0; i < argCount; ++i)
+                for (int i = 0; i < argvCount; ++i)
                 {
                     if (argv[i])
                     {
@@ -472,20 +432,32 @@ void Process::runProcess(const std::string& exeFile, const std::string& args, in
                 }
                 free(argv);
             }
-            if (callback)
-            {
-                callback(-1);
-            }
-            return;
         }
-        exit(1); /* 创建成功, 此处是一代子进程的代码 */
+        /* 通知父进程二代进程ID */
+        char buf[8] = {0};
+        sprintf(buf, "%d", secondPid);
+        write(fd[1], buf, sizeof(buf));
+        close(fd[0]);
+        close(fd[1]);
+        /* 一代进程退出 */
+        exit(EXIT_FAILURE);
     }
-    else /* 创建成功, 此处是父进程的代码 */
+    /* 父进程空间 */
+    int pid = -1;
+    try
     {
-        if (waitpid(firstPid, NULL, 0) != firstPid) /* 父进程必须为一代子进程收尸 */
-        {
-        }
+        /* 获取二代进程ID */
+        char buf[8] = {0};
+        read(fd[0], buf, sizeof(buf));
+        close(fd[0]);
+        close(fd[1]);
+        pid = atoi(buf);
     }
+    catch (...)
+    {
+    }
+    waitpid(firstPid, NULL, 0); /* 父进程必须为一代子进程收尸 */
+    return pid;
 #endif
 }
 
