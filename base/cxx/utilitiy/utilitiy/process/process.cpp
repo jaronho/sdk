@@ -397,6 +397,8 @@ int Process::runProcess(const std::string& exeFile, const std::string& str, int 
     pid_t firstPid = fork(); /* 创建一代子进程 */
     if (firstPid < 0) /* 一代进程创建失败 */
     {
+        close(fd[0]);
+        close(fd[1]);
         return firstPid;
     }
     else if (0 == firstPid) /* 创建成功, 进入一代进程空间 */
