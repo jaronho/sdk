@@ -385,80 +385,35 @@ int Process::runProcess(const std::string& exeFile, const std::string& str, int 
     {
         return -1;
     }
-    /* 
-     * 这里要fork两次, 利用系统孤儿进程的回收机制来处理, 否则会出现僵尸进程.
-     * 具体做法是: 利用一代子进程再产生二代子进程, 同时将一代子进程结束掉, 并在父进程中进行收尸处理.
-     */
-    int fd[2];
-    if (0 != pipe(fd))
+    signal(SIGCHLD, SIG_IGN); /* 重要: 设置父进程不关心子进程什么时候结束, 通知内核在子进程结束时进行回收, 避免子进程成为僵尸进程 */
+    pid_t pid = fork(); /* 创建子进程 */
+    if (pid < 0) /* 子进程创建失败 */
     {
-        return -1;
+        return pid;
     }
-    pid_t firstPid = fork(); /* 创建一代子进程 */
-    if (firstPid < 0) /* 一代进程创建失败 */
+    else if (0 == pid) /* 创建成功, 进入子进程空间 */
     {
-        close(fd[0]);
-        close(fd[1]);
-        return firstPid;
-    }
-    else if (0 == firstPid) /* 创建成功, 进入一代进程空间 */
-    {
-        pid_t secondPid = fork(); /* 创建二代进程 */
-        if (secondPid < 0) /* 二代进程创建失败 */
+        setpgid(0, 0);
+        if (1 == flag)
         {
-            /* 通知父进程二代进程ID */
-            char buf[8] = {0};
-            sprintf(buf, "%d", secondPid);
-            write(fd[1], buf, sizeof(buf));
-            close(fd[0]);
-            close(fd[1]);
-            return secondPid;
+            fcntl(1, F_SETFD, FD_CLOEXEC); /* 1-关闭标准输出, 子进程的输出将无法显示 */
         }
-        else if (0 == secondPid) /* 创建成功, 进入二代进程空间 */
+        int argvCount;
+        char** argv = string2argv(cmdline, argvCount);
+        execvp(exeFile.c_str(), argv); /* 在子进程中执行该程序 */
+        if (argv)
         {
-            if (1 == flag)
+            for (int i = 0; i < argvCount; ++i)
             {
-                fcntl(1, F_SETFD, FD_CLOEXEC); /* 1-关闭标准输出, 子进程的输出将无法显示 */
-            }
-            int argvCount;
-            char** argv = string2argv(cmdline, argvCount);
-            execvp(exeFile.c_str(), argv); /* 在子进程中执行该程序 */
-            if (argv)
-            {
-                for (int i = 0; i < argvCount; ++i)
+                if (argv[i])
                 {
-                    if (argv[i])
-                    {
-                        free(argv[i]);
-                    }
+                    free(argv[i]);
                 }
-                free(argv);
             }
+            free(argv);
         }
-        /* 通知父进程二代进程ID */
-        char buf[8] = {0};
-        sprintf(buf, "%d", secondPid);
-        write(fd[1], buf, sizeof(buf));
-        close(fd[0]);
-        close(fd[1]);
-        /* 一代进程退出 */
-        exit(EXIT_FAILURE);
     }
     /* 父进程空间 */
-    int pid = -1;
-    try
-    {
-        /* 获取二代进程ID */
-        char buf[8] = {0};
-        read(fd[0], buf, sizeof(buf));
-        close(fd[0]);
-        close(fd[1]);
-        pid = atoi(buf);
-    }
-    catch (...)
-    {
-    }
-    waitpid(firstPid, NULL, 0); /* 父进程必须为一代子进程收尸 */
     return pid;
 #endif
 }
