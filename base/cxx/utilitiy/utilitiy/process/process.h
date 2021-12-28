@@ -33,10 +33,11 @@ public:
     static void setThreadName(const std::string& name);
 
     /**
-     * @brief 获取当前进程的程序全路径文件名
-     * @return 程序全路径文件名
+     * @brief 获取进程的程序全路径文件名
+     * @param pid 进程ID(选填), 当<=0时获取当前进程
+     * @return 程序全路径文件名, 为空表示进程ID不存在
      */
-    static std::string getProcessExeFile();
+    static std::string getProcessExeFile(int pid = 0);
 
     /**
      * @brief 根据程序文件名搜索进程

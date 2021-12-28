@@ -191,21 +191,53 @@ char** string2argv(const std::string& str, int& argvCount)
     return argv;
 }
 
-std::string Process::getProcessExeFile()
+std::string Process::getProcessExeFile(int pid)
 {
 #ifdef _WIN32
+    if (pid <= 0)
+    {
 #ifdef UNICODE
-    TCHAR exeFileW[MAX_PATH + 1] = {0};
-    GetModuleFileName(NULL, exeFileW, MAX_PATH);
-    return wstring2string(exeFileW);
+        TCHAR exeFileW[MAX_PATH + 1] = {0};
+        GetModuleFileName(NULL, exeFileW, MAX_PATH);
+        return wstring2string(exeFileW);
 #else
-    CHAR exeFile[MAX_PATH + 1] = {0};
-    GetModuleFileName(NULL, exeFile, MAX_PATH);
-    return exeFile;
+        CHAR exeFile[MAX_PATH + 1] = {0};
+        GetModuleFileName(NULL, exeFile, MAX_PATH);
+        return exeFile;
 #endif
+    }
+    else
+    {
+        std::string exeFile;
+        HANDLE moduleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
+        if (INVALID_HANDLE_VALUE != moduleSnap)
+        {
+            MODULEENTRY32 moduleEntry32;
+            moduleEntry32.dwSize = sizeof(MODULEENTRY32);
+            if (Module32First(moduleSnap, &moduleEntry32))
+            {
+#ifdef UNICODE
+                exeFile = wstring2string(moduleEntry32.szExePath);
 #else
+                exeFile = moduleEntry32.szExePath;
+#endif
+            }
+            CloseHandle(moduleSnap);
+        }
+        return exeFile;
+    }
+#else
+    char temp[64] = {0};
+    if (pid <= 0)
+    {
+        sprintf(temp, "/proc/self/exe");
+    }
+    else
+    {
+        sprintf(temp, "/proc/%d/exe", pid);
+    }
     char exeFile[261] = {0};
-    unsigned int exeFileLen = readlink("/proc/self/exe", exeFile, sizeof(exeFile) - 1);
+    unsigned int exeFileLen = readlink(temp, exeFile, sizeof(exeFile) - 1);
     if (exeFileLen <= 0 || exeFileLen >= sizeof(exeFile) - 1)
     {
         return std::string();
