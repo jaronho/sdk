@@ -347,16 +347,16 @@ int Process::searchProcess(const std::string& filename, const std::function<bool
     return matchCount;
 }
 
-int Process::runProcess(const std::string& exeFile, const std::string& str, int flag)
+int Process::runProcess(const std::string& exeFile, const std::string& args, int flag)
 {
     if (exeFile.empty())
     {
         return -1;
     }
     std::string cmdline = exeFile;
-    if (!str.empty())
+    if (!args.empty())
     {
-        cmdline.append(" ").append(str);
+        cmdline.append(" ").append(args);
     }
 #ifdef _WIN32
     STARTUPINFO si;
@@ -398,19 +398,27 @@ int Process::runProcess(const std::string& exeFile, const std::string& str, int 
         {
             fcntl(1, F_SETFD, FD_CLOEXEC); /* 1-关闭标准输出, 子进程的输出将无法显示 */
         }
-        int argvCount;
-        char** argv = string2argv(cmdline, argvCount);
-        execvp(exeFile.c_str(), argv); /* 在子进程中执行该程序 */
-        if (argv)
+        /* 在子进程中执行该程序 */
+        if (args.empty()) /* 无程序参数 */
         {
-            for (int i = 0; i < argvCount; ++i)
+            execlp(exeFile.c_str(), exeFile.c_str(), NULL);
+        }
+        else /* 有程序参数 */
+        {
+            int argvCount;
+            char** argv = string2argv(cmdline, argvCount);
+            execvp(exeFile.c_str(), argv);
+            if (argv)
             {
-                if (argv[i])
+                for (int i = 0; i < argvCount; ++i)
                 {
-                    free(argv[i]);
+                    if (argv[i])
+                    {
+                        free(argv[i]);
+                    }
                 }
+                free(argv);
             }
-            free(argv);
         }
     }
     /* 父进程空间 */
