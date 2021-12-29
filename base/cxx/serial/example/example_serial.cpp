@@ -101,7 +101,8 @@ void showAllPorts(const std::vector<serial::PortInfo> portList)
  * @brief 打开串口 
  */
 void openSerial(const std::string& port, unsigned long baudrate, const serial::Databits& databits, const serial::ParityType& parity,
-                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, bool sendHex, bool showHex, bool autoLine)
+                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, bool sendHex, bool hideRecv, bool showHex,
+                bool autoLine)
 {
     /* 串口设置及打开 */
     g_com.setPort(port);
@@ -110,6 +111,66 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     g_com.setParity(parity);
     g_com.setStopbits(stopbits);
     g_com.setFlowcontrol(flowcontrol);
+    printf("  port: %s\n", port.c_str());
+    printf("  baud: %ld\n", baudrate);
+    switch (databits)
+    {
+    case serial::Databits::FIVE:
+        printf("  data: 5\n");
+        break;
+    case serial::Databits::SIX:
+        printf("  data: 6\n");
+        break;
+    case serial::Databits::SEVEN:
+        printf("  data: 7\n");
+        break;
+    case serial::Databits::EIGHT:
+        printf("  data: 8\n");
+        break;
+    }
+    switch (parity)
+    {
+    case serial::ParityType::NONE:
+        printf("parity: None\n");
+        break;
+    case serial::ParityType::ODD:
+        printf("parity: Odd\n");
+        break;
+    case serial::ParityType::EVEN:
+        printf("parity: Even\n");
+        break;
+    case serial::ParityType::MARK:
+        printf("parity: Mark\n");
+        break;
+    case serial::ParityType::SPACE:
+        printf("parity: Space\n");
+        break;
+    }
+    switch (stopbits)
+    {
+    case serial::Stopbits::ONE:
+        printf("  stop: 1\n");
+        break;
+    case serial::Stopbits::ONE_AND_HALF:
+        printf("  stop: 1.5\n");
+        break;
+    case serial::Stopbits::TWO:
+        printf("  stop: 2\n");
+        break;
+    }
+    switch (flowcontrol)
+    {
+    case serial::FlowcontrolType::NONE:
+        printf("  flow: None\n");
+        break;
+    case serial::FlowcontrolType::SOFTWARE:
+        printf("  flow: Software\n");
+        break;
+    case serial::FlowcontrolType::HARDWARE:
+        printf("  flow: Hardware\n");
+        break;
+    }
+    printf("\n");
     if (!g_com.open())
     {
         printf("serial open failed!\n");
@@ -120,13 +181,12 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     std::thread th([&]() {
         while (1)
         {
-            char str[1024] = {0};
-            std::cin.getline(str, sizeof(str));
-            fprintf(stderr, "=====%s=====\n", str);
+            char input[1024] = {0};
+            std::cin.getline(input, sizeof(input));
             if (sendHex)
             {
                 char* bytes;
-                int len = hexStrToBytes(str, &bytes);
+                int len = hexStrToBytes(input, &bytes);
                 if (bytes)
                 {
                     g_com.write(bytes, len);
@@ -135,7 +195,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
             }
             else
             {
-                g_com.write(str, strlen(str));
+                g_com.write(input, strlen(input));
             }
         }
     });
@@ -144,42 +204,45 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     while (1)
     {
         std::string bytes = g_com.readAll();
-        if (!bytes.empty())
+        if (!hideRecv)
         {
-            g_lastRecvTimestamp = std::chrono::steady_clock::now();
-            if (0 == g_totalRecvLength)
+            if (!bytes.empty())
             {
-                fprintf(stderr, "==================================================\n");
-            }
-            else if (autoLine)
-            {
-                fprintf(stderr, "\n");
-            }
-            if (showHex)
-            {
-                for (size_t i = 0, cnt = bytes.size(); i < cnt; ++i)
+                g_lastRecvTimestamp = std::chrono::steady_clock::now();
+                if (0 == g_totalRecvLength)
                 {
-                    fprintf(stderr, "%02X", bytes[i]);
-                    if (i < cnt - 1)
+                    fprintf(stderr, "==================================================\n");
+                }
+                else if (autoLine)
+                {
+                    fprintf(stderr, "\n");
+                }
+                if (showHex)
+                {
+                    for (size_t i = 0, cnt = bytes.size(); i < cnt; ++i)
                     {
-                        fprintf(stderr, " ");
+                        fprintf(stderr, "%02X", bytes[i]);
+                        if (i < cnt - 1)
+                        {
+                            fprintf(stderr, " ");
+                        }
                     }
                 }
+                else
+                {
+                    fprintf(stderr, "%s", bytes.c_str());
+                }
+                g_totalRecvLength += bytes.size();
             }
-            else
+            if (g_totalRecvLength > 0)
             {
-                fprintf(stderr, "%s", bytes.c_str());
-            }
-            g_totalRecvLength += bytes.size();
-        }
-        if (g_totalRecvLength > 0)
-        {
-            std::chrono::milliseconds elapsed =
-                std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - g_lastRecvTimestamp);
-            if (elapsed.count() >= 400)
-            {
-                fprintf(stderr, "\n========== total receive length: %zu (byte)\n", g_totalRecvLength);
-                g_totalRecvLength = 0;
+                std::chrono::milliseconds elapsed =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - g_lastRecvTimestamp);
+                if (elapsed.count() >= 400)
+                {
+                    fprintf(stderr, "\n========== total receive length: %zu (byte)\n", g_totalRecvLength);
+                    g_totalRecvLength = 0;
+                }
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -198,9 +261,10 @@ int main(int argc, char** argv)
     printf("** [-parity parity]       specify the parity, [ None: N|n, Even: E|e, Odd: O|o, Mark: M|m, Space: S|s ]. **\n");
     printf("** [-stop stopbits]       specify the stop bits, [ 1, 1.5, 2 ].                                          **\n");
     printf("** [-flow flowcontrol]    specify the flow control, [ None: N|n, Software: S|s, Hardware: H|h ].         **\n");
-    printf("** [-txhex]               specify the send format with hex.                                              **\n");
-    printf("** [-rxhex]               specify the receive show with hex.                                             **\n");
-    printf("** [-rxline]              specify the receive auto new line.                                             **\n");
+    printf("** [--txhex]              specify the send format with hex.                                              **\n");
+    printf("** [--rxhide]             specify whether hide receive.                                                  **\n");
+    printf("** [--rxhex]              specify the receive show with hex.                                             **\n");
+    printf("** [--rxline]             specify the receive auto new line.                                             **\n");
     printf("**                                                                                                       **\n");
     printf("***********************************************************************************************************\n");
     printf("\n");
@@ -213,6 +277,7 @@ int main(int argc, char** argv)
     int flagStopbits = 2;
     int flagFlowcontrol = 2;
     int flagTxHex = 0;
+    int flagRxHide = 0;
     int flagRxHex = 0;
     int flagRxAutoLine = 0;
     /* 错误的参数值 */
@@ -224,7 +289,7 @@ int main(int argc, char** argv)
     std::string portName;
     unsigned long baudrate = 115200;
     serial::Databits databits = serial::Databits::EIGHT;
-    serial::ParityType pariry = serial::ParityType::EVEN;
+    serial::ParityType pariry = serial::ParityType::NONE;
     serial::Stopbits stopbits = serial::Stopbits::ONE;
     serial::FlowcontrolType flowcontrol = serial::FlowcontrolType::NONE;
     /* 解析参数 */
@@ -237,19 +302,25 @@ int main(int argc, char** argv)
             i += 1;
             continue;
         }
-        else if (0 == key.compare("-txhex")) /* 发送十六进制 */
+        else if (0 == key.compare("--txhex")) /* 发送十六进制 */
         {
             flagTxHex = 2;
             i += 1;
             continue;
         }
-        else if (0 == key.compare("-rxhex")) /* 接收显示十六进制 */
+        else if (0 == key.compare("--rxhide")) /* 是否显示接收 */
+        {
+            flagRxHide = 2;
+            i += 1;
+            continue;
+        }
+        else if (0 == key.compare("--rxhex")) /* 接收显示十六进制 */
         {
             flagRxHex = 2;
             i += 1;
             continue;
         }
-        else if (0 == key.compare("-rxline")) /* 接收显示自动换行 */
+        else if (0 == key.compare("--rxline")) /* 接收显示自动换行 */
         {
             flagRxAutoLine = 2;
             i += 1;
@@ -382,6 +453,7 @@ int main(int argc, char** argv)
     flagStopbits = 2;
     flagFlowcontrol = 2;
     flagTxHex = 0;
+    flagRxHide = 0;
     flagRxHex = 0;
     flagRxAutoLine = 0;
     portName = "COM26";
@@ -465,7 +537,7 @@ int main(int argc, char** argv)
         return 0;
     }
     /* 打开串口 */
-    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, 2 == flagTxHex, 2 == flagRxHex, 2 == flagRxAutoLine);
-
+    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, 2 == flagTxHex, 2 == flagRxHide, 2 == flagRxHex,
+               2 == flagRxAutoLine);
     return 0;
 }
