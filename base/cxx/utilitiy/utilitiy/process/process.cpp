@@ -247,7 +247,7 @@ std::string Process::getProcessExeFile(int pid)
 #endif
 }
 
-int Process::searchProcess(const std::string& filename, const std::function<bool(const std::string& exeFile, int pid)>& callback)
+int Process::searchProcess(const std::string& exeFile, const std::function<bool(const std::string& exeFile, int pid)>& callback)
 {
     int matchCount = 0;
 #ifdef _WIN32
@@ -282,23 +282,23 @@ int Process::searchProcess(const std::string& filename, const std::function<bool
             continue;
         }
         CloseHandle(moduleSnap);
-        std::string exeFile;
+        std::string exeFilePath;
 #ifdef UNICODE
-        exeFile = wstring2string(moduleEntry32.szExePath);
+        exeFilePath = wstring2string(moduleEntry32.szExePath);
 #else
-        exeFile = moduleEntry32.szExePath;
+        exeFilePath = moduleEntry32.szExePath;
 #endif
-        unsigned int exeFileLen = exeFile.size();
-        if (filename.size() > exeFileLen)
+        unsigned int exeFilePathLen = exeFilePath.size();
+        if (exeFile.size() > exeFilePathLen)
         {
             continue;
         }
         bool matched = true;
-        if (!filename.empty())
+        if (!exeFile.empty())
         {
-            for (unsigned int i = 1, nameLen = filename.size(); i <= nameLen; ++i)
+            for (unsigned int i = 1, nameLen = exeFile.size(); i <= nameLen; ++i)
             {
-                if (exeFile[exeFileLen - i] != filename[nameLen - i])
+                if (exeFilePath[exeFilePathLen - i] != exeFile[nameLen - i])
                 {
                     matched = false;
                     break;
@@ -310,7 +310,7 @@ int Process::searchProcess(const std::string& filename, const std::function<bool
             ++matchCount;
             if (callback)
             {
-                if (!callback(exeFile, moduleEntry32.th32ProcessID))
+                if (!callback(exeFilePath, moduleEntry32.th32ProcessID))
                 {
                     break;
                 }
@@ -325,7 +325,7 @@ int Process::searchProcess(const std::string& filename, const std::function<bool
         return matchCount;
     }
     char temp[64];
-    char exeFile[261];
+    char exeFilePath[261];
     struct dirent* dirp = NULL;
     while ((dirp = readdir(dir)))
     {
@@ -339,23 +339,23 @@ int Process::searchProcess(const std::string& filename, const std::function<bool
         }
         memset(temp, 0, sizeof(temp));
         sprintf(temp, "/proc/%s/exe", dirp->d_name);
-        memset(exeFile, 0, sizeof(exeFile));
-        unsigned int exeFileLen = readlink(temp, exeFile, sizeof(exeFile) - 1);
-        if (exeFileLen <= 0 || exeFileLen >= sizeof(exeFile) - 1)
+        memset(exeFilePath, 0, sizeof(exeFilePath));
+        unsigned int exeFilePathLen = readlink(temp, exeFilePath, sizeof(exeFilePath) - 1);
+        if (exeFilePathLen <= 0 || exeFilePathLen >= sizeof(exeFilePath) - 1)
         {
             continue;
         }
-        exeFile[exeFileLen] = '\0';
-        if (filename.size() > exeFileLen)
+        exeFilePath[exeFilePathLen] = '\0';
+        if (exeFile.size() > exeFilePathLen)
         {
             continue;
         }
         bool matched = true;
-        if (!filename.empty())
+        if (!exeFile.empty())
         {
-            for (unsigned int i = 1, nameLen = filename.size(); i <= nameLen; ++i)
+            for (unsigned int i = 1, nameLen = exeFile.size(); i <= nameLen; ++i)
             {
-                if (exeFile[exeFileLen - i] != filename[nameLen - i])
+                if (exeFilePath[exeFilePathLen - i] != exeFile[nameLen - i])
                 {
                     matched = false;
                     break;
@@ -367,7 +367,7 @@ int Process::searchProcess(const std::string& filename, const std::function<bool
             ++matchCount;
             if (callback)
             {
-                if (!callback(exeFile, atoi(dirp->d_name)))
+                if (!callback(exeFilePath, atoi(dirp->d_name)))
                 {
                     break;
                 }
@@ -413,10 +413,6 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
     CloseHandle(pi.hProcess);
     return pi.dwProcessId;
 #else
-    if (0 != access(exeFile.c_str(), F_OK | R_OK | X_OK)) /* 文件必须具有可读, 可执行权限 */
-    {
-        return -1;
-    }
     signal(SIGCHLD, SIG_IGN); /* 重要: 设置父进程不关心子进程什么时候结束, 通知内核在子进程结束时进行回收, 避免子进程成为僵尸进程 */
     pid_t pid = fork(); /* 创建子进程 */
     if (pid < 0) /* 子进程创建失败 */
@@ -431,11 +427,11 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
             fcntl(1, F_SETFD, FD_CLOEXEC); /* 1-关闭标准输出, 子进程的输出将无法显示 */
         }
         /* 在子进程中执行该程序 */
-        if (args.empty()) /* 无程序参数 */
+        if (args.empty()) /* 无进程参数 */
         {
             execlp(exeFile.c_str(), exeFile.c_str(), NULL);
         }
-        else /* 有程序参数 */
+        else /* 有进程参数 */
         {
             int argvCount;
             char** argv = string2argv(cmdline, argvCount);
