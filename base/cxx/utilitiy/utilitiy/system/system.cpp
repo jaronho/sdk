@@ -79,7 +79,12 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
 #ifdef _WIN32
     return _pclose(stream);
 #else
-    return pclose(stream);
+    int ret = pclose(stream);
+    if (0 != ret && 10 == errno) /* 当进程某处设置了`signal(SIGCHLD, SIG_IGN)`时, 会出现"No child processes", 这里就设置不认为出错 */
+    {
+        ret = 0;
+    }
+    return ret;
 #endif
 }
 
