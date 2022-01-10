@@ -22,9 +22,8 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
                                      ${base_libusb_path}/os/linux_usbfs.h
                                      ${base_libusb_path}/os/threads_posix.c
                                      ${base_libusb_path}/os/threads_posix.h
-                                     ${base_libusb_path}/../config.h)
-    include_directories(${base_libusb_path}/../)
-    add_definitions(-DPLATFORM_POSIX)
+                                     ${base_libusb_path}/../posix/config.h)
+    include_directories(${base_libusb_path}/../posix)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
     list(APPEND base_libusb_src_list ${base_libusb_path}/os/events_windows.c
                                      ${base_libusb_path}/os/events_windows.h
@@ -38,7 +37,6 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
                                      ${base_libusb_path}/os/windows_winusb.h
                                      ${base_libusb_path}/../msvc/config.h)
     include_directories(${base_libusb_path}/../msvc)
-    add_definitions(-DPLATFORM_WINDOWS)
 else()
     message(WARNING "Other Platform: ${CMAKE_SYSTEM_NAME}")
     return()
