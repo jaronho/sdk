@@ -10,35 +10,41 @@ include(../cmake/tools.cmake)
 set(base_usb_path ..) # 设置usb库路径(可修改)
 include_directories(${base_usb_path})
 
+set(base_libusb_path ${base_usb_path}/libusb-1.0.24/libusb)
+include_directories(${base_libusb_path})
 set(base_libusb_src_list)
-get_cxx_files(${base_usb_path}/libusb-1.0.24 src_list)
-list(APPEND base_libusb_src_list ${src_list})
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-    list(APPEND base_libusb_src_list ${base_usb_path}/libusb-1.0.24/oc/events_posix.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/events_posix.h
-                                     ${base_usb_path}/libusb-1.0.24/oc/linux_netlink.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/linux_udev.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/linux_usbfs.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/linux_usbfs.h
-                                     ${base_usb_path}/libusb-1.0.24/oc/null_usb.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/threads_posix.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/threads_posix.h)
-elseif(CMAKE_SYSTEM_NAME MATCHES "Windows)
-    list(APPEND base_libusb_src_list ${base_usb_path}/libusb-1.0.24/oc/events_windows.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/events_windows.h
-                                     ${base_usb_path}/libusb-1.0.24/oc/null_usb.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/threads_windows.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/threads_windows.h
-                                     ${base_usb_path}/libusb-1.0.24/oc/windows_common.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/windows_common.h
-                                     ${base_usb_path}/libusb-1.0.24/oc/windows_usbdk.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/windows_usbdk.h
-                                     ${base_usb_path}/libusb-1.0.24/oc/windows_winusb.c
-                                     ${base_usb_path}/libusb-1.0.24/oc/windows_winusb.h)
+    list(APPEND base_libusb_src_list ${base_libusb_path}/os/events_posix.c
+                                     ${base_libusb_path}/os/events_posix.h
+                                     ${base_libusb_path}/os/linux_netlink.c
+                                     ${base_libusb_path}/os/linux_udev.c
+                                     ${base_libusb_path}/os/linux_usbfs.c
+                                     ${base_libusb_path}/os/linux_usbfs.h
+                                     ${base_libusb_path}/os/threads_posix.c
+                                     ${base_libusb_path}/os/threads_posix.h
+                                     ${base_libusb_path}/../config.h)
+    include_directories(${base_libusb_path}/../)
+    add_definitions(-DPLATFORM_POSIX)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
+    list(APPEND base_libusb_src_list ${base_libusb_path}/os/events_windows.c
+                                     ${base_libusb_path}/os/events_windows.h
+                                     ${base_libusb_path}/os/threads_windows.c
+                                     ${base_libusb_path}/os/threads_windows.h
+                                     ${base_libusb_path}/os/windows_common.c
+                                     ${base_libusb_path}/os/windows_common.h
+                                     ${base_libusb_path}/os/windows_usbdk.c
+                                     ${base_libusb_path}/os/windows_usbdk.h
+                                     ${base_libusb_path}/os/windows_winusb.c
+                                     ${base_libusb_path}/os/windows_winusb.h
+                                     ${base_libusb_path}/../msvc/config.h)
+    include_directories(${base_libusb_path}/../msvc)
+    add_definitions(-DPLATFORM_WINDOWS)
 else()
     message(WARNING "Other Platform: ${CMAKE_SYSTEM_NAME}")
     return()
 endif()
+get_cxx_files(${base_libusb_path} src_list)
+list(APPEND base_libusb_src_list ${src_list})
 source_group(3rdparty/base/libusb FILES ${base_libusb_src_list})
 
 set(base_usb_src_list)
@@ -74,4 +80,8 @@ endforeach()
 add_executable(example_usb ${base_usb_files} ${example_files})
 
 # 链接依赖库文件
-target_link_libraries(example_usb Threads::Threads)
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    target_link_libraries(example_usb Threads::Threads udev)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
+    target_link_libraries(example_usb Threads::Threads)
+endif()
