@@ -1,88 +1,50 @@
-AUTOMAKE_OPTIONS = subdir-objects
+AUTOMAKE_OPTIONS = dist-bzip2 no-dist-gzip
+ACLOCAL_AMFLAGS = -I m4
+EXTRA_DIST = INSTALL_WIN.txt PORTING doc/libusb.png \
+	     android msvc Xcode
+SUBDIRS = libusb
 
-AM_CFLAGS += -fvisibility=hidden $(THREAD_CFLAGS)
-AM_CXXFLAGS += -fvisibility=hidden $(THREAD_CFLAGS)
-
-lib_LTLIBRARIES = libusb-1.0.la
-
-POSIX_PLATFORM_SRC = os/events_posix.h os/events_posix.c \
-		     os/threads_posix.h os/threads_posix.c
-WINDOWS_PLATFORM_SRC = os/events_windows.h os/events_windows.c \
-		       os/threads_windows.h os/threads_windows.c
-
-if PLATFORM_POSIX
-PLATFORM_SRC = $(POSIX_PLATFORM_SRC)
-else
-PLATFORM_SRC = $(WINDOWS_PLATFORM_SRC)
+if BUILD_EXAMPLES
+SUBDIRS += examples
 endif
 
-OS_DARWIN_SRC = os/darwin_usb.h os/darwin_usb.c
-OS_HAIKU_SRC = os/haiku_usb.h os/haiku_usb_backend.cpp \
-	       os/haiku_pollfs.cpp os/haiku_usb_raw.h os/haiku_usb_raw.cpp
-OS_LINUX_SRC = os/linux_usbfs.h os/linux_usbfs.c
-OS_NETBSD_SRC = os/netbsd_usb.c
-OS_NULL_SRC = os/null_usb.c
-OS_OPENBSD_SRC = os/openbsd_usb.c
-OS_SUNOS_SRC = os/sunos_usb.h os/sunos_usb.c
-OS_WINDOWS_SRC = libusb-1.0.def libusb-1.0.rc \
-		 os/windows_common.h os/windows_common.c \
-		 os/windows_usbdk.h os/windows_usbdk.c \
-		 os/windows_winusb.h os/windows_winusb.c
-
-if OS_DARWIN
-OS_SRC = $(OS_DARWIN_SRC)
+if BUILD_TESTS
+SUBDIRS += tests
 endif
 
-if OS_HAIKU
-noinst_LTLIBRARIES = libusb_haiku.la
-libusb_haiku_la_SOURCES = $(OS_HAIKU_SRC)
-libusb_1_0_la_LIBADD = libusb_haiku.la
-endif
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = libusb-1.0.pc
 
-if OS_LINUX
-OS_SRC = $(OS_LINUX_SRC)
-if USE_UDEV
-OS_SRC += os/linux_udev.c
-else
-OS_SRC += os/linux_netlink.c
-endif
-endif
+# The package name is libusb-1.0, but we want the distribution
+# to be created as libusb-x.y.z instead of libusb-1.0-x.y.z
+distdir = libusb-$(VERSION)
 
-if OS_NETBSD
-OS_SRC = $(OS_NETBSD_SRC)
-endif
+# Ensure any generated docs are cleaned out
+# We need this here because make does not recurse into doc/
+clean-local:
+	rm -rf doc/$(DOXYGEN_HTMLDIR)
 
-if OS_NULL
-OS_SRC = $(OS_NULL_SRC)
-endif
+# Use dist-hook to accomplish the following things for the dist recipe:
+#   1) Remove the GitHub Markdown from the README file
+#   2) Remove the .gitattributes file from the msvc directory
+dist-hook:
+	chmod u+w $(distdir)/README $(distdir)/msvc
+	$(SED) -i.orig -e '/Build Status/d' $(distdir)/README
+	$(SED) -i.orig -e '/^$$/N;/^\n$$/D' $(distdir)/README
+	$(SED) -i.orig -e 's/\[\([A-Z]*\)\](\1)/\1/' $(distdir)/README
+	rm -f $(distdir)/README.orig
+	rm -f $(distdir)/msvc/.gitattributes
 
-if OS_OPENBSD
-OS_SRC = $(OS_OPENBSD_SRC)
-endif
-
-if OS_SUNOS
-OS_SRC = $(OS_SUNOS_SRC)
-endif
-
-if OS_WINDOWS
-OS_SRC = $(OS_WINDOWS_SRC)
-
-include Makefile.am.extra
-
-# Dependencies for compiling libusb-1.0.lo from libusb-1.0.rc
--include ./$(DEPDIR)/libusb-1.0.Plo
-
-if CREATE_IMPORT_LIB
-all-local: .libs/libusb-1.0.dll.a
-# Rebuild the import lib from the .def so that MS and MinGW DLLs can be interchanged
-.libs/libusb-1.0.dll.a: libusb-1.0.def libusb-1.0.la
-	$(AM_V_DLLTOOL)$(DLLTOOL) $(DLLTOOLFLAGS) --kill-at --input-def $< --dllname libusb-1.0.dll --output-lib $@
-endif
-endif
-
-libusb_1_0_la_LDFLAGS = $(LT_LDFLAGS)
-libusb_1_0_la_SOURCES = libusbi.h version.h version_nano.h \
-	core.c descriptor.c hotplug.h hotplug.c io.c strerror.c sync.c \
-	$(PLATFORM_SRC) $(OS_SRC)
-
-pkginclude_HEADERS = libusb.h
+reldir = .release/$(distdir)
+sfurl = frs.sourceforge.net:/home/frs/project/libusb/libusb-1.0
+.PHONY: dist-upload
+dist-upload: dist
+	rm -rf $(reldir)
+	mkdir -p $(reldir)
+	cp $(distdir).tar.bz2 $(reldir)
+	if [ -z "$$SF_USER" ]; then \
+		rsync -rv $(reldir) $(sfurl); \
+	else \
+		rsync -rv $(reldir) $$SF_USER@$(sfurl); \
+	fi
+	rm -rf $(reldir)
