@@ -12,6 +12,8 @@ class Usb
 public:
     Usb();
 
+    Usb(const Usb& src);
+
     virtual ~Usb() = default;
 
     /**

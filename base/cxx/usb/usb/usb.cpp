@@ -6,6 +6,19 @@ namespace usb
 {
 Usb::Usb() : m_busNum(-1), m_portNum(-1), m_address(-1), m_classCode(-1) {}
 
+Usb::Usb(const Usb& src)
+{
+    m_busNum = src.m_busNum;
+    m_portNum = src.m_portNum;
+    m_address = src.m_address;
+    m_classCode = src.m_classCode;
+    m_vid = src.m_vid;
+    m_pid = src.m_pid;
+    m_serial = src.m_serial;
+    m_product = src.m_product;
+    m_manufacturer = src.m_manufacturer;
+}
+
 int Usb::getBusNum() const
 {
     return m_busNum;
