@@ -123,7 +123,7 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
     ssize_t count = libusb_get_device_list(NULL, &devList);
     if (count > 0 && devList)
     {
-        for (ssize_t i = 0; i < count; ++i) /* ±éÀúÉè±¸ÁĞ±í */
+        for (ssize_t i = 0; i < count; ++i) /* éå†è®¾å¤‡åˆ—è¡¨ */
         {
             libusb_device* dev = devList[i];
             if (!dev)
@@ -136,10 +136,10 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
                 continue;
             }
             Usb info;
-            info.m_busNum = libusb_get_bus_number(dev); /* ×ÜÏß±àºÅ */
-            info.m_portNum = libusb_get_port_number(dev); /* ¶Ë¿Ú±àºÅ */
-            info.m_address = libusb_get_device_address(dev); /* µØÖ·(Ã¿´Î°Î²å¶¼»á±ä) */
-            int classCode = desc.bDeviceClass; /* Éè±¸ÀàĞÍ±àÂë(ÓÃÓÚÅĞ¶ÏÊó±ê,¼üÅÌ,HubµÈ) */
+            info.m_busNum = libusb_get_bus_number(dev); /* æ€»çº¿ç¼–å· */
+            info.m_portNum = libusb_get_port_number(dev); /* ç«¯å£ç¼–å· */
+            info.m_address = libusb_get_device_address(dev); /* åœ°å€(æ¯æ¬¡æ‹”æ’éƒ½ä¼šå˜) */
+            int classCode = desc.bDeviceClass; /* è®¾å¤‡ç±»å‹ç¼–ç (ç”¨äºåˆ¤æ–­é¼ æ ‡,é”®ç›˜,Hubç­‰) */
             if (LIBUSB_CLASS_PER_INTERFACE == desc.bDeviceClass && desc.bNumConfigurations > 0)
             {
                 struct libusb_config_descriptor* config;
@@ -153,32 +153,32 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
                 }
             }
             info.m_classCode = classCode;
-            char vid[6] = {0}; /* ³§ÉÌID */
+            char vid[6] = {0}; /* å‚å•†ID */
             sprintf(vid, "%04x", desc.idVendor);
             info.m_vid = vid;
-            char pid[6] = {0}; /* ²úÆ·ID */
+            char pid[6] = {0}; /* äº§å“ID */
             sprintf(pid, "%04x", desc.idProduct);
             info.m_pid = pid;
-            if (sf || pf || mf) /* »ñÈ¡ÏêÏ¸ĞÅÏ¢ */
+            if (sf || pf || mf) /* è·å–è¯¦ç»†ä¿¡æ¯ */
             {
                 libusb_device_handle* handle;
                 if (LIBUSB_SUCCESS == libusb_open(dev, &handle) && handle)
                 {
                     if (sf)
                     {
-                        char serial[256] = {0}; /* ĞòÁĞºÅ */
+                        char serial[256] = {0}; /* åºåˆ—å· */
                         libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, (unsigned char*)serial, sizeof(serial));
                         info.m_serial = serial;
                     }
                     if (pf)
                     {
-                        char product[256] = {0}; /* ²úÆ·Ãû³Æ */
+                        char product[256] = {0}; /* äº§å“åç§° */
                         libusb_get_string_descriptor_ascii(handle, desc.iProduct, (unsigned char*)product, sizeof(product));
                         info.m_product = product;
                     }
                     if (mf)
                     {
-                        char manufacturer[256] = {0}; /* ²úÆ·Ãû³Æ */
+                        char manufacturer[256] = {0}; /* äº§å“åç§° */
                         libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, (unsigned char*)manufacturer, sizeof(manufacturer));
                         info.m_manufacturer = manufacturer;
                     }

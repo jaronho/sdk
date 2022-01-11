@@ -14,10 +14,10 @@ int main(int argc, char** argv)
     printf("**                                                                                                       **\n");
     printf("***********************************************************************************************************\n");
     printf("\n");
-    /* ²ÎÊıÖµ */
+    /* å‚æ•°å€¼ */
     int busNum = -1;
     int portNum = -1;
-    /* ½âÎö²ÎÊı */
+    /* è§£æå‚æ•° */
     for (int i = 1; i < argc;)
     {
         std::string key = argv[i];
@@ -26,11 +26,11 @@ int main(int argc, char** argv)
             break;
         }
         const char* val = argv[i + 1];
-        if (0 == key.compare("-b")) /* ×ÜÏß±àºÅ */
+        if (0 == key.compare("-b")) /* æ€»çº¿ç¼–å· */
         {
             busNum = std::atoi(val);
         }
-        else if (0 == key.compare("-p")) /* ¶Ë¿Ú±àºÅ */
+        else if (0 == key.compare("-p")) /* ç«¯å£ç¼–å· */
         {
             portNum = std::atoi(val);
         }
