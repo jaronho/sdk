@@ -21,7 +21,7 @@ public:
     int getBusNum() const;
 
     /**
-     * @brief 获取端口编号
+     * @brief 获取端口编号(Linux中也叫系统编号)
      * @return 端口编号
      */
     int getPortNum() const;
@@ -103,7 +103,7 @@ public:
 
 private:
     int m_busNum; /* 总线编号 */
-    int m_portNum; /* 端口编号 */
+    int m_portNum; /* 端口编号(Linux中也叫系统编号) */
     int m_address; /* 地址(每次拔插都会变) */
     int m_classCode; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
     std::string m_vid; /* 厂商ID */

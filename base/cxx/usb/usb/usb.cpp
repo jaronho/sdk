@@ -137,7 +137,7 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
             }
             Usb info;
             info.m_busNum = libusb_get_bus_number(dev); /* 总线编号 */
-            info.m_portNum = libusb_get_port_number(dev); /* 端口编号 */
+            info.m_portNum = libusb_get_port_number(dev); /* 端口编号(Linux中也叫系统编号) */
             info.m_address = libusb_get_device_address(dev); /* 地址(每次拔插都会变) */
             int classCode = desc.bDeviceClass; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
             if (LIBUSB_CLASS_PER_INTERFACE == desc.bDeviceClass && desc.bNumConfigurations > 0)
