@@ -75,11 +75,14 @@ foreach(filename ${example_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_usb ${base_usb_files} ${example_files})
+add_executable(example_usb ${base_usb_files} example_usb.cpp)
+add_executable(usb_watch ${base_usb_files} usb_watch.cpp)
 
 # 链接依赖库文件
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     target_link_libraries(example_usb Threads::Threads udev)
+    target_link_libraries(usb_watch Threads::Threads udev)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
     target_link_libraries(example_usb Threads::Threads)
+    target_link_libraries(usb_watch Threads::Threads)
 endif()
