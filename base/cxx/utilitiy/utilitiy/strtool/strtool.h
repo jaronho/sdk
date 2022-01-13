@@ -88,10 +88,11 @@ public:
      * @brief 获取指定字符串的位置
      * @param str 字符串
      * @param pattern 字符串
+     * @param offset 开始查找位置(选填), 默认从0开始
      * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
      * @return 位置
      */
-    static size_t indexOf(std::string str, std::string pattern, bool caseSensitive = true);
+    static size_t indexOf(std::string str, std::string pattern, size_t offset = 0, bool caseSensitive = true);
 
     /**
      * @brief 是否包含指定字符串
