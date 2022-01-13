@@ -127,6 +127,24 @@ bool StrTool::equal(std::string str1, std::string str2, bool caseSensitive)
     return false;
 }
 
+size_t StrTool::indexOf(std::string str, std::string pattern, bool caseSensitive)
+{
+    if (pattern.empty())
+    {
+        return std::string::npos;
+    }
+    if (pattern.size() > str.size())
+    {
+        return std::string::npos;
+    }
+    if (!caseSensitive)
+    {
+        std::transform(str.begin(), str.end(), str.begin(), tolower);
+        std::transform(pattern.begin(), pattern.end(), pattern.begin(), tolower);
+    }
+    return str.find(pattern);
+}
+
 bool StrTool::contains(std::string str, std::string pattern, bool caseSensitive)
 {
     if (pattern.empty())

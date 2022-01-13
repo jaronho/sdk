@@ -85,6 +85,15 @@ public:
     static bool equal(std::string str1, std::string str2, bool caseSensitive = true);
 
     /**
+     * @brief 获取指定字符串的位置
+     * @param str 字符串
+     * @param pattern 字符串
+     * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
+     * @return 位置
+     */
+    static size_t indexOf(std::string str, std::string pattern, bool caseSensitive = true);
+
+    /**
      * @brief 是否包含指定字符串
      * @param str 字符串
      * @param pattern 字符串
