@@ -5,6 +5,9 @@
 
 namespace threading
 {
+/**
+ * @brief 作用域信号连接, 当离开作用域时连接就会自动断开
+ */
 class ScopedSignalConnection
 {
 public:

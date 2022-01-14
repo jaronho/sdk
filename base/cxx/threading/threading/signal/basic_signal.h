@@ -19,12 +19,14 @@ class BasicSignal<void(Args...)>
 public:
     /**
      * @brief 把回调函数连接到信号
-     * @param callback 回调函数
+     *        注意：信号连接上之后需要通过`SignalConnection`或`ScopedSignalConnection`管理连接。
+     *              在必要时主动断开, 避免函数或对象释放后回调导致内存非法访问进而崩溃。
+     * @param slotFunc 槽函数
      * @return 信号连接 
      */
-    SignalConnection connect(const std::function<void(Args...)>& callback)
+    SignalConnection connect(const std::function<void(Args...)>& slotFunc)
     {
-        return m_signal.connect(callback);
+        return m_signal.connect(slotFunc);
     }
 
     /**
@@ -51,12 +53,12 @@ class BasicSignal<R(Args...)>
 public:
     /**
      * @brief 把回调函数连接到信号
-     * @param callback 回调函数
+     * @param slotFunc 槽函数
      * @return 信号连接 
      */
-    SignalConnection connect(const std::function<R(Args...)>& callback)
+    SignalConnection connect(const std::function<R(Args...)>& slotFunc)
     {
-        return m_signal.connect(callback);
+        return m_signal.connect(slotFunc);
     }
 
     /**
