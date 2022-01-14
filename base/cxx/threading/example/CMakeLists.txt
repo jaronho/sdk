@@ -53,6 +53,11 @@ if(enable_fiber)
     source_group(3rdparty/base/threading/fiber FILES ${base_threading_fiber_src_list})
 endif()
 
+set(base_threading_signal_src_list)
+get_cxx_files(${base_threading_path}/threading/signal src_list)
+list(APPEND base_threading_signal_src_list ${src_list})
+source_group(3rdparty/base/threading/signal FILES ${base_threading_signal_src_list})
+
 set(base_threading_task_src_list)
 get_cxx_files(${base_threading_path}/threading/task src_list)
 list(APPEND base_threading_task_src_list ${src_list})
@@ -72,6 +77,7 @@ set(base_threading_files) # 工程中需要把threading的文件添加进去
 list(APPEND base_threading_files ${base_threading_asio_src_list}
                                  ${base_threading_diagnose_src_list}
                                  ${base_threading_fiber_src_list}
+                                 ${base_threading_signal_src_list}
                                  ${base_threading_task_src_list}
                                  ${base_threading_timer_src_list}
                                  ${base_threading_src_list})
