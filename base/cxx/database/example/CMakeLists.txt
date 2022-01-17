@@ -57,6 +57,10 @@ foreach(filename ${base_database_files})
 endforeach()
 ##########################################################################################
 
+################################### 添加线程库 ###################################
+find_package(Threads REQUIRED)
+##########################################################################################
+
 ################################### 添加openssl库 ###################################
 if(enable_database_crypto)
     find_package(OpenSSL REQUIRED)
@@ -77,6 +81,16 @@ endforeach()
 add_executable(example_database ${base_database_files} ${example_files})
 
 # 链接依赖库
-if(enable_database_crypto)
-    target_link_libraries(example_database OpenSSL::Crypto OpenSSL::SSL)
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    if(enable_database_crypto)
+        target_link_libraries(example_database dl Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
+    else()
+        target_link_libraries(example_database dl Threads::Threads)
+    endif()
+elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
+    if(enable_database_crypto)
+        target_link_libraries(example_database OpenSSL::Crypto OpenSSL::SSL)
+    endif()
+else()
+    message(WARNING "Other Platform: ${CMAKE_SYSTEM_NAME}")
 endif()
