@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include <vector>
 #include "../database/sqlite.h"
 #include "../winq/abstract.h"
 
