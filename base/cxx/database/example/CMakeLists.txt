@@ -32,6 +32,11 @@ else()
     source_group(3rdparty/base/sqlite-3.36.0 FILES ${sqlite_src_list})
 endif()
 
+set(base_winq_src_list)
+get_cxx_files(${base_database_path}/winq src_list)
+list(APPEND base_winq_src_list ${src_list})
+source_group(3rdparty/base/winq FILES ${base_winq_src_list})
+
 set(base_database_src_list)
 get_cxx_files(${base_database_path}/database src_list)
 list(APPEND base_database_src_list ${src_list})
@@ -43,7 +48,8 @@ if(enable_database_crypto)
 else()
     list(APPEND base_database_files ${sqlite_src_list})
 endif()
-list(APPEND base_database_files ${base_database_src_list})
+list(APPEND base_database_files ${base_winq_src_list}
+                                ${base_database_src_list})
 
 print_info(BODY "base database files:")
 foreach(filename ${base_database_files})

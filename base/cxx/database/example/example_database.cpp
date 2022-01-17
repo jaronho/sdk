@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "../database/sqlite.h"
+#include "../winq/abstract.h"
 
 void testDb1()
 {
@@ -131,8 +132,149 @@ void testDb1()
     }
 }
 
+const std::string g_dbName = "test2.db";
+const std::string g_dbPwd = "123456";
+const std::string g_tableName("people");
+const WCDB::Column g_columnId("id");
+const WCDB::Column g_columnName("name");
+const WCDB::Column g_columnSex("sex");
+const WCDB::Column g_columnAge("age");
+const WCDB::Column g_columnCountry("country");
+WCDB::ColumnResultList g_peopleResultList{{g_columnId}, {g_columnName}, {g_columnSex}, {g_columnAge}, {g_columnCountry}};
+
+void testWinq()
+{
+    printf("========================= test winq =========================\n");
+    database::Sqlite db(g_dbName, g_dbPwd);
+    if (db.connect())
+    {
+        printf("===== connect database %s ok\n", g_dbName.c_str());
+        /* 删除表 */
+        {
+            auto stmt = WCDB::StatementDropTable().drop(g_tableName);
+            printf("SQL: %s\n", stmt.getDescription().c_str());
+            bool ret;
+            ret = db.execSql(stmt.getDescription());
+            if (!ret)
+            {
+                printf("drop table '%s' fail\n", g_tableName.c_str());
+                return;
+            }
+        }
+        /* 创建表 */
+        {
+            auto stmt = WCDB::StatementCreateTable().create(
+                g_tableName,
+                std::list<WCDB::ColumnDef>{
+                    WCDB::ColumnDef(g_columnId, WCDB::ColumnType::Integer32).makePrimary(WCDB::OrderTerm::NotSet, true),
+                    WCDB::ColumnDef(g_columnName, WCDB::ColumnType::Text),
+                    WCDB::ColumnDef(g_columnSex, WCDB::ColumnType::Integer32),
+                    WCDB::ColumnDef(g_columnAge, WCDB::ColumnType::Integer32),
+                    WCDB::ColumnDef(g_columnCountry, WCDB::ColumnType::Text),
+                },
+                true);
+            printf("SQL: %s\n", stmt.getDescription().c_str());
+            bool ret;
+            ret = db.execSql(stmt.getDescription());
+            if (!ret)
+            {
+                printf("create table '%s' fail\n", g_tableName.c_str());
+                return;
+            }
+        }
+        /* 添加表数据 */
+        {
+            std::vector<std::string> peopleNames{"Zhang San", "Li Si", "Qian Wu", "Wu Liu"};
+            for (size_t i = 0; i < peopleNames.size(); ++i)
+            {
+                auto stmt = WCDB::StatementInsert()
+                                .insert(g_tableName, WCDB::Conflict::Replace)
+                                .values({nullptr, peopleNames[i], 1, 30 + i, "china"});
+                printf("SQL: %s\n", stmt.getDescription().c_str());
+                bool ret;
+                ret = db.execSql(stmt.getDescription());
+                if (!ret)
+                {
+                    printf("insert table '%s' fail\n", g_tableName.c_str());
+                }
+            }
+        }
+        /* 查询表数据 */
+        {
+            auto stmt = WCDB::StatementSelect().select(g_peopleResultList).from(g_tableName).where(WCDB::Expr(g_columnAge) == 31);
+            printf("SQL: %s\n", stmt.getDescription().c_str());
+            bool ret;
+            ret = db.execSql(stmt.getDescription(), [&](const std::unordered_map<std::string, std::string>& columns) {
+                printf("----------------------------------------\n");
+                for (auto iter = columns.begin(); columns.end() != iter; ++iter)
+                {
+                    const auto& key = iter->first;
+                    const auto& value = iter->second;
+                    printf("%s: %s\n", key.c_str(), value.c_str());
+                }
+                return true;
+            });
+            if (!ret)
+            {
+                printf("select table '%s' fail\n", g_tableName.c_str());
+            }
+        }
+        /* 更新表数据 */
+        {
+            auto stmt = WCDB::StatementUpdate()
+                            .update(g_tableName)
+                            .set(std::list<std::pair<WCDB::Column, WCDB::Expr>>{{g_columnAge, 36}})
+                            .where(WCDB::Expr(g_columnAge) == 33);
+            printf("SQL: %s\n", stmt.getDescription().c_str());
+            bool ret;
+            ret = db.execSql(stmt.getDescription());
+            if (!ret)
+            {
+                printf("update table '%s' fail\n", g_tableName.c_str());
+            }
+        }
+        /* 删除表数据 */
+        {
+            auto stmt = WCDB::StatementDelete().deleteFrom(g_tableName).where(WCDB::Expr(g_columnAge) == 32);
+            printf("SQL: %s\n", stmt.getDescription().c_str());
+            bool ret;
+            ret = db.execSql(stmt.getDescription());
+            if (!ret)
+            {
+                printf("delete table '%s' fail\n", g_tableName.c_str());
+            }
+        }
+        /* 查询表数据 */
+        {
+            auto stmt = WCDB::StatementSelect().select(g_peopleResultList).from(g_tableName);
+            printf("SQL: %s\n", stmt.getDescription().c_str());
+            bool ret;
+            ret = db.execSql(stmt.getDescription(), [&](const std::unordered_map<std::string, std::string>& columns) {
+                printf("----------------------------------------\n");
+                for (auto iter = columns.begin(); columns.end() != iter; ++iter)
+                {
+                    const auto& key = iter->first;
+                    const auto& value = iter->second;
+                    printf("%s: %s\n", key.c_str(), value.c_str());
+                }
+                return true;
+            });
+            if (!ret)
+            {
+                printf("select table '%s' fail\n", g_tableName.c_str());
+            }
+        }
+    }
+    else
+    {
+        printf("===== connect database %s fail\n", g_dbName.c_str());
+    }
+}
+
 int main()
 {
     testDb1();
+    printf("\n\n\n\n\n");
+    testWinq();
     return 0;
 }
