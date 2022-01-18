@@ -226,8 +226,8 @@ int main(int argc, char** argv)
         }
         if (busFlag && portFlag)
         {
-            std::vector<std::string> devNodes;
 #ifndef _WIN32
+            std::vector<std::string> devNodes;
             if (info.isHid() || info.isStorage()) /* 只需获取HID和存储类型的设备节点 */
             {
                 devNodes = getUsbDevNodes(info.getBusNum(), info.getPortNum(), info.getAddress());
@@ -246,6 +246,8 @@ int main(int argc, char** argv)
                 line += ",";
                 line += "\"classDesc\":\"" + info.getClassDesc() + "\"";
                 line += ",";
+                line += "\"speedLevel\":" + std::to_string(info.getSpeedLevel());
+                line += ",";
                 line += "\"speedDesc\":\"" + info.getSpeedDesc() + "\"";
                 line += ",";
                 line += "\"vid\":\"" + info.getVid() + "\"";
@@ -253,6 +255,11 @@ int main(int argc, char** argv)
                 line += "\"pid\":\"" + info.getPid() + "\"";
                 line += ",";
                 line += "\"serial\":\"" + info.getSerial() + "\"";
+                line += ",";
+                line += "\"product\":\"" + info.getProduct() + "\"";
+                line += ",";
+                line += "\"manufacturer\":\"" + info.getManufacturer() + "\"";
+#ifndef _WIN32
                 line += ",";
                 {
                     line += "\"devNodes\":";
@@ -267,6 +274,7 @@ int main(int argc, char** argv)
                     }
                     line += "]";
                 }
+#endif
             }
             line += "}";
             if (firstLine)
