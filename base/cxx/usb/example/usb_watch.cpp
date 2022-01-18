@@ -246,6 +246,8 @@ int main(int argc, char** argv)
                 line += ",";
                 line += "\"classDesc\":\"" + info.getClassDesc() + "\"";
                 line += ",";
+                line += "\"speedDesc\":\"" + info.getSpeedDesc() + "\"";
+                line += ",";
                 line += "\"vid\":\"" + info.getVid() + "\"";
                 line += ",";
                 line += "\"pid\":\"" + info.getPid() + "\"";

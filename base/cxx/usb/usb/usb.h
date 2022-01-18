@@ -23,13 +23,13 @@ public:
     int getBusNum() const;
 
     /**
-     * @brief 获取端口编号(Linux中也叫系统编号)
+     * @brief 获取端口编号(Linux中也叫系统编号sysNum)
      * @return 端口编号
      */
     int getPortNum() const;
 
     /**
-     * @brief 获取地址
+     * @brief 获取地址(每次拔插都会变)
      * @return 地址
      */
     int getAddress() const;
@@ -45,6 +45,18 @@ public:
      * @return 类型描述
      */
     std::string getClassDesc() const;
+
+    /**
+     * @brief 获取速度等级
+     * @return 速度等级
+     */
+    int getSpeedLevel() const;
+
+    /**
+     * @brief 获取速度描述
+     * @return 速度描述
+     */
+    std::string getSpeedDesc() const;
 
     /**
      * @brief 获取厂商ID
@@ -105,9 +117,10 @@ public:
 
 private:
     int m_busNum; /* 总线编号 */
-    int m_portNum; /* 端口编号(Linux中也叫系统编号) */
+    int m_portNum; /* 端口编号(Linux中也叫系统编号sysNum) */
     int m_address; /* 地址(每次拔插都会变) */
     int m_classCode; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
+    int m_speedLevel; /* 速度等级 */
     std::string m_vid; /* 厂商ID */
     std::string m_pid; /* 产品ID */
     std::string m_serial; /* 序列号 */

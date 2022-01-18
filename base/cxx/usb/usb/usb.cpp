@@ -4,7 +4,7 @@
 
 namespace usb
 {
-Usb::Usb() : m_busNum(-1), m_portNum(-1), m_address(-1), m_classCode(-1) {}
+Usb::Usb() : m_busNum(-1), m_portNum(-1), m_address(-1), m_classCode(-1), m_speedLevel(0) {}
 
 Usb::Usb(const Usb& src)
 {
@@ -12,6 +12,7 @@ Usb::Usb(const Usb& src)
     m_portNum = src.m_portNum;
     m_address = src.m_address;
     m_classCode = src.m_classCode;
+    m_speedLevel = src.m_speedLevel;
     m_vid = src.m_vid;
     m_pid = src.m_pid;
     m_serial = src.m_serial;
@@ -85,6 +86,31 @@ std::string Usb::getClassDesc() const
     return std::to_string(m_classCode);
 }
 
+int Usb::getSpeedLevel() const
+{
+    return m_speedLevel;
+}
+
+std::string Usb::getSpeedDesc() const
+{
+    switch (m_speedLevel)
+    {
+    case LIBUSB_SPEED_UNKNOWN:
+        return "unknown";
+    case LIBUSB_SPEED_LOW:
+        return "1.5MBit/s";
+    case LIBUSB_SPEED_FULL:
+        return "12MBit/s";
+    case LIBUSB_SPEED_HIGH:
+        return "480MBit/s";
+    case LIBUSB_SPEED_SUPER:
+        return "5000MBit/s";
+    case LIBUSB_SPEED_SUPER_PLUS:
+        return "10000MBit/s";
+    }
+    return std::to_string(m_speedLevel);
+}
+
 std::string Usb::getVid() const
 {
     return m_vid;
@@ -150,7 +176,7 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
             }
             Usb info;
             info.m_busNum = libusb_get_bus_number(dev); /* 总线编号 */
-            info.m_portNum = libusb_get_port_number(dev); /* 端口编号(Linux中也叫系统编号) */
+            info.m_portNum = libusb_get_port_number(dev); /* 端口编号(Linux中也叫系统编号sysNum) */
             info.m_address = libusb_get_device_address(dev); /* 地址(每次拔插都会变) */
             int classCode = desc.bDeviceClass; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
             if (LIBUSB_CLASS_PER_INTERFACE == desc.bDeviceClass && desc.bNumConfigurations > 0)
@@ -166,6 +192,7 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
                 }
             }
             info.m_classCode = classCode;
+            info.m_speedLevel = libusb_get_device_speed(dev); /* 速度等级 */
             char vid[6] = {0}; /* 厂商ID */
             sprintf(vid, "%04x", desc.idVendor);
             info.m_vid = vid;
