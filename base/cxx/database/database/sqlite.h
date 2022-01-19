@@ -234,6 +234,40 @@ public:
      */
     std::string getLastErrorMsg();
 
+    /**
+     * @brief 删除表
+     * @param tableName 表名
+     * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
+     */
+    bool dropTable(const std::string& tableName, std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 重命名表
+     * @param tableName 表名
+     * @param newTableName 新表名
+     * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
+     */
+    bool renameTable(const std::string& tableName, const std::string& newTableName, std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 检测表是否存在
+     * @param tableName 表名
+     * @param errorMsg 错误消息(选填)
+     * @return true-存在, false-不存在
+     */
+    bool checkTableExist(const std::string& tableName, std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 检测表中是否存在字段(列)
+     * @param tableName 表名
+     * @param columnName 字段(列)名
+     * @param errorMsg 错误消息(选填)
+     * @return true-存在, false-不存在
+     */
+    bool checkColumnExist(const std::string& tableName, const std::string& columnName, std::string* errorMsg = nullptr);
+
 private:
     /**
      * @brief 执行sql语句

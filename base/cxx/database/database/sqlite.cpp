@@ -387,6 +387,92 @@ std::string Sqlite::getLastErrorMsg()
     return msg;
 }
 
+bool Sqlite::dropTable(const std::string& tableName, std::string* errorMsg)
+{
+    if (tableName.empty())
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "parameter error";
+        }
+        return false;
+    }
+    std::string sql = "DROP TABLE IF EXISTS " + tableName;
+    return execSql(sql, nullptr, errorMsg);
+}
+
+bool Sqlite::renameTable(const std::string& tableName, const std::string& newTableName, std::string* errorMsg)
+{
+    if (tableName.empty() || newTableName.empty())
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "parameter error";
+        }
+        return false;
+    }
+    std::string sql = "ALTER TABLE " + tableName + " RENAME TO " + newTableName;
+    return execSql(sql, nullptr, errorMsg);
+}
+
+bool Sqlite::checkTableExist(const std::string& tableName, std::string* errorMsg)
+{
+    if (tableName.empty())
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "parameter error";
+        }
+        return false;
+    }
+    bool foundFlag = false;
+    std::string sql = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='" + tableName + "'";
+    execSql(
+        sql,
+        [&](const std::unordered_map<std::string, std::string>& columns) {
+            for (auto iter = columns.begin(); columns.end() != iter; ++iter)
+            {
+                if (std::atoi(iter->second.c_str()) > 0) /* 找到表 */
+                {
+                    foundFlag = true;
+                    return false;
+                }
+            }
+            return true;
+        },
+        errorMsg);
+    return foundFlag;
+}
+
+bool Sqlite::checkColumnExist(const std::string& tableName, const std::string& columnName, std::string* errorMsg)
+{
+    if (tableName.empty() || columnName.empty())
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "parameter error";
+        }
+        return false;
+    }
+    bool foundFlag = false;
+    std::string sql = "PRAGMA table_info(" + tableName + ")";
+    execSql(
+        sql,
+        [&](const std::unordered_map<std::string, std::string>& columns) {
+            for (auto iter = columns.begin(); columns.end() != iter; ++iter)
+            {
+                if (0 == iter->first.compare("name") && 0 == iter->second.compare(columnName)) /* 找到字段 */
+                {
+                    foundFlag = true;
+                    return false;
+                }
+            }
+            return true;
+        },
+        errorMsg);
+    return foundFlag;
+}
+
 int Sqlite::execImpl(sqlite3* db, const std::string& sql,
                      const std::function<bool(const std::unordered_map<std::string, std::string>& columns)>& callback,
                      std::string* errorMsg)
@@ -415,7 +501,7 @@ int Sqlite::execImpl(sqlite3* db, const std::string& sql,
             std::unordered_map<std::string, std::string> columns; /* 每一行的列数据, key: 字段名, value: 字段值 */
             for (int i = 0; i < colCount; ++i)
             {
-                columns[header[i]] = values[i];
+                columns[header[i]] = (values[i] ? values[i] : "");
             }
             if (cb(columns))
             {

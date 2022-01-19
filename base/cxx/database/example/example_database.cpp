@@ -1,6 +1,6 @@
 #include <iostream>
-
 #include <vector>
+
 #include "../database/sqlite.h"
 #include "../winq/abstract.h"
 
@@ -11,8 +11,14 @@ void testDb1()
     if (db.connect())
     {
         printf("===== connect database %s ok\n", name.c_str());
-        /* 创建表 */
         bool ret;
+        /* 删除表 */
+        ret = db.dropTable("version");
+        if (!ret)
+        {
+            printf("drop table 'version' fail\n");
+        }
+        /* 创建表 */
         ret = db.execSql("CREATE TABLE IF NOT EXISTS `version`(`key` TEXT PRIMARY KEY NOT NULL, `value` INTEGER NOT NULL)");
         if (!ret)
         {
