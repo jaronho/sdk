@@ -13,6 +13,16 @@ set(base_database_path ..) # 设置database库路径(可修改)
 include_directories(${base_database_path})
 
 if(enable_database_crypto)
+    find_package(OpenSSL 1.1.1 REQUIRED)
+    if (OpenSSL_FOUND)
+        message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
+        message(STATUS "OpenSSL libraries: ${OPENSSL_LIBRARIES}")
+        include_directories(${OPENSSL_INCLUDE_DIR})
+    else()
+        message(WARNING "OpenSSL not found")
+        return()
+    endif()
+
     include_directories(${base_database_path}/sqlcipher-4.4.3)
     
     add_definitions(-DSQLITE_HAS_CODEC)
@@ -61,12 +71,6 @@ endforeach()
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-################################### 添加openssl库 ###################################
-if(enable_database_crypto)
-    find_package(OpenSSL REQUIRED)
-endif()
-##########################################################################################
-
 # 添加示例文件
 set(example_files)
 get_cxx_files(. src_list)
@@ -83,13 +87,13 @@ add_executable(example_database ${base_database_files} ${example_files})
 # 链接依赖库
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     if(enable_database_crypto)
-        target_link_libraries(example_database dl Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
+        target_link_libraries(example_database dl Threads::Threads ${OPENSSL_LIBRARIES})
     else()
         target_link_libraries(example_database dl Threads::Threads)
     endif()
 elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
     if(enable_database_crypto)
-        target_link_libraries(example_database OpenSSL::Crypto OpenSSL::SSL)
+        target_link_libraries(example_database ${OPENSSL_LIBRARIES})
     endif()
 else()
     message(WARNING "Other Platform: ${CMAKE_SYSTEM_NAME}")
