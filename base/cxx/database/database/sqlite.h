@@ -127,6 +127,28 @@ public:
         sqlite3_stmt* m_stmt; /* SQL预编译指令 */
     };
 
+    /**
+     * @brief 键值对 
+     */
+    class ValueMap
+    {
+        friend class Sqlite;
+
+    public:
+        void insert(const std::string& key, const std::string& value);
+        void insert(const std::string& key, int value);
+        void insert(const std::string& key, unsigned int value);
+        void insert(const std::string& key, long value);
+        void insert(const std::string& key, unsigned long value);
+        void insert(const std::string& key, long long value);
+        void insert(const std::string& key, unsigned long long value);
+        void insert(const std::string& key, float value);
+        void insert(const std::string& key, double value);
+
+    private:
+        std::unordered_map<std::string, std::string> m_values;
+    };
+
 public:
     /**
      * @brief 构造函数
@@ -287,6 +309,7 @@ public:
      */
     bool insertInto(const std::string& tableName, const std::unordered_map<std::string, std::string>& values, bool replace = false,
                     std::string* errorMsg = nullptr);
+    bool insertInto(const std::string& tableName, const ValueMap& values, bool replace = false, std::string* errorMsg = nullptr);
 
     /**
      * @brief 删除表数据
@@ -307,6 +330,7 @@ public:
      */
     bool updateSet(const std::string& tableName, const std::unordered_map<std::string, std::string>& newValues,
                    const std::string& condition, std::string* errorMsg = nullptr);
+    bool updateSet(const std::string& tableName, const ValueMap& newValues, const std::string& condition, std::string* errorMsg = nullptr);
 
 private:
     /**

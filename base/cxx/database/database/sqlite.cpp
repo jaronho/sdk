@@ -185,6 +185,51 @@ std::string Sqlite::Stmt::toString()
     return sql;
 }
 
+void Sqlite::ValueMap::insert(const std::string& key, const std::string& value)
+{
+    m_values[key] = value;
+}
+
+void Sqlite::ValueMap::insert(const std::string& key, int value)
+{
+    Sqlite::ValueMap::m_values[key] = std::to_string(value);
+}
+
+void Sqlite::ValueMap::insert(const std::string& key, unsigned int value)
+{
+    m_values[key] = std::to_string(value);
+}
+
+void Sqlite::ValueMap::insert(const std::string& key, long value)
+{
+    m_values[key] = std::to_string(value);
+}
+
+void Sqlite::ValueMap::insert(const std::string& key, unsigned long value)
+{
+    m_values[key] = std::to_string(value);
+}
+
+void Sqlite::ValueMap::insert(const std::string& key, long long value)
+{
+    m_values[key] = std::to_string(value);
+}
+
+void Sqlite::ValueMap::insert(const std::string& key, unsigned long long value)
+{
+    m_values[key] = std::to_string(value);
+}
+
+void Sqlite::ValueMap::insert(const std::string& key, float value)
+{
+    m_values[key] = std::to_string(value);
+}
+
+void Sqlite::ValueMap::insert(const std::string& key, double value)
+{
+    m_values[key] = std::to_string(value);
+}
+
 Sqlite::Sqlite(const std::string& path, const std::string& password)
     : m_db(nullptr), m_inTransaction(false), m_path(path), m_password(password)
 {
@@ -537,6 +582,11 @@ bool Sqlite::insertInto(const std::string& tableName, const std::unordered_map<s
     return execSql(sql, nullptr, errorMsg);
 }
 
+bool Sqlite::insertInto(const std::string& tableName, const ValueMap& values, bool replace, std::string* errorMsg)
+{
+    return insertInto(tableName, values.m_values, replace, errorMsg);
+}
+
 bool Sqlite::deleteFrom(const std::string& tableName, const std::string& condition, std::string* errorMsg)
 {
     if (tableName.empty() || condition.empty())
@@ -581,6 +631,11 @@ bool Sqlite::updateSet(const std::string& tableName, const std::unordered_map<st
     }
     std::string sql = "UPDATE " + tableName + " SET " + newValueSql + " WHERE " + condition;
     return execSql(sql, nullptr, errorMsg);
+}
+
+bool Sqlite::updateSet(const std::string& tableName, const ValueMap& newValues, const std::string& condition, std::string* errorMsg)
+{
+    return updateSet(tableName, newValues.m_values, condition, errorMsg);
 }
 
 int Sqlite::execImpl(sqlite3* db, const std::string& sql,
