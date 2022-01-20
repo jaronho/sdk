@@ -19,17 +19,17 @@ void testDb1()
             printf("drop table 'version' fail\n");
         }
         /* 创建表 */
-        ret = db.execSql("CREATE TABLE IF NOT EXISTS `version`(`key` TEXT PRIMARY KEY NOT NULL, `value` INTEGER NOT NULL)");
+        ret = db.execSql("CREATE TABLE IF NOT EXISTS version(key TEXT PRIMARY KEY NOT NULL, value INTEGER NOT NULL)");
         if (!ret)
         {
             printf("create table 'version' fail\n");
             return;
         }
-        ret = db.execSql("CREATE TABLE IF NOT EXISTS `department`"
-                         "(`id` TEXT PRIMARY KEY NOT NULL,"
-                         " `type` INTEGER NOT NULL,"
-                         " `name` TEXT NOT NULL,"
-                         " `member_count` INTEGER DEFAULT 0 NOT NULL)");
+        ret = db.execSql("CREATE TABLE IF NOT EXISTS department("
+                         "id TEXT PRIMARY KEY NOT NULL,"
+                         "type INTEGER NOT NULL,"
+                         "name TEXT NOT NULL,"
+                         "member_count INTEGER DEFAULT 0 NOT NULL)");
         if (!ret)
         {
             printf("create table 'department' fail\n");
@@ -37,11 +37,11 @@ void testDb1()
         }
         /* 设置表数据 */
         {
-            static const std::string sql = "INSERT INTO `version`(`key`,`value`) VALUES('major',3)";
+            static const std::string sql = "INSERT INTO version(key,value) VALUES('major',3)";
             db.execSql(sql);
         }
         {
-            static const std::string sql = "REPLACE INTO `version`(`key`,`value`) VALUES(?,?)";
+            static const std::string sql = "REPLACE INTO version(key,value) VALUES(?,?)";
             auto st = db.createStmt(sql);
             if (st)
             {
@@ -61,7 +61,7 @@ void testDb1()
             }
         }
         {
-            static const std::string sql = "INSERT INTO `department`(`id`,`type`,`name`,`member_count`) VALUES(?,?,?,?)";
+            static const std::string sql = "INSERT INTO department(id,type,name,member_count) VALUES(?,?,?,?)";
             auto st = db.createStmt(sql);
             if (st)
             {
@@ -96,7 +96,7 @@ void testDb1()
         /* 查询表数据 */
         {
             printf("===== query version table\n");
-            static const std::string sql = "SELECT * from `version`";
+            static const std::string sql = "SELECT * FROM version";
             db.execSql(sql, [&](const std::unordered_map<std::string, std::string>& columns) {
                 printf("    ----------------------------------------\n");
                 for (auto iter = columns.begin(); columns.end() != iter; ++iter)
@@ -114,7 +114,7 @@ void testDb1()
         }
         {
             printf("===== query department table\n");
-            static const std::string sql = "SELECT * from `department`";
+            static const std::string sql = "SELECT * FROM department";
             auto st = db.createStmt(sql);
             if (st)
             {

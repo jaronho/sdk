@@ -473,6 +473,116 @@ bool Sqlite::checkColumnExist(const std::string& tableName, const std::string& c
     return foundFlag;
 }
 
+bool Sqlite::checkDataExist(const std::string& tableName, const std::string& condition, std::string* errorMsg)
+{
+    if (tableName.empty())
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "parameter error";
+        }
+        return false;
+    }
+    bool foundFlag = false;
+    std::string sql = "SELECT count(*) FROM " + tableName + (condition.empty() ? "" : " WHERE " + condition);
+    execSql(
+        sql,
+        [&](const std::unordered_map<std::string, std::string>& columns) {
+            for (auto iter = columns.begin(); columns.end() != iter; ++iter)
+            {
+                if (std::atoi(iter->second.c_str()) > 0) /* 找到数据 */
+                {
+                    foundFlag = true;
+                    return false;
+                }
+            }
+            return true;
+        },
+        errorMsg);
+    return foundFlag;
+}
+
+bool Sqlite::insertInto(const std::string& tableName, const std::unordered_map<std::string, std::string>& values, bool replace,
+                        std::string* errorMsg)
+{
+    if (tableName.empty() || values.empty())
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "parameter error";
+        }
+        return false;
+    }
+    std::string nameSql;
+    std::string valueSql;
+    for (auto iter = values.begin(); values.end() != iter; ++iter)
+    {
+        if (iter->first.empty())
+        {
+            if (errorMsg)
+            {
+                (*errorMsg) = "value error";
+            }
+            return false;
+        }
+        if (values.begin() != iter)
+        {
+            nameSql += ",";
+            valueSql += ",";
+        }
+        nameSql += iter->first;
+        valueSql += "'" + iter->second + "'";
+    }
+    std::string sql = std::string(replace ? "REPLACE" : "INSERT") + " INTO " + tableName + "(" + nameSql + ") VALUES(" + valueSql + ")";
+    return execSql(sql, nullptr, errorMsg);
+}
+
+bool Sqlite::deleteFrom(const std::string& tableName, const std::string& condition, std::string* errorMsg)
+{
+    if (tableName.empty() || condition.empty())
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "parameter error";
+        }
+        return false;
+    }
+    std::string sql = "DELETE FROM " + tableName + " WHERE " + condition;
+    return execSql(sql, nullptr, errorMsg);
+}
+
+bool Sqlite::updateSet(const std::string& tableName, const std::unordered_map<std::string, std::string>& newValues,
+                       const std::string& condition, std::string* errorMsg)
+{
+    if (tableName.empty() || newValues.empty() || condition.empty())
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "parameter error";
+        }
+        return false;
+    }
+    std::string newValueSql;
+    for (auto iter = newValues.begin(); newValues.end() != iter; ++iter)
+    {
+        if (iter->first.empty())
+        {
+            if (errorMsg)
+            {
+                (*errorMsg) = "value error";
+            }
+            return false;
+        }
+        if (newValues.begin() != iter)
+        {
+            newValueSql += ",";
+        }
+        newValueSql += iter->first + "='" + iter->second + "'";
+    }
+    std::string sql = "UPDATE " + tableName + " SET " + newValueSql + " WHERE " + condition;
+    return execSql(sql, nullptr, errorMsg);
+}
+
 int Sqlite::execImpl(sqlite3* db, const std::string& sql,
                      const std::function<bool(const std::unordered_map<std::string, std::string>& columns)>& callback,
                      std::string* errorMsg)
