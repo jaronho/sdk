@@ -13,7 +13,7 @@
 /* 字符串键值对(读写) */
 #define CONFIG_KV_SW(keyVar, keyName, val, comment) const MAKE_INI_KV_STRING(CONFIG_FILENAME, keyVar, keyName, val, "", comment, false)
 
-namespace config_key
+namespace cfgkey
 {
 CONFIG_KV_SW(APPNAME, "/appname", "测试", "应用程序名称");
 CONFIG_KV_SR(VERSION, "/version", "1.0.0", "应用程序版本");
@@ -23,4 +23,4 @@ CONFIG_KV_IW(SERVER_PORT, "/server/port", 8009, "服务器端口");
 
 CONFIG_KV_SW(ADMIN_ACCOUNT, "/admin/account", "root", "管理员账户");
 CONFIG_KV_SW(ADMIN_PASSWORD, "/admin/password", "123456", "管理员密码");
-} // namespace config_key
+} // namespace cfgkey

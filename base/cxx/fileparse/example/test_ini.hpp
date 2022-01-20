@@ -334,11 +334,11 @@ void testRestore()
     Config cfg;
     if (cfg.init("..", true))
     {
-        cfg.setValue(config_key::SERVER_IP, "192.168.5.3");
+        cfg.setValue(cfgkey::SERVER_IP, "192.168.5.3");
         cfg.save();
-        std::cout << "modify server ip to " << cfg.getValue(config_key::SERVER_IP).toString() << std::endl;
+        std::cout << "modify server ip to " << cfg.getValue(cfgkey::SERVER_IP).toString() << std::endl;
         cfg.restoreFactory();
-        std::cout << "restore server ip to " << cfg.getValue(config_key::SERVER_IP).toString() << std::endl;
+        std::cout << "restore server ip to " << cfg.getValue(cfgkey::SERVER_IP).toString() << std::endl;
     }
 }
 
