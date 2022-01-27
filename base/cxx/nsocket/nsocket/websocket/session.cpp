@@ -4,7 +4,7 @@ namespace nsocket
 {
 namespace ws
 {
-int64_t Session::getId()
+int64_t Session::getId() const
 {
     const auto conn = m_wpConn.lock();
     if (conn)
@@ -12,6 +12,11 @@ int64_t Session::getId()
         return conn->getId();
     }
     return 0;
+}
+
+std::string Session::getUri() const
+{
+    return m_req->uri;
 }
 
 void Session::sendText(const std::string& text, bool isFin)
@@ -111,7 +116,7 @@ void Session::sendPong()
     }
 }
 
-bool Session::isMsgText()
+bool Session::isMsgText() const
 {
     return m_isMsgText;
 }

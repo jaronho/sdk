@@ -21,7 +21,12 @@ public:
     /**
      * @brief 获取会话ID
      */
-    int64_t getId();
+    int64_t getId() const;
+
+    /**
+     * @brief 获取URI
+     */
+    std::string getUri() const;
 
     /**
      * @brief 发送文本
@@ -51,7 +56,7 @@ public:
     /**
      * @brief 当前消息是否为文本
      */
-    bool isMsgText();
+    bool isMsgText() const;
 
 protected:
     std::weak_ptr<TcpConnection> m_wpConn; /* TCP连接 */

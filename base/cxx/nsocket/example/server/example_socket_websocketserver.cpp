@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
         const auto session = wpSession.lock();
         if (session)
         {
-            printf("============================== client [%lld] on connecting\n", session->getId());
+            printf("============================== client [%lld] on connecting, URI: %s\n", session->getId(), session->getUri().c_str());
         }
         return nullptr;
     });
@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
         const auto session = wpSession.lock();
         if (session)
         {
-            printf("============================== client [%lld] on open\n", session->getId());
+            printf("============================== client [%lld] on open, URI: %s\n", session->getId(), session->getUri().c_str());
         }
     });
     server.setPingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
