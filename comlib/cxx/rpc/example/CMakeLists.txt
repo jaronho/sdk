@@ -113,7 +113,7 @@ include_directories(${rpc_path})
 set(rpc_src_list)
 get_cxx_files(${rpc_path}/rpc src_list)
 list(APPEND rpc_src_list ${src_list})
-source_group(3rdparty/common/rpc FILES ${rpc_src_list})
+source_group(3rdparty/comlib/rpc FILES ${rpc_src_list})
 
 set(rpc_files) # 工程中需要把rpc的文件添加进去
 list(APPEND rpc_files ${rpc_src_list})

@@ -110,7 +110,7 @@ include_directories(${httpclient_path})
 set(httpclient_src_list)
 get_cxx_files(${httpclient_path}/httpclient src_list)
 list(APPEND httpclient_src_list ${src_list})
-source_group(3rdparty/common/httpclient FILES ${httpclient_src_list})
+source_group(3rdparty/comlib/httpclient FILES ${httpclient_src_list})
 
 set(httpclient_files) # 工程中需要把httpclient的文件添加进去
 list(APPEND httpclient_files ${httpclient_src_list})
