@@ -1,4 +1,4 @@
-#include "../rpc/rpc_broker.hpp"
+#include "../rpc/rpc_broker.h"
 
 int main(int argc, char* argv[])
 {
@@ -86,10 +86,14 @@ int main(int argc, char* argv[])
     }
     printf("broker: %s:%d\n", serverHost.c_str(), serverPort);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    rpc::Broker broker(serverHost, serverPort, certFile, privateKeyFile, privateKeyFilePwd);
+    rpc::Broker broker("rpc_broker", 2, serverHost, serverPort, certFile, privateKeyFile, privateKeyFilePwd);
 #else
-    rpc::Broker broker(serverHost, serverPort);
+    rpc::Broker broker("rpc_broker", 2, serverHost, serverPort);
 #endif
     broker.run();
+    while (1)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     return 0;
 }

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <thread>
 
-#include "../rpc/rpc_client.hpp"
+#include "../rpc/rpc_client.h"
 
 int main(int argc, char* argv[])
 {
