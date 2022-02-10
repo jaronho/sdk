@@ -7,6 +7,10 @@
 
 namespace rpc
 {
+using REG_HANDLER = std::function<void(const ErrorCode& code)>;
+using CALL_HANDLER = std::function<std::vector<unsigned char>(const std::string& callId, const std::vector<unsigned char>& data)>;
+using REPLY_FUNC = std::function<void(const std::vector<unsigned char>& data, const ErrorCode& code)>;
+
 /**
  * @brief RPC客户端
  */
@@ -24,14 +28,14 @@ public:
 #endif
 
     /**
-     * @brief 设置注册回调, 参数: ret-成功/失败
+     * @brief 设置注册回调
      */
-    void setRegHandler(const std::function<void(bool ret)>& handler);
+    void setRegHandler(const REG_HANDLER& handler);
 
     /**
-     * @brief 设置消息回调, 参数: srcId-消息发送方ID, handler-处理器
+     * @brief 设置调用回调
      */
-    void setMsgHandler(const std::function<void(const std::string& srcId, const std::vector<unsigned char>& data)>& handler);
+    void setCallHandler(const CALL_HANDLER& handler);
 
     /**
      * @brief 运行
@@ -39,13 +43,12 @@ public:
     void run();
 
     /**
-     * @brief 发送数据到指定客户端
-     * @param targetId 接收方ID
+     * @brief 调用指定客户端接口
+     * @param replyId 应答方ID
      * @param data 数据
-     * @param onSendCb 发送回调
+     * @param replyFunc 应答函数
      */
-    void send(const std::string& targetId, const std::vector<unsigned char>& data,
-              const std::function<void(const std::string& targetId, bool ret)>& onSendCb);
+    void call(const std::string& replyId, const std::vector<unsigned char>& data, const REPLY_FUNC& replyFunc);
 
 private:
     /**
@@ -71,9 +74,9 @@ private:
 private:
     std::shared_ptr<nsocket::Payload> m_payload; /* 负载 */
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* 客户端 */
-    std::function<void(bool ret)> m_regHandler; /* 注册句柄 */
-    std::function<void(const std::string& srcId, const std::vector<unsigned char>& data)> m_msgHandler; /* 消息句柄 */
-    std::map<long long, std::function<void(const std::string& targetId, bool ret)>> m_sendCbMap; /* 发送回调表 */
+    REG_HANDLER m_regHandler; /* 注册回调句柄 */
+    CALL_HANDLER m_callHandler; /* 调用回调句柄 */
+    std::map<long long, REPLY_FUNC> m_replyFuncMap; /* 应答函数表 */
     std::string m_id; /* 客户端ID */
     std::string m_brokerHost; /* broker地址 */
     int m_serverPort; /* broker端口 */

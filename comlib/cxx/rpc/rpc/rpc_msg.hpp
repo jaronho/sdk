@@ -6,16 +6,57 @@
 namespace rpc
 {
 /**
+ * @breif 错误码
+ */
+enum class ErrorCode
+{
+    OK = 0, /* 成功 */
+    UNREGISTER, /* 未注册 */
+    REGISTER_REPEAT, /* 重复注册 */
+    CALL_BROKER_FAILED, /* 调用代理失败 */
+    TARGET_NOT_FOUND, /* 目标不存在 */
+    CALL_TARGET_FAILED, /* 调用目标失败 */
+    TARGET_INNER_ERROR /* 目标内部出错 */
+};
+
+/**
+ * @breif 错误描述
+ * @param code 错误码
+ * @return 描述
+ */
+static std::string error_desc(const ErrorCode& code)
+{
+    switch (code)
+    {
+    case ErrorCode::OK:
+        return "ok";
+    case ErrorCode::UNREGISTER:
+        return "unregister";
+    case ErrorCode::REGISTER_REPEAT:
+        return "register repeat";
+    case ErrorCode::CALL_BROKER_FAILED:
+        return "call borker failed";
+    case ErrorCode::TARGET_NOT_FOUND:
+        return "target not found";
+    case ErrorCode::CALL_TARGET_FAILED:
+        return "call target failed";
+    case ErrorCode::TARGET_INNER_ERROR:
+        return "target inner error";
+    default:
+        return "unknow error code [" + std::to_string((int)code) + "]";
+    }
+}
+
+/**
  * @brief 消息类型
  */
 enum class MsgType
 {
-    HEARTBEAT = 0, /* 心跳 */
-    REQ_REGISTER, /* 请求注册 */
-    NOTIFY_REGISTER_RESULT, /* 通知注册结果 */
-    REQ_SEND_DATA, /* 请求发送数据 */
-    NOTIFY_SEND_DATA_RESULT, /* 请求发送数据结果 */
-    NOTIFY_RECV_DATA /* 通知收到数据 */
+    HEARTBEAT = 0, /* 心跳(客户端 -> 代理服务) */
+    REGISTER, /* 注册(客户端 -> 代理服务) */
+    REGISTER_RESULT, /* 注册结果(代理服务 -> 客户端) */
+    CALL, /* 调用(客户端A -> 代理服务 -> 客户端B) */
+    REPLY /* 应答(客户端B -> 代理服务 -> 客户端A) */
 };
 
 /**
@@ -89,14 +130,14 @@ public:
 };
 
 /**
- * @brief 请求注册
+ * @brief 注册
  */
-class msg_req_register final : public msg_base
+class msg_register final : public msg_base
 {
 public:
     MsgType type() const override
     {
-        return MsgType::REQ_REGISTER;
+        return MsgType::REGISTER;
     }
 
     int size() const override
@@ -123,22 +164,21 @@ public:
 };
 
 /**
- * @brief 通知注册结果
+ * @brief 注册结果
  */
-class msg_notify_register_result final : public msg_base
+class msg_register_result final : public msg_base
 {
 public:
     MsgType type() const override
     {
-        return MsgType::NOTIFY_REGISTER_RESULT;
+        return MsgType::REGISTER_RESULT;
     }
 
     int size() const override
     {
         int sz = 0;
         sz += utilitiy::ByteArray::bcount((int)type());
-        sz += utilitiy::ByteArray::bcount(ok);
-        sz += utilitiy::ByteArray::bcount(desc);
+        sz += utilitiy::ByteArray::bcount((int)code);
         return sz;
     }
 
@@ -146,29 +186,26 @@ public:
     {
         ba.allocate(size());
         ba.writeInt((int)type());
-        ba.writeBool(ok);
-        ba.writeString(desc);
+        ba.writeInt((int)code);
     };
 
     void decode(utilitiy::ByteArray& ba) override
     {
-        ok = ba.readBool();
-        ba.readString(desc);
+        code = (ErrorCode)ba.readInt();
     };
 
-    bool ok; /* 是否成功 */
-    std::string desc; /* 描述 */
+    ErrorCode code = ErrorCode::OK; /* 错误码 */
 };
 
 /**
- * @brief 请求发送数据
+ * @brief 调用
  */
-class msg_req_send_data : public msg_base
+class msg_call : public msg_base
 {
 public:
     MsgType type() const override
     {
-        return MsgType::REQ_SEND_DATA;
+        return MsgType::CALL;
     }
 
     int size() const override
@@ -176,7 +213,8 @@ public:
         int sz = 0;
         sz += utilitiy::ByteArray::bcount((int)type());
         sz += utilitiy::ByteArray::bcount(seq_id);
-        sz += utilitiy::ByteArray::bcount(target_id);
+        sz += utilitiy::ByteArray::bcount(call_id);
+        sz += utilitiy::ByteArray::bcount(reply_id);
         sz += utilitiy::ByteArray::bcount(data);
         return sz;
     }
@@ -186,31 +224,34 @@ public:
         ba.allocate(size());
         ba.writeInt((int)type());
         ba.writeInt64(seq_id);
-        ba.writeString(target_id);
+        ba.writeString(call_id);
+        ba.writeString(reply_id);
         ba.writeBytes(data);
     }
 
     void decode(utilitiy::ByteArray& ba) override
     {
         seq_id = ba.readInt64();
-        ba.readString(target_id);
+        ba.readString(call_id);
+        ba.readString(reply_id);
         ba.readBytes(data);
     }
 
-    long long seq_id; /* 序列ID */
-    std::string target_id; /* 接收方ID */
+    long long seq_id = 0; /* 序列ID */
+    std::string call_id; /* 调用方ID */
+    std::string reply_id; /* 应答方ID */
     std::vector<unsigned char> data; /* 数据 */
 };
 
 /**
- * @brief 通知请求发送数据结果
+ * @brief 应答
  */
-class msg_req_send_data_result final : public msg_base
+class msg_reply final : public msg_base
 {
 public:
     MsgType type() const override
     {
-        return MsgType::NOTIFY_SEND_DATA_RESULT;
+        return MsgType::REPLY;
     }
 
     int size() const override
@@ -218,54 +259,10 @@ public:
         int sz = 0;
         sz += utilitiy::ByteArray::bcount((int)type());
         sz += utilitiy::ByteArray::bcount(seq_id);
-        sz += utilitiy::ByteArray::bcount(target_id);
-        sz += utilitiy::ByteArray::bcount(ok);
-        sz += utilitiy::ByteArray::bcount(desc);
-        return sz;
-    }
-
-    void encode(utilitiy::ByteArray& ba) override
-    {
-        ba.allocate(size());
-        ba.writeInt((int)type());
-        ba.writeInt64(seq_id);
-        ba.writeString(target_id);
-        ba.writeBool(ok);
-        ba.writeString(desc);
-    };
-
-    void decode(utilitiy::ByteArray& ba) override
-    {
-        seq_id = ba.readInt64();
-        ba.readString(target_id);
-        ok = ba.readBool();
-        ba.readString(desc);
-    };
-
-    long long seq_id; /* 序列ID */
-    std::string target_id; /* 接收方ID */
-    bool ok; /* 是否成功 */
-    std::string desc; /* 描述 */
-};
-
-/**
- * @brief 通知接收数据 
- */
-class msg_notify_recv_data : public msg_base
-{
-public:
-    MsgType type() const override
-    {
-        return MsgType::NOTIFY_RECV_DATA;
-    }
-
-    int size() const override
-    {
-        int sz = 0;
-        sz += utilitiy::ByteArray::bcount((int)type());
-        sz += utilitiy::ByteArray::bcount(seq_id);
-        sz += utilitiy::ByteArray::bcount(src_id);
+        sz += utilitiy::ByteArray::bcount(call_id);
+        sz += utilitiy::ByteArray::bcount(reply_id);
         sz += utilitiy::ByteArray::bcount(data);
+        sz += utilitiy::ByteArray::bcount((int)code);
         return sz;
     }
 
@@ -274,19 +271,25 @@ public:
         ba.allocate(size());
         ba.writeInt((int)type());
         ba.writeInt64(seq_id);
-        ba.writeString(src_id);
+        ba.writeString(call_id);
+        ba.writeString(reply_id);
         ba.writeBytes(data);
-    }
+        ba.writeInt((int)code);
+    };
 
     void decode(utilitiy::ByteArray& ba) override
     {
         seq_id = ba.readInt64();
-        ba.readString(src_id);
+        ba.readString(call_id);
+        ba.readString(reply_id);
         ba.readBytes(data);
-    }
+        code = (ErrorCode)ba.readInt();
+    };
 
-    long long seq_id; /* 序列ID */
-    std::string src_id; /* 发送方ID */
+    long long seq_id = 0; /* 序列ID */
+    std::string call_id; /* 调用方ID */
+    std::string reply_id; /* 应答方ID */
     std::vector<unsigned char> data; /* 数据 */
+    ErrorCode code = ErrorCode::OK; /* 错误码 */
 };
 } // namespace rpc

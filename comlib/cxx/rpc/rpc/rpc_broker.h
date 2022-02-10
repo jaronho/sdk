@@ -55,7 +55,9 @@ private:
     std::string m_certFile;
     std::string m_privateKeyFile;
     std::string m_privateKeyFilePwd;
-    std::mutex m_mutex;
+    std::mutex m_mutexClientMap;
     std::map<boost::asio::ip::tcp::endpoint, std::shared_ptr<Client>> m_clientMap; /* 已连接的客户端表 */
+    std::mutex m_mutexCallMap;
+    std::map<long long, std::weak_ptr<Client>> m_callMap; /* 调用表 */
 };
 } // namespace rpc

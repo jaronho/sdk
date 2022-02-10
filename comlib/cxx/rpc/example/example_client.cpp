@@ -109,9 +109,9 @@ int main(int argc, char* argv[])
 #else
     rpc::Client client(id, brokerHost, brokerPort);
 #endif
-    client.setRegHandler([&](bool ret) { printf("register to broker %s\n", ret ? "ok" : "fail"); });
-    client.setMsgHandler([&](const std::string& srcId, const std::vector<unsigned char>& data) {
-        printf("++++++++++++++++++++ on recv [%s] data, length: %d\n", srcId.c_str(), (int)data.size());
+    client.setRegHandler([&](const rpc::ErrorCode& code) { printf("register to broker %s\n", rpc::error_desc(code).c_str()); });
+    client.setCallHandler([&](const std::string& callId, const std::vector<unsigned char>& data) {
+        printf("++++++++++++++++++++ called by [%s], length: %d\n", callId.c_str(), (int)data.size());
         /* 以十六进制格式打印数据 */
         printf("+++++ [hex format]\n");
         for (size_t i = 0; i < data.size(); ++i)
@@ -124,6 +124,7 @@ int main(int argc, char* argv[])
         std::string str(data.begin(), data.end());
         printf("%s", str.c_str());
         printf("\n");
+        return data;
     });
     /* 创建线程专门用于网络I/O事件轮询 */
     std::thread th([&]() { client.run(); });
@@ -156,8 +157,10 @@ int main(int argc, char* argv[])
             targetId.insert(targetId.end(), str, str + pos);
             data.insert(data.end(), str + pos + 1, str + len);
         }
-        client.send(targetId, data, [&](const std::string& targetId, bool ret) {
-            printf("-------------------- on send to [%s] %s\n", targetId.c_str(), ret ? "ok" : "fail");
+        client.call(targetId, data, [targetId](const std::vector<unsigned char>& data, const rpc::ErrorCode& code) {
+            std::string result;
+            result.insert(result.begin(), data.begin(), data.end());
+            printf("-------------------- call [%s] %s, return: %s\n", targetId.c_str(), rpc::error_desc(code).c_str(), result.c_str());
         });
     }
     return 0;

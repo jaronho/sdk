@@ -84,7 +84,7 @@ public:
                     int clientPort = (int)point.port();
                     if (code)
                     {
-                        printf(">>>>>>>>>> on send [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort, code.value(),
+                        printf(">>>>>>>>>> send [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort, code.value(),
                                code.message().c_str());
                         if (callback)
                         {
@@ -94,7 +94,7 @@ public:
                     }
                     else
                     {
-                        printf(">>>>>>>>>> on send [%s:%d] ok, length: %d\n", clientHost.c_str(), clientPort, (int)length);
+                        printf(">>>>>>>>>> send [%s:%d] ok, length: %d\n", clientHost.c_str(), clientPort, (int)length);
                         if (callback)
                         {
                             callback(true);
@@ -193,11 +193,10 @@ void Broker::handleNewConnection(const std::weak_ptr<nsocket::TcpConnection>& wp
         std::string clientHost = point.address().to_string().c_str();
         int clientPort = (int)point.port();
         /* 信息打印 */
-        printf("++++++++++++++++++++++++++++++ on new connection [%s:%d]\n", clientHost.c_str(), clientPort);
+        printf("++++++++++++++++++++++++++++++ new connection [%s:%d]\n", clientHost.c_str(), clientPort);
         /* 逻辑处理 */
-        std::lock_guard<std::mutex> locker(m_mutex);
-        auto iter = m_clientMap.find(point);
-        if (m_clientMap.end() == iter)
+        std::lock_guard<std::mutex> locker(m_mutexClientMap);
+        if (m_clientMap.end() == m_clientMap.find(point))
         {
             auto client = std::make_shared<Broker::Client>(wpConn, clientHost, clientPort);
             client->setMsgHandler([&, client](MsgType type, utilitiy::ByteArray& ba) { handleClientMsg(client, type, ba); });
@@ -216,24 +215,24 @@ void Broker::handleRecvConnectionData(const std::weak_ptr<nsocket::TcpConnection
         {
             std::string clientHost = point.address().to_string().c_str();
             int clientPort = (int)point.port();
-            printf("<<<<<<<<<<<<<<<<<<< on recv data [%s:%d], length: %d\n", clientHost.c_str(), clientPort, (int)data.size());
+            printf("<<<<<<<<<<<<<<<<<<< recv data [%s:%d], length: %d\n", clientHost.c_str(), clientPort, (int)data.size());
             /* 以十六进制格式打印数据 */
-            printf("<<<<<<<<<< [hex format]\n");
+            //printf("<<<<<<<<<< [hex format]\n");
             for (size_t i = 0; i < data.size(); ++i)
             {
                 printf("%02X ", data[i]);
             }
-            printf("\n");
+            //printf("\n");
             /* 以字符串格式打印数据 */
-            printf("<<<<<<<<<< [string format]\n");
-            std::string str(data.begin(), data.end());
-            printf("%s", str.c_str());
+            //printf("<<<<<<<<<< [string format]\n");
+            //std::string str(data.begin(), data.end());
+            //printf("%s", str.c_str());
             printf("\n");
         }
         /* 逻辑处理 */
         std::shared_ptr<Broker::Client> client = nullptr;
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
+            std::lock_guard<std::mutex> locker(m_mutexClientMap);
             auto iter = m_clientMap.find(point);
             if (m_clientMap.end() != iter)
             {
@@ -255,16 +254,16 @@ void Broker::handleConnectionClose(const boost::asio::ip::tcp::endpoint& point, 
         int clientPort = (int)point.port();
         if (code)
         {
-            printf("------------------------------ on connection closed [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort,
-                   code.value(), code.message().c_str());
+            printf("------------------------------ connection closed [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort, code.value(),
+                   code.message().c_str());
         }
         else
         {
-            printf("------------------------------ on connection closed [%s:%d]\n", clientHost.c_str(), clientPort);
+            printf("------------------------------ connection closed [%s:%d]\n", clientHost.c_str(), clientPort);
         }
     }
     /* 逻辑处理 */
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutexClientMap);
     auto iter = m_clientMap.find(point);
     if (m_clientMap.end() != iter)
     {
@@ -277,72 +276,118 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
     switch (type)
     {
     case MsgType::HEARTBEAT: {
-        printf("<<<<< msg [HEARTBEAT] [%s:%d], client id: %s\n", client->getHost().c_str(), client->getPort(), client->getId().c_str());
+        printf("<<<<< [HEARTBEAT] [%s:%d], client id: %s\n", client->getHost().c_str(), client->getPort(), client->getId().c_str());
     }
     break;
-    case MsgType::REQ_REGISTER: {
-        msg_req_register req;
-        req.decode(ba);
-        printf("<<<<< msg [REQ_REGISTER], self id: %s\n", req.self_id.c_str());
+    case MsgType::REGISTER: {
+        msg_register reg;
+        reg.decode(ba);
+        printf("<<<<< [REGISTER], client id: %s\n", reg.self_id.c_str());
         /* 设置客户端ID */
-        std::lock_guard<std::mutex> locker(m_mutex);
         bool isNewId = true;
-        for (auto iter = m_clientMap.begin(); m_clientMap.end() != iter; ++iter)
         {
-            if (iter->second->getId() == req.self_id) /* ID重复 */
+            std::lock_guard<std::mutex> locker(m_mutexClientMap);
+            for (auto iter = m_clientMap.begin(); m_clientMap.end() != iter; ++iter)
             {
-                isNewId = false;
-                break;
+                if (iter->second->getId() == reg.self_id) /* ID重复 */
+                {
+                    isNewId = false;
+                    break;
+                }
             }
         }
         if (isNewId)
         {
-            client->setId(req.self_id);
+            client->setId(reg.self_id);
         }
         else /* ID重复 */
         {
-            printf("********** client id already exist **********\n");
+            printf("********** register repeat **********\n");
         }
-        msg_notify_register_result resp;
-        resp.ok = isNewId ? true : false;
-        resp.desc = isNewId ? "success" : "already exist id";
+        msg_register_result resp;
+        resp.code = isNewId ? ErrorCode::OK : ErrorCode::REGISTER_REPEAT;
         client->send(&resp);
     }
     break;
-    case MsgType::REQ_SEND_DATA: {
-        msg_req_send_data req;
-        req.decode(ba);
-        printf("<<<<< msg [REQ_SEND_DATA], seq id: %lld, src id: %s, target id: %s, data length: %d\n", req.seq_id, client->getId().c_str(),
-               req.target_id.c_str(), (int)req.data.size());
-        /* 转发数据到其他客户端 */
-        std::lock_guard<std::mutex> locker(m_mutex);
-        for (auto iter = m_clientMap.begin(); m_clientMap.end() != iter; ++iter)
+    case MsgType::CALL: {
+        msg_call mc;
+        mc.decode(ba);
+        printf("<<<<< [CALL], seq id: %lld, call id: %s, reply id: %s, data length: %d\n", mc.seq_id, mc.call_id.c_str(),
+               mc.reply_id.c_str(), (int)mc.data.size());
+        /* 查找应答方 */
+        std::shared_ptr<Broker::Client> replyClient = nullptr;
         {
-            auto target = iter->second;
-            if (target->getId() == req.target_id)
+            std::lock_guard<std::mutex> locker(m_mutexClientMap);
+            for (auto iter = m_clientMap.begin(); m_clientMap.end() != iter; ++iter)
             {
-                msg_notify_recv_data msg;
-                msg.seq_id = req.seq_id;
-                msg.src_id = client->getId();
-                msg.data = std::move(req.data);
-                target->send(&msg, [&, client, seqId = req.seq_id, targetId = req.target_id](bool ret) {
-                    msg_req_send_data_result resp;
-                    resp.seq_id = seqId;
-                    resp.target_id = targetId;
-                    resp.ok = ret;
-                    resp.desc = ret ? "success" : "send failed";
-                    client->send(&resp);
-                });
-                return;
+                if (iter->second->getId() == mc.reply_id)
+                {
+                    replyClient = iter->second;
+                    break;
+                }
             }
         }
-        printf("********** target unfound **********\n");
-        msg_req_send_data_result resp;
-        resp.seq_id = req.seq_id;
-        resp.target_id = req.target_id;
-        resp.ok = false;
-        resp.desc = "target unfound";
-        client->send(&resp);
+        if (replyClient)
+        {
+            /* 通知应答方 */
+            replyClient->send(&mc, [&, client, seqId = mc.seq_id, callId = mc.call_id, replyId = mc.reply_id](bool ret) {
+                if (ret)
+                {
+                    /* 等待应答 */
+                    std::lock_guard<std::mutex> locker(m_mutexCallMap);
+                    if (m_callMap.end() == m_callMap.find(seqId))
+                    {
+                        m_callMap.insert(std::make_pair(seqId, client));
+                    }
+                }
+                else
+                {
+                    printf("********** call failed **********\n");
+                    /* 通知调用方 */
+                    msg_reply mr;
+                    mr.seq_id = seqId;
+                    mr.call_id = callId;
+                    mr.reply_id = replyId;
+                    mr.code = ErrorCode::CALL_TARGET_FAILED;
+                    client->send(&mr);
+                }
+            });
+        }
+        else
+        {
+            printf("********** target unfound **********\n");
+            /* 通知调用方 */
+            msg_reply mr;
+            mr.seq_id = mc.seq_id;
+            mr.call_id = mc.call_id;
+            mr.reply_id = mc.reply_id;
+            mr.code = ErrorCode::TARGET_NOT_FOUND;
+            client->send(&mr);
+        }
+    }
+    break;
+    case MsgType::REPLY: {
+        msg_reply mr;
+        mr.decode(ba);
+        mr.code = ErrorCode::OK;
+        printf("<<<<< [REPLY], seq id: %lld, call id: %s, reply id: %s, data length: %d\n", mr.seq_id, mr.call_id.c_str(),
+               mr.reply_id.c_str(), (int)mr.data.size());
+        /* 通知调用方 */
+        std::weak_ptr<Broker::Client> wpCallClient;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexCallMap);
+            auto iter = m_callMap.find(mr.seq_id);
+            if (m_callMap.end() != iter)
+            {
+                wpCallClient = iter->second;
+                m_callMap.erase(iter);
+            }
+        }
+        auto callClient = wpCallClient.lock();
+        if (callClient)
+        {
+            callClient->send(&mr);
+        }
     }
     break;
     default: {
@@ -350,5 +395,5 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
     }
     break;
     }
-}
+} // namespace rpc
 } // namespace rpc

@@ -17,7 +17,7 @@ Client::Client(const std::string& id, const std::string& brokerHost, int brokerP
     }
     m_payload = std::make_shared<nsocket::Payload>(msg_base::maxsize());
     m_regHandler = nullptr;
-    m_msgHandler = nullptr;
+    m_callHandler = nullptr;
     m_id = id;
     m_brokerHost = brokerHost;
     m_serverPort = brokerPort;
@@ -30,14 +30,14 @@ Client::Client(const std::string& id, const std::string& brokerHost, int brokerP
     m_registered = false;
 }
 
-void Client::setRegHandler(const std::function<void(bool ret)>& handler)
+void Client::setRegHandler(const REG_HANDLER& handler)
 {
     m_regHandler = handler;
 }
 
-void Client::setMsgHandler(const std::function<void(const std::string& srcId, const std::vector<unsigned char>& data)>& handler)
+void Client::setCallHandler(const CALL_HANDLER& handler)
 {
-    m_msgHandler = handler;
+    m_callHandler = handler;
 }
 
 void Client::run()
@@ -75,41 +75,41 @@ void Client::run()
     }
 }
 
-void Client::send(const std::string& targetId, const std::vector<unsigned char>& data,
-                  const std::function<void(const std::string& targetId, bool ret)>& onSendCb)
+void Client::call(const std::string& replyId, const std::vector<unsigned char>& data, const REPLY_FUNC& replyFunc)
 {
     if (!m_registered)
     {
-        printf(">>>>>>>>>> on send fail, isn't initialized yet\n");
-        if (onSendCb)
+        printf(">>>>>>>>>> call fail, unregister\n");
+        if (replyFunc)
         {
-            onSendCb(targetId, false);
+            replyFunc({}, ErrorCode::UNREGISTER);
         }
         return;
     }
-    msg_req_send_data req;
-    req.seq_id = algorithm::Snowflake::easyGenerate();
-    req.target_id = targetId;
-    req.data = data;
+    msg_call mc;
+    mc.seq_id = algorithm::Snowflake::easyGenerate();
+    mc.call_id = m_id;
+    mc.reply_id = replyId;
+    mc.data = data;
     utilitiy::ByteArray ba;
-    req.encode(ba);
+    mc.encode(ba);
     std::vector<unsigned char> buffer;
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
-    m_tcpClient->send(buffer, [&, seqId = req.seq_id, targetId, onSendCb](const boost::system::error_code& code, std::size_t length) {
+    m_tcpClient->send(buffer, [&, seqId = mc.seq_id, replyFunc](const boost::system::error_code& code, std::size_t length) {
         if (code)
         {
-            printf(">>>>>>>>>> on send fail, %d, %s\n", code.value(), code.message().c_str());
+            printf(">>>>>>>>>> call fail, %d, %s\n", code.value(), code.message().c_str());
             m_registered = false;
             m_tcpClient->stop();
-            if (onSendCb)
+            if (replyFunc)
             {
-                onSendCb(targetId, false);
+                replyFunc({}, ErrorCode::CALL_BROKER_FAILED);
             }
         }
         else
         {
-            printf(">>>>>>>>>> on send ok, length: %d\n", (int)length);
-            m_sendCbMap.insert(std::make_pair(seqId, onSendCb));
+            printf(">>>>>>>>>> call ok, length: %d\n", (int)length);
+            m_replyFuncMap.insert(std::make_pair(seqId, replyFunc));
         }
     });
 }
@@ -118,22 +118,23 @@ void Client::handleConnection(const boost::system::error_code& code)
 {
     if (code)
     {
-        printf("------------------------------ on connect fail, %d, %s\n", code.value(), code.message().c_str());
+        printf("------------------------------ connect fail, %d, %s\n", code.value(), code.message().c_str());
         m_registered = false;
         m_tcpClient->stop();
     }
     else
     {
-        printf("++++++++++++++++++++++++++++++ on connect ok\n");
+        printf("++++++++++++++++++++++++++++++ connect ok\n");
         reqRegister();
     }
 }
 
 void Client::handleRecvData(const std::vector<unsigned char>& data)
 {
+#if 0
     /* 信息打印 */
     {
-        printf("<<<<<<<<<<<<<<<<<<< on recv data, length: %d\n", (int)data.size());
+        printf("<<<<<<<<<<<<<<<<<<< recv data, length: %d\n", (int)data.size());
         /* 以十六进制格式打印数据 */
         printf("<<<<<<<<<< [hex format]\n");
         for (size_t i = 0; i < data.size(); ++i)
@@ -147,6 +148,7 @@ void Client::handleRecvData(const std::vector<unsigned char>& data)
         printf("%s", str.c_str());
         printf("\n");
     }
+#endif
     /* 逻辑处理 */
     m_payload->unpack(
         data,
@@ -165,11 +167,11 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
 {
     switch (type)
     {
-    case MsgType::NOTIFY_REGISTER_RESULT: {
-        msg_notify_register_result resp;
+    case MsgType::REGISTER_RESULT: {
+        msg_register_result resp;
         resp.decode(ba);
-        printf("<<<<< msg [NOTIFY_REGISTER_RESULT], desc: %s\n", resp.desc.c_str());
-        if (resp.ok)
+        printf("<<<<< [REGISTER_RESULT], desc: %s\n", error_desc(resp.code).c_str());
+        if (ErrorCode::OK == resp.code)
         {
             m_registered = true;
         }
@@ -180,40 +182,50 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
         }
         if (m_regHandler)
         {
-            m_regHandler(resp.ok);
+            m_regHandler(resp.code);
         }
     }
     break;
-    case MsgType::NOTIFY_SEND_DATA_RESULT: {
-        msg_req_send_data_result resp;
-        resp.decode(ba);
-        printf("<<<<< msg [NOTIFY_SEND_DATA_RESULT], seq id: %lld, target id: %s, desc: %s\n", resp.seq_id, resp.target_id.c_str(),
-               resp.desc.c_str());
-        auto iter = m_sendCbMap.find(resp.seq_id);
-        if (m_sendCbMap.end() != iter)
+    case MsgType::CALL: {
+        msg_call mc;
+        mc.decode(ba);
+        printf("<<<<< [CALL], seq id: %lld, call id: %s, reply id: %s, data length: %d\n", mc.seq_id, mc.call_id.c_str(),
+               mc.reply_id.c_str(), (int)mc.data.size());
+        /* 应答调用方 */
+        if (m_callHandler)
         {
-            auto onSendCb = iter->second;
-            m_sendCbMap.erase(iter);
-            if (onSendCb)
+            msg_reply mr;
+            mr.seq_id = mc.seq_id;
+            mr.call_id = mc.call_id;
+            mr.reply_id = mc.reply_id;
+            mr.data = m_callHandler(mc.call_id, mc.data);
+            utilitiy::ByteArray ba;
+            mr.encode(ba);
+            std::vector<unsigned char> buffer;
+            nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
+            m_tcpClient->send(buffer, nullptr);
+        }
+    }
+    break;
+    case MsgType::REPLY: {
+        msg_reply mr;
+        mr.decode(ba);
+        printf("<<<<< [REPLY], seq id: %lld, call id: %s, reply id: %s, desc: %s\n", mr.seq_id, mr.call_id.c_str(), mr.reply_id.c_str(),
+               error_desc(mr.code).c_str());
+        auto iter = m_replyFuncMap.find(mr.seq_id);
+        if (m_replyFuncMap.end() != iter)
+        {
+            auto replyFunc = iter->second;
+            m_replyFuncMap.erase(iter);
+            if (replyFunc)
             {
-                onSendCb(resp.target_id, resp.ok);
+                replyFunc(mr.data, mr.code);
             }
         }
     }
     break;
-    case MsgType::NOTIFY_RECV_DATA: {
-        msg_notify_recv_data msg;
-        msg.decode(ba);
-        printf("<<<<< msg [NOTIFY_RECV_DATA], seq id: %lld, src id: %s, data length: %d\n", msg.seq_id, msg.src_id.c_str(),
-               (int)msg.data.size());
-        if (m_msgHandler)
-        {
-            m_msgHandler(msg.src_id, msg.data);
-        }
-    }
-    break;
     default: {
-        printf("********** msg [%d], dont't deal **********\n", (int)type);
+        printf("********** msg [%d], unknown type **********\n", (int)type);
     }
     break;
     }
@@ -222,21 +234,21 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
 void Client::reqRegister()
 {
     /* 向服务器注册 */
-    msg_req_register req;
-    req.self_id = m_id;
+    msg_register reg;
+    reg.self_id = m_id;
     utilitiy::ByteArray ba;
-    req.encode(ba);
+    reg.encode(ba);
     std::vector<unsigned char> data;
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);
     m_tcpClient->send(data, [&](const boost::system::error_code& code, std::size_t length) {
         if (code)
         {
-            printf(">>>>>>>>>> on req register fail, %d, %s\n", code.value(), code.message().c_str());
+            printf(">>>>>>>>>> register fail, %d, %s\n", code.value(), code.message().c_str());
             m_tcpClient->stop();
         }
         else
         {
-            printf(">>>>>>>>>> on req register ok, length: %d\n", (int)length);
+            printf(">>>>>>>>>> register ok, length: %d\n", (int)length);
         }
     });
 }
