@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <future>
 
 #include "nsocket/payload.h"
 #include "nsocket/tcp/tcp_client.h"
@@ -46,9 +47,11 @@ public:
      * @brief 调用指定客户端接口
      * @param replyId 应答方ID
      * @param data 数据
-     * @param replyFunc 应答函数
+     * @param replyFunc 应答函数(选填)
+     * @param timeout 超时时间(选填)
      */
-    void call(const std::string& replyId, const std::vector<unsigned char>& data, const REPLY_FUNC& replyFunc);
+    void call(const std::string& replyId, const std::vector<unsigned char>& data, const REPLY_FUNC& replyFunc = nullptr,
+              const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero());
 
 private:
     /**
@@ -72,11 +75,19 @@ private:
     void reqRegister();
 
 private:
+    struct ReplyObj
+    {
+        REPLY_FUNC func;
+        std::shared_ptr<std::promise<void>> result;
+    };
+
+private:
     std::shared_ptr<nsocket::Payload> m_payload; /* 负载 */
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* 客户端 */
     REG_HANDLER m_regHandler; /* 注册回调句柄 */
     CALL_HANDLER m_callHandler; /* 调用回调句柄 */
-    std::map<long long, REPLY_FUNC> m_replyFuncMap; /* 应答函数表 */
+    std::mutex m_mutex;
+    std::map<long long, ReplyObj> m_replyObjMap; /* 应答对象表 */
     std::string m_id; /* 客户端ID */
     std::string m_brokerHost; /* broker地址 */
     int m_serverPort; /* broker端口 */

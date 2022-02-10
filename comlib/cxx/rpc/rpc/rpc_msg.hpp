@@ -16,7 +16,8 @@ enum class ErrorCode
     CALL_BROKER_FAILED, /* 调用代理失败 */
     TARGET_NOT_FOUND, /* 目标不存在 */
     CALL_TARGET_FAILED, /* 调用目标失败 */
-    TARGET_INNER_ERROR /* 目标内部出错 */
+    TARGET_INNER_ERROR, /* 目标内部出错 */
+    TIMEOUT /* 超时 */
 };
 
 /**
@@ -42,6 +43,8 @@ static std::string error_desc(const ErrorCode& code)
         return "call target failed";
     case ErrorCode::TARGET_INNER_ERROR:
         return "target inner error";
+    case ErrorCode::TIMEOUT:
+        return "timeout";
     default:
         return "unknow error code [" + std::to_string((int)code) + "]";
     }

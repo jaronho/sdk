@@ -157,11 +157,15 @@ int main(int argc, char* argv[])
             targetId.insert(targetId.end(), str, str + pos);
             data.insert(data.end(), str + pos + 1, str + len);
         }
-        client.call(targetId, data, [targetId](const std::vector<unsigned char>& data, const rpc::ErrorCode& code) {
-            std::string result;
-            result.insert(result.begin(), data.begin(), data.end());
-            printf("-------------------- call [%s] %s, return: %s\n", targetId.c_str(), rpc::error_desc(code).c_str(), result.c_str());
-        });
+        client.call(
+            targetId, data,
+            [targetId](const std::vector<unsigned char>& data, const rpc::ErrorCode& code) {
+                std::string result;
+                result.insert(result.begin(), data.begin(), data.end());
+                printf("-------------------- call [%s] %s, return: %s\n", targetId.c_str(), rpc::error_desc(code).c_str(), result.c_str());
+            },
+            std::chrono::milliseconds(1000));
+        printf("----- call finish\n");
     }
     return 0;
 }
