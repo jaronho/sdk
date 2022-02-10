@@ -224,7 +224,7 @@ void TcpServer::doAccept()
                 }
                 const std::weak_ptr<TcpConnection> wpConn = conn;
                 /* 设置连接回调 */
-                conn->setConnectCallback([wpSelf, wpConn](const boost::system::error_code& code) {
+                conn->setConnectCallback([wpSelf, wpConn, point = conn->getRemoteEndpoint()](const boost::system::error_code& code) {
                     if (code) /* 断开连接 */
                     {
                         const auto self = wpSelf.lock();
@@ -241,7 +241,7 @@ void TcpServer::doAccept()
                             }
                             if (self->m_onConnectionCloseCallback)
                             {
-                                self->m_onConnectionCloseCallback(conn->getId(), conn->getRemoteEndpoint(), code);
+                                self->m_onConnectionCloseCallback(conn->getId(), point, code);
                             }
                         }
                     }
