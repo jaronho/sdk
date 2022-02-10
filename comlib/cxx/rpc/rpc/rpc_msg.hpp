@@ -263,6 +263,7 @@ public:
     {
         int sz = 0;
         sz += utilitiy::ByteArray::bcount((int)type());
+        sz += utilitiy::ByteArray::bcount(seq_id);
         sz += utilitiy::ByteArray::bcount(src_id);
         sz += utilitiy::ByteArray::bcount(data);
         return sz;
@@ -272,16 +273,19 @@ public:
     {
         ba.allocate(size());
         ba.writeInt((int)type());
+        ba.writeInt64(seq_id);
         ba.writeString(src_id);
         ba.writeBytes(data);
     }
 
     void decode(utilitiy::ByteArray& ba) override
     {
+        seq_id = ba.readInt64();
         ba.readString(src_id);
         ba.readBytes(data);
     }
 
+    long long seq_id; /* 序列ID */
     std::string src_id; /* 发送方ID */
     std::vector<unsigned char> data; /* 数据 */
 };

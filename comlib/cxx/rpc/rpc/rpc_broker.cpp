@@ -322,6 +322,7 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
             if (target->getId() == req.target_id)
             {
                 msg_notify_recv_data msg;
+                msg.seq_id = req.seq_id;
                 msg.src_id = client->getId();
                 msg.data = std::move(req.data);
                 target->send(&msg, [&, client, seqId = req.seq_id, targetId = req.target_id](bool ret) {

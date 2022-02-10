@@ -204,7 +204,8 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::NOTIFY_RECV_DATA: {
         msg_notify_recv_data msg;
         msg.decode(ba);
-        printf("<<<<< msg [NOTIFY_RECV_DATA], src id: %s, data length: %d\n", msg.src_id.c_str(), (int)msg.data.size());
+        printf("<<<<< msg [NOTIFY_RECV_DATA], seq id: %lld, src id: %s, data length: %d\n", msg.seq_id, msg.src_id.c_str(),
+               (int)msg.data.size());
         if (m_msgHandler)
         {
             m_msgHandler(msg.src_id, msg.data);
