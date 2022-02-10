@@ -519,11 +519,11 @@ unsigned char* ByteArray::readBytes(unsigned int& len)
 
 bool ByteArray::writeBytes(const unsigned char* value, unsigned int len)
 {
-    if (!value)
+    if (!writeUint(len))
     {
         return false;
     }
-    if (!writeUint(len))
+    if (!value)
     {
         return false;
     }
@@ -575,11 +575,11 @@ char* ByteArray::readString(unsigned int& len)
 
 bool ByteArray::writeString(const char* value, unsigned int len)
 {
-    if (!value)
+    if (!writeUint(len))
     {
         return false;
     }
-    if (!writeUint(len))
+    if (!value)
     {
         return false;
     }
