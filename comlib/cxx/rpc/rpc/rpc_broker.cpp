@@ -369,7 +369,6 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
     case MsgType::REPLY: {
         msg_reply mr;
         mr.decode(ba);
-        mr.code = ErrorCode::OK;
         printf("<<<<< [REPLY], seq id: %lld, call id: %s, reply id: %s, data length: %d\n", mr.seq_id, mr.call_id.c_str(),
                mr.reply_id.c_str(), (int)mr.data.size());
         /* 通知调用方 */

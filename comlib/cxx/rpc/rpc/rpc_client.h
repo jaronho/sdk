@@ -47,11 +47,12 @@ public:
      * @brief 调用指定客户端接口
      * @param replyId 应答方ID
      * @param data 数据
-     * @param replyFunc 应答函数(选填)
+     * @param replyData [输出]应答数据(选填)
      * @param timeout 超时时间(选填)
+     * @return 错误码
      */
-    void call(const std::string& replyId, const std::vector<unsigned char>& data, const REPLY_FUNC& replyFunc = nullptr,
-              const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero());
+    rpc::ErrorCode call(const std::string& replyId, const std::vector<unsigned char>& data, std::vector<unsigned char>* replyData = nullptr,
+                        const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero());
 
 private:
     /**
@@ -77,8 +78,9 @@ private:
 private:
     struct ReplyObj
     {
-        REPLY_FUNC func;
-        std::shared_ptr<std::promise<void>> result;
+        std::vector<unsigned char>* data = nullptr;
+        rpc::ErrorCode* code = nullptr;
+        std::shared_ptr<std::promise<void>> result = nullptr;
     };
 
 private:

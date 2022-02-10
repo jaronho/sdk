@@ -75,17 +75,17 @@ void Client::run()
     }
 }
 
-void Client::call(const std::string& replyId, const std::vector<unsigned char>& data, const REPLY_FUNC& replyFunc,
-                  const std::chrono::steady_clock::duration& timeout)
+rpc::ErrorCode Client::call(const std::string& replyId, const std::vector<unsigned char>& data, std::vector<unsigned char>* replyData,
+                            const std::chrono::steady_clock::duration& timeout)
 {
+    if (replyData)
+    {
+        replyData->clear();
+    }
     if (!m_registered)
     {
         printf(">>>>>>>>>> call fail, unregister\n");
-        if (replyFunc)
-        {
-            replyFunc({}, ErrorCode::UNREGISTER);
-        }
-        return;
+        return ErrorCode::UNREGISTER;
     }
     msg_call mc;
     mc.seq_id = algorithm::Snowflake::easyGenerate();
@@ -98,23 +98,22 @@ void Client::call(const std::string& replyId, const std::vector<unsigned char>& 
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
     auto result = std::make_shared<std::promise<void>>();
     auto future = result->get_future().share();
-    m_tcpClient->send(buffer, [&, seqId = mc.seq_id, replyFunc, result](const boost::system::error_code& code, std::size_t length) {
+    rpc::ErrorCode replyCode;
+    m_tcpClient->send(buffer, [&, seqId = mc.seq_id](const boost::system::error_code& code, std::size_t length) {
         if (code)
         {
             printf(">>>>>>>>>> call fail, %d, %s\n", code.value(), code.message().c_str());
             m_registered = false;
             m_tcpClient->stop();
-            if (replyFunc)
-            {
-                replyFunc({}, ErrorCode::CALL_BROKER_FAILED);
-            }
+            replyCode = ErrorCode::CALL_BROKER_FAILED;
             result->set_value();
         }
         else
         {
             printf(">>>>>>>>>> call ok, length: %d\n", (int)length);
             ReplyObj obj;
-            obj.func = replyFunc;
+            obj.data = replyData;
+            obj.code = &replyCode;
             obj.result = result;
             std::lock_guard<std::mutex> locker(m_mutex);
             m_replyObjMap.insert(std::make_pair(seqId, obj));
@@ -134,14 +133,11 @@ void Client::call(const std::string& replyId, const std::vector<unsigned char>& 
                 }
             }
             printf(">>>>>>>>>> call fail, timeout\n");
-            if (replyFunc)
-            {
-                replyFunc({}, ErrorCode::TIMEOUT);
-            }
-            return;
+            return ErrorCode::TIMEOUT;
         }
     }
     future.get();
+    return replyCode;
 }
 
 void Client::handleConnection(const boost::system::error_code& code)
@@ -228,7 +224,15 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
             mr.seq_id = mc.seq_id;
             mr.call_id = mc.call_id;
             mr.reply_id = mc.reply_id;
-            mr.data = m_callHandler(mc.call_id, mc.data);
+            try
+            {
+                mr.data = m_callHandler(mc.call_id, mc.data);
+                mr.code = ErrorCode::OK;
+            }
+            catch (...)
+            {
+                mr.code = ErrorCode::TARGET_INNER_ERROR;
+            }
             utilitiy::ByteArray ba;
             mr.encode(ba);
             std::vector<unsigned char> buffer;
@@ -252,9 +256,13 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
                 m_replyObjMap.erase(iter);
             }
         }
-        if (obj.func)
+        if (obj.data)
         {
-            obj.func(mr.data, mr.code);
+            *obj.data = std::move(mr.data);
+        }
+        if (obj.code)
+        {
+            *obj.code = mr.code;
         }
         if (obj.result)
         {
