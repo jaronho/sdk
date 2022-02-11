@@ -43,8 +43,8 @@ class SocketTcpBase
 public:
     SocketTcpBase() = default;
     virtual ~SocketTcpBase() = default;
-    virtual void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb) = 0;
-    virtual void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb) = 0;
+    virtual void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) = 0;
+    virtual void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb, bool async = true) = 0;
     virtual void recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CALLBACK& onRecvCb) = 0;
     virtual void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) = 0;
     virtual void close() = 0;
@@ -62,9 +62,9 @@ public:
 
     virtual ~SocketTcp() = default;
 
-    void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb) override;
+    void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) override;
 
-    void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb) override;
+    void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb, bool async = true) override;
 
     void recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CALLBACK& onRecvCb) override;
 
@@ -91,9 +91,9 @@ public:
 
     virtual ~SocketTls() = default;
 
-    void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb) override;
+    void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) override;
 
-    void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb) override;
+    void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb, bool async = true) override;
 
     void recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CALLBACK& onRecvCb) override;
 
@@ -105,7 +105,7 @@ public:
 
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const override;
 
-    void handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb);
+    void handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb, bool async = true);
 
 private:
     boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sslStream;

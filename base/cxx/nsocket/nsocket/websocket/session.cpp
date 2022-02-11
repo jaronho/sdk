@@ -26,7 +26,7 @@ void Session::sendText(const std::string& text, bool isFin)
     {
         std::vector<unsigned char> data;
         Frame::createTextFrame(data, text, false, isFin);
-        conn->send(data, [&](const boost::system::error_code& code, std::size_t length) {
+        conn->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
             const auto conn = m_wpConn.lock();
             if (conn)
             {
@@ -46,7 +46,7 @@ void Session::sendBytes(const std::vector<unsigned char>& bytes, bool isFin)
     {
         std::vector<unsigned char> data;
         Frame::createBinaryFrame(data, bytes, false, isFin);
-        conn->send(data, [&](const boost::system::error_code& code, std::size_t length) {
+        conn->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
             const auto conn = m_wpConn.lock();
             if (conn)
             {
@@ -66,7 +66,7 @@ void Session::sendClose(const CloseCode& code)
     {
         std::vector<unsigned char> data;
         Frame::createCloseFrame(data, code, false);
-        conn->send(data, [&](const boost::system::error_code& code, std::size_t length) {
+        conn->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
             const auto conn = m_wpConn.lock();
             if (conn) /* 无需判断发送结果, 直接断开连接 */
             {
@@ -83,7 +83,7 @@ void Session::sendPing()
     {
         std::vector<unsigned char> data;
         Frame::createPingFrame(data, false);
-        conn->send(data, [&](const boost::system::error_code& code, std::size_t length) {
+        conn->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
             const auto conn = m_wpConn.lock();
             if (conn)
             {
@@ -103,7 +103,7 @@ void Session::sendPong()
     {
         std::vector<unsigned char> data;
         Frame::createPongFrame(data, false);
-        conn->send(data, [&](const boost::system::error_code& code, std::size_t length) {
+        conn->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
             const auto conn = m_wpConn.lock();
             if (conn)
             {

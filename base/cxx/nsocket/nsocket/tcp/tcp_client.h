@@ -32,23 +32,33 @@ public:
     void setDataCallback(const TCP_DATA_CALLBACK& onDataCb);
 
     /**
-     * @brief 运行(进入循环, 占用调用线程)
+     * @brief 运行(进入循环, 阻塞和占用调用线程)
      * @param host 服务器
      * @param port 端口
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
+     * @param async 是否异步连接(选填), 默认异步
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    void run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
+    void run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr,
+             bool async = true);
 #else
-    void run(const std::string& host, unsigned int port);
+    void run(const std::string& host, unsigned int port, bool async = true);
 #endif
 
     /**
-     * @brief 发送数据
+     * @brief 发送数据(同步)
+     * @param data 数据
+     * @param length [输出]已发送数据的长度
+     * @param 错误码
+     */
+    boost::system::error_code send(const std::vector<unsigned char>& data, size_t& length);
+
+    /**
+     * @brief 发送数据(异步)
      * @param data 数据
      * @param onSendCb 发送回调
      */
-    void send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
+    void sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
 
     /**
      * @brief 停止
@@ -77,8 +87,9 @@ private:
     /**
      * @brief 处理连接结果
      * @param code 错误码
+     * @param async 是否异步
      */
-    void handleConnect(const boost::system::error_code& code);
+    void handleConnect(const boost::system::error_code& code, bool async);
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */

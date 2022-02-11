@@ -62,29 +62,34 @@ public:
     /**
      * @brief 连接
      * @param point 端点
+     * @param async 是否异步连接(选填), 默认异步
      */
-    void connect(const boost::asio::ip::tcp::endpoint& point);
+    void connect(const boost::asio::ip::tcp::endpoint& point, bool async = true);
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 握手(启用TLS才需要)
      * @param type 类型, 客户端或服务端
      * @param onHandshakeCb 握手回调
+     * @param async 是否异步握手(选填), 默认异步
      */
-    void handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb);
+    void handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb, bool async = true);
 #endif
 
     /**
-     * @brief 发送数据
+     * @brief 发送数据(同步)
+     * @param data 数据
+     * @param length [输出]已发送数据的长度
+     * @param 错误码
+     */
+    boost::system::error_code send(const std::vector<unsigned char>& data, size_t& length);
+
+    /**
+     * @brief 发送数据(异步)
      * @param data 数据
      * @param onSendCb 发送回调
      */
-    void send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
-
-    /**
-     * @brief 接收数据(只需要调用一次, 内部递归调用)
-     */
-    void recv();
+    void sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
 
     /**
      * @brief 关闭
@@ -122,6 +127,12 @@ public:
                                                                      const std::string& privateKeyFile,
                                                                      const std::string& privateKeyFilePwd);
 #endif
+
+private:
+    /**
+     * @brief 接收数据(只需要调用一次, 内部递归调用)
+     */
+    void recv();
 
 private:
     int64_t m_id; /* ID */

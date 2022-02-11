@@ -27,9 +27,9 @@ void TcpClient::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-void TcpClient::run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext)
+void TcpClient::run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext, bool async)
 #else
-void TcpClient::run(const std::string& host, unsigned int port)
+void TcpClient::run(const std::string& host, unsigned int port, bool async)
 #endif
 {
     if (isRunning())
@@ -63,15 +63,15 @@ void TcpClient::run(const std::string& host, unsigned int port)
         }
 #endif
         const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
-        m_tcpConn->setConnectCallback([wpSelf](const boost::system::error_code& code) {
+        m_tcpConn->setConnectCallback([wpSelf, async](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             if (self)
             {
-                self->handleConnect(code);
+                self->handleConnect(code, async);
             }
         });
         m_tcpConn->setDataCallback(m_onDataCallback);
-        m_tcpConn->connect(m_endpointIter->endpoint());
+        m_tcpConn->connect(m_endpointIter->endpoint(), async);
         if (RunStatus::RUN_NONE == m_runStatus)
         {
             m_runStatus = RunStatus::RUN_START;
@@ -85,7 +85,18 @@ void TcpClient::run(const std::string& host, unsigned int port)
     }
 }
 
-void TcpClient::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
+boost::system::error_code TcpClient::send(const std::vector<unsigned char>& data, size_t& length)
+{
+    boost::system::error_code code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
+    length = 0;
+    if (!m_ioContext.stopped() && m_tcpConn && isRunning())
+    {
+        code = m_tcpConn->send(data, length);
+    }
+    return code;
+}
+
+void TcpClient::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
     if (m_ioContext.stopped())
     {
@@ -96,26 +107,19 @@ void TcpClient::send(const std::vector<unsigned char>& data, const TCP_SEND_CALL
     }
     else
     {
-        const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
-        boost::asio::post(m_ioContext, [wpSelf, data, onSendCb]() {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                if (self->m_tcpConn && self->isRunning())
+        if (m_tcpConn && isRunning())
+        {
+            /**
+             *  1.根据boost中async_send说明, data最好保证生命周期存在到回调执行前, 这里将data绑定到回调中.
+             *  2.单元测纯TCP试验没绑到回调时确实会崩.
+             */
+            m_tcpConn->sendAsync(data, [onSendCb, data](const boost::system::error_code& code, std::size_t length) {
+                if (onSendCb)
                 {
-                    /**
-                     *  1.根据boost中async_send说明, data最好保证生命周期存在到回调执行前, 这里将data绑定到回调中.
-                     *  2.单元测纯TCP试验没绑到回调时确实会崩.
-                     */
-                    self->m_tcpConn->send(data, [onSendCb, data](const boost::system::error_code& code, std::size_t length) {
-                        if (onSendCb)
-                        {
-                            onSendCb(code, length);
-                        }
-                    });
+                    onSendCb(code, length);
                 }
-            }
-        });
+            });
+        }
     }
 }
 
@@ -123,24 +127,17 @@ void TcpClient::stop()
 {
     if (!m_ioContext.stopped())
     {
-        const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
-        boost::asio::post(m_ioContext, [wpSelf]() {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                const auto lastStatus = self->m_runStatus;
-                self->m_runStatus = RunStatus::RUN_STOP;
-                if (RunStatus::RUN_START != lastStatus)
-                {
-                    return;
-                }
-                if (self->m_tcpConn)
-                {
-                    self->m_tcpConn->close();
-                }
-                self->m_ioContext.stop();
-            }
-        });
+        const auto lastStatus = m_runStatus;
+        m_runStatus = RunStatus::RUN_STOP;
+        if (RunStatus::RUN_START != lastStatus)
+        {
+            return;
+        }
+        if (m_tcpConn)
+        {
+            m_tcpConn->close();
+        }
+        m_ioContext.stop();
     }
 }
 
@@ -149,7 +146,7 @@ bool TcpClient::isRunning() const
     return RunStatus::RUN_START == m_runStatus;
 }
 
-void TcpClient::handleConnect(const boost::system::error_code& code)
+void TcpClient::handleConnect(const boost::system::error_code& code, bool async)
 {
     if (m_tcpConn)
     {
@@ -166,7 +163,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
             }
             else /* 尝试下一个 */
             {
-                m_tcpConn->connect(m_endpointIter->endpoint());
+                m_tcpConn->connect(m_endpointIter->endpoint(), async);
             }
         }
         else /* 连接成功 */
@@ -175,28 +172,26 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
             {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                 const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
-                m_tcpConn->handshake(boost::asio::ssl::stream_base::handshake_type::client,
-                                     [wpSelf](const boost::system::error_code& code) {
-                                         const auto self = wpSelf.lock();
-                                         if (self)
-                                         {
-                                             if (code) /* 握手失败 */
-                                             {
-                                                 self->handleConnect(code);
-                                             }
-                                             else /* 握手成功 */
-                                             {
-                                                 if (self->m_onConnectCallback)
-                                                 {
-                                                     self->m_onConnectCallback(code);
-                                                 }
-                                                 if (self->m_tcpConn)
-                                                 {
-                                                     self->m_tcpConn->recv(); /* 握手成功后开始接收数据 */
-                                                 }
-                                             }
-                                         }
-                                     }); /* 需要握手 */
+                m_tcpConn->handshake(
+                    boost::asio::ssl::stream_base::handshake_type::client,
+                    [wpSelf, async](const boost::system::error_code& code) {
+                        const auto self = wpSelf.lock();
+                        if (self)
+                        {
+                            if (code) /* 握手失败 */
+                            {
+                                self->handleConnect(code, async);
+                            }
+                            else /* 握手成功 */
+                            {
+                                if (self->m_onConnectCallback)
+                                {
+                                    self->m_onConnectCallback(code);
+                                }
+                            }
+                        }
+                    },
+                    async); /* 需要握手 */
 #endif
             }
             else /* 没有启用SSL */
@@ -205,7 +200,6 @@ void TcpClient::handleConnect(const boost::system::error_code& code)
                 {
                     m_onConnectCallback(code);
                 }
-                m_tcpConn->recv(); /* 连接成功后开始接收数据 */
             }
         }
     }

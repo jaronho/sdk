@@ -110,7 +110,7 @@ public:
     void setConnectionCloseCallback(const TCP_CONN_CLOSE_CALLBACK& onCloseCb);
 
     /**
-     * @brief 运行(异步)
+     * @brief 运行(非阻塞)
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -141,6 +141,11 @@ private:
      * @brief 接收客户端连接请求
      */
     void doAccept();
+
+    /**
+     * @brief 处理客户端新连接
+     */
+    void handleNewConnection(boost::asio::ip::tcp::socket socket);
 
 private:
     std::shared_ptr<io_context_pool> m_contextPool; /* 上下文线程池 */

@@ -155,16 +155,16 @@ int main(int argc, char* argv[])
             client->stop();
             break;
         }
-        client->send(std::vector<unsigned char>(str, str + strlen(str)), [&](const boost::system::error_code& code, std::size_t length) {
-            if (code)
-            {
-                printf("-------------------- on send fail, %d, %s\n", code.value(), code.message().c_str());
-            }
-            else
-            {
-                printf("++++++++++++++++++++ on send ok, length: %d\n", (int)length);
-            }
-        });
+        std::size_t length;
+        auto code = client->send(std::vector<unsigned char>(str, str + strlen(str)), length);
+        if (code)
+        {
+            printf("-------------------- on send fail, %d, %s\n", code.value(), code.message().c_str());
+        }
+        else
+        {
+            printf("++++++++++++++++++++ on send ok, length: %d\n", (int)length);
+        }
     }
     return 0;
 }

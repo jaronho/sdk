@@ -200,96 +200,106 @@ void TcpServer::doAccept()
         {
             if (!code) /* 有新连接请求 */
             {
-                /* 创建新连接 */
-                std::shared_ptr<TcpConnection> conn;
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-                if (self->m_sslContext) /* 启用TLS */
-                {
-                    conn = std::make_shared<TcpConnection>(std::make_shared<SocketTls>(std::move(socket), *(self->m_sslContext)), true,
-                                                           self->m_bufferSize);
-                }
-                else /* 不启用TLS */
-                {
-#endif
-                    conn = std::make_shared<TcpConnection>(std::make_shared<SocketTcp>(std::move(socket)), true, self->m_bufferSize);
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-                }
-#endif
-                {
-                    std::lock_guard<std::mutex> locker(self->m_mutex);
-                    if (self->m_connectionMap.end() == self->m_connectionMap.find(conn->getId()))
-                    {
-                        self->m_connectionMap.insert(std::make_pair(conn->getId(), conn));
-                    }
-                }
-                const std::weak_ptr<TcpConnection> wpConn = conn;
-                /* 设置连接回调 */
-                conn->setConnectCallback([wpSelf, wpConn, point = conn->getRemoteEndpoint()](const boost::system::error_code& code) {
-                    if (code) /* 断开连接 */
-                    {
-                        const auto self = wpSelf.lock();
-                        const auto conn = wpConn.lock();
-                        if (self && conn)
-                        {
-                            {
-                                std::lock_guard<std::mutex> locker(self->m_mutex);
-                                auto iter = self->m_connectionMap.find(conn->getId());
-                                if (self->m_connectionMap.end() != iter)
-                                {
-                                    self->m_connectionMap.erase(iter);
-                                }
-                            }
-                            if (self->m_onConnectionCloseCallback)
-                            {
-                                self->m_onConnectionCloseCallback(conn->getId(), point, code);
-                            }
-                        }
-                    }
-                });
-                /* 设置数据回调 */
-                conn->setDataCallback([wpSelf, wpConn](const std::vector<unsigned char>& data) {
-                    const auto self = wpSelf.lock();
-                    if (self && self->m_onConnectionDataCallback)
-                    {
-                        self->m_onConnectionDataCallback(wpConn, data);
-                    }
-                });
-                /* 开始连接 */
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-                if (self->m_sslContext) /* 启用TLS */
-                {
-                    conn->handshake(boost::asio::ssl::stream_base::server, [wpSelf, wpConn](const boost::system::error_code& code) {
-                        if (!code) /* 握手成功 */
-                        {
-                            const auto conn = wpConn.lock();
-                            if (conn)
-                            {
-                                const auto self = wpSelf.lock();
-                                if (self && self->m_onNewConnectionCallback)
-                                {
-                                    self->m_onNewConnectionCallback(wpConn);
-                                }
-                                conn->recv(); /* 开始接收数据 */
-                            }
-                        }
-                    }); /* 需要握手 */
-                }
-                else /* 不启用TLS */
-                {
-#endif
-                    if (self->m_onNewConnectionCallback)
-                    {
-                        self->m_onNewConnectionCallback(wpConn);
-                    }
-                    conn->recv(); /* 开始接收数据 */
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-                }
-#endif
+                self->handleNewConnection(std::move(socket));
             }
             /* 继续接收下一个连接 */
             self->doAccept();
         }
     });
+}
+
+void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)
+{
+    /* 创建新连接 */
+    std::shared_ptr<TcpConnection> conn;
+#if (1 == ENABLE_NSOCKET_OPENSSL)
+    if (m_sslContext) /* 启用TLS */
+    {
+        conn = std::make_shared<TcpConnection>(std::make_shared<SocketTls>(std::move(socket), *(m_sslContext)), true, m_bufferSize);
+    }
+    else /* 不启用TLS */
+    {
+#endif
+        conn = std::make_shared<TcpConnection>(std::make_shared<SocketTcp>(std::move(socket)), true, m_bufferSize);
+#if (1 == ENABLE_NSOCKET_OPENSSL)
+    }
+#endif
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        if (m_connectionMap.end() == m_connectionMap.find(conn->getId()))
+        {
+            m_connectionMap.insert(std::make_pair(conn->getId(), conn));
+        }
+    }
+    const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
+    const std::weak_ptr<TcpConnection> wpConn = conn;
+    /* 设置连接回调 */
+    conn->setConnectCallback([wpSelf, wpConn, point = conn->getRemoteEndpoint()](const boost::system::error_code& code) {
+        const auto self = wpSelf.lock();
+        const auto conn = wpConn.lock();
+        if (!self || !conn)
+        {
+            return;
+        }
+        if (code) /* 断开连接 */
+        {
+            if (self && conn)
+            {
+                {
+                    std::lock_guard<std::mutex> locker(self->m_mutex);
+                    auto iter = self->m_connectionMap.find(conn->getId());
+                    if (self->m_connectionMap.end() != iter)
+                    {
+                        self->m_connectionMap.erase(iter);
+                    }
+                }
+                if (self->m_onConnectionCloseCallback)
+                {
+                    self->m_onConnectionCloseCallback(conn->getId(), point, code);
+                }
+            }
+        }
+        else /* 连接成功 */
+        {
+            if (conn->isEnableSSL()) /* 启用TLS */
+            {
+#if (1 == ENABLE_NSOCKET_OPENSSL)
+                conn->handshake(boost::asio::ssl::stream_base::server, [wpSelf, wpConn](const boost::system::error_code& code) {
+                    if (!code) /* 握手成功 */
+                    {
+                        const auto conn = wpConn.lock();
+                        if (conn)
+                        {
+                            const auto self = wpSelf.lock();
+                            if (self && self->m_onNewConnectionCallback)
+                            {
+                                self->m_onNewConnectionCallback(wpConn);
+                            }
+                        }
+                    }
+                }); /* 需要握手 */
+#endif
+            }
+            else /* 没有启用TLS */
+            {
+                if (self->m_onNewConnectionCallback)
+                {
+                    self->m_onNewConnectionCallback(wpConn);
+                }
+            }
+        }
+    });
+    /* 设置数据回调 */
+    conn->setDataCallback([wpSelf, wpConn](const std::vector<unsigned char>& data) {
+        const auto self = wpSelf.lock();
+        if (self && self->m_onConnectionDataCallback)
+        {
+            self->m_onConnectionDataCallback(wpConn, data);
+        }
+    });
+    /* 开始连接 */
+    boost::system::error_code code;
+    conn->connect(socket.remote_endpoint(code), true);
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)

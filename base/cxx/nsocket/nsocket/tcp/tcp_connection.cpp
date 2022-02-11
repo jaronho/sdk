@@ -60,43 +60,47 @@ void TcpConnection::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
     m_onDataCallback = onDataCb;
 }
 
-void TcpConnection::connect(const boost::asio::ip::tcp::endpoint& point)
+void TcpConnection::connect(const boost::asio::ip::tcp::endpoint& point, bool async)
 {
     if (m_socketTcpBase)
     {
         const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
-        m_socketTcpBase->connect(point, [wpSelf](const boost::system::error_code& code) {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                if (code) /* 连接失败 */
+        m_socketTcpBase->connect(
+            point,
+            [wpSelf](const boost::system::error_code& code) {
+                const auto self = wpSelf.lock();
+                if (self)
                 {
-                    self->close();
-                    if (self->m_onConnectCallback)
+                    if (code) /* 连接失败 */
                     {
-                        self->m_onConnectCallback(code);
-                    }
-                }
-                else /* 连接成功 */
-                {
-                    if (self->m_isEnableSSL) /* TLS, 需要握手 */
-                    {
+                        self->close();
                         if (self->m_onConnectCallback)
                         {
                             self->m_onConnectCallback(code);
                         }
                     }
-                    else /* TCP, 成功后开始接收数据 */
+                    else /* 连接成功 */
                     {
-                        self->m_isConnected = true;
-                        if (self->m_onConnectCallback)
+                        if (self->m_isEnableSSL) /* TLS, 需要握手 */
                         {
-                            self->m_onConnectCallback(code);
+                            if (self->m_onConnectCallback)
+                            {
+                                self->m_onConnectCallback(code);
+                            }
+                        }
+                        else /* TCP, 成功后开始接收数据 */
+                        {
+                            self->m_isConnected = true;
+                            if (self->m_onConnectCallback)
+                            {
+                                self->m_onConnectCallback(code);
+                            }
+                            self->recv();
                         }
                     }
                 }
-            }
-        });
+            },
+            async);
     }
     else if (m_onConnectCallback)
     {
@@ -105,34 +109,38 @@ void TcpConnection::connect(const boost::asio::ip::tcp::endpoint& point)
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb)
+void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb, bool async)
 {
     std::shared_ptr<SocketTls> tlsPtr = std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase);
     if (tlsPtr)
     {
         const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
-        tlsPtr->handshake(type, [wpSelf, onHandshakeCb](const boost::system::error_code& code) {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                if (code) /* 握手失败 */
+        tlsPtr->handshake(
+            type,
+            [wpSelf, onHandshakeCb](const boost::system::error_code& code) {
+                const auto self = wpSelf.lock();
+                if (self)
                 {
-                    self->close();
-                    if (onHandshakeCb)
+                    if (code) /* 握手失败 */
                     {
-                        onHandshakeCb(code);
+                        self->close();
+                        if (onHandshakeCb)
+                        {
+                            onHandshakeCb(code);
+                        }
+                    }
+                    else /* 握手成功 */
+                    {
+                        self->m_isConnected = true;
+                        if (onHandshakeCb)
+                        {
+                            onHandshakeCb(code);
+                        }
+                        self->recv();
                     }
                 }
-                else /* 握手成功 */
-                {
-                    self->m_isConnected = true;
-                    if (onHandshakeCb)
-                    {
-                        onHandshakeCb(code);
-                    }
-                }
-            }
-        });
+            },
+            async);
     }
     else
     {
@@ -145,11 +153,28 @@ void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type
 }
 #endif
 
-void TcpConnection::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
+boost::system::error_code TcpConnection::send(const std::vector<unsigned char>& data, size_t& length)
+{
+    boost::system::error_code code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
+    length = 0;
+    if (m_socketTcpBase && m_isConnected)
+    {
+        m_socketTcpBase->send(
+            boost::asio::buffer(data.data(), data.size()),
+            [&code, &length](const boost::system::error_code& ec, std::size_t len) {
+                code = ec;
+                length = len;
+            },
+            false);
+    }
+    return code;
+}
+
+void TcpConnection::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
     if (m_socketTcpBase && m_isConnected)
     {
-        m_socketTcpBase->send(boost::asio::buffer(data.data(), data.size()), onSendCb);
+        m_socketTcpBase->send(boost::asio::buffer(data.data(), data.size()), onSendCb, true);
     }
     else
     {
