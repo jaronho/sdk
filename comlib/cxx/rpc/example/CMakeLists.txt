@@ -131,10 +131,55 @@ foreach(filename ${example_client_files})
     message("    " ${filename})
 endforeach()
 
+# 添加demo客户端1文件
+set(demo_client1_files)
+list(APPEND demo_client1_files ../rpc/rpc_client.cpp
+                               ../rpc/rpc_client.h
+                               ../rpc/rpc_msg.hpp
+                               demo_client1.cpp
+                               demo_def.h)
+
+print_info(BODY "demo client1 files:")
+foreach(filename ${demo_client1_files})
+    message("    " ${filename})
+endforeach()
+
+# 添加demo客户端2文件
+set(demo_client2_files)
+list(APPEND demo_client2_files ../rpc/rpc_client.cpp
+                               ../rpc/rpc_client.h
+                               ../rpc/rpc_msg.hpp
+                               demo_client2.cpp
+                               demo_def.h)
+
+print_info(BODY "demo client2 files:")
+foreach(filename ${demo_client2_files})
+    message("    " ${filename})
+endforeach()
+
+# 添加demo客户端3文件
+set(demo_client3_files)
+list(APPEND demo_client3_files ../rpc/rpc_client.cpp
+                               ../rpc/rpc_client.h
+                               ../rpc/rpc_msg.hpp
+                               demo_client3.cpp
+                               demo_def.h)
+
+print_info(BODY "demo client3 files:")
+foreach(filename ${demo_client3_files})
+    message("    " ${filename})
+endforeach()
+
 # 构建可执行程序
 add_executable(broker ${base_nsocket_files} ${base_utilitiy_files} ${broker_files})
 add_executable(example_client ${base_algorithm_files} ${base_nsocket_files} ${base_utilitiy_files} ${example_client_files})
+add_executable(demo_client1 ${base_algorithm_files} ${base_nsocket_files} ${base_utilitiy_files} ${demo_client1_files})
+add_executable(demo_client2 ${base_algorithm_files} ${base_nsocket_files} ${base_utilitiy_files} ${demo_client2_files})
+add_executable(demo_client3 ${base_algorithm_files} ${base_nsocket_files} ${base_utilitiy_files} ${demo_client3_files})
 
 # 链接依赖库
 target_link_libraries(broker Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
 target_link_libraries(example_client Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(demo_client1 Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(demo_client2 Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(demo_client3 Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})

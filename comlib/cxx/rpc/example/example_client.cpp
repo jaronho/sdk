@@ -160,9 +160,8 @@ int main(int argc, char* argv[])
         }
         std::vector<unsigned char> replyData;
         auto code = client.call(replyer, proc, data, replyData, std::chrono::milliseconds(1000));
-        std::string result;
-        result.insert(result.begin(), replyData.begin(), replyData.end());
-        printf("-------------------- call [%s].%d %s, return: %s\n", replyer.c_str(), proc, rpc::error_desc(code).c_str(), result.c_str());
+        printf("-------------------- call [%s].%d %s, return: %s\n", replyer.c_str(), proc, rpc::error_desc(code).c_str(),
+               std::string(replyData.begin(), replyData.end()).c_str());
     }
     return 0;
 }

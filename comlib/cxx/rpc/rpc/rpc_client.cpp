@@ -2,6 +2,8 @@
 
 #include "algorithm/snowflake/snowflake.h"
 
+#define PRINT_DEBUG 0
+
 namespace rpc
 {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -69,11 +71,15 @@ void Client::run(bool async, std::chrono::steady_clock::duration retryTime)
         }
         catch (const std::exception& e)
         {
+#if (1 == PRINT_DEBUG)
             printf("******************** execption: %s\n", e.what());
+#endif
         }
         catch (...)
         {
+#if (1 == PRINT_DEBUG)
             printf("******************** execption: unknown\n");
+#endif
         }
         std::this_thread::sleep_for(retryTime);
     }
@@ -85,7 +91,9 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
     replyData.clear();
     if (!m_registered)
     {
+#if (1 == PRINT_DEBUG)
         printf(">>>>>>>>>> call fail, unregister\n");
+#endif
         return ErrorCode::UNREGISTER;
     }
     msg_call mc;
@@ -98,22 +106,34 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
     mc.encode(ba);
     std::vector<unsigned char> buffer;
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
-    std::size_t length;
-    auto code = m_tcpClient->send(buffer, length);
-    if (code)
-    {
-        printf(">>>>>>>>>> call fail, %d, %s\n", code.value(), code.message().c_str());
-        m_registered = false;
-        m_tcpClient->stop();
-        return ErrorCode::CALL_BROKER_FAILED;
-    }
-    printf(">>>>>>>>>> call ok, length: %d\n", (int)length);
     auto result = std::make_shared<std::promise<msg_reply>>();
     auto future = result->get_future().share();
     {
         std::lock_guard<std::mutex> locker(m_mutex);
         m_resultMap.insert(std::make_pair(mc.seq_id, result));
     }
+    std::size_t length;
+    auto code = m_tcpClient->send(buffer, length);
+    if (code)
+    {
+#if (1 == PRINT_DEBUG)
+        printf(">>>>>>>>>> call fail, %d, %s\n", code.value(), code.message().c_str());
+#endif
+        m_registered = false;
+        m_tcpClient->stop();
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            auto iter = m_resultMap.find(mc.seq_id);
+            if (m_resultMap.end() != iter)
+            {
+                m_resultMap.erase(iter);
+            }
+        }
+        return ErrorCode::CALL_BROKER_FAILED;
+    }
+#if (1 == PRINT_DEBUG)
+    printf(">>>>>>>>>> call ok, length: %d\n", (int)length);
+#endif
     if (timeout > std::chrono::steady_clock::duration::zero())
     {
         auto waitResult = future.wait_for(timeout);
@@ -127,7 +147,9 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
                     m_resultMap.erase(iter);
                 }
             }
+#if (1 == PRINT_DEBUG)
             printf(">>>>>>>>>> call fail, timeout\n");
+#endif
             return ErrorCode::TIMEOUT;
         }
     }
@@ -140,20 +162,24 @@ void Client::handleConnection(const boost::system::error_code& code, bool async)
 {
     if (code)
     {
+#if (1 == PRINT_DEBUG)
         printf("------------------------------ connect fail, %d, %s\n", code.value(), code.message().c_str());
+#endif
         m_registered = false;
         m_tcpClient->stop();
     }
     else
     {
+#if (1 == PRINT_DEBUG)
         printf("++++++++++++++++++++++++++++++ connect ok\n");
+#endif
         reqRegister(async);
     }
 }
 
 void Client::handleRecvData(const std::vector<unsigned char>& data)
 {
-#if 0
+#if (1 == PRINT_DEBUG)
     /* 信息打印 */
     {
         printf("<<<<<<<<<<<<<<<<<<< recv data, length: %d\n", (int)data.size());
@@ -192,7 +218,9 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::REGISTER_RESULT: {
         msg_register_result resp;
         resp.decode(ba);
+#if (1 == PRINT_DEBUG)
         printf("<<<<< [REGISTER_RESULT], desc: %s\n", error_desc(resp.code).c_str());
+#endif
         if (ErrorCode::OK == resp.code)
         {
             m_registered = true;
@@ -211,8 +239,10 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::CALL: {
         msg_call mc;
         mc.decode(ba);
+#if (1 == PRINT_DEBUG)
         printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer: %s, proc: %d\n", mc.seq_id, mc.caller.c_str(), mc.replyer.c_str(),
                mc.proc);
+#endif
         /* 应答调用方 */
         if (m_callHandler)
         {
@@ -241,8 +271,10 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::REPLY: {
         msg_reply mr;
         mr.decode(ba);
+#if (1 == PRINT_DEBUG)
         printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer: %s, proc: %d, desc: %s\n", mr.seq_id, mr.caller.c_str(),
                mr.replyer.c_str(), mr.proc, error_desc(mr.code).c_str());
+#endif
         std::weak_ptr<std::promise<msg_reply>> wpResult;
         {
             std::lock_guard<std::mutex> locker(m_mutex);
@@ -261,7 +293,9 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     }
     break;
     default: {
+#if (1 == PRINT_DEBUG)
         printf("********** msg [%d], unknown type **********\n", (int)type);
+#endif
     }
     break;
     }
@@ -281,12 +315,16 @@ void Client::reqRegister(bool async)
         m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
             if (code)
             {
+#if (1 == PRINT_DEBUG)
                 printf(">>>>>>>>>> register fail, %d, %s\n", code.value(), code.message().c_str());
+#endif
                 m_tcpClient->stop();
             }
             else
             {
+#if (1 == PRINT_DEBUG)
                 printf(">>>>>>>>>> register ok, length: %d\n", (int)length);
+#endif
             }
         });
     }
@@ -296,12 +334,16 @@ void Client::reqRegister(bool async)
         auto code = m_tcpClient->send(data, length);
         if (code)
         {
+#if (1 == PRINT_DEBUG)
             printf(">>>>>>>>>> register fail, %d, %s\n", code.value(), code.message().c_str());
+#endif
             m_tcpClient->stop();
         }
         else
         {
+#if (1 == PRINT_DEBUG)
             printf(">>>>>>>>>> register ok, length: %d\n", (int)length);
+#endif
         }
     }
 }
