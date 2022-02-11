@@ -312,8 +312,8 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
     case MsgType::CALL: {
         msg_call mc;
         mc.decode(ba);
-        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer id: %s, data length: %d\n", mc.seq_id, mc.caller.c_str(),
-               mc.replyer.c_str(), (int)mc.data.size());
+        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer: %s, proc: %d\n", mc.seq_id, mc.caller.c_str(), mc.replyer.c_str(),
+               mc.proc);
         /* 查找应答者 */
         std::shared_ptr<Broker::Client> replyerClient = nullptr;
         {
@@ -330,7 +330,7 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
         if (replyerClient)
         {
             /* 通知应答者 */
-            replyerClient->send(&mc, [&, client, seqId = mc.seq_id, callId = mc.caller, replyer = mc.replyer](bool ret) {
+            replyerClient->send(&mc, [&, client, seqId = mc.seq_id, callId = mc.caller, replyer = mc.replyer, proc = mc.proc](bool ret) {
                 if (ret)
                 {
                     /* 等待应答 */
@@ -348,7 +348,8 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
                     mr.seq_id = seqId;
                     mr.caller = callId;
                     mr.replyer = replyer;
-                    mr.code = ErrorCode::CALL_TARGET_FAILED;
+                    mr.proc = mc.proc;
+                    mr.code = ErrorCode::CALL_REPLYER_FAILED;
                     client->send(&mr);
                 }
             });
@@ -361,6 +362,7 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
             mr.seq_id = mc.seq_id;
             mr.caller = mc.caller;
             mr.replyer = mc.replyer;
+            mr.proc = mc.proc;
             mr.code = ErrorCode::REPLYER_NOT_FOUND;
             client->send(&mr);
         }
@@ -369,8 +371,8 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
     case MsgType::REPLY: {
         msg_reply mr;
         mr.decode(ba);
-        printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer id: %s, data length: %d\n", mr.seq_id, mr.caller.c_str(),
-               mr.replyer.c_str(), (int)mr.data.size());
+        printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer: %s, proc: %d\n", mr.seq_id, mr.caller.c_str(), mr.replyer.c_str(),
+               mr.proc);
         /* 通知调用方 */
         std::weak_ptr<Broker::Client> wpCallerClient;
         {

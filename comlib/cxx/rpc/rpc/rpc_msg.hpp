@@ -15,7 +15,7 @@ enum class ErrorCode
     REGISTER_REPEAT, /* 重复注册 */
     CALL_BROKER_FAILED, /* 调用代理失败 */
     REPLYER_NOT_FOUND, /* 应答者不存在 */
-    CALL_TARGET_FAILED, /* 调用目标失败 */
+    CALL_REPLYER_FAILED, /* 调用应答者失败 */
     REPLYER_INNER_ERROR, /* 目标内部出错 */
     TIMEOUT /* 超时 */
 };
@@ -39,8 +39,8 @@ static std::string error_desc(const ErrorCode& code)
         return "call borker failed";
     case ErrorCode::REPLYER_NOT_FOUND:
         return "replyer not found";
-    case ErrorCode::CALL_TARGET_FAILED:
-        return "call target failed";
+    case ErrorCode::CALL_REPLYER_FAILED:
+        return "call repyer failed";
     case ErrorCode::REPLYER_INNER_ERROR:
         return "replyer inner error";
     case ErrorCode::TIMEOUT:
@@ -218,6 +218,7 @@ public:
         sz += utilitiy::ByteArray::bcount(seq_id);
         sz += utilitiy::ByteArray::bcount(caller);
         sz += utilitiy::ByteArray::bcount(replyer);
+        sz += utilitiy::ByteArray::bcount(proc);
         sz += utilitiy::ByteArray::bcount(data);
         return sz;
     }
@@ -229,6 +230,7 @@ public:
         ba.writeInt64(seq_id);
         ba.writeString(caller);
         ba.writeString(replyer);
+        ba.writeInt(proc);
         ba.writeBytes(data);
     }
 
@@ -237,12 +239,14 @@ public:
         seq_id = ba.readInt64();
         ba.readString(caller);
         ba.readString(replyer);
+        proc = ba.readInt();
         ba.readBytes(data);
     }
 
     long long seq_id = 0; /* 序列ID */
     std::string caller; /* 调用者ID */
     std::string replyer; /* 应答者ID */
+    int proc = 0; /* 调用程序ID */
     std::vector<unsigned char> data; /* 数据 */
 };
 
@@ -264,6 +268,7 @@ public:
         sz += utilitiy::ByteArray::bcount(seq_id);
         sz += utilitiy::ByteArray::bcount(caller);
         sz += utilitiy::ByteArray::bcount(replyer);
+        sz += utilitiy::ByteArray::bcount(proc);
         sz += utilitiy::ByteArray::bcount(data);
         sz += utilitiy::ByteArray::bcount((int)code);
         return sz;
@@ -276,6 +281,7 @@ public:
         ba.writeInt64(seq_id);
         ba.writeString(caller);
         ba.writeString(replyer);
+        ba.writeInt(proc);
         ba.writeBytes(data);
         ba.writeInt((int)code);
     };
@@ -285,6 +291,7 @@ public:
         seq_id = ba.readInt64();
         ba.readString(caller);
         ba.readString(replyer);
+        proc = ba.readInt();
         ba.readBytes(data);
         code = (ErrorCode)ba.readInt();
     };
@@ -292,6 +299,7 @@ public:
     long long seq_id = 0; /* 序列ID */
     std::string caller; /* 调用者ID */
     std::string replyer; /* 应答者ID */
+    int proc = 0; /* 调用程序ID */
     std::vector<unsigned char> data; /* 数据 */
     ErrorCode code = ErrorCode::OK; /* 错误码 */
 };

@@ -110,8 +110,8 @@ int main(int argc, char* argv[])
     rpc::Client client(id, brokerHost, brokerPort);
 #endif
     client.setRegHandler([&](const rpc::ErrorCode& code) { printf("register to broker %s\n", rpc::error_desc(code).c_str()); });
-    client.setCallHandler([&](const std::string& callId, const std::vector<unsigned char>& data) {
-        printf("++++++++++++++++++++ called by [%s], length: %d\n", callId.c_str(), (int)data.size());
+    client.setCallHandler([&](const std::string& callId, int proc, const std::vector<unsigned char>& data) {
+        printf("++++++++++++++++++++ [%s] call [%d], data length: %d\n", callId.c_str(), proc, (int)data.size());
         /* 以十六进制格式打印数据 */
         printf("+++++ [hex format]\n");
         for (size_t i = 0; i < data.size(); ++i)
@@ -142,6 +142,7 @@ int main(int argc, char* argv[])
         printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
         size_t len = strlen(str);
         std::string replyer;
+        int proc = 0;
         std::vector<unsigned char> data;
         size_t pos = 0;
         for (size_t i = 0; i < len; ++i)
@@ -158,10 +159,10 @@ int main(int argc, char* argv[])
             data.insert(data.end(), str + pos + 1, str + len);
         }
         std::vector<unsigned char> replyData;
-        auto code = client.call(replyer, data, replyData, std::chrono::milliseconds(1000));
+        auto code = client.call(replyer, proc, data, replyData, std::chrono::milliseconds(1000));
         std::string result;
         result.insert(result.begin(), replyData.begin(), replyData.end());
-        printf("-------------------- call [%s] %s, return: %s\n", replyer.c_str(), rpc::error_desc(code).c_str(), result.c_str());
+        printf("-------------------- call [%s].%d %s, return: %s\n", replyer.c_str(), proc, rpc::error_desc(code).c_str(), result.c_str());
     }
     return 0;
 }

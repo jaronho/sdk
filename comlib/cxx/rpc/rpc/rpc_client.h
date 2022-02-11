@@ -9,7 +9,7 @@
 namespace rpc
 {
 using REG_HANDLER = std::function<void(const ErrorCode& code)>;
-using CALL_HANDLER = std::function<std::vector<unsigned char>(const std::string& callId, const std::vector<unsigned char>& data)>;
+using CALL_HANDLER = std::function<std::vector<unsigned char>(const std::string& callId, int proc, const std::vector<unsigned char>& data)>;
 using REPLY_FUNC = std::function<void(const std::vector<unsigned char>& data, const ErrorCode& code)>;
 
 /**
@@ -56,12 +56,13 @@ public:
     /**
      * @brief 调用指定客户端接口
      * @param replyer 应答者ID
+     * @param proc 程序ID
      * @param data 数据
      * @param replyData [输出]应答数据(选填)
      * @param timeout 超时时间(选填)
      * @return 错误码
      */
-    rpc::ErrorCode call(const std::string& replyer, const std::vector<unsigned char>& data, std::vector<unsigned char>& replyData,
+    rpc::ErrorCode call(const std::string& replyer, int proc, const std::vector<unsigned char>& data, std::vector<unsigned char>& replyData,
                         const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero());
 
 private:

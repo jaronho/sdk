@@ -79,8 +79,8 @@ void Client::run(bool async, std::chrono::steady_clock::duration retryTime)
     }
 }
 
-rpc::ErrorCode Client::call(const std::string& replyer, const std::vector<unsigned char>& data, std::vector<unsigned char>& replyData,
-                            const std::chrono::steady_clock::duration& timeout)
+rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vector<unsigned char>& data,
+                            std::vector<unsigned char>& replyData, const std::chrono::steady_clock::duration& timeout)
 {
     replyData.clear();
     if (!m_registered)
@@ -92,6 +92,7 @@ rpc::ErrorCode Client::call(const std::string& replyer, const std::vector<unsign
     mc.seq_id = algorithm::Snowflake::easyGenerate();
     mc.caller = m_id;
     mc.replyer = replyer;
+    mc.proc = proc;
     mc.data = data;
     utilitiy::ByteArray ba;
     mc.encode(ba);
@@ -210,8 +211,8 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::CALL: {
         msg_call mc;
         mc.decode(ba);
-        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer id: %s, data length: %d\n", mc.seq_id, mc.caller.c_str(),
-               mc.replyer.c_str(), (int)mc.data.size());
+        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer: %s, proc: %d\n", mc.seq_id, mc.caller.c_str(), mc.replyer.c_str(),
+               mc.proc);
         /* 应答调用方 */
         if (m_callHandler)
         {
@@ -219,9 +220,10 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
             mr.seq_id = mc.seq_id;
             mr.caller = mc.caller;
             mr.replyer = mc.replyer;
+            mr.proc = mc.proc;
             try
             {
-                mr.data = m_callHandler(mc.caller, mc.data);
+                mr.data = m_callHandler(mc.caller, mc.proc, mc.data);
                 mr.code = ErrorCode::OK;
             }
             catch (...)
@@ -239,8 +241,8 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::REPLY: {
         msg_reply mr;
         mr.decode(ba);
-        printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer id: %s, desc: %s\n", mr.seq_id, mr.caller.c_str(), mr.replyer.c_str(),
-               error_desc(mr.code).c_str());
+        printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer: %s, proc: %d, desc: %s\n", mr.seq_id, mr.caller.c_str(),
+               mr.replyer.c_str(), mr.proc, error_desc(mr.code).c_str());
         std::weak_ptr<std::promise<msg_reply>> wpResult;
         {
             std::lock_guard<std::mutex> locker(m_mutex);
