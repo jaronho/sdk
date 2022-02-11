@@ -14,9 +14,9 @@ enum class ErrorCode
     UNREGISTER, /* 未注册 */
     REGISTER_REPEAT, /* 重复注册 */
     CALL_BROKER_FAILED, /* 调用代理失败 */
-    TARGET_NOT_FOUND, /* 目标不存在 */
+    REPLYER_NOT_FOUND, /* 应答者不存在 */
     CALL_TARGET_FAILED, /* 调用目标失败 */
-    TARGET_INNER_ERROR, /* 目标内部出错 */
+    REPLYER_INNER_ERROR, /* 目标内部出错 */
     TIMEOUT /* 超时 */
 };
 
@@ -37,12 +37,12 @@ static std::string error_desc(const ErrorCode& code)
         return "register repeat";
     case ErrorCode::CALL_BROKER_FAILED:
         return "call borker failed";
-    case ErrorCode::TARGET_NOT_FOUND:
-        return "target not found";
+    case ErrorCode::REPLYER_NOT_FOUND:
+        return "replyer not found";
     case ErrorCode::CALL_TARGET_FAILED:
         return "call target failed";
-    case ErrorCode::TARGET_INNER_ERROR:
-        return "target inner error";
+    case ErrorCode::REPLYER_INNER_ERROR:
+        return "replyer inner error";
     case ErrorCode::TIMEOUT:
         return "timeout";
     default:
@@ -216,8 +216,8 @@ public:
         int sz = 0;
         sz += utilitiy::ByteArray::bcount((int)type());
         sz += utilitiy::ByteArray::bcount(seq_id);
-        sz += utilitiy::ByteArray::bcount(call_id);
-        sz += utilitiy::ByteArray::bcount(reply_id);
+        sz += utilitiy::ByteArray::bcount(caller);
+        sz += utilitiy::ByteArray::bcount(replyer);
         sz += utilitiy::ByteArray::bcount(data);
         return sz;
     }
@@ -227,22 +227,22 @@ public:
         ba.allocate(size());
         ba.writeInt((int)type());
         ba.writeInt64(seq_id);
-        ba.writeString(call_id);
-        ba.writeString(reply_id);
+        ba.writeString(caller);
+        ba.writeString(replyer);
         ba.writeBytes(data);
     }
 
     void decode(utilitiy::ByteArray& ba) override
     {
         seq_id = ba.readInt64();
-        ba.readString(call_id);
-        ba.readString(reply_id);
+        ba.readString(caller);
+        ba.readString(replyer);
         ba.readBytes(data);
     }
 
     long long seq_id = 0; /* 序列ID */
-    std::string call_id; /* 调用方ID */
-    std::string reply_id; /* 应答方ID */
+    std::string caller; /* 调用者ID */
+    std::string replyer; /* 应答者ID */
     std::vector<unsigned char> data; /* 数据 */
 };
 
@@ -262,8 +262,8 @@ public:
         int sz = 0;
         sz += utilitiy::ByteArray::bcount((int)type());
         sz += utilitiy::ByteArray::bcount(seq_id);
-        sz += utilitiy::ByteArray::bcount(call_id);
-        sz += utilitiy::ByteArray::bcount(reply_id);
+        sz += utilitiy::ByteArray::bcount(caller);
+        sz += utilitiy::ByteArray::bcount(replyer);
         sz += utilitiy::ByteArray::bcount(data);
         sz += utilitiy::ByteArray::bcount((int)code);
         return sz;
@@ -274,8 +274,8 @@ public:
         ba.allocate(size());
         ba.writeInt((int)type());
         ba.writeInt64(seq_id);
-        ba.writeString(call_id);
-        ba.writeString(reply_id);
+        ba.writeString(caller);
+        ba.writeString(replyer);
         ba.writeBytes(data);
         ba.writeInt((int)code);
     };
@@ -283,15 +283,15 @@ public:
     void decode(utilitiy::ByteArray& ba) override
     {
         seq_id = ba.readInt64();
-        ba.readString(call_id);
-        ba.readString(reply_id);
+        ba.readString(caller);
+        ba.readString(replyer);
         ba.readBytes(data);
         code = (ErrorCode)ba.readInt();
     };
 
     long long seq_id = 0; /* 序列ID */
-    std::string call_id; /* 调用方ID */
-    std::string reply_id; /* 应答方ID */
+    std::string caller; /* 调用者ID */
+    std::string replyer; /* 应答者ID */
     std::vector<unsigned char> data; /* 数据 */
     ErrorCode code = ErrorCode::OK; /* 错误码 */
 };

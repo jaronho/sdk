@@ -16,6 +16,13 @@ private:
 public:
     /**
      * @brief 构造函数
+     * @param name 代理服务运行线程名
+     * @param threadCount 运行线程数
+     * @param serverHost 服务器地址
+     * @param serverPort 服务器端口
+     * @param certFile 证书文件, 例如: client.crt
+     * @param privateKeyFile 私钥文件, 例如: client.key
+     * @param privateKeyFilePwd 私钥文件密码, 例如: 123456
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     Broker(const std::string& name, size_t threadCount, const std::string& serverHost, int serverPort, const std::string& certFile = "",
@@ -25,7 +32,7 @@ public:
 #endif
 
     /**
-     * @brief 运行
+     * @brief 运行(非阻塞)
      */
     void run();
 

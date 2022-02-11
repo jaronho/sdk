@@ -40,8 +40,12 @@ void Client::setCallHandler(const CALL_HANDLER& handler)
     m_callHandler = handler;
 }
 
-void Client::run()
+void Client::run(bool async, std::chrono::steady_clock::duration retryTime)
 {
+    if (retryTime <= std::chrono::steady_clock::duration::zero())
+    {
+        retryTime = std::chrono::milliseconds(3000);
+    }
     if (m_running)
     {
         return;
@@ -54,13 +58,13 @@ void Client::run()
         {
             m_payload->reset();
             m_tcpClient = std::make_shared<nsocket::TcpClient>();
-            m_tcpClient->setConnectCallback([&](const boost::system::error_code& code) { handleConnection(code); });
+            m_tcpClient->setConnectCallback([&, async](const boost::system::error_code& code) { handleConnection(code, async); });
             m_tcpClient->setDataCallback([&](const std::vector<unsigned char>& data) { handleRecvData(data); });
 #if (1 == ENABLE_NSOCKET_OPENSSL)
             m_tcpClient->run(m_brokerHost, m_serverPort,
-                             nsocket::TcpClient::getSslContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd));
+                             nsocket::TcpClient::getSslContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd), async);
 #else
-            m_tcpClient->run(m_brokerHost, m_serverPort);
+            m_tcpClient->run(m_brokerHost, m_serverPort, async);
 #endif
         }
         catch (const std::exception& e)
@@ -71,17 +75,14 @@ void Client::run()
         {
             printf("******************** execption: unknown\n");
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(retryTime);
     }
 }
 
-rpc::ErrorCode Client::call(const std::string& replyId, const std::vector<unsigned char>& data, std::vector<unsigned char>* replyData,
+rpc::ErrorCode Client::call(const std::string& replyer, const std::vector<unsigned char>& data, std::vector<unsigned char>& replyData,
                             const std::chrono::steady_clock::duration& timeout)
 {
-    if (replyData)
-    {
-        replyData->clear();
-    }
+    replyData.clear();
     if (!m_registered)
     {
         printf(">>>>>>>>>> call fail, unregister\n");
@@ -89,36 +90,29 @@ rpc::ErrorCode Client::call(const std::string& replyId, const std::vector<unsign
     }
     msg_call mc;
     mc.seq_id = algorithm::Snowflake::easyGenerate();
-    mc.call_id = m_id;
-    mc.reply_id = replyId;
+    mc.caller = m_id;
+    mc.replyer = replyer;
     mc.data = data;
     utilitiy::ByteArray ba;
     mc.encode(ba);
     std::vector<unsigned char> buffer;
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
-    auto result = std::make_shared<std::promise<void>>();
+    std::size_t length;
+    auto code = m_tcpClient->send(buffer, length);
+    if (code)
+    {
+        printf(">>>>>>>>>> call fail, %d, %s\n", code.value(), code.message().c_str());
+        m_registered = false;
+        m_tcpClient->stop();
+        return ErrorCode::CALL_BROKER_FAILED;
+    }
+    printf(">>>>>>>>>> call ok, length: %d\n", (int)length);
+    auto result = std::make_shared<std::promise<msg_reply>>();
     auto future = result->get_future().share();
-    rpc::ErrorCode replyCode;
-    m_tcpClient->send(buffer, [&, seqId = mc.seq_id](const boost::system::error_code& code, std::size_t length) {
-        if (code)
-        {
-            printf(">>>>>>>>>> call fail, %d, %s\n", code.value(), code.message().c_str());
-            m_registered = false;
-            m_tcpClient->stop();
-            replyCode = ErrorCode::CALL_BROKER_FAILED;
-            result->set_value();
-        }
-        else
-        {
-            printf(">>>>>>>>>> call ok, length: %d\n", (int)length);
-            ReplyObj obj;
-            obj.data = replyData;
-            obj.code = &replyCode;
-            obj.result = result;
-            std::lock_guard<std::mutex> locker(m_mutex);
-            m_replyObjMap.insert(std::make_pair(seqId, obj));
-        }
-    });
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        m_resultMap.insert(std::make_pair(mc.seq_id, result));
+    }
     if (timeout > std::chrono::steady_clock::duration::zero())
     {
         auto waitResult = future.wait_for(timeout);
@@ -126,21 +120,22 @@ rpc::ErrorCode Client::call(const std::string& replyId, const std::vector<unsign
         {
             {
                 std::lock_guard<std::mutex> locker(m_mutex);
-                auto iter = m_replyObjMap.find(mc.seq_id);
-                if (m_replyObjMap.end() != iter)
+                auto iter = m_resultMap.find(mc.seq_id);
+                if (m_resultMap.end() != iter)
                 {
-                    m_replyObjMap.erase(iter);
+                    m_resultMap.erase(iter);
                 }
             }
             printf(">>>>>>>>>> call fail, timeout\n");
             return ErrorCode::TIMEOUT;
         }
     }
-    future.get();
-    return replyCode;
+    msg_reply mr = future.get();
+    replyData = std::move(mr.data);
+    return mr.code;
 }
 
-void Client::handleConnection(const boost::system::error_code& code)
+void Client::handleConnection(const boost::system::error_code& code, bool async)
 {
     if (code)
     {
@@ -151,7 +146,7 @@ void Client::handleConnection(const boost::system::error_code& code)
     else
     {
         printf("++++++++++++++++++++++++++++++ connect ok\n");
-        reqRegister();
+        reqRegister(async);
     }
 }
 
@@ -215,58 +210,51 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::CALL: {
         msg_call mc;
         mc.decode(ba);
-        printf("<<<<< [CALL], seq id: %lld, call id: %s, reply id: %s, data length: %d\n", mc.seq_id, mc.call_id.c_str(),
-               mc.reply_id.c_str(), (int)mc.data.size());
+        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer id: %s, data length: %d\n", mc.seq_id, mc.caller.c_str(),
+               mc.replyer.c_str(), (int)mc.data.size());
         /* 应答调用方 */
         if (m_callHandler)
         {
             msg_reply mr;
             mr.seq_id = mc.seq_id;
-            mr.call_id = mc.call_id;
-            mr.reply_id = mc.reply_id;
+            mr.caller = mc.caller;
+            mr.replyer = mc.replyer;
             try
             {
-                mr.data = m_callHandler(mc.call_id, mc.data);
+                mr.data = m_callHandler(mc.caller, mc.data);
                 mr.code = ErrorCode::OK;
             }
             catch (...)
             {
-                mr.code = ErrorCode::TARGET_INNER_ERROR;
+                mr.code = ErrorCode::REPLYER_INNER_ERROR;
             }
             utilitiy::ByteArray ba;
             mr.encode(ba);
             std::vector<unsigned char> buffer;
             nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
-            m_tcpClient->send(buffer, nullptr);
+            m_tcpClient->sendAsync(buffer, nullptr);
         }
     }
     break;
     case MsgType::REPLY: {
         msg_reply mr;
         mr.decode(ba);
-        printf("<<<<< [REPLY], seq id: %lld, call id: %s, reply id: %s, desc: %s\n", mr.seq_id, mr.call_id.c_str(), mr.reply_id.c_str(),
+        printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer id: %s, desc: %s\n", mr.seq_id, mr.caller.c_str(), mr.replyer.c_str(),
                error_desc(mr.code).c_str());
-        ReplyObj obj;
+        std::weak_ptr<std::promise<msg_reply>> wpResult;
         {
             std::lock_guard<std::mutex> locker(m_mutex);
-            auto iter = m_replyObjMap.find(mr.seq_id);
-            if (m_replyObjMap.end() != iter)
+            auto iter = m_resultMap.find(mr.seq_id);
+            if (m_resultMap.end() != iter)
             {
-                obj = iter->second;
-                m_replyObjMap.erase(iter);
+                wpResult = iter->second;
+                m_resultMap.erase(iter);
             }
         }
-        if (obj.data)
+        auto result = wpResult.lock();
+        if (result)
         {
-            *obj.data = std::move(mr.data);
-        }
-        if (obj.code)
-        {
-            *obj.code = mr.code;
-        }
-        if (obj.result)
-        {
-            obj.result->set_value();
+            result->set_value(mr);
         }
     }
     break;
@@ -277,7 +265,7 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     }
 }
 
-void Client::reqRegister()
+void Client::reqRegister(bool async)
 {
     /* 向服务器注册 */
     msg_register reg;
@@ -286,7 +274,24 @@ void Client::reqRegister()
     reg.encode(ba);
     std::vector<unsigned char> data;
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);
-    m_tcpClient->send(data, [&](const boost::system::error_code& code, std::size_t length) {
+    if (async)
+    {
+        m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
+            if (code)
+            {
+                printf(">>>>>>>>>> register fail, %d, %s\n", code.value(), code.message().c_str());
+                m_tcpClient->stop();
+            }
+            else
+            {
+                printf(">>>>>>>>>> register ok, length: %d\n", (int)length);
+            }
+        });
+    }
+    else
+    {
+        std::size_t length;
+        auto code = m_tcpClient->send(data, length);
         if (code)
         {
             printf(">>>>>>>>>> register fail, %d, %s\n", code.value(), code.message().c_str());
@@ -296,6 +301,6 @@ void Client::reqRegister()
         {
             printf(">>>>>>>>>> register ok, length: %d\n", (int)length);
         }
-    });
+    }
 }
 } // namespace rpc

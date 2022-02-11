@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
         }
         printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
         size_t len = strlen(str);
-        std::string targetId;
+        std::string replyer;
         std::vector<unsigned char> data;
         size_t pos = 0;
         for (size_t i = 0; i < len; ++i)
@@ -154,14 +154,14 @@ int main(int argc, char* argv[])
         }
         if (pos > 0)
         {
-            targetId.insert(targetId.end(), str, str + pos);
+            replyer.insert(replyer.end(), str, str + pos);
             data.insert(data.end(), str + pos + 1, str + len);
         }
         std::vector<unsigned char> replyData;
-        auto code = client.call(targetId, data, &replyData, std::chrono::milliseconds(1000));
+        auto code = client.call(replyer, data, replyData, std::chrono::milliseconds(1000));
         std::string result;
         result.insert(result.begin(), replyData.begin(), replyData.end());
-        printf("-------------------- call [%s] %s, return: %s\n", targetId.c_str(), rpc::error_desc(code).c_str(), result.c_str());
+        printf("-------------------- call [%s] %s, return: %s\n", replyer.c_str(), rpc::error_desc(code).c_str(), result.c_str());
     }
     return 0;
 }

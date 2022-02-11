@@ -75,7 +75,7 @@ public:
             msg->encode(ba);
             std::vector<unsigned char> data;
             nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);
-            conn->send(data, [&, callback](const boost::system::error_code& code, std::size_t length) {
+            conn->sendAsync(data, [&, callback](const boost::system::error_code& code, std::size_t length) {
                 const auto conn = m_wpConn.lock();
                 if (conn)
                 {
@@ -312,25 +312,25 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
     case MsgType::CALL: {
         msg_call mc;
         mc.decode(ba);
-        printf("<<<<< [CALL], seq id: %lld, call id: %s, reply id: %s, data length: %d\n", mc.seq_id, mc.call_id.c_str(),
-               mc.reply_id.c_str(), (int)mc.data.size());
-        /* 查找应答方 */
-        std::shared_ptr<Broker::Client> replyClient = nullptr;
+        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer id: %s, data length: %d\n", mc.seq_id, mc.caller.c_str(),
+               mc.replyer.c_str(), (int)mc.data.size());
+        /* 查找应答者 */
+        std::shared_ptr<Broker::Client> replyerClient = nullptr;
         {
             std::lock_guard<std::mutex> locker(m_mutexClientMap);
             for (auto iter = m_clientMap.begin(); m_clientMap.end() != iter; ++iter)
             {
-                if (iter->second->getId() == mc.reply_id)
+                if (iter->second->getId() == mc.replyer)
                 {
-                    replyClient = iter->second;
+                    replyerClient = iter->second;
                     break;
                 }
             }
         }
-        if (replyClient)
+        if (replyerClient)
         {
-            /* 通知应答方 */
-            replyClient->send(&mc, [&, client, seqId = mc.seq_id, callId = mc.call_id, replyId = mc.reply_id](bool ret) {
+            /* 通知应答者 */
+            replyerClient->send(&mc, [&, client, seqId = mc.seq_id, callId = mc.caller, replyer = mc.replyer](bool ret) {
                 if (ret)
                 {
                     /* 等待应答 */
@@ -346,8 +346,8 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
                     /* 通知调用方 */
                     msg_reply mr;
                     mr.seq_id = seqId;
-                    mr.call_id = callId;
-                    mr.reply_id = replyId;
+                    mr.caller = callId;
+                    mr.replyer = replyer;
                     mr.code = ErrorCode::CALL_TARGET_FAILED;
                     client->send(&mr);
                 }
@@ -359,9 +359,9 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
             /* 通知调用方 */
             msg_reply mr;
             mr.seq_id = mc.seq_id;
-            mr.call_id = mc.call_id;
-            mr.reply_id = mc.reply_id;
-            mr.code = ErrorCode::TARGET_NOT_FOUND;
+            mr.caller = mc.caller;
+            mr.replyer = mc.replyer;
+            mr.code = ErrorCode::REPLYER_NOT_FOUND;
             client->send(&mr);
         }
     }
@@ -369,23 +369,23 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
     case MsgType::REPLY: {
         msg_reply mr;
         mr.decode(ba);
-        printf("<<<<< [REPLY], seq id: %lld, call id: %s, reply id: %s, data length: %d\n", mr.seq_id, mr.call_id.c_str(),
-               mr.reply_id.c_str(), (int)mr.data.size());
+        printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer id: %s, data length: %d\n", mr.seq_id, mr.caller.c_str(),
+               mr.replyer.c_str(), (int)mr.data.size());
         /* 通知调用方 */
-        std::weak_ptr<Broker::Client> wpCallClient;
+        std::weak_ptr<Broker::Client> wpCallerClient;
         {
             std::lock_guard<std::mutex> locker(m_mutexCallMap);
             auto iter = m_callMap.find(mr.seq_id);
             if (m_callMap.end() != iter)
             {
-                wpCallClient = iter->second;
+                wpCallerClient = iter->second;
                 m_callMap.erase(iter);
             }
         }
-        auto callClient = wpCallClient.lock();
-        if (callClient)
+        auto callerClient = wpCallerClient.lock();
+        if (callerClient)
         {
-            callClient->send(&mr);
+            callerClient->send(&mr);
         }
     }
     break;

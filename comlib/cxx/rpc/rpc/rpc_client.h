@@ -20,6 +20,12 @@ class Client
 public:
     /**
      * @brief 构造函数
+     * @param id 调用者ID
+     * @param brokerHost 代理服务地址
+     * @param brokerPort 代理服务端口
+     * @param certFile 证书文件, 例如: client.crt
+     * @param privateKeyFile 私钥文件, 例如: client.key
+     * @param privateKeyFilePwd 私钥文件密码, 例如: 123456
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     Client(const std::string& id, const std::string& brokerHost, int brokerPort, const std::string& certFile = "",
@@ -30,35 +36,39 @@ public:
 
     /**
      * @brief 设置注册回调
+     * @param handler 注册回调
      */
     void setRegHandler(const REG_HANDLER& handler);
 
     /**
      * @brief 设置调用回调
+     * @param handler 调用回调, 注意: 不要在回调中做耗时阻塞操作
      */
     void setCallHandler(const CALL_HANDLER& handler);
 
     /**
-     * @brief 运行
+     * @brief 运行(进入循环, 阻塞和占用调用线程)
+     * @param async 是否异步连接(选填), 默认异步
+     * @param retryTime 重试时间(选填)
      */
-    void run();
+    void run(bool async = true, std::chrono::steady_clock::duration retryTime = std::chrono::steady_clock::duration::zero());
 
     /**
      * @brief 调用指定客户端接口
-     * @param replyId 应答方ID
+     * @param replyer 应答者ID
      * @param data 数据
      * @param replyData [输出]应答数据(选填)
      * @param timeout 超时时间(选填)
      * @return 错误码
      */
-    rpc::ErrorCode call(const std::string& replyId, const std::vector<unsigned char>& data, std::vector<unsigned char>* replyData = nullptr,
+    rpc::ErrorCode call(const std::string& replyer, const std::vector<unsigned char>& data, std::vector<unsigned char>& replyData,
                         const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero());
 
 private:
     /**
      * @brief 处理连接结果
      */
-    void handleConnection(const boost::system::error_code& code);
+    void handleConnection(const boost::system::error_code& code, bool async);
 
     /**
      * @brief 处理数据接收
@@ -73,15 +83,7 @@ private:
     /**
      * @brief 请求注册
      */
-    void reqRegister();
-
-private:
-    struct ReplyObj
-    {
-        std::vector<unsigned char>* data = nullptr;
-        rpc::ErrorCode* code = nullptr;
-        std::shared_ptr<std::promise<void>> result = nullptr;
-    };
+    void reqRegister(bool async);
 
 private:
     std::shared_ptr<nsocket::Payload> m_payload; /* 负载 */
@@ -89,7 +91,7 @@ private:
     REG_HANDLER m_regHandler; /* 注册回调句柄 */
     CALL_HANDLER m_callHandler; /* 调用回调句柄 */
     std::mutex m_mutex;
-    std::map<long long, ReplyObj> m_replyObjMap; /* 应答对象表 */
+    std::map<long long, std::weak_ptr<std::promise<msg_reply>>> m_resultMap; /* 应答表 */
     std::string m_id; /* 客户端ID */
     std::string m_brokerHost; /* broker地址 */
     int m_serverPort; /* broker端口 */
