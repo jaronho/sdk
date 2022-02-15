@@ -79,7 +79,7 @@ typedef struct tagTHREADNAME_INFO
 } THREADNAME_INFO;
 #pragma pack(pop)
 
-void SetThreadName(DWORD dwThreadID, const char* threadName)
+static void pthread_setname_np(DWORD dwThreadID, const char* threadName)
 {
     THREADNAME_INFO info;
     info.dwType = 0x1000;
@@ -100,7 +100,7 @@ void SetThreadName(DWORD dwThreadID, const char* threadName)
 void Platform::setThreadName(const std::string& name)
 {
 #ifdef _WIN32
-    SetThreadName(-1, name.c_str());
+    pthread_setname_np(-1, name.c_str());
 #else
     pthread_setname_np(pthread_self(), name.substr(0, 15).c_str());
 #endif
