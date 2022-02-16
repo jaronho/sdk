@@ -7,7 +7,6 @@
 #include "threading/thread_proxy.hpp"
 #include "threading/timer/deadline_timer.h"
 #include "threading/timer/steady_timer.h"
-#include "threading/timer_proxy.h"
 
 threading::ExecutorPtr g_workers; /* 工作线程 */
 threading::BasicSignal<void()> g_sig1; /* 同步信号(不带参数无返回值) */
@@ -46,7 +45,6 @@ int main()
 {
     int mainPid = threading::Platform::getThreadId();
     g_workers = threading::ThreadProxy::createAsioExecutor("workers", 6); /* 创建工作线程(6个线程) */
-    threading::TimerProxy::start(); /* 启动定时器模块 */
     /* 定时器1 */
     int count1 = 0;
     auto tm1 = std::make_shared<threading::SteadyTimer>(std::chrono::seconds(0), std::chrono::milliseconds(5000), "", [mainPid, &count1]() {
@@ -86,7 +84,7 @@ int main()
             },
             g_workers);
         /* 监听定时器回调 */
-        threading::TimerProxy::runOnce();
+        threading::Timer::runOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }

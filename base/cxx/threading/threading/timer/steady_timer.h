@@ -6,13 +6,14 @@
 #include <string>
 
 #include "../asio/asio_executor.h"
+#include "timer.h"
 
 namespace threading
 {
 /**
  * @brief 稳定定时器, 可以保证以固定时间间隔触发, 不受系统时间影响
  */
-class SteadyTimer final : public std::enable_shared_from_this<SteadyTimer>
+class SteadyTimer final : public Timer, public std::enable_shared_from_this<SteadyTimer>
 {
 public:
     /**
@@ -44,17 +45,17 @@ public:
      * @brief 是否已启动
      * @return true-已启动, false-未启动
      */
-    bool isStarted();
+    bool isStarted() override;
 
     /**
      * @brief 启动
      */
-    void start();
+    void start() override;
 
     /**
      * @brief 停止
      */
-    void stop();
+    void stop() override;
 
 private:
     /**

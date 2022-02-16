@@ -1,14 +1,12 @@
 #include "steady_timer.h"
 
-#include "../timer_proxy.h"
-
 namespace threading
 {
 SteadyTimer::SteadyTimer(const std::chrono::steady_clock::duration& delay, const std::chrono::steady_clock::duration& interval,
                          const std::string& name, const std::function<void()>& func, const ExecutorPtr& executor)
     : m_delay(delay), m_interval(interval), m_name(name), m_func(func), m_executor(executor), m_started(false)
 {
-    m_timer = std::make_shared<boost::asio::steady_timer>(*TimerProxy::getContext());
+    m_timer = std::make_shared<boost::asio::steady_timer>(getContext());
 }
 
 SteadyTimer::~SteadyTimer()
@@ -103,7 +101,7 @@ void SteadyTimer::onTrigger()
         }
         else
         {
-            TimerProxy::addToTriggerList(m_func);
+            addToTriggerList(m_func);
         }
     }
     /* 继续 */

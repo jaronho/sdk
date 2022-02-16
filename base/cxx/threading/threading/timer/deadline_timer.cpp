@@ -1,14 +1,12 @@
 #include "deadline_timer.h"
 
-#include "../timer_proxy.h"
-
 namespace threading
 {
 DeadlineTimer::DeadlineTimer(const std::chrono::system_clock::time_point& deadline, const std::string& name,
                              const std::function<void()>& func, const ExecutorPtr& executor)
     : m_deadline(deadline), m_name(name), m_func(func), m_executor(executor), m_started(false)
 {
-    m_timer = std::make_shared<boost::asio::system_timer>(*TimerProxy::getContext());
+    m_timer = std::make_shared<boost::asio::system_timer>(getContext());
 }
 
 DeadlineTimer::~DeadlineTimer()
@@ -102,7 +100,7 @@ void DeadlineTimer::onTrigger()
         }
         else
         {
-            TimerProxy::addToTriggerList(m_func);
+            addToTriggerList(m_func);
         }
     }
 }

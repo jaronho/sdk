@@ -6,13 +6,14 @@
 #include <string>
 
 #include "../asio/asio_executor.h"
+#include "timer.h"
 
 namespace threading
 {
 /**
  * @brief 截止时间定时器, 指定在特定系统时间触发, 修改系统时间可能受到影响
  */
-class DeadlineTimer final : public std::enable_shared_from_this<DeadlineTimer>
+class DeadlineTimer final : public Timer, public std::enable_shared_from_this<DeadlineTimer>
 {
 public:
     /**
@@ -37,17 +38,17 @@ public:
      * @brief 是否已启动
      * @return true-已启动, false-未启动
      */
-    bool isStarted();
+    bool isStarted() override;
 
     /**
      * @brief 启动, 说明: 尽量不要在`stop`后立即调用
      */
-    void start();
+    void start() override;
 
     /**
      * @brief 停止
      */
-    void stop();
+    void stop() override;
 
 private:
     /**
