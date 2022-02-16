@@ -220,6 +220,7 @@ public:
         sz += utilitiy::ByteArray::bcount(replyer);
         sz += utilitiy::ByteArray::bcount(proc);
         sz += utilitiy::ByteArray::bcount(data);
+        sz += utilitiy::ByteArray::bcount(timeout);
         return sz;
     }
 
@@ -232,6 +233,7 @@ public:
         ba.writeString(replyer);
         ba.writeInt(proc);
         ba.writeBytes(data);
+        ba.writeInt(timeout);
     }
 
     void decode(utilitiy::ByteArray& ba) override
@@ -241,6 +243,7 @@ public:
         ba.readString(replyer);
         proc = ba.readInt();
         ba.readBytes(data);
+        timeout = ba.readInt();
     }
 
     long long seq_id = 0; /* 序列ID */
@@ -248,6 +251,7 @@ public:
     std::string replyer; /* 应答者ID */
     int proc = 0; /* 调用程序ID */
     std::vector<unsigned char> data; /* 数据 */
+    int timeout = 0; /* 超时时间(毫秒) */
 };
 
 /**

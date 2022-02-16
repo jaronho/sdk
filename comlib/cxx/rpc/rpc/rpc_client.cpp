@@ -1,11 +1,93 @@
 #include "rpc_client.h"
 
 #include "algorithm/snowflake/snowflake.h"
-
-#define PRINT_DEBUG 0
+#include "nsocket/timeout_timer.h"
 
 namespace rpc
 {
+class Client::Session
+{
+public:
+    Session(Client& client, const msg_call& mc, const std::shared_ptr<std::promise<msg_reply>>& promise)
+        : m_client(client), m_call(mc), m_promise(promise)
+    {
+    }
+
+    Session(Client& client, const msg_call& mc, const REPLY_FUNC& replyFunc) : m_client(client), m_call(mc), m_replyFunc(replyFunc) {}
+
+    ~Session()
+    {
+        stopTimer();
+    }
+
+    bool startTimer(const std::chrono::steady_clock::duration& timeout)
+    {
+        if (std::chrono::steady_clock::duration::zero() == timeout)
+        {
+            return false;
+        }
+        if (m_replyFunc)
+        {
+            if (!m_timer)
+            {
+                m_timer = std::make_shared<nsocket::TimeoutTimer>(timeout, [&]() { onTimeout(); });
+            }
+            m_timer->start();
+        }
+        return true;
+    }
+
+    void onTimeout()
+    {
+        stopTimer();
+        auto replyFunc = m_replyFunc; /* 需要先缓存 */
+        m_client.onSessionTimeout(m_call.seq_id);
+        if (replyFunc)
+        {
+            replyFunc({}, rpc::ErrorCode::TIMEOUT);
+        }
+    }
+
+    void onFailed()
+    {
+        stopTimer();
+        if (m_replyFunc)
+        {
+            m_replyFunc({}, rpc::ErrorCode::CALL_BROKER_FAILED);
+        }
+    }
+
+    void onReply(const msg_reply& mr)
+    {
+        stopTimer();
+        if (m_promise)
+        {
+            m_promise->set_value(mr);
+        }
+        else if (m_replyFunc)
+        {
+            m_replyFunc(mr.data, mr.code);
+        }
+    }
+
+private:
+    void stopTimer()
+    {
+        if (m_timer)
+        {
+            m_timer->stop();
+            m_timer.reset();
+        }
+    }
+
+private:
+    std::shared_ptr<nsocket::TimeoutTimer> m_timer = nullptr;
+    msg_call m_call;
+    std::shared_ptr<std::promise<msg_reply>> m_promise = nullptr;
+    REPLY_FUNC m_replyFunc = nullptr;
+    Client& m_client;
+};
+
 #if (1 == ENABLE_NSOCKET_OPENSSL)
 Client::Client(const std::string& id, const std::string& brokerHost, int brokerPort, const std::string& certFile,
                const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
@@ -71,15 +153,11 @@ void Client::run(bool async, std::chrono::steady_clock::duration retryTime)
         }
         catch (const std::exception& e)
         {
-#if (1 == PRINT_DEBUG)
             printf("******************** execption: %s\n", e.what());
-#endif
         }
         catch (...)
         {
-#if (1 == PRINT_DEBUG)
             printf("******************** execption: unknown\n");
-#endif
         }
         std::this_thread::sleep_for(retryTime);
     }
@@ -88,12 +166,10 @@ void Client::run(bool async, std::chrono::steady_clock::duration retryTime)
 rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vector<unsigned char>& data,
                             std::vector<unsigned char>& replyData, const std::chrono::steady_clock::duration& timeout)
 {
+    static algorithm::Snowflake sf(0, getpid());
     replyData.clear();
     if (!m_registered)
     {
-#if (1 == PRINT_DEBUG)
-        printf(">>>>>>>>>> call fail, unregister\n");
-#endif
         return ErrorCode::UNREGISTER;
     }
     msg_call mc;
@@ -102,6 +178,7 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
     mc.replyer = replyer;
     mc.proc = proc;
     mc.data = data;
+    mc.timeout = (int)std::chrono::duration<double, std::milli>(timeout).count();
     utilitiy::ByteArray ba;
     mc.encode(ba);
     std::vector<unsigned char> buffer;
@@ -109,47 +186,41 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
     auto result = std::make_shared<std::promise<msg_reply>>();
     auto future = result->get_future().share();
     {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        m_resultMap.insert(std::make_pair(mc.seq_id, result));
+        if (timeout > std::chrono::steady_clock::duration::zero())
+        {
+            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+            m_sessionMap.insert(std::make_pair(mc.seq_id, std::make_shared<Session>(*this, mc, result)));
+        }
+        else
+        {
+            return ErrorCode::TIMEOUT;
+        }
     }
     std::size_t length;
     auto code = m_tcpClient->send(buffer, length);
     if (code)
     {
-#if (1 == PRINT_DEBUG)
-        printf(">>>>>>>>>> call fail, %d, %s\n", code.value(), code.message().c_str());
-#endif
         m_registered = false;
         m_tcpClient->stop();
+        std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+        auto iter = m_sessionMap.find(mc.seq_id);
+        if (m_sessionMap.end() != iter)
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
-            auto iter = m_resultMap.find(mc.seq_id);
-            if (m_resultMap.end() != iter)
-            {
-                m_resultMap.erase(iter);
-            }
+            m_sessionMap.erase(iter);
         }
         return ErrorCode::CALL_BROKER_FAILED;
     }
-#if (1 == PRINT_DEBUG)
-    printf(">>>>>>>>>> call ok, length: %d\n", (int)length);
-#endif
     if (timeout > std::chrono::steady_clock::duration::zero())
     {
         auto waitResult = future.wait_for(timeout);
         if (std::future_status::timeout == waitResult) /* 超时判断 */
         {
+            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+            auto iter = m_sessionMap.find(mc.seq_id);
+            if (m_sessionMap.end() != iter)
             {
-                std::lock_guard<std::mutex> locker(m_mutex);
-                auto iter = m_resultMap.find(mc.seq_id);
-                if (m_resultMap.end() != iter)
-                {
-                    m_resultMap.erase(iter);
-                }
+                m_sessionMap.erase(iter);
             }
-#if (1 == PRINT_DEBUG)
-            printf(">>>>>>>>>> call fail, timeout\n");
-#endif
             return ErrorCode::TIMEOUT;
         }
     }
@@ -158,28 +229,85 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
     return mr.code;
 }
 
+void Client::callAsync(const std::string& replyer, int proc, const std::vector<unsigned char>& data, const REPLY_FUNC& replyFunc,
+                       const std::chrono::steady_clock::duration& timeout)
+{
+    if (!m_registered)
+    {
+        if (replyFunc)
+        {
+            replyFunc({}, ErrorCode::UNREGISTER);
+        }
+        return;
+    }
+    msg_call mc;
+    mc.seq_id = algorithm::Snowflake::easyGenerate();
+    mc.caller = m_id;
+    mc.replyer = replyer;
+    mc.proc = proc;
+    mc.data = data;
+    mc.timeout = (int)std::chrono::duration<double, std::milli>(timeout).count();
+    utilitiy::ByteArray ba;
+    mc.encode(ba);
+    std::vector<unsigned char> buffer;
+    nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
+    {
+        auto session = std::make_shared<Session>(*this, mc, replyFunc);
+        if (session->startTimer(timeout))
+        {
+            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+            m_sessionMap.insert(std::make_pair(mc.seq_id, session));
+        }
+        else
+        {
+            if (replyFunc)
+            {
+                replyFunc({}, ErrorCode::TIMEOUT);
+            }
+            return;
+        }
+    }
+    std::size_t length;
+    auto code = m_tcpClient->send(buffer, length);
+    if (code)
+    {
+        m_registered = false;
+        m_tcpClient->stop();
+        std::shared_ptr<Session> session = nullptr;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+            auto iter = m_sessionMap.find(mc.seq_id);
+            if (m_sessionMap.end() != iter)
+            {
+                session = iter->second;
+                m_sessionMap.erase(iter);
+            }
+        }
+        if (session)
+        {
+            session->onFailed();
+        }
+    }
+}
+
 void Client::handleConnection(const boost::system::error_code& code, bool async)
 {
     if (code)
     {
-#if (1 == PRINT_DEBUG)
         printf("------------------------------ connect fail, %d, %s\n", code.value(), code.message().c_str());
-#endif
         m_registered = false;
         m_tcpClient->stop();
     }
     else
     {
-#if (1 == PRINT_DEBUG)
         printf("++++++++++++++++++++++++++++++ connect ok\n");
-#endif
         reqRegister(async);
     }
 }
 
 void Client::handleRecvData(const std::vector<unsigned char>& data)
 {
-#if (1 == PRINT_DEBUG)
+#if 0
     /* 信息打印 */
     {
         printf("<<<<<<<<<<<<<<<<<<< recv data, length: %d\n", (int)data.size());
@@ -218,9 +346,7 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::REGISTER_RESULT: {
         msg_register_result resp;
         resp.decode(ba);
-#if (1 == PRINT_DEBUG)
         printf("<<<<< [REGISTER_RESULT], desc: %s\n", error_desc(resp.code).c_str());
-#endif
         if (ErrorCode::OK == resp.code)
         {
             m_registered = true;
@@ -239,10 +365,7 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::CALL: {
         msg_call mc;
         mc.decode(ba);
-#if (1 == PRINT_DEBUG)
-        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer: %s, proc: %d\n", mc.seq_id, mc.caller.c_str(), mc.replyer.c_str(),
-               mc.proc);
-#endif
+        printf("----------------- CALL, seq_id: %lld, caller: %s\n", mc.seq_id, mc.caller.c_str());
         /* 应答调用方 */
         if (m_callHandler)
         {
@@ -258,6 +381,7 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
             }
             catch (...)
             {
+                mr.data = {};
                 mr.code = ErrorCode::REPLYER_INNER_ERROR;
             }
             utilitiy::ByteArray ba;
@@ -271,31 +395,29 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::REPLY: {
         msg_reply mr;
         mr.decode(ba);
-#if (1 == PRINT_DEBUG)
-        printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer: %s, proc: %d, desc: %s\n", mr.seq_id, mr.caller.c_str(),
-               mr.replyer.c_str(), mr.proc, error_desc(mr.code).c_str());
-#endif
-        std::weak_ptr<std::promise<msg_reply>> wpResult;
+        std::shared_ptr<Session> session = nullptr;
         {
-            std::lock_guard<std::mutex> locker(m_mutex);
-            auto iter = m_resultMap.find(mr.seq_id);
-            if (m_resultMap.end() != iter)
+            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+            auto iter = m_sessionMap.find(mr.seq_id);
+            if (m_sessionMap.end() != iter)
             {
-                wpResult = iter->second;
-                m_resultMap.erase(iter);
+                session = iter->second;
+                m_sessionMap.erase(iter);
             }
         }
-        auto result = wpResult.lock();
-        if (result)
+        if (session)
         {
-            result->set_value(mr);
+            session->onReply(mr);
+        }
+        else
+        {
+            printf("********** [REPLY], seq id: %lld, replyer: %s, proc: %d, can't find session **********\n", mr.seq_id,
+                   mr.replyer.c_str(), mr.proc);
         }
     }
     break;
     default: {
-#if (1 == PRINT_DEBUG)
         printf("********** msg [%d], unknown type **********\n", (int)type);
-#endif
     }
     break;
     }
@@ -315,16 +437,12 @@ void Client::reqRegister(bool async)
         m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
             if (code)
             {
-#if (1 == PRINT_DEBUG)
                 printf(">>>>>>>>>> register fail, %d, %s\n", code.value(), code.message().c_str());
-#endif
                 m_tcpClient->stop();
             }
             else
             {
-#if (1 == PRINT_DEBUG)
                 printf(">>>>>>>>>> register ok, length: %d\n", (int)length);
-#endif
             }
         });
     }
@@ -334,17 +452,23 @@ void Client::reqRegister(bool async)
         auto code = m_tcpClient->send(data, length);
         if (code)
         {
-#if (1 == PRINT_DEBUG)
             printf(">>>>>>>>>> register fail, %d, %s\n", code.value(), code.message().c_str());
-#endif
             m_tcpClient->stop();
         }
         else
         {
-#if (1 == PRINT_DEBUG)
             printf(">>>>>>>>>> register ok, length: %d\n", (int)length);
-#endif
         }
+    }
+}
+
+void Client::onSessionTimeout(int64_t seqId)
+{
+    std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+    auto iter = m_sessionMap.find(seqId);
+    if (m_sessionMap.end() != iter)
+    {
+        m_sessionMap.erase(iter);
     }
 }
 } // namespace rpc

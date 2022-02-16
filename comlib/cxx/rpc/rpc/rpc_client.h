@@ -15,8 +15,12 @@ using REPLY_FUNC = std::function<void(const std::vector<unsigned char>& data, co
 /**
  * @brief RPC客户端
  */
-class Client
+class Client final : public std::enable_shared_from_this<Client>
 {
+private:
+    class Session; /* 调用会话 */
+    friend class Session;
+
 public:
     /**
      * @brief 构造函数
@@ -58,12 +62,23 @@ public:
      * @param replyer 应答者ID
      * @param proc 程序ID
      * @param data 数据
-     * @param replyData [输出]应答数据(选填)
-     * @param timeout 超时时间(选填)
+     * @param replyData [输出]应答数据
+     * @param timeout 超时时间(选填), 默认3秒
      * @return 错误码
      */
     rpc::ErrorCode call(const std::string& replyer, int proc, const std::vector<unsigned char>& data, std::vector<unsigned char>& replyData,
-                        const std::chrono::steady_clock::duration& timeout = std::chrono::steady_clock::duration::zero());
+                        const std::chrono::steady_clock::duration& timeout = std::chrono::milliseconds(3000));
+
+    /**
+     * @brief 调用指定客户端接口(异步)
+     * @param replyer 应答者ID
+     * @param proc 程序ID
+     * @param data 数据
+     * @param replyFunc 应答函数
+     * @param timeout 超时时间(选填), 默认3秒
+     */
+    void callAsync(const std::string& replyer, int proc, const std::vector<unsigned char>& data, const REPLY_FUNC& replyFunc,
+                   const std::chrono::steady_clock::duration& timeout = std::chrono::milliseconds(3000));
 
 private:
     /**
@@ -86,13 +101,18 @@ private:
      */
     void reqRegister(bool async);
 
+    /**
+     * @brief 会话超时
+     */
+    void onSessionTimeout(int64_t seqId);
+
 private:
     std::shared_ptr<nsocket::Payload> m_payload; /* 负载 */
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* 客户端 */
     REG_HANDLER m_regHandler; /* 注册回调句柄 */
     CALL_HANDLER m_callHandler; /* 调用回调句柄 */
-    std::mutex m_mutex;
-    std::map<long long, std::weak_ptr<std::promise<msg_reply>>> m_resultMap; /* 应答表 */
+    std::mutex m_mutexSessionMap;
+    std::map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
     std::string m_id; /* 客户端ID */
     std::string m_brokerHost; /* broker地址 */
     int m_serverPort; /* broker端口 */

@@ -8,10 +8,12 @@ namespace rpc
 /**
  * @brief RPC代理服务
  */
-class Broker
+class Broker final : public std::enable_shared_from_this<Broker>
 {
 private:
     class Client; /* 客户端连接 */
+    class Session; /* 调用会话 */
+    friend class Session;
 
 public:
     /**
@@ -55,7 +57,12 @@ private:
     /**
      * @brief 处理客户端消息
      */
-    void handleClientMsg(const std::shared_ptr<Client> client, const MsgType& type, utilitiy::ByteArray& ba);
+    void handleClientMsg(const std::shared_ptr<Client>& client, const MsgType& type, utilitiy::ByteArray& ba);
+
+    /**
+     * @brief 会话超时
+     */
+    void onSessionTimeout(int64_t seqId);
 
 private:
     std::shared_ptr<nsocket::TcpServer> m_tcpServer; /* 服务器 */
@@ -64,7 +71,7 @@ private:
     std::string m_privateKeyFilePwd;
     std::mutex m_mutexClientMap;
     std::map<boost::asio::ip::tcp::endpoint, std::shared_ptr<Client>> m_clientMap; /* 已连接的客户端表 */
-    std::mutex m_mutexCallMap;
-    std::map<long long, std::weak_ptr<Client>> m_callMap; /* 调用表 */
+    std::mutex m_mutexSessionMap;
+    std::map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
 };
 } // namespace rpc

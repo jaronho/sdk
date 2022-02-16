@@ -1,11 +1,13 @@
 #include "rpc_broker.h"
 
+#include "nsocket/timeout_timer.h"
+
 namespace rpc
 {
 class Broker::Client
 {
 public:
-    using MSG_HANDLER = std::function<void(MsgType type, utilitiy::ByteArray& ba)>;
+    using MSG_HANDLER = std::function<void(const MsgType& type, utilitiy::ByteArray& ba)>;
 
 public:
     /**
@@ -143,6 +145,79 @@ private:
     std::string m_id; /* 客户端ID */
 };
 
+class Broker::Session
+{
+public:
+    Session(Broker& broker, const std::weak_ptr<Client>& wpCallerClient, const msg_call& mc)
+        : m_broker(broker), m_wpCallerClient(wpCallerClient), m_call(mc)
+    {
+    }
+
+    ~Session()
+    {
+        stopTimer();
+    }
+
+    bool startTimer(const std::chrono::steady_clock::duration& timeout)
+    {
+        if (std::chrono::steady_clock::duration::zero() == timeout)
+        {
+            return false;
+        }
+        if (!m_timer)
+        {
+            m_timer = std::make_shared<nsocket::TimeoutTimer>(timeout, [&]() { onTimeout(); });
+        }
+        m_timer->start();
+        return true;
+    }
+
+    void onTimeout()
+    {
+        stopTimer();
+        auto mc = m_call; /* 需要先缓存 */
+        auto callerClient = m_wpCallerClient.lock(); /* 需要先缓存 */
+        m_broker.onSessionTimeout(m_call.seq_id);
+        if (callerClient)
+        {
+            msg_reply mr;
+            mr.seq_id = mc.seq_id;
+            mr.caller = mc.caller;
+            mr.replyer = mc.replyer;
+            mr.proc = mc.proc;
+            mr.data = {};
+            mr.code = rpc::ErrorCode::TIMEOUT;
+            callerClient->send(&mr);
+        }
+    }
+
+    void onReply(msg_reply mr)
+    {
+        stopTimer();
+        auto callerClient = m_wpCallerClient.lock();
+        if (callerClient)
+        {
+            callerClient->send(&mr);
+        }
+    }
+
+private:
+    void stopTimer()
+    {
+        if (m_timer)
+        {
+            m_timer->stop();
+            m_timer.reset();
+        }
+    }
+
+private:
+    std::shared_ptr<nsocket::TimeoutTimer> m_timer = nullptr;
+    msg_call m_call;
+    Broker& m_broker;
+    std::weak_ptr<Client> m_wpCallerClient;
+};
+
 #if (1 == ENABLE_NSOCKET_OPENSSL)
 Broker::Broker(const std::string& name, size_t threadCount, const std::string& serverHost, int serverPort, const std::string& certFile,
                const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
@@ -198,8 +273,8 @@ void Broker::handleNewConnection(const std::weak_ptr<nsocket::TcpConnection>& wp
         std::lock_guard<std::mutex> locker(m_mutexClientMap);
         if (m_clientMap.end() == m_clientMap.find(point))
         {
-            auto client = std::make_shared<Broker::Client>(wpConn, clientHost, clientPort);
-            client->setMsgHandler([&, client](MsgType type, utilitiy::ByteArray& ba) { handleClientMsg(client, type, ba); });
+            auto client = std::make_shared<Client>(wpConn, clientHost, clientPort);
+            client->setMsgHandler([&, client](const MsgType& type, utilitiy::ByteArray& ba) { handleClientMsg(client, type, ba); });
             m_clientMap.insert(std::make_pair(point, client));
         }
     }
@@ -218,19 +293,19 @@ void Broker::handleRecvConnectionData(const std::weak_ptr<nsocket::TcpConnection
             printf("<<<<<<<<<<<<<<<<<<< recv data [%s:%d], length: %d\n", clientHost.c_str(), clientPort, (int)data.size());
             /* 以十六进制格式打印数据 */
             //printf("<<<<<<<<<< [hex format]\n");
-            for (size_t i = 0; i < data.size(); ++i)
-            {
-                printf("%02X ", data[i]);
-            }
+            //for (size_t i = 0; i < data.size(); ++i)
+            //{
+            //    printf("%02X ", data[i]);
+            //}
             //printf("\n");
             /* 以字符串格式打印数据 */
             //printf("<<<<<<<<<< [string format]\n");
             //std::string str(data.begin(), data.end());
             //printf("%s", str.c_str());
-            printf("\n");
+            //printf("\n");
         }
         /* 逻辑处理 */
-        std::shared_ptr<Broker::Client> client = nullptr;
+        std::shared_ptr<Client> client = nullptr;
         {
             std::lock_guard<std::mutex> locker(m_mutexClientMap);
             auto iter = m_clientMap.find(point);
@@ -271,7 +346,7 @@ void Broker::handleConnectionClose(const boost::asio::ip::tcp::endpoint& point, 
     }
 }
 
-void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const MsgType& type, utilitiy::ByteArray& ba)
+void Broker::handleClientMsg(const std::shared_ptr<Client>& client, const MsgType& type, utilitiy::ByteArray& ba)
 {
     switch (type)
     {
@@ -312,10 +387,10 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
     case MsgType::CALL: {
         msg_call mc;
         mc.decode(ba);
-        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer: %s, proc: %d\n", mc.seq_id, mc.caller.c_str(), mc.replyer.c_str(),
-               mc.proc);
+        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer: %s, proc: %d, timeout: %d(ms)\n", mc.seq_id, mc.caller.c_str(),
+               mc.replyer.c_str(), mc.proc, mc.timeout);
         /* 查找应答者 */
-        std::shared_ptr<Broker::Client> replyerClient = nullptr;
+        std::shared_ptr<Client> replyerClient = nullptr;
         {
             std::lock_guard<std::mutex> locker(m_mutexClientMap);
             for (auto iter = m_clientMap.begin(); m_clientMap.end() != iter; ++iter)
@@ -329,40 +404,58 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
         }
         if (replyerClient)
         {
-            /* 通知应答者 */
-            replyerClient->send(&mc, [&, client, seqId = mc.seq_id, callId = mc.caller, replyer = mc.replyer, proc = mc.proc](bool ret) {
-                if (ret)
+            /* 等待应答 */
+            auto session = std::make_shared<Session>(*this, client, mc);
+            if (session->startTimer(std::chrono::milliseconds(mc.timeout)))
+            {
                 {
-                    /* 等待应答 */
-                    std::lock_guard<std::mutex> locker(m_mutexCallMap);
-                    if (m_callMap.end() == m_callMap.find(seqId))
+                    std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+                    if (m_sessionMap.end() == m_sessionMap.find(mc.seq_id))
                     {
-                        m_callMap.insert(std::make_pair(seqId, client));
+                        m_sessionMap.insert(std::make_pair(mc.seq_id, session));
                     }
                 }
-                else
-                {
-                    printf("********** call failed **********\n");
-                    /* 通知调用方 */
-                    msg_reply mr;
-                    mr.seq_id = seqId;
-                    mr.caller = callId;
-                    mr.replyer = replyer;
-                    mr.proc = mc.proc;
-                    mr.code = ErrorCode::CALL_REPLYER_FAILED;
-                    client->send(&mr);
-                }
-            });
+                /* 通知应答者 */
+                replyerClient->send(&mc, [&, client, mc](bool ret) {
+                    if (!ret)
+                    {
+                        printf("********** call failed **********\n");
+                        /* 通知调用方 */
+                        msg_reply mr;
+                        mr.seq_id = mc.seq_id;
+                        mr.caller = mc.caller;
+                        mr.replyer = mc.replyer;
+                        mr.proc = mc.proc;
+                        mr.data = {};
+                        mr.code = ErrorCode::CALL_REPLYER_FAILED;
+                        client->send(&mr);
+                    }
+                });
+            }
+            else
+            {
+                printf("********** call timeout **********\n");
+                /* 通知调用方 */
+                msg_reply mr;
+                mr.seq_id = mc.seq_id;
+                mr.caller = mc.caller;
+                mr.replyer = mc.replyer;
+                mr.proc = mc.proc;
+                mr.data = {};
+                mr.code = ErrorCode::TIMEOUT;
+                client->send(&mr);
+            }
         }
         else
         {
-            printf("********** target unfound **********\n");
+            printf("********** replyer unfound **********\n");
             /* 通知调用方 */
             msg_reply mr;
             mr.seq_id = mc.seq_id;
             mr.caller = mc.caller;
             mr.replyer = mc.replyer;
             mr.proc = mc.proc;
+            mr.data = {};
             mr.code = ErrorCode::REPLYER_NOT_FOUND;
             client->send(&mr);
         }
@@ -374,20 +467,23 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
         printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer: %s, proc: %d\n", mr.seq_id, mr.caller.c_str(), mr.replyer.c_str(),
                mr.proc);
         /* 通知调用方 */
-        std::weak_ptr<Broker::Client> wpCallerClient;
+        std::shared_ptr<Session> session;
         {
-            std::lock_guard<std::mutex> locker(m_mutexCallMap);
-            auto iter = m_callMap.find(mr.seq_id);
-            if (m_callMap.end() != iter)
+            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+            auto iter = m_sessionMap.find(mr.seq_id);
+            if (m_sessionMap.end() != iter)
             {
-                wpCallerClient = iter->second;
-                m_callMap.erase(iter);
+                session = iter->second;
+                m_sessionMap.erase(iter);
             }
         }
-        auto callerClient = wpCallerClient.lock();
-        if (callerClient)
+        if (session)
         {
-            callerClient->send(&mr);
+            session->onReply(mr);
+        }
+        else
+        {
+            printf("<<<<< [REPLY], can't find session\n");
         }
     }
     break;
@@ -396,5 +492,15 @@ void Broker::handleClientMsg(const std::shared_ptr<Broker::Client> client, const
     }
     break;
     }
-} // namespace rpc
+}
+
+void Broker::onSessionTimeout(int64_t seqId)
+{
+    std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+    auto iter = m_sessionMap.find(seqId);
+    if (m_sessionMap.end() != iter)
+    {
+        m_sessionMap.erase(iter);
+    }
+}
 } // namespace rpc
