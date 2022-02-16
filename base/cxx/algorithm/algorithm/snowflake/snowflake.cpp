@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <random>
 
 namespace algorithm
 {
@@ -30,7 +31,10 @@ unsigned long long Snowflake::generate(void)
 
 unsigned long long Snowflake::easyGenerate(void)
 {
-    static Snowflake s_sf;
+    static std::uniform_int_distribution<std::mt19937::result_type> s_dist(1, 99999);
+    static std::mt19937 s_rng;
+    s_rng.seed(std::random_device()());
+    static Snowflake s_sf(s_dist(s_rng), s_dist(s_rng));
     static std::atomic_flag s_glock = ATOMIC_FLAG_INIT;
     int64_t req;
     while (s_glock.test_and_set()) /* 等待原子锁 */
