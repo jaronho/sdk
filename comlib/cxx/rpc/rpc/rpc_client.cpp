@@ -1,10 +1,13 @@
 #include "rpc_client.h"
 
 #include "algorithm/snowflake/snowflake.h"
-#include "nsocket/timeout_timer.h"
+#include "threading/thread_proxy.hpp"
+#include "threading/timer/steady_timer.h"
 
 namespace rpc
 {
+static threading::ExecutorPtr s_executor = nullptr;
+
 class Client::Session
 {
 public:
@@ -30,7 +33,9 @@ public:
         {
             if (!m_timer)
             {
-                m_timer = std::make_shared<nsocket::TimeoutTimer>(timeout, [&]() { onTimeout(); });
+                auto name = "session_" + std::to_string(m_call.seq_id);
+                m_timer = std::make_shared<threading::SteadyTimer>(
+                    timeout, std::chrono::steady_clock::duration::zero(), name, [&]() { onTimeout(); }, s_executor);
             }
             m_timer->start();
         }
@@ -81,7 +86,7 @@ private:
     }
 
 private:
-    std::shared_ptr<nsocket::TimeoutTimer> m_timer = nullptr;
+    std::shared_ptr<threading::SteadyTimer> m_timer = nullptr;
     msg_call m_call;
     std::shared_ptr<std::promise<msg_reply>> m_promise = nullptr;
     REPLY_FUNC m_replyFunc = nullptr;
@@ -135,6 +140,10 @@ void Client::run(bool async, std::chrono::steady_clock::duration retryTime)
         return;
     }
     m_running = true;
+    if (!s_executor)
+    {
+        s_executor = threading::ThreadProxy::createAsioExecutor("rpc_timer", 1);
+    }
     while (m_running)
     {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
@@ -365,7 +374,6 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     case MsgType::CALL: {
         msg_call mc;
         mc.decode(ba);
-        printf("----------------- CALL, seq_id: %lld, caller: %s\n", mc.seq_id, mc.caller.c_str());
         /* 应答调用方 */
         if (m_callHandler)
         {

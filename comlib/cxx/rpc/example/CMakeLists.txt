@@ -89,6 +89,84 @@ foreach(filename ${base_nsocket_files})
 endforeach()
 ##########################################################################################
 
+################################### 添加threading库 ###################################
+option(enable_fiber "是否启用Boost库的Fiber模块" ON)
+
+set(Boost_USE_STATIC_LIBS ON) # ON表示链接Boost静态库, OFF或者不设置表示链接动态库
+if(enable_fiber)
+    find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time fiber)
+    add_definitions(-DENABLE_THREADING_FIBER=1)
+else()
+    find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time)
+    add_definitions(-DENABLE_THREADING_FIBER=0)
+endif()
+
+if(Boost_FOUND)
+    message(STATUS "Boost include path: ${Boost_INCLUDE_DIRS}")
+    message(STATUS "Boost library path: ${Boost_LIBRARY_DIRS}")
+    message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
+    include_directories(${Boost_INCLUDE_DIRS})
+    link_directories(${Boost_LIBRARY_DIRS})
+else()
+    message(WARNING "Boost not found")
+    return()
+endif()
+
+set(base_threading_path ../../../../base/cxx/threading) # 设置threading库路径(可修改)
+include_directories(${base_threading_path})
+
+set(base_threading_asio_src_list)
+get_cxx_files(${base_threading_path}/threading/asio src_list)
+list(APPEND base_threading_asio_src_list ${src_list})
+source_group(3rdparty/base/threading/asio FILES ${base_threading_asio_src_list})
+
+set(base_threading_diagnose_src_list)
+get_cxx_files(${base_threading_path}/threading/diagnose src_list)
+list(APPEND base_threading_diagnose_src_list ${src_list})
+source_group(3rdparty/base/threading/diagnose FILES ${base_threading_diagnose_src_list})
+
+set(base_threading_fiber_src_list)
+if(enable_fiber)
+    get_cxx_files(${base_threading_path}/threading/fiber src_list)
+    list(APPEND base_threading_fiber_src_list ${src_list})
+    source_group(3rdparty/base/threading/fiber FILES ${base_threading_fiber_src_list})
+endif()
+
+set(base_threading_signal_src_list)
+get_cxx_files(${base_threading_path}/threading/signal src_list)
+list(APPEND base_threading_signal_src_list ${src_list})
+source_group(3rdparty/base/threading/signal FILES ${base_threading_signal_src_list})
+
+set(base_threading_task_src_list)
+get_cxx_files(${base_threading_path}/threading/task src_list)
+list(APPEND base_threading_task_src_list ${src_list})
+source_group(3rdparty/base/threading/task FILES ${base_threading_task_src_list})
+
+set(base_threading_timer_src_list)
+get_cxx_files(${base_threading_path}/threading/timer src_list)
+list(APPEND base_threading_timer_src_list ${src_list})
+source_group(3rdparty/base/threading/timer FILES ${base_threading_timer_src_list})
+
+set(base_threading_src_list)
+get_cxx_files(${base_threading_path}/threading src_list)
+list(APPEND base_threading_src_list ${src_list})
+source_group(3rdparty/base/threading FILES ${base_threading_src_list})
+
+set(base_threading_files) # 工程中需要把threading的文件添加进去
+list(APPEND base_threading_files ${base_threading_asio_src_list}
+                                 ${base_threading_diagnose_src_list}
+                                 ${base_threading_fiber_src_list}
+                                 ${base_threading_signal_src_list}
+                                 ${base_threading_task_src_list}
+                                 ${base_threading_timer_src_list}
+                                 ${base_threading_src_list})
+
+print_info(BODY "base threading files:")
+foreach(filename ${base_threading_files})
+    message("    " ${filename})
+endforeach()
+##########################################################################################
+
 ################################### 添加utilitiy库 ###################################
 set(base_utilitiy_path ../../../../base/cxx/utilitiy) # 设置utilitiy库路径(可修改)
 include_directories(${base_utilitiy_path})
@@ -171,11 +249,11 @@ foreach(filename ${demo_client3_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(broker ${base_nsocket_files} ${base_utilitiy_files} ${broker_files})
-add_executable(example_client ${base_algorithm_files} ${base_nsocket_files} ${base_utilitiy_files} ${example_client_files})
-add_executable(demo_client1 ${base_algorithm_files} ${base_nsocket_files} ${base_utilitiy_files} ${demo_client1_files})
-add_executable(demo_client2 ${base_algorithm_files} ${base_nsocket_files} ${base_utilitiy_files} ${demo_client2_files})
-add_executable(demo_client3 ${base_algorithm_files} ${base_nsocket_files} ${base_utilitiy_files} ${demo_client3_files})
+add_executable(broker ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${broker_files})
+add_executable(example_client ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${example_client_files})
+add_executable(demo_client1 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${demo_client1_files})
+add_executable(demo_client2 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${demo_client2_files})
+add_executable(demo_client3 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${demo_client3_files})
 
 # 链接依赖库
 target_link_libraries(broker Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})

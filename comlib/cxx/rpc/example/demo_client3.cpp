@@ -5,6 +5,7 @@
 #include "demo_def.h"
 
 static std::shared_ptr<rpc::Client> s_client = nullptr;
+static bool s_syncFlag = true;
 
 std::vector<unsigned char> client3Func(const std::vector<unsigned char>& data)
 {
@@ -13,40 +14,36 @@ std::vector<unsigned char> client3Func(const std::vector<unsigned char>& data)
     return std::vector<unsigned char>(str.begin(), str.end());
 }
 
-void callClient1(const PROC_TYPE& proc)
+void callClient(const std::string& replyer, const PROC_TYPE& proc)
 {
-    auto tp = std::chrono::system_clock::now();
-    std::time_t tt = std::chrono::system_clock::to_time_t(tp);
-    printf("---------- %lld, call [cli_1] start\n", tt);
-    std::vector<unsigned char> replyData;
-    auto code = s_client->call("cli_1", (int)proc, {}, replyData);
-    printf("--- call [cli_1].[%s], %s, return: %s\n", proc_name(proc).c_str(), rpc::error_desc(code).c_str(),
-           std::string(replyData.begin(), replyData.end()).c_str());
-
-    //s_client->callAsync("cli_1", (int)proc, {}, [&, proc](const std::vector<unsigned char> replyData, const rpc::ErrorCode& code) {
-    //    printf("--- call [cli_1].[%s], %s, return: %s\n", proc_name(proc).c_str(), rpc::error_desc(code).c_str(),
-    //           std::string(replyData.begin(), replyData.end()).c_str());
-    //});
-}
-
-void callClient2(const PROC_TYPE& proc)
-{
-    auto tp = std::chrono::system_clock::now();
-    std::time_t tt = std::chrono::system_clock::to_time_t(tp);
-    printf("---------- %lld, call [cli_2] start\n", tt);
-    std::vector<unsigned char> replyData;
-    auto code = s_client->call("cli_2", (int)proc, {}, replyData);
-    printf("--- call [cli_2].[%s], %s, return: %s\n", proc_name(proc).c_str(), rpc::error_desc(code).c_str(),
-           std::string(replyData.begin(), replyData.end()).c_str());
-
-    //s_client->callAsync("cli_2", (int)proc, {}, [&, proc](const std::vector<unsigned char> replyData, const rpc::ErrorCode& code) {
-    //    printf("--- call [cli_2].[%s], %s, return: %s\n", proc_name(proc).c_str(), rpc::error_desc(code).c_str(),
-    //           std::string(replyData.begin(), replyData.end()).c_str());
-    //});
+    auto tm1 = std::chrono::steady_clock::now();
+    if (s_syncFlag)
+    {
+        std::vector<unsigned char> replyData;
+        auto code = s_client->call(replyer, (int)proc, {}, replyData);
+        auto diff = std::chrono::steady_clock::now() - tm1;
+        printf("--- call [%s].[%s], %s, return: %s, cost: %lld(ms)\n", replyer.c_str(), proc_name(proc).c_str(),
+               rpc::error_desc(code).c_str(), std::string(replyData.begin(), replyData.end()).c_str(),
+               std::chrono::duration_cast<std::chrono::milliseconds>(diff).count());
+    }
+    else
+    {
+        s_client->callAsync(
+            replyer, (int)proc, {}, [&, replyer, proc, tm1](const std::vector<unsigned char> replyData, const rpc::ErrorCode& code) {
+                auto diff = std::chrono::steady_clock::now() - tm1;
+                printf("--- callAsync [%s].[%s], %s, return: %s, cost: %lld(ms)\n", replyer.c_str(), proc_name(proc).c_str(),
+                       rpc::error_desc(code).c_str(), std::string(replyData.begin(), replyData.end()).c_str(),
+                       std::chrono::duration_cast<std::chrono::milliseconds>(diff).count());
+            });
+    }
 }
 
 int main(int argc, char* argv[])
 {
+    if (argc > 1 && 0 == strcmp("0", argv[1]))
+    {
+        s_syncFlag = false;
+    }
     s_client = std::make_shared<rpc::Client>("cli_3", "127.0.0.1", 4335);
     s_client->setRegHandler([&](const rpc::ErrorCode& code) { printf("register to broker %s\n", rpc::error_desc(code).c_str()); });
     s_client->setCallHandler([&](const std::string& callId, int proc, const std::vector<unsigned char>& data) {
@@ -66,10 +63,10 @@ int main(int argc, char* argv[])
     while (1)
     {
         /* 调用客户端1接口 */
-        callClient1(PROC_TYPE::CLIENT1_FUNC);
+        callClient("cli_1", PROC_TYPE::CLIENT1_FUNC);
         /* 调用客户端2接口 */
-        callClient2(PROC_TYPE::CLIENT2_FUNC);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        callClient("cli_2", PROC_TYPE::CLIENT2_FUNC);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     return 0;
 }

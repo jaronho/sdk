@@ -1,9 +1,12 @@
 #include "rpc_broker.h"
 
-#include "nsocket/timeout_timer.h"
+#include "threading/thread_proxy.hpp"
+#include "threading/timer/steady_timer.h"
 
 namespace rpc
 {
+static threading::ExecutorPtr s_executor = nullptr;
+
 class Broker::Client
 {
 public:
@@ -166,7 +169,9 @@ public:
         }
         if (!m_timer)
         {
-            m_timer = std::make_shared<nsocket::TimeoutTimer>(timeout, [&]() { onTimeout(); });
+            auto name = "session_" + std::to_string(m_call.seq_id);
+            m_timer = std::make_shared<threading::SteadyTimer>(
+                timeout, std::chrono::steady_clock::duration::zero(), name, [&]() { onTimeout(); }, s_executor);
         }
         m_timer->start();
         return true;
@@ -212,7 +217,7 @@ private:
     }
 
 private:
-    std::shared_ptr<nsocket::TimeoutTimer> m_timer = nullptr;
+    std::shared_ptr<threading::SteadyTimer> m_timer = nullptr;
     msg_call m_call;
     Broker& m_broker;
     std::weak_ptr<Client> m_wpCallerClient;
@@ -240,6 +245,10 @@ Broker::Broker(const std::string& name, size_t threadCount, const std::string& s
 
 void Broker::run()
 {
+    if (!s_executor)
+    {
+        s_executor = threading::ThreadProxy::createAsioExecutor("rpc_timer", 1);
+    }
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
     {
