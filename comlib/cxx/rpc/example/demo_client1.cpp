@@ -8,26 +8,41 @@ static std::shared_ptr<rpc::Client> s_client = nullptr;
 
 std::vector<unsigned char> client1Func(const std::vector<unsigned char>& data)
 {
-    std::string str = "this is client 1";
+    static int64_t i = 0;
+    std::string str = "this is client 1, " + std::to_string(++i);
     return std::vector<unsigned char>(str.begin(), str.end());
 }
 
 void callClient2(const PROC_TYPE& proc)
 {
-    printf("---------- call [cli_2] start\n");
+    auto tp = std::chrono::system_clock::now();
+    std::time_t tt = std::chrono::system_clock::to_time_t(tp);
+    printf("---------- %lld, call [cli_2] start\n", tt);
     std::vector<unsigned char> replyData;
-    auto code = s_client->call("cli_2", (int)proc, {}, replyData, std::chrono::milliseconds(0));
+    auto code = s_client->call("cli_2", (int)proc, {}, replyData);
     printf("--- call [cli_2].[%s], %s, return: %s\n", proc_name(proc).c_str(), rpc::error_desc(code).c_str(),
            std::string(replyData.begin(), replyData.end()).c_str());
+
+    //s_client->callAsync("cli_2", (int)proc, {}, [&, proc](const std::vector<unsigned char> replyData, const rpc::ErrorCode& code) {
+    //    printf("--- call [cli_2].[%s], %s, return: %s\n", proc_name(proc).c_str(), rpc::error_desc(code).c_str(),
+    //           std::string(replyData.begin(), replyData.end()).c_str());
+    //});
 }
 
 void callClient3(const PROC_TYPE& proc)
 {
-    printf("---------- call [cli_3] start\n");
+    auto tp = std::chrono::system_clock::now();
+    std::time_t tt = std::chrono::system_clock::to_time_t(tp);
+    printf("---------- %lld, call [cli_3] start\n", tt);
     std::vector<unsigned char> replyData;
-    auto code = s_client->call("cli_3", (int)proc, {}, replyData, std::chrono::milliseconds(0));
+    auto code = s_client->call("cli_3", (int)proc, {}, replyData);
     printf("--- call [cli_3].[%s], %s, return: %s\n", proc_name(proc).c_str(), rpc::error_desc(code).c_str(),
            std::string(replyData.begin(), replyData.end()).c_str());
+
+    //s_client->callAsync("cli_3", (int)proc, {}, [&, proc](const std::vector<unsigned char> replyData, const rpc::ErrorCode& code) {
+    //    printf("--- call [cli_3].[%s], %s, return: %s\n", proc_name(proc).c_str(), rpc::error_desc(code).c_str(),
+    //           std::string(replyData.begin(), replyData.end()).c_str());
+    //});
 }
 
 int main(int argc, char* argv[])
