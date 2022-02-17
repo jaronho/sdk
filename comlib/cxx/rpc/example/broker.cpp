@@ -90,6 +90,11 @@ int main(int argc, char* argv[])
 #else
     rpc::Broker broker("rpc_broker", 2, serverHost, serverPort);
 #endif
+    if (!broker.isValid())
+    {
+        printf("broker invalid, please check host or port\n");
+        return 0;
+    }
     broker.run();
     while (1)
     {

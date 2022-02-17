@@ -243,7 +243,25 @@ Broker::Broker(const std::string& name, size_t threadCount, const std::string& s
 #endif
 }
 
-void Broker::run()
+bool Broker::isValid() const
+{
+    if (m_tcpServer && m_tcpServer->isValid())
+    {
+        return true;
+    }
+    return false;
+}
+
+bool Broker::isRunning() const
+{
+    if (m_tcpServer && m_tcpServer->isRunning())
+    {
+        return true;
+    }
+    return false;
+}
+
+bool Broker::run()
 {
     if (!s_executor)
     {
@@ -253,9 +271,9 @@ void Broker::run()
     try
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        m_tcpServer->run(nsocket::TcpServer::getSslContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd));
+        return m_tcpServer->run(nsocket::TcpServer::getSslContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd));
 #else
-        m_tcpServer->run();
+        return m_tcpServer->run();
 #endif
     }
     catch (const std::exception& e)
@@ -266,6 +284,7 @@ void Broker::run()
     {
         printf("******************** execption: unknown\n");
     }
+    return false;
 }
 
 void Broker::handleNewConnection(const std::weak_ptr<nsocket::TcpConnection>& wpConn)

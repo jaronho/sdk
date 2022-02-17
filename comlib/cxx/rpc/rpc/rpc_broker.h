@@ -34,9 +34,22 @@ public:
 #endif
 
     /**
-     * @brief 运行(非阻塞)
+     * @brief 是否有效
+     * @return true-有效, false-无效
      */
-    void run();
+    bool isValid() const;
+
+    /**
+     * @brief 是否运行中
+     * @return true-运行中, false-非运行中
+     */
+    bool isRunning() const;
+
+    /**
+     * @brief 运行(非阻塞)
+     * @return true-运行中, false-运行失败(服务对象无效导致)
+     */
+    bool run();
 
 private:
     /**
