@@ -41,7 +41,8 @@ public:
     void addRouter(const std::string& uri, const std::shared_ptr<Router>& router);
 
     /**
-     * @brief 运行
+     * @brief 运行(非阻塞)
+     * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     void run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
