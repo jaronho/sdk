@@ -92,6 +92,11 @@ int main(int argc, char* argv[])
     }
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
     nsocket::ws::Server server("ws_server", 10, serverHost, serverPort);
+    if (!server.isValid())
+    {
+        printf("server invalid, please check host or port\n");
+        return 0;
+    }
     server.setConnectingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
         const auto session = wpSession.lock();
         if (session)

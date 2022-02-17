@@ -131,15 +131,25 @@ TcpServer::~TcpServer()
     stop();
 }
 
+bool TcpServer::isValid() const
+{
+    return (m_acceptor ? true : false);
+}
+
+bool TcpServer::isRunning() const
+{
+    return m_running;
+}
+
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-void TcpServer::run(const std::shared_ptr<boost::asio::ssl::context>& sslContext)
+bool TcpServer::run(const std::shared_ptr<boost::asio::ssl::context>& sslContext)
 #else
-void TcpServer::run()
+bool TcpServer::run()
 #endif
 {
     if (m_running)
     {
-        return;
+        return true;
     }
     if (m_acceptor)
     {
@@ -153,10 +163,12 @@ void TcpServer::run()
                                            std::min<size_t>(sessionIdCtx.size(), SSL_MAX_SSL_SESSION_ID_LENGTH));
         }
 #endif
-        doAccept();
         m_contextPool->start();
+        doAccept();
         m_running = true;
+        return true;
     }
+    return false;
 }
 
 void TcpServer::stop()
@@ -193,19 +205,23 @@ void TcpServer::setConnectionCloseCallback(const TCP_CONN_CLOSE_CALLBACK& onClos
 
 void TcpServer::doAccept()
 {
-    const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
-    m_acceptor->async_accept(m_contextPool->getContext(), [wpSelf](boost::system::error_code code, boost::asio::ip::tcp::socket socket) {
-        const auto self = wpSelf.lock();
-        if (self)
-        {
-            if (!code) /* 有新连接请求 */
-            {
-                self->handleNewConnection(std::move(socket));
-            }
-            /* 继续接收下一个连接 */
-            self->doAccept();
-        }
-    });
+    if (m_acceptor)
+    {
+        const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
+        m_acceptor->async_accept(m_contextPool->getContext(),
+                                 [wpSelf](boost::system::error_code code, boost::asio::ip::tcp::socket socket) {
+                                     const auto self = wpSelf.lock();
+                                     if (self)
+                                     {
+                                         if (!code) /* 有新连接请求 */
+                                         {
+                                             self->handleNewConnection(std::move(socket));
+                                         }
+                                         /* 继续接收下一个连接 */
+                                         self->doAccept();
+                                     }
+                                 });
+    }
 }
 
 void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)

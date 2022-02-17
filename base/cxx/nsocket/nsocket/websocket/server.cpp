@@ -7,12 +7,30 @@ namespace ws
 #define WS_DEBUG 0
 Server::Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port)
 {
-    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, true, 1024);
+    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, false, 1024);
     m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) { handleNewConnection(wpConn); });
     m_tcpServer->setConnectionDataCallback(
         [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
     m_tcpServer->setConnectionCloseCallback([&](int64_t cid, const boost::asio::ip::tcp::endpoint& point,
                                                 const boost::system::error_code& code) { handleConnectionClose(cid, point, code); });
+}
+
+bool Server::isValid() const
+{
+    if (m_tcpServer && m_tcpServer->isValid())
+    {
+        return true;
+    }
+    return false;
+}
+
+bool Server::isRunning() const
+{
+    if (m_tcpServer && m_tcpServer->isRunning())
+    {
+        return true;
+    }
+    return false;
 }
 
 void Server::setConnectingCallback(const WS_CONNECTING_CALLBACK& cb)
@@ -46,19 +64,20 @@ void Server::setCloseCallback(const WS_CLOSE_CALLBACK& cb)
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-void Server::run(const std::shared_ptr<boost::asio::ssl::context>& sslContext)
+bool Server::run(const std::shared_ptr<boost::asio::ssl::context>& sslContext)
 #else
-void Server::run()
+bool Server::run()
 #endif
 {
     if (m_tcpServer)
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        m_tcpServer->run(sslContext);
+        return m_tcpServer->run(sslContext);
 #else
-        m_tcpServer->run();
+        return m_tcpServer->run();
 #endif
     }
+    return false;
 }
 
 std::unordered_map<int64_t, std::weak_ptr<Session>> Server::getSessionMap()

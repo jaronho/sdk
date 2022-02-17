@@ -95,6 +95,11 @@ int main(int argc, char* argv[])
     }
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
     auto server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, serverHost, serverPort);
+    if (!server->isValid())
+    {
+        printf("server invalid, please check host or port\n");
+        return 0;
+    }
     /* 设置新连接回调 */
     server->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
         const auto conn = wpConn.lock();

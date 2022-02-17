@@ -60,6 +60,18 @@ public:
     Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port);
 
     /**
+     * @brief 是否有效
+     * @return true-有效, false-无效
+     */
+    bool isValid() const;
+
+    /**
+     * @brief 是否运行中
+     * @return true-运行中, false-非运行中
+     */
+    bool isRunning() const;
+
+    /**
      * @brief 设置连接中回调
      * @param cb 连接中回调
      */
@@ -98,11 +110,12 @@ public:
     /**
      * @brief 运行(非阻塞)
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
+     * @return true-运行中, false-运行失败(服务对象无效导致)
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    void run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
+    bool run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
 #else
-    void run();
+    bool run();
 #endif
 
     /**

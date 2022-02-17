@@ -104,6 +104,11 @@ int main(int argc, char* argv[])
     }
     printf("server: %s:%d\n", serverHost.c_str(), serverPort);
     nsocket::http::Server server("http_server", 10, serverHost, serverPort);
+    if (!server.isValid())
+    {
+        printf("server invalid, please check host or port\n");
+        return 0;
+    }
     server.setRouterNotFoundCallback([&](const nsocket::http::REQUEST_PTR& req) {
         printf("************************* Not Found URI Router *************************\n");
         printf("***  Method: %s\n", req->method.c_str());

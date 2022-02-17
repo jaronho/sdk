@@ -83,13 +83,25 @@ public:
      * @param threadCount 线程个数
      * @param host 主机
      * @param port 端口
-     * @param reuseAddr 是否允许复用地址(选填)
+     * @param reuseAddr 是否允许复用端口(选填), 默认不复用
      * @param bz 数据缓冲区大小(字节, 选填)
      */
-    TcpServer(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr = true,
+    TcpServer(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr = false,
               size_t bz = 1024);
 
     virtual ~TcpServer();
+
+    /**
+     * @brief 是否有效
+     * @return true-有效, false-无效
+     */
+    bool isValid() const;
+
+    /**
+     * @brief 是否运行中
+     * @return true-运行中, false-非运行中
+     */
+    bool isRunning() const;
 
     /**
      * @brief 设置新连接回调
@@ -112,11 +124,12 @@ public:
     /**
      * @brief 运行(非阻塞)
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
+     * @return true-运行中, false-运行失败(服务对象无效导致)
      */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    void run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
+    bool run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
 #else
-    void run();
+    bool run();
 #endif
 
     /**
