@@ -271,7 +271,7 @@ bool Broker::run()
     try
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        return m_tcpServer->run(nsocket::TcpServer::getSslContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd));
+        return m_tcpServer->run(nsocket::TcpServer::getSslContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd, true));
 #else
         return m_tcpServer->run();
 #endif
