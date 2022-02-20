@@ -260,9 +260,9 @@ boost::asio::ip::tcp::endpoint TcpConnection::getRemoteEndpoint() const
 #if (1 == ENABLE_NSOCKET_OPENSSL)
 std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSslContext(boost::asio::ssl::context::method m, const std::string& certFile,
                                                                          const std::string& privateKeyFile,
-                                                                         const std::string& privateKeyFilePwd)
+                                                                         const std::string& privateKeyFilePwd, bool allowSelfSigned)
 {
-    if (certFile.empty() && privateKeyFile.empty() && privateKeyFilePwd.empty())
+    if (certFile.empty() || privateKeyFile.empty())
     {
         return nullptr;
     }
@@ -276,11 +276,26 @@ std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSslContext(boost::
     sslContext->use_private_key_file(privateKeyFile, boost::asio::ssl::context::pem);
     sslContext->set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert
                                 | boost::asio::ssl::verify_client_once);
-    sslContext->set_verify_callback([](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
-        char subjectName[256];
-        X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
-        X509_NAME_oneline(X509_get_subject_name(cert), subjectName, 256);
-        return true; /* 注意: 这里需要强制返回true, 否则验证不通过 */
+    sslContext->set_verify_callback([allowSelfSigned](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
+        X509_STORE_CTX* cts = ctx.native_handle();
+        X509* cert = X509_STORE_CTX_get_current_cert(cts);
+        int errorCode = X509_STORE_CTX_get_error(cts);
+        switch (errorCode)
+        {
+        case X509_V_OK:
+            preverified = true;
+            break;
+        case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+        case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+            if (allowSelfSigned)
+            {
+                preverified = true;
+            }
+            break;
+        default:
+            break;
+        }
+        return preverified;
     });
     return sslContext;
 }

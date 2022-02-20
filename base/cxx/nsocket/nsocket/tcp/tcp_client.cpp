@@ -217,7 +217,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code, bool async)
 std::shared_ptr<boost::asio::ssl::context> TcpClient::getSslContext(const std::string& certFile, const std::string& privateKeyFile,
                                                                     const std::string& privateKeyFilePwd)
 {
-    return TcpConnection::makeSslContext(boost::asio::ssl::context::sslv23_client, certFile, privateKeyFile, privateKeyFilePwd);
+    return TcpConnection::makeSslContext(boost::asio::ssl::context::sslv23_client, certFile, privateKeyFile, privateKeyFilePwd, true);
 }
 #endif
 } // namespace nsocket

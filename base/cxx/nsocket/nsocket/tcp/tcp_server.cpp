@@ -320,9 +320,10 @@ void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
 std::shared_ptr<boost::asio::ssl::context> TcpServer::getSslContext(const std::string& certFile, const std::string& privateKeyFile,
-                                                                    const std::string& privateKeyFilePwd)
+                                                                    const std::string& privateKeyFilePwd, bool allowSelfSigned)
 {
-    return TcpConnection::makeSslContext(boost::asio::ssl::context::sslv23_server, certFile, privateKeyFile, privateKeyFilePwd);
+    return TcpConnection::makeSslContext(boost::asio::ssl::context::sslv23_server, certFile, privateKeyFile, privateKeyFilePwd,
+                                         allowSelfSigned);
 }
 #endif
 } // namespace nsocket

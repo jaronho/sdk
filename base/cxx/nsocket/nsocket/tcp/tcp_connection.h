@@ -121,11 +121,12 @@ public:
      * @param certFile 证书文件, 例如: client.crt 或 server.crt
      * @param privateKeyFile 私钥文件, 例如: client.key 或 server.key
      * @param privateKeyFilePwd 私钥文件密码, 例如: 123456
+     * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
      * @return SSL上下文
      */
     static std::shared_ptr<boost::asio::ssl::context> makeSslContext(boost::asio::ssl::context::method m, const std::string& certFile,
                                                                      const std::string& privateKeyFile,
-                                                                     const std::string& privateKeyFilePwd);
+                                                                     const std::string& privateKeyFilePwd, bool allowSelfSigned = true);
 #endif
 
 private:
