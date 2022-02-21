@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
                     printf("             %s: %s\n", iter->first.c_str(), iter->second.c_str());
                 }
             }
-            printf("--- Content(%u):\n", data.size());
+            printf("--- Content(%u):\n", req->getContentLength());
             printf("%s\n", data.c_str());
             printf("-------------------------------------------------------------------\n");
             return nullptr;

@@ -61,6 +61,53 @@ static std::string percentDecode(const std::string& value) noexcept
     return result;
 }
 
+/**
+ * @breif 十六进制转十进制
+ */
+static unsigned int hex2dec(const std::string& hexStr)
+{
+    unsigned int dec = 0;
+    size_t len = hexStr.size();
+    size_t start = 0;
+    if (len >= 3)
+    {
+        const char& ch2 = hexStr.at(1);
+        if ('x' == ch2 || 'X' == ch2)
+        {
+            if ('0' != hexStr.at(0))
+            {
+                return 0;
+            }
+            start = 2;
+        }
+        else if ((ch2 < '0' || ch2 > '9') && (ch2 < 'A' || ch2 > 'F') && (ch2 < 'a' || ch2 > 'f'))
+        {
+            return 0;
+        }
+    }
+    for (size_t i = start; i < len; ++i)
+    {
+        const char& ch = hexStr.at(i);
+        if (ch >= '0' && ch <= '9')
+        {
+            dec += ((unsigned int)(ch)-48) * (unsigned int)(pow(16, len - i - 1));
+        }
+        else if (ch >= 'A' && ch <= 'F')
+        {
+            dec += ((unsigned int)(ch)-55) * (unsigned int)(pow(16, len - i - 1));
+        }
+        else if (ch >= 'a' && ch <= 'f')
+        {
+            dec += ((unsigned int)(ch)-87) * (unsigned int)(pow(16, len - i - 1));
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    return dec;
+}
+
 int Request::parse(const unsigned char* data, int length, const HEAD_CALLBACK& headCb, const CONTENT_CALLBACK& contentCb,
                    const FINISH_CALLBACK& finishCb)
 {
@@ -106,8 +153,14 @@ int Request::parse(const unsigned char* data, int length, const HEAD_CALLBACK& h
                 return 0;
             }
             break;
-        case ParseStep::CONTENT: /* 解析内容 */
-            if ((used = parseContent(remainData, remainLen, contentCb, finishCb)) <= 0)
+        case ParseStep::CHUNK: /* 解析分块内容 */
+            if ((used = parseChunk(remainData, remainLen, contentCb, finishCb)) <= 0)
+            {
+                return 0;
+            }
+            break;
+        case ParseStep::UNCHUNK: /* 解析非分块内容 */
+            if ((used = parseUnchunk(remainData, remainLen, contentCb, finishCb)) <= 0)
             {
                 return 0;
             }
@@ -116,6 +169,11 @@ int Request::parse(const unsigned char* data, int length, const HEAD_CALLBACK& h
         totalUsed += used;
     }
     return totalUsed;
+}
+
+bool Request::isTransferEncodingChunked()
+{
+    return m_transferEncodingChunked;
 }
 
 std::string Request::getContentType()
@@ -140,6 +198,11 @@ void Request::reset()
     m_tmpKeyFlag = true;
     m_tmpKey.clear();
     m_tmpValue.clear();
+    m_transferEncodingChunked = false;
+    m_chunkParseFlag = true;
+    m_chunkSizeHex.clear();
+    m_chunkSize = 0;
+    m_chunkReceived = 0;
     m_contentType.clear();
     m_contentLength = 0;
     m_contentReceived = 0;
@@ -357,18 +420,26 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                 }
                 clearTmp();
                 m_sepFlag = SepFlag::NONE;
-                m_parseStep = ParseStep::CONTENT;
+
                 if (headCb)
                 {
                     headCb();
                 }
-                if (0 == m_contentLength)
+                if (m_transferEncodingChunked) /* 数据分块 */
                 {
-                    if (finishCb)
+                    m_parseStep = ParseStep::CHUNK;
+                }
+                else /* 数据非分块 */
+                {
+                    m_parseStep = ParseStep::UNCHUNK;
+                    if (0 == m_contentLength) /* 无内容 */
                     {
-                        finishCb();
+                        if (finishCb)
+                        {
+                            finishCb();
+                        }
+                        reset();
                     }
-                    reset();
                 }
                 return (used + 1);
             }
@@ -419,24 +490,149 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
 
 void Request::parseContentTypeAndLength()
 {
-    if (case_insensitive_equal("Content-Type", m_tmpKey)) /* 内容类型 */
+    if (case_insensitive_equal("Transfer-Encoding", m_tmpKey)) /* 内容分块 */
+    {
+        if (case_insensitive_equal("chunked", m_tmpValue))
+        {
+            m_transferEncodingChunked = true;
+            m_contentLength = 0; /* 此时忽略`Content-Length`的值 */
+        }
+    }
+    else if (case_insensitive_equal("Content-Type", m_tmpKey)) /* 内容类型 */
     {
         m_contentType = m_tmpValue;
     }
     else if (case_insensitive_equal("Content-Length", m_tmpKey)) /* 内容长度 */
     {
-        try
+        if (!m_transferEncodingChunked)
         {
-            m_contentLength = atoll(m_tmpValue.c_str());
-        }
-        catch (...)
-        {
-            m_contentLength = 0;
+            try
+            {
+                m_contentLength = atoll(m_tmpValue.c_str());
+            }
+            catch (...)
+            {
+                m_contentLength = 0;
+            }
         }
     }
 }
 
-int Request::parseContent(const unsigned char* data, int length, const CONTENT_CALLBACK& contentCb, const FINISH_CALLBACK& finishCb)
+int Request::parseChunk(const unsigned char* data, int length, const CONTENT_CALLBACK& contentCb, const FINISH_CALLBACK& finishCb)
+{
+    int used = 0;
+    if (m_chunkParseFlag) /* 解析分块头 */
+    {
+        for (; used < length; ++used)
+        {
+            const auto& ch = data[used];
+            if ('\r' == ch)
+            {
+                if (SepFlag::NONE == m_sepFlag)
+                {
+                    m_sepFlag = SepFlag::R;
+                }
+                else if (SepFlag::RN == m_sepFlag)
+                {
+                    m_sepFlag = SepFlag::RNR;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            else if ('\n' == ch)
+            {
+                if (SepFlag::R == m_sepFlag)
+                {
+                    m_chunkSize = hex2dec(m_chunkSizeHex);
+                    m_chunkSizeHex.clear();
+                    m_contentLength += m_chunkSize;
+                    if (0 == m_chunkSize)
+                    {
+                        m_sepFlag = SepFlag::RN;
+                    }
+                    else
+                    {
+                        m_sepFlag = SepFlag::NONE;
+                        m_chunkParseFlag = false;
+                        return (used + 1);
+                    }
+                }
+                else if (SepFlag::RNR == m_sepFlag) /* 所有分块结束 */
+                {
+                    if (finishCb)
+                    {
+                        finishCb();
+                    }
+                    reset();
+                    return (used + 1);
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            else
+            {
+                m_chunkSizeHex.push_back(ch);
+            }
+        }
+    }
+    else /* 解析分块数据 */
+    {
+        if (m_chunkReceived < m_chunkSize)
+        {
+            used = length;
+            if (m_chunkReceived + used > m_chunkSize)
+            {
+                used = m_chunkSize - m_chunkReceived;
+            }
+            if (contentCb)
+            {
+                contentCb(m_contentReceived, data, used);
+            }
+            m_chunkReceived += used;
+            m_contentReceived += used;
+        }
+        else /* 单个分块数据都已接收完毕 */
+        {
+            for (; used < length; ++used)
+            {
+                const auto& ch = data[used];
+                if ('\r' == ch)
+                {
+                    if (SepFlag::NONE == m_sepFlag)
+                    {
+                        m_sepFlag = SepFlag::R;
+                    }
+                    else
+                    {
+                        return 0;
+                    }
+                }
+                else if ('\n' == ch)
+                {
+                    if (SepFlag::R == m_sepFlag)
+                    {
+                        m_sepFlag = SepFlag::NONE;
+                        m_chunkSize = 0;
+                        m_chunkReceived = 0;
+                        m_chunkParseFlag = true;
+                        return (used + 1);
+                    }
+                    else
+                    {
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+    return used;
+}
+
+int Request::parseUnchunk(const unsigned char* data, int length, const CONTENT_CALLBACK& contentCb, const FINISH_CALLBACK& finishCb)
 {
     int used = length;
     if (m_contentReceived + used > m_contentLength)

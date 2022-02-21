@@ -47,6 +47,12 @@ public:
               const FINISH_CALLBACK& finishCb);
 
     /**
+     * @brief 是否分块
+     * @return true-分块, false-非分块
+     */
+    bool isTransferEncodingChunked();
+
+    /**
      * @brief 获取内容类型
      * @return 内容类型
      */
@@ -54,7 +60,7 @@ public:
 
     /**
      * @brief 获取内容长度
-     * @return 内容长度
+     * @return 内容长度(当内容分块时, 返回分块内容长度之和, 非分块时, 返回`Content-Length`的值)
      */
     size_t getContentLength();
 
@@ -119,14 +125,24 @@ private:
     void parseContentTypeAndLength();
 
     /**
-     * @brief 解析内容
+     * @brief 解析分块内容
      * @param data 数据
      * @param length 数据长度
      * @param contentCb 内容回调
      * @param finishCb 结束回调
      * @return 已解析的数据长度, <=0表示解析出错
      */
-    int parseContent(const unsigned char* data, int length, const CONTENT_CALLBACK& contentCb, const FINISH_CALLBACK& finishCb);
+    int parseChunk(const unsigned char* data, int length, const CONTENT_CALLBACK& contentCb, const FINISH_CALLBACK& finishCb);
+
+    /**
+     * @brief 解析非分块内容
+     * @param data 数据
+     * @param length 数据长度
+     * @param contentCb 内容回调
+     * @param finishCb 结束回调
+     * @return 已解析的数据长度, <=0表示解析出错
+     */
+    int parseUnchunk(const unsigned char* data, int length, const CONTENT_CALLBACK& contentCb, const FINISH_CALLBACK& finishCb);
 
     /**
      * @brief 获取方法名最大长度
@@ -179,7 +195,8 @@ private:
         QUERIES, /* 请求参数 */
         VERSION, /* 版本 */
         HEADER, /* 头部 */
-        CONTENT /* 内容 */
+        CHUNK, /* 分块内容 */
+        UNCHUNK /* 非分块内容 */
     };
 
     SepFlag m_sepFlag = SepFlag::NONE; /* 分隔符 */
@@ -187,8 +204,13 @@ private:
     bool m_tmpKeyFlag = true; /* 是否键 */
     std::string m_tmpKey; /* 键名 */
     std::string m_tmpValue; /* 键值 */
+    bool m_transferEncodingChunked = false; /* 内容是否分块 */
+    bool m_chunkParseFlag = true; /* 分块解析标识, true-解析头(大小), false-解析数据(内容) */
+    std::string m_chunkSizeHex; /* 分块大小(十六进制) */
+    size_t m_chunkSize = 0; /* 分块大小(十进制) */
+    size_t m_chunkReceived = 0; /* 单个分块已接收长度 */
     std::string m_contentType; /* 内容类型 */
-    size_t m_contentLength = 0; /* 内容长度 */
+    size_t m_contentLength = 0; /* 内容长度(当内容分块时, 存储分块内容长度之和, 非分块时, 存储`Content-Length`的值) */
     size_t m_contentReceived = 0; /* 内容已接收长度 */
 };
 using REQUEST_PTR = std::shared_ptr<Request>;
