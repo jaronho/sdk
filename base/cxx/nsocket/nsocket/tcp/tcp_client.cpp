@@ -214,10 +214,10 @@ void TcpClient::handleConnect(const boost::system::error_code& code, bool async)
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-std::shared_ptr<boost::asio::ssl::context> TcpClient::getSslContext(const std::string& certFile, const std::string& privateKeyFile,
-                                                                    const std::string& privateKeyFilePwd)
+std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl2WayContext(const std::string& certFile, const std::string& privateKeyFile,
+                                                                        const std::string& privateKeyFilePwd)
 {
-    return TcpConnection::makeSslContext(boost::asio::ssl::context::sslv23_client, certFile, privateKeyFile, privateKeyFilePwd, true);
+    return TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_client, certFile, privateKeyFile, privateKeyFilePwd, true);
 }
 #endif
 } // namespace nsocket

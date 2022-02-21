@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
         try
         {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-            auto sslContext = nsocket::TcpClient::getSslContext(certFile, privateKeyFile, privateKeyFilePwd);
+            auto sslContext = nsocket::TcpClient::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd);
             client->run(serverHost, serverPort, sslContext);
 #else
             client->run(serverHost, serverPort);

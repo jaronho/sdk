@@ -297,7 +297,7 @@ int main(int argc, char* argv[])
     try
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        auto sslContext = nsocket::TcpServer::getSslContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+        auto sslContext = nsocket::TcpServer::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
         server.run(sslContext);
 #else
         server.run();

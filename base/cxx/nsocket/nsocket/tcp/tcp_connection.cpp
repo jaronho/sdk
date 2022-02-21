@@ -258,9 +258,9 @@ boost::asio::ip::tcp::endpoint TcpConnection::getRemoteEndpoint() const
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSslContext(boost::asio::ssl::context::method m, const std::string& certFile,
-                                                                         const std::string& privateKeyFile,
-                                                                         const std::string& privateKeyFilePwd, bool allowSelfSigned)
+std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::method m,
+                                                                             const std::string& certFile, const std::string& privateKeyFile,
+                                                                             const std::string& privateKeyFilePwd, bool allowSelfSigned)
 {
     if (certFile.empty() || privateKeyFile.empty())
     {
