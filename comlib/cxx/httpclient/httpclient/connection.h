@@ -20,11 +20,14 @@ public:
     Connection(const std::string& url);
 
     /**
-     * @brief 构造函数
-     * @param sslCaFilename SSL证书文件名(全路径)
+     * @brief 构造函数(SSL双向验证)
+     * @param certFile 证书文件, 例如: client.crt
+     * @param privateKeyFile 私钥文件, 例如: client.key
+     * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
      * @param url 服务器URL
      */
-    Connection(const std::string& sslCaFilename, const std::string& url);
+    Connection(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
+               const std::string& url);
 
     /**
      * @brief 构造函数

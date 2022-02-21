@@ -49,9 +49,10 @@ curlex::SimpleRequestPtr HttpClient::makeSimpleRequest(const std::string& url)
     return std::make_shared<curlex::SimpleRequest>(url);
 }
 
-curlex::CafileRequestPtr HttpClient::makeCafileRequest(const std::string& sslCaFilename, const std::string& url)
+curlex::Ssl2WayRequestPtr HttpClient::makeSsl2WayRequest(const std::string& certFile, const std::string& privateKeyFile,
+                                                         const std::string& privateKeyFilePwd, const std::string& url)
 {
-    return std::make_shared<curlex::CafileRequest>(sslCaFilename, url);
+    return std::make_shared<curlex::Ssl2WayRequest>(certFile, privateKeyFile, privateKeyFilePwd, url);
 }
 
 curlex::UserpwdRequestPtr HttpClient::makeUserpwdRequest(const std::string& username, const std::string& password, const std::string& url)

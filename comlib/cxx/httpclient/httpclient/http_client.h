@@ -45,12 +45,15 @@ public:
     static curlex::SimpleRequestPtr makeSimpleRequest(const std::string& url);
 
     /**
-     * @brief 创建带证书文件请求对象
-     * @param sslCaFilename 证书文件名
+     * @brief 创建SSL(双向验证)请求对象
+     * @param certFile 证书文件, 例如: client.crt
+     * @param privateKeyFile 私钥文件, 例如: client.key
+     * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
      * @param url 资源地址
      * @return 请求对象
      */
-    static curlex::CafileRequestPtr makeCafileRequest(const std::string& sslCaFilename, const std::string& url);
+    static curlex::Ssl2WayRequestPtr makeSsl2WayRequest(const std::string& certFile, const std::string& privateKeyFile,
+                                                        const std::string& privateKeyFilePwd, const std::string& url);
 
     /**
      * @brief 创建带用户名密码请求对象
