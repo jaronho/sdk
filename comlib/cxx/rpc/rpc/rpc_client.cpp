@@ -155,7 +155,7 @@ void Client::run(bool async, std::chrono::steady_clock::duration retryTime)
             m_tcpClient->setDataCallback([&](const std::vector<unsigned char>& data) { handleRecvData(data); });
 #if (1 == ENABLE_NSOCKET_OPENSSL)
             m_tcpClient->run(m_brokerHost, m_serverPort,
-                             nsocket::TcpClient::getSslContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd), async);
+                             nsocket::TcpClient::getSsl2WayContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd), async);
 #else
             m_tcpClient->run(m_brokerHost, m_serverPort, async);
 #endif
