@@ -113,28 +113,28 @@ Request::Type SimpleRequest::getType() const
     return Type::SIMPLE;
 }
 
-SSL2WayRequest::SSL2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
+Ssl2WayRequest::Ssl2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
                                const std::string& url)
     : Request(url), m_certFile(certFile), m_privateKeyFile(privateKeyFile), m_privateKeyFilePwd(privateKeyFilePwd)
 {
 }
 
-Request::Type SSL2WayRequest::getType() const
+Request::Type Ssl2WayRequest::getType() const
 {
     return Type::SSL2WAY;
 }
 
-std::string SSL2WayRequest::getCertFile() const
+std::string Ssl2WayRequest::getCertFile() const
 {
     return m_certFile;
 }
 
-std::string SSL2WayRequest::getPrivateKeyFile() const
+std::string Ssl2WayRequest::getPrivateKeyFile() const
 {
     return m_privateKeyFile;
 }
 
-std::string SSL2WayRequest::getPrivateKeyFilePwd() const
+std::string Ssl2WayRequest::getPrivateKeyFilePwd() const
 {
     return m_privateKeyFilePwd;
 }

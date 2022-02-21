@@ -189,13 +189,13 @@ using SimpleRequestPtr = std::shared_ptr<SimpleRequest>;
 /**
  * @brief SSL双向认证请求类
  */
-class SSL2WayRequest final : public Request
+class Ssl2WayRequest final : public Request
 {
 public:
-    SSL2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
+    Ssl2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
                    const std::string& url);
 
-    virtual ~SSL2WayRequest() = default;
+    virtual ~Ssl2WayRequest() = default;
 
     Type getType() const override;
 
@@ -223,7 +223,7 @@ private:
     std::string m_privateKeyFilePwd; /* 私钥文件密码, 例如: qq123456 */
 };
 
-using SSLRequestPtr = std::shared_ptr<SSL2WayRequest>;
+using Ssl2WayRequestPtr = std::shared_ptr<Ssl2WayRequest>;
 
 /**
  * @brief 带用户名密码请求类
