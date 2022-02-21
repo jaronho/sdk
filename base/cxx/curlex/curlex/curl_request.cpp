@@ -113,16 +113,30 @@ Request::Type SimpleRequest::getType() const
     return Type::SIMPLE;
 }
 
-CafileRequest::CafileRequest(const std::string& sslCaFilename, const std::string& url) : Request(url), m_sslCaFilename(sslCaFilename) {}
-
-Request::Type CafileRequest::getType() const
+SSL2WayRequest::SSL2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
+                               const std::string& url)
+    : Request(url), m_certFile(certFile), m_privateKeyFile(privateKeyFile), m_privateKeyFilePwd(privateKeyFilePwd)
 {
-    return Type::CAFILE;
 }
 
-std::string CafileRequest::getCaFilename() const
+Request::Type SSL2WayRequest::getType() const
 {
-    return m_sslCaFilename;
+    return Type::SSL2WAY;
+}
+
+std::string SSL2WayRequest::getCertFile() const
+{
+    return m_certFile;
+}
+
+std::string SSL2WayRequest::getPrivateKeyFile() const
+{
+    return m_privateKeyFile;
+}
+
+std::string SSL2WayRequest::getPrivateKeyFilePwd() const
+{
+    return m_privateKeyFilePwd;
 }
 
 UserpwdRequest::UserpwdRequest(const std::string& username, const std::string& password, const std::string& url)

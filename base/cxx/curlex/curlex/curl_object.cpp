@@ -200,7 +200,7 @@ CurlObject::CurlObject()
     }
 }
 
-CurlObject::CurlObject(const std::string& sslCaFilename)
+CurlObject::CurlObject(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
 {
     onCurlObjectCreate();
     m_curl = curl_easy_init();
@@ -209,7 +209,7 @@ CurlObject::CurlObject(const std::string& sslCaFilename)
         perror("curl_easy_init failed!");
         return;
     }
-    if (!initialize(sslCaFilename))
+    if (!initialize(certFile, privateKeyFile, privateKeyFilePwd))
     {
         curl_easy_cleanup(m_curl);
         m_curl = nullptr;
@@ -279,7 +279,7 @@ bool CurlObject::initialize()
     return CURLE_OK == code;
 }
 
-bool CurlObject::initialize(const std::string& sslCaFilename)
+bool CurlObject::initialize(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
 {
     memset(m_errorBuffer, 0, CURL_ERROR_SIZE);
     auto code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
@@ -287,20 +287,43 @@ bool CurlObject::initialize(const std::string& sslCaFilename)
     {
         return false;
     }
-    code = setOption(CURLOPT_SSL_VERIFYPEER, 1L);
+    code = setOption(CURLOPT_SSL_VERIFYPEER, 0L); /* 双向验证中设置不验证服务器证书有效性 */
     if (CURLE_OK != code)
     {
         return false;
     }
-    code = setOption(CURLOPT_SSL_VERIFYHOST, 2L);
+    code = setOption(CURLOPT_SSL_VERIFYHOST, 0L); /* 双向验证中设置不检验证书中的主机名和你访问的主机名是否一致 */
     if (CURLE_OK != code)
     {
         return false;
     }
-    code = setOption(CURLOPT_CAINFO, sslCaFilename.c_str());
+    code = setOption(CURLOPT_SSLCERTTYPE, "PEM");
     if (CURLE_OK != code)
     {
         return false;
+    }
+    code = setOption(CURLOPT_SSLCERT, certFile.c_str());
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_SSLKEYTYPE, "PEM");
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_SSLKEY, privateKeyFile.c_str());
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    if (!privateKeyFilePwd.empty())
+    {
+        code = setOption(CURLOPT_KEYPASSWD, privateKeyFilePwd.c_str());
+        if (CURLE_OK != code)
+        {
+            return false;
+        }
     }
     code = setOption(CURLOPT_NOSIGNAL, 1L);
     return CURLE_OK == code;

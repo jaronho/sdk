@@ -20,7 +20,7 @@ public:
     enum class Type
     {
         SIMPLE, /* 简单 */
-        CAFILE, /* 带证书 */
+        SSL2WAY, /* SSL双向验证 */
         USERPWD /* 带用户名密码 */
     };
 
@@ -187,28 +187,43 @@ public:
 using SimpleRequestPtr = std::shared_ptr<SimpleRequest>;
 
 /**
- * @brief 带证书请求类
+ * @brief SSL双向认证请求类
  */
-class CafileRequest final : public Request
+class SSL2WayRequest final : public Request
 {
 public:
-    CafileRequest(const std::string& sslCaFilename, const std::string& url);
+    SSL2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
+                   const std::string& url);
 
-    virtual ~CafileRequest() = default;
+    virtual ~SSL2WayRequest() = default;
 
     Type getType() const override;
 
     /**
-     * @brief 获取证书文件名
-     * @return 文件名
+     * @brief 获取证书文件
+     * @return 证书文件
      */
-    std::string getCaFilename() const;
+    std::string getCertFile() const;
+
+    /**
+     * @brief 获取私钥文件
+     * @return 私钥文件
+     */
+    std::string getPrivateKeyFile() const;
+
+    /**
+     * @brief 获取私钥文件密码
+     * @return 私钥文件密码
+     */
+    std::string getPrivateKeyFilePwd() const;
 
 private:
-    std::string m_sslCaFilename; /* 证书文件名(全路径) */
+    std::string m_certFile; /* 证书文件, 例如: client.crt */
+    std::string m_privateKeyFile; /* 私钥文件, 例如: client.key */
+    std::string m_privateKeyFilePwd; /* 私钥文件密码, 例如: qq123456 */
 };
 
-using CafileRequestPtr = std::shared_ptr<CafileRequest>;
+using SSLRequestPtr = std::shared_ptr<SSL2WayRequest>;
 
 /**
  * @brief 带用户名密码请求类

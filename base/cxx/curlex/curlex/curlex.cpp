@@ -21,9 +21,9 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
         obj = std::make_shared<CurlObject>();
         break;
     }
-    case Request::Type::CAFILE: {
-        auto cafileReq = std::dynamic_pointer_cast<CafileRequest>(req);
-        obj = std::make_shared<CurlObject>(cafileReq->getCaFilename());
+    case Request::Type::SSL2WAY: {
+        auto sslReq = std::dynamic_pointer_cast<SSL2WayRequest>(req);
+        obj = std::make_shared<CurlObject>(sslReq->getCertFile(), sslReq->getPrivateKeyFile(), sslReq->getPrivateKeyFilePwd());
         break;
     }
     case Request::Type::USERPWD: {
