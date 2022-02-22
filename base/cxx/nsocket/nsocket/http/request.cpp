@@ -1,5 +1,6 @@
 #include "request.h"
 
+#include <math.h>
 #include <vector>
 
 namespace nsocket
