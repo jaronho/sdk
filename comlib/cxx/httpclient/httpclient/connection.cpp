@@ -52,7 +52,7 @@ bool Connection::setRawData(const char* bytes, size_t count)
 {
     if (m_data)
     {
-        if (curlex::RequestData::Type::RAW != m_data->getType())
+        if (curlex::RequestData::Type::raw != m_data->getType())
         {
             return false;
         }
@@ -66,7 +66,7 @@ bool Connection::setFormData(const std::string& data)
 {
     if (m_data)
     {
-        if (curlex::RequestData::Type::FORM != m_data->getType())
+        if (curlex::RequestData::Type::form != m_data->getType())
         {
             return false;
         }
@@ -80,7 +80,7 @@ bool Connection::appendContentText(const std::string& key, const std::string& va
 {
     if (m_data)
     {
-        if (curlex::RequestData::Type::MULTIPART_FORM != m_data->getType())
+        if (curlex::RequestData::Type::multipart_form != m_data->getType())
         {
             return false;
         }
@@ -98,7 +98,7 @@ bool Connection::appendContentFile(const std::string& key, const std::string& fi
 {
     if (m_data)
     {
-        if (curlex::RequestData::Type::MULTIPART_FORM != m_data->getType())
+        if (curlex::RequestData::Type::multipart_form != m_data->getType())
         {
             return false;
         }
