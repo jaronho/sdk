@@ -166,15 +166,15 @@ private:
      */
     enum class ParseStep
     {
-        FIN_RSV_OPCODE, /* FIN(是否为最后一帧数据) + RSV(保留) + OPCODE(消息类型) */
-        MASK_PAYLOAD_LEN, /* MASK(是否经过掩码处理) + PAYLOAD_LEN(数据长度) */
-        PAYLOAD_LEN_2, /* 扩展数据长度 */
-        PAYLOAD_LEN_8, /* 扩展数据长度 */
-        MASKING_KEY, /* 掩码 */
-        PAYLOAD /* 负载数据 */
+        fin_rsv_opcode, /* FIN(是否为最后一帧数据) + RSV(保留) + OPCODE(消息类型) */
+        mask_payload_len, /* MASK(是否经过掩码处理) + PAYLOAD_LEN(数据长度) */
+        payload_len_2, /* 扩展数据长度 */
+        payload_len_8, /* 扩展数据长度 */
+        masking_key, /* 掩码 */
+        payload /* 负载数据 */
     };
 
-    ParseStep m_parseStep = ParseStep::FIN_RSV_OPCODE; /* 解析步骤 */
+    ParseStep m_parseStep = ParseStep::fin_rsv_opcode; /* 解析步骤 */
     unsigned int m_payloadReceived = 0; /* 已接收负载长度 */
     std::vector<unsigned char> m_tmpBytes; /* 临时字节 */
 };

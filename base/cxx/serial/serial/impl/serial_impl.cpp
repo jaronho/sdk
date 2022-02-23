@@ -135,10 +135,10 @@ timespec timespecFromMS(unsigned int millis)
 SerialImpl::SerialImpl()
     : m_fd(INVALID_HANDLE_VALUE)
     , m_baudrate(9600)
-    , m_databits(Databits::EIGHT)
-    , m_parity(ParityType::NONE)
-    , m_stopbits(Stopbits::ONE)
-    , m_flowcontrol(FlowcontrolType::NONE)
+    , m_databits(Databits::eight)
+    , m_parity(ParityType::none)
+    , m_stopbits(Stopbits::one)
+    , m_flowcontrol(FlowcontrolType::none)
     , m_timeout(Timeout::simpleTimeout(0))
 {
 }
@@ -911,16 +911,16 @@ int SerialImpl::reconfig()
     /* 数据位 */
     switch (m_databits)
     {
-    case Databits::FIVE:
+    case Databits::five:
         dcbSerialParams.ByteSize = 5;
         break;
-    case Databits::SIX:
+    case Databits::six:
         dcbSerialParams.ByteSize = 6;
         break;
-    case Databits::SEVEN:
+    case Databits::seven:
         dcbSerialParams.ByteSize = 7;
         break;
-    case Databits::EIGHT:
+    case Databits::eight:
         dcbSerialParams.ByteSize = 8;
         break;
     default:
@@ -929,19 +929,19 @@ int SerialImpl::reconfig()
     /* 校验位 */
     switch (m_parity)
     {
-    case ParityType::NONE:
+    case ParityType::none:
         dcbSerialParams.Parity = NOPARITY;
         break;
-    case ParityType::EVEN:
+    case ParityType::even:
         dcbSerialParams.Parity = EVENPARITY;
         break;
-    case ParityType::ODD:
+    case ParityType::odd:
         dcbSerialParams.Parity = ODDPARITY;
         break;
-    case ParityType::MARK:
+    case ParityType::mark:
         dcbSerialParams.Parity = MARKPARITY;
         break;
-    case ParityType::SPACE:
+    case ParityType::space:
         dcbSerialParams.Parity = SPACEPARITY;
         break;
     default:
@@ -950,13 +950,13 @@ int SerialImpl::reconfig()
     /* 停止位 */
     switch (m_stopbits)
     {
-    case Stopbits::ONE:
+    case Stopbits::one:
         dcbSerialParams.StopBits = ONESTOPBIT;
         break;
-    case Stopbits::ONE_AND_HALF:
+    case Stopbits::one_and_half:
         dcbSerialParams.StopBits = ONE5STOPBITS;
         break;
-    case Stopbits::TWO:
+    case Stopbits::two:
         dcbSerialParams.StopBits = TWOSTOPBITS;
         break;
     default:
@@ -965,19 +965,19 @@ int SerialImpl::reconfig()
     /* 流控 */
     switch (m_flowcontrol)
     {
-    case FlowcontrolType::NONE:
+    case FlowcontrolType::none:
         dcbSerialParams.fOutxCtsFlow = false;
         dcbSerialParams.fRtsControl = RTS_CONTROL_DISABLE;
         dcbSerialParams.fOutX = false;
         dcbSerialParams.fInX = false;
         break;
-    case FlowcontrolType::SOFTWARE:
+    case FlowcontrolType::software:
         dcbSerialParams.fOutxCtsFlow = false;
         dcbSerialParams.fRtsControl = RTS_CONTROL_DISABLE;
         dcbSerialParams.fOutX = true;
         dcbSerialParams.fInX = true;
         break;
-    case FlowcontrolType::HARDWARE:
+    case FlowcontrolType::hardware:
         dcbSerialParams.fOutxCtsFlow = true;
         dcbSerialParams.fRtsControl = RTS_CONTROL_HANDSHAKE;
         dcbSerialParams.fOutX = false;
@@ -1009,13 +1009,13 @@ int getDatabitsNum(const Databits& databits)
 {
     switch (databits)
     {
-    case Databits::FIVE:
+    case Databits::five:
         return 5;
-    case Databits::SIX:
+    case Databits::six:
         return 6;
-    case Databits::SEVEN:
+    case Databits::seven:
         return 7;
-    case Databits::EIGHT:
+    case Databits::eight:
         return 8;
     default:
         return 0;
@@ -1026,15 +1026,15 @@ int getParityNum(const ParityType& parity)
 {
     switch (parity)
     {
-    case ParityType::NONE:
+    case ParityType::none:
         return 0;
-    case ParityType::EVEN:
+    case ParityType::even:
         return 2;
-    case ParityType::ODD:
+    case ParityType::odd:
         return 1;
-    case ParityType::MARK:
+    case ParityType::mark:
         return 3;
-    case ParityType::SPACE:
+    case ParityType::space:
         return 4;
     default:
         return 0;
@@ -1045,11 +1045,11 @@ int getStopbitsNum(const Stopbits& stopbits)
 {
     switch (stopbits)
     {
-    case Stopbits::ONE:
+    case Stopbits::one:
         return 1;
-    case Stopbits::ONE_AND_HALF:
+    case Stopbits::one_and_half:
         return 3;
-    case Stopbits::TWO:
+    case Stopbits::two:
         return 2;
     default:
         return 0;
@@ -1290,16 +1290,16 @@ int SerialImpl::reconfig()
     options.c_cflag &= (tcflag_t)~CSIZE;
     switch (m_databits)
     {
-    case Databits::FIVE:
+    case Databits::five:
         options.c_cflag |= CS5;
         break;
-    case Databits::SIX:
+    case Databits::six:
         options.c_cflag |= CS6;
         break;
-    case Databits::SEVEN:
+    case Databits::seven:
         options.c_cflag |= CS7;
         break;
-    case Databits::EIGHT:
+    case Databits::eight:
         options.c_cflag |= CS8;
         break;
     default:
@@ -1309,27 +1309,27 @@ int SerialImpl::reconfig()
     options.c_iflag &= (tcflag_t) ~(INPCK | ISTRIP);
     switch (m_parity)
     {
-    case ParityType::NONE:
+    case ParityType::none:
         options.c_cflag &= (tcflag_t) ~(PARENB | PARODD);
         break;
-    case ParityType::EVEN:
+    case ParityType::even:
         options.c_cflag &= (tcflag_t) ~(PARODD);
         options.c_cflag |= (PARENB);
         break;
-    case ParityType::ODD:
+    case ParityType::odd:
         options.c_cflag |= (PARENB | PARODD);
         break;
 #ifdef CMSPAR
-    case ParityType::MARK:
+    case ParityType::mark:
         options.c_cflag |= (PARENB | CMSPAR | PARODD);
         break;
-    case ParityType::SPACE:
+    case ParityType::space:
         options.c_cflag |= (PARENB | CMSPAR);
         options.c_cflag &= (tcflag_t) ~(PARODD);
         break;
 #else
-    case ParityType::MARK:
-    case ParityType::SPACE:
+    case ParityType::mark:
+    case ParityType::space:
         return 4; /* OSX没有定义CMSPAR, 所以不支持MARK和SPACE */
 #endif
     default:
@@ -1338,13 +1338,13 @@ int SerialImpl::reconfig()
     /* 停止位 */
     switch (m_stopbits)
     {
-    case Stopbits::ONE:
+    case Stopbits::one:
         options.c_cflag &= (tcflag_t) ~(CSTOPB);
         break;
-    case Stopbits::ONE_AND_HALF: /* POSIX不支持1.5位停止位 */
+    case Stopbits::one_and_half: /* POSIX不支持1.5位停止位 */
         options.c_cflag |= (CSTOPB);
         break;
-    case Stopbits::TWO:
+    case Stopbits::two:
         options.c_cflag |= (CSTOPB);
         break;
     default:
@@ -1355,15 +1355,15 @@ int SerialImpl::reconfig()
     bool rtscts = false;
     switch (m_flowcontrol)
     {
-    case FlowcontrolType::NONE:
+    case FlowcontrolType::none:
         xonxoff = false;
         rtscts = false;
         break;
-    case FlowcontrolType::SOFTWARE:
+    case FlowcontrolType::software:
         xonxoff = true;
         rtscts = false;
         break;
-    case FlowcontrolType::HARDWARE:
+    case FlowcontrolType::hardware:
         xonxoff = false;
         rtscts = true;
         break;
@@ -1456,7 +1456,7 @@ int SerialImpl::reconfig()
     int stopbitsNum = getStopbitsNum(m_stopbits);
     m_byteTimeNS = bitTimeNS * (1 + databitsNum + parityNum + stopbitsNum);
     /* 对1.5位停止位进行补偿, 使用整数值3而不是1.5 */
-    if (Stopbits::ONE_AND_HALF == m_stopbits)
+    if (Stopbits::one_and_half == m_stopbits)
     {
         m_byteTimeNS += ((1.5 - stopbitsNum) * bitTimeNS);
     }

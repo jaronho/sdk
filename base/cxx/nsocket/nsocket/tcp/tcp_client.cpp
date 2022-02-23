@@ -12,7 +12,7 @@ TcpClient::TcpClient(size_t bz)
 #endif
     , m_onConnectCallback(nullptr)
     , m_onDataCallback(nullptr)
-    , m_runStatus(RunStatus::RUN_NONE)
+    , m_runStatus(RunStatus::none)
 {
 }
 
@@ -72,11 +72,11 @@ void TcpClient::run(const std::string& host, unsigned int port, bool async)
         });
         m_tcpConn->setDataCallback(m_onDataCallback);
         m_tcpConn->connect(m_endpointIter->endpoint(), async);
-        if (RunStatus::RUN_NONE == m_runStatus)
+        if (RunStatus::none == m_runStatus)
         {
-            m_runStatus = RunStatus::RUN_START;
+            m_runStatus = RunStatus::start;
         }
-        else if (RunStatus::RUN_STOP == m_runStatus)
+        else if (RunStatus::stop == m_runStatus)
         {
             stop();
             return;
@@ -128,8 +128,8 @@ void TcpClient::stop()
     if (!m_ioContext.stopped())
     {
         const auto lastStatus = m_runStatus;
-        m_runStatus = RunStatus::RUN_STOP;
-        if (RunStatus::RUN_START != lastStatus)
+        m_runStatus = RunStatus::stop;
+        if (RunStatus::start != lastStatus)
         {
             return;
         }
@@ -143,7 +143,7 @@ void TcpClient::stop()
 
 bool TcpClient::isRunning() const
 {
-    return RunStatus::RUN_START == m_runStatus;
+    return RunStatus::start == m_runStatus;
 }
 
 void TcpClient::handleConnect(const boost::system::error_code& code, bool async)

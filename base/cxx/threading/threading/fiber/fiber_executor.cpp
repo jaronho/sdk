@@ -29,11 +29,11 @@ FiberExecutor::FiberExecutor(const std::string& name, size_t maxFiberCount, size
                                      {
                                          if (!task->isCancelled())
                                          {
-                                             task->setState(Task::State::RUNNING);
+                                             task->setState(Task::State::running);
                                              Diagnose::onTaskRunning(threadId, name, task.get());
                                              task->run();
                                          }
-                                         task->setState(Task::State::FINISHED);
+                                         task->setState(Task::State::finished);
                                          Diagnose::onTaskFinished(threadId, name, task.get());
                                      }
                                      catch (const std::exception& e)
@@ -66,7 +66,7 @@ void FiberExecutor::join()
 
 TaskPtr FiberExecutor::post(const TaskPtr& task)
 {
-    task->setState(Task::State::QUEUING);
+    task->setState(Task::State::queuing);
     auto ret = m_channel->try_push(task);
     switch (ret)
     {

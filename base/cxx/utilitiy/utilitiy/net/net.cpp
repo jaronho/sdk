@@ -177,28 +177,28 @@ std::vector<Net::IfaceInfo> Net::getAllInterfaces()
             switch (iface.realType)
             {
             case MIB_IF_TYPE_OTHER:
-                iface.type = IfaceInfo::Type::OTHER;
+                iface.type = IfaceInfo::Type::other;
                 break;
             case MIB_IF_TYPE_ETHERNET:
-                iface.type = IfaceInfo::Type::ETHERNET;
+                iface.type = IfaceInfo::Type::ethernet;
                 break;
             case MIB_IF_TYPE_TOKENRING:
-                iface.type = IfaceInfo::Type::TOKENRING;
+                iface.type = IfaceInfo::Type::tokenring;
                 break;
             case MIB_IF_TYPE_FDDI:
-                iface.type = IfaceInfo::Type::FDDI;
+                iface.type = IfaceInfo::Type::fddi;
                 break;
             case MIB_IF_TYPE_PPP:
-                iface.type = IfaceInfo::Type::PPP;
+                iface.type = IfaceInfo::Type::ppp;
                 break;
             case MIB_IF_TYPE_LOOPBACK:
-                iface.type = IfaceInfo::Type::LOOPBACK;
+                iface.type = IfaceInfo::Type::loopback;
                 break;
             case MIB_IF_TYPE_SLIP:
-                iface.type = IfaceInfo::Type::SLIP;
+                iface.type = IfaceInfo::Type::slip;
                 break;
             default:
-                iface.type = IfaceInfo::Type::OTHER;
+                iface.type = IfaceInfo::Type::other;
                 break;
             }
             /* 描述 */
@@ -264,25 +264,25 @@ std::vector<Net::IfaceInfo> Net::getAllInterfaces()
                     switch (iface.realType)
                     {
                     case ARPHRD_ETHER:
-                        iface.type = IfaceInfo::Type::ETHERNET;
+                        iface.type = IfaceInfo::Type::ethernet;
                         break;
                     case ARPHRD_PRONET:
-                        iface.type = IfaceInfo::Type::TOKENRING;
+                        iface.type = IfaceInfo::Type::tokenring;
                         break;
                     case ARPHRD_FDDI:
-                        iface.type = IfaceInfo::Type::FDDI;
+                        iface.type = IfaceInfo::Type::fddi;
                         break;
                     case ARPHRD_PPP:
-                        iface.type = IfaceInfo::Type::PPP;
+                        iface.type = IfaceInfo::Type::ppp;
                         break;
                     case ARPHRD_LOOPBACK:
-                        iface.type = IfaceInfo::Type::LOOPBACK;
+                        iface.type = IfaceInfo::Type::loopback;
                         break;
                     case ARPHRD_SLIP:
-                        iface.type = IfaceInfo::Type::SLIP;
+                        iface.type = IfaceInfo::Type::slip;
                         break;
                     default:
-                        iface.type = IfaceInfo::Type::OTHER;
+                        iface.type = IfaceInfo::Type::other;
                         break;
                     }
                     /* MAC地址 */

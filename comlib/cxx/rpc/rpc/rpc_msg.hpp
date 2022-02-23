@@ -10,14 +10,14 @@ namespace rpc
  */
 enum class ErrorCode
 {
-    OK = 0, /* 成功 */
-    UNREGISTER, /* 未注册 */
-    REGISTER_REPEAT, /* 重复注册 */
-    CALL_BROKER_FAILED, /* 调用代理失败 */
-    REPLYER_NOT_FOUND, /* 应答者不存在 */
-    CALL_REPLYER_FAILED, /* 调用应答者失败 */
-    REPLYER_INNER_ERROR, /* 目标内部出错 */
-    TIMEOUT /* 超时 */
+    ok = 0, /* 成功 */
+    unbind, /* 未绑定 */
+    bind_repeat, /* 重复绑定 */
+    call_broker_failed, /* 调用代理失败 */
+    replyer_not_found, /* 应答者不存在 */
+    call_replyer_failed, /* 调用应答者失败 */
+    replyer_inner_error, /* 目标内部出错 */
+    timeout /* 超时 */
 };
 
 /**
@@ -29,21 +29,21 @@ static std::string error_desc(const ErrorCode& code)
 {
     switch (code)
     {
-    case ErrorCode::OK:
+    case ErrorCode::ok:
         return "ok";
-    case ErrorCode::UNREGISTER:
-        return "unregister";
-    case ErrorCode::REGISTER_REPEAT:
-        return "register repeat";
-    case ErrorCode::CALL_BROKER_FAILED:
+    case ErrorCode::unbind:
+        return "unbind";
+    case ErrorCode::bind_repeat:
+        return "bind repeat";
+    case ErrorCode::call_broker_failed:
         return "call borker failed";
-    case ErrorCode::REPLYER_NOT_FOUND:
+    case ErrorCode::replyer_not_found:
         return "replyer not found";
-    case ErrorCode::CALL_REPLYER_FAILED:
+    case ErrorCode::call_replyer_failed:
         return "call repyer failed";
-    case ErrorCode::REPLYER_INNER_ERROR:
+    case ErrorCode::replyer_inner_error:
         return "replyer inner error";
-    case ErrorCode::TIMEOUT:
+    case ErrorCode::timeout:
         return "timeout";
     default:
         return "unknow error code [" + std::to_string((int)code) + "]";
@@ -55,11 +55,11 @@ static std::string error_desc(const ErrorCode& code)
  */
 enum class MsgType
 {
-    HEARTBEAT = 0, /* 心跳(客户端 -> 代理服务) */
-    REGISTER, /* 注册(客户端 -> 代理服务) */
-    REGISTER_RESULT, /* 注册结果(代理服务 -> 客户端) */
-    CALL, /* 调用(客户端A -> 代理服务 -> 客户端B) */
-    REPLY /* 应答(客户端B -> 代理服务 -> 客户端A) */
+    heartbeat = 0, /* 心跳(客户端 -> 代理服务) */
+    bind, /* 绑定(客户端 -> 代理服务) */
+    bind_result, /* 绑定结果(代理服务 -> 客户端) */
+    call, /* 调用(客户端A -> 代理服务 -> 客户端B) */
+    reply /* 应答(客户端B -> 代理服务 -> 客户端A) */
 };
 
 /**
@@ -113,7 +113,7 @@ class msg_heartbeat final : public msg_base
 public:
     MsgType type() const override
     {
-        return MsgType::HEARTBEAT;
+        return MsgType::heartbeat;
     }
 
     int size() const override
@@ -133,14 +133,14 @@ public:
 };
 
 /**
- * @brief 注册
+ * @brief 绑定
  */
-class msg_register final : public msg_base
+class msg_bind final : public msg_base
 {
 public:
     MsgType type() const override
     {
-        return MsgType::REGISTER;
+        return MsgType::bind;
     }
 
     int size() const override
@@ -167,14 +167,14 @@ public:
 };
 
 /**
- * @brief 注册结果
+ * @brief 绑定结果
  */
-class msg_register_result final : public msg_base
+class msg_bind_result final : public msg_base
 {
 public:
     MsgType type() const override
     {
-        return MsgType::REGISTER_RESULT;
+        return MsgType::bind_result;
     }
 
     int size() const override
@@ -197,7 +197,7 @@ public:
         code = (ErrorCode)ba.readInt();
     };
 
-    ErrorCode code = ErrorCode::OK; /* 错误码 */
+    ErrorCode code = ErrorCode::ok; /* 错误码 */
 };
 
 /**
@@ -208,7 +208,7 @@ class msg_call : public msg_base
 public:
     MsgType type() const override
     {
-        return MsgType::CALL;
+        return MsgType::call;
     }
 
     int size() const override
@@ -262,7 +262,7 @@ class msg_reply final : public msg_base
 public:
     MsgType type() const override
     {
-        return MsgType::REPLY;
+        return MsgType::reply;
     }
 
     int size() const override
@@ -305,6 +305,6 @@ public:
     std::string replyer; /* 应答者ID */
     int proc = 0; /* 调用程序ID */
     std::vector<unsigned char> data; /* 数据 */
-    ErrorCode code = ErrorCode::OK; /* 错误码 */
+    ErrorCode code = ErrorCode::ok; /* 错误码 */
 };
 } // namespace rpc

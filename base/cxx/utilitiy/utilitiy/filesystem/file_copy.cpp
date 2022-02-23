@@ -53,7 +53,7 @@ FileInfo::CopyResult FileCopy::start(std::string* failSrcFile, std::string* fail
     {
         result = copyAssignFiles();
     }
-    if (FileInfo::CopyResult::OK != result)
+    if (FileInfo::CopyResult::ok != result)
     {
         if (failSrcFile)
         {
@@ -101,7 +101,7 @@ FileInfo::CopyResult FileCopy::copyAllFiles()
         true);
     if (m_stopFunc && m_stopFunc())
     {
-        return FileInfo::CopyResult::STOP;
+        return FileInfo::CopyResult::stop;
     }
     return copySrcFileList(srcFilelist, srcFileSize);
 }
@@ -113,7 +113,7 @@ FileInfo::CopyResult FileCopy::copyAssignFiles()
     {
         if (m_stopFunc && m_stopFunc())
         {
-            return FileInfo::CopyResult::STOP;
+            return FileInfo::CopyResult::stop;
         }
         srcFileSize += utilitiy::FileInfo(srcFile).size();
     }
@@ -138,7 +138,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
             m_failSrcFile = srcFileInfo.name();
             m_failDestFile = destFile;
             m_failCode = errno;
-            return FileInfo::CopyResult::DEST_OPEN_FAILED;
+            return FileInfo::CopyResult::dest_open_failed;
         }
         if (m_totalProgressCallback)
         {
@@ -168,7 +168,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
             return true;
         });
         /* 拷贝结果处理 */
-        if (FileInfo::CopyResult::OK == result)
+        if (FileInfo::CopyResult::ok == result)
         {
             if (0 != destFileTmp.compare(destFileNew))
             {
@@ -177,7 +177,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
                     m_failSrcFile = srcFileInfo.name();
                     m_failDestFile = destFileNew;
                     m_failCode = errno;
-                    return FileInfo::CopyResult::DEST_OPEN_FAILED;
+                    return FileInfo::CopyResult::dest_open_failed;
                 }
             }
             m_destFilelist.emplace_back(destFileNew);
@@ -190,7 +190,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
             return result;
         }
     }
-    return FileInfo::CopyResult::OK;
+    return FileInfo::CopyResult::ok;
 }
 
 std::string FileCopy::checkDestFile(const std::string& destFile)

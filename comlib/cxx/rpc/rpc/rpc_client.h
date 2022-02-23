@@ -8,7 +8,7 @@
 
 namespace rpc
 {
-using REG_HANDLER = std::function<void(const ErrorCode& code)>;
+using BIND_HANDLER = std::function<void(const ErrorCode& code)>;
 using CALL_HANDLER = std::function<std::vector<unsigned char>(const std::string& callId, int proc, const std::vector<unsigned char>& data)>;
 using REPLY_FUNC = std::function<void(const std::vector<unsigned char>& data, const ErrorCode& code)>;
 
@@ -39,10 +39,10 @@ public:
 #endif
 
     /**
-     * @brief 设置注册回调
-     * @param handler 注册回调
+     * @brief 设置绑定回调
+     * @param handler 绑定回调
      */
-    void setRegHandler(const REG_HANDLER& handler);
+    void setBindHandler(const BIND_HANDLER& handler);
 
     /**
      * @brief 设置调用回调
@@ -97,9 +97,9 @@ private:
     void handleMsg(const MsgType& type, utilitiy::ByteArray& ba);
 
     /**
-     * @brief 请求注册
+     * @brief 请求绑定
      */
-    void reqRegister(bool async);
+    void reqBind(bool async);
 
     /**
      * @brief 会话超时
@@ -109,7 +109,7 @@ private:
 private:
     std::shared_ptr<nsocket::Payload> m_payload; /* 负载 */
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* 客户端 */
-    REG_HANDLER m_regHandler; /* 注册回调句柄 */
+    BIND_HANDLER m_bindHandler; /* 绑定回调句柄 */
     CALL_HANDLER m_callHandler; /* 调用回调句柄 */
     std::mutex m_mutexSessionMap;
     std::map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
@@ -120,6 +120,6 @@ private:
     std::string m_privateKeyFile;
     std::string m_privateKeyFilePwd;
     std::atomic_bool m_running; /* 是否运行中 */
-    std::atomic_bool m_registered; /* 是否已向broker注册 */
+    std::atomic_bool m_binded; /* 是否已向broker绑定 */
 };
 } // namespace rpc

@@ -183,20 +183,20 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
     std::lock_guard<std::mutex> locker(m_mutex);
     if (!m_f.is_open())
     {
-        return Result::INVALID;
+        return Result::invalid;
     }
     if (!m_enable.load())
     {
-        return Result::DISABLED;
+        return Result::disabled;
     }
     size_t contentSize = content.size();
     if (contentSize > m_maxSize)
     {
-        return Result::TOO_LARGE;
+        return Result::too_large;
     }
     if (m_size.load() + contentSize > m_maxSize)
     {
-        return Result::WILL_FULL;
+        return Result::will_full;
     }
     bool needFlush = false;
     if (m_size.load() > 0 && newline)
@@ -205,7 +205,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
         if (!m_f.good())
         {
             m_f.close();
-            return Result::NEWLINE_FAILED;
+            return Result::newline_failed;
         }
         m_size.store(m_size.load() + 1);
         needFlush = true;
@@ -216,7 +216,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
         if (!m_f.good())
         {
             m_f.close();
-            return Result::CONTENT_FAILED;
+            return Result::content_failed;
         }
         m_size.store(m_size.load() + contentSize);
         needFlush = true;
@@ -227,9 +227,9 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
         if (!m_f.good())
         {
             m_f.close();
-            return Result::FLUSH_FAILED;
+            return Result::flush_failed;
         }
     }
-    return Result::OK;
+    return Result::ok;
 }
 } // namespace logger

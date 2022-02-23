@@ -168,7 +168,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     }
     if (m_fullName.empty())
     {
-        return CopyResult::SRC_OPEN_FAILED;
+        return CopyResult::src_open_failed;
     }
     /* 打开源文件 */
     std::fstream srcFile(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
@@ -178,7 +178,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         {
             *errCode = errno;
         }
-        return CopyResult::SRC_OPEN_FAILED;
+        return CopyResult::src_open_failed;
     }
     size_t srcFileSize = srcFile.tellg();
     srcFile.seekg(0, std::ios::beg);
@@ -191,7 +191,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
             *errCode = errno;
         }
         srcFile.close();
-        return CopyResult::DEST_OPEN_FAILED;
+        return CopyResult::dest_open_failed;
     }
     /* 计算和分配块 */
     size_t blockSize = calcBlockSize(srcFileSize, maxBlockSize);
@@ -199,7 +199,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     {
         srcFile.close();
         destFile.close();
-        return CopyResult::OK;
+        return CopyResult::ok;
     }
     char* block = (char*)malloc(sizeof(char) * blockSize);
     if (!block)
@@ -210,7 +210,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         }
         srcFile.close();
         destFile.close();
-        return CopyResult::MEMORY_FAILED;
+        return CopyResult::memory_alloc_failed;
     }
     /* 拷贝文件内容 */
     size_t nowSize = 0, readSize = 0;
@@ -246,13 +246,13 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     destFile.close();
     if (stopFlag)
     {
-        return CopyResult::STOP;
+        return CopyResult::stop;
     }
     if (nowSize != srcFileSize)
     {
-        return CopyResult::NOT_EQUAL;
+        return CopyResult::size_unequal;
     }
-    return CopyResult::OK;
+    return CopyResult::ok;
 }
 
 long long FileInfo::size() const

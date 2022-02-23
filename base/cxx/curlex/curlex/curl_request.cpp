@@ -110,7 +110,7 @@ SimpleRequest::SimpleRequest(const std::string& url) : Request(url) {}
 
 Request::Type SimpleRequest::getType() const
 {
-    return Type::SIMPLE;
+    return Type::simple;
 }
 
 Ssl2WayRequest::Ssl2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
@@ -121,7 +121,7 @@ Ssl2WayRequest::Ssl2WayRequest(const std::string& certFile, const std::string& p
 
 Request::Type Ssl2WayRequest::getType() const
 {
-    return Type::SSL2WAY;
+    return Type::ssl_2way;
 }
 
 std::string Ssl2WayRequest::getCertFile() const
@@ -146,7 +146,7 @@ UserpwdRequest::UserpwdRequest(const std::string& username, const std::string& p
 
 Request::Type UserpwdRequest::getType() const
 {
-    return Type::USERPWD;
+    return Type::user_pwd;
 }
 
 std::string UserpwdRequest::getUsername() const

@@ -14,14 +14,14 @@ class Logfile
 public:
     enum class Result
     {
-        OK, /* 成功 */
-        INVALID, /* 日志文件无效 */
-        DISABLED, /* 日志被禁止写入 */
-        TOO_LARGE, /* 要写入的内容太长(超过文件容量) */
-        WILL_FULL, /* 内容写入后文件将满 */
-        NEWLINE_FAILED, /* 写入换行出错 */
-        CONTENT_FAILED, /* 写入内容出错 */
-        FLUSH_FAILED /* 刷新出错 */
+        ok, /* 成功 */
+        invalid, /* 日志文件无效 */
+        disabled, /* 日志被禁止写入 */
+        too_large, /* 要写入的内容太长(超过文件容量) */
+        will_full, /* 内容写入后文件将满 */
+        newline_failed, /* 写入换行出错 */
+        content_failed, /* 写入内容出错 */
+        flush_failed /* 刷新出错 */
     };
 
 public:

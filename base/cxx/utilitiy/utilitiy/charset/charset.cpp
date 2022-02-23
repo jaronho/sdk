@@ -744,13 +744,13 @@ Charset::Coding Charset::getCoding(const std::string& str)
 {
     if (is_utf8(str.c_str(), str.size()))
     {
-        return Coding::UTF8;
+        return Coding::utf8;
     }
     else if (is_gbk(str.c_str(), str.size()))
     {
-        return Coding::GBK;
+        return Coding::gbk;
     }
-    return Coding::UNKOWN;
+    return Coding::unknown;
 }
 
 std::wstring Charset::utf8ToUnicode(const std::string& str)

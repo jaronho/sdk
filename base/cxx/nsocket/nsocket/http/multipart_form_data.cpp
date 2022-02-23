@@ -51,37 +51,37 @@ int MultipartFormData::parse(const unsigned char* data, int length, const TEXT_C
         int used = 0;
         switch (m_parseStep)
         {
-        case ParseStep::BOUNDARY:
+        case ParseStep::boundary:
             if ((used = parseBoundary(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::CONTENT_DISPOSITION:
+        case ParseStep::content_disposition:
             if ((used = parseContentDisposition(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::CONTENT_TYPE:
+        case ParseStep::content_type:
             if ((used = parseContentType(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::EMPTY_LINE:
+        case ParseStep::empty_line:
             if ((used = parseEmptyLine(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::CONTENT:
+        case ParseStep::content:
             if ((used = parseContent(remainData, remainLen, textCb, fileCb)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::ENDING:
+        case ParseStep::ending:
             used = remainLen;
             break;
         }
@@ -98,9 +98,9 @@ int MultipartFormData::parseBoundary(const unsigned char* data, int length)
         const auto& ch = data[used];
         if ('\r' == ch)
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
-                m_sepFlag = SepFlag::R;
+                m_sepFlag = SepFlag::r;
             }
             else
             {
@@ -109,12 +109,12 @@ int MultipartFormData::parseBoundary(const unsigned char* data, int length)
         }
         else if ('\n' == ch)
         {
-            if (SepFlag::R == m_sepFlag)
+            if (SepFlag::r == m_sepFlag)
             {
                 if (0 == m_nowLine.compare(m_boundary)) /* 发现边界线 */
                 {
-                    m_sepFlag = SepFlag::NONE;
-                    m_parseStep = ParseStep::CONTENT_DISPOSITION;
+                    m_sepFlag = SepFlag::none;
+                    m_parseStep = ParseStep::content_disposition;
                     m_nowLine.clear();
                     m_name.clear();
                     m_filename.clear();
@@ -127,12 +127,12 @@ int MultipartFormData::parseBoundary(const unsigned char* data, int length)
         }
         else
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
                 m_nowLine.push_back(ch);
                 if (0 == m_nowLine.compare(m_boundary + "--")) /* 发现表单结束 */
                 {
-                    m_parseStep = ParseStep::ENDING;
+                    m_parseStep = ParseStep::ending;
                     m_nowLine.clear();
                     m_name.clear();
                     m_filename.clear();
@@ -158,9 +158,9 @@ int MultipartFormData::parseContentDisposition(const unsigned char* data, int le
         const auto& ch = data[used];
         if ('\r' == ch)
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
-                m_sepFlag = SepFlag::R;
+                m_sepFlag = SepFlag::r;
             }
             else
             {
@@ -169,12 +169,12 @@ int MultipartFormData::parseContentDisposition(const unsigned char* data, int le
         }
         else if ('\n' == ch)
         {
-            if (SepFlag::R == m_sepFlag)
+            if (SepFlag::r == m_sepFlag)
             {
                 if (parseNameAndFilename()) /* 名字和文件名解析成功 */
                 {
-                    m_sepFlag = SepFlag::NONE;
-                    m_parseStep = ParseStep::CONTENT_TYPE;
+                    m_sepFlag = SepFlag::none;
+                    m_parseStep = ParseStep::content_type;
                     m_nowLine.clear();
                     return (used + 1);
                 }
@@ -183,7 +183,7 @@ int MultipartFormData::parseContentDisposition(const unsigned char* data, int le
         }
         else
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
                 m_nowLine.push_back(ch);
             }
@@ -233,9 +233,9 @@ int MultipartFormData::parseContentType(const unsigned char* data, int length)
         const auto& ch = data[used];
         if ('\r' == ch)
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
-                m_sepFlag = SepFlag::R;
+                m_sepFlag = SepFlag::r;
             }
             else
             {
@@ -244,7 +244,7 @@ int MultipartFormData::parseContentType(const unsigned char* data, int length)
         }
         else if ('\n' == ch)
         {
-            if (SepFlag::R == m_sepFlag)
+            if (SepFlag::r == m_sepFlag)
             {
                 if (!m_nowLine.empty())
                 {
@@ -258,8 +258,8 @@ int MultipartFormData::parseContentType(const unsigned char* data, int length)
                         m_contentType.push_back(m_nowLine[i]);
                     }
                 }
-                m_sepFlag = SepFlag::NONE;
-                m_parseStep = !m_nowLine.empty() ? ParseStep::EMPTY_LINE : ParseStep::CONTENT;
+                m_sepFlag = SepFlag::none;
+                m_parseStep = !m_nowLine.empty() ? ParseStep::empty_line : ParseStep::content;
                 m_nowLine.clear();
                 return (used + 1);
             }
@@ -267,7 +267,7 @@ int MultipartFormData::parseContentType(const unsigned char* data, int length)
         }
         else
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
                 m_nowLine.push_back(ch);
             }
@@ -288,9 +288,9 @@ int MultipartFormData::parseEmptyLine(const unsigned char* data, int length)
         const auto& ch = data[used];
         if ('\r' == ch)
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
-                m_sepFlag = SepFlag::R;
+                m_sepFlag = SepFlag::r;
             }
             else
             {
@@ -299,10 +299,10 @@ int MultipartFormData::parseEmptyLine(const unsigned char* data, int length)
         }
         else if ('\n' == ch)
         {
-            if (SepFlag::R == m_sepFlag)
+            if (SepFlag::r == m_sepFlag)
             {
-                m_sepFlag = SepFlag::NONE;
-                m_parseStep = ParseStep::CONTENT;
+                m_sepFlag = SepFlag::none;
+                m_parseStep = ParseStep::content;
                 return (used + 1);
             }
             return 0;
@@ -332,9 +332,9 @@ int MultipartFormData::parseTextContent(const unsigned char* data, int length, c
         const auto& ch = data[used];
         if ('\r' == ch)
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
-                m_sepFlag = SepFlag::R;
+                m_sepFlag = SepFlag::r;
             }
             else
             {
@@ -343,14 +343,14 @@ int MultipartFormData::parseTextContent(const unsigned char* data, int length, c
         }
         else if ('\n' == ch)
         {
-            if (SepFlag::R == m_sepFlag)
+            if (SepFlag::r == m_sepFlag)
             {
                 if (textCb)
                 {
                     textCb(m_name, m_contentType, m_nowLine);
                 }
-                m_sepFlag = SepFlag::NONE;
-                m_parseStep = ParseStep::BOUNDARY;
+                m_sepFlag = SepFlag::none;
+                m_parseStep = ParseStep::boundary;
                 m_nowLine.clear();
                 return (used + 1);
             }
@@ -358,7 +358,7 @@ int MultipartFormData::parseTextContent(const unsigned char* data, int length, c
         }
         else
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
                 m_nowLine.push_back(ch);
             }
@@ -383,26 +383,26 @@ int MultipartFormData::parseFileContent(const unsigned char* data, int length, c
         if ('\r' == ch)
         {
             handlePrevLine(prevLine, fileCb);
-            m_sepFlag = SepFlag::R;
+            m_sepFlag = SepFlag::r;
             m_nowLine.clear();
             rpos = used;
         }
         else if ('\n' == ch)
         {
-            if (SepFlag::R == m_sepFlag)
+            if (SepFlag::r == m_sepFlag)
             {
-                m_sepFlag = SepFlag::RN;
+                m_sepFlag = SepFlag::rn;
             }
             else
             {
                 handlePrevLine(prevLine, fileCb);
-                m_sepFlag = SepFlag::NONE;
+                m_sepFlag = SepFlag::none;
                 m_nowLine.clear();
             }
         }
         else
         {
-            if (SepFlag::RN == m_sepFlag) /* 尝试拼接边界线 */
+            if (SepFlag::rn == m_sepFlag) /* 尝试拼接边界线 */
             {
                 m_nowLine.push_back(ch);
                 if (prevLine.size() + m_nowLine.size() == m_boundary.size()) /* 匹配了边界线长度 */
@@ -413,20 +413,20 @@ int MultipartFormData::parseFileContent(const unsigned char* data, int length, c
                         {
                             fileCb(m_name, m_filename, m_contentType, m_fileOffset, data, rpos, true); /* 文件接收结束 */
                         }
-                        m_sepFlag = SepFlag::NONE;
-                        m_parseStep = ParseStep::BOUNDARY;
+                        m_sepFlag = SepFlag::none;
+                        m_parseStep = ParseStep::boundary;
                         m_nowLine.clear();
                         return rpos + 2;
                     }
                     /* 非边界线 */
                     handlePrevLine(prevLine, fileCb);
-                    m_sepFlag = SepFlag::NONE;
+                    m_sepFlag = SepFlag::none;
                     m_nowLine.clear();
                 }
             }
             else
             {
-                m_sepFlag = SepFlag::NONE;
+                m_sepFlag = SepFlag::none;
             }
         }
     }

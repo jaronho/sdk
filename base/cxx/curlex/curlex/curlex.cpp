@@ -17,16 +17,16 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
     std::shared_ptr<CurlObject> obj;
     switch (req->getType())
     {
-    case Request::Type::SIMPLE: {
+    case Request::Type::simple: {
         obj = std::make_shared<CurlObject>();
         break;
     }
-    case Request::Type::SSL2WAY: {
+    case Request::Type::ssl_2way: {
         auto sslReq = std::dynamic_pointer_cast<Ssl2WayRequest>(req);
         obj = std::make_shared<CurlObject>(sslReq->getCertFile(), sslReq->getPrivateKeyFile(), sslReq->getPrivateKeyFilePwd());
         break;
     }
-    case Request::Type::USERPWD: {
+    case Request::Type::user_pwd: {
         auto userpwdReq = std::dynamic_pointer_cast<UserpwdRequest>(req);
         obj = std::make_shared<CurlObject>(userpwdReq->getUsername(), userpwdReq->getPassword());
         break;
@@ -88,17 +88,17 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
     {
         switch (reqData->getType())
         {
-        case RequestData::Type::RAW: {
+        case RequestData::Type::raw: {
             auto rawReqData = std::dynamic_pointer_cast<RawRequestData>(reqData);
             obj->setRawData(rawReqData->getBytes());
             break;
         }
-        case RequestData::Type::FORM: {
+        case RequestData::Type::form: {
             auto textReqData = std::dynamic_pointer_cast<FormRequestData>(reqData);
             obj->setFormData(textReqData->getData());
             break;
         }
-        case RequestData::Type::MULTIPART_FORM: {
+        case RequestData::Type::multipart_form: {
             auto multipartFormReqData = std::dynamic_pointer_cast<MultipartFormRequestData>(reqData);
             auto textMap = multipartFormReqData->getTextMap();
             auto textIter = textMap.begin();

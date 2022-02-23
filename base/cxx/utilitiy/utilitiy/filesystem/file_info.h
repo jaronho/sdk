@@ -12,12 +12,12 @@ class FileInfo
 public:
     enum class CopyResult
     {
-        OK, /* 成功 */
-        SRC_OPEN_FAILED, /* 源文件打开失败 */
-        DEST_OPEN_FAILED, /* 目标文件打开失败 */
-        MEMORY_FAILED, /* 内存分配失败 */
-        STOP, /* 停止拷贝 */
-        NOT_EQUAL /* 源文件和目标文件大小不一致 */
+        ok, /* 成功 */
+        src_open_failed, /* 源文件打开失败 */
+        dest_open_failed, /* 目标文件打开失败 */
+        memory_alloc_failed, /* 内存分配失败 */
+        stop, /* 停止拷贝 */
+        size_unequal /* 源文件和目标文件大小不一致 */
     };
 
 public:

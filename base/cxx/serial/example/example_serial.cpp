@@ -115,58 +115,58 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     printf("  baud: %ld\n", baudrate);
     switch (databits)
     {
-    case serial::Databits::FIVE:
+    case serial::Databits::five:
         printf("  data: 5\n");
         break;
-    case serial::Databits::SIX:
+    case serial::Databits::six:
         printf("  data: 6\n");
         break;
-    case serial::Databits::SEVEN:
+    case serial::Databits::seven:
         printf("  data: 7\n");
         break;
-    case serial::Databits::EIGHT:
+    case serial::Databits::eight:
         printf("  data: 8\n");
         break;
     }
     switch (parity)
     {
-    case serial::ParityType::NONE:
+    case serial::ParityType::none:
         printf("parity: None\n");
         break;
-    case serial::ParityType::ODD:
+    case serial::ParityType::odd:
         printf("parity: Odd\n");
         break;
-    case serial::ParityType::EVEN:
+    case serial::ParityType::even:
         printf("parity: Even\n");
         break;
-    case serial::ParityType::MARK:
+    case serial::ParityType::mark:
         printf("parity: Mark\n");
         break;
-    case serial::ParityType::SPACE:
+    case serial::ParityType::space:
         printf("parity: Space\n");
         break;
     }
     switch (stopbits)
     {
-    case serial::Stopbits::ONE:
+    case serial::Stopbits::one:
         printf("  stop: 1\n");
         break;
-    case serial::Stopbits::ONE_AND_HALF:
+    case serial::Stopbits::one_and_half:
         printf("  stop: 1.5\n");
         break;
-    case serial::Stopbits::TWO:
+    case serial::Stopbits::two:
         printf("  stop: 2\n");
         break;
     }
     switch (flowcontrol)
     {
-    case serial::FlowcontrolType::NONE:
+    case serial::FlowcontrolType::none:
         printf("  flow: None\n");
         break;
-    case serial::FlowcontrolType::SOFTWARE:
+    case serial::FlowcontrolType::software:
         printf("  flow: Software\n");
         break;
-    case serial::FlowcontrolType::HARDWARE:
+    case serial::FlowcontrolType::hardware:
         printf("  flow: Hardware\n");
         break;
     }
@@ -288,10 +288,10 @@ int main(int argc, char** argv)
     /* 参数值 */
     std::string portName;
     unsigned long baudrate = 115200;
-    serial::Databits databits = serial::Databits::EIGHT;
-    serial::ParityType pariry = serial::ParityType::NONE;
-    serial::Stopbits stopbits = serial::Stopbits::ONE;
-    serial::FlowcontrolType flowcontrol = serial::FlowcontrolType::NONE;
+    serial::Databits databits = serial::Databits::eight;
+    serial::ParityType pariry = serial::ParityType::none;
+    serial::Stopbits stopbits = serial::Stopbits::one;
+    serial::FlowcontrolType flowcontrol = serial::FlowcontrolType::none;
     /* 解析参数 */
     for (int i = 1; i < argc;)
     {
@@ -346,19 +346,19 @@ int main(int argc, char** argv)
             flagDatabits = 2;
             if (0 == val.compare("5"))
             {
-                databits = serial::Databits::FIVE;
+                databits = serial::Databits::five;
             }
             else if (0 == val.compare("6"))
             {
-                databits = serial::Databits::SIX;
+                databits = serial::Databits::six;
             }
             else if (0 == val.compare("7"))
             {
-                databits = serial::Databits::SEVEN;
+                databits = serial::Databits::seven;
             }
             else if (0 == val.compare("8"))
             {
-                databits = serial::Databits::EIGHT;
+                databits = serial::Databits::eight;
             }
             else
             {
@@ -371,23 +371,23 @@ int main(int argc, char** argv)
             flagParity = 2;
             if (0 == val.compare("N") || 0 == val.compare("n"))
             {
-                pariry = serial::ParityType::NONE;
+                pariry = serial::ParityType::none;
             }
             else if (0 == val.compare("O") || 0 == val.compare("o"))
             {
-                pariry = serial::ParityType::ODD;
+                pariry = serial::ParityType::odd;
             }
             else if (0 == val.compare("E") || 0 == val.compare("e"))
             {
-                pariry = serial::ParityType::EVEN;
+                pariry = serial::ParityType::even;
             }
             else if (0 == val.compare("M") || 0 == val.compare("m"))
             {
-                pariry = serial::ParityType::MARK;
+                pariry = serial::ParityType::mark;
             }
             else if (0 == val.compare("S") || 0 == val.compare("s"))
             {
-                pariry = serial::ParityType::SPACE;
+                pariry = serial::ParityType::space;
             }
             else
             {
@@ -400,15 +400,15 @@ int main(int argc, char** argv)
             flagStopbits = 2;
             if (0 == val.compare("1"))
             {
-                stopbits = serial::Stopbits::ONE;
+                stopbits = serial::Stopbits::one;
             }
             else if (0 == val.compare("1.5"))
             {
-                stopbits = serial::Stopbits::ONE_AND_HALF;
+                stopbits = serial::Stopbits::one_and_half;
             }
             else if (0 == val.compare("2"))
             {
-                stopbits = serial::Stopbits::TWO;
+                stopbits = serial::Stopbits::two;
             }
             else
             {
@@ -421,15 +421,15 @@ int main(int argc, char** argv)
             flagFlowcontrol = 2;
             if (0 == val.compare("N") || 0 == val.compare("n"))
             {
-                flowcontrol = serial::FlowcontrolType::NONE;
+                flowcontrol = serial::FlowcontrolType::none;
             }
             else if (0 == val.compare("S") || 0 == val.compare("s"))
             {
-                flowcontrol = serial::FlowcontrolType::SOFTWARE;
+                flowcontrol = serial::FlowcontrolType::software;
             }
             else if (0 == val.compare("H") || 0 == val.compare("h"))
             {
-                flowcontrol = serial::FlowcontrolType::HARDWARE;
+                flowcontrol = serial::FlowcontrolType::hardware;
             }
             else
             {
@@ -458,10 +458,10 @@ int main(int argc, char** argv)
     flagRxAutoLine = 0;
     portName = "COM26";
     baudrate = 38400;
-    databits = serial::Databits::SEVEN;
-    pariry = serial::ParityType::EVEN;
-    stopbits = serial::Stopbits::TWO;
-    flowcontrol = serial::FlowcontrolType::NONE;
+    databits = serial::Databits::seven;
+    pariry = serial::ParityType::even;
+    stopbits = serial::Stopbits::two;
+    flowcontrol = serial::FlowcontrolType::none;
 #endif
     /* 判断端口是否正确 */
     for (size_t i = 0; i < portList.size(); ++i)

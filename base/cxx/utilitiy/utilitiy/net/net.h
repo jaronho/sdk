@@ -28,30 +28,30 @@ public:
     {
         enum class Type
         {
-            OTHER,
-            ETHERNET,
-            TOKENRING,
-            FDDI,
-            PPP,
-            LOOPBACK,
-            SLIP
+            other,
+            ethernet,
+            tokenring,
+            fddi,
+            ppp,
+            loopback,
+            slip
         };
 
         std::string typeStr() const
         {
             switch (type)
             {
-            case Type::ETHERNET:
+            case Type::ethernet:
                 return "ethernet";
-            case Type::TOKENRING:
+            case Type::tokenring:
                 return "tokenring";
-            case Type::FDDI:
+            case Type::fddi:
                 return "fddi";
-            case Type::PPP:
+            case Type::ppp:
                 return "ppp";
-            case Type::LOOPBACK:
+            case Type::loopback:
                 return "loopback";
-            case Type::SLIP:
+            case Type::slip:
                 return "slip";
             }
             return std::to_string(realType);

@@ -64,7 +64,7 @@ Logfile::Result RotatingLogfile::record(const std::string& content, bool newline
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     Logfile::Result ret = m_logfile->record(content, newline);
-    if (Logfile::Result::WILL_FULL == ret)
+    if (Logfile::Result::will_full == ret)
     {
         if (rotateFileList())
         {

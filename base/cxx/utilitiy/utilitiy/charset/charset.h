@@ -8,9 +8,9 @@ class Charset final
 public:
     enum class Coding
     {
-        GBK,
-        UTF8,
-        UNKOWN
+        gbk,
+        utf8,
+        unknown
     };
 
 public:

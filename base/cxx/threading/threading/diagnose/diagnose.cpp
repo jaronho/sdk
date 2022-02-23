@@ -166,13 +166,13 @@ std::string Diagnose::taskStateToString(const Task::State& state)
 {
     switch (state)
     {
-    case Task::State::CREATED:
+    case Task::State::created:
         return "Created";
-    case Task::State::QUEUING:
+    case Task::State::queuing:
         return "Queuing";
-    case Task::State::RUNNING:
+    case Task::State::running:
         return "Running";
-    case Task::State::FINISHED:
+    case Task::State::finished:
         return "Finished";
     default:
         break;

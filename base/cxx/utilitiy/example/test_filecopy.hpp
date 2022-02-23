@@ -76,19 +76,19 @@ void testFileCopy(int argc, char** argv)
     auto result = fc.start(&failSrcFile, &failDestFile, &failCode);
     switch (result)
     {
-    case utilitiy::FileInfo::CopyResult::OK:
+    case utilitiy::FileInfo::CopyResult::ok:
         printf("\nfile copy ok\n");
         break;
-    case utilitiy::FileInfo::CopyResult::SRC_OPEN_FAILED:
+    case utilitiy::FileInfo::CopyResult::src_open_failed:
         printf("\nfile copy fail: source file %s open fail: %d %s\n", failSrcFile.c_str(), failCode, strerror(failCode));
-    case utilitiy::FileInfo::CopyResult::DEST_OPEN_FAILED:
+    case utilitiy::FileInfo::CopyResult::dest_open_failed:
         printf("\nfile copy fail: destination file %s open fail: %d %s\n", failDestFile.c_str(), failCode, strerror(failCode));
-    case utilitiy::FileInfo::CopyResult::MEMORY_FAILED:
+    case utilitiy::FileInfo::CopyResult::memory_alloc_failed:
         printf("\nfile copy fail: source file %s, destination file: %s, memory allocate fail: %d %s\n", failSrcFile.c_str(),
                failDestFile.c_str(), failCode, strerror(failCode));
-    case utilitiy::FileInfo::CopyResult::STOP:
+    case utilitiy::FileInfo::CopyResult::stop:
         printf("\nfile copy fail: source file %s, destination file: %s, stop\n", failSrcFile.c_str(), failDestFile.c_str());
-    case utilitiy::FileInfo::CopyResult::NOT_EQUAL:
+    case utilitiy::FileInfo::CopyResult::size_unequal:
         printf("\nfile copy fail: source file %s != destination file %s\n", failSrcFile.c_str(), failDestFile.c_str());
     }
     std::chrono::steady_clock::time_point tm2 = std::chrono::steady_clock::now();

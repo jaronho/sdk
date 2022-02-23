@@ -18,9 +18,9 @@ public:
      */
     enum class Type
     {
-        RAW, /* 原始字节流 */
-        FORM, /* 表单 */
-        MULTIPART_FORM /* 多部分表单 */
+        raw, /* 原始字节流 */
+        form, /* 表单 */
+        multipart_form /* 多部分表单 */
     };
 
     virtual ~RequestData() = default;

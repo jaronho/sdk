@@ -191,7 +191,7 @@ public:
             mr.replyer = mc.replyer;
             mr.proc = mc.proc;
             mr.data = {};
-            mr.code = rpc::ErrorCode::TIMEOUT;
+            mr.code = rpc::ErrorCode::timeout;
             callerClient->send(&mr);
         }
     }
@@ -378,21 +378,21 @@ void Broker::handleClientMsg(const std::shared_ptr<Client>& client, const MsgTyp
 {
     switch (type)
     {
-    case MsgType::HEARTBEAT: {
-        printf("<<<<< [HEARTBEAT] [%s:%d], client id: %s\n", client->getHost().c_str(), client->getPort(), client->getId().c_str());
+    case MsgType::heartbeat: {
+        printf("<<<<< [heartbeat] [%s:%d], client id: %s\n", client->getHost().c_str(), client->getPort(), client->getId().c_str());
     }
     break;
-    case MsgType::REGISTER: {
-        msg_register reg;
-        reg.decode(ba);
-        printf("<<<<< [REGISTER], client id: %s\n", reg.self_id.c_str());
+    case MsgType::bind: {
+        msg_bind req;
+        req.decode(ba);
+        printf("<<<<< [bind], client id: %s\n", req.self_id.c_str());
         /* 设置客户端ID */
         bool isNewId = true;
         {
             std::lock_guard<std::mutex> locker(m_mutexClientMap);
             for (auto iter = m_clientMap.begin(); m_clientMap.end() != iter; ++iter)
             {
-                if (iter->second->getId() == reg.self_id) /* ID重复 */
+                if (iter->second->getId() == req.self_id) /* ID重复 */
                 {
                     isNewId = false;
                     break;
@@ -401,21 +401,21 @@ void Broker::handleClientMsg(const std::shared_ptr<Client>& client, const MsgTyp
         }
         if (isNewId)
         {
-            client->setId(reg.self_id);
+            client->setId(req.self_id);
         }
         else /* ID重复 */
         {
-            printf("********** register repeat **********\n");
+            printf("********** bind repeat **********\n");
         }
-        msg_register_result resp;
-        resp.code = isNewId ? ErrorCode::OK : ErrorCode::REGISTER_REPEAT;
+        msg_bind_result resp;
+        resp.code = isNewId ? ErrorCode::ok : ErrorCode::bind_repeat;
         client->send(&resp);
     }
     break;
-    case MsgType::CALL: {
+    case MsgType::call: {
         msg_call mc;
         mc.decode(ba);
-        printf("<<<<< [CALL], seq id: %lld, caller: %s, replyer: %s, proc: %d, timeout: %d(ms)\n", mc.seq_id, mc.caller.c_str(),
+        printf("<<<<< [call], seq id: %lld, caller: %s, replyer: %s, proc: %d, timeout: %d(ms)\n", mc.seq_id, mc.caller.c_str(),
                mc.replyer.c_str(), mc.proc, mc.timeout);
         /* 查找应答者 */
         std::shared_ptr<Client> replyerClient = nullptr;
@@ -455,7 +455,7 @@ void Broker::handleClientMsg(const std::shared_ptr<Client>& client, const MsgTyp
                         mr.replyer = mc.replyer;
                         mr.proc = mc.proc;
                         mr.data = {};
-                        mr.code = ErrorCode::CALL_REPLYER_FAILED;
+                        mr.code = ErrorCode::call_replyer_failed;
                         client->send(&mr);
                     }
                 });
@@ -470,7 +470,7 @@ void Broker::handleClientMsg(const std::shared_ptr<Client>& client, const MsgTyp
                 mr.replyer = mc.replyer;
                 mr.proc = mc.proc;
                 mr.data = {};
-                mr.code = ErrorCode::TIMEOUT;
+                mr.code = ErrorCode::timeout;
                 client->send(&mr);
             }
         }
@@ -484,15 +484,15 @@ void Broker::handleClientMsg(const std::shared_ptr<Client>& client, const MsgTyp
             mr.replyer = mc.replyer;
             mr.proc = mc.proc;
             mr.data = {};
-            mr.code = ErrorCode::REPLYER_NOT_FOUND;
+            mr.code = ErrorCode::replyer_not_found;
             client->send(&mr);
         }
     }
     break;
-    case MsgType::REPLY: {
+    case MsgType::reply: {
         msg_reply mr;
         mr.decode(ba);
-        printf("<<<<< [REPLY], seq id: %lld, caller: %s, replyer: %s, proc: %d\n", mr.seq_id, mr.caller.c_str(), mr.replyer.c_str(),
+        printf("<<<<< [reply], seq id: %lld, caller: %s, replyer: %s, proc: %d\n", mr.seq_id, mr.caller.c_str(), mr.replyer.c_str(),
                mr.proc);
         /* 通知调用方 */
         std::shared_ptr<Session> session;
@@ -511,7 +511,7 @@ void Broker::handleClientMsg(const std::shared_ptr<Client>& client, const MsgTyp
         }
         else
         {
-            printf("<<<<< [REPLY], can't find session\n");
+            printf("<<<<< [reply], can't find session\n");
         }
     }
     break;

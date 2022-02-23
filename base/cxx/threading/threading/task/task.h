@@ -19,10 +19,10 @@ public:
 	 */
     enum class State
     {
-        CREATED, /* 已创建 */
-        QUEUING, /* 排队中 */
-        RUNNING, /* 运行中 */
-        FINISHED /* 已完成 */
+        created, /* 已创建 */
+        queuing, /* 排队中 */
+        running, /* 运行中 */
+        finished /* 已完成 */
     };
 
     /**
@@ -74,7 +74,7 @@ public:
 
 private:
     const std::string m_name; /* 任务名称 */
-    std::atomic<State> m_state = {State::CREATED}; /* 任务状态 */
+    std::atomic<State> m_state = {State::created}; /* 任务状态 */
     std::atomic_bool m_cancelled = {false}; /* 是否已取消 */
     std::mutex m_mutex; /* for m_cv */
     std::condition_variable m_cv;

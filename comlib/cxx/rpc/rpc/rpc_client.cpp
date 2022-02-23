@@ -49,7 +49,7 @@ public:
         m_client.onSessionTimeout(m_call.seq_id);
         if (replyFunc)
         {
-            replyFunc({}, rpc::ErrorCode::TIMEOUT);
+            replyFunc({}, rpc::ErrorCode::timeout);
         }
     }
 
@@ -58,7 +58,7 @@ public:
         stopTimer();
         if (m_replyFunc)
         {
-            m_replyFunc({}, rpc::ErrorCode::CALL_BROKER_FAILED);
+            m_replyFunc({}, rpc::ErrorCode::call_broker_failed);
         }
     }
 
@@ -105,7 +105,7 @@ Client::Client(const std::string& id, const std::string& brokerHost, int brokerP
         throw std::exception(std::logic_error("arg 'id' is empty"));
     }
     m_payload = std::make_shared<nsocket::Payload>(msg_base::maxsize());
-    m_regHandler = nullptr;
+    m_bindHandler = nullptr;
     m_callHandler = nullptr;
     m_id = id;
     m_brokerHost = brokerHost;
@@ -116,12 +116,12 @@ Client::Client(const std::string& id, const std::string& brokerHost, int brokerP
     m_privateKeyFilePwd = privateKeyFilePwd;
 #endif
     m_running = false;
-    m_registered = false;
+    m_binded = false;
 }
 
-void Client::setRegHandler(const REG_HANDLER& handler)
+void Client::setBindHandler(const BIND_HANDLER& handler)
 {
-    m_regHandler = handler;
+    m_bindHandler = handler;
 }
 
 void Client::setCallHandler(const CALL_HANDLER& handler)
@@ -177,9 +177,9 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
 {
     static algorithm::Snowflake sf(0, getpid());
     replyData.clear();
-    if (!m_registered)
+    if (!m_binded)
     {
-        return ErrorCode::UNREGISTER;
+        return ErrorCode::unbind;
     }
     msg_call mc;
     mc.seq_id = algorithm::Snowflake::easyGenerate();
@@ -202,14 +202,14 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
         }
         else
         {
-            return ErrorCode::TIMEOUT;
+            return ErrorCode::timeout;
         }
     }
     std::size_t length;
     auto code = m_tcpClient->send(buffer, length);
     if (code)
     {
-        m_registered = false;
+        m_binded = false;
         m_tcpClient->stop();
         std::lock_guard<std::mutex> locker(m_mutexSessionMap);
         auto iter = m_sessionMap.find(mc.seq_id);
@@ -217,7 +217,7 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
         {
             m_sessionMap.erase(iter);
         }
-        return ErrorCode::CALL_BROKER_FAILED;
+        return ErrorCode::call_broker_failed;
     }
     if (timeout > std::chrono::steady_clock::duration::zero())
     {
@@ -230,7 +230,7 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
             {
                 m_sessionMap.erase(iter);
             }
-            return ErrorCode::TIMEOUT;
+            return ErrorCode::timeout;
         }
     }
     msg_reply mr = future.get();
@@ -241,11 +241,11 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
 void Client::callAsync(const std::string& replyer, int proc, const std::vector<unsigned char>& data, const REPLY_FUNC& replyFunc,
                        const std::chrono::steady_clock::duration& timeout)
 {
-    if (!m_registered)
+    if (!m_binded)
     {
         if (replyFunc)
         {
-            replyFunc({}, ErrorCode::UNREGISTER);
+            replyFunc({}, ErrorCode::unbind);
         }
         return;
     }
@@ -271,7 +271,7 @@ void Client::callAsync(const std::string& replyer, int proc, const std::vector<u
         {
             if (replyFunc)
             {
-                replyFunc({}, ErrorCode::TIMEOUT);
+                replyFunc({}, ErrorCode::timeout);
             }
             return;
         }
@@ -280,7 +280,7 @@ void Client::callAsync(const std::string& replyer, int proc, const std::vector<u
     auto code = m_tcpClient->send(buffer, length);
     if (code)
     {
-        m_registered = false;
+        m_binded = false;
         m_tcpClient->stop();
         std::shared_ptr<Session> session = nullptr;
         {
@@ -304,13 +304,13 @@ void Client::handleConnection(const boost::system::error_code& code, bool async)
     if (code)
     {
         printf("------------------------------ connect fail, %d, %s\n", code.value(), code.message().c_str());
-        m_registered = false;
+        m_binded = false;
         m_tcpClient->stop();
     }
     else
     {
         printf("++++++++++++++++++++++++++++++ connect ok\n");
-        reqRegister(async);
+        reqBind(async);
     }
 }
 
@@ -352,26 +352,26 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
 {
     switch (type)
     {
-    case MsgType::REGISTER_RESULT: {
-        msg_register_result resp;
+    case MsgType::bind_result: {
+        msg_bind_result resp;
         resp.decode(ba);
-        printf("<<<<< [REGISTER_RESULT], desc: %s\n", error_desc(resp.code).c_str());
-        if (ErrorCode::OK == resp.code)
+        printf("<<<<< [bind_result], desc: %s\n", error_desc(resp.code).c_str());
+        if (ErrorCode::ok == resp.code)
         {
-            m_registered = true;
+            m_binded = true;
         }
         else
         {
             m_running = false;
             m_tcpClient->stop();
         }
-        if (m_regHandler)
+        if (m_bindHandler)
         {
-            m_regHandler(resp.code);
+            m_bindHandler(resp.code);
         }
     }
     break;
-    case MsgType::CALL: {
+    case MsgType::call: {
         msg_call mc;
         mc.decode(ba);
         /* 应答调用方 */
@@ -385,12 +385,12 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
             try
             {
                 mr.data = m_callHandler(mc.caller, mc.proc, mc.data);
-                mr.code = ErrorCode::OK;
+                mr.code = ErrorCode::ok;
             }
             catch (...)
             {
                 mr.data = {};
-                mr.code = ErrorCode::REPLYER_INNER_ERROR;
+                mr.code = ErrorCode::replyer_inner_error;
             }
             utilitiy::ByteArray ba;
             mr.encode(ba);
@@ -400,7 +400,7 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
         }
     }
     break;
-    case MsgType::REPLY: {
+    case MsgType::reply: {
         msg_reply mr;
         mr.decode(ba);
         std::shared_ptr<Session> session = nullptr;
@@ -419,7 +419,7 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
         }
         else
         {
-            printf("********** [REPLY], seq id: %lld, replyer: %s, proc: %d, can't find session **********\n", mr.seq_id,
+            printf("********** [reply], seq id: %lld, replyer: %s, proc: %d, can't find session **********\n", mr.seq_id,
                    mr.replyer.c_str(), mr.proc);
         }
     }
@@ -431,13 +431,13 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
     }
 }
 
-void Client::reqRegister(bool async)
+void Client::reqBind(bool async)
 {
-    /* 向服务器注册 */
-    msg_register reg;
-    reg.self_id = m_id;
+    /* 向服务器绑定 */
+    msg_bind req;
+    req.self_id = m_id;
     utilitiy::ByteArray ba;
-    reg.encode(ba);
+    req.encode(ba);
     std::vector<unsigned char> data;
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);
     if (async)
@@ -445,12 +445,12 @@ void Client::reqRegister(bool async)
         m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
             if (code)
             {
-                printf(">>>>>>>>>> register fail, %d, %s\n", code.value(), code.message().c_str());
+                printf(">>>>>>>>>> bind fail, %d, %s\n", code.value(), code.message().c_str());
                 m_tcpClient->stop();
             }
             else
             {
-                printf(">>>>>>>>>> register ok, length: %d\n", (int)length);
+                printf(">>>>>>>>>> bind ok, length: %d\n", (int)length);
             }
         });
     }
@@ -460,12 +460,12 @@ void Client::reqRegister(bool async)
         auto code = m_tcpClient->send(data, length);
         if (code)
         {
-            printf(">>>>>>>>>> register fail, %d, %s\n", code.value(), code.message().c_str());
+            printf(">>>>>>>>>> bind fail, %d, %s\n", code.value(), code.message().c_str());
             m_tcpClient->stop();
         }
         else
         {
-            printf(">>>>>>>>>> register ok, length: %d\n", (int)length);
+            printf(">>>>>>>>>> bind ok, length: %d\n", (int)length);
         }
     }
 }

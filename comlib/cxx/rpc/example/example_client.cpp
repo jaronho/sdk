@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 #else
     rpc::Client client(id, brokerHost, brokerPort);
 #endif
-    client.setRegHandler([&](const rpc::ErrorCode& code) { printf("register to broker %s\n", rpc::error_desc(code).c_str()); });
+    client.setBindHandler([&](const rpc::ErrorCode& code) { printf("bind to broker %s\n", rpc::error_desc(code).c_str()); });
     client.setCallHandler([&](const std::string& callId, int proc, const std::vector<unsigned char>& data) {
         printf("++++++++++++++++++++ [%s] call [%d], data length: %d\n", callId.c_str(), proc, (int)data.size());
         /* 以十六进制格式打印数据 */

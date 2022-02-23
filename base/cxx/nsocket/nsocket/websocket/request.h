@@ -157,10 +157,10 @@ private:
      */
     enum class SepFlag
     {
-        NONE,
-        R, /* \r */
-        RN, /* \r\n */
-        RNR /* \r\n\r */
+        none,
+        r, /* \r */
+        rn, /* \r\n */
+        rnr /* \r\n\r */
     };
 
     /**
@@ -168,16 +168,16 @@ private:
      */
     enum class ParseStep
     {
-        METHOD, /* 方法 */
-        URI, /* URI */
-        QUERIES, /* 请求参数 */
-        VERSION, /* 版本 */
-        HEADER, /* 头部 */
-        FRAME /* 帧数据 */
+        method, /* 方法 */
+        uri, /* URI */
+        queries, /* 请求参数 */
+        version, /* 版本 */
+        header, /* 头部 */
+        frame /* 帧数据 */
     };
 
-    SepFlag m_sepFlag = SepFlag::NONE; /* 分隔符 */
-    ParseStep m_parseStep = ParseStep::METHOD; /* 解析步骤 */
+    SepFlag m_sepFlag = SepFlag::none; /* 分隔符 */
+    ParseStep m_parseStep = ParseStep::method; /* 解析步骤 */
     bool m_tmpKeyFlag = true; /* 是否键 */
     std::string m_tmpKey; /* 键名 */
     std::string m_tmpValue; /* 键值 */

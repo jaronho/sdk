@@ -124,43 +124,43 @@ int Request::parse(const unsigned char* data, int length, const HEAD_CALLBACK& h
         int used = 0;
         switch (m_parseStep)
         {
-        case ParseStep::METHOD: /* 解析方法 */
+        case ParseStep::method: /* 解析方法 */
             if ((used = parseMethod(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::URI: /* 解析URI */
+        case ParseStep::uri: /* 解析URI */
             if ((used = parseUri(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::QUERIES: /* 解析参数 */
+        case ParseStep::queries: /* 解析参数 */
             if ((used = parseQueries(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::VERSION: /* 解析版本 */
+        case ParseStep::version: /* 解析版本 */
             if ((used = parseVersion(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::HEADER: /* 解析头部 */
+        case ParseStep::header: /* 解析头部 */
             if ((used = parseHeader(remainData, remainLen, headCb, finishCb)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::CHUNK: /* 解析分块内容 */
+        case ParseStep::chunk: /* 解析分块内容 */
             if ((used = parseChunk(remainData, remainLen, contentCb, finishCb)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::UNCHUNK: /* 解析非分块内容 */
+        case ParseStep::unchunk: /* 解析非分块内容 */
             if ((used = parseUnchunk(remainData, remainLen, contentCb, finishCb)) <= 0)
             {
                 return 0;
@@ -194,8 +194,8 @@ void Request::reset()
     queries.clear();
     version.clear();
     headers.clear();
-    m_sepFlag = SepFlag::NONE;
-    m_parseStep = ParseStep::METHOD;
+    m_sepFlag = SepFlag::none;
+    m_parseStep = ParseStep::method;
     m_tmpKeyFlag = true;
     m_tmpKey.clear();
     m_tmpValue.clear();
@@ -219,7 +219,7 @@ int Request::parseMethod(const unsigned char* data, int length)
         {
             if (checkMethod())
             {
-                m_parseStep = ParseStep::URI;
+                m_parseStep = ParseStep::uri;
                 return (used + 1);
             }
             return 0;
@@ -244,12 +244,12 @@ int Request::parseUri(const unsigned char* data, int length)
         const auto& ch = data[used];
         if ('?' == ch)
         {
-            m_parseStep = ParseStep::QUERIES;
+            m_parseStep = ParseStep::queries;
             return (used + 1);
         }
         else if (' ' == ch)
         {
-            m_parseStep = ParseStep::VERSION;
+            m_parseStep = ParseStep::version;
             return (used + 1);
         }
         else
@@ -277,7 +277,7 @@ int Request::parseQueries(const unsigned char* data, int length)
                 queries.insert(std::make_pair(m_tmpKey, percentDecode(m_tmpValue)));
             }
             clearTmp();
-            m_parseStep = ParseStep::VERSION;
+            m_parseStep = ParseStep::version;
             return (used + 1);
         }
         else
@@ -330,9 +330,9 @@ int Request::parseVersion(const unsigned char* data, int length)
         const auto& ch = data[used];
         if ('\r' == ch)
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
-                m_sepFlag = SepFlag::R;
+                m_sepFlag = SepFlag::r;
             }
             else
             {
@@ -341,12 +341,12 @@ int Request::parseVersion(const unsigned char* data, int length)
         }
         else if ('\n' == ch)
         {
-            if (SepFlag::R == m_sepFlag)
+            if (SepFlag::r == m_sepFlag)
             {
                 if (checkVersion())
                 {
-                    m_sepFlag = SepFlag::NONE;
-                    m_parseStep = ParseStep::HEADER;
+                    m_sepFlag = SepFlag::none;
+                    m_parseStep = ParseStep::header;
                     return (used + 1);
                 }
             }
@@ -354,7 +354,7 @@ int Request::parseVersion(const unsigned char* data, int length)
         }
         else
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
                 version.push_back(ch);
                 if (version.size() > maxVersionLength()) /* 版本号的长度不合法 */
@@ -379,13 +379,13 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
         const auto& ch = data[used];
         if ('\r' == ch)
         {
-            if (SepFlag::NONE == m_sepFlag)
+            if (SepFlag::none == m_sepFlag)
             {
-                m_sepFlag = SepFlag::R;
+                m_sepFlag = SepFlag::r;
             }
-            else if (SepFlag::RN == m_sepFlag)
+            else if (SepFlag::rn == m_sepFlag)
             {
-                m_sepFlag = SepFlag::RNR;
+                m_sepFlag = SepFlag::rnr;
             }
             else
             {
@@ -394,11 +394,11 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
         }
         else if ('\n' == ch)
         {
-            if (SepFlag::R == m_sepFlag)
+            if (SepFlag::r == m_sepFlag)
             {
                 if (used + 1 < length && '\r' == data[used + 1]) /* 下一个也是'\r' */
                 {
-                    m_sepFlag = SepFlag::RN;
+                    m_sepFlag = SepFlag::rn;
                 }
                 else
                 {
@@ -409,10 +409,10 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                     headers.insert(std::make_pair(m_tmpKey, m_tmpValue));
                     parseContentTypeAndLength();
                     clearTmp();
-                    m_sepFlag = SepFlag::NONE;
+                    m_sepFlag = SepFlag::none;
                 }
             }
-            else if (SepFlag::RNR == m_sepFlag)
+            else if (SepFlag::rnr == m_sepFlag)
             {
                 if (!m_tmpKey.empty())
                 {
@@ -420,7 +420,7 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                     parseContentTypeAndLength();
                 }
                 clearTmp();
-                m_sepFlag = SepFlag::NONE;
+                m_sepFlag = SepFlag::none;
 
                 if (headCb)
                 {
@@ -428,11 +428,11 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                 }
                 if (m_transferEncodingChunked) /* 数据分块 */
                 {
-                    m_parseStep = ParseStep::CHUNK;
+                    m_parseStep = ParseStep::chunk;
                 }
                 else /* 数据非分块 */
                 {
-                    m_parseStep = ParseStep::UNCHUNK;
+                    m_parseStep = ParseStep::unchunk;
                     if (0 == m_contentLength) /* 无内容 */
                     {
                         if (finishCb)
@@ -468,7 +468,7 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
         {
             switch (m_sepFlag)
             {
-            case SepFlag::NONE:
+            case SepFlag::none:
                 if (' ' != ch)
                 {
                     if (m_tmpKeyFlag)
@@ -529,13 +529,13 @@ int Request::parseChunk(const unsigned char* data, int length, const CONTENT_CAL
             const auto& ch = data[used];
             if ('\r' == ch)
             {
-                if (SepFlag::NONE == m_sepFlag)
+                if (SepFlag::none == m_sepFlag)
                 {
-                    m_sepFlag = SepFlag::R;
+                    m_sepFlag = SepFlag::r;
                 }
-                else if (SepFlag::RN == m_sepFlag)
+                else if (SepFlag::rn == m_sepFlag)
                 {
-                    m_sepFlag = SepFlag::RNR;
+                    m_sepFlag = SepFlag::rnr;
                 }
                 else
                 {
@@ -544,23 +544,23 @@ int Request::parseChunk(const unsigned char* data, int length, const CONTENT_CAL
             }
             else if ('\n' == ch)
             {
-                if (SepFlag::R == m_sepFlag)
+                if (SepFlag::r == m_sepFlag)
                 {
                     m_chunkSize = hex2dec(m_chunkSizeHex);
                     m_chunkSizeHex.clear();
                     m_contentLength += m_chunkSize;
                     if (0 == m_chunkSize)
                     {
-                        m_sepFlag = SepFlag::RN;
+                        m_sepFlag = SepFlag::rn;
                     }
                     else
                     {
-                        m_sepFlag = SepFlag::NONE;
+                        m_sepFlag = SepFlag::none;
                         m_chunkParseFlag = false;
                         return (used + 1);
                     }
                 }
-                else if (SepFlag::RNR == m_sepFlag) /* 所有分块结束 */
+                else if (SepFlag::rnr == m_sepFlag) /* 所有分块结束 */
                 {
                     if (finishCb)
                     {
@@ -603,9 +603,9 @@ int Request::parseChunk(const unsigned char* data, int length, const CONTENT_CAL
                 const auto& ch = data[used];
                 if ('\r' == ch)
                 {
-                    if (SepFlag::NONE == m_sepFlag)
+                    if (SepFlag::none == m_sepFlag)
                     {
-                        m_sepFlag = SepFlag::R;
+                        m_sepFlag = SepFlag::r;
                     }
                     else
                     {
@@ -614,9 +614,9 @@ int Request::parseChunk(const unsigned char* data, int length, const CONTENT_CAL
                 }
                 else if ('\n' == ch)
                 {
-                    if (SepFlag::R == m_sepFlag)
+                    if (SepFlag::r == m_sepFlag)
                     {
-                        m_sepFlag = SepFlag::NONE;
+                        m_sepFlag = SepFlag::none;
                         m_chunkSize = 0;
                         m_chunkReceived = 0;
                         m_chunkParseFlag = true;

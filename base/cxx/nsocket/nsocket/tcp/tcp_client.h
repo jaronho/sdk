@@ -104,9 +104,9 @@ private:
     TCP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */
     enum class RunStatus
     {
-        RUN_NONE, /* 未开始 */
-        RUN_START, /* 开始 */
-        RUN_STOP /* 停止 */
+        none, /* 未开始 */
+        start, /* 开始 */
+        stop /* 停止 */
     };
     RunStatus m_runStatus; /* 运行状态 */
 };

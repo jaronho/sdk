@@ -14,7 +14,7 @@ std::vector<unsigned char> client3Func(const std::vector<unsigned char>& data)
     return std::vector<unsigned char>(str.begin(), str.end());
 }
 
-void callClient(const std::string& replyer, const PROC_TYPE& proc)
+void callClient(const std::string& replyer, const ProcType& proc)
 {
     auto tm1 = std::chrono::steady_clock::now();
     if (s_syncFlag)
@@ -45,14 +45,14 @@ int main(int argc, char* argv[])
         s_syncFlag = false;
     }
     s_client = std::make_shared<rpc::Client>("cli_3", "127.0.0.1", 4335);
-    s_client->setRegHandler([&](const rpc::ErrorCode& code) { printf("register to broker %s\n", rpc::error_desc(code).c_str()); });
+    s_client->setBindHandler([&](const rpc::ErrorCode& code) { printf("bind to broker %s\n", rpc::error_desc(code).c_str()); });
     s_client->setCallHandler([&](const std::string& callId, int proc, const std::vector<unsigned char>& data) {
-        switch ((PROC_TYPE)proc)
+        switch ((ProcType)proc)
         {
-        case PROC_TYPE::CLIENT3_FUNC:
+        case ProcType::client3_func:
             return client3Func(data);
         default:
-            printf("unhandle proc [%s] called by [%s]\n", proc_name((PROC_TYPE)proc).c_str(), callId.c_str());
+            printf("unhandle proc [%s] called by [%s]\n", proc_name((ProcType)proc).c_str(), callId.c_str());
         }
         return std::vector<unsigned char>();
     });
@@ -63,9 +63,9 @@ int main(int argc, char* argv[])
     while (1)
     {
         /* 调用客户端1接口 */
-        callClient("cli_1", PROC_TYPE::CLIENT1_FUNC);
+        callClient("cli_1", ProcType::client1_func);
         /* 调用客户端2接口 */
-        callClient("cli_2", PROC_TYPE::CLIENT2_FUNC);
+        callClient("cli_2", ProcType::client2_func);
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     return 0;

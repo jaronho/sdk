@@ -19,7 +19,7 @@ RawRequestData::RawRequestData(const char* bytes, size_t count)
 
 RequestData::Type RawRequestData::getType() const
 {
-    return Type::RAW;
+    return Type::raw;
 }
 
 std::string RawRequestData::toString() const
@@ -41,7 +41,7 @@ FormRequestData::FormRequestData(const std::string& data) : m_data(data) {}
 
 RequestData::Type FormRequestData::getType() const
 {
-    return Type::FORM;
+    return Type::form;
 }
 
 std::string FormRequestData::toString() const
@@ -58,7 +58,7 @@ MultipartFormRequestData::MultipartFormRequestData() {}
 
 RequestData::Type MultipartFormRequestData::getType() const
 {
-    return Type::MULTIPART_FORM;
+    return Type::multipart_form;
 }
 
 std::string MultipartFormRequestData::toString() const

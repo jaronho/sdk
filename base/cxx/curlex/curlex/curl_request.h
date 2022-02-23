@@ -19,9 +19,9 @@ public:
      */
     enum class Type
     {
-        SIMPLE, /* 简单 */
-        SSL2WAY, /* SSL双向验证 */
-        USERPWD /* 带用户名密码 */
+        simple, /* 简单 */
+        ssl_2way, /* SSL双向验证 */
+        user_pwd /* 带用户名密码 */
     };
 
     /**
@@ -155,7 +155,7 @@ public:
     void setData(const RequestDataPtr& data);
 
 private:
-    Type m_type = Type::SIMPLE; /* 类型 */
+    Type m_type = Type::simple; /* 类型 */
     std::string m_url; /* 资源地址 */
     bool m_redirect = true; /* 是否支持重定向 */
     int m_maxRedirects = -1; /* 可以递归返回的数量 */

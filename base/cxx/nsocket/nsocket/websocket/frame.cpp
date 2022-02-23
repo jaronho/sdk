@@ -36,37 +36,37 @@ int Frame::parse(const unsigned char* data, int length, const HEAD_CALLBACK& hea
         int used = 0;
         switch (m_parseStep)
         {
-        case ParseStep::FIN_RSV_OPCODE:
+        case ParseStep::fin_rsv_opcode:
             if ((used = parseFinRsvOpcode(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::MASK_PAYLOAD_LEN:
+        case ParseStep::mask_payload_len:
             if ((used = parseMaskPayloadLen(remainData, remainLen)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::PAYLOAD_LEN_2:
+        case ParseStep::payload_len_2:
             if ((used = parsePayloadLen(remainData, remainLen, 2)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::PAYLOAD_LEN_8:
+        case ParseStep::payload_len_8:
             if ((used = parsePayloadLen(remainData, remainLen, 8)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::MASKING_KEY:
+        case ParseStep::masking_key:
             if ((used = parseMaskingKey(remainData, remainLen, headCb, finishCb)) <= 0)
             {
                 return 0;
             }
             break;
-        case ParseStep::PAYLOAD:
+        case ParseStep::payload:
             if ((used = parsePayload(remainData, remainLen, payloadCb, finishCb)) <= 0)
             {
                 return 0;
@@ -237,7 +237,7 @@ void Frame::create(std::vector<unsigned char>& data)
     }
     if (1 == mask) /* 有掩码时才需要写入 */
     {
-        /* 掩码(4个字节): MASKING_KEY */
+        /* 掩码(4个字节): masking_key */
         for (int i = 0; i < 4; ++i)
         {
             data.push_back(maskingKey[i]);
@@ -253,7 +253,7 @@ void Frame::reset()
     mask = 0;
     payloadLen = 0;
     memset(maskingKey, 0, sizeof(maskingKey));
-    m_parseStep = ParseStep::FIN_RSV_OPCODE;
+    m_parseStep = ParseStep::fin_rsv_opcode;
     m_payloadReceived = 0;
     m_tmpBytes.clear();
 }
@@ -266,7 +266,7 @@ int Frame::parseFinRsvOpcode(const unsigned char* data, int length)
     rsv[1] = (byte >> 5) & 0x1;
     rsv[2] = (byte >> 4) & 0x1;
     opcode = byte & 0xF;
-    m_parseStep = ParseStep::MASK_PAYLOAD_LEN;
+    m_parseStep = ParseStep::mask_payload_len;
     return 1;
 }
 
@@ -278,17 +278,17 @@ int Frame::parseMaskPayloadLen(const unsigned char* data, int length)
     if (len <= 125) /* 立即得到负载长度 */
     {
         payloadLen = len;
-        m_parseStep = ParseStep::MASKING_KEY;
+        m_parseStep = ParseStep::masking_key;
     }
     else if (126 == len) /* 需要解析后面的2个字节作为负载长度 */
     {
         payloadLen = 0;
-        m_parseStep = ParseStep::PAYLOAD_LEN_2;
+        m_parseStep = ParseStep::payload_len_2;
     }
     else if (127 == len) /* 需要解析后面的8个字节作为负载长度 */
     {
         payloadLen = 0;
-        m_parseStep = ParseStep::PAYLOAD_LEN_8;
+        m_parseStep = ParseStep::payload_len_8;
     }
     else /* 协议错误: 数据量太大 */
     {
@@ -312,7 +312,7 @@ int Frame::parsePayloadLen(const unsigned char* data, int length, int needByteCo
                 payloadLen += m_tmpBytes[i] << (8 * (needByteCount - 1 - (int)i)); /* 大端字节序 */
             }
             m_tmpBytes.clear();
-            m_parseStep = ParseStep::MASKING_KEY;
+            m_parseStep = ParseStep::masking_key;
             return (used + 1);
         }
     }
@@ -332,7 +332,7 @@ int Frame::parseMaskingKey(const unsigned char* data, int length, const HEAD_CAL
                 maskingKey[i] = m_tmpBytes[i];
             }
             m_tmpBytes.clear();
-            m_parseStep = ParseStep::PAYLOAD;
+            m_parseStep = ParseStep::payload;
             if (headCb)
             {
                 headCb();

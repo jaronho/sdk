@@ -37,14 +37,14 @@ void testCharset(int argc, char** argv)
                     printf(" charset:");
                     switch (utilitiy::Charset::getCoding(name))
                     {
-                    case utilitiy::Charset::Coding::GBK:
+                    case utilitiy::Charset::Coding::gbk:
                         printf(" GBK\n");
                         printf("             UTF8: %s\n", utilitiy::Charset::gbkToUtf8(name).c_str());
                         break;
-                    case utilitiy::Charset::Coding::UTF8:
+                    case utilitiy::Charset::Coding::utf8:
                         printf(" UTF8\n");
                         break;
-                    case utilitiy::Charset::Coding::UNKOWN:
+                    case utilitiy::Charset::Coding::unknown:
                         printf(" Unknown\n");
                         break;
                     }
@@ -62,14 +62,14 @@ void testCharset(int argc, char** argv)
                     printf(" charset:");
                     switch (utilitiy::Charset::getCoding(name))
                     {
-                    case utilitiy::Charset::Coding::GBK:
+                    case utilitiy::Charset::Coding::gbk:
                         printf(" GBK\n");
                         printf("         UTF8: %s\n", utilitiy::Charset::gbkToUtf8(name).c_str());
                         break;
-                    case utilitiy::Charset::Coding::UTF8:
+                    case utilitiy::Charset::Coding::utf8:
                         printf(" UTF8\n");
                         break;
-                    case utilitiy::Charset::Coding::UNKOWN:
+                    case utilitiy::Charset::Coding::unknown:
                         printf(" Unknown\n");
                         break;
                     }
@@ -84,13 +84,13 @@ void testCharset(int argc, char** argv)
                         printf("      text file content charset:");
                         switch (utilitiy::Charset::getCoding(content))
                         {
-                        case utilitiy::Charset::Coding::GBK:
+                        case utilitiy::Charset::Coding::gbk:
                             printf(" GBK\n");
                             break;
-                        case utilitiy::Charset::Coding::UTF8:
+                        case utilitiy::Charset::Coding::utf8:
                             printf(" UTF8\n");
                             break;
-                        case utilitiy::Charset::Coding::UNKOWN:
+                        case utilitiy::Charset::Coding::unknown:
                             printf(" Unknown\n");
                             break;
                         }

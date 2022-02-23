@@ -1,21 +1,22 @@
 #pragma once
+#include <string>
 
-enum class PROC_TYPE
+enum class ProcType
 {
-    CLIENT1_FUNC = 0,
-    CLIENT2_FUNC,
-    CLIENT3_FUNC
+    client1_func = 0,
+    client2_func,
+    client3_func
 };
 
-std::string proc_name(const PROC_TYPE& type)
+std::string proc_name(const ProcType& type)
 {
     switch (type)
     {
-    case PROC_TYPE::CLIENT1_FUNC:
+    case ProcType::client1_func:
         return "client1Func";
-    case PROC_TYPE::CLIENT2_FUNC:
+    case ProcType::client2_func:
         return "client2Func";
-    case PROC_TYPE::CLIENT3_FUNC:
+    case ProcType::client3_func:
         return "client3Func";
     default:
         return "unknow proc [%d]" + std::to_string((int)type);

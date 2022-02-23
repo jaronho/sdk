@@ -103,9 +103,9 @@ private:
      */
     enum class SepFlag
     {
-        NONE,
-        R, /* \r */
-        RN /* \r\n */
+        none,
+        r, /* \r */
+        rn /* \r\n */
     };
 
     /**
@@ -113,17 +113,17 @@ private:
      */
     enum class ParseStep
     {
-        BOUNDARY, /* 边界线 */
-        CONTENT_DISPOSITION, /* 内容处理信息 */
-        CONTENT_TYPE, /* 内容类型 */
-        EMPTY_LINE, /* 空行 */
-        CONTENT, /* 内容 */
-        ENDING /* 表单结束 */
+        boundary, /* 边界线 */
+        content_disposition, /* 内容处理信息 */
+        content_type, /* 内容类型 */
+        empty_line, /* 空行 */
+        content, /* 内容 */
+        ending /* 表单结束 */
     };
 
     std::string m_boundary; /* 边界线 */
-    SepFlag m_sepFlag = SepFlag::NONE; /* 分隔符 */
-    ParseStep m_parseStep = ParseStep::BOUNDARY; /* 解析步骤 */
+    SepFlag m_sepFlag = SepFlag::none; /* 分隔符 */
+    ParseStep m_parseStep = ParseStep::boundary; /* 解析步骤 */
     std::string m_nowLine; /* 当前行数据 */
     std::string m_name; /* 表单项名 */
     std::string m_filename; /* 文件名 */

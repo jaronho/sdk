@@ -65,10 +65,10 @@ struct Timeout
  */
 enum class Databits
 {
-    FIVE, /* 5位 */
-    SIX, /* 6位 */
-    SEVEN, /* 7位 */
-    EIGHT /* 8位 */
+    five, /* 5位 */
+    six, /* 6位 */
+    seven, /* 7位 */
+    eight /* 8位 */
 };
 
 /**
@@ -76,11 +76,11 @@ enum class Databits
  */
 enum class ParityType
 {
-    NONE, /* 无校验 */
-    ODD, /* 奇校验 */
-    EVEN, /* 偶校验 */
-    MARK, /* 校验位始终为1 */
-    SPACE /* 校验位始终为0 */
+    none, /* 无校验 */
+    odd, /* 奇校验 */
+    even, /* 偶校验 */
+    mark, /* 校验位始终为1 */
+    space /* 校验位始终为0 */
 };
 
 /**
@@ -88,9 +88,9 @@ enum class ParityType
  */
 enum class Stopbits
 {
-    ONE, /* 1位 */
-    ONE_AND_HALF, /* 1.5位 */
-    TWO /* 2位 */
+    one, /* 1位 */
+    one_and_half, /* 1.5位 */
+    two /* 2位 */
 };
 
 /**
@@ -98,9 +98,9 @@ enum class Stopbits
  */
 enum class FlowcontrolType
 {
-    NONE, /* 无流控 */
-    SOFTWARE, /* 软件流控 */
-    HARDWARE /* 硬件流控 */
+    none, /* 无流控 */
+    software, /* 软件流控 */
+    hardware /* 硬件流控 */
 };
 
 /**

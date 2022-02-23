@@ -45,7 +45,7 @@ void AsioExecutor::join()
 
 TaskPtr AsioExecutor::post(const TaskPtr& task)
 {
-    task->setState(Task::State::QUEUING);
+    task->setState(Task::State::queuing);
     Diagnose::bindTaskToExecutor(task.get(), this);
     std::unordered_map<int, std::string> threadIdNameMap;
     {
@@ -66,11 +66,11 @@ TaskPtr AsioExecutor::post(const TaskPtr& task)
         {
             if (!task->isCancelled())
             {
-                task->setState(Task::State::RUNNING);
+                task->setState(Task::State::running);
                 Diagnose::onTaskRunning(threadId, threadName, task.get());
                 task->run();
             }
-            task->setState(Task::State::FINISHED);
+            task->setState(Task::State::finished);
             Diagnose::onTaskFinished(threadId, threadName, task.get());
         }
         catch (const std::exception& e)
