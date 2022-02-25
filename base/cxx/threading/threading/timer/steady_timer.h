@@ -69,7 +69,7 @@ private:
     void onTrigger();
 
 private:
-    std::mutex m_mutex;
+    std::recursive_mutex m_mutex;
     std::chrono::steady_clock::duration m_delay; /* 首次触发延迟时间 */
     std::chrono::steady_clock::duration m_interval; /* 定时器间隔 */
     std::string m_name; /* 定时器名称 */

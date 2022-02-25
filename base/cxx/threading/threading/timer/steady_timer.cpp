@@ -16,57 +16,71 @@ SteadyTimer::~SteadyTimer()
 
 void SteadyTimer::setDelay(const std::chrono::steady_clock::duration& delay)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     m_delay = delay;
 }
 
 void SteadyTimer::setInterval(const std::chrono::steady_clock::duration& interval)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     m_interval = interval;
 }
 
 bool SteadyTimer::isStarted()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     return m_started;
 }
 
 void SteadyTimer::start()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     bool preCancel = false; /* 预先取消状态 */
     if (m_started)
     {
         preCancel = true;
         m_timer->cancel();
     }
-    const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
-    m_timer->expires_from_now(m_delay);
-    m_timer->async_wait([wpSelf, preCancel](const boost::system::error_code& code) {
-        const auto self = wpSelf.lock();
-        if (self)
+    m_started = true;
+    if (std::chrono::steady_clock::duration::zero() == m_delay)
+    {
+        if (preCancel)
         {
-            if (code)
+            onRecover();
+        }
+        else
+        {
+            onTrigger();
+        }
+    }
+    else
+    {
+        const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
+        m_timer->expires_from_now(m_delay);
+        m_timer->async_wait([wpSelf, preCancel](const boost::system::error_code& code) {
+            const auto self = wpSelf.lock();
+            if (self)
             {
-                /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
-                if (preCancel) /* 预先取消导致停止, 所以需要恢复 */
+                if (code)
                 {
-                    self->onRecover();
+                    /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
+                    if (preCancel) /* 预先取消导致停止, 所以需要恢复 */
+                    {
+                        self->onRecover();
+                    }
+                }
+                else
+                {
+                    self->onTrigger();
                 }
             }
-            else
-            {
-                self->onTrigger();
-            }
-        }
-    });
-    m_started = true;
+        });
+    }
 }
 
 void SteadyTimer::stop()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started)
     {
         m_timer->cancel();
@@ -76,7 +90,7 @@ void SteadyTimer::stop()
 
 void SteadyTimer::onRecover()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started)
     {
         const std::weak_ptr<SteadyTimer> wpSelf = shared_from_this();
@@ -105,7 +119,7 @@ void SteadyTimer::onTrigger()
         }
     }
     /* 继续 */
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started && m_interval > std::chrono::steady_clock::duration::zero())
     {
         const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
