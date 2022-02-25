@@ -17,7 +17,7 @@ public:
      * @param okNeedCount 成功所需次数(选填), 当相同的值连续重复设置了该次数时, 才认为设置成功, 默认为0表示每次都设置成功
      * @param equalFunc 值相等比较函数(选填)
      */
-    void init(const T& value, int okNeedCount = 0, bool TVALUE_EQUAL_FUNC equalFunc = nullptr)
+    void init(const T& value, int okNeedCount = 0, TVALUE_EQUAL_FUNC equalFunc = nullptr)
     {
         m_realValue = value;
         m_tempValue = value;
