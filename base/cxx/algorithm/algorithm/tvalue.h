@@ -15,15 +15,13 @@ public:
      * @brief 初始化
      * @param value 初始值
      * @param okNeedCount 成功所需次数(选填), 当相同的值连续重复设置了该次数时, 才认为设置成功, 默认为0表示每次都设置成功
-     * @param allowFirstSetOk 是否允许首次设置通过即使值未改变(选填)
      * @param equalFunc 值相等比较函数(选填)
      */
-    void init(const T& value, int okNeedCount = 0, bool allowFirstSetOk = false, TVALUE_EQUAL_FUNC equalFunc = nullptr)
+    void init(const T& value, int okNeedCount = 0, bool TVALUE_EQUAL_FUNC equalFunc = nullptr)
     {
         m_realValue = value;
         m_tempValue = value;
         m_okNeedCount = okNeedCount > 0 ? okNeedCount : 0;
-        m_allowFirstSetOk = allowFirstSetOk;
         m_equalFunc = equalFunc;
     }
 
@@ -68,31 +66,18 @@ public:
         if (m_repeatCount >= m_okNeedCount)
         {
             m_repeatCount = 0;
-            bool allowSet = false; /* 是否允许更新真实值 */
-            if (m_isFirstSet) /* 首次设置 */
+            /* 比较真实的值和当前值是否相等 */
+            bool isRealEqualNow = false;
+            if (m_equalFunc)
             {
-                m_isFirstSet = false;
-                if (m_allowFirstSetOk) /* 首次设置允许更新真实值即使值未变化 */
-                {
-                    allowSet = true;
-                }
+                isRealEqualNow = m_equalFunc(m_realValue, nowValue);
             }
-            if (!allowSet)
+            else
             {
-                /* 比较真实的值和当前值是否相等 */
-                bool isRealEqualNow = false;
-                if (m_equalFunc)
-                {
-                    isRealEqualNow = m_equalFunc(m_realValue, nowValue);
-                }
-                else
-                {
-                    isRealEqualNow = (m_realValue == nowValue);
-                }
-                allowSet = (!isRealEqualNow); /* 真实的值和当前值不相等, 允许更新真实的值 */
+                isRealEqualNow = (m_realValue == nowValue);
             }
-            /* 更新真实的值 */
-            if (allowSet)
+            /* 真实的值和当前值不相等, 更新真实的值 */
+            if (!isRealEqualNow)
             {
                 m_realValue = nowValue;
                 return true;
@@ -111,12 +96,10 @@ public:
     }
 
 private:
-    T m_realValue; /* 真正的值 */
+    T m_realValue; /* 真实的值 */
     T m_tempValue; /* 缓存的值 */
     int m_okNeedCount = 0; /* 成功所需要的次数 */
     int m_repeatCount = 0; /* 连续重复次数 */
-    bool m_isFirstSet = true; /* 是否首次设置 */
-    bool m_allowFirstSetOk = false; /* 是否允许首次设置通过即使值没有变化 */
     TVALUE_EQUAL_FUNC m_equalFunc = nullptr; /* 值相等比较函数 */
 };
 } // namespace algorithm
