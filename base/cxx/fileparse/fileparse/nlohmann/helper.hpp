@@ -56,14 +56,14 @@ static json stringToObject(const std::string& str, std::string* errDesc = nullpt
 
 /**
  * @brief json对象直接转换成对应类型值
- * @tparam DataType 类型名
+ * @tparam ValueType 类型名
  * @param j json对象
  * @param value [输出]类型值
  * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
-template<typename DataType>
-static bool objectToValue(const nlohmann::json& j, DataType& value, std::string* errDesc = nullptr)
+template<typename ValueType>
+static bool objectToValue(const nlohmann::json& j, ValueType& value, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -71,7 +71,7 @@ static bool objectToValue(const nlohmann::json& j, DataType& value, std::string*
     }
     try
     {
-        if (!j.is_null() || std::is_enum<DataType>::value)
+        if (!j.is_null() || std::is_enum<ValueType>::value)
         {
             j.get_to(value);
             return true;
@@ -96,15 +96,15 @@ static bool objectToValue(const nlohmann::json& j, DataType& value, std::string*
 
 /**
  * @brief json对象直接转换成对应类型值
- * @tparam DataType 类型名
+ * @tparam ValueType 类型名
  * @param j json对象
  * @param errDesc [输出]错误描述(选填)
  * @return 对应类型值
  */
-template<typename DataType>
-static DataType objectToValue(const nlohmann::json& j, std::string* errDesc = nullptr)
+template<typename ValueType>
+static ValueType objectToValue(const nlohmann::json& j, std::string* errDesc = nullptr)
 {
-    DataType value;
+    ValueType value;
     objectToValue(j, value, errDesc);
     return value;
 }
@@ -169,15 +169,15 @@ static json getChildObject(const json& j, const std::string& key, std::string* e
 
 /**
  * @brief 获取子项值
- * @tparam DataType 要获取的类型
+ * @tparam ValueType 要获取的类型
  * @param j json对象
  * @param key 子项的key
  * @param value [输出]子项值
  * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
-template<typename DataType>
-static bool getChildValue(const json& j, const std::string& key, DataType& value, std::string* errDesc = nullptr)
+template<typename ValueType>
+static bool getChildValue(const json& j, const std::string& key, ValueType& value, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -188,7 +188,7 @@ static bool getChildValue(const json& j, const std::string& key, DataType& value
         auto iter = j.find(key);
         if (j.end() != iter)
         {
-            if (!iter.value().is_null() || std::is_enum<DataType>::value)
+            if (!iter.value().is_null() || std::is_enum<ValueType>::value)
             {
                 iter.value().get_to(value);
                 return true;
@@ -218,16 +218,16 @@ static bool getChildValue(const json& j, const std::string& key, DataType& value
 
 /**
  * @brief 获取子项值
- * @tparam DataType 要获取的类型
+ * @tparam ValueType 要获取的类型
  * @param j json对象
  * @param key 子项的key
  * @param errDesc [输出]错误描述(选填)
  * @return 子项值
  */
-template<typename DataType>
-static DataType getChildValue(const json& j, const std::string& key, std::string* errDesc = nullptr)
+template<typename ValueType>
+static ValueType getChildValue(const json& j, const std::string& key, std::string* errDesc = nullptr)
 {
-    DataType value;
+    ValueType value;
     getChildValue(j, key, value, errDesc);
     return value;
 }
