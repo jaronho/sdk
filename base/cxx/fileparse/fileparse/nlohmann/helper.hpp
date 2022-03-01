@@ -42,6 +42,19 @@ static bool stringToJson(const std::string& str, json& j, std::string* errDesc =
 }
 
 /**
+ * @brief 字符串转为json对象
+ * @param str json字符串
+ * @param errDesc [输出]错误描述(选填)
+ * @return json对象
+ */
+static json stringToJson(const std::string& str, std::string* errDesc = nullptr)
+{
+    json j;
+    stringToJson(str, j, errDesc);
+    return j;
+}
+
+/**
  * @brief json对象直接转换成对应类型值
  * @tparam DataType 类型名
  * @param j json对象
@@ -79,6 +92,21 @@ static bool jsonToValue(const nlohmann::json& j, DataType& value, std::string* e
         }
     }
     return false;
+}
+
+/**
+ * @brief json对象直接转换成对应类型值
+ * @tparam DataType 类型名
+ * @param j json对象
+ * @param errDesc [输出]错误描述(选填)
+ * @return 对应类型值
+ */
+template<typename DataType>
+static DataType jsonToValue(const nlohmann::json& j, std::string* errDesc = nullptr)
+{
+    DataType value;
+    jsonToValue(j, value, errDesc);
+    return value;
 }
 
 /**
@@ -123,6 +151,20 @@ static bool getJsonObject(const json& j, const std::string& key, json& object, s
         }
     }
     return false;
+}
+
+/**
+ * @brief 获取子对象
+ * @param j json对象
+ * @param key 子项的key
+ * @param errDesc [输出]错误描述(选填)
+ * @return 子对象
+ */
+static json getJsonObject(const json& j, const std::string& key, std::string* errDesc = nullptr)
+{
+    json object;
+    getJsonObject(j, key, object, errDesc);
+    return object;
 }
 
 /**
@@ -172,5 +214,21 @@ static bool getJsonValue(const json& j, const std::string& key, DataType& value,
         }
     }
     return false;
+}
+
+/**
+ * @brief 获取子项值
+ * @tparam DataType 要获取的类型
+ * @param j json对象
+ * @param key 子项的key
+ * @param errDesc [输出]错误描述(选填)
+ * @return 子项值
+ */
+template<typename DataType>
+static bool getJsonValue(const json& j, const std::string& key, std::string* errDesc = nullptr)
+{
+    DataType value;
+    getJsonValue(j, key, value, errDesc);
+    return value;
 }
 } // namespace nlohmann
