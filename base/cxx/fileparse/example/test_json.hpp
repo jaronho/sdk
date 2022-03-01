@@ -40,7 +40,7 @@ void test1()
     std::cout << "---------------------------------" << std::endl;
     /* 获取子项 */
     std::string company;
-    if (nlohmann::getChildValue<std::string>(obj, "company", company, &errDesc))
+    if (nlohmann::getChild<std::string>(obj, "company", company, &errDesc))
     {
         std::cout << "company = " << company << std::endl;
     }
@@ -49,7 +49,7 @@ void test1()
         std::cout << "get key [company] failed: " << errDesc << std::endl;
     }
     int members;
-    if (nlohmann::getChildValue<int>(obj, "members", members, &errDesc))
+    if (nlohmann::getChild<int>(obj, "members", members, &errDesc))
     {
         std::cout << "members = " << members << std::endl;
     }
@@ -58,7 +58,7 @@ void test1()
         std::cout << "get key [members] failed: " << errDesc << std::endl;
     }
     bool ipo;
-    if (nlohmann::getChildValue<bool>(obj, "ipo", ipo, &errDesc))
+    if (nlohmann::getChild<bool>(obj, "ipo", ipo, &errDesc))
     {
         std::cout << "ipo = " << ipo << std::endl;
     }
@@ -67,7 +67,7 @@ void test1()
         std::cout << "get key [ipo] failed: " << errDesc << std::endl;
     }
     nlohmann::json departments;
-    if (nlohmann::getChildObject(obj, "departments", departments, &errDesc))
+    if (nlohmann::getChild(obj, "departments", departments, &errDesc))
     {
         if (departments.is_array())
         {
@@ -76,7 +76,7 @@ void test1()
             {
                 std::cout << "    ----- [" << (i + 1) << "]" << std::endl;
                 std::string name;
-                if (nlohmann::getChildValue<std::string>(departments[i], "name", name, &errDesc))
+                if (nlohmann::getChild<std::string>(departments[i], "name", name, &errDesc))
                 {
                     std::cout << "    name = " << name << std::endl;
                 }
@@ -85,7 +85,7 @@ void test1()
                     std::cout << "get key [name] failed: " << errDesc << std::endl;
                 }
                 int members;
-                if (nlohmann::getChildValue<int>(departments[i], "members", members, &errDesc))
+                if (nlohmann::getChild<int>(departments[i], "members", members, &errDesc))
                 {
                     std::cout << "    members = " << members << std::endl;
                 }
@@ -94,7 +94,7 @@ void test1()
                     std::cout << "get key [members] failed: " << errDesc << std::endl;
                 }
                 std::string param;
-                if (nlohmann::getChildValue<std::string>(departments[i], "param", param, &errDesc))
+                if (nlohmann::getChild<std::string>(departments[i], "param", param, &errDesc))
                 {
                     std::cout << "    param = " << param << std::endl;
                 }

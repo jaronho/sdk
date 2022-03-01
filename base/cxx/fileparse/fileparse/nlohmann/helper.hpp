@@ -1,7 +1,4 @@
 #pragma once
-
-#include <memory>
-
 #include "json.hpp"
 
 namespace nlohmann
@@ -63,7 +60,7 @@ static json stringToObject(const std::string& str, std::string* errDesc = nullpt
  * @return true-成功, false-失败
  */
 template<typename ValueType>
-static bool objectToValue(const nlohmann::json& j, ValueType& value, std::string* errDesc = nullptr)
+static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -102,10 +99,10 @@ static bool objectToValue(const nlohmann::json& j, ValueType& value, std::string
  * @return 对应类型值
  */
 template<typename ValueType>
-static ValueType objectToValue(const nlohmann::json& j, std::string* errDesc = nullptr)
+static ValueType toValue(const nlohmann::json& j, std::string* errDesc = nullptr)
 {
     ValueType value;
-    objectToValue(j, value, errDesc);
+    toValue(j, value, errDesc);
     return value;
 }
 
@@ -117,7 +114,7 @@ static ValueType objectToValue(const nlohmann::json& j, std::string* errDesc = n
  * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
-static bool getChildObject(const json& j, const std::string& key, json& object, std::string* errDesc = nullptr)
+static bool getChild(const json& j, const std::string& key, json& object, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -160,10 +157,10 @@ static bool getChildObject(const json& j, const std::string& key, json& object, 
  * @param errDesc [输出]错误描述(选填)
  * @return 子对象
  */
-static json getChildObject(const json& j, const std::string& key, std::string* errDesc = nullptr)
+static json getChild(const json& j, const std::string& key, std::string* errDesc = nullptr)
 {
     json object;
-    getChildObject(j, key, object, errDesc);
+    getChild(j, key, object, errDesc);
     return object;
 }
 
@@ -177,7 +174,7 @@ static json getChildObject(const json& j, const std::string& key, std::string* e
  * @return true-成功, false-失败
  */
 template<typename ValueType>
-static bool getChildValue(const json& j, const std::string& key, ValueType& value, std::string* errDesc = nullptr)
+static bool getChild(const json& j, const std::string& key, ValueType& value, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -225,10 +222,10 @@ static bool getChildValue(const json& j, const std::string& key, ValueType& valu
  * @return 子项值
  */
 template<typename ValueType>
-static ValueType getChildValue(const json& j, const std::string& key, std::string* errDesc = nullptr)
+static ValueType getChild(const json& j, const std::string& key, std::string* errDesc = nullptr)
 {
     ValueType value;
-    getChildValue(j, key, value, errDesc);
+    getChild(j, key, value, errDesc);
     return value;
 }
 } // namespace nlohmann
