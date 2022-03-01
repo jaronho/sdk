@@ -31,7 +31,7 @@ void test1()
     std::cout << "================================= test1" << std::endl;
     std::string errDesc;
     nlohmann::json obj;
-    if (!nlohmann::stringToJson(jsonStr, obj, &errDesc))
+    if (!nlohmann::stringToObject(jsonStr, obj, &errDesc))
     {
         std::cout << "parse json string fail: " << errDesc << std::endl;
         return;
@@ -40,7 +40,7 @@ void test1()
     std::cout << "---------------------------------" << std::endl;
     /* 获取子项 */
     std::string company;
-    if (nlohmann::getJsonValue<std::string>(obj, "company", company, &errDesc))
+    if (nlohmann::getChildValue<std::string>(obj, "company", company, &errDesc))
     {
         std::cout << "company = " << company << std::endl;
     }
@@ -49,7 +49,7 @@ void test1()
         std::cout << "get key [company] failed: " << errDesc << std::endl;
     }
     int members;
-    if (nlohmann::getJsonValue<int>(obj, "members", members, &errDesc))
+    if (nlohmann::getChildValue<int>(obj, "members", members, &errDesc))
     {
         std::cout << "members = " << members << std::endl;
     }
@@ -58,7 +58,7 @@ void test1()
         std::cout << "get key [members] failed: " << errDesc << std::endl;
     }
     bool ipo;
-    if (nlohmann::getJsonValue<bool>(obj, "ipo", ipo, &errDesc))
+    if (nlohmann::getChildValue<bool>(obj, "ipo", ipo, &errDesc))
     {
         std::cout << "ipo = " << ipo << std::endl;
     }
@@ -67,7 +67,7 @@ void test1()
         std::cout << "get key [ipo] failed: " << errDesc << std::endl;
     }
     nlohmann::json departments;
-    if (nlohmann::getJsonObject(obj, "departments", departments, &errDesc))
+    if (nlohmann::getChildObject(obj, "departments", departments, &errDesc))
     {
         if (departments.is_array())
         {
@@ -76,7 +76,7 @@ void test1()
             {
                 std::cout << "    ----- [" << (i + 1) << "]" << std::endl;
                 std::string name;
-                if (nlohmann::getJsonValue<std::string>(departments[i], "name", name, &errDesc))
+                if (nlohmann::getChildValue<std::string>(departments[i], "name", name, &errDesc))
                 {
                     std::cout << "    name = " << name << std::endl;
                 }
@@ -85,7 +85,7 @@ void test1()
                     std::cout << "get key [name] failed: " << errDesc << std::endl;
                 }
                 int members;
-                if (nlohmann::getJsonValue<int>(departments[i], "members", members, &errDesc))
+                if (nlohmann::getChildValue<int>(departments[i], "members", members, &errDesc))
                 {
                     std::cout << "    members = " << members << std::endl;
                 }
@@ -94,7 +94,7 @@ void test1()
                     std::cout << "get key [members] failed: " << errDesc << std::endl;
                 }
                 std::string param;
-                if (nlohmann::getJsonValue<std::string>(departments[i], "param", param, &errDesc))
+                if (nlohmann::getChildValue<std::string>(departments[i], "param", param, &errDesc))
                 {
                     std::cout << "    param = " << param << std::endl;
                 }

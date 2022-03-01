@@ -13,7 +13,7 @@ namespace nlohmann
  * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
-static bool stringToJson(const std::string& str, json& j, std::string* errDesc = nullptr)
+static bool stringToObject(const std::string& str, json& j, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -47,10 +47,10 @@ static bool stringToJson(const std::string& str, json& j, std::string* errDesc =
  * @param errDesc [输出]错误描述(选填)
  * @return json对象
  */
-static json stringToJson(const std::string& str, std::string* errDesc = nullptr)
+static json stringToObject(const std::string& str, std::string* errDesc = nullptr)
 {
     json j;
-    stringToJson(str, j, errDesc);
+    stringToObject(str, j, errDesc);
     return j;
 }
 
@@ -63,7 +63,7 @@ static json stringToJson(const std::string& str, std::string* errDesc = nullptr)
  * @return true-成功, false-失败
  */
 template<typename DataType>
-static bool jsonToValue(const nlohmann::json& j, DataType& value, std::string* errDesc = nullptr)
+static bool objectToValue(const nlohmann::json& j, DataType& value, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -102,10 +102,10 @@ static bool jsonToValue(const nlohmann::json& j, DataType& value, std::string* e
  * @return 对应类型值
  */
 template<typename DataType>
-static DataType jsonToValue(const nlohmann::json& j, std::string* errDesc = nullptr)
+static DataType objectToValue(const nlohmann::json& j, std::string* errDesc = nullptr)
 {
     DataType value;
-    jsonToValue(j, value, errDesc);
+    objectToValue(j, value, errDesc);
     return value;
 }
 
@@ -117,7 +117,7 @@ static DataType jsonToValue(const nlohmann::json& j, std::string* errDesc = null
  * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
-static bool getJsonObject(const json& j, const std::string& key, json& object, std::string* errDesc = nullptr)
+static bool getChildObject(const json& j, const std::string& key, json& object, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -160,10 +160,10 @@ static bool getJsonObject(const json& j, const std::string& key, json& object, s
  * @param errDesc [输出]错误描述(选填)
  * @return 子对象
  */
-static json getJsonObject(const json& j, const std::string& key, std::string* errDesc = nullptr)
+static json getChildObject(const json& j, const std::string& key, std::string* errDesc = nullptr)
 {
     json object;
-    getJsonObject(j, key, object, errDesc);
+    getChildObject(j, key, object, errDesc);
     return object;
 }
 
@@ -177,7 +177,7 @@ static json getJsonObject(const json& j, const std::string& key, std::string* er
  * @return true-成功, false-失败
  */
 template<typename DataType>
-static bool getJsonValue(const json& j, const std::string& key, DataType& value, std::string* errDesc = nullptr)
+static bool getChildValue(const json& j, const std::string& key, DataType& value, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -225,10 +225,10 @@ static bool getJsonValue(const json& j, const std::string& key, DataType& value,
  * @return 子项值
  */
 template<typename DataType>
-static DataType getJsonValue(const json& j, const std::string& key, std::string* errDesc = nullptr)
+static DataType getChildValue(const json& j, const std::string& key, std::string* errDesc = nullptr)
 {
     DataType value;
-    getJsonValue(j, key, value, errDesc);
+    getChildValue(j, key, value, errDesc);
     return value;
 }
 } // namespace nlohmann
