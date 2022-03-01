@@ -225,7 +225,7 @@ static bool getJsonValue(const json& j, const std::string& key, DataType& value,
  * @return 子项值
  */
 template<typename DataType>
-static bool getJsonValue(const json& j, const std::string& key, std::string* errDesc = nullptr)
+static DataType getJsonValue(const json& j, const std::string& key, std::string* errDesc = nullptr)
 {
     DataType value;
     getJsonValue(j, key, value, errDesc);
