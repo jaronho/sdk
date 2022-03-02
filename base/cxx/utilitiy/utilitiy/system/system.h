@@ -13,15 +13,21 @@ public:
      */
     struct DateTime
     {
-        int year; /* 年, 值范围: [1900, ) */
-        int month; /* 月, 值范围: [1, 12] */
-        int day; /* 日, 值范围: [1, 31] */
-        int hour; /* 时, 值范围: [0, 23] */
-        int minute; /* 分, 值范围: [0, 59] */
-        int second; /* 秒, 值范围: [0, 60] */
-        int millisecond; /* 毫秒, 值范围: [0, 999] */
-        int wday; /* 在1周中的第几天, 值范围: [0-周日, 1-周一, 2-周二, 3-周三, 4-周四, 5-周五, 6-周六] */
-        int yday; /* 在1年中的第几天, 值范围: [1, 366] */
+        DateTime() {}
+        DateTime(int year, int month, int day, int hour, int minute, int second, int millisecond = 0)
+            : year(year), month(month), day(day), hour(hour), minute(minute), second(second), millisecond(millisecond)
+        {
+        }
+
+        int year = 1900; /* 年, 值范围: [1900, ) */
+        int month = 1; /* 月, 值范围: [1, 12] */
+        int day = 1; /* 日, 值范围: [1, 31] */
+        int hour = 0; /* 时, 值范围: [0, 23] */
+        int minute = 0; /* 分, 值范围: [0, 59] */
+        int second = 0; /* 秒, 值范围: [0, 60] */
+        int millisecond = 0; /* 毫秒, 值范围: [0, 999] */
+        int wday = 0; /* 在1周中的第几天, 值范围: [0-周日, 1-周一, 2-周二, 3-周三, 4-周四, 5-周五, 6-周六] */
+        int yday = 1; /* 在1年中的第几天, 值范围: [1, 366] */
     };
 
 public:
@@ -75,7 +81,7 @@ public:
     /**
      * @brief 日期转为时间戳(从1970-01-01 00:00:00至今)
      * @param dt 日期
-     * @return 时间戳(秒数)
+     * @return 时间戳(秒)
      */
     static double dateTimeToTimestamp(const DateTime& dt);
 
