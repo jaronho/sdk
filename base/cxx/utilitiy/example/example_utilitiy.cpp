@@ -2,6 +2,7 @@
 
 #include "test_bytearray.hpp"
 #include "test_charset.hpp"
+#include "test_datetime.hpp"
 #include "test_filecopy.hpp"
 #include "test_filesystem.hpp"
 #include "test_module.hpp"
@@ -14,11 +15,12 @@ int main(int argc, char** argv)
 {
     testBytearry();
 #if 0
-    testFileCopy(argc, argv);
+        testFileCopy(argc, argv);
 #else
 #if 0
-    testCharset(argc, argv);
+        testCharset(argc, argv);
 #else
+    testDateTime();
     testFilesystem();
     testModule();
     testNet();

@@ -29,6 +29,11 @@ get_cxx_files(${base_utilitiy_path}/utilitiy/cmdline src_list)
 list(APPEND base_utilitiy_cmdline_src_list ${src_list})
 source_group(3rdparty/base/utilitiy/cmdline FILES ${base_utilitiy_cmdline_src_list})
 
+set(base_utilitiy_datetime_src_list)
+get_cxx_files(${base_utilitiy_path}/utilitiy/datetime src_list)
+list(APPEND base_utilitiy_datetime_src_list ${src_list})
+source_group(3rdparty/base/utilitiy/datetime FILES ${base_utilitiy_datetime_src_list})
+
 set(base_utilitiy_digit_src_list)
 get_cxx_files(${base_utilitiy_path}/utilitiy/digit src_list)
 list(APPEND base_utilitiy_digit_src_list ${src_list})
@@ -78,6 +83,7 @@ set(base_utilitiy_files) # 工程中需要把utilitiy的文件添加进去
 list(APPEND base_utilitiy_files ${base_utilitiy_bytearray_src_list}
                                 ${base_utilitiy_charset_src_list}
                                 ${base_utilitiy_cmdline_src_list}
+                                ${base_utilitiy_datetime_src_list}
                                 ${base_utilitiy_digit_src_list}
                                 ${base_utilitiy_filesystem_src_list}
                                 ${base_utilitiy_module_src_list}

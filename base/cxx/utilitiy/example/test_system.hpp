@@ -16,17 +16,6 @@
 void testSystem()
 {
     printf("\n============================== test system =============================\n");
-    auto timestamp = utilitiy::System::getTimestamp();
-    printf("----- [1] timestamp: %f\n", timestamp);
-    auto dt = utilitiy::System::getDateTime(timestamp);
-    printf("----- [1] date time: %04d-%02d-%02d %02d:%02d:%02d.%03d, week day: %d, year day: %d\n", dt.year, dt.month, dt.day, dt.hour,
-           dt.minute, dt.second, dt.millisecond, dt.wday, dt.yday);
-    dt = utilitiy::System::getDateTime();
-    printf("----- [2] date time: %04d-%02d-%02d %02d:%02d:%02d.%03d, week day: %d, year day: %d\n", dt.year, dt.month, dt.day, dt.hour,
-           dt.minute, dt.second, dt.millisecond, dt.wday, dt.yday);
-    timestamp = utilitiy::System::dateTimeToTimestamp(dt);
-    printf("----- [2] timestamp: %f\n", timestamp);
-    printf("\n");
     std::string outStr;
 #ifdef _WIN32
     int ret = utilitiy::System::runCmd("dir", &outStr);

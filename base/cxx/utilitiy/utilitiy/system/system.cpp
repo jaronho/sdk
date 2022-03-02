@@ -2,15 +2,12 @@
 
 #include <chrono>
 #include <string.h>
-#include <sys/timeb.h>
 #include <thread>
-#include <time.h>
 
 #ifdef _WIN32
 #include <Windows.h>
 #else
 #include <fcntl.h>
-#include <sys/time.h>
 #include <unistd.h>
 #endif
 
@@ -132,102 +129,6 @@ bool System::checkFileLock(const std::string& filename)
     return ret;
 }
 #endif
-
-double System::getTimestamp()
-{
-#ifdef _WIN32
-    FILETIME ft;
-    GetSystemTimeAsFileTime(&ft);
-    /* Windows file time (time since January 1, 1601 (UTC)) */
-    double t = ft.dwLowDateTime / 1.0e7 + ft.dwHighDateTime * (4294967296.0 / 1.0e7);
-    /* convert to Unix Epoch time (time since January 1, 1970 (UTC)) */
-    return (t - 11644473600.0);
-#else
-    struct timeval v;
-    gettimeofday(&v, (struct timezone*)NULL);
-    /* Unix Epoch time (time since January 1, 1970 (UTC)) */
-    return v.tv_sec + v.tv_usec / 1.0e6;
-#endif
-}
-
-System::DateTime System::getDateTime(double timestamp)
-{
-    long seconds = (long)timestamp;
-    int millisecond = (timestamp - (double)seconds) * 1000;
-    time_t now = seconds > 0 ? seconds : time(NULL);
-    struct tm t;
-#ifdef _WIN32
-    localtime_s(&t, &now);
-#else
-    t = *localtime(&now);
-#endif
-    if (seconds <= 0)
-    {
-        struct timeb tb;
-        ftime(&tb);
-        millisecond = tb.millitm;
-    }
-    /* 填充 */
-    DateTime dt;
-    dt.year = 1900 + t.tm_year;
-    dt.month = 1 + t.tm_mon;
-    dt.day = t.tm_mday;
-    dt.hour = t.tm_hour;
-    dt.minute = t.tm_min;
-    dt.second = t.tm_sec;
-    dt.millisecond = millisecond;
-    dt.wday = t.tm_wday;
-    dt.yday = 1 + t.tm_yday;
-    return dt;
-}
-
-double System::dateTimeToTimestamp(const System::DateTime& dt)
-{
-    struct tm t;
-    t.tm_year = dt.year - 1900;
-    t.tm_mon = dt.month - 1;
-    t.tm_mday = dt.day;
-    t.tm_hour = dt.hour;
-    t.tm_min = dt.minute;
-    t.tm_sec = dt.second;
-    double timestamp = 0;
-    timestamp += (long)mktime(&t);
-    timestamp += (float)dt.millisecond / 1000;
-    return timestamp;
-}
-
-bool System::setLocalTime(const System::DateTime& dt)
-{
-#ifdef _WIN32
-    SYSTEMTIME tv;
-    tv.wYear = dt.year;
-    tv.wMonth = dt.month;
-    tv.wDay = dt.day;
-    tv.wHour = dt.hour;
-    tv.wMinute = dt.minute;
-    tv.wSecond = dt.second;
-    if (SetLocalTime(&tv))
-    {
-        return true;
-    }
-#else
-    struct tm t;
-    t.tm_year = dt.year - 1900;
-    t.tm_mon = dt.month - 1;
-    t.tm_mday = dt.day;
-    t.tm_hour = dt.hour;
-    t.tm_min = dt.minute;
-    t.tm_sec = dt.second;
-    struct timeval tv;
-    tv.tv_sec = mktime(&t);
-    tv.tv_usec = 0;
-    if (0 == settimeofday(&tv, NULL))
-    {
-        return true;
-    }
-#endif
-    return false;
-}
 
 void System::waitForTime(unsigned int maxMS, const std::function<bool()>& func, unsigned int loopGap)
 {
