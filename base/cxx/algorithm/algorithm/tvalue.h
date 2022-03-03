@@ -94,7 +94,7 @@ public:
      * @brief 获取值
      * @return 值
      */
-    T get() const
+    T get()
     {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         return m_realValue;
