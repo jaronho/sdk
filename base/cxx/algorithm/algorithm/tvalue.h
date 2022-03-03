@@ -18,7 +18,7 @@ public:
      * @param okNeedCount 成功所需次数(选填), 当相同的值连续重复设置了该次数时, 才认为设置成功, 默认为0表示每次都设置成功
      * @param equalFunc 值相等比较函数(选填)
      */
-    void init(const T& value, int okNeedCount = 0, TVALUE_EQUAL_FUNC equalFunc = nullptr)
+    void init(const T& value, int okNeedCount = 0, const TVALUE_EQUAL_FUNC& equalFunc = nullptr)
     {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         m_realValue = value;
@@ -31,7 +31,7 @@ public:
      * @brief 设置值相等比较函数
      * @param equalFunc 比较函数
      */
-    void setEqualCompareFunc(TVALUE_EQUAL_FUNC equalFunc)
+    void setEqualCompareFunc(const TVALUE_EQUAL_FUNC& equalFunc)
     {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         m_equalFunc = equalFunc;
