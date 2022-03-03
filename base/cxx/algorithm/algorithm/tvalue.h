@@ -1,10 +1,11 @@
 #pragma once
 #include <functional>
+#include <mutex>
 
 namespace algorithm
 {
 /**
- * @brief 值过滤, 用于指定相同的值需要连续重复设置多少次才成功, 过滤掉中间的一些脏数据值
+ * @brief 值过滤, 用于指定相同的值需要连续重复设置多少次才成功, 过滤掉中间的一些脏数据值, 线程安全
  */
 template<typename T>
 #define TVALUE_EQUAL_FUNC std::function<bool(const T& a, const T& b)> /* 值相等比较函数, 返回值: true-相等, false-不相等 */
@@ -19,6 +20,7 @@ public:
      */
     void init(const T& value, int okNeedCount = 0, TVALUE_EQUAL_FUNC equalFunc = nullptr)
     {
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
         m_realValue = value;
         m_tempValue = value;
         m_okNeedCount = okNeedCount > 0 ? okNeedCount : 0;
@@ -31,6 +33,7 @@ public:
      */
     void setEqualCompareFunc(TVALUE_EQUAL_FUNC equalFunc)
     {
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
         m_equalFunc = equalFunc;
     }
 
@@ -41,6 +44,7 @@ public:
      */
     bool set(const T& nowValue)
     {
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
         /* step1: 比较缓存的值和当前值是否相等 */
         bool isTempEqualNow = false;
         if (m_equalFunc)
@@ -92,10 +96,18 @@ public:
      */
     T get() const
     {
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
         return m_realValue;
     }
 
+    TValue& operator=(const T& value)
+    {
+        set(value);
+        return (*this);
+    }
+
 private:
+    std::recursive_mutex m_mutex;
     T m_realValue; /* 真实的值 */
     T m_tempValue; /* 缓存的值 */
     int m_okNeedCount = 0; /* 成功所需要的次数 */
