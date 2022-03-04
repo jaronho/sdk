@@ -53,7 +53,7 @@ public:
         }
         else
         {
-            isTempEqualNow = (m_tempValue == nowValue);
+            isTempEqualNow = (nowValue == m_tempValue);
         }
         /* step2: 根据比较结果计算重复次数 */
         if (isTempEqualNow)
@@ -78,7 +78,7 @@ public:
             }
             else
             {
-                isRealEqualNow = (m_realValue == nowValue);
+                isRealEqualNow = (nowValue == m_realValue);
             }
             /* 真实的值和当前值不相等, 更新真实的值 */
             if (!isRealEqualNow)
@@ -104,6 +104,26 @@ public:
     {
         set(value);
         return (*this);
+    }
+
+    bool operator==(const T& value)
+    {
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        if (m_equalFunc)
+        {
+            return m_equalFunc(m_realValue, value);
+        }
+        return (value == m_realValue);
+    }
+
+    bool operator!=(const T& value)
+    {
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        if (m_equalFunc)
+        {
+            return !m_equalFunc(m_realValue, value);
+        }
+        return (value != m_realValue);
     }
 
 private:
