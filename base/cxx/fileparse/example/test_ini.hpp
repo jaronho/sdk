@@ -147,7 +147,7 @@ void printString(ini::IniReader ir, const std::string& section, const std::strin
 /**
  * @brief 测试读本地INI文件
  */
-void testRead()
+void testIniRead()
 {
     std::cout << "===================================== test read" << std::endl;
     ini::IniReader ir;
@@ -224,7 +224,7 @@ void testRead()
 /**
  * @brief 测试写本地INI文件(需要字段都已经存在)
  */
-void testWrite1()
+void testIniWrite1()
 {
     copyFile("../num.ini", "num.ini"); /* 拷贝测试文件 */
     std::cout << "===================================== test write" << std::endl;
@@ -261,7 +261,7 @@ void testWrite1()
 /**
  * @brief 测试写本地INI文件(字段不存在时自动创建)
  */
-void testWrite2()
+void testIniWrite2()
 {
     std::cout << "===================================== test write" << std::endl;
     ini::IniWriter iw;
@@ -328,7 +328,7 @@ void testWrite2()
 /**
  * @brief 测试恢复默认设置
  */
-void testRestore()
+void testIniRestore()
 {
     std::cout << "===================================== test restore" << std::endl;
     Config cfg;
@@ -345,12 +345,12 @@ void testRestore()
 void testIni()
 {
     printf("\n============================== test ini =============================\n");
-    testRead();
+    testIniRead();
     std::cout << std::endl;
-    testWrite1();
+    testIniWrite1();
     std::cout << std::endl;
-    testWrite2();
+    testIniWrite2();
     std::cout << std::endl;
-    testRestore();
+    testIniRestore();
     std::cout << std::endl;
 }

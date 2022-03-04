@@ -26,9 +26,9 @@ const std::string jsonStr = "{"
                             "   ]"
                             "}";
 
-void testRead1()
+void testJsonRead1()
 {
-    std::cout << "================================= testRead1" << std::endl;
+    std::cout << "================================= testJsonRead1" << std::endl;
     std::string errDesc;
     nlohmann::json obj;
     if (!nlohmann::stringToObject(jsonStr, obj, &errDesc))
@@ -40,7 +40,7 @@ void testRead1()
     std::cout << "---------------------------------" << std::endl;
     /* 获取子项 */
     std::string company;
-    if (nlohmann::getChild<std::string>(obj, "company", company, &errDesc))
+    if (nlohmann::getter<std::string>(obj, "company", company, &errDesc))
     {
         std::cout << "company = " << company << std::endl;
     }
@@ -49,7 +49,7 @@ void testRead1()
         std::cout << "get key [company] failed: " << errDesc << std::endl;
     }
     int members;
-    if (nlohmann::getChild<int>(obj, "members", members, &errDesc))
+    if (nlohmann::getter<int>(obj, "members", members, &errDesc))
     {
         std::cout << "members = " << members << std::endl;
     }
@@ -58,7 +58,7 @@ void testRead1()
         std::cout << "get key [members] failed: " << errDesc << std::endl;
     }
     bool ipo;
-    if (nlohmann::getChild<bool>(obj, "ipo", ipo, &errDesc))
+    if (nlohmann::getter<bool>(obj, "ipo", ipo, &errDesc))
     {
         std::cout << "ipo = " << ipo << std::endl;
     }
@@ -67,7 +67,7 @@ void testRead1()
         std::cout << "get key [ipo] failed: " << errDesc << std::endl;
     }
     nlohmann::json departments;
-    if (nlohmann::getChild(obj, "departments", departments, &errDesc))
+    if (nlohmann::getter(obj, "departments", departments, &errDesc))
     {
         if (departments.is_array())
         {
@@ -76,7 +76,7 @@ void testRead1()
             {
                 std::cout << "    ----- [" << (i + 1) << "]" << std::endl;
                 std::string name;
-                if (nlohmann::getChild<std::string>(departments[i], "name", name, &errDesc))
+                if (nlohmann::getter<std::string>(departments[i], "name", name, &errDesc))
                 {
                     std::cout << "        name = " << name << std::endl;
                 }
@@ -85,7 +85,7 @@ void testRead1()
                     std::cout << "get key [name] failed: " << errDesc << std::endl;
                 }
                 int members;
-                if (nlohmann::getChild<int>(departments[i], "members", members, &errDesc))
+                if (nlohmann::getter<int>(departments[i], "members", members, &errDesc))
                 {
                     std::cout << "        members = " << members << std::endl;
                 }
@@ -94,7 +94,7 @@ void testRead1()
                     std::cout << "get key [members] failed: " << errDesc << std::endl;
                 }
                 std::string param;
-                if (nlohmann::getChild<std::string>(departments[i], "param", param, &errDesc))
+                if (nlohmann::getter<std::string>(departments[i], "param", param, &errDesc))
                 {
                     std::cout << "        param = " << param << std::endl;
                 }
@@ -115,9 +115,9 @@ void testRead1()
     }
 }
 
-void testRead2()
+void testJsonRead2()
 {
-    std::cout << "================================= testRead2" << std::endl;
+    std::cout << "================================= testJsonRead2" << std::endl;
     std::string errDesc;
     nlohmann::json obj;
     if (!nlohmann::stringToObject(jsonStr, obj, &errDesc))
@@ -159,9 +159,9 @@ void testRead2()
     }
 }
 
-void testRead3()
+void testJsonRead3()
 {
-    std::cout << "================================= testRead3" << std::endl;
+    std::cout << "================================= testJsonRead3" << std::endl;
     std::string errDesc;
     nlohmann::json obj;
     if (!nlohmann::stringToObject(jsonStr, obj, &errDesc))
@@ -172,30 +172,30 @@ void testRead3()
     std::cout << obj.dump(4) << std::endl;
     std::cout << "--------------------------------- " << obj.size() << std::endl;
     /* 获取子项 */
-    auto company = nlohmann::getChild<std::string>(obj, "company");
+    auto company = nlohmann::getter<std::string>(obj, "company");
     std::cout << "company = " << company << std::endl;
-    auto members = nlohmann::getChild<int>(obj, "members");
+    auto members = nlohmann::getter<int>(obj, "members");
     std::cout << "members = " << members << std::endl;
-    auto ipo = nlohmann::getChild<bool>(obj, "ipo");
+    auto ipo = nlohmann::getter<bool>(obj, "ipo");
     std::cout << "ipo = " << ipo << std::endl;
-    auto departments = nlohmann::getChild(obj, "departments");
+    auto departments = nlohmann::getter(obj, "departments");
     std::cout << "departments = " << std::endl;
     int index = 0;
     for (auto item : departments)
     {
         std::cout << "    ----- [" << (++index) << "]" << std::endl;
-        auto name = nlohmann::getChild<std::string>(item, "name");
+        auto name = nlohmann::getter<std::string>(item, "name");
         std::cout << "        name = " << name << std::endl;
-        auto members = nlohmann::getChild<int>(item, "members");
+        auto members = nlohmann::getter<int>(item, "members");
         std::cout << "        members = " << members << std::endl;
-        auto param = nlohmann::getChild<std::string>(item, "param");
+        auto param = nlohmann::getter<std::string>(item, "param");
         std::cout << "        param = " << param << std::endl;
     }
 }
 
-void testWrite()
+void testJsonWrite1()
 {
-    std::cout << "================================= testWrite" << std::endl;
+    std::cout << "================================= testJsonWrite1" << std::endl;
     nlohmann::json obj;
     obj["country"] = "China";
     obj["people"] = 1400000000;
@@ -211,16 +211,42 @@ void testWrite()
     gd["capital"] = "GuangZhou";
     provinces.emplace_back(gd);
     obj["provinces"] = provinces;
-    obj["empty_object"] = nlohmann::json().object();
-    obj["empty_array"] = nlohmann::json().array();
+    obj["empty_object"] = nlohmann::json::object();
+    obj["empty_array"] = nlohmann::json::array();
+    std::cout << obj.dump(4) << std::endl;
+}
+
+void testJsonWrite2()
+{
+    std::cout << "================================= testJsonWrite2" << std::endl;
+    nlohmann::json obj;
+    nlohmann::setter<std::string>(obj, "country", "China");
+    nlohmann::setter<int>(obj, "people", 1400000000);
+    nlohmann::setter<bool>(obj, "developing", true);
+    nlohmann::json provinces;
+    nlohmann::json fj;
+    nlohmann::setter(fj, "name", "FuJian");
+    nlohmann::setter(fj, "capital", "FuZhou");
+    nlohmann::setter(fj, "celebrity", "LinZeXu");
+    nlohmann::setter(fj, "yanhai", true);
+    provinces.emplace_back(fj);
+    nlohmann::json gd;
+    gd["name"] = "GuangDong";
+    gd["capital"] = "GuangZhou";
+    gd["gdp"] = 1;
+    nlohmann::append(provinces, gd);
+    obj["provinces"] = provinces;
+    obj["empty_object"] = nlohmann::json::object();
+    nlohmann::setter(obj, "empty_array", nlohmann::json::array());
     std::cout << obj.dump(4) << std::endl;
 }
 
 void testJson()
 {
     printf("\n============================== test json =============================\n");
-    testRead1();
-    testRead2();
-    testRead3();
-    testWrite();
+    testJsonRead1();
+    testJsonRead2();
+    testJsonRead3();
+    testJsonWrite1();
+    testJsonWrite2();
 }

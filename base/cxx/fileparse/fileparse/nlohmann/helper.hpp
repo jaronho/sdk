@@ -114,7 +114,7 @@ static ValueType toValue(const nlohmann::json& j, std::string* errDesc = nullptr
  * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
-static bool getChild(const json& j, const std::string& key, json& object, std::string* errDesc = nullptr)
+static bool getter(const json& j, const std::string& key, json& object, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -157,10 +157,10 @@ static bool getChild(const json& j, const std::string& key, json& object, std::s
  * @param errDesc [输出]错误描述(选填)
  * @return 子对象
  */
-static json getChild(const json& j, const std::string& key, std::string* errDesc = nullptr)
+static json getter(const json& j, const std::string& key, std::string* errDesc = nullptr)
 {
     json object;
-    getChild(j, key, object, errDesc);
+    getter(j, key, object, errDesc);
     return object;
 }
 
@@ -174,7 +174,7 @@ static json getChild(const json& j, const std::string& key, std::string* errDesc
  * @return true-成功, false-失败
  */
 template<typename ValueType>
-static bool getChild(const json& j, const std::string& key, ValueType& value, std::string* errDesc = nullptr)
+static bool getter(const json& j, const std::string& key, ValueType& value, std::string* errDesc = nullptr)
 {
     if (errDesc)
     {
@@ -222,10 +222,87 @@ static bool getChild(const json& j, const std::string& key, ValueType& value, st
  * @return 子项值
  */
 template<typename ValueType>
-static ValueType getChild(const json& j, const std::string& key, std::string* errDesc = nullptr)
+static ValueType getter(const json& j, const std::string& key, std::string* errDesc = nullptr)
 {
     ValueType value;
-    getChild(j, key, value, errDesc);
+    getter(j, key, value, errDesc);
     return value;
+}
+
+/**
+ * @brief 设置子项值(异常时会自动填充默认值)
+ * @tparam ValueType 要设置的类型
+ * @param j [输出]json对象
+ * @param key 子项的key
+ * @param value 子项值
+ * @param errDesc [输出]错误描述(选填)
+ * @return true-成功, false-失败
+ */
+template<typename ValueType>
+static bool setter(json& j, const std::string& key, const ValueType& value, std::string* errDesc = nullptr)
+{
+    if (errDesc)
+    {
+        (*errDesc).clear();
+    }
+    try
+    {
+        j[key] = value;
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        if (errDesc)
+        {
+            *errDesc = e.what();
+        }
+    }
+    catch (...)
+    {
+        if (errDesc)
+        {
+            *errDesc = "unknown exception";
+        }
+    }
+    ValueType defValue;
+    j[key] = defValue;
+    return false;
+}
+
+/**
+ * @brief 追加子项值
+ * @tparam ValueType 要追加的类型
+ * @param j [输出]json对象
+ * @param value 子项值
+ * @param errDesc [输出]错误描述(选填)
+ * @return true-成功, false-失败
+ */
+template<typename ValueType>
+static bool append(json& j, const ValueType& value, std::string* errDesc = nullptr)
+{
+    if (errDesc)
+    {
+        (*errDesc).clear();
+    }
+    try
+    {
+        j.emplace_back(value);
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        if (errDesc)
+        {
+            *errDesc = e.what();
+        }
+    }
+    catch (...)
+    {
+        if (errDesc)
+        {
+            *errDesc = "unknown exception";
+        }
+    }
+    return false;
 }
 } // namespace nlohmann
