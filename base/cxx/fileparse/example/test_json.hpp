@@ -31,7 +31,7 @@ void testJsonRead1()
     std::cout << "================================= testJsonRead1" << std::endl;
     std::string errDesc;
     nlohmann::json obj;
-    if (!nlohmann::stringToObject(jsonStr, obj, &errDesc))
+    if (!nlohmann::parse(jsonStr, obj, &errDesc))
     {
         std::cout << "parse json string fail: " << errDesc << std::endl;
         return;
@@ -67,7 +67,7 @@ void testJsonRead1()
         std::cout << "get key [ipo] failed: " << errDesc << std::endl;
     }
     nlohmann::json departments;
-    if (nlohmann::getter(obj, "departments", departments, &errDesc))
+    if (nlohmann::getter<nlohmann::json>(obj, "departments", departments, &errDesc))
     {
         if (departments.is_array())
         {
@@ -120,7 +120,7 @@ void testJsonRead2()
     std::cout << "================================= testJsonRead2" << std::endl;
     std::string errDesc;
     nlohmann::json obj;
-    if (!nlohmann::stringToObject(jsonStr, obj, &errDesc))
+    if (!nlohmann::parse(jsonStr, obj, &errDesc))
     {
         std::cout << "parse json string fail: " << errDesc << std::endl;
         return;
@@ -164,7 +164,7 @@ void testJsonRead3()
     std::cout << "================================= testJsonRead3" << std::endl;
     std::string errDesc;
     nlohmann::json obj;
-    if (!nlohmann::stringToObject(jsonStr, obj, &errDesc))
+    if (!nlohmann::parse(jsonStr, obj, &errDesc))
     {
         std::cout << "parse json string fail: " << errDesc << std::endl;
         return;
@@ -178,7 +178,7 @@ void testJsonRead3()
     std::cout << "members = " << members << std::endl;
     auto ipo = nlohmann::getter<bool>(obj, "ipo");
     std::cout << "ipo = " << ipo << std::endl;
-    auto departments = nlohmann::getter(obj, "departments");
+    auto departments = nlohmann::getter<nlohmann::json>(obj, "departments");
     std::cout << "departments = " << std::endl;
     int index = 0;
     for (auto item : departments)
@@ -238,7 +238,7 @@ void testJsonWrite2()
     obj["provinces"] = provinces;
     obj["empty_object"] = nlohmann::json::object();
     nlohmann::setter(obj, "empty_array", nlohmann::json::array());
-    std::cout << obj.dump(4) << std::endl;
+    std::cout << nlohmann::dump(obj, nullptr, 4) << std::endl;
 }
 
 void testJson()

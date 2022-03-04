@@ -3,19 +3,77 @@
 
 namespace nlohmann
 {
+namespace impl
+{
 /**
- * @brief 字符串转为json对象
+ * @brief 判断字符串是否为UTF编码
+ * @param str 字符串
+ * @return true-是, false-否
+ */
+static bool isUtf8(const std::string& str)
+{
+    unsigned int byteCount = 0; /* UTF8可用1-6个字节编码, ASCII用1个字节 */
+    for (size_t i = 0, len = str.size(); i < len; ++i)
+    {
+        unsigned char ch = str[i];
+        if ('\0' == ch)
+        {
+            break;
+        }
+        if (0 == byteCount)
+        {
+            if (ch >= 0x80) /* 如果不是ASCII码, 应该是多字节符, 计算字节数 */
+            {
+                if (ch >= 0xFC && ch <= 0xFD)
+                {
+                    byteCount = 6;
+                }
+                else if (ch >= 0xF8)
+                {
+                    byteCount = 5;
+                }
+                else if (ch >= 0xF0)
+                {
+                    byteCount = 4;
+                }
+                else if (ch >= 0xE0)
+                {
+                    byteCount = 3;
+                }
+                else if (ch >= 0xC0)
+                {
+                    byteCount = 2;
+                }
+                else
+                {
+                    return false;
+                }
+                byteCount--;
+            }
+        }
+        else
+        {
+            if (0x80 != (ch & 0xC0)) /* 多字节符的非首字节, 应为10xxxxxx */
+            {
+                return false;
+            }
+            byteCount--; /* 减到为零为止 */
+        }
+    }
+    return (0 == byteCount); /* 非0违反UTF8编码规则 */
+}
+} // namespace impl
+
+/**
+ * @brief 解析字符串
  * @param str json字符串
  * @param j [输出]转换后的json对象
  * @param errDesc [输出]错误描述(选填)
  * @return true-成功, false-失败
  */
-static bool stringToObject(const std::string& str, json& j, std::string* errDesc = nullptr)
+static bool parse(const std::string& str, json& j, std::string* errDesc = nullptr)
 {
-    if (errDesc)
-    {
-        (*errDesc).clear();
-    }
+    std::string errorDescribe;
     try
     {
         j = json::parse(str);
@@ -23,31 +81,29 @@ static bool stringToObject(const std::string& str, json& j, std::string* errDesc
     }
     catch (const std::exception& e)
     {
-        if (errDesc)
-        {
-            *errDesc = e.what();
-        }
+        errorDescribe = e.what();
     }
     catch (...)
     {
-        if (errDesc)
-        {
-            *errDesc = "unknown exception";
-        }
+        errorDescribe = "unknown exception";
+    }
+    if (errDesc)
+    {
+        *errDesc = errorDescribe;
     }
     return false;
 }
 
 /**
- * @brief 字符串转为json对象
+ * @brief 解析字符串
  * @param str json字符串
  * @param errDesc [输出]错误描述(选填)
  * @return json对象
  */
-static json stringToObject(const std::string& str, std::string* errDesc = nullptr)
+static json parse(const std::string& str, std::string* errDesc = nullptr)
 {
     json j;
-    stringToObject(str, j, errDesc);
+    parse(str, j, errDesc);
     return j;
 }
 
@@ -62,10 +118,7 @@ static json stringToObject(const std::string& str, std::string* errDesc = nullpt
 template<typename ValueType>
 static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errDesc = nullptr)
 {
-    if (errDesc)
-    {
-        (*errDesc).clear();
-    }
+    std::string errorDescribe;
     try
     {
         if (!j.is_null() || std::is_enum<ValueType>::value)
@@ -73,20 +126,19 @@ static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errD
             j.get_to(value);
             return true;
         }
+        errorDescribe = "null";
     }
     catch (const std::exception& e)
     {
-        if (errDesc)
-        {
-            *errDesc = e.what();
-        }
+        errorDescribe = e.what();
     }
     catch (...)
     {
-        if (errDesc)
-        {
-            *errDesc = "unknown exception";
-        }
+        errorDescribe = "unknown exception";
+    }
+    if (errDesc)
+    {
+        *errDesc = errorDescribe;
     }
     return false;
 }
@@ -107,64 +159,6 @@ static ValueType toValue(const nlohmann::json& j, std::string* errDesc = nullptr
 }
 
 /**
- * @brief 获取子对象
- * @param j json对象
- * @param key 子项的key
- * @param object [输出]子对象
- * @param errDesc [输出]错误描述(选填)
- * @return true-成功, false-失败
- */
-static bool getter(const json& j, const std::string& key, json& object, std::string* errDesc = nullptr)
-{
-    if (errDesc)
-    {
-        (*errDesc).clear();
-    }
-    try
-    {
-        auto iter = j.find(key);
-        if (j.end() != iter)
-        {
-            object = iter.value();
-            return true;
-        }
-        else if (errDesc)
-        {
-            *errDesc = "unfound";
-        }
-    }
-    catch (const std::exception& e)
-    {
-        if (errDesc)
-        {
-            *errDesc = e.what();
-        }
-    }
-    catch (...)
-    {
-        if (errDesc)
-        {
-            *errDesc = "unknown exception";
-        }
-    }
-    return false;
-}
-
-/**
- * @brief 获取子对象
- * @param j json对象
- * @param key 子项的key
- * @param errDesc [输出]错误描述(选填)
- * @return 子对象
- */
-static json getter(const json& j, const std::string& key, std::string* errDesc = nullptr)
-{
-    json object;
-    getter(j, key, object, errDesc);
-    return object;
-}
-
-/**
  * @brief 获取子项值
  * @tparam ValueType 要获取的类型
  * @param j json对象
@@ -176,10 +170,7 @@ static json getter(const json& j, const std::string& key, std::string* errDesc =
 template<typename ValueType>
 static bool getter(const json& j, const std::string& key, ValueType& value, std::string* errDesc = nullptr)
 {
-    if (errDesc)
-    {
-        (*errDesc).clear();
-    }
+    std::string errorDescribe;
     try
     {
         auto iter = j.find(key);
@@ -190,25 +181,24 @@ static bool getter(const json& j, const std::string& key, ValueType& value, std:
                 iter.value().get_to(value);
                 return true;
             }
+            errorDescribe = "null";
         }
-        else if (errDesc)
+        else
         {
-            *errDesc = "unfound";
+            errorDescribe = "unfound";
         }
     }
     catch (const std::exception& e)
     {
-        if (errDesc)
-        {
-            *errDesc = e.what();
-        }
+        errorDescribe = e.what();
     }
     catch (...)
     {
-        if (errDesc)
-        {
-            *errDesc = "unknown exception";
-        }
+        errorDescribe = "unknown exception";
+    }
+    if (errDesc)
+    {
+        *errDesc = errorDescribe;
     }
     return false;
 }
@@ -241,31 +231,29 @@ static ValueType getter(const json& j, const std::string& key, std::string* errD
 template<typename ValueType>
 static bool setter(json& j, const std::string& key, const ValueType& value, std::string* errDesc = nullptr)
 {
-    if (errDesc)
-    {
-        (*errDesc).clear();
-    }
+    std::string errorDescribe;
     try
     {
-        j[key] = value;
-        return true;
+        if (typeid(std::string) != typeid(value) || impl::isUtf8(*((std::string*)(&value))))
+        {
+            j[key] = value;
+            return true;
+        }
+        errorDescribe = "invalid UTF-8 value";
     }
     catch (const std::exception& e)
     {
-        if (errDesc)
-        {
-            *errDesc = e.what();
-        }
+        errorDescribe = e.what();
     }
     catch (...)
     {
-        if (errDesc)
-        {
-            *errDesc = "unknown exception";
-        }
+        errorDescribe = "unknown exception";
     }
-    ValueType defValue;
-    j[key] = defValue;
+    if (errDesc)
+    {
+        *errDesc = errorDescribe;
+    }
+    j[key] = ValueType{};
     return false;
 }
 
@@ -280,29 +268,78 @@ static bool setter(json& j, const std::string& key, const ValueType& value, std:
 template<typename ValueType>
 static bool append(json& j, const ValueType& value, std::string* errDesc = nullptr)
 {
-    if (errDesc)
-    {
-        (*errDesc).clear();
-    }
+    std::string errorDescribe;
     try
     {
-        j.emplace_back(value);
+        if (typeid(std::string) != typeid(value) || impl::isUtf8(*((std::string*)(&value))))
+        {
+            j.emplace_back(value);
+            return true;
+        }
+        errorDescribe = "invalid UTF-8 value";
+    }
+    catch (const std::exception& e)
+    {
+        errorDescribe = e.what();
+    }
+    catch (...)
+    {
+        errorDescribe = "unknown exception";
+    }
+    if (errDesc)
+    {
+        *errDesc = errorDescribe;
+    }
+    return false;
+}
+
+/**
+ * @brief 转换为json字符串
+ * @param j json对象
+ * @param str [输出]json字符串 
+ * @param errDesc [输出]错误描述(选填)
+ * @param indent 缩进个数(选填), 默认不缩进
+ * @param indentChar 缩进字符(选填), 默认1个空格符
+ * @param ensureAscii 是否确保ASCII(选填), 默认否
+ * @return true-成功, false-失败
+ */
+static bool dump(const json& j, std::string& str, std::string* errDesc = nullptr, int indent = -1, char indentChar = ' ',
+                 bool ensureAscii = false)
+{
+    std::string errorDescribe;
+    try
+    {
+        str = j.dump(indent, indentChar, ensureAscii, nlohmann::detail::error_handler_t::replace);
         return true;
     }
     catch (const std::exception& e)
     {
-        if (errDesc)
-        {
-            *errDesc = e.what();
-        }
+        errorDescribe = e.what();
     }
     catch (...)
     {
-        if (errDesc)
-        {
-            *errDesc = "unknown exception";
-        }
+        errorDescribe = "unknown exception";
+    }
+    if (errDesc)
+    {
+        *errDesc = errorDescribe;
     }
     return false;
+}
+
+/**
+ * @brief 转换为json字符串
+ * @param j json对象
+ * @param errDesc [输出]错误描述(选填)
+ * @param indent 缩进个数(选填), 默认不缩进
+ * @param indentChar 缩进字符(选填), 默认1个空格符
+ * @param ensureAscii 是否确保ASCII(选填), 默认否
+ * @return json字符串
+ */
+static std::string dump(const json& j, std::string* errDesc = nullptr, int indent = -1, char indentChar = ' ', bool ensureAscii = false)
+{
+    std::string str;
+    dump(j, str, errDesc, indent, indentChar, ensureAscii);
+    return str;
 }
 } // namespace nlohmann
