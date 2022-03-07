@@ -2,7 +2,7 @@
 #include <string>
 #include <time.h>
 
-namespace utilitiy
+namespace utility
 {
 /**
  * @brief 文件属性 
@@ -52,4 +52,4 @@ typedef struct
  * @return true-成功, false-失败
  */
 bool getFileAttribute(std::string name, FileAttribute& attr);
-} // namespace utilitiy
+} // namespace utility

@@ -1,6 +1,6 @@
 #include "timeout_monitor.h"
 
-namespace utilitiy
+namespace utility
 {
 TimeoutMonitor::TimeoutMonitor(const WatchFunc& captureFunc, const EndFunc& endFunc, long long timeout, const std::string& tag)
 {
@@ -44,4 +44,4 @@ void TimeoutMonitor::capture(long long timeout, const std::string& subTag)
                          });
     }
 }
-} // namespace utilitiy
+} // namespace utility

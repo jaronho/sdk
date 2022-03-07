@@ -4,16 +4,16 @@
 #include <string.h>
 #include <string>
 
-#include "../utilitiy/charset/charset.h"
-#include "../utilitiy/cmdline/cmdline.h"
-#include "../utilitiy/filesystem/file_info.h"
-#include "../utilitiy/filesystem/path_info.h"
-#include "../utilitiy/strtool/strtool.h"
-#include "../utilitiy/system/system.h"
+#include "../utility/charset/charset.h"
+#include "../utility/cmdline/cmdline.h"
+#include "../utility/filesystem/file_info.h"
+#include "../utility/filesystem/path_info.h"
+#include "../utility/strtool/strtool.h"
+#include "../utility/system/system.h"
 
 void testCharset(int argc, char** argv)
 {
-    printf("current locale: %s\n\n", utilitiy::Charset::getLocale().c_str());
+    printf("current locale: %s\n\n", utility::Charset::getLocale().c_str());
     cmdline::parser parser;
     parser.add<std::string>("dir", 'd', "directory", true);
     parser.add<int>("recursive", 'r', "whether recursive sub directory", false, 0);
@@ -21,60 +21,60 @@ void testCharset(int argc, char** argv)
     /* 解析参数 */
     auto path = parser.get<std::string>("dir");
     auto subdir = parser.get<int>("recursive");
-    utilitiy::PathInfo pi(path);
+    utility::PathInfo pi(path);
     if (pi.exist())
     {
         printf("path: %s, exist\n\n", pi.path().c_str());
         pi.traverse(
-            [&](const std::string& name, const utilitiy::FileAttribute& attr, int depth) {
+            [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
                 printf("\n========== DIR === %s ===", name.c_str());
-                if (utilitiy::Charset::isAscii(name))
+                if (utility::Charset::isAscii(name))
                 {
                     printf(" ASCII\n");
                 }
                 else
                 {
                     printf(" charset:");
-                    switch (utilitiy::Charset::getCoding(name))
+                    switch (utility::Charset::getCoding(name))
                     {
-                    case utilitiy::Charset::Coding::gbk:
+                    case utility::Charset::Coding::gbk:
                         printf(" GBK\n");
-                        printf("             UTF8: %s\n", utilitiy::Charset::gbkToUtf8(name).c_str());
+                        printf("             UTF8: %s\n", utility::Charset::gbkToUtf8(name).c_str());
                         break;
-                    case utilitiy::Charset::Coding::utf8:
+                    case utility::Charset::Coding::utf8:
                         printf(" UTF8\n");
                         break;
-                    case utilitiy::Charset::Coding::unknown:
+                    case utility::Charset::Coding::unknown:
                         printf(" Unknown\n");
                         break;
                     }
                 }
                 return (subdir > 0);
             },
-            [&](const std::string& name, const utilitiy::FileAttribute& attr, int depth) {
+            [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
                 printf("----- FILE --- %s --- ", name.c_str());
-                if (utilitiy::Charset::isAscii(name))
+                if (utility::Charset::isAscii(name))
                 {
                     printf(" ASCII\n");
                 }
                 else
                 {
                     printf(" charset:");
-                    switch (utilitiy::Charset::getCoding(name))
+                    switch (utility::Charset::getCoding(name))
                     {
-                    case utilitiy::Charset::Coding::gbk:
+                    case utility::Charset::Coding::gbk:
                         printf(" GBK\n");
-                        printf("         UTF8: %s\n", utilitiy::Charset::gbkToUtf8(name).c_str());
+                        printf("         UTF8: %s\n", utility::Charset::gbkToUtf8(name).c_str());
                         break;
-                    case utilitiy::Charset::Coding::utf8:
+                    case utility::Charset::Coding::utf8:
                         printf(" UTF8\n");
                         break;
-                    case utilitiy::Charset::Coding::unknown:
+                    case utility::Charset::Coding::unknown:
                         printf(" Unknown\n");
                         break;
                     }
                 }
-                utilitiy::FileInfo fi(name);
+                utility::FileInfo fi(name);
                 if (fi.isTextFile())
                 {
                     long long contentLen;
@@ -82,15 +82,15 @@ void testCharset(int argc, char** argv)
                     if (content)
                     {
                         printf("      text file content charset:");
-                        switch (utilitiy::Charset::getCoding(content))
+                        switch (utility::Charset::getCoding(content))
                         {
-                        case utilitiy::Charset::Coding::gbk:
+                        case utility::Charset::Coding::gbk:
                             printf(" GBK\n");
                             break;
-                        case utilitiy::Charset::Coding::utf8:
+                        case utility::Charset::Coding::utf8:
                             printf(" UTF8\n");
                             break;
-                        case utilitiy::Charset::Coding::unknown:
+                        case utility::Charset::Coding::unknown:
                             printf(" Unknown\n");
                             break;
                         }

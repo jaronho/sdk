@@ -1,7 +1,7 @@
 #pragma once
 #include "time_watcher.h"
 
-namespace utilitiy
+namespace utility
 {
 /**
  * @brief 默认的超时监控时长(单位:毫秒)
@@ -37,11 +37,11 @@ private:
     TimeWatcher* m_watcher; /* 检测器 */
     WatchFunc m_captureFunc; /* 抓拍函数 */
 };
-} // namespace utilitiy
+} // namespace utility
 
 /* 创建超时监控器(非线程安全) */
 #define MAKE_TIMEOUT_MONITOR(monitor, captureFunc, endFunc, timeout, tag) \
-    utilitiy::TimeoutMonitor monitor(captureFunc, endFunc, timeout, tag)
+    utility::TimeoutMonitor monitor(captureFunc, endFunc, timeout, tag)
 
 /* 超时监控器抓拍(非线程安全) */
 #define TIMEOUT_MONITOR_CAPTURE(monitor, timeout, subTag) monitor.capture(timeout, subTag)

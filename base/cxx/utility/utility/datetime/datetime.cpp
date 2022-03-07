@@ -9,7 +9,7 @@
 #include <sys/time.h>
 #endif
 
-namespace utilitiy
+namespace utility
 {
 DateTime::DateTime(int year, int month, int day, int hour, int minute, int second, int millisecond)
     : year(year), month(month), day(day), hour(hour), minute(minute), second(second), millisecond(millisecond)
@@ -368,4 +368,4 @@ bool DateTime::setLocalTime(const DateTime& dt)
 #endif
     return false;
 }
-} // namespace utilitiy
+} // namespace utility

@@ -4,7 +4,7 @@
 
 #include "fs_define.h"
 
-namespace utilitiy
+namespace utility
 {
 class PathInfo
 {
@@ -129,4 +129,4 @@ private:
 private:
     std::string m_path; /* 路径 */
 };
-} // namespace utilitiy
+} // namespace utility

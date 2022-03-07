@@ -1,9 +1,9 @@
 #include <chrono>
 #include <iostream>
 
-#include "../utilitiy/cmdline/cmdline.h"
-#include "../utilitiy/filesystem/file_copy.h"
-#include "../utilitiy/strtool/strtool.h"
+#include "../utility/cmdline/cmdline.h"
+#include "../utility/filesystem/file_copy.h"
+#include "../utility/strtool/strtool.h"
 
 void testFileCopy(int argc, char** argv)
 {
@@ -21,8 +21,8 @@ void testFileCopy(int argc, char** argv)
     auto clearDest = parser.get<int>("clear");
     auto coverDest = parser.get<int>("cover");
     /* 参数设置 */
-    auto srcFilelist = utilitiy::StrTool::split(filelist, ",");
-    auto filterFunc = [](const std::string& name, const utilitiy::FileAttribute& attr, int depth) {
+    auto srcFilelist = utility::StrTool::split(filelist, ",");
+    auto filterFunc = [](const std::string& name, const utility::FileAttribute& attr, int depth) {
 #ifdef _WIN32
         if (attr.isSystem) /* 系统 */
         {
@@ -37,7 +37,7 @@ void testFileCopy(int argc, char** argv)
             return true;
         }
 #endif
-        if (attr.isDir && utilitiy::StrTool::contains(name, "System Volume Information", false)) /* 文件系统目录(跳过) */
+        if (attr.isDir && utility::StrTool::contains(name, "System Volume Information", false)) /* 文件系统目录(跳过) */
         {
             printf("[%d] source directory %s is system, skip\n", depth, name.c_str());
             return true;
@@ -71,24 +71,24 @@ void testFileCopy(int argc, char** argv)
     /* 开始拷贝 */
     printf("start copy ...\n");
     std::chrono::steady_clock::time_point tm1 = std::chrono::steady_clock::now();
-    utilitiy::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc, nullptr, ".tmp");
+    utility::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc, nullptr, ".tmp");
     fc.setCallback(beginCb, totalProgressCb, singleProgressCb);
     auto result = fc.start(&failSrcFile, &failDestFile, &failCode);
     switch (result)
     {
-    case utilitiy::FileInfo::CopyResult::ok:
+    case utility::FileInfo::CopyResult::ok:
         printf("\nfile copy ok\n");
         break;
-    case utilitiy::FileInfo::CopyResult::src_open_failed:
+    case utility::FileInfo::CopyResult::src_open_failed:
         printf("\nfile copy fail: source file %s open fail: %d %s\n", failSrcFile.c_str(), failCode, strerror(failCode));
-    case utilitiy::FileInfo::CopyResult::dest_open_failed:
+    case utility::FileInfo::CopyResult::dest_open_failed:
         printf("\nfile copy fail: destination file %s open fail: %d %s\n", failDestFile.c_str(), failCode, strerror(failCode));
-    case utilitiy::FileInfo::CopyResult::memory_alloc_failed:
+    case utility::FileInfo::CopyResult::memory_alloc_failed:
         printf("\nfile copy fail: source file %s, destination file: %s, memory allocate fail: %d %s\n", failSrcFile.c_str(),
                failDestFile.c_str(), failCode, strerror(failCode));
-    case utilitiy::FileInfo::CopyResult::stop:
+    case utility::FileInfo::CopyResult::stop:
         printf("\nfile copy fail: source file %s, destination file: %s, stop\n", failSrcFile.c_str(), failDestFile.c_str());
-    case utilitiy::FileInfo::CopyResult::size_unequal:
+    case utility::FileInfo::CopyResult::size_unequal:
         printf("\nfile copy fail: source file %s != destination file %s\n", failSrcFile.c_str(), failDestFile.c_str());
     }
     std::chrono::steady_clock::time_point tm2 = std::chrono::steady_clock::now();

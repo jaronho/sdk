@@ -13,7 +13,7 @@
 #include <unistd.h>
 #endif
 
-namespace utilitiy
+namespace utility
 {
 PathInfo::PathInfo(const std::string& path, bool autoEndWithSlash) : m_path(revise(path))
 {
@@ -462,4 +462,4 @@ std::string PathInfo::getcwd(bool autoEndWithSlash)
     }
     return currDir;
 }
-} // namespace utilitiy
+} // namespace utility

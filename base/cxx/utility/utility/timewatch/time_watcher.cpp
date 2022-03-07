@@ -1,6 +1,6 @@
 #include "time_watcher.h"
 
-namespace utilitiy
+namespace utility
 {
 TimeWatcher::TimeWatcher(const WatchFunc& watchFunc, const EndFunc& endFunc, const std::string& tag)
     : m_begin(std::chrono::steady_clock::now()), m_watch(m_begin), m_watchFunc(watchFunc), m_endFunc(endFunc), m_tag(tag)
@@ -42,4 +42,4 @@ bool TimeWatcher::check(long long timeout)
     }
     return false;
 }
-} // namespace utilitiy
+} // namespace utility

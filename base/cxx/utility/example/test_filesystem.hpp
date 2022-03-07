@@ -4,17 +4,17 @@
 #include <string.h>
 #include <string>
 
-#include "../utilitiy/filesystem/file_info.h"
-#include "../utilitiy/filesystem/path_info.h"
+#include "../utility/filesystem/file_info.h"
+#include "../utility/filesystem/path_info.h"
 
 void testFilesystem()
 {
     printf("\n============================== test filesystem =============================\n");
     printf("---------- file info\n");
 #ifdef _WIN32
-    utilitiy::FileInfo fi("D:\\config.txt");
+    utility::FileInfo fi("D:\\config.txt");
 #else
-    utilitiy::FileInfo fi("/home/jaron/config.txt");
+    utility::FileInfo fi("/home/jaron/config.txt");
 #endif
     printf("name: %s\n", fi.name().c_str());
     printf("path: %s\n", fi.path().c_str());
@@ -45,7 +45,7 @@ void testFilesystem()
             printf("\n--------------------\n");
             free(buffer);
         }
-        utilitiy::FileAttribute attr = fi.attribute();
+        utility::FileAttribute attr = fi.attribute();
         printf("- createTime: %s\n", attr.createTimeFmt().c_str());
         printf("- modifyTime: %s\n", attr.modifyTimeFmt().c_str());
         printf("- accessTime: %s\n", attr.accessTimeFmt().c_str());
@@ -64,17 +64,17 @@ void testFilesystem()
     {
         printf("exist: false\n");
     }
-    printf("---------- path info, current: %s\n", utilitiy::PathInfo::getcwd().c_str());
+    printf("---------- path info, current: %s\n", utility::PathInfo::getcwd().c_str());
 #ifdef _WIN32
-    utilitiy::PathInfo pi("D:\\workspace\\test\\111\\222\\333");
+    utility::PathInfo pi("D:\\workspace\\test\\111\\222\\333");
 #else
-    utilitiy::PathInfo pi("/home/jaron/test/111/222/333");
+    utility::PathInfo pi("/home/jaron/test/111/222/333");
 #endif
     printf("path: %s\n", pi.path().c_str());
     if (pi.exist())
     {
         printf("exist: true\n");
-        utilitiy::FileAttribute attr = pi.attribute();
+        utility::FileAttribute attr = pi.attribute();
         printf("- createTime: %s\n", attr.createTimeFmt().c_str());
         printf("- modifyTime: %s\n", attr.modifyTimeFmt().c_str());
         printf("- accessTime: %s\n", attr.accessTimeFmt().c_str());
@@ -103,7 +103,7 @@ void testFilesystem()
         if (pi.create())
         {
             printf("create: true\n");
-            utilitiy::FileAttribute attr = pi.attribute();
+            utility::FileAttribute attr = pi.attribute();
             printf("- createTime: %s\n", attr.createTimeFmt().c_str());
             printf("- modifyTime: %s\n", attr.modifyTimeFmt().c_str());
             printf("- accessTime: %s\n", attr.accessTimeFmt().c_str());

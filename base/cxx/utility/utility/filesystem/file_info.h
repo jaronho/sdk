@@ -5,7 +5,7 @@
 
 #include "fs_define.h"
 
-namespace utilitiy
+namespace utility
 {
 class FileInfo
 {
@@ -174,4 +174,4 @@ private:
     std::string m_basename; /* 基础名 */
     std::string m_extname; /* 扩展名 */
 };
-} // namespace utilitiy
+} // namespace utility

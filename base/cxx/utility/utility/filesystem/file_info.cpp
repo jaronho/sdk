@@ -7,7 +7,7 @@
 #include <unistd.h>
 #endif
 
-namespace utilitiy
+namespace utility
 {
 struct FileBlockSize
 {
@@ -468,4 +468,4 @@ bool FileInfo::isTextData(std::fstream& f)
     }
     return true;
 }
-} // namespace utilitiy
+} // namespace utility

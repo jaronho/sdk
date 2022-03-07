@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-namespace utilitiy
+namespace utility
 {
 class Charset final
 {
@@ -82,4 +82,4 @@ public:
      */
     static std::string utf8ToGbk(const std::string& str);
 };
-} // namespace utilitiy
+} // namespace utility

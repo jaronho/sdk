@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-namespace utilitiy
+namespace utility
 {
 class StrTool final
 {
@@ -139,4 +139,4 @@ public:
      */
     static std::vector<char> fromHex(const std::string& hexStr, const std::string& sep = "");
 };
-} // namespace utilitiy
+} // namespace utility

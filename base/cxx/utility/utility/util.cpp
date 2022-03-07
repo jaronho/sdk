@@ -1,5 +1,5 @@
 #include "util.h"
 
-namespace utilitiy
+namespace utility
 {
-} // namespace utilitiy
+} // namespace utility

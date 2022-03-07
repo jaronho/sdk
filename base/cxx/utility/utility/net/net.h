@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-namespace utilitiy
+namespace utility
 {
 class Net final
 {
@@ -108,4 +108,4 @@ public:
      */
     static std::vector<IfaceInfo> getAllInterfaces();
 };
-} // namespace utilitiy
+} // namespace utility

@@ -5,7 +5,7 @@
 #include "file_info.h"
 #include "path_info.h"
 
-namespace utilitiy
+namespace utility
 {
 /**
  * @brief 文件拷贝过滤函数
@@ -112,9 +112,9 @@ private:
     std::string checkDestFile(const std::string& destFile);
 
 private:
-    utilitiy::PathInfo m_srcPathInfo; /* 源目录 */
+    utility::PathInfo m_srcPathInfo; /* 源目录 */
     std::vector<std::string> m_srcFilelist; /* 源文件列表 */
-    utilitiy::PathInfo m_destPathInfo; /* 目标目录 */
+    utility::PathInfo m_destPathInfo; /* 目标目录 */
     std::vector<std::string> m_destFilelist; /* 已拷贝的目标文件列表 */
     bool m_clearDestPath; /* 拷贝前是否清空目标目录 */
     bool m_coverDestFile; /* 当目标目录已有同名文件时是否覆盖 */
@@ -128,4 +128,4 @@ private:
     std::string m_failDestFile; /* 失败时的目标文件 */
     int m_failCode; /* 失败时的错误码 */
 };
-} // namespace utilitiy
+} // namespace utility

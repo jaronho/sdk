@@ -1,6 +1,6 @@
 #include "file_copy.h"
 
-namespace utilitiy
+namespace utility
 {
 FileCopy::FileCopy(const std::string& srcPath, const std::vector<std::string>& srcFilelist, const std::string& destPath, bool clearDest,
                    bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc, const std::string& tmpSuffix)
@@ -76,14 +76,14 @@ FileInfo::CopyResult FileCopy::copyAllFiles()
     std::vector<std::string> srcFilelist;
     size_t srcFileSize = 0;
     m_srcPathInfo.traverse(
-        [&](const std::string& name, const utilitiy::FileAttribute& attr, int depth) {
+        [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
             if (m_filterFunc && m_filterFunc(name, attr, depth)) /* 目录被过滤 */
             {
                 return false;
             }
             return true;
         },
-        [&](const std::string& name, const utilitiy::FileAttribute& attr, int depth) {
+        [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
             if (m_filterFunc && m_filterFunc(name, attr, depth)) /* 文件被过滤 */
             {
                 return;
@@ -115,7 +115,7 @@ FileInfo::CopyResult FileCopy::copyAssignFiles()
         {
             return FileInfo::CopyResult::stop;
         }
-        srcFileSize += utilitiy::FileInfo(srcFile).size();
+        srcFileSize += utility::FileInfo(srcFile).size();
     }
     return copySrcFileList(m_srcFilelist, srcFileSize);
 }
@@ -129,10 +129,10 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
     }
     for (size_t index = 0; index < totalFileCount; ++index)
     {
-        utilitiy::FileInfo srcFileInfo(srcFilelist[index]);
+        utility::FileInfo srcFileInfo(srcFilelist[index]);
         auto destFile = m_destPathInfo.path() + srcFileInfo.name().substr(m_srcPathInfo.path().size());
         /* 判断或创建目标目录 */
-        utilitiy::PathInfo destPathInfo(utilitiy::FileInfo(destFile).path());
+        utility::PathInfo destPathInfo(utility::FileInfo(destFile).path());
         if (!destPathInfo.exist() && !destPathInfo.create()) /* 目标目录不存在且创建失败 */
         {
             m_failSrcFile = srcFileInfo.name();
@@ -197,14 +197,14 @@ std::string FileCopy::checkDestFile(const std::string& destFile)
 {
     int num = 0;
     auto newDestFile = destFile;
-    utilitiy::FileInfo fi(newDestFile);
+    utility::FileInfo fi(newDestFile);
     while (fi.exist())
     {
         ++num;
         auto suffix = fi.extname().empty() ? "" : ("." + fi.extname());
         newDestFile = fi.path() + fi.basename() + "(" + std::to_string(num) + ")" + suffix;
-        fi = utilitiy::FileInfo(newDestFile);
+        fi = utility::FileInfo(newDestFile);
     }
     return newDestFile;
 }
-} // namespace utilitiy
+} // namespace utility

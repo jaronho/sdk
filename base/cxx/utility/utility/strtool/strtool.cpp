@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <string.h>
 
-namespace utilitiy
+namespace utility
 {
 void StrTool::trimLeft(std::string& str, char c)
 {
@@ -296,4 +296,4 @@ std::vector<char> StrTool::fromHex(const std::string& hexStr, const std::string&
     }
     return bytes;
 }
-} // namespace utilitiy
+} // namespace utility

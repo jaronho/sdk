@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <math.h>
 
-namespace utilitiy
+namespace utility
 {
 bool Digit::isBin(const std::string& binStr)
 {
@@ -172,4 +172,4 @@ unsigned int Digit::hex2dec(const std::string& hexStr)
     }
     return dec;
 }
-} // namespace utilitiy
+} // namespace utility

@@ -2,7 +2,7 @@
 #include <functional>
 #include <string>
 
-namespace utilitiy
+namespace utility
 {
 class Process final
 {
@@ -64,4 +64,4 @@ public:
      */
     static bool killProcess(int pid);
 };
-} // namespace utilitiy
+} // namespace utility

@@ -11,7 +11,7 @@
 #include <unistd.h>
 #endif
 
-namespace utilitiy
+namespace utility
 {
 int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std::string>* outVec)
 {
@@ -170,4 +170,4 @@ void System::waitForCount(unsigned int maxCount, const std::function<bool()>& fu
         std::this_thread::sleep_for(std::chrono::milliseconds(maxCount * loopGap));
     }
 }
-} // namespace utilitiy
+} // namespace utility

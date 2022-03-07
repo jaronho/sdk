@@ -9,21 +9,21 @@
 #include <unistd.h>
 #endif
 
-#include "../utilitiy/datetime/datetime.h"
+#include "../utility/datetime/datetime.h"
 
 void testDateTime()
 {
     printf("\n============================== test datetime =============================\n");
 
-    auto nowDt = utilitiy::DateTime::getNow();
-    auto nowTimestamp = utilitiy::DateTime::getNowTimestamp();
+    auto nowDt = utility::DateTime::getNow();
+    auto nowTimestamp = utility::DateTime::getNowTimestamp();
     printf("----- [0] now: %04d-%02d-%02d %02d:%02d:%02d.%03d, week day: %d, year day: %d\n", nowDt.year, nowDt.month, nowDt.day,
            nowDt.hour, nowDt.minute, nowDt.second, nowDt.millisecond, nowDt.wday, nowDt.yday);
     printf("----- [0] timestamp: %f\n", nowTimestamp);
     printf("\n");
-    auto dt1 = utilitiy::DateTime();
+    auto dt1 = utility::DateTime();
     auto dt2 = nowDt;
-    auto dt3 = utilitiy::DateTime(nowTimestamp);
+    auto dt3 = utility::DateTime(nowTimestamp);
     printf("----- [1] dt1: %04d-%02d-%02d %02d:%02d:%02d.%03d, week day: %d, year day: %d\n", dt1.year, dt1.month, dt1.day, dt1.hour,
            dt1.minute, dt1.second, dt1.millisecond, dt1.wday, dt1.yday);
     printf("----- [1] timestamp1: %f\n", dt1.toTimestamp());

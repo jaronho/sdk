@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-namespace utilitiy
+namespace utility
 {
 /**
  * @brief  字节流(序列化/反序列化)
@@ -387,4 +387,4 @@ private:
     int m_readIndex; /* 读取位置 */
     int m_writeIndex; /* 写入位置 */
 };
-} // namespace utilitiy
+} // namespace utility

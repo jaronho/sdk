@@ -7,7 +7,7 @@
 
 typedef unsigned short wchar;
 
-namespace utilitiy
+namespace utility
 {
 //////////////////////////////////////////////////////////////////////
 // Codes from iconv BEGIN
@@ -822,4 +822,4 @@ std::string Charset::utf8ToGbk(const std::string& str)
 {
     return unicodeToGbk(utf8ToUnicode(str));
 }
-} // namespace utilitiy
+} // namespace utility

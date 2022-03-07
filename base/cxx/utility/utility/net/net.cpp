@@ -15,7 +15,7 @@
 #include <unistd.h>
 #endif
 
-namespace utilitiy
+namespace utility
 {
 bool Net::isIPv4(const std::string& ip)
 {
@@ -324,4 +324,4 @@ std::vector<Net::IfaceInfo> Net::getAllInterfaces()
 #endif
     return ifaceList;
 }
-} // namespace utilitiy
+} // namespace utility

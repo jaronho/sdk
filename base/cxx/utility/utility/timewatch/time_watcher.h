@@ -3,7 +3,7 @@
 #include <functional>
 #include <string>
 
-namespace utilitiy
+namespace utility
 {
 /**
  * @brief 观察回调函数
@@ -58,14 +58,14 @@ private:
     EndFunc m_endFunc; /* 结束函数 */
     std::string m_tag; /* 标签 */
 };
-} // namespace utilitiy
+} // namespace utility
 
 #define TIME_WATCHER_VAR_NAME_CONNECTION(var1, var2) var1##var2
 #define TIME_WATCHER_VAR_NAME(var1, var2) TIME_WATCHER_VAR_NAME_CONNECTION(var1, var2)
 #define TIME_WATCHER_VAR(var) TIME_WATCHER_VAR_NAME(var, __LINE__)
 
 /* 创建时间观察者(非线程安全) */
-#define MAKE_TIME_WATCHER(watcher, watchFunc, endFunc, tag) utilitiy::TimeWatcher watcher(watchFunc, endFunc, tag)
+#define MAKE_TIME_WATCHER(watcher, watchFunc, endFunc, tag) utility::TimeWatcher watcher(watchFunc, endFunc, tag)
 
 /* 时间观察者观察(非线程安全) */
 #define TIME_WATCHER_WATCH(watcher, subTag) watcher.watch(subTag)

@@ -7,7 +7,7 @@
 #include <atlstr.h>
 #endif
 
-namespace utilitiy
+namespace utility
 {
 #ifdef _WIN32
 static std::wstring string2wstring(const std::string& str)
@@ -82,4 +82,4 @@ bool getFileAttribute(std::string name, FileAttribute& attr)
     attr.isExecutable = S_IEXEC & st.st_mode;
     return true;
 }
-} // namespace utilitiy
+} // namespace utility

@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string.h>
 
-namespace utilitiy
+namespace utility
 {
 bool ByteArray::isBigEndium(void)
 {
@@ -648,4 +648,4 @@ unsigned char* ByteArray::write(int n)
     return p;
 }
 
-} // namespace utilitiy
+} // namespace utility

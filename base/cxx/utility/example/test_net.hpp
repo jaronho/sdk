@@ -1,17 +1,17 @@
 #pragma once
 #include <iostream>
 
-#include "../utilitiy/net/net.h"
+#include "../utility/net/net.h"
 
 void testNet()
 {
     printf("\n============================== test net =============================\n");
     std::string ipv4_1 = "202.112.14.137";
     std::string subnetMask_1 = "255.255.255.224";
-    auto ret = utilitiy::Net::isIPv4(ipv4_1);
+    auto ret = utility::Net::isIPv4(ipv4_1);
     printf("--- ip: %s is ipv4: %s, inner: %s\n", ipv4_1.c_str(), ret ? "true" : "false",
-           utilitiy::Net::isIPv4Inner(ipv4_1) ? "true" : "false");
-    auto ipv4Info = utilitiy::Net::calcIPv4Info(ipv4_1, subnetMask_1);
+           utility::Net::isIPv4Inner(ipv4_1) ? "true" : "false");
+    auto ipv4Info = utility::Net::calcIPv4Info(ipv4_1, subnetMask_1);
     printf("--- netmask: %s\n", subnetMask_1.c_str());
     printf("--- network: %s\n", ipv4Info.network.c_str());
     printf("--- host: %s\n", ipv4Info.host.c_str());
@@ -19,7 +19,7 @@ void testNet()
     printf("--- default gateway: %s\n", ipv4Info.defaultGateway.c_str());
     printf("--- host count: %d\n", ipv4Info.hostCount);
     printf("\n-------------------- net card:\n");
-    auto interfaceList = utilitiy::Net::getAllInterfaces();
+    auto interfaceList = utility::Net::getAllInterfaces();
     for (size_t i = 0; i < interfaceList.size(); ++i)
     {
         const auto& iface = interfaceList[i];

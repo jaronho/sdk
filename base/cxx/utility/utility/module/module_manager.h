@@ -6,7 +6,7 @@
 #include <typeinfo>
 #include <unordered_map>
 
-namespace utilitiy
+namespace utility
 {
 /**
  * @brief 所有模块的基类
@@ -75,8 +75,8 @@ public:
     template<class T>
     std::shared_ptr<T> get(bool allowCreate = true)
     {
-        const auto utilitiy = get(typeid(T), allowCreate);
-        return std::dynamic_pointer_cast<T>(utilitiy);
+        const auto utility = get(typeid(T), allowCreate);
+        return std::dynamic_pointer_cast<T>(utility);
     }
 
     /**
@@ -138,20 +138,20 @@ private:
     std::unordered_map<std::type_index, std::shared_ptr<Module>> m_modules; /* 模块类型id <-> 模块, 映射表 */
     std::function<void(const std::string&)> m_logFunc = nullptr; /* 日志函数 */
 };
-} // namespace utilitiy
+} // namespace utility
 
 /* 模块管理器 */
-#define MODULE_MANAGER() utilitiy::ModuleManager::getInstance()
+#define MODULE_MANAGER() utility::ModuleManager::getInstance()
 
 /* 注册模块, 只能在cpp文件中使用 */
 #define REGISTER_MODULE(moduleType) \
-    static bool s_module_##moduleType##_registered = utilitiy::ModuleManager::getInstance().registerCreator( \
-        typeid(moduleType), []() -> std::shared_ptr<utilitiy::Module> { return std::make_shared<moduleType>(); })
+    static bool s_module_##moduleType##_registered = utility::ModuleManager::getInstance().registerCreator( \
+        typeid(moduleType), []() -> std::shared_ptr<utility::Module> { return std::make_shared<moduleType>(); })
 
 /* 注册模块, 只能在cpp文件中使用 */
 #define REGISTER_MODULE_IMPL(moduleType, moduleTypeImpl) \
-    static bool s_module_##moduleType##_registered = utilitiy::ModuleManager::getInstance().registerCreator( \
-        typeid(moduleType), []() -> std::shared_ptr<utilitiy::Module> { return std::make_shared<moduleTypeImpl>(); })
+    static bool s_module_##moduleType##_registered = utility::ModuleManager::getInstance().registerCreator( \
+        typeid(moduleType), []() -> std::shared_ptr<utility::Module> { return std::make_shared<moduleTypeImpl>(); })
 
 /* 获取模块 */
-#define GET_MODULE(moduleType) utilitiy::ModuleManager::getInstance().get<moduleType>()
+#define GET_MODULE(moduleType) utility::ModuleManager::getInstance().get<moduleType>()

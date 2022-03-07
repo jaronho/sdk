@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-namespace utilitiy
+namespace utility
 {
 class Digit final
 {
@@ -52,4 +52,4 @@ public:
      */
     static unsigned int hex2dec(const std::string& hexStr);
 };
-} // namespace utilitiy
+} // namespace utility

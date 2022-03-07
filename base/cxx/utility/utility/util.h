@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-namespace utilitiy
+namespace utility
 {
 class Util final
 {
@@ -92,4 +92,4 @@ public:
         return vec;
     }
 };
-} // namespace utilitiy
+} // namespace utility

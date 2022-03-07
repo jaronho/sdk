@@ -22,7 +22,7 @@
 #include <TlHelp32.h> /* 需要放在#include <Windows.h>后面, 否则编译会出错 */
 #endif
 
-namespace utilitiy
+namespace utility
 {
 int Process::getProcessId()
 {
@@ -480,4 +480,4 @@ bool Process::killProcess(int pid)
 #endif
     return true;
 }
-} // namespace utilitiy
+} // namespace utility

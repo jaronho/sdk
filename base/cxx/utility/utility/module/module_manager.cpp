@@ -4,7 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 
-namespace utilitiy
+namespace utility
 {
 ModuleManager& ModuleManager::getInstance()
 {
@@ -143,4 +143,4 @@ void ModuleManager::printLog(const std::string& msg)
         printf("%s\n", msg.c_str());
     }
 }
-} // namespace utilitiy
+} // namespace utility

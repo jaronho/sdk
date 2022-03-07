@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace utilitiy
+namespace utility
 {
 class System final
 {
@@ -58,4 +58,4 @@ public:
      */
     static void waitForCount(unsigned int maxCount, const std::function<bool()>& func = nullptr, unsigned int loopGap = 50);
 };
-} // namespace utilitiy
+} // namespace utility
