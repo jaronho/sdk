@@ -2,8 +2,14 @@
 
 namespace database
 {
-Sqlite::Stmt::Stmt(sqlite3* db, const std::string& sql) : m_stmt(nullptr)
+Sqlite::Stmt::Stmt(std::shared_ptr<std::recursive_mutex> mutex, sqlite3* db, const std::string& sql) : m_stmt(nullptr)
 {
+    if (!mutex)
+    {
+        throw std::exception(std::logic_error("arg 'mutex' is null"));
+    }
+    mutex->lock();
+    m_mutex = mutex;
     prepare(db, sql);
 }
 
@@ -12,6 +18,10 @@ Sqlite::Stmt::~Stmt()
     if (m_stmt)
     {
         sqlite3_finalize(m_stmt);
+    }
+    if (m_mutex)
+    {
+        m_mutex->unlock();
     }
 }
 
@@ -233,6 +243,7 @@ void Sqlite::ValueMap::insert(const std::string& key, double value)
 Sqlite::Sqlite(const std::string& path, const std::string& password)
     : m_db(nullptr), m_inTransaction(false), m_path(path), m_password(password)
 {
+    m_mutex = std::make_shared<std::recursive_mutex>();
 }
 
 Sqlite::~Sqlite()
@@ -242,13 +253,13 @@ Sqlite::~Sqlite()
 
 std::string Sqlite::getPath()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     return m_path;
 }
 
 bool Sqlite::connect(bool readOnly)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (m_db)
     {
         return true;
@@ -285,7 +296,7 @@ bool Sqlite::connect(bool readOnly)
 
 void Sqlite::disconnect()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (m_db)
     {
         sqlite3_close_v2(m_db);
@@ -299,19 +310,19 @@ std::shared_ptr<Sqlite::Stmt> Sqlite::createStmt(const std::string& sql)
     {
         return nullptr;
     }
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (!m_db)
     {
         return nullptr;
     }
-    return std::make_shared<Stmt>(m_db, sql);
+    return std::make_shared<Stmt>(m_mutex, m_db, sql);
 }
 
 bool Sqlite::execSql(const std::string& sql,
                      const std::function<bool(const std::unordered_map<std::string, std::string>& columns)>& callback,
                      std::string* errorMsg)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (0 == execImpl(m_db, sql, callback, errorMsg))
     {
         return true;
@@ -321,7 +332,7 @@ bool Sqlite::execSql(const std::string& sql,
 
 bool Sqlite::beginTransaction(std::string* errorMsg)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (m_inTransaction)
     {
         return false;
@@ -336,7 +347,7 @@ bool Sqlite::beginTransaction(std::string* errorMsg)
 
 bool Sqlite::commitTransaction(std::string* errorMsg)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (!m_inTransaction)
     {
         return false;
@@ -351,7 +362,7 @@ bool Sqlite::commitTransaction(std::string* errorMsg)
 
 bool Sqlite::rollbackTransaction(std::string* errorMsg)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (0 == execImpl(m_db, "ROLLBACK", nullptr, errorMsg))
     {
         return true;
@@ -366,7 +377,7 @@ std::string Sqlite::getPragma(const std::string& key, std::string* errorMsg)
     {
         return value;
     }
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     char* szSql = sqlite3_mprintf("PRAGMA %q", key.c_str());
     execImpl(
         m_db, szSql,
@@ -389,7 +400,7 @@ bool Sqlite::setPragma(const std::string& key, const std::string& value, std::st
     {
         return false;
     }
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     char* szSql = sqlite3_mprintf("PRAGMA %q = '%q'", key.c_str(), value.c_str());
     int ret = execImpl(m_db, szSql, nullptr, errorMsg);
     sqlite3_free(szSql);
@@ -398,7 +409,7 @@ bool Sqlite::setPragma(const std::string& key, const std::string& value, std::st
 
 int64_t Sqlite::getLastInsertRowId()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (!m_db)
     {
         return -1;
@@ -408,7 +419,7 @@ int64_t Sqlite::getLastInsertRowId()
 
 int Sqlite::getLastErrorCode()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (!m_db)
     {
         return 0;
@@ -419,7 +430,7 @@ int Sqlite::getLastErrorCode()
 std::string Sqlite::getLastErrorMsg()
 {
     std::string msg;
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (!m_db)
     {
         return msg;

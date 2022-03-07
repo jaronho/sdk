@@ -20,10 +20,11 @@ public:
     public:
         /**
          * @brief 构造函数
+         * @param mutex 互斥锁
          * @param db 数据库句柄
          * @param sql SQL语句
          */
-        Stmt(sqlite3* db, const std::string& sql);
+        Stmt(std::shared_ptr<std::recursive_mutex> mutex, sqlite3* db, const std::string& sql);
 
         ~Stmt();
 
@@ -124,6 +125,7 @@ public:
         std::string toString();
 
     private:
+        std::shared_ptr<std::recursive_mutex> m_mutex; /* 互斥锁 */
         sqlite3_stmt* m_stmt; /* SQL预编译指令 */
     };
 
@@ -346,7 +348,7 @@ private:
                  std::string* errorMsg = nullptr);
 
 private:
-    std::mutex m_mutex; /* 互斥锁 */
+    std::shared_ptr<std::recursive_mutex> m_mutex; /* 互斥锁 */
     sqlite3* m_db; /* 数据库指针 */
     bool m_inTransaction; /* 是否在事务中 */
     std::string m_path; /* 数据库路径(全路径) */
