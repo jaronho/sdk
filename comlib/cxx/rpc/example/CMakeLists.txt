@@ -167,20 +167,20 @@ foreach(filename ${base_threading_files})
 endforeach()
 ##########################################################################################
 
-################################### 添加utilitiy库 ###################################
-set(base_utilitiy_path ../../../../base/cxx/utilitiy) # 设置utilitiy库路径(可修改)
-include_directories(${base_utilitiy_path})
+################################### 添加utility库 ###################################
+set(base_utility_path ../../../../base/cxx/utility) # 设置utility库路径(可修改)
+include_directories(${base_utility_path})
 
-set(base_utilitiy_bytearray_src_list)
-get_cxx_files(${base_utilitiy_path}/utilitiy/bytearray src_list)
-list(APPEND base_utilitiy_bytearray_src_list ${src_list})
-source_group(3rdparty/base/utilitiy/bytearray FILES ${base_utilitiy_bytearray_src_list})
+set(base_utility_bytearray_src_list)
+get_cxx_files(${base_utility_path}/utility/bytearray src_list)
+list(APPEND base_utility_bytearray_src_list ${src_list})
+source_group(3rdparty/base/utility/bytearray FILES ${base_utility_bytearray_src_list})
 
-set(base_utilitiy_files) # 工程中需要把utilitiy的文件添加进去
-list(APPEND base_utilitiy_files ${base_utilitiy_bytearray_src_list})
+set(base_utility_files) # 工程中需要把utility的文件添加进去
+list(APPEND base_utility_files ${base_utility_bytearray_src_list})
 
-print_info(BODY "base utilitiy files:")
-foreach(filename ${base_utilitiy_files})
+print_info(BODY "base utility files:")
+foreach(filename ${base_utility_files})
     message("    " ${filename})
 endforeach()
 ##########################################################################################
@@ -249,11 +249,11 @@ foreach(filename ${demo_client3_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(broker ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${broker_files})
-add_executable(example_client ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${example_client_files})
-add_executable(demo_client1 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${demo_client1_files})
-add_executable(demo_client2 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${demo_client2_files})
-add_executable(demo_client3 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utilitiy_files} ${demo_client3_files})
+add_executable(broker ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${broker_files})
+add_executable(example_client ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${example_client_files})
+add_executable(demo_client1 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${demo_client1_files})
+add_executable(demo_client2 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${demo_client2_files})
+add_executable(demo_client3 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${demo_client3_files})
 
 # 链接依赖库
 target_link_libraries(broker Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})

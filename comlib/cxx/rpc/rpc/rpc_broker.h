@@ -70,7 +70,7 @@ private:
     /**
      * @brief 处理客户端消息
      */
-    void handleClientMsg(const std::shared_ptr<Client>& client, const MsgType& type, utilitiy::ByteArray& ba);
+    void handleClientMsg(const std::shared_ptr<Client>& client, const MsgType& type, utility::ByteArray& ba);
 
     /**
      * @brief 会话超时

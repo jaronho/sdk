@@ -188,7 +188,7 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
     mc.proc = proc;
     mc.data = data;
     mc.timeout = (int)std::chrono::duration<double, std::milli>(timeout).count();
-    utilitiy::ByteArray ba;
+    utility::ByteArray ba;
     mc.encode(ba);
     std::vector<unsigned char> buffer;
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
@@ -256,7 +256,7 @@ void Client::callAsync(const std::string& replyer, int proc, const std::vector<u
     mc.proc = proc;
     mc.data = data;
     mc.timeout = (int)std::chrono::duration<double, std::milli>(timeout).count();
-    utilitiy::ByteArray ba;
+    utility::ByteArray ba;
     mc.encode(ba);
     std::vector<unsigned char> buffer;
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
@@ -338,7 +338,7 @@ void Client::handleRecvData(const std::vector<unsigned char>& data)
     m_payload->unpack(
         data,
         [&](const std::vector<unsigned char>& body) {
-            utilitiy::ByteArray ba;
+            utility::ByteArray ba;
             ba.setBuffer(body.data(), body.size());
             /* 解析消息类型 */
             MsgType type = (MsgType)ba.readInt();
@@ -348,7 +348,7 @@ void Client::handleRecvData(const std::vector<unsigned char>& data)
         [&](const std::vector<unsigned char>& data) {});
 }
 
-void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
+void Client::handleMsg(const MsgType& type, utility::ByteArray& ba)
 {
     switch (type)
     {
@@ -392,7 +392,7 @@ void Client::handleMsg(const MsgType& type, utilitiy::ByteArray& ba)
                 mr.data = {};
                 mr.code = ErrorCode::replyer_inner_error;
             }
-            utilitiy::ByteArray ba;
+            utility::ByteArray ba;
             mr.encode(ba);
             std::vector<unsigned char> buffer;
             nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
@@ -436,7 +436,7 @@ void Client::reqBind(bool async)
     /* 向服务器绑定 */
     msg_bind req;
     req.self_id = m_id;
-    utilitiy::ByteArray ba;
+    utility::ByteArray ba;
     req.encode(ba);
     std::vector<unsigned char> data;
     nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);

@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-#include "utilitiy/bytearray/bytearray.h"
+#include "utility/bytearray/bytearray.h"
 
 namespace rpc
 {
@@ -84,13 +84,13 @@ public:
      * @brief 编码(数据结构转字节流)
      * @param ba 字节流
      */
-    virtual void encode(utilitiy::ByteArray& ba) = 0;
+    virtual void encode(utility::ByteArray& ba) = 0;
 
     /**
      * @brief 解码(字节流转数据结构)
      * @param ba 字节流
      */
-    virtual void decode(utilitiy::ByteArray& ba) = 0;
+    virtual void decode(utility::ByteArray& ba) = 0;
 
     /**
      * @brief 获取消息最大长度
@@ -119,17 +119,17 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bcount((int)type());
+        sz += utility::ByteArray::bcount((int)type());
         return sz;
     }
 
-    void encode(utilitiy::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
         ba.writeInt((int)type());
     };
 
-    void decode(utilitiy::ByteArray& ba) override{};
+    void decode(utility::ByteArray& ba) override{};
 };
 
 /**
@@ -146,19 +146,19 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bcount((int)type());
-        sz += utilitiy::ByteArray::bcount(self_id);
+        sz += utility::ByteArray::bcount((int)type());
+        sz += utility::ByteArray::bcount(self_id);
         return sz;
     }
 
-    void encode(utilitiy::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
         ba.writeInt((int)type());
         ba.writeString(self_id);
     };
 
-    void decode(utilitiy::ByteArray& ba) override
+    void decode(utility::ByteArray& ba) override
     {
         ba.readString(self_id);
     };
@@ -180,19 +180,19 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bcount((int)type());
-        sz += utilitiy::ByteArray::bcount((int)code);
+        sz += utility::ByteArray::bcount((int)type());
+        sz += utility::ByteArray::bcount((int)code);
         return sz;
     }
 
-    void encode(utilitiy::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
         ba.writeInt((int)type());
         ba.writeInt((int)code);
     };
 
-    void decode(utilitiy::ByteArray& ba) override
+    void decode(utility::ByteArray& ba) override
     {
         code = (ErrorCode)ba.readInt();
     };
@@ -214,17 +214,17 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bcount((int)type());
-        sz += utilitiy::ByteArray::bcount(seq_id);
-        sz += utilitiy::ByteArray::bcount(caller);
-        sz += utilitiy::ByteArray::bcount(replyer);
-        sz += utilitiy::ByteArray::bcount(proc);
-        sz += utilitiy::ByteArray::bcount(data);
-        sz += utilitiy::ByteArray::bcount(timeout);
+        sz += utility::ByteArray::bcount((int)type());
+        sz += utility::ByteArray::bcount(seq_id);
+        sz += utility::ByteArray::bcount(caller);
+        sz += utility::ByteArray::bcount(replyer);
+        sz += utility::ByteArray::bcount(proc);
+        sz += utility::ByteArray::bcount(data);
+        sz += utility::ByteArray::bcount(timeout);
         return sz;
     }
 
-    void encode(utilitiy::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
         ba.writeInt((int)type());
@@ -236,7 +236,7 @@ public:
         ba.writeInt(timeout);
     }
 
-    void decode(utilitiy::ByteArray& ba) override
+    void decode(utility::ByteArray& ba) override
     {
         seq_id = ba.readInt64();
         ba.readString(caller);
@@ -268,17 +268,17 @@ public:
     int size() const override
     {
         int sz = 0;
-        sz += utilitiy::ByteArray::bcount((int)type());
-        sz += utilitiy::ByteArray::bcount(seq_id);
-        sz += utilitiy::ByteArray::bcount(caller);
-        sz += utilitiy::ByteArray::bcount(replyer);
-        sz += utilitiy::ByteArray::bcount(proc);
-        sz += utilitiy::ByteArray::bcount(data);
-        sz += utilitiy::ByteArray::bcount((int)code);
+        sz += utility::ByteArray::bcount((int)type());
+        sz += utility::ByteArray::bcount(seq_id);
+        sz += utility::ByteArray::bcount(caller);
+        sz += utility::ByteArray::bcount(replyer);
+        sz += utility::ByteArray::bcount(proc);
+        sz += utility::ByteArray::bcount(data);
+        sz += utility::ByteArray::bcount((int)code);
         return sz;
     }
 
-    void encode(utilitiy::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
         ba.writeInt((int)type());
@@ -290,7 +290,7 @@ public:
         ba.writeInt((int)code);
     };
 
-    void decode(utilitiy::ByteArray& ba) override
+    void decode(utility::ByteArray& ba) override
     {
         seq_id = ba.readInt64();
         ba.readString(caller);

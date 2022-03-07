@@ -10,7 +10,7 @@ static threading::ExecutorPtr s_executor = nullptr;
 class Broker::Client
 {
 public:
-    using MSG_HANDLER = std::function<void(const MsgType& type, utilitiy::ByteArray& ba)>;
+    using MSG_HANDLER = std::function<void(const MsgType& type, utility::ByteArray& ba)>;
 
 public:
     /**
@@ -76,7 +76,7 @@ public:
         const auto conn = m_wpConn.lock();
         if (conn)
         {
-            utilitiy::ByteArray ba;
+            utility::ByteArray ba;
             msg->encode(ba);
             std::vector<unsigned char> data;
             nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);
@@ -126,7 +126,7 @@ public:
         m_payload->unpack(
             data,
             [&](const std::vector<unsigned char>& body) {
-                utilitiy::ByteArray ba;
+                utility::ByteArray ba;
                 ba.setBuffer(body.data(), body.size());
                 /* 解析消息类型 */
                 MsgType type = (MsgType)ba.readInt();
@@ -302,7 +302,7 @@ void Broker::handleNewConnection(const std::weak_ptr<nsocket::TcpConnection>& wp
         if (m_clientMap.end() == m_clientMap.find(point))
         {
             auto client = std::make_shared<Client>(wpConn, clientHost, clientPort);
-            client->setMsgHandler([&, client](const MsgType& type, utilitiy::ByteArray& ba) { handleClientMsg(client, type, ba); });
+            client->setMsgHandler([&, client](const MsgType& type, utility::ByteArray& ba) { handleClientMsg(client, type, ba); });
             m_clientMap.insert(std::make_pair(point, client));
         }
     }
@@ -374,7 +374,7 @@ void Broker::handleConnectionClose(const boost::asio::ip::tcp::endpoint& point, 
     }
 }
 
-void Broker::handleClientMsg(const std::shared_ptr<Client>& client, const MsgType& type, utilitiy::ByteArray& ba)
+void Broker::handleClientMsg(const std::shared_ptr<Client>& client, const MsgType& type, utility::ByteArray& ba)
 {
     switch (type)
     {

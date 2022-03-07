@@ -94,7 +94,7 @@ private:
     /**
      * @brief 处理消息
      */
-    void handleMsg(const MsgType& type, utilitiy::ByteArray& ba);
+    void handleMsg(const MsgType& type, utility::ByteArray& ba);
 
     /**
      * @brief 请求绑定
