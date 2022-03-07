@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../usb/usb.h"
+#include "../usb/usb_info.h"
 
 int main(int argc, char** argv)
 {
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
         }
         i += 2;
     }
-    auto usbList = usb::Usb::getAllUsbs(true, true, true);
+    auto usbList = usb::UsbInfo::queryUsbInfos(nullptr, true, true);
     for (size_t i = 0; i < usbList.size(); ++i)
     {
         const auto& info = usbList[i];
