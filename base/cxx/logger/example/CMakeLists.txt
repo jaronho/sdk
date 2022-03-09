@@ -20,6 +20,8 @@ include_directories(${base_logger_path})
 include_directories(${base_logger_path}/fmt-7.1.3/include)
 
 set(base_fmt_src_list)
+get_cxx_files(${base_logger_path}/fmt-7.1.3/include/fmt src_list)
+list(APPEND base_fmt_src_list ${src_list})
 get_cxx_files(${base_logger_path}/fmt-7.1.3/src src_list)
 list(APPEND base_fmt_src_list ${src_list})
 source_group(3rdparty/base/fmt FILES ${base_fmt_src_list})

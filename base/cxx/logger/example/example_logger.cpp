@@ -70,4 +70,8 @@ int main()
     {
         INFO_LOG(g_logger, "hello world, I'm default, i[{}]", i);
     }
+    int numInt = 12;
+    float numFloat = 345.152723f;
+    INFO_LOG(g_logger, "numInt === {} === {:04d} === {:x} === {:X}", numInt, numInt, numInt, numInt);
+    INFO_LOG(g_logger, "numFloat === {} === {:.1f} === {:.2f} === {:.3f}", numFloat, numFloat, numFloat, numFloat);
 }
