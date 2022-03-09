@@ -17,7 +17,6 @@ public:
      */
     static int runCmd(const std::string& cmd, std::string* outStr = nullptr, std::vector<std::string>* outVec = nullptr);
 
-#ifndef _WIN32
     /**
      * @brief 对文件加锁/解锁
      * @param fd 文件描述符(注意: 如果fd被关闭了,则自动解锁)
@@ -26,6 +25,14 @@ public:
      * @return true-成功, false-失败
      */
     static bool tryLockFile(int fd, bool lock, bool block = true);
+
+    /**
+     * @brief 对文件自动加解锁
+     * @param filename 文件名
+     * @param func 加解锁期间的执行函数
+     * @return true-成功, false-失败
+     */
+    static bool tryAutoLockFile(const std::string& filename, const std::function<void()>& func);
 
     /**
      * @brief 对检测文件是否被加锁
@@ -40,7 +47,6 @@ public:
      * @return true-被加锁, false-未加锁
      */
     static bool checkFileLock(const std::string& filename);
-#endif
 
     /**
      * @brief 等待时间

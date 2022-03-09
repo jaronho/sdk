@@ -85,9 +85,15 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
 #endif
 }
 
-#ifndef _WIN32
 bool System::tryLockFile(int fd, bool lock, bool block)
 {
+    if (fd <= 0) /* 文件不存在 */
+    {
+        return false;
+    }
+#ifdef _WIN32
+    return false;
+#else
     int lockType = lock ? F_WRLCK : F_UNLCK;
     struct flock fl;
     fl.l_type = lockType; /* 锁的类型 */
@@ -100,10 +106,48 @@ bool System::tryLockFile(int fd, bool lock, bool block)
         return true;
     }
     return false;
+#endif
+}
+
+bool System::tryAutoLockFile(const std::string& filename, const std::function<void()>& func)
+{
+    if (filename.empty())
+    {
+        return false;
+    }
+#ifdef _WIN32
+    return false;
+#else
+    /* 打开要加锁的文件 */
+    int fd = open((filename + ".lock").c_str(), O_RDWR | O_CREAT, 0777);
+    if (-1 == fd)
+    {
+        return false;
+    }
+    /* 加锁 */
+    tryLockFile(fd, true, true);
+    /* 执行逻辑 */
+    if (func)
+    {
+        func();
+    }
+    /* 解锁 */
+    tryLockFile(fd, false, true);
+    /* 关闭加锁文件 */
+    close(fd);
+    return true;
+#endif
 }
 
 bool System::checkFileLock(int fd)
 {
+    if (fd <= 0) /* 文件不存在 */
+    {
+        return false;
+    }
+#ifdef _WIN32
+    return false;
+#else
     struct flock fl;
     fl.l_type = F_RDLCK;
     fl.l_whence = SEEK_SET;
@@ -115,20 +159,24 @@ bool System::checkFileLock(int fd)
         return false;
     }
     return true;
+#endif
 }
 
 bool System::checkFileLock(const std::string& filename)
 {
+#ifdef _WIN32
+    return false;
+#else
     int fd = open(filename.c_str(), O_RDONLY);
-    if (fd < 0) /* 文件不存在 */
+    if (fd <= 0) /* 文件不存在 */
     {
         return false;
     }
     bool ret = checkFileLock(fd);
     close(fd);
     return ret;
-}
 #endif
+}
 
 void System::waitForTime(unsigned int maxMS, const std::function<bool()>& func, unsigned int loopGap)
 {
