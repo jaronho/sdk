@@ -102,7 +102,7 @@ static std::vector<std::string> queryUsbDevNodes(int busNum, int portNum, int ad
                         std::transform(outStr.begin(), outStr.end(), outStr.begin(), toupper);
                         /* 例如: /dev/sdb /dev/sdb1 几乎只有 /dev/sdb1 可挂载 */
                         if (!outStr.empty() && std::string::npos == outStr.find("PTUUID") && std::string::npos == outStr.find("PTTYPE")
-                            && std::string::npos == outStr.find("UUID"))
+                            && std::string::npos != outStr.find("UUID"))
                         {
                             devNodes.emplace_back(devNode);
                         }
