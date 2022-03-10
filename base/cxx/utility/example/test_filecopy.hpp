@@ -73,7 +73,7 @@ void testFileCopy(int argc, char** argv)
     std::chrono::steady_clock::time_point tm1 = std::chrono::steady_clock::now();
     utility::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc, nullptr, ".tmp");
     fc.setCallback(beginCb, totalProgressCb, singleProgressCb);
-    auto result = fc.start(&failSrcFile, &failDestFile, &failCode);
+    auto result = fc.start(nullptr, &failSrcFile, &failDestFile, &failCode);
     switch (result)
     {
     case utility::FileInfo::CopyResult::ok:
