@@ -11,7 +11,7 @@ FileCopy::FileCopy(const std::string& srcPath, const std::vector<std::string>& s
     , m_coverDestFile(coverDest)
     , m_filterFunc(filterFunc)
     , m_stopFunc(stopFunc)
-    , m_failCode(0)
+    , m_errCode(0)
 {
     if (!tmpSuffix.empty())
     {
@@ -34,12 +34,16 @@ void FileCopy::setCallback(const FileCopyBeginCallback& beginCb, const FileCopyT
     m_singleProgressCallback = singleProgressCb;
 }
 
-FileInfo::CopyResult FileCopy::start(std::string* failSrcFile, std::string* failDestFile, int* failCode)
+FileInfo::CopyResult FileCopy::start(std::vector<std::string>* destFilelist, std::string* failSrcFile, std::string* failDestFile,
+                                     int* errCode)
 {
-    m_destFilelist.clear();
+    if (destFilelist)
+    {
+        destFilelist->clear();
+    }
     m_failSrcFile.clear();
     m_failDestFile.clear();
-    m_failCode = 0;
+    m_errCode = 0;
     if (m_clearDestPath)
     {
         m_destPathInfo.clear();
@@ -47,11 +51,11 @@ FileInfo::CopyResult FileCopy::start(std::string* failSrcFile, std::string* fail
     FileInfo::CopyResult result;
     if (m_srcFilelist.empty())
     {
-        result = copyAllFiles();
+        result = copyAllFiles(destFilelist);
     }
     else
     {
-        result = copyAssignFiles();
+        result = copyAssignFiles(destFilelist);
     }
     if (FileInfo::CopyResult::ok != result)
     {
@@ -63,18 +67,18 @@ FileInfo::CopyResult FileCopy::start(std::string* failSrcFile, std::string* fail
         {
             *failDestFile = m_failDestFile;
         }
-        if (failCode)
+        if (errCode)
         {
-            *failCode = m_failCode;
+            *errCode = m_errCode;
         }
     }
     return result;
 }
 
-FileInfo::CopyResult FileCopy::copyAllFiles()
+FileInfo::CopyResult FileCopy::copyAllFiles(std::vector<std::string>* destFilelist)
 {
     std::vector<std::string> srcFilelist;
-    size_t srcFileSize = 0;
+    size_t totalFileSize = 0;
     m_srcPathInfo.traverse(
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
             if (m_filterFunc && m_filterFunc(name, attr, depth)) /* 目录被过滤 */
@@ -89,7 +93,7 @@ FileInfo::CopyResult FileCopy::copyAllFiles()
                 return;
             }
             srcFilelist.emplace_back(name);
-            srcFileSize += attr.size;
+            totalFileSize += attr.size;
         },
         [&]() {
             if (m_stopFunc && m_stopFunc())
@@ -103,29 +107,38 @@ FileInfo::CopyResult FileCopy::copyAllFiles()
     {
         return FileInfo::CopyResult::stop;
     }
-    return copySrcFileList(srcFilelist, srcFileSize);
+    return copySrcFileList(srcFilelist, totalFileSize, destFilelist);
 }
 
-FileInfo::CopyResult FileCopy::copyAssignFiles()
+FileInfo::CopyResult FileCopy::copyAssignFiles(std::vector<std::string>* destFilelist)
 {
-    size_t srcFileSize = 0;
+    size_t totalFileSize = 0;
     for (auto srcFile : m_srcFilelist)
     {
         if (m_stopFunc && m_stopFunc())
         {
             return FileInfo::CopyResult::stop;
         }
-        srcFileSize += utility::FileInfo(srcFile).size();
+        auto fileSize = utility::FileInfo(srcFile).size();
+        if (fileSize > 0)
+        {
+            totalFileSize += fileSize;
+        }
     }
-    return copySrcFileList(m_srcFilelist, srcFileSize);
+    return copySrcFileList(m_srcFilelist, totalFileSize, destFilelist);
 }
 
-FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& srcFilelist, size_t srcFileSize)
+FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& srcFilelist, size_t totalFileSize,
+                                               std::vector<std::string>* destFilelist)
 {
+    if (destFilelist)
+    {
+        destFilelist->clear();
+    }
     size_t totalFileCount = srcFilelist.size();
     if (m_beginCallback)
     {
-        m_beginCallback(totalFileCount, srcFileSize);
+        m_beginCallback(totalFileCount, totalFileSize);
     }
     for (size_t index = 0; index < totalFileCount; ++index)
     {
@@ -137,7 +150,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
         {
             m_failSrcFile = srcFileInfo.name();
             m_failDestFile = destFile;
-            m_failCode = errno;
+            m_errCode = errno;
             return FileInfo::CopyResult::dest_open_failed;
         }
         if (m_totalProgressCallback)
@@ -176,17 +189,20 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
                 {
                     m_failSrcFile = srcFileInfo.name();
                     m_failDestFile = destFileNew;
-                    m_failCode = errno;
+                    m_errCode = errno;
                     return FileInfo::CopyResult::dest_open_failed;
                 }
             }
-            m_destFilelist.emplace_back(destFileNew);
+            if (destFilelist)
+            {
+                destFilelist->emplace_back(destFileNew);
+            }
         }
         else
         {
             m_failSrcFile = srcFileInfo.name();
             m_failDestFile = destFileTmp;
-            m_failCode = errCode;
+            m_errCode = errCode;
             return result;
         }
     }
