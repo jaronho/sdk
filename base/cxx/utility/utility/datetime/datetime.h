@@ -36,7 +36,7 @@ public:
      * @param sep2 分隔符(选填), 例如: " "
      * @param sep3 分隔符(选填), 例如: ":"
      */
-    DateTime(const std::string& dtString, const char sep1[1] = "", const char sep2[1] = "", const char sep3[1] = "");
+    DateTime(const std::string& dtString, const char sep1[1] = "-", const char sep2[1] = " ", const char sep3[1] = ":");
 
     bool operator==(const DateTime& other) const;
     bool operator!=(const DateTime& other) const;
@@ -67,14 +67,14 @@ public:
      * @param sep 分隔符(选填), 例如: "-"
      * @return 字符串, 例如: "2022-12-03"
      */
-    std::string yyyyMMdd(const char sep[1] = "") const;
+    std::string yyyyMMdd(const char sep[1] = "-") const;
 
     /**
      * @brief 时分秒格式化字符串
      * @param sep 分隔符(选填), 例如: ":"
      * @return 字符串, 例如: "12:32:03"
      */
-    std::string hhmmss(const char sep[1] = "") const;
+    std::string hhmmss(const char sep[1] = ":") const;
 
     /**
      * @brief 年月日时分秒格式化字符串
@@ -83,7 +83,7 @@ public:
      * @param sep3 分隔符(选填), 例如: ":"
      * @return 字符串, 例如: "2022-12-03 12:32:03"
      */
-    std::string yyyyMMddhhmmss(const char sep1[1] = "", const char sep2[1] = "", const char sep3[1] = "") const;
+    std::string yyyyMMddhhmmss(const char sep1[1] = "-", const char sep2[1] = " ", const char sep3[1] = ":") const;
 
     /**
      * @brief 获取当前日期
