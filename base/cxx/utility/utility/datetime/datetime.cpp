@@ -62,6 +62,19 @@ DateTime::DateTime(double timestamp)
     yday = 1 + t.tm_yday;
 }
 
+DateTime::DateTime(const std::string& dtString, const char sep1[1], const char sep2[1], const char sep3[1])
+{
+    std::string sep1Str = sep1[0] ? std::string(1, sep1[0]) : "";
+    std::string sep2Str = sep2[0] ? std::string(1, sep2[0]) : "";
+    std::string sep3Str = sep3[0] ? std::string(1, sep3[0]) : "";
+    std::string fmtStr = "%04d" + sep1Str + "%02d" + sep1Str + "%02d" + sep2Str + "%02d" + sep3Str + "%02d" + sep3Str + "%02d";
+#ifdef _WIN32
+    sscanf_s(dtString.c_str(), fmtStr.c_str(), &year, &month, &day, &hour, &minute, &second);
+#else
+    sscanf(dtString.c_str(), fmtStr.c_str(), &year, &month, &day, &hour, &minute, &second);
+#endif
+}
+
 bool DateTime::operator==(const DateTime& other) const
 {
     return (year == other.year && month == other.month && day == other.day && hour == other.hour && minute == other.minute
@@ -299,6 +312,26 @@ bool DateTime::operator<=(const DateTime& other) const
     return false;
 }
 
+void DateTime::reset()
+{
+    year = 1900;
+    month = 1;
+    day = 1;
+    hour = 0;
+    minute = 0;
+    second = 0;
+    millisecond = 0;
+    wday = 0;
+    yday = 1;
+}
+
+bool DateTime::isValid() const
+{
+    return ((year >= 1900) && (month >= 1 && month <= 12) && (day >= 1 && day <= 31) && (hour >= 0 && hour <= 23)
+            && (minute >= 0 && minute <= 59) && (second >= 0 && second <= 60) && (millisecond >= 0 && millisecond <= 999)
+            && (wday >= 0 && wday <= 6) && (yday >= 1 && yday <= 366));
+}
+
 double DateTime::toTimestamp() const
 {
     struct tm t;
@@ -312,6 +345,47 @@ double DateTime::toTimestamp() const
     timestamp += (long)mktime(&t);
     timestamp += (float)millisecond / 1000;
     return (timestamp > 0 ? timestamp : 0);
+}
+
+std::string DateTime::yyyyMMdd(const char sep[1]) const
+{
+    std::string sepStr = sep[0] ? std::string(1, sep[0]) : "";
+    std::string fmtStr = "%04d" + sepStr + "%02d" + sepStr + "%02d";
+    char buf[11] = {0};
+#ifdef _WIN32
+    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day);
+#else
+    sprintf(buf, fmtStr.c_str(), year, month, day);
+#endif
+    return buf;
+}
+
+std::string DateTime::hhmmss(const char sep[1]) const
+{
+    std::string sepStr = sep[0] ? std::string(1, sep[0]) : "";
+    std::string fmtStr = "%02d" + sepStr + "%02d" + sepStr + "%02d";
+    char buf[9] = {0};
+#ifdef _WIN32
+    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), hour, minute, second);
+#else
+    sprintf(buf, fmtStr.c_str(), hour, minute, second);
+#endif
+    return buf;
+}
+
+std::string DateTime::yyyyMMddhhmmss(const char sep1[1], const char sep2[1], const char sep3[1]) const
+{
+    std::string sep1Str = sep1[0] ? std::string(1, sep1[0]) : "";
+    std::string sep2Str = sep2[0] ? std::string(1, sep2[0]) : "";
+    std::string sep3Str = sep3[0] ? std::string(1, sep3[0]) : "";
+    std::string fmtStr = "%04d" + sep1Str + "%02d" + sep1Str + "%02d" + sep2Str + "%02d" + sep3Str + "%02d" + sep3Str + "%02d";
+    char buf[20] = {0};
+#ifdef _WIN32
+    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute, second);
+#else
+    sprintf(buf, fmtStr.c_str(), year, month, day, hour, minute, second);
+#endif
+    return buf;
 }
 
 DateTime DateTime::getNow()

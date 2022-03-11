@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 namespace utility
 {
@@ -28,6 +29,15 @@ public:
      */
     DateTime(double timestamp);
 
+    /**
+     * @brief 构造函数
+     * @param dtString 年月日时分秒格式化字符串, 例如: "2022-12-03 12:32:03"
+     * @param sep1 分隔符(选填), 例如: "-"
+     * @param sep2 分隔符(选填), 例如: " "
+     * @param sep3 分隔符(选填), 例如: ":"
+     */
+    DateTime(const std::string& dtString, const char sep1[1] = "", const char sep2[1] = "", const char sep3[1] = "");
+
     bool operator==(const DateTime& other) const;
     bool operator!=(const DateTime& other) const;
     bool operator>(const DateTime& other) const;
@@ -36,10 +46,44 @@ public:
     bool operator<=(const DateTime& other) const;
 
     /**
+     * @brief 重置日期
+     */
+    void reset();
+
+    /**
+     * @brief 判断日期是否有效
+     * @return true-有效, false-无效
+     */
+    bool isValid() const;
+
+    /**
      * @brief 转为时间戳(从1970-01-01 00:00:00至今)
      * @return 时间戳(秒)
      */
     double toTimestamp() const;
+
+    /**
+     * @brief 年月日格式化字符串
+     * @param sep 分隔符(选填), 例如: "-"
+     * @return 字符串, 例如: "2022-12-03"
+     */
+    std::string yyyyMMdd(const char sep[1] = "") const;
+
+    /**
+     * @brief 时分秒格式化字符串
+     * @param sep 分隔符(选填), 例如: ":"
+     * @return 字符串, 例如: "12:32:03"
+     */
+    std::string hhmmss(const char sep[1] = "") const;
+
+    /**
+     * @brief 年月日时分秒格式化字符串
+     * @param sep1 分隔符(选填), 例如: "-"
+     * @param sep2 分隔符(选填), 例如: " "
+     * @param sep3 分隔符(选填), 例如: ":"
+     * @return 字符串, 例如: "2022-12-03 12:32:03"
+     */
+    std::string yyyyMMddhhmmss(const char sep1[1] = "", const char sep2[1] = "", const char sep3[1] = "") const;
 
     /**
      * @brief 获取当前日期
