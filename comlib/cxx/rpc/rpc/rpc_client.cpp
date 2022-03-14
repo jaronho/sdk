@@ -345,7 +345,7 @@ void Client::handleRecvData(const std::vector<unsigned char>& data)
             /* 处理消息 */
             handleMsg(type, ba);
         },
-        [&](const std::vector<unsigned char>& data) {});
+        [&](unsigned int head, const std::vector<unsigned char>& data) {});
 }
 
 void Client::handleMsg(const MsgType& type, utility::ByteArray& ba)

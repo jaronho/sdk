@@ -136,7 +136,7 @@ public:
                     m_msgHandler(type, ba);
                 }
             },
-            [&](const std::vector<unsigned char>& data) {});
+            [&](unsigned int head, const std::vector<unsigned char>& data) {});
     }
 
 private:
