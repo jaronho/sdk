@@ -33,9 +33,10 @@ public:
 
     /**
      * @brief 解析出错回调函数
+     * @param head 包头
      * @param data 数据 
      */
-    using ERROR_CALLBACK = std::function<void(const std::vector<unsigned char>& data)>;
+    using ERROR_CALLBACK = std::function<void(unsigned int head, const std::vector<unsigned char>& data)>;
 
 public:
     /**
@@ -120,8 +121,8 @@ public:
      * @param data [输出]包数据 = 包头 + 类型 + 序列ID + 包体
      * @param bigEndium 非包体字节序是否大端模式(选填), 默认大端
      */
-    static void pack(unsigned int type, uint64_t seq, const unsigned char* body, unsigned int bodyLen,
-                     std::vector<unsigned char>& data, bool bigEndium = true);
+    static void pack(unsigned int type, uint64_t seq, const unsigned char* body, unsigned int bodyLen, std::vector<unsigned char>& data,
+                     bool bigEndium = true);
 
     /**
      * @brief 对数据进行组包

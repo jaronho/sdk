@@ -53,7 +53,7 @@ void Payload::unpack(const std::vector<unsigned char>& data, const BODY_CALLBACK
                     m_recvBuffer.clear();
                     if (errorCb)
                     {
-                        errorCb(data);
+                        errorCb(head, data);
                     }
                     return;
                 }
@@ -135,7 +135,7 @@ void Payload::unpack(const std::vector<unsigned char>& data, const TYPE_BODY_CAL
                     m_recvBuffer.clear();
                     if (errorCb)
                     {
-                        errorCb(data);
+                        errorCb(head, data);
                     }
                     return;
                 }
@@ -246,7 +246,7 @@ void Payload::unpack(const std::vector<unsigned char>& data, const TYPE_SEQ_BODY
                     m_recvBuffer.clear();
                     if (errorCb)
                     {
-                        errorCb(data);
+                        errorCb(head, data);
                     }
                     return;
                 }
