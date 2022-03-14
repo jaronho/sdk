@@ -126,7 +126,7 @@ public:
     void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
-        ba.writeInt((int)type());
+        ba.writeInt32((int)type());
     };
 
     void decode(utility::ByteArray& ba) override{};
@@ -154,7 +154,7 @@ public:
     void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
-        ba.writeInt((int)type());
+        ba.writeInt32((int)type());
         ba.writeString(self_id);
     };
 
@@ -188,13 +188,13 @@ public:
     void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
-        ba.writeInt((int)type());
-        ba.writeInt((int)code);
+        ba.writeInt32((int)type());
+        ba.writeInt32((int)code);
     };
 
     void decode(utility::ByteArray& ba) override
     {
-        code = (ErrorCode)ba.readInt();
+        code = (ErrorCode)ba.readInt32();
     };
 
     ErrorCode code = ErrorCode::ok; /* 错误码 */
@@ -227,13 +227,13 @@ public:
     void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
-        ba.writeInt((int)type());
+        ba.writeInt32((int)type());
         ba.writeInt64(seq_id);
         ba.writeString(caller);
         ba.writeString(replyer);
-        ba.writeInt(proc);
+        ba.writeInt32(proc);
         ba.writeBytes(data);
-        ba.writeInt(timeout);
+        ba.writeInt32(timeout);
     }
 
     void decode(utility::ByteArray& ba) override
@@ -241,9 +241,9 @@ public:
         seq_id = ba.readInt64();
         ba.readString(caller);
         ba.readString(replyer);
-        proc = ba.readInt();
+        proc = ba.readInt32();
         ba.readBytes(data);
-        timeout = ba.readInt();
+        timeout = ba.readInt32();
     }
 
     long long seq_id = 0; /* 序列ID */
@@ -281,13 +281,13 @@ public:
     void encode(utility::ByteArray& ba) override
     {
         ba.allocate(size());
-        ba.writeInt((int)type());
+        ba.writeInt32((int)type());
         ba.writeInt64(seq_id);
         ba.writeString(caller);
         ba.writeString(replyer);
-        ba.writeInt(proc);
+        ba.writeInt32(proc);
         ba.writeBytes(data);
-        ba.writeInt((int)code);
+        ba.writeInt32((int)code);
     };
 
     void decode(utility::ByteArray& ba) override
@@ -295,9 +295,9 @@ public:
         seq_id = ba.readInt64();
         ba.readString(caller);
         ba.readString(replyer);
-        proc = ba.readInt();
+        proc = ba.readInt32();
         ba.readBytes(data);
-        code = (ErrorCode)ba.readInt();
+        code = (ErrorCode)ba.readInt32();
     };
 
     long long seq_id = 0; /* 序列ID */

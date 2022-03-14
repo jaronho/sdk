@@ -17,17 +17,18 @@ public:
     using BODY_CALLBACK = std::function<void(const std::vector<unsigned char>& body)>;
 
     /**
-     * @brief 原始数据回调函数(无法解析出包体)
+     * @brief 解析出错回调函数
      * @param data 数据 
      */
-    using RAW_CALLBACK = std::function<void(const std::vector<unsigned char>& data)>;
+    using ERROR_CALLBACK = std::function<void(const std::vector<unsigned char>& data)>;
 
 public:
     /**
      * @brief 构造函数
-     * @param bodyMaxLen 允许的包体最大长度
+     * @param maxBodyLen 允许的最大包体长度
+     * @param bigEndium 非包体字节序是否大端模式(选填), 默认大端
      */
-    Payload(int bodyMaxLen);
+    Payload(unsigned int maxBodyLen, bool bigEndium = true);
 
     /**
      * @brief 重置
@@ -38,29 +39,41 @@ public:
      * @brief 对数据进行拼接/拆包
      * @param data 数据
      * @param bodyCb 包体回调
-     * @param rawCb 原始数据回调
+     * @param errorCb 解析出错回调
      */
-    void unpack(const std::vector<unsigned char>& data, const BODY_CALLBACK& bodyCb, const RAW_CALLBACK& rawCb);
+    void unpack(const std::vector<unsigned char>& data, const BODY_CALLBACK& bodyCb, const ERROR_CALLBACK& errorCb);
 
     /**
-     * @brief 对数据进行打包
+     * @brief 对数据进行组包
      * @param body 包体
      * @param bodyLen 包体长度
      * @param data [输出]包数据 = 包头 + 包体
+     * @param bigEndium 非包体字节序是否大端模式(选填), 默认大端
      */
-    static void pack(const unsigned char* body, int bodyLen, std::vector<unsigned char>& data);
+    static void pack(const unsigned char* body, unsigned int bodyLen, std::vector<unsigned char>& data, bool bigEndium = true);
 
     /**
-     * @brief 对数据进行打包
+     * @brief 对数据进行组包
      * @param body 包体
      * @param data [输出]包数据 = 包头 + 包体
+     * @param bigEndium 非包体字节序是否大端模式(选填), 默认大端
      */
-    static void pack(const std::vector<unsigned char>& body, std::vector<unsigned char>& data);
+    static void pack(const std::vector<unsigned char>& body, std::vector<unsigned char>& data, bool bigEndium = true);
+
+private:
+    /* 解析步骤 */
+    enum class ParseStep
+    {
+        head = 0, /* 解析包头 */
+        body /* 解析包体 */
+    };
 
 private:
     std::vector<unsigned char> m_recvBuffer; /* 接收缓冲区 */
-    int m_bodyMaxLen; /* 允许的包体最大长度 */
-    int m_head; /* 包头(占4个字节, 用于存放包体长度) */
+    unsigned int m_bodyMaxLen; /* 允许的包体最大长度 */
+    ParseStep m_parseStep = ParseStep::head; /* 解析步骤 */
+    bool m_bigEndium = true; /* 非包体字节序是否大端模式 */
+    unsigned int m_head = 0; /* 包头(占4个字节, 用于存放包体长度) */
     std::vector<unsigned char> m_body; /* 已接收的包体内容 */
 };
 } // namespace nsocket

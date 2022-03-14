@@ -129,7 +129,7 @@ public:
                 utility::ByteArray ba;
                 ba.setBuffer(body.data(), body.size());
                 /* 解析消息类型 */
-                MsgType type = (MsgType)ba.readInt();
+                MsgType type = (MsgType)ba.readInt32();
                 /* 处理消息 */
                 if (m_msgHandler)
                 {

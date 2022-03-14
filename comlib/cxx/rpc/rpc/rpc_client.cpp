@@ -341,7 +341,7 @@ void Client::handleRecvData(const std::vector<unsigned char>& data)
             utility::ByteArray ba;
             ba.setBuffer(body.data(), body.size());
             /* 解析消息类型 */
-            MsgType type = (MsgType)ba.readInt();
+            MsgType type = (MsgType)ba.readInt32();
             /* 处理消息 */
             handleMsg(type, ba);
         },
