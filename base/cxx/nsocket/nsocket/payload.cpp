@@ -16,7 +16,9 @@ Payload::Payload(unsigned int maxBodyLen, bool bigEndium) : m_bodyMaxLen(maxBody
 void Payload::reset()
 {
     m_recvBuffer.clear();
+    m_parseStep = ParseStep::head;
     m_head = 0;
+    m_type = 0;
     m_body.clear();
 }
 
@@ -25,7 +27,7 @@ void Payload::unpack(const std::vector<unsigned char>& data, const BODY_CALLBACK
     m_recvBuffer.insert(m_recvBuffer.end(), data.begin(), data.end());
     while (m_recvBuffer.size() > 0)
     {
-        if (ParseStep::head == m_parseStep) /* 开始新的包 */
+        if (ParseStep::head == m_parseStep) /* 解析包头 */
         {
             if (m_recvBuffer.size() >= 4)
             {
@@ -74,7 +76,7 @@ void Payload::unpack(const std::vector<unsigned char>& data, const BODY_CALLBACK
                 return;
             }
         }
-        else if (ParseStep::body == m_parseStep) /* 组装当前包体 */
+        else if (ParseStep::body == m_parseStep) /* 解析包体 */
         {
             unsigned int needBodyLen = m_head - m_body.size(); /* 当前包体还需要的数据长度 */
             if (needBodyLen > m_recvBuffer.size()) /* 包体未接收完毕 */
@@ -100,24 +102,133 @@ void Payload::unpack(const std::vector<unsigned char>& data, const BODY_CALLBACK
     }
 }
 
+void Payload::unpack(const std::vector<unsigned char>& data, const TYPE_BODY_CALLBACK& typeBodyCb, const ERROR_CALLBACK& errorCb)
+{
+    m_recvBuffer.insert(m_recvBuffer.end(), data.begin(), data.end());
+    while (m_recvBuffer.size() > 0)
+    {
+        if (ParseStep::head == m_parseStep) /* 解析包头 */
+        {
+            if (m_recvBuffer.size() >= 4)
+            {
+                /* 解析包头(包头占4个字节, 用于存放包体长度) */
+                unsigned int head = 0;
+                if (m_bigEndium) /* 大端存储 */
+                {
+                    head += m_recvBuffer[0] << 24;
+                    head += m_recvBuffer[1] << 16;
+                    head += m_recvBuffer[2] << 8;
+                    head += m_recvBuffer[3];
+                }
+                else /* 小端存储 */
+                {
+                    head += m_recvBuffer[0];
+                    head += m_recvBuffer[1] << 8;
+                    head += m_recvBuffer[2] << 16;
+                    head += m_recvBuffer[3] << 24;
+                }
+                if (head > m_bodyMaxLen) /* 超过包体允许的最大长度表示出错 */
+                {
+                    m_recvBuffer.clear();
+                    if (errorCb)
+                    {
+                        errorCb(data);
+                    }
+                    return;
+                }
+                m_recvBuffer.erase(m_recvBuffer.begin(), m_recvBuffer.begin() + 4); /* 去除包头 */
+                m_parseStep = ParseStep::type;
+                m_head = head;
+            }
+            else
+            {
+                return;
+            }
+        }
+        else if (ParseStep::type == m_parseStep) /* 解析类型 */
+        {
+            if (m_recvBuffer.size() >= 4)
+            {
+                /* 解析类型(类型占4个字节) */
+                unsigned int type = 0;
+                if (m_bigEndium) /* 大端存储 */
+                {
+                    type += m_recvBuffer[0] << 24;
+                    type += m_recvBuffer[1] << 16;
+                    type += m_recvBuffer[2] << 8;
+                    type += m_recvBuffer[3];
+                }
+                else /* 小端存储 */
+                {
+                    type += m_recvBuffer[0];
+                    type += m_recvBuffer[1] << 8;
+                    type += m_recvBuffer[2] << 16;
+                    type += m_recvBuffer[3] << 24;
+                }
+                m_recvBuffer.erase(m_recvBuffer.begin(), m_recvBuffer.begin() + 4); /* 去除类型 */
+                if (0 == m_head)
+                {
+                    if (typeBodyCb)
+                    {
+                        typeBodyCb(type, {});
+                    }
+                    m_parseStep = ParseStep::head;
+                }
+                else
+                {
+                    m_parseStep = ParseStep::body;
+                    m_type = type;
+                }
+            }
+            else
+            {
+                return;
+            }
+        }
+        else if (ParseStep::body == m_parseStep) /* 解析包体 */
+        {
+            unsigned int needBodyLen = m_head - m_body.size(); /* 当前包体还需要的数据长度 */
+            if (needBodyLen > m_recvBuffer.size()) /* 包体未接收完毕 */
+            {
+                m_body.insert(m_body.end(), m_recvBuffer.begin(), m_recvBuffer.end());
+                m_recvBuffer.clear();
+            }
+            else /* 包体已接收完毕 */
+            {
+                m_body.insert(m_body.end(), m_recvBuffer.begin(), m_recvBuffer.begin() + needBodyLen);
+                m_recvBuffer.erase(m_recvBuffer.begin(), m_recvBuffer.begin() + needBodyLen);
+                /* 处理包体 */
+                if (typeBodyCb)
+                {
+                    typeBodyCb(m_type, m_body);
+                }
+                /* 重置包数据 */
+                m_parseStep = ParseStep::head;
+                m_head = 0;
+                m_type = 0;
+                m_body.clear();
+            }
+        }
+    }
+}
+
 void Payload::pack(const unsigned char* body, unsigned int bodyLen, std::vector<unsigned char>& data, bool bigEndium)
 {
     data.clear();
-    /* 组装包头(包头占4个字节, 用于存放包体长度, 使用大端存储模式) */
-    unsigned int head = bodyLen;
+    /* 组装包头(包头占4个字节, 用于存放包体长度) */
     if (bigEndium) /* 大端存储 */
     {
-        data.emplace_back((head >> 24) & 0xFF);
-        data.emplace_back((head >> 16) & 0xFF);
-        data.emplace_back((head >> 8) & 0xFF);
-        data.emplace_back((head >> 0) & 0xFF);
+        data.emplace_back((bodyLen >> 24) & 0xFF);
+        data.emplace_back((bodyLen >> 16) & 0xFF);
+        data.emplace_back((bodyLen >> 8) & 0xFF);
+        data.emplace_back((bodyLen >> 0) & 0xFF);
     }
     else /* 小端存储 */
     {
-        data.emplace_back((head >> 0) & 0xFF);
-        data.emplace_back((head >> 8) & 0xFF);
-        data.emplace_back((head >> 16) & 0xFF);
-        data.emplace_back((head >> 24) & 0xFF);
+        data.emplace_back((bodyLen >> 0) & 0xFF);
+        data.emplace_back((bodyLen >> 8) & 0xFF);
+        data.emplace_back((bodyLen >> 16) & 0xFF);
+        data.emplace_back((bodyLen >> 24) & 0xFF);
     }
     /* 组装包体 */
     if (body && bodyLen > 0)
@@ -129,5 +240,50 @@ void Payload::pack(const unsigned char* body, unsigned int bodyLen, std::vector<
 void Payload::pack(const std::vector<unsigned char>& body, std::vector<unsigned char>& data, bool bigEndium)
 {
     pack(body.data(), body.size(), data, bigEndium);
+}
+
+void Payload::pack(unsigned int type, const unsigned char* body, unsigned int bodyLen, std::vector<unsigned char>& data, bool bigEndium)
+{
+    data.clear();
+    /* 组装包头(包头占4个字节, 用于存放包体长度) */
+    if (bigEndium) /* 大端存储 */
+    {
+        data.emplace_back((bodyLen >> 24) & 0xFF);
+        data.emplace_back((bodyLen >> 16) & 0xFF);
+        data.emplace_back((bodyLen >> 8) & 0xFF);
+        data.emplace_back((bodyLen >> 0) & 0xFF);
+    }
+    else /* 小端存储 */
+    {
+        data.emplace_back((bodyLen >> 0) & 0xFF);
+        data.emplace_back((bodyLen >> 8) & 0xFF);
+        data.emplace_back((bodyLen >> 16) & 0xFF);
+        data.emplace_back((bodyLen >> 24) & 0xFF);
+    }
+    /* 组装类型(类型占4个字节) */
+    if (bigEndium) /* 大端存储 */
+    {
+        data.emplace_back((type >> 24) & 0xFF);
+        data.emplace_back((type >> 16) & 0xFF);
+        data.emplace_back((type >> 8) & 0xFF);
+        data.emplace_back((type >> 0) & 0xFF);
+    }
+    else /* 小端存储 */
+    {
+        data.emplace_back((type >> 0) & 0xFF);
+        data.emplace_back((type >> 8) & 0xFF);
+        data.emplace_back((type >> 16) & 0xFF);
+        data.emplace_back((type >> 24) & 0xFF);
+    }
+    /* 组装包体 */
+    if (body && bodyLen > 0)
+    {
+        data.insert(data.end(), body, body + bodyLen);
+    }
+}
+
+void Payload::pack(unsigned int type, const std::vector<unsigned char>& body, std::vector<unsigned char>& data, bool bigEndium)
+{
+    pack(type, body.data(), body.size(), data, bigEndium);
 }
 } // namespace nsocket

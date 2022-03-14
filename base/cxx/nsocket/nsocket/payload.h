@@ -12,9 +12,16 @@ class Payload final
 public:
     /**
      * @brief 包体回调函数
-     * @param body 包体内容 
+     * @param body 包体 
      */
     using BODY_CALLBACK = std::function<void(const std::vector<unsigned char>& body)>;
+
+    /**
+     * @brief 类型+包体回调函数
+     * @param type 类型
+     * @param body 包体内
+     */
+    using TYPE_BODY_CALLBACK = std::function<void(unsigned int type, const std::vector<unsigned char>& body)>;
 
     /**
      * @brief 解析出错回调函数
@@ -44,6 +51,14 @@ public:
     void unpack(const std::vector<unsigned char>& data, const BODY_CALLBACK& bodyCb, const ERROR_CALLBACK& errorCb);
 
     /**
+     * @brief 对数据进行拼接/拆包
+     * @param data 数据
+     * @param typeBodyCb 类型+包体回调
+     * @param errorCb 解析出错回调
+     */
+    void unpack(const std::vector<unsigned char>& data, const TYPE_BODY_CALLBACK& typeBodyCb, const ERROR_CALLBACK& errorCb);
+
+    /**
      * @brief 对数据进行组包
      * @param body 包体
      * @param bodyLen 包体长度
@@ -60,11 +75,32 @@ public:
      */
     static void pack(const std::vector<unsigned char>& body, std::vector<unsigned char>& data, bool bigEndium = true);
 
+    /**
+     * @brief 对数据进行组包
+     * @param type 类型 
+     * @param body 包体
+     * @param bodyLen 包体长度
+     * @param data [输出]包数据 = 包头 + 类型 + 包体
+     * @param bigEndium 非包体字节序是否大端模式(选填), 默认大端
+     */
+    static void pack(unsigned int type, const unsigned char* body, unsigned int bodyLen, std::vector<unsigned char>& data,
+                     bool bigEndium = true);
+
+    /**
+     * @brief 对数据进行组包
+     * @param type 类型 
+     * @param body 包体
+     * @param data [输出]包数据 = 包头 + 类型 + 包体
+     * @param bigEndium 非包体字节序是否大端模式(选填), 默认大端
+     */
+    static void pack(unsigned int type, const std::vector<unsigned char>& body, std::vector<unsigned char>& data, bool bigEndium = true);
+
 private:
     /* 解析步骤 */
     enum class ParseStep
     {
         head = 0, /* 解析包头 */
+        type, /* 解析类型 */
         body /* 解析包体 */
     };
 
@@ -74,6 +110,7 @@ private:
     ParseStep m_parseStep = ParseStep::head; /* 解析步骤 */
     bool m_bigEndium = true; /* 非包体字节序是否大端模式 */
     unsigned int m_head = 0; /* 包头(占4个字节, 用于存放包体长度) */
+    unsigned int m_type = 0; /* 类型(占4个字节) */
     std::vector<unsigned char> m_body; /* 已接收的包体内容 */
 };
 } // namespace nsocket
