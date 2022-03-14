@@ -19,7 +19,7 @@ public:
     /**
      * @brief 类型+包体回调函数
      * @param type 类型
-     * @param body 包体内
+     * @param body 包体
      */
     using TYPE_BODY_CALLBACK = std::function<void(unsigned int type, const std::vector<unsigned char>& body)>;
 
