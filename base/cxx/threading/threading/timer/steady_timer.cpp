@@ -109,13 +109,17 @@ void SteadyTimer::onTrigger()
     /* 触发 */
     if (m_func)
     {
-        if (m_executor)
+        if (m_executor) /* 有执行者则把回调抛到执行线程 */
         {
             m_executor->post(m_name, m_func);
         }
-        else
+        else if (isTriggerListWillConsumed()) /* 触发列表会被消耗, 则把回调添加到触发列表 */
         {
             addToTriggerList(m_func);
+        }
+        else /* 否则直接执行回调(注意: 这是下下策, 存在阻塞定时器线程风险) */
+        {
+            m_func();
         }
     }
     /* 继续 */

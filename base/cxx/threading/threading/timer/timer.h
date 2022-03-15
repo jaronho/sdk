@@ -35,7 +35,7 @@ public:
     virtual void stop() = 0;
 
     /**
-     * @brief 运行单次(用于监听触发回调, 在主逻辑线程中循环调用, 一般是在主线程)
+     * @brief 运行单次(用于监听触发回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
      *        注意: 如果定时器有指定任务触发回调的执行线程, 则其回调不受该接口接管
      */
     static void runOnce();
@@ -51,6 +51,13 @@ protected:
      * @param func 触发函数
      */
     void addToTriggerList(const std::function<void()>& func);
+
+    /**
+     * @brief 检测触发列表是否会被消耗
+     * @param timeout 最大超时(秒), 超过这个时间RunOnce没被调用则认为触发列表不会被消耗
+     * @return true-会, false-否
+     */
+    bool isTriggerListWillConsumed(unsigned int timeout = 5);
 };
 
 using TimerPtr = std::shared_ptr<Timer>;

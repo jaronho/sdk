@@ -1,5 +1,6 @@
 #include "timer.h"
 
+#include <chrono>
 #include <list>
 #include <mutex>
 #include <thread>
@@ -12,6 +13,8 @@ static std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context:
 static std::unique_ptr<std::thread> s_thread = nullptr;
 static std::mutex s_mutexTrigger;
 static std::list<std::function<void()>> s_triggerList;
+static std::mutex s_mutexRunOnceCalledTimePoint;
+static std::chrono::steady_clock::time_point s_runOnceCalledTimePoint = std::chrono::steady_clock::now();
 
 #ifdef _WIN32
 namespace
@@ -94,8 +97,23 @@ void Timer::addToTriggerList(const std::function<void()>& func)
     s_triggerList.emplace_back(func);
 }
 
+bool Timer::isTriggerListWillConsumed(unsigned int timeout)
+{
+    timeout = (timeout >= 3 ? timeout : 3);
+    std::chrono::seconds elapsed;
+    {
+        std::lock_guard<std::mutex> locker(s_mutexRunOnceCalledTimePoint);
+        elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - s_runOnceCalledTimePoint);
+    }
+    return (elapsed.count() < timeout);
+}
+
 void Timer::runOnce()
 {
+    {
+        std::lock_guard<std::mutex> locker(s_mutexRunOnceCalledTimePoint);
+        s_runOnceCalledTimePoint = std::chrono::steady_clock::now();
+    }
     std::function<void()> func = nullptr;
     {
         std::lock_guard<std::mutex> locker(s_mutexTrigger);
