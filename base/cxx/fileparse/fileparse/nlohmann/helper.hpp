@@ -306,11 +306,16 @@ static bool append(json& j, const ValueType& value, std::string* errDesc = nullp
 static bool dump(const json& j, std::string& str, std::string* errDesc = nullptr, int indent = -1, char indentChar = ' ',
                  bool ensureAscii = false)
 {
+    str.clear();
     std::string errorDescribe;
     try
     {
-        str = j.dump(indent, indentChar, ensureAscii, nlohmann::detail::error_handler_t::replace);
-        return true;
+        if (!j.is_null())
+        {
+            str = j.dump(indent, indentChar, ensureAscii, nlohmann::detail::error_handler_t::replace);
+            return true;
+        }
+        errorDescribe = "null";
     }
     catch (const std::exception& e)
     {
