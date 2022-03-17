@@ -107,19 +107,26 @@ void TcpClient::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND
     }
     else
     {
-        if (m_tcpConn && isRunning())
-        {
-            /**
-             *  1.根据boost中async_send说明, data最好保证生命周期存在到回调执行前, 这里将data绑定到回调中.
-             *  2.单元测纯TCP试验没绑到回调时确实会崩.
-             */
-            m_tcpConn->sendAsync(data, [onSendCb, data](const boost::system::error_code& code, std::size_t length) {
-                if (onSendCb)
+        const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
+        boost::asio::post(m_ioContext, [wpSelf, data, onSendCb]() {
+            const auto self = wpSelf.lock();
+            if (self)
+            {
+                if (self->m_tcpConn && self->isRunning())
                 {
-                    onSendCb(code, length);
+                    /**
+                     *  1.根据boost中async_send说明, data最好保证生命周期存在到回调执行前, 这里将data绑定到回调中.
+                     *  2.单元测纯TCP试验没绑到回调时确实会崩.
+                     */
+                    self->m_tcpConn->sendAsync(data, [onSendCb, data](const boost::system::error_code& code, std::size_t length) {
+                        if (onSendCb)
+                        {
+                            onSendCb(code, length);
+                        }
+                    });
                 }
-            });
-        }
+            }
+        });
     }
 }
 
@@ -127,17 +134,24 @@ void TcpClient::stop()
 {
     if (!m_ioContext.stopped())
     {
-        const auto lastStatus = m_runStatus;
-        m_runStatus = RunStatus::stop;
-        if (RunStatus::start != lastStatus)
-        {
-            return;
-        }
-        if (m_tcpConn)
-        {
-            m_tcpConn->close();
-        }
-        m_ioContext.stop();
+        const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
+        boost::asio::post(m_ioContext, [wpSelf]() {
+            const auto self = wpSelf.lock();
+            if (self)
+            {
+                const auto lastStatus = self->m_runStatus;
+                self->m_runStatus = RunStatus::stop;
+                if (RunStatus::start != lastStatus)
+                {
+                    return;
+                }
+                if (self->m_tcpConn)
+                {
+                    self->m_tcpConn->close();
+                }
+                self->m_ioContext.stop();
+            }
+        });
     }
 }
 
