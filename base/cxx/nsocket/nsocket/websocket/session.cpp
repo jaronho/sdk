@@ -14,6 +14,26 @@ int64_t Session::getId() const
     return 0;
 }
 
+std::string Session::getClientHost() const
+{
+    const auto conn = m_wpConn.lock();
+    if (conn)
+    {
+        return conn->getRemoteEndpoint().address().to_string();
+    }
+    return "";
+}
+
+int Session::getClientPort() const
+{
+    const auto conn = m_wpConn.lock();
+    if (conn)
+    {
+        return (int)conn->getRemoteEndpoint().port();
+    }
+    return 0;
+}
+
 std::string Session::getUri() const
 {
     return m_req->uri;

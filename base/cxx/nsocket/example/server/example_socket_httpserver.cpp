@@ -137,6 +137,7 @@ int main(int argc, char* argv[])
         auto r = std::make_shared<nsocket::http::Router_simple>();
         r->respHandler = [&](const nsocket::http::REQUEST_PTR& req, const std::string& data) {
             printf("-------------------------- Simple Router --------------------------\n");
+            printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
             printf("---     Uri: %s\n", req->uri.c_str());
             if (!req->queries.empty())
@@ -167,6 +168,7 @@ int main(int argc, char* argv[])
         auto r = std::make_shared<nsocket::http::Router_x_www_form_urlencoded>();
         r->respHandler = [&](const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields) {
             printf("--------------------------- Form Router ---------------------------\n");
+            printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
             printf("---     Uri: %s\n", req->uri.c_str());
             if (!req->queries.empty())
@@ -216,7 +218,7 @@ int main(int argc, char* argv[])
         auto r = std::make_shared<nsocket::http::Router_multipart_form_data>();
         r->headCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("--------------------------- Multi Router ---------------------------\n");
-            printf("---     Sid: %lld\n", cid);
+            printf("---     Cid: %lld, Client: %s:%d\n", cid, req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
             printf("---     Uri: %s\n", req->uri.c_str());
             if (!req->queries.empty())

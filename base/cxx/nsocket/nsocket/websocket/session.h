@@ -24,6 +24,16 @@ public:
     int64_t getId() const;
 
     /**
+     * @brief 获取客户端主机
+     */
+    std::string getClientHost() const;
+
+    /**
+     * @brief 获取客户端端口
+     */
+    int getClientPort() const;
+
+    /**
      * @brief 获取URI
      */
     std::string getUri() const;

@@ -65,6 +65,8 @@ public:
     size_t getContentLength();
 
 public:
+    std::string host; /* 客户端主机 */
+    int port = 0; /* 客户端端口 */
     std::string method; /* 方法 */
     std::string uri; /* URI */
     CaseInsensitiveMultimap queries; /* 查询参数 */

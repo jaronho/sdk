@@ -73,6 +73,8 @@ void Server::handleNewConnection(const std::weak_ptr<TcpConnection>& wpConn)
             auto session = std::make_shared<Session>();
             session->wpConn = wpConn;
             session->req = std::make_shared<Request>();
+            session->req->host = conn->getRemoteEndpoint().address().to_string();
+            session->req->port = (int)conn->getRemoteEndpoint().port();
             m_sessionMap.insert(std::make_pair(conn->getId(), session));
         }
     }

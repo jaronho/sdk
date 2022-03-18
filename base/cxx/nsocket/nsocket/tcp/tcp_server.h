@@ -110,7 +110,7 @@ public:
     void setNewConnectionCallback(const TCP_CONN_NEW_CALLBACK& onNewCb);
 
     /**
-     * @brief 设置数据回调
+     * @brief 设置数据回调, 注意: 严禁在回调里执行死循环或长时间循环逻辑, 否则会阻塞该连接线程
      * @param onDataCb 数据回调
      */
     void setConnectionDataCallback(const TCP_CONN_DATA_CALLBACK& onDataCb);
