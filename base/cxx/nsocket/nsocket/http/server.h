@@ -29,9 +29,10 @@ public:
 
     /**
      * @brief 是否有效
+     * @param errorMsg 错误消息(选填)
      * @return true-有效, false-无效
      */
-    bool isValid() const;
+    bool isValid(std::string* errorMsg = nullptr) const;
 
     /**
      * @brief 是否运行中

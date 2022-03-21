@@ -15,9 +15,9 @@ Server::Server(const std::string& name, size_t threadCount, const std::string& h
                                                 const boost::system::error_code& code) { handleConnectionClose(cid, point, code); });
 }
 
-bool Server::isValid() const
+bool Server::isValid(std::string* errorMsg) const
 {
-    if (m_tcpServer && m_tcpServer->isValid())
+    if (m_tcpServer && m_tcpServer->isValid(errorMsg))
     {
         return true;
     }
