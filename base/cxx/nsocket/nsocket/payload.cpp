@@ -46,7 +46,17 @@ void Payload::unpack(const std::vector<unsigned char>& data, const HEAD_CALLBACK
                     reset();
                     return;
                 }
-                m_parseStep = ParseStep::body;
+                else if (0 == m_bodyLen) /* 无包体内容 */
+                {
+                    if (bodyCb)
+                    {
+                        bodyCb({});
+                    }
+                }
+                else /* 设置下一步解析包体内容 */
+                {
+                    m_parseStep = ParseStep::body;
+                }
             }
             else
             {
@@ -71,7 +81,9 @@ void Payload::unpack(const std::vector<unsigned char>& data, const HEAD_CALLBACK
                     bodyCb(m_body);
                 }
                 /* 重置包数据 */
-                reset();
+                m_parseStep = ParseStep::head;
+                m_bodyLen = 0;
+                m_body.clear();
             }
         }
     }
