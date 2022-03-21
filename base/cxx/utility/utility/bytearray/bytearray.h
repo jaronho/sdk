@@ -32,6 +32,30 @@ public:
     static BOOL isBigEndium();
 
     /**
+     * @brief 从字节流读取短整型值
+     * @param p 字节流(2个字节)
+     * @param bigEndium 字节流是否大端模式
+     * @return 短整型值
+     */
+    static INT16 read16(const UCHAR p[2], bool bigEndium = true);
+
+    /**
+     * @brief 写短整型值到字节流
+     * @param p [输出]字节流(2个字节)
+     * @param n 短整型值
+     * @param bigEndium 是否大端模式写入
+     */
+    static void write16(UCHAR p[2], INT16 n, bool bigEndium = true);
+
+    /**
+     * @brief 写短整型值到字节数组
+     * @param v [输出]字节数组
+     * @param n 短整型值
+     * @param bigEndium 是否大端模式写入
+     */
+    static void write16(std::vector<UCHAR>& v, INT16 n, bool bigEndium = true);
+
+    /**
      * @brief 大小端转换(短整型值转为短整型值)
      * @param n 短整型值
      * @return 短整型值
@@ -46,6 +70,30 @@ public:
     static INT16 swab16(const UCHAR p[2]);
 
     /**
+     * @brief 从字节流读取整型值
+     * @param p 字节流(4个字节)
+     * @param bigEndium 字节流是否大端模式
+     * @return 整型值
+     */
+    static INT32 read32(const UCHAR p[4], bool bigEndium = true);
+
+    /**
+     * @brief 写整型值到字节流
+     * @param p [输出]字节流(4个字节)
+     * @param n 整型值
+     * @param bigEndium 是否大端模式写入
+     */
+    static void write32(UCHAR p[4], INT32 n, bool bigEndium = true);
+
+    /**
+     * @brief 写整型值到字节数组
+     * @param v [输出]字节数组
+     * @param n 整型值
+     * @param bigEndium 是否大端模式写入
+     */
+    static void write32(std::vector<UCHAR>& v, INT32 n, bool bigEndium = true);
+
+    /**
      * @brief 大小端转换(整型值转为整型值)
      * @return 整型值
      */
@@ -57,6 +105,30 @@ public:
      * @return 整型值
      */
     static INT32 swab32(const UCHAR p[4]);
+
+    /**
+     * @brief 从字节流读取长整型值
+     * @param p 字节流(8个字节)
+     * @param bigEndium 字节流是否大端模式
+     * @return 长整型值
+     */
+    static INT64 read64(const UCHAR p[8], bool bigEndium = true);
+
+    /**
+     * @brief 写长整型值到字节流
+     * @param p [输出]字节流(4个字节)
+     * @param n 长整型值
+     * @param bigEndium 是否大端模式写入
+     */
+    static void write64(UCHAR p[8], INT64 n, bool bigEndium = true);
+
+    /**
+     * @brief 写长整型值到字节数组
+     * @param v [输出]字节数组
+     * @param n 长整型值
+     * @param bigEndium 是否大端模式写入
+     */
+    static void write64(std::vector<UCHAR>& v, INT64 n, bool bigEndium = true);
 
     /**
      * @brief 大小端转换(长整型值转为长整型值)
@@ -125,7 +197,7 @@ public:
     /**
      * @brief 打印字节流内容(十六进制), 输出到控制台
      */
-    void print();
+    void print() const;
 
     /**
      * @brief 重置缓冲区
@@ -136,25 +208,25 @@ public:
      * @brief 获取缓冲区总长度
      * @return 总长度
      */
-    UINT32 getTotalSize();
+    UINT32 getTotalSize() const;
 
     /**
      * @brief 获取缓冲区当前长度
      * @return 当前长度
      */
-    UINT32 getCurrentSize();
+    UINT32 getCurrentSize() const;
 
     /**
      * @brief 获取缓冲区剩余可写长度
      * @return 剩余可写长度
      */
-    UINT32 getSpaceSize();
+    UINT32 getSpaceSize() const;
 
     /**
      * @brief 获取字节流内容
      * @return 字节流内容
      */
-    const UCHAR* getBuffer();
+    const UCHAR* getBuffer() const;
 
     /**
      * @brief 设置缓冲区内容

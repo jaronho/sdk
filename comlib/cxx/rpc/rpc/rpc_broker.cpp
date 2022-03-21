@@ -7,6 +7,14 @@ namespace rpc
 {
 static threading::ExecutorPtr s_executor = nullptr;
 
+static void pack(const msg_base* msg, std::vector<unsigned char>& buffer)
+{
+    utility::ByteArray ba;
+    msg->encode(ba);
+    utility::ByteArray::write32(buffer, ba.getCurrentSize(), true);
+    buffer.insert(buffer.end(), ba.getBuffer(), ba.getBuffer() + ba.getCurrentSize());
+}
+
 class Broker::Client
 {
 public:
@@ -19,7 +27,7 @@ public:
     Client(const std::weak_ptr<nsocket::TcpConnection>& wpConn, const std::string& host, int port)
         : m_wpConn(wpConn), m_host(host), m_port(port)
     {
-        m_payload = std::make_shared<nsocket::Payload>(msg_base::maxsize());
+        m_payload = std::make_shared<nsocket::Payload>(4);
     }
 
     /**
@@ -71,16 +79,14 @@ public:
      * @param msg 消息
      * @param callback 回调, 参数: ret-true(成功)/false(失败)
      */
-    void send(msg_base* msg, const std::function<void(bool ret)>& callback = nullptr)
+    void send(const msg_base* msg, const std::function<void(bool ret)>& callback = nullptr)
     {
         const auto conn = m_wpConn.lock();
         if (conn)
         {
-            utility::ByteArray ba;
-            msg->encode(ba);
-            std::vector<unsigned char> data;
-            nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);
-            conn->sendAsync(data, [&, callback](const boost::system::error_code& code, std::size_t length) {
+            std::vector<unsigned char> buffer;
+            pack(msg, buffer);
+            conn->sendAsync(buffer, [&, callback](const boost::system::error_code& code, std::size_t length) {
                 const auto conn = m_wpConn.lock();
                 if (conn)
                 {
@@ -125,6 +131,14 @@ public:
     {
         m_payload->unpack(
             data,
+            [&](const std::vector<unsigned char>& head) {
+                int bodyLen = utility::ByteArray::read32(head.data(), true);
+                if (bodyLen >= msg_base::maxsize())
+                {
+                    return -1;
+                }
+                return bodyLen;
+            },
             [&](const std::vector<unsigned char>& body) {
                 utility::ByteArray ba;
                 ba.setBuffer(body.data(), body.size());
@@ -135,8 +149,7 @@ public:
                 {
                     m_msgHandler(type, ba);
                 }
-            },
-            [&](unsigned int head, const std::vector<unsigned char>& data) {});
+            });
     }
 
 private:

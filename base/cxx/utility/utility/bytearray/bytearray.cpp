@@ -19,6 +19,58 @@ BOOL ByteArray::isBigEndium()
     return false; /* 小端 */
 }
 
+INT16 ByteArray::read16(const UCHAR p[2], bool bigEndium)
+{
+    if (!p)
+    {
+        throw std::exception(std::logic_error("arg 'p' is null"));
+    }
+    INT16 n = 0;
+    if (bigEndium)
+    {
+        n += (INT16)p[0] << 8;
+        n += (INT16)p[1];
+    }
+    else
+    {
+        n += (INT16)p[0];
+        n += (INT16)p[1] << 8;
+    }
+    return n;
+}
+
+void ByteArray::write16(UCHAR p[2], INT16 n, bool bigEndium)
+{
+    if (!p)
+    {
+        throw std::exception(std::logic_error("arg 'p' is null"));
+    }
+    if (bigEndium)
+    {
+        p[0] = (n >> 8) & 0xFF;
+        p[1] = n & 0xFF;
+    }
+    else
+    {
+        p[0] = n & 0xFF;
+        p[1] = (n >> 8) & 0xFF;
+    }
+}
+
+void ByteArray::write16(std::vector<UCHAR>& v, INT16 n, bool bigEndium)
+{
+    if (bigEndium)
+    {
+        v.emplace_back((n >> 8) & 0xFF);
+        v.emplace_back(n & 0xFF);
+    }
+    else
+    {
+        v.emplace_back(n & 0xFF);
+        v.emplace_back((n >> 8) & 0xFF);
+    }
+}
+
 INT16 ByteArray::swab16(INT16 n)
 {
     return (((n & 0x00FF) << 8) | ((n & 0xFF00) >> 8));
@@ -30,7 +82,71 @@ INT16 ByteArray::swab16(const UCHAR p[2])
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    return ((p[0] << 8) | p[1]);
+    return (((INT16)p[0] << 8) | (INT16)p[1]);
+}
+
+INT32 ByteArray::read32(const UCHAR p[4], bool bigEndium)
+{
+    if (!p)
+    {
+        throw std::exception(std::logic_error("arg 'p' is null"));
+    }
+    INT32 n = 0;
+    if (bigEndium)
+    {
+        n += (INT32)p[0] << 24;
+        n += (INT32)p[1] << 16;
+        n += (INT32)p[2] << 8;
+        n += (INT32)p[3];
+    }
+    else
+    {
+        n += (INT32)p[0];
+        n += (INT32)p[1] << 8;
+        n += (INT32)p[2] << 16;
+        n += (INT32)p[3] << 24;
+    }
+    return n;
+}
+
+void ByteArray::write32(UCHAR p[4], INT32 n, bool bigEndium)
+{
+    if (!p)
+    {
+        throw std::exception(std::logic_error("arg 'p' is null"));
+    }
+    if (bigEndium)
+    {
+        p[0] = (n >> 24) & 0xFF;
+        p[1] = (n >> 16) & 0xFF;
+        p[2] = (n >> 8) & 0xFF;
+        p[3] = n & 0xFF;
+    }
+    else
+    {
+        p[0] = n & 0xFF;
+        p[1] = (n >> 8) & 0xFF;
+        p[2] = (n >> 16) & 0xFF;
+        p[3] = (n >> 24) & 0xFF;
+    }
+}
+
+void ByteArray::write32(std::vector<UCHAR>& v, INT32 n, bool bigEndium)
+{
+    if (bigEndium)
+    {
+        v.emplace_back((n >> 24) & 0xFF);
+        v.emplace_back((n >> 16) & 0xFF);
+        v.emplace_back((n >> 8) & 0xFF);
+        v.emplace_back(n & 0xFF);
+    }
+    else
+    {
+        v.emplace_back(n & 0xFF);
+        v.emplace_back((n >> 8) & 0xFF);
+        v.emplace_back((n >> 16) & 0xFF);
+        v.emplace_back((n >> 24) & 0xFF);
+    }
 }
 
 INT32 ByteArray::swab32(INT32 n)
@@ -44,7 +160,95 @@ INT32 ByteArray::swab32(const UCHAR p[4])
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    return ((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]);
+    return (((INT32)p[0] << 24) | ((INT32)p[1] << 16) | ((INT32)p[2] << 8) | (INT32)p[3]);
+}
+
+INT64 ByteArray::read64(const UCHAR p[8], bool bigEndium)
+{
+    if (!p)
+    {
+        throw std::exception(std::logic_error("arg 'p' is null"));
+    }
+    INT64 n = 0;
+    if (bigEndium)
+    {
+        n += (INT64)p[0] << 56;
+        n += (INT64)p[1] << 48;
+        n += (INT64)p[2] << 40;
+        n += (INT64)p[3] << 32;
+        n += (INT64)p[4] << 24;
+        n += (INT64)p[5] << 16;
+        n += (INT64)p[6] << 8;
+        n += (INT64)p[7];
+    }
+    else
+    {
+        n += (INT64)p[0];
+        n += (INT64)p[1] << 8;
+        n += (INT64)p[2] << 16;
+        n += (INT64)p[3] << 24;
+        n += (INT64)p[4] << 32;
+        n += (INT64)p[5] << 40;
+        n += (INT64)p[6] << 48;
+        n += (INT64)p[7] << 56;
+    }
+    return n;
+}
+
+void ByteArray::write64(UCHAR p[8], INT64 n, bool bigEndium)
+{
+    if (!p)
+    {
+        throw std::exception(std::logic_error("arg 'p' is null"));
+    }
+    if (bigEndium)
+    {
+        p[0] = (n >> 56) & 0xFF;
+        p[1] = (n >> 48) & 0xFF;
+        p[2] = (n >> 40) & 0xFF;
+        p[3] = (n >> 32) & 0xFF;
+        p[4] = (n >> 24) & 0xFF;
+        p[5] = (n >> 16) & 0xFF;
+        p[6] = (n >> 8) & 0xFF;
+        p[7] = n & 0xFF;
+    }
+    else
+    {
+        p[0] = n & 0xFF;
+        p[1] = (n >> 8) & 0xFF;
+        p[2] = (n >> 16) & 0xFF;
+        p[3] = (n >> 24) & 0xFF;
+        p[4] = (n >> 32) & 0xFF;
+        p[5] = (n >> 40) & 0xFF;
+        p[6] = (n >> 48) & 0xFF;
+        p[7] = (n >> 56) & 0xFF;
+    }
+}
+
+void ByteArray::write64(std::vector<UCHAR>& v, INT64 n, bool bigEndium)
+{
+    if (bigEndium)
+    {
+        v.emplace_back((n >> 56) & 0xFF);
+        v.emplace_back((n >> 48) & 0xFF);
+        v.emplace_back((n >> 40) & 0xFF);
+        v.emplace_back((n >> 32) & 0xFF);
+        v.emplace_back((n >> 24) & 0xFF);
+        v.emplace_back((n >> 16) & 0xFF);
+        v.emplace_back((n >> 8) & 0xFF);
+        v.emplace_back(n & 0xFF);
+    }
+    else
+    {
+        v.emplace_back(n & 0xFF);
+        v.emplace_back((n >> 8) & 0xFF);
+        v.emplace_back((n >> 16) & 0xFF);
+        v.emplace_back((n >> 24) & 0xFF);
+        v.emplace_back((n >> 32) & 0xFF);
+        v.emplace_back((n >> 40) & 0xFF);
+        v.emplace_back((n >> 48) & 0xFF);
+        v.emplace_back((n >> 56) & 0xFF);
+    }
 }
 
 INT64 ByteArray::swab64(INT64 n)
@@ -62,8 +266,8 @@ INT64 ByteArray::swab64(const UCHAR p[8])
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    INT32 low = p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
-    INT32 high = p[4] | (p[5] << 8) | (p[6] << 16) | (p[7] << 24);
+    INT32 low = (INT32)p[0] | ((INT32)p[1] << 8) | ((INT32)p[2] << 16) | ((INT32)p[3] << 24);
+    INT32 high = (INT32)p[4] | ((INT32)p[5] << 8) | ((INT32)p[6] << 16) | ((INT32)p[7] << 24);
     return ((INT64)high << 32) | low;
 }
 
@@ -137,7 +341,7 @@ BOOL ByteArray::allocate(UINT32 totalSize)
     return true;
 }
 
-void ByteArray::print()
+void ByteArray::print() const
 {
     printf("==================== byte array: max=%d, length=%d, space=%d\n", m_totalSize, getCurrentSize(), getSpaceSize());
     for (UINT32 i = 0, len = getCurrentSize(); i < len; ++i)
@@ -162,22 +366,22 @@ void ByteArray::reset()
     m_writeIndex = 0;
 }
 
-UINT32 ByteArray::getTotalSize()
+UINT32 ByteArray::getTotalSize() const
 {
     return m_totalSize;
 }
 
-UINT32 ByteArray::getCurrentSize()
+UINT32 ByteArray::getCurrentSize() const
 {
     return abs(int(m_writeIndex - m_readIndex));
 }
 
-UINT32 ByteArray::getSpaceSize()
+UINT32 ByteArray::getSpaceSize() const
 {
     return m_totalSize - m_writeIndex;
 }
 
-const UCHAR* ByteArray::getBuffer()
+const UCHAR* ByteArray::getBuffer() const
 {
     return m_buffer;
 }

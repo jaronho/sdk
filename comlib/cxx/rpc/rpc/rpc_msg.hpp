@@ -84,7 +84,7 @@ public:
      * @brief 编码(数据结构转字节流)
      * @param ba 字节流
      */
-    virtual void encode(utility::ByteArray& ba) = 0;
+    virtual void encode(utility::ByteArray& ba) const = 0;
 
     /**
      * @brief 解码(字节流转数据结构)
@@ -123,7 +123,7 @@ public:
         return sz;
     }
 
-    void encode(utility::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) const override
     {
         ba.allocate(size());
         ba.writeInt32((int)type());
@@ -151,7 +151,7 @@ public:
         return sz;
     }
 
-    void encode(utility::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) const override
     {
         ba.allocate(size());
         ba.writeInt32((int)type());
@@ -185,7 +185,7 @@ public:
         return sz;
     }
 
-    void encode(utility::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) const override
     {
         ba.allocate(size());
         ba.writeInt32((int)type());
@@ -224,7 +224,7 @@ public:
         return sz;
     }
 
-    void encode(utility::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) const override
     {
         ba.allocate(size());
         ba.writeInt32((int)type());
@@ -278,7 +278,7 @@ public:
         return sz;
     }
 
-    void encode(utility::ByteArray& ba) override
+    void encode(utility::ByteArray& ba) const override
     {
         ba.allocate(size());
         ba.writeInt32((int)type());

@@ -8,6 +8,14 @@ namespace rpc
 {
 static threading::ExecutorPtr s_executor = nullptr;
 
+static void pack(const msg_base* msg, std::vector<unsigned char>& buffer)
+{
+    utility::ByteArray ba;
+    msg->encode(ba);
+    utility::ByteArray::write32(buffer, ba.getCurrentSize(), true);
+    buffer.insert(buffer.end(), ba.getBuffer(), ba.getBuffer() + ba.getCurrentSize());
+}
+
 class Client::Session
 {
 public:
@@ -104,7 +112,7 @@ Client::Client(const std::string& id, const std::string& brokerHost, int brokerP
     {
         throw std::exception(std::logic_error("arg 'id' is empty"));
     }
-    m_payload = std::make_shared<nsocket::Payload>(msg_base::maxsize());
+    m_payload = std::make_shared<nsocket::Payload>(4);
     m_bindHandler = nullptr;
     m_callHandler = nullptr;
     m_id = id;
@@ -188,10 +196,8 @@ rpc::ErrorCode Client::call(const std::string& replyer, int proc, const std::vec
     mc.proc = proc;
     mc.data = data;
     mc.timeout = (int)std::chrono::duration<double, std::milli>(timeout).count();
-    utility::ByteArray ba;
-    mc.encode(ba);
     std::vector<unsigned char> buffer;
-    nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
+    pack(&mc, buffer);
     auto result = std::make_shared<std::promise<msg_reply>>();
     auto future = result->get_future().share();
     {
@@ -256,10 +262,8 @@ void Client::callAsync(const std::string& replyer, int proc, const std::vector<u
     mc.proc = proc;
     mc.data = data;
     mc.timeout = (int)std::chrono::duration<double, std::milli>(timeout).count();
-    utility::ByteArray ba;
-    mc.encode(ba);
     std::vector<unsigned char> buffer;
-    nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
+    pack(&mc, buffer);
     {
         auto session = std::make_shared<Session>(*this, mc, replyFunc);
         if (session->startTimer(timeout))
@@ -337,6 +341,14 @@ void Client::handleRecvData(const std::vector<unsigned char>& data)
     /* 逻辑处理 */
     m_payload->unpack(
         data,
+        [&](const std::vector<unsigned char>& head) {
+            int bodyLen = utility::ByteArray::read32(head.data(), true);
+            if (bodyLen >= msg_base::maxsize())
+            {
+                return -1;
+            }
+            return bodyLen;
+        },
         [&](const std::vector<unsigned char>& body) {
             utility::ByteArray ba;
             ba.setBuffer(body.data(), body.size());
@@ -344,8 +356,7 @@ void Client::handleRecvData(const std::vector<unsigned char>& data)
             MsgType type = (MsgType)ba.readInt32();
             /* 处理消息 */
             handleMsg(type, ba);
-        },
-        [&](unsigned int head, const std::vector<unsigned char>& data) {});
+        });
 }
 
 void Client::handleMsg(const MsgType& type, utility::ByteArray& ba)
@@ -392,10 +403,8 @@ void Client::handleMsg(const MsgType& type, utility::ByteArray& ba)
                 mr.data = {};
                 mr.code = ErrorCode::replyer_inner_error;
             }
-            utility::ByteArray ba;
-            mr.encode(ba);
             std::vector<unsigned char> buffer;
-            nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), buffer);
+            pack(&mr, buffer);
             m_tcpClient->sendAsync(buffer, nullptr);
         }
     }
@@ -436,13 +445,11 @@ void Client::reqBind(bool async)
     /* 向服务器绑定 */
     msg_bind req;
     req.self_id = m_id;
-    utility::ByteArray ba;
-    req.encode(ba);
-    std::vector<unsigned char> data;
-    nsocket::Payload::pack(ba.getBuffer(), ba.getCurrentSize(), data);
+    std::vector<unsigned char> buffer;
+    pack(&req, buffer);
     if (async)
     {
-        m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, std::size_t length) {
+        m_tcpClient->sendAsync(buffer, [&](const boost::system::error_code& code, std::size_t length) {
             if (code)
             {
                 printf(">>>>>>>>>> bind fail, %d, %s\n", code.value(), code.message().c_str());
@@ -457,7 +464,7 @@ void Client::reqBind(bool async)
     else
     {
         std::size_t length;
-        auto code = m_tcpClient->send(data, length);
+        auto code = m_tcpClient->send(buffer, length);
         if (code)
         {
             printf(">>>>>>>>>> bind fail, %d, %s\n", code.value(), code.message().c_str());
