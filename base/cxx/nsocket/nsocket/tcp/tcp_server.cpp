@@ -120,9 +120,15 @@ TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::str
             m_contextPool->getContext(), boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(host.c_str()), port), reuseAddr);
         m_host = host;
     }
+    catch (const std::exception& e)
+    {
+        m_acceptor = nullptr;
+        m_errorMsg = std::string("exception: ") + e.what();
+    }
     catch (...)
     {
         m_acceptor = nullptr;
+        m_errorMsg = "unknown exception";
     }
 }
 
@@ -131,8 +137,12 @@ TcpServer::~TcpServer()
     stop();
 }
 
-bool TcpServer::isValid() const
+bool TcpServer::isValid(std::string* errorMsg) const
 {
+    if (errorMsg)
+    {
+        (*errorMsg) = m_errorMsg;
+    }
     return (m_acceptor ? true : false);
 }
 

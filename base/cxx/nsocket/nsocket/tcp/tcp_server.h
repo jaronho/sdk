@@ -93,9 +93,10 @@ public:
 
     /**
      * @brief 是否有效
+     * @param errorMsg 错误消息(选填)
      * @return true-有效, false-无效
      */
-    bool isValid() const;
+    bool isValid(std::string* errorMsg = nullptr) const;
 
     /**
      * @brief 是否运行中
@@ -175,5 +176,6 @@ private:
     TCP_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */
     std::string m_host; /* 主机 */
     std::atomic_bool m_running = {false}; /* 是否运行中 */
+    std::string m_errorMsg; /* 错误消息 */
 };
 } // namespace nsocket
