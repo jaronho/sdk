@@ -196,13 +196,11 @@ std::string Process::getProcessExeFile(int pid)
 #ifdef _WIN32
     if (pid <= 0)
     {
-#ifdef UNICODE
-        TCHAR exeFileW[MAX_PATH + 1] = {0};
-        GetModuleFileName(NULL, exeFileW, MAX_PATH);
-        return wstring2string(exeFileW);
-#else
-        CHAR exeFile[MAX_PATH + 1] = {0};
+        TCHAR exeFile[MAX_PATH + 1] = {0};
         GetModuleFileName(NULL, exeFile, MAX_PATH);
+#ifdef UNICODE
+        return wstring2string(exeFile);
+#else
         return exeFile;
 #endif
     }

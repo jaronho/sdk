@@ -13,6 +13,23 @@
 
 namespace utility
 {
+#ifdef _WIN32
+static std::string wstring2string(const std::wstring& wstr)
+{
+    if (wstr.empty())
+    {
+        return std::string();
+    }
+    int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+    char* buf = (char*)malloc(sizeof(char) * (len + 1));
+    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
+    buf[len] = '\0';
+    std::string str(buf);
+    free(buf);
+    return str;
+}
+#endif
+
 int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std::string>* outVec)
 {
     if (outStr)
@@ -217,5 +234,23 @@ void System::waitForCount(unsigned int maxCount, const std::function<bool()>& fu
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(maxCount * loopGap));
     }
+}
+
+std::string System::getHostname()
+{
+#ifdef _WIN32
+    TCHAR hostname[MAX_COMPUTERNAME_LENGTH + 1] = {0};
+    DWORD hostnameLen = MAX_COMPUTERNAME_LENGTH;
+    GetComputerName(hostname, &hostnameLen);
+#ifdef UNICODE
+    return wstring2string(hostname);
+#else
+    return hostname;
+#endif
+#else
+    char hostname[32] = {0};
+    gethostname(hostname, sizeof(hostname));
+    return hostname;
+#endif
 }
 } // namespace utility

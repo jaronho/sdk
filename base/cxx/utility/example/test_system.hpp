@@ -16,6 +16,9 @@
 void testSystem()
 {
     printf("\n============================== test system =============================\n");
+    auto hostname = utility::System::getHostname();
+    printf("hostname: %s\n", hostname.c_str());
+    printf("------------------------------\n");
     std::string outStr;
 #ifdef _WIN32
     int ret = utility::System::runCmd("dir", &outStr);

@@ -63,5 +63,11 @@ public:
      * @param loopGap 循环的时间间隔(单位:毫秒)(选填)
      */
     static void waitForCount(unsigned int maxCount, const std::function<bool()>& func = nullptr, unsigned int loopGap = 50);
+
+    /**
+     * @brief 获取主机名
+     * @return 主机名
+     */
+    static std::string getHostname();
 };
 } // namespace utility
