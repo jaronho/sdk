@@ -311,6 +311,15 @@ public:
      */
     bool insertInto(const std::string& tableName, const std::unordered_map<std::string, std::string>& values, bool replace = false,
                     std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 插入/替换表数据
+     * @param tableName 表名
+     * @param values 值
+     * @param replace 是否替换(选填), 默认false, 为true时若键值已存在则替换, 若键值不存在则插入
+     * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
+     */
     bool insertInto(const std::string& tableName, const ValueMap& values, bool replace = false, std::string* errorMsg = nullptr);
 
     /**
@@ -332,6 +341,15 @@ public:
      */
     bool updateSet(const std::string& tableName, const std::unordered_map<std::string, std::string>& newValues,
                    const std::string& condition, std::string* errorMsg = nullptr);
+
+    /**
+     * @brief 更新表数据
+     * @param tableName 表名
+     * @param newValues 新值
+     * @param condition 条件
+     * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
+     */
     bool updateSet(const std::string& tableName, const ValueMap& newValues, const std::string& condition, std::string* errorMsg = nullptr);
 
 private:

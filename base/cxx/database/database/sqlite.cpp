@@ -202,7 +202,7 @@ void Sqlite::ValueMap::insert(const std::string& key, const std::string& value)
 
 void Sqlite::ValueMap::insert(const std::string& key, int value)
 {
-    Sqlite::ValueMap::m_values[key] = std::to_string(value);
+    m_values[key] = std::to_string(value);
 }
 
 void Sqlite::ValueMap::insert(const std::string& key, unsigned int value)
