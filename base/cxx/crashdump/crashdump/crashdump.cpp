@@ -187,13 +187,11 @@ static std::wstring string2wstring(const std::string& str)
 std::string getProcFile()
 {
 #ifdef _WIN32
-#ifdef UNICODE
-    TCHAR exeFileW[MAX_PATH + 1] = {0};
-    GetModuleFileName(NULL, exeFileW, MAX_PATH);
-    return wstring2string(exeFileW);
-#else
-    CHAR exeFile[MAX_PATH + 1] = {0};
+    TCHAR exeFile[MAX_PATH + 1] = {0};
     GetModuleFileName(NULL, exeFile, MAX_PATH);
+#ifdef UNICODE
+    return wstring2string(exeFile);
+#else
     return exeFile;
 #endif
 #else
