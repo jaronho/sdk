@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __cplusplus
+namespace algorithm
+{
+#endif
 #define SM4_ENCRYPT 1
 #define SM4_DECRYPT 0
 
@@ -316,3 +320,6 @@ int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned
     }
     return outLength;
 }
+#ifdef __cplusplus
+} // namespace algorithm
+#endif

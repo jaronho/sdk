@@ -12,7 +12,7 @@ void testBase64()
     std::string base64;
     printf("str: %s\n", str.c_str());
     unsigned char* encodeOutput;
-    unsigned int encodeOutputLen = base64Encode((const unsigned char*)str.c_str(), str.size(), &encodeOutput);
+    unsigned int encodeOutputLen = algorithm::base64Encode((const unsigned char*)str.c_str(), str.size(), &encodeOutput);
     if (encodeOutputLen > 0)
     {
         base64 = (char*)encodeOutput;
@@ -22,7 +22,7 @@ void testBase64()
     if (!base64.empty())
     {
         unsigned char* decodeOutput;
-        unsigned int decodeOutputLen = base64Decode((const unsigned char*)base64.c_str(), base64.size(), &decodeOutput);
+        unsigned int decodeOutputLen = algorithm::base64Decode((const unsigned char*)base64.c_str(), base64.size(), &decodeOutput);
         if (decodeOutputLen > 0)
         {
             printf("decode out: %s\n", (char*)decodeOutput);

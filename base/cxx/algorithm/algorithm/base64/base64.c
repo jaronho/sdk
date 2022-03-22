@@ -2,6 +2,10 @@
 
 #include <stdlib.h>
 
+#ifdef __cplusplus
+namespace algorithm
+{
+#endif
 #define BASE64_PAD '='
 #define BASE64DE_FIRST '+'
 #define BASE64DE_LAST 'z'
@@ -136,3 +140,6 @@ unsigned int base64Decode(const unsigned char* in, unsigned int inLength, unsign
     }
     return outLength;
 }
+#ifdef __cplusplus
+} // namespace algorithm
+#endif

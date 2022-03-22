@@ -1,21 +1,23 @@
 #pragma once
 
-/**
- * @brief SM3 context structure
- */
-typedef struct
-{
-    unsigned long total[2]; /* number of bytes processed */
-    unsigned long state[8]; /* intermediate digest state */
-    unsigned char buffer[64]; /* data block being processed */
-    unsigned char ipad[64]; /* HMAC: inner padding */
-    unsigned char opad[64]; /* HMAC: outer padding */
-} sm3_context_t;
-
 #ifdef __cplusplus
+namespace algorithm
+{
 extern "C"
 {
 #endif
+    /**
+     * @brief SM3 context structure
+     */
+    typedef struct
+    {
+        unsigned long total[2]; /* number of bytes processed */
+        unsigned long state[8]; /* intermediate digest state */
+        unsigned char buffer[64]; /* data block being processed */
+        unsigned char ipad[64]; /* HMAC: inner padding */
+        unsigned char opad[64]; /* HMAC: outer padding */
+    } sm3_context_t;
+
     /**
      * @brief SM3 context setup
      * @param ctx context to be initialized
@@ -86,4 +88,5 @@ extern "C"
     void sm3Hmac(unsigned char* key, int keylen, const unsigned char* input, int ilen, unsigned char output[32]);
 #ifdef __cplusplus
 }
+} // namespace algorithm
 #endif

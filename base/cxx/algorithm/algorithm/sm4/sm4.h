@@ -1,6 +1,8 @@
 #pragma once
 
 #ifdef __cplusplus
+namespace algorithm
+{
 extern "C"
 {
 #endif
@@ -49,4 +51,5 @@ extern "C"
     int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned char* in, int inLength, unsigned char** out);
 #ifdef __cplusplus
 }
+} // namespace algorithm
 #endif

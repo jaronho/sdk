@@ -1,6 +1,8 @@
 #pragma once
 
 #ifdef __cplusplus
+namespace algorithm
+{
 extern "C"
 {
 #endif
@@ -54,4 +56,5 @@ extern "C"
     char* md5SignStr(const unsigned char* input, unsigned int inputLen);
 #ifdef __cplusplus
 }
+} // namespace algorithm
 #endif

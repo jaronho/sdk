@@ -13,12 +13,12 @@ void testSm3()
     int ilen = 3;
     unsigned char output[32];
     int i;
-    sm3_context_t ctx;
+    algorithm::sm3_context_t ctx;
 
     printf("Message:\n   ");
     printf("%s\n", input.c_str());
 
-    sm3Sign((const unsigned char*)input.c_str(), ilen, output);
+    algorithm::sm3Sign((const unsigned char*)input.c_str(), ilen, output);
     printf("Hash:\n   ");
     for (i = 0; i < 32; i++)
     {
@@ -39,7 +39,7 @@ void testSm3()
         sm3Update(&ctx, (unsigned char*)"abcd", 4);
     }
     sm3Finish(&ctx, output);
-    memset(&ctx, 0, sizeof(sm3_context_t));
+    memset(&ctx, 0, sizeof(algorithm::sm3_context_t));
 
     printf("Hash:\n   ");
     for (i = 0; i < 32; i++)

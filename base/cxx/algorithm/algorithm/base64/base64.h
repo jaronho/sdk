@@ -1,6 +1,8 @@
 #pragma once
 
 #ifdef __cplusplus
+namespace algorithm
+{
 extern "C"
 {
 #endif
@@ -23,4 +25,5 @@ extern "C"
     unsigned int base64Decode(const unsigned char* in, unsigned int inLength, unsigned char** out);
 #ifdef __cplusplus
 }
+} // namespace algorithm
 #endif

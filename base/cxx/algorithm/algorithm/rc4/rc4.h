@@ -1,6 +1,8 @@
 #pragma once
 
 #ifdef __cplusplus
+namespace algorithm
+{
 extern "C"
 {
 #endif
@@ -14,4 +16,5 @@ extern "C"
     unsigned char* rc4Crypto(unsigned char* input, unsigned long length, const unsigned char* pszKey);
 #ifdef __cplusplus
 }
+} // namespace algorithm
 #endif

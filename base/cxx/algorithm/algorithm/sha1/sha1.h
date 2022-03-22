@@ -1,6 +1,8 @@
 #pragma once
 
 #ifdef __cplusplus
+namespace algorithm
+{
 extern "C"
 {
 #endif
@@ -52,4 +54,5 @@ extern "C"
     char* sha1SignStr(const unsigned char* input, int inputLen);
 #ifdef __cplusplus
 }
+} // namespace algorithm
 #endif

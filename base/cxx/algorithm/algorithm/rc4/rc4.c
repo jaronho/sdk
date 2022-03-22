@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __cplusplus
+namespace algorithm
+{
+#endif
 unsigned char* rc4Crypto(unsigned char* input, unsigned long length, const unsigned char* pszKey)
 {
     unsigned int keySize = 0;
@@ -47,3 +51,6 @@ unsigned char* rc4Crypto(unsigned char* input, unsigned long length, const unsig
     }
     return input;
 }
+#ifdef __cplusplus
+} // namespace algorithm
+#endif

@@ -1,6 +1,8 @@
 #pragma once
 
 #ifdef __cplusplus
+namespace algorithm
+{
 extern "C"
 {
 #endif
@@ -25,4 +27,5 @@ extern "C"
     char* hamcSha1Str(const unsigned char* data, int dataLen, const unsigned char* key, int keyLen);
 #ifdef __cplusplus
 }
+} // namespace algorithm
 #endif

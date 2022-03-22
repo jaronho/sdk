@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __cplusplus
+namespace algorithm
+{
+#endif
 #define MD5STR_LEN 32
 
 /* Constants for _md5_transform routine. */
@@ -274,3 +278,6 @@ char* md5SignStr(const unsigned char* input, unsigned int inputLen)
     md5Update(&md5, input, inputLen);
     return md5Fini(&md5, digest, 1);
 }
+#ifdef __cplusplus
+} // namespace algorithm
+#endif

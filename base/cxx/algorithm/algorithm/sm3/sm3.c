@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __cplusplus
+namespace algorithm
+{
+#endif
 /* 32-bit integer manipulation macros (big endian) */
 #ifndef GET_ULONG_BE
 #define GET_ULONG_BE(n, b, i) \
@@ -294,3 +298,6 @@ void sm3Hmac(unsigned char* key, int keylen, const unsigned char* input, int ile
     sm3HmacFinish(&ctx, output);
     memset(&ctx, 0, sizeof(sm3_context_t));
 }
+#ifdef __cplusplus
+} // namespace algorithm
+#endif

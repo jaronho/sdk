@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __cplusplus
+namespace algorithm
+{
+#endif
 #define SHA1STR_LEN 40
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
@@ -290,3 +294,6 @@ char* sha1SignStr(const unsigned char* input, int inputLen)
     sha1Update(&ctx, input, inputLen);
     return sha1Final(&ctx, digest, 1);
 }
+#ifdef __cplusplus
+} // namespace algorithm
+#endif

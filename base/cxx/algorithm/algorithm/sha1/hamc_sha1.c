@@ -1,9 +1,16 @@
 #include "hamc_sha1.h"
 
 #include <memory.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "sha1.h"
 
+#ifdef __cplusplus
+namespace algorithm
+{
+#endif
 void hamcSha1(const unsigned char* data, int dataLen, const unsigned char* key, int keyLen, unsigned char digest[20])
 {
     int blockSize = 64;
@@ -47,11 +54,12 @@ void hamcSha1(const unsigned char* data, int dataLen, const unsigned char* key, 
         outerPadding[i] ^= k0[i];
     }
     partSize = blockSize + dataLen;
-    part = (unsigned char*)malloc((size_t)partSize);
+    part = (unsigned char*)malloc(sizeof(unsigned char) * partSize);
     if (!part)
     {
         return;
     }
+    part[0] = 0;
     for (i = 0; i < blockSize; ++i)
     {
         *(part + i) = innerPadding[i];
@@ -103,3 +111,6 @@ char* hamcSha1Str(const unsigned char* data, int dataLen, const unsigned char* k
     }
     return digestStr;
 }
+#ifdef __cplusplus
+} // namespace algorithm
+#endif
