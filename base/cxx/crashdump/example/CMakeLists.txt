@@ -10,32 +10,10 @@ include(../cmake/tools.cmake)
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-################################### 添加breakpad库 ###################################
-set(breakpad_libraries)
-if (CMAKE_SYSTEM_NAME MATCHES "Windows") # Windows平台需要在VS工程中手动指定`头文件搜索路径`和`库文件搜索路径`
-    list(APPEND breakpad_libraries common crash_generation_client exception_handler)
-else()
-    list(APPEND breakpad_libraries breakpad_client)
-endif()
-##########################################################################################
-
-################################### 添加crashdump库 ###################################
-set(base_crashdump_path ..) # 设置crashdump库路径(可修改)
-include_directories(${base_crashdump_path})
-
-set(base_crashdump_src_list)
-get_cxx_files(${base_crashdump_path}/crashdump src_list)
-list(APPEND base_crashdump_src_list ${src_list})
-source_group(3rdparty/base/crashdump FILES ${base_crashdump_src_list})
-
-set(base_crashdump_files) # 工程中需要把crashdump的文件添加进去
-list(APPEND base_crashdump_files ${base_crashdump_src_list})
-
-print_info(BODY "base crashdump files:")
-foreach(filename ${base_crashdump_files})
-    message("    " ${filename})
-endforeach()
-##########################################################################################
+# 添加堆栈崩溃捕获基础库
+add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/crashdump)
+include_directories(${CMAKE_SOURCE_DIR}/..)
+source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_crashdump_files})
 
 # 添加示例文件
 set(example_files)

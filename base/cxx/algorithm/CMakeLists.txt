@@ -37,7 +37,7 @@ set(base_algorithm_src_list)
 get_cxx_files(algorithm src_list)
 list(APPEND base_algorithm_src_list ${src_list})
 
-# 工程中需要把algorithm的文件添加进去
+# 组装文件列表
 set(base_algorithm_files
     ${base_algorithm_base64_src_list}
     ${base_algorithm_md5_src_list}
