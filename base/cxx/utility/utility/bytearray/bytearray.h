@@ -5,21 +5,6 @@
 namespace utility
 {
 /**
- * @brief 基础类型定义(保证平台的通用性, 尽量不要使用long)
- */
-typedef bool BOOL; /* 布尔型(1个字节) */
-typedef char CHAR; /* 字符型(1个字节) */
-typedef unsigned char UCHAR; /* 无符号字符型(1个字节) */
-typedef short INT16; /* 16位整型(2个字节) */
-typedef unsigned short UINT16; /* 16位无符号整型(2个字节) */
-typedef int INT32; /* 32位整型(4个字节) */
-typedef unsigned int UINT32; /* 32位无符号整型(4个字节) */
-typedef long long INT64; /* 64位整型(8个字节) */
-typedef unsigned long long UINT64; /* 64位无符号整型(8个字节) */
-typedef float FLOAT; /* 32位浮点型(4个字节) */
-typedef double DOUBLE; /* 64位浮点型(8个字节) */
-
-/**
  * @brief  字节流(序列化/反序列化)
  */
 class ByteArray
@@ -29,7 +14,7 @@ public:
      * @brief 判断主机是否为大端模式, 说明: 网络字节序为大端, 而主机字节序一般为小端
      * @return true-大端, false-小端
      */
-    static BOOL isBigEndium();
+    static bool isBigEndium();
 
     /**
      * @brief 从字节流读取短整型值
@@ -37,7 +22,7 @@ public:
      * @param bigEndium 字节流是否大端模式
      * @return 短整型值
      */
-    static INT16 read16(const UCHAR p[2], bool bigEndium = true);
+    static int16_t read16(const unsigned char p[2], bool bigEndium = true);
 
     /**
      * @brief 写短整型值到字节流
@@ -45,7 +30,7 @@ public:
      * @param n 短整型值
      * @param bigEndium 是否大端模式写入
      */
-    static void write16(UCHAR p[2], INT16 n, bool bigEndium = true);
+    static void write16(unsigned char p[2], int16_t n, bool bigEndium = true);
 
     /**
      * @brief 写短整型值到字节数组
@@ -53,21 +38,21 @@ public:
      * @param n 短整型值
      * @param bigEndium 是否大端模式写入
      */
-    static void write16(std::vector<UCHAR>& v, INT16 n, bool bigEndium = true);
+    static void write16(std::vector<unsigned char>& v, int16_t n, bool bigEndium = true);
 
     /**
      * @brief 大小端转换(短整型值转为短整型值)
      * @param n 短整型值
      * @return 短整型值
      */
-    static INT16 swab16(INT16 n);
+    static int16_t swab16(int16_t n);
 
     /**
      * @brief 大小端转换(字节流转为短整型值)
      * @param p 字节流(2个字节)
      * @return 短整型值
      */
-    static INT16 swab16(const UCHAR p[2]);
+    static int16_t swab16(const unsigned char p[2]);
 
     /**
      * @brief 从字节流读取整型值
@@ -75,7 +60,7 @@ public:
      * @param bigEndium 字节流是否大端模式
      * @return 整型值
      */
-    static INT32 read32(const UCHAR p[4], bool bigEndium = true);
+    static int32_t read32(const unsigned char p[4], bool bigEndium = true);
 
     /**
      * @brief 写整型值到字节流
@@ -83,7 +68,7 @@ public:
      * @param n 整型值
      * @param bigEndium 是否大端模式写入
      */
-    static void write32(UCHAR p[4], INT32 n, bool bigEndium = true);
+    static void write32(unsigned char p[4], int32_t n, bool bigEndium = true);
 
     /**
      * @brief 写整型值到字节数组
@@ -91,20 +76,20 @@ public:
      * @param n 整型值
      * @param bigEndium 是否大端模式写入
      */
-    static void write32(std::vector<UCHAR>& v, INT32 n, bool bigEndium = true);
+    static void write32(std::vector<unsigned char>& v, int32_t n, bool bigEndium = true);
 
     /**
      * @brief 大小端转换(整型值转为整型值)
      * @return 整型值
      */
-    static INT32 swab32(INT32 n);
+    static int32_t swab32(int32_t n);
 
     /**
      * @brief 大小端转换(字节流转为整型值)
      * @param p 字节流(4个字节)
      * @return 整型值
      */
-    static INT32 swab32(const UCHAR p[4]);
+    static int32_t swab32(const unsigned char p[4]);
 
     /**
      * @brief 从字节流读取长整型值
@@ -112,7 +97,7 @@ public:
      * @param bigEndium 字节流是否大端模式
      * @return 长整型值
      */
-    static INT64 read64(const UCHAR p[8], bool bigEndium = true);
+    static int64_t read64(const unsigned char p[8], bool bigEndium = true);
 
     /**
      * @brief 写长整型值到字节流
@@ -120,7 +105,7 @@ public:
      * @param n 长整型值
      * @param bigEndium 是否大端模式写入
      */
-    static void write64(UCHAR p[8], INT64 n, bool bigEndium = true);
+    static void write64(unsigned char p[8], int64_t n, bool bigEndium = true);
 
     /**
      * @brief 写长整型值到字节数组
@@ -128,20 +113,20 @@ public:
      * @param n 长整型值
      * @param bigEndium 是否大端模式写入
      */
-    static void write64(std::vector<UCHAR>& v, INT64 n, bool bigEndium = true);
+    static void write64(std::vector<unsigned char>& v, int64_t n, bool bigEndium = true);
 
     /**
      * @brief 大小端转换(长整型值转为长整型值)
      * @return 长整型值
      */
-    static INT64 swab64(INT64 n);
+    static int64_t swab64(int64_t n);
 
     /**
      * @brief 大小端转换(字节流转为长整型值)
      * @param p 字节流(8个字节)
      * @return 长整型值
      */
-    static INT64 swab64(const UCHAR p[8]);
+    static int64_t swab64(const unsigned char p[8]);
 
     /**
      * @brief 获取数据类型所占字节数
@@ -149,7 +134,7 @@ public:
      * @return 占用字节数
      */
     template<typename T>
-    static UINT32 bcount(T v)
+    static uint32_t bcount(T v)
     {
         return sizeof(T);
     }
@@ -159,7 +144,7 @@ public:
      * @param value 字符串值
      * @return 占用字节数
      */
-    static UINT32 bcount(const std::string& value);
+    static uint32_t bcount(const std::string& value);
 
     /**
      * @brief 获取字节流所占字节数
@@ -167,14 +152,14 @@ public:
      * @param len 长度
      * @return 占用字节数=头(4个字节)+长度
      */
-    static UINT32 bcount(const UCHAR* value, UINT32 len);
+    static uint32_t bcount(const unsigned char* value, uint32_t len);
 
     /**
      * @brief 获取字节流所占字节数
      * @param value 字节流
      * @return 占用字节数=头(4个字节)+长度
      */
-    static UINT32 bcount(const std::vector<UCHAR>& value);
+    static uint32_t bcount(const std::vector<unsigned char>& value);
 
 public:
     /**
@@ -182,7 +167,7 @@ public:
      * @param totalSize 字节流缓冲区总长度(字节, 选填), <=0时不预先分配内存
      *                  建议: 字节流长度上限(单个网络消息最大长度不超过1M, 超过极易导致物理服务器收发队列阻塞)
      */
-    ByteArray(UINT32 totalSize = 0);
+    ByteArray(uint32_t totalSize = 0);
 
     virtual ~ByteArray();
 
@@ -192,7 +177,7 @@ public:
      *                  建议: 字节流长度上限(单个网络消息最大长度不超过1M, 超过极易导致物理服务器收发队列阻塞)
      * @return true-成功, false-失败
      */
-    BOOL allocate(UINT32 totalSize);
+    bool allocate(uint32_t totalSize);
 
     /**
      * @brief 打印字节流内容(十六进制), 输出到控制台
@@ -208,25 +193,25 @@ public:
      * @brief 获取缓冲区总长度
      * @return 总长度
      */
-    UINT32 getTotalSize() const;
+    uint32_t getTotalSize() const;
 
     /**
      * @brief 获取缓冲区当前长度
      * @return 当前长度
      */
-    UINT32 getCurrentSize() const;
+    uint32_t getCurrentSize() const;
 
     /**
      * @brief 获取缓冲区剩余可写长度
      * @return 剩余可写长度
      */
-    UINT32 getSpaceSize() const;
+    uint32_t getSpaceSize() const;
 
     /**
      * @brief 获取字节流内容
      * @return 字节流内容
      */
-    const UCHAR* getBuffer() const;
+    const unsigned char* getBuffer() const;
 
     /**
      * @brief 设置缓冲区内容
@@ -234,157 +219,157 @@ public:
      * @param len 内容长度
      * @return true-成功, false-失败
      */
-    BOOL setBuffer(const UCHAR* buffer, UINT32 len);
+    bool setBuffer(const unsigned char* buffer, uint32_t len);
 
     /**
      * @brief 从缓冲区读取布尔型
      * @return 布尔值
      */
-    BOOL readBool();
+    bool readBool();
 
     /**
      * @brief 向缓冲区写入布尔型
      * @param value 布尔值
      * @return true-成功, false-失败
      */
-    BOOL writeBool(BOOL value);
+    bool writeBool(bool value);
 
     /**
      * @brief 从缓冲区读取字符型
      * @return 字符值
      */
-    CHAR readChar();
+    char readChar();
 
     /**
      * @brief 向缓冲区写入字符型
      * @param value 字符值
      * @return true-成功, false-失败
      */
-    BOOL writeChar(CHAR value);
+    bool writeChar(char value);
 
     /**
      * @brief 从缓冲区读取无符号字符型
      * @return 无符号字符值
      */
-    UCHAR readUchar();
+    unsigned char readUchar();
 
     /**
      * @brief 向缓冲区写入无符号字符型
      * @param value 无符号字符值
      * @return true-成功, false-失败
      */
-    BOOL writeUchar(UCHAR value);
+    bool writeUchar(unsigned char value);
 
     /**
      * @brief 从缓冲区读取16位整型
      * @return 16位整型值
      */
-    INT16 readInt16();
+    int16_t readInt16();
 
     /**
      * @brief 向缓冲区写入16位整型
      * @param value 16位整型值
      * @return true-成功, false-失败
      */
-    BOOL writeInt16(INT16 value);
+    bool writeInt16(int16_t value);
 
     /**
      * @brief 从缓冲区读取16位无符号整型
      * @return 16位无符号整型值
      */
-    UINT16 readUint16();
+    uint16_t readUint16();
 
     /**
      * @brief 向缓冲区写入16位无符号整型
      * @param value 16位无符号整型值
      * @return true-成功, false-失败
      */
-    BOOL writeUint16(UINT16 value);
+    bool writeUint16(uint16_t value);
 
     /**
      * @brief 从缓冲区读取32位整型
      * @return 32位整型值
      */
-    INT32 readInt32();
+    int32_t readInt32();
 
     /**
      * @brief 向缓冲区写入32位整型
      * @param value 32位整型值
      * @return true-成功, false-失败
      */
-    BOOL writeInt32(INT32 value);
+    bool writeInt32(int32_t value);
 
     /**
      * @brief 从缓冲区读取32位无符号整型
      * @return 32位无符号整型值
      */
-    UINT32 readUint32();
+    uint32_t readUint32();
 
     /**
      * @brief 向缓冲区写入32位无符号整型
      * @param value 32位无符号整型值
      * @return true-成功, false-失败
      */
-    BOOL writeUint32(UINT32 value);
+    bool writeUint32(uint32_t value);
 
     /**
      * @brief 从缓冲区读取64位整型
      * @return 64位整型值
      */
-    INT64 readInt64();
+    int64_t readInt64();
 
     /**
      * @brief 向缓冲区写入64位整型
      * @param value 64位整型值
      * @return true-成功, false-失败
      */
-    BOOL writeInt64(INT64 value);
+    bool writeInt64(int64_t value);
 
     /**
      * @brief 从缓冲区读取64位无符号整型
      * @return 64位无符号整型值
      */
-    UINT64 readUint64();
+    uint64_t readUint64();
 
     /**
      * @brief 向缓冲区写入64位无符号整型
      * @param value 64位无符号整型值
      * @return true-成功, false-失败
      */
-    BOOL writeUint64(UINT64 value);
+    bool writeUint64(uint64_t value);
 
     /**
      * @brief 从缓冲区读取单精度浮点型
      * @return 单精度浮点型值
      */
-    FLOAT readFloat();
+    float_t readFloat();
 
     /**
      * @brief 向缓冲区写入单精度浮点型
      * @param value 单精度浮点型值
      * @return true-成功, false-失败
      */
-    BOOL writeFloat(FLOAT value);
+    bool writeFloat(float_t value);
 
     /**
      * @brief 从缓冲区读取双精度浮点型
      * @return 双精度浮点型值
      */
-    DOUBLE readDouble();
+    double_t readDouble();
 
     /**
      * @brief 向缓冲区写入双精度浮点型
      * @param value 双精度浮点型值
      * @return true-成功, false-失败
      */
-    BOOL writeDouble(DOUBLE value);
+    bool writeDouble(double_t value);
 
     /**
      * @brief 从缓冲区读取字节流
      * @param len [输出]字节流长度
      * @return 字节流(需要外部调用free释放内存)
      */
-    UCHAR* readBytes(UINT32& len);
+    unsigned char* readBytes(uint32_t& len);
 
     /**
      * @brief 向缓冲区写入字节流
@@ -392,27 +377,27 @@ public:
      * @param len 字节流长度
      * @return true-成功, false-失败
      */
-    BOOL writeBytes(const UCHAR* value, UINT32 len);
+    bool writeBytes(const unsigned char* value, uint32_t len);
 
     /**
      * @brief 从缓冲区读取字节流
      * @param bytes [输出]字节流
      */
-    void readBytes(std::vector<UCHAR>& bytes);
+    void readBytes(std::vector<unsigned char>& bytes);
 
     /**
      * @brief 向缓冲区写入字节流
      * @param value 字节流
      * @return true-成功, false-失败
      */
-    BOOL writeBytes(const std::vector<UCHAR>& value);
+    bool writeBytes(const std::vector<unsigned char>& value);
 
     /**
      * @brief 从缓冲区读取字符串
      * @param len [输出]字符串长度
      * @return 字符串(需要外部调用free释放内存)
      */
-    CHAR* readString(UINT32& len);
+    char* readString(uint32_t& len);
 
     /**
      * @brief 向缓冲区写入字符串
@@ -420,7 +405,7 @@ public:
      * @param len 字符串长度
      * @return true-成功, false-失败
      */
-    BOOL writeString(const CHAR* value, UINT32 len);
+    bool writeString(const char* value, uint32_t len);
 
     /**
      * @brief 从缓冲区读取字符串
@@ -433,19 +418,19 @@ public:
      * @param value 字符串
      * @return true-成功, false-失败
      */
-    BOOL writeString(const std::string& value);
+    bool writeString(const std::string& value);
 
 private:
-    BOOL copy(const UCHAR* buf, UINT32 n);
+    bool copy(const unsigned char* buf, uint32_t n);
 
-    UCHAR* read(UINT32 n);
+    unsigned char* read(uint32_t n);
 
-    UCHAR* write(UINT32 n);
+    unsigned char* write(uint32_t n);
 
 private:
-    UCHAR* m_buffer; /* 字节流缓冲区 */
-    UINT32 m_totalSize; /* 缓冲区总长度 */
-    UINT32 m_readIndex; /* 读取位置 */
-    UINT32 m_writeIndex; /* 写入位置 */
+    unsigned char* m_buffer; /* 字节流缓冲区 */
+    uint32_t m_totalSize; /* 缓冲区总长度 */
+    uint32_t m_readIndex; /* 读取位置 */
+    uint32_t m_writeIndex; /* 写入位置 */
 };
 } // namespace utility

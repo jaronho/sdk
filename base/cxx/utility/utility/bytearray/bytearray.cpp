@@ -5,41 +5,41 @@
 
 namespace utility
 {
-BOOL ByteArray::isBigEndium()
+bool ByteArray::isBigEndium()
 {
     /**
      *  int(整型, 4个字节), 值为1时的大端存储方式: 00 00 00 01, 强制转为char时, 如果主机是大端, 则值为: 00
      *  int(整型, 4个字节), 值为1时的小端存储方式: 01 00 00 00, 强制转为char时, 如果主机是小端, 则值为: 01
      */
-    INT32 a = 1;
-    if (0 == *(CHAR*)&a) /* 大端 */
+    int32_t a = 1;
+    if (0 == *(char*)&a) /* 大端 */
     {
         return true;
     }
     return false; /* 小端 */
 }
 
-INT16 ByteArray::read16(const UCHAR p[2], bool bigEndium)
+int16_t ByteArray::read16(const unsigned char p[2], bool bigEndium)
 {
     if (!p)
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    INT16 n = 0;
+    int16_t n = 0;
     if (bigEndium)
     {
-        n += (INT16)p[0] << 8;
-        n += (INT16)p[1];
+        n += (int16_t)p[0] << 8;
+        n += (int16_t)p[1];
     }
     else
     {
-        n += (INT16)p[0];
-        n += (INT16)p[1] << 8;
+        n += (int16_t)p[0];
+        n += (int16_t)p[1] << 8;
     }
     return n;
 }
 
-void ByteArray::write16(UCHAR p[2], INT16 n, bool bigEndium)
+void ByteArray::write16(unsigned char p[2], int16_t n, bool bigEndium)
 {
     if (!p)
     {
@@ -57,7 +57,7 @@ void ByteArray::write16(UCHAR p[2], INT16 n, bool bigEndium)
     }
 }
 
-void ByteArray::write16(std::vector<UCHAR>& v, INT16 n, bool bigEndium)
+void ByteArray::write16(std::vector<unsigned char>& v, int16_t n, bool bigEndium)
 {
     if (bigEndium)
     {
@@ -71,45 +71,45 @@ void ByteArray::write16(std::vector<UCHAR>& v, INT16 n, bool bigEndium)
     }
 }
 
-INT16 ByteArray::swab16(INT16 n)
+int16_t ByteArray::swab16(int16_t n)
 {
     return (((n & 0x00FF) << 8) | ((n & 0xFF00) >> 8));
 }
 
-INT16 ByteArray::swab16(const UCHAR p[2])
+int16_t ByteArray::swab16(const unsigned char p[2])
 {
     if (!p)
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    return (((INT16)p[0] << 8) | (INT16)p[1]);
+    return (((int16_t)p[0] << 8) | (int16_t)p[1]);
 }
 
-INT32 ByteArray::read32(const UCHAR p[4], bool bigEndium)
+int32_t ByteArray::read32(const unsigned char p[4], bool bigEndium)
 {
     if (!p)
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    INT32 n = 0;
+    int32_t n = 0;
     if (bigEndium)
     {
-        n += (INT32)p[0] << 24;
-        n += (INT32)p[1] << 16;
-        n += (INT32)p[2] << 8;
-        n += (INT32)p[3];
+        n += (int32_t)p[0] << 24;
+        n += (int32_t)p[1] << 16;
+        n += (int32_t)p[2] << 8;
+        n += (int32_t)p[3];
     }
     else
     {
-        n += (INT32)p[0];
-        n += (INT32)p[1] << 8;
-        n += (INT32)p[2] << 16;
-        n += (INT32)p[3] << 24;
+        n += (int32_t)p[0];
+        n += (int32_t)p[1] << 8;
+        n += (int32_t)p[2] << 16;
+        n += (int32_t)p[3] << 24;
     }
     return n;
 }
 
-void ByteArray::write32(UCHAR p[4], INT32 n, bool bigEndium)
+void ByteArray::write32(unsigned char p[4], int32_t n, bool bigEndium)
 {
     if (!p)
     {
@@ -131,7 +131,7 @@ void ByteArray::write32(UCHAR p[4], INT32 n, bool bigEndium)
     }
 }
 
-void ByteArray::write32(std::vector<UCHAR>& v, INT32 n, bool bigEndium)
+void ByteArray::write32(std::vector<unsigned char>& v, int32_t n, bool bigEndium)
 {
     if (bigEndium)
     {
@@ -149,53 +149,53 @@ void ByteArray::write32(std::vector<UCHAR>& v, INT32 n, bool bigEndium)
     }
 }
 
-INT32 ByteArray::swab32(INT32 n)
+int32_t ByteArray::swab32(int32_t n)
 {
     return (((n & 0x000000FF) << 24) | ((n & 0x0000FF00) << 8) | ((n & 0x00FF0000) >> 8) | ((n & 0xFF000000) >> 24));
 }
 
-INT32 ByteArray::swab32(const UCHAR p[4])
+int32_t ByteArray::swab32(const unsigned char p[4])
 {
     if (!p)
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    return (((INT32)p[0] << 24) | ((INT32)p[1] << 16) | ((INT32)p[2] << 8) | (INT32)p[3]);
+    return (((int32_t)p[0] << 24) | ((int32_t)p[1] << 16) | ((int32_t)p[2] << 8) | (int32_t)p[3]);
 }
 
-INT64 ByteArray::read64(const UCHAR p[8], bool bigEndium)
+int64_t ByteArray::read64(const unsigned char p[8], bool bigEndium)
 {
     if (!p)
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    INT64 n = 0;
+    int64_t n = 0;
     if (bigEndium)
     {
-        n += (INT64)p[0] << 56;
-        n += (INT64)p[1] << 48;
-        n += (INT64)p[2] << 40;
-        n += (INT64)p[3] << 32;
-        n += (INT64)p[4] << 24;
-        n += (INT64)p[5] << 16;
-        n += (INT64)p[6] << 8;
-        n += (INT64)p[7];
+        n += (int64_t)p[0] << 56;
+        n += (int64_t)p[1] << 48;
+        n += (int64_t)p[2] << 40;
+        n += (int64_t)p[3] << 32;
+        n += (int64_t)p[4] << 24;
+        n += (int64_t)p[5] << 16;
+        n += (int64_t)p[6] << 8;
+        n += (int64_t)p[7];
     }
     else
     {
-        n += (INT64)p[0];
-        n += (INT64)p[1] << 8;
-        n += (INT64)p[2] << 16;
-        n += (INT64)p[3] << 24;
-        n += (INT64)p[4] << 32;
-        n += (INT64)p[5] << 40;
-        n += (INT64)p[6] << 48;
-        n += (INT64)p[7] << 56;
+        n += (int64_t)p[0];
+        n += (int64_t)p[1] << 8;
+        n += (int64_t)p[2] << 16;
+        n += (int64_t)p[3] << 24;
+        n += (int64_t)p[4] << 32;
+        n += (int64_t)p[5] << 40;
+        n += (int64_t)p[6] << 48;
+        n += (int64_t)p[7] << 56;
     }
     return n;
 }
 
-void ByteArray::write64(UCHAR p[8], INT64 n, bool bigEndium)
+void ByteArray::write64(unsigned char p[8], int64_t n, bool bigEndium)
 {
     if (!p)
     {
@@ -225,7 +225,7 @@ void ByteArray::write64(UCHAR p[8], INT64 n, bool bigEndium)
     }
 }
 
-void ByteArray::write64(std::vector<UCHAR>& v, INT64 n, bool bigEndium)
+void ByteArray::write64(std::vector<unsigned char>& v, int64_t n, bool bigEndium)
 {
     if (bigEndium)
     {
@@ -251,46 +251,46 @@ void ByteArray::write64(std::vector<UCHAR>& v, INT64 n, bool bigEndium)
     }
 }
 
-INT64 ByteArray::swab64(INT64 n)
+int64_t ByteArray::swab64(int64_t n)
 {
-    INT32 low = n & 0xFFFFFFFF;
-    INT32 high = (n >> 32) & 0xFFFFFFFF;
+    int32_t low = n & 0xFFFFFFFF;
+    int32_t high = (n >> 32) & 0xFFFFFFFF;
     low = ((low & 0x000000FF) << 24) | ((low & 0x0000FF00) << 8) | ((low & 0x00FF0000) >> 8) | ((low & 0xFF000000) >> 24);
     high = ((high & 0x000000FF) << 24) | ((high & 0x0000FF00) << 8) | ((high & 0x00FF0000) >> 8) | ((high & 0xFF000000) >> 24);
-    return ((INT64)low << 32) | high;
+    return ((int64_t)low << 32) | high;
 }
 
-INT64 ByteArray::swab64(const UCHAR p[8])
+int64_t ByteArray::swab64(const unsigned char p[8])
 {
     if (!p)
     {
         throw std::exception(std::logic_error("arg 'p' is null"));
     }
-    INT32 low = (INT32)p[0] | ((INT32)p[1] << 8) | ((INT32)p[2] << 16) | ((INT32)p[3] << 24);
-    INT32 high = (INT32)p[4] | ((INT32)p[5] << 8) | ((INT32)p[6] << 16) | ((INT32)p[7] << 24);
-    return ((INT64)high << 32) | low;
+    int32_t low = (int32_t)p[0] | ((int32_t)p[1] << 8) | ((int32_t)p[2] << 16) | ((int32_t)p[3] << 24);
+    int32_t high = (int32_t)p[4] | ((int32_t)p[5] << 8) | ((int32_t)p[6] << 16) | ((int32_t)p[7] << 24);
+    return ((int64_t)high << 32) | low;
 }
 
-UINT32 ByteArray::bcount(const std::string& value)
+uint32_t ByteArray::bcount(const std::string& value)
 {
-    return sizeof(UINT32) + value.size();
+    return sizeof(uint32_t) + value.size();
 }
 
-UINT32 ByteArray::bcount(const UCHAR* value, UINT32 len)
+uint32_t ByteArray::bcount(const unsigned char* value, uint32_t len)
 {
     if (len >= 0)
     {
-        return sizeof(UINT32) + len;
+        return sizeof(uint32_t) + len;
     }
-    return sizeof(UINT32);
+    return sizeof(uint32_t);
 }
 
-UINT32 ByteArray::bcount(const std::vector<UCHAR>& value)
+uint32_t ByteArray::bcount(const std::vector<unsigned char>& value)
 {
-    return sizeof(UINT32) + value.size();
+    return sizeof(uint32_t) + value.size();
 }
 
-ByteArray::ByteArray(UINT32 totalSize)
+ByteArray::ByteArray(uint32_t totalSize)
 {
     if (!allocate(totalSize))
     {
@@ -310,7 +310,7 @@ ByteArray::~ByteArray()
     }
 }
 
-BOOL ByteArray::allocate(UINT32 totalSize)
+bool ByteArray::allocate(uint32_t totalSize)
 {
     if (totalSize <= 0)
     {
@@ -325,12 +325,12 @@ BOOL ByteArray::allocate(UINT32 totalSize)
             {
                 throw std::exception(std::logic_error("var 'p' is null"));
             }
-            m_buffer = (UCHAR*)p;
+            m_buffer = (unsigned char*)p;
         }
     }
     else
     {
-        m_buffer = (UCHAR*)malloc(totalSize);
+        m_buffer = (unsigned char*)malloc(totalSize);
     }
     if (!m_buffer)
     {
@@ -344,7 +344,7 @@ BOOL ByteArray::allocate(UINT32 totalSize)
 void ByteArray::print() const
 {
     printf("==================== byte array: max=%d, length=%d, space=%d\n", m_totalSize, getCurrentSize(), getSpaceSize());
-    for (UINT32 i = 0, len = getCurrentSize(); i < len; ++i)
+    for (uint32_t i = 0, len = getCurrentSize(); i < len; ++i)
     {
         if (i > 0)
         {
@@ -366,27 +366,27 @@ void ByteArray::reset()
     m_writeIndex = 0;
 }
 
-UINT32 ByteArray::getTotalSize() const
+uint32_t ByteArray::getTotalSize() const
 {
     return m_totalSize;
 }
 
-UINT32 ByteArray::getCurrentSize() const
+uint32_t ByteArray::getCurrentSize() const
 {
     return abs(int(m_writeIndex - m_readIndex));
 }
 
-UINT32 ByteArray::getSpaceSize() const
+uint32_t ByteArray::getSpaceSize() const
 {
     return m_totalSize - m_writeIndex;
 }
 
-const UCHAR* ByteArray::getBuffer() const
+const unsigned char* ByteArray::getBuffer() const
 {
     return m_buffer;
 }
 
-BOOL ByteArray::setBuffer(const UCHAR* buffer, UINT32 len)
+bool ByteArray::setBuffer(const unsigned char* buffer, uint32_t len)
 {
     if (!buffer || len <= 0)
     {
@@ -401,272 +401,272 @@ BOOL ByteArray::setBuffer(const UCHAR* buffer, UINT32 len)
     return false;
 }
 
-BOOL ByteArray::readBool()
+bool ByteArray::readBool()
 {
-    UCHAR* p = read(sizeof(BOOL));
+    unsigned char* p = read(sizeof(bool));
     if (!p)
     {
         return false;
     }
-    BOOL r = *((BOOL*)p);
+    bool r = *((bool*)p);
     return r;
 }
 
-BOOL ByteArray::writeBool(BOOL value)
+bool ByteArray::writeBool(bool value)
 {
-    UCHAR* p = write(sizeof(BOOL));
+    unsigned char* p = write(sizeof(bool));
     if (!p)
     {
         return false;
     }
-    BOOL* w = (BOOL*)p;
+    bool* w = (bool*)p;
     *w = value;
     return true;
 }
 
-CHAR ByteArray::readChar()
+char ByteArray::readChar()
 {
-    UCHAR* p = read(sizeof(CHAR));
+    unsigned char* p = read(sizeof(char));
     if (!p)
     {
         return false;
     }
-    CHAR r = *((CHAR*)p);
+    char r = *((char*)p);
     return r;
 }
 
-BOOL ByteArray::writeChar(CHAR value)
+bool ByteArray::writeChar(char value)
 {
-    UCHAR* p = write(sizeof(CHAR));
+    unsigned char* p = write(sizeof(char));
     if (!p)
     {
         return false;
     }
-    CHAR* w = (CHAR*)p;
+    char* w = (char*)p;
     *w = value;
     return true;
 }
 
-UCHAR ByteArray::readUchar()
+unsigned char ByteArray::readUchar()
 {
-    UCHAR* p = read(sizeof(UCHAR));
+    unsigned char* p = read(sizeof(unsigned char));
     if (!p)
     {
         return false;
     }
-    UCHAR r = *((UCHAR*)p);
+    unsigned char r = *((unsigned char*)p);
     return r;
 }
 
-BOOL ByteArray::writeUchar(UCHAR value)
+bool ByteArray::writeUchar(unsigned char value)
 {
-    UCHAR* p = write(sizeof(UCHAR));
+    unsigned char* p = write(sizeof(unsigned char));
     if (!p)
     {
         return false;
     }
-    UCHAR* w = (UCHAR*)p;
+    unsigned char* w = (unsigned char*)p;
     *w = value;
     return true;
 }
 
-INT16 ByteArray::readInt16()
+int16_t ByteArray::readInt16()
 {
-    UCHAR* p = read(sizeof(INT16));
+    unsigned char* p = read(sizeof(int16_t));
     if (!p)
     {
         return 0;
     }
-    INT16 r = *((INT16*)p);
+    int16_t r = *((int16_t*)p);
     return r;
 }
 
-BOOL ByteArray::writeInt16(INT16 value)
+bool ByteArray::writeInt16(int16_t value)
 {
-    UCHAR* p = write(sizeof(INT16));
+    unsigned char* p = write(sizeof(int16_t));
     if (!p)
     {
         return false;
     }
-    INT16* w = (INT16*)p;
+    int16_t* w = (int16_t*)p;
     *w = value;
     return true;
 }
 
-UINT16 ByteArray::readUint16()
+uint16_t ByteArray::readUint16()
 {
-    UCHAR* p = read(sizeof(UINT16));
+    unsigned char* p = read(sizeof(uint16_t));
     if (!p)
     {
         return 0;
     }
-    UINT16 r = *((UINT16*)p);
+    uint16_t r = *((uint16_t*)p);
     return r;
 }
 
-BOOL ByteArray::writeUint16(UINT16 value)
+bool ByteArray::writeUint16(uint16_t value)
 {
-    UCHAR* p = write(sizeof(UINT16));
+    unsigned char* p = write(sizeof(uint16_t));
     if (!p)
     {
         return false;
     }
-    UINT16* w = (UINT16*)p;
+    uint16_t* w = (uint16_t*)p;
     *w = value;
     return true;
 }
 
-INT32 ByteArray::readInt32()
+int32_t ByteArray::readInt32()
 {
-    UCHAR* p = read(sizeof(INT32));
+    unsigned char* p = read(sizeof(int32_t));
     if (!p)
     {
         return 0;
     }
-    INT32 r = *((INT32*)p);
+    int32_t r = *((int32_t*)p);
     return r;
 }
 
-BOOL ByteArray::writeInt32(INT32 value)
+bool ByteArray::writeInt32(int32_t value)
 {
-    UCHAR* p = write(sizeof(INT32));
+    unsigned char* p = write(sizeof(int32_t));
     if (!p)
     {
         return false;
     }
-    INT32* w = (INT32*)p;
+    int32_t* w = (int32_t*)p;
     *w = value;
     return true;
 }
 
-UINT32 ByteArray::readUint32()
+uint32_t ByteArray::readUint32()
 {
-    UCHAR* p = read(sizeof(UINT32));
+    unsigned char* p = read(sizeof(uint32_t));
     if (!p)
     {
         return 0;
     }
-    UINT32 r = *((UINT32*)p);
+    uint32_t r = *((uint32_t*)p);
     return r;
 }
 
-BOOL ByteArray::writeUint32(UINT32 value)
+bool ByteArray::writeUint32(uint32_t value)
 {
-    UCHAR* p = write(sizeof(UINT32));
+    unsigned char* p = write(sizeof(uint32_t));
     if (!p)
     {
         return false;
     }
-    UINT32* w = (UINT32*)p;
+    uint32_t* w = (uint32_t*)p;
     *w = value;
     return true;
 }
 
-INT64 ByteArray::readInt64()
+int64_t ByteArray::readInt64()
 {
-    UCHAR* p = read(sizeof(INT64));
+    unsigned char* p = read(sizeof(int64_t));
     if (!p)
     {
         return 0;
     }
-    INT64 r = *((INT64*)p);
+    int64_t r = *((int64_t*)p);
     return r;
 }
 
-BOOL ByteArray::writeInt64(INT64 value)
+bool ByteArray::writeInt64(int64_t value)
 {
-    UCHAR* p = write(sizeof(INT64));
+    unsigned char* p = write(sizeof(int64_t));
     if (!p)
     {
         return false;
     }
-    INT64* w = (INT64*)p;
+    int64_t* w = (int64_t*)p;
     *w = value;
     return true;
 }
 
-UINT64 ByteArray::readUint64()
+uint64_t ByteArray::readUint64()
 {
-    UCHAR* p = read(sizeof(UINT64));
+    unsigned char* p = read(sizeof(uint64_t));
     if (!p)
     {
         return 0;
     }
-    UINT64 r = *((UINT64*)p);
+    uint64_t r = *((uint64_t*)p);
     return r;
 }
 
-BOOL ByteArray::writeUint64(UINT64 value)
+bool ByteArray::writeUint64(uint64_t value)
 {
-    UCHAR* p = write(sizeof(UINT64));
+    unsigned char* p = write(sizeof(uint64_t));
     if (!p)
     {
         return false;
     }
-    UINT64* w = (UINT64*)p;
+    uint64_t* w = (uint64_t*)p;
     *w = value;
     return true;
 }
 
-FLOAT ByteArray::readFloat()
+float_t ByteArray::readFloat()
 {
-    UCHAR* p = read(sizeof(FLOAT));
+    unsigned char* p = read(sizeof(float_t));
     if (!p)
     {
         return 0.f;
     }
-    FLOAT r = *((FLOAT*)p);
+    float_t r = *((float_t*)p);
     return r;
 }
 
-BOOL ByteArray::writeFloat(FLOAT value)
+bool ByteArray::writeFloat(float_t value)
 {
-    UCHAR* p = write(sizeof(FLOAT));
+    unsigned char* p = write(sizeof(float_t));
     if (!p)
     {
         return false;
     }
-    FLOAT* w = (FLOAT*)p;
+    float_t* w = (float_t*)p;
     *w = value;
     return true;
 }
 
-DOUBLE ByteArray::readDouble()
+double_t ByteArray::readDouble()
 {
-    UCHAR* p = read(sizeof(DOUBLE));
+    unsigned char* p = read(sizeof(double_t));
     if (!p)
     {
         return 0.0;
     }
-    DOUBLE r = *((DOUBLE*)p);
+    double_t r = *((double_t*)p);
     return r;
 }
 
-BOOL ByteArray::writeDouble(DOUBLE value)
+bool ByteArray::writeDouble(double_t value)
 {
-    UCHAR* p = write(sizeof(DOUBLE));
+    unsigned char* p = write(sizeof(double_t));
     if (!p)
     {
         return false;
     }
-    DOUBLE* w = (DOUBLE*)p;
+    double_t* w = (double_t*)p;
     *w = value;
     return true;
 }
 
-UCHAR* ByteArray::readBytes(UINT32& len)
+unsigned char* ByteArray::readBytes(uint32_t& len)
 {
     len = readUint32();
     if (0 == len)
     {
         return nullptr;
     }
-    UCHAR* p = read(len);
+    unsigned char* p = read(len);
     if (!p)
     {
         return nullptr;
     }
-    UCHAR* r = (UCHAR*)malloc(len);
+    unsigned char* r = (unsigned char*)malloc(len);
     if (!r)
     {
         throw std::exception(std::logic_error("var 'r' is null"));
@@ -675,7 +675,7 @@ UCHAR* ByteArray::readBytes(UINT32& len)
     return r;
 }
 
-BOOL ByteArray::writeBytes(const UCHAR* value, UINT32 len)
+bool ByteArray::writeBytes(const unsigned char* value, uint32_t len)
 {
     if (!writeUint32(len))
     {
@@ -688,15 +688,15 @@ BOOL ByteArray::writeBytes(const UCHAR* value, UINT32 len)
     return copy(value, len);
 }
 
-void ByteArray::readBytes(std::vector<UCHAR>& bytes)
+void ByteArray::readBytes(std::vector<unsigned char>& bytes)
 {
     bytes.clear();
-    UINT32 len = readUint32();
+    uint32_t len = readUint32();
     if (0 == len)
     {
         return;
     }
-    UCHAR* p = read(len);
+    unsigned char* p = read(len);
     if (!p)
     {
         return;
@@ -704,34 +704,34 @@ void ByteArray::readBytes(std::vector<UCHAR>& bytes)
     bytes.insert(bytes.end(), p, p + len);
 }
 
-BOOL ByteArray::writeBytes(const std::vector<UCHAR>& value)
+bool ByteArray::writeBytes(const std::vector<unsigned char>& value)
 {
     return writeBytes(value.data(), value.size());
 }
 
-CHAR* ByteArray::readString(UINT32& len)
+char* ByteArray::readString(uint32_t& len)
 {
     len = readUint32();
     if (0 == len)
     {
         return nullptr;
     }
-    UCHAR* p = read(len);
+    unsigned char* p = read(len);
     if (!p)
     {
         return nullptr;
     }
-    CHAR* r = (CHAR*)malloc(len + (size_t)1);
+    char* r = (char*)malloc(len + (size_t)1);
     if (!r)
     {
         throw std::exception(std::logic_error("var 'r' is null"));
     }
-    strcpy(r, (CHAR*)p);
+    strcpy(r, (char*)p);
     *(r + len) = '\0';
     return r;
 }
 
-BOOL ByteArray::writeString(const CHAR* value, UINT32 len)
+bool ByteArray::writeString(const char* value, uint32_t len)
 {
     if (!writeUint32(len))
     {
@@ -741,41 +741,41 @@ BOOL ByteArray::writeString(const CHAR* value, UINT32 len)
     {
         return false;
     }
-    return copy((const UCHAR*)value, len);
+    return copy((const unsigned char*)value, len);
 }
 
 void ByteArray::readString(std::string& str)
 {
     str.clear();
-    UINT32 len = readUint32();
+    uint32_t len = readUint32();
     if (0 == len)
     {
         return;
     }
-    UCHAR* p = read(len);
+    unsigned char* p = read(len);
     if (!p)
     {
         return;
     }
-    str.insert(str.end(), (CHAR*)p, (CHAR*)p + len);
+    str.insert(str.end(), (char*)p, (char*)p + len);
 }
 
-BOOL ByteArray::writeString(const std::string& value)
+bool ByteArray::writeString(const std::string& value)
 {
-    if (!writeUint32((UINT32)(value.length())))
+    if (!writeUint32((uint32_t)(value.length())))
     {
         return false;
     }
-    return copy((const UCHAR*)value.data(), value.length());
+    return copy((const unsigned char*)value.data(), value.length());
 }
 
-BOOL ByteArray::copy(const UCHAR* buf, UINT32 n)
+bool ByteArray::copy(const unsigned char* buf, uint32_t n)
 {
     if (getSpaceSize() < n)
     {
         return false;
     }
-    UCHAR* p = write(n);
+    unsigned char* p = write(n);
     if (!p)
     {
         return false;
@@ -784,24 +784,24 @@ BOOL ByteArray::copy(const UCHAR* buf, UINT32 n)
     return true;
 }
 
-UCHAR* ByteArray::read(UINT32 n)
+unsigned char* ByteArray::read(uint32_t n)
 {
     if (m_readIndex + n > m_totalSize)
     {
         return nullptr;
     }
-    UCHAR* p = m_buffer + m_readIndex;
+    unsigned char* p = m_buffer + m_readIndex;
     m_readIndex += n;
     return p;
 }
 
-UCHAR* ByteArray::write(UINT32 n)
+unsigned char* ByteArray::write(uint32_t n)
 {
     if (m_writeIndex + n > m_totalSize)
     {
         return nullptr;
     }
-    UCHAR* p = m_buffer + m_writeIndex;
+    unsigned char* p = m_buffer + m_writeIndex;
     m_writeIndex += n;
     return p;
 }
