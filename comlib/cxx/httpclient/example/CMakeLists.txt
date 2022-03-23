@@ -13,7 +13,11 @@ find_package(Threads REQUIRED)
 ################################### 添加curlex库 ###################################
 find_package(CURL 7.76.1 REQUIRED)
 
+# 注意: curl库区分ssl和非ssl, 根据业务需要自行手动替换
 if(CURL_FOUND)
+    if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+        add_definitions("-DCURL_STATICLIB") # 如果链接静态库则必须添加这个宏
+    endif()
     message(STATUS "CURL include path: ${CURL_INCLUDE_DIRS}")
     include_directories(${CURL_INCLUDE_DIRS})
 else()
