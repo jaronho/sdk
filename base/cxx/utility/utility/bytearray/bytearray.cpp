@@ -71,12 +71,12 @@ void ByteArray::write16(std::vector<unsigned char>& v, int16_t n, bool bigEndium
     }
 }
 
-int16_t ByteArray::swab16(int16_t n)
+int16_t ByteArray::swap16(int16_t n)
 {
     return (((n & 0x00FF) << 8) | ((n & 0xFF00) >> 8));
 }
 
-int16_t ByteArray::swab16(const unsigned char p[2])
+int16_t ByteArray::swap16(const unsigned char p[2])
 {
     if (!p)
     {
@@ -149,12 +149,12 @@ void ByteArray::write32(std::vector<unsigned char>& v, int32_t n, bool bigEndium
     }
 }
 
-int32_t ByteArray::swab32(int32_t n)
+int32_t ByteArray::swap32(int32_t n)
 {
     return (((n & 0x000000FF) << 24) | ((n & 0x0000FF00) << 8) | ((n & 0x00FF0000) >> 8) | ((n & 0xFF000000) >> 24));
 }
 
-int32_t ByteArray::swab32(const unsigned char p[4])
+int32_t ByteArray::swap32(const unsigned char p[4])
 {
     if (!p)
     {
@@ -251,7 +251,7 @@ void ByteArray::write64(std::vector<unsigned char>& v, int64_t n, bool bigEndium
     }
 }
 
-int64_t ByteArray::swab64(int64_t n)
+int64_t ByteArray::swap64(int64_t n)
 {
     int32_t low = n & 0xFFFFFFFF;
     int32_t high = (n >> 32) & 0xFFFFFFFF;
@@ -260,7 +260,7 @@ int64_t ByteArray::swab64(int64_t n)
     return ((int64_t)low << 32) | high;
 }
 
-int64_t ByteArray::swab64(const unsigned char p[8])
+int64_t ByteArray::swap64(const unsigned char p[8])
 {
     if (!p)
     {

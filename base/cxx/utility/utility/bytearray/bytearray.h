@@ -46,14 +46,14 @@ public:
      * @param n 短整型值
      * @return 短整型值
      */
-    static int16_t swab16(int16_t n);
+    static int16_t swap16(int16_t n);
 
     /**
      * @brief 大小端转换(字节流转为短整型值)
      * @param p 字节流(2个字节)
      * @return 短整型值
      */
-    static int16_t swab16(const unsigned char p[2]);
+    static int16_t swap16(const unsigned char p[2]);
 
     /**
      * @brief 从字节流读取整型值
@@ -83,14 +83,14 @@ public:
      * @brief 大小端转换(整型值转为整型值)
      * @return 整型值
      */
-    static int32_t swab32(int32_t n);
+    static int32_t swap32(int32_t n);
 
     /**
      * @brief 大小端转换(字节流转为整型值)
      * @param p 字节流(4个字节)
      * @return 整型值
      */
-    static int32_t swab32(const unsigned char p[4]);
+    static int32_t swap32(const unsigned char p[4]);
 
     /**
      * @brief 从字节流读取长整型值
@@ -120,14 +120,14 @@ public:
      * @brief 大小端转换(长整型值转为长整型值)
      * @return 长整型值
      */
-    static int64_t swab64(int64_t n);
+    static int64_t swap64(int64_t n);
 
     /**
      * @brief 大小端转换(字节流转为长整型值)
      * @param p 字节流(8个字节)
      * @return 长整型值
      */
-    static int64_t swab64(const unsigned char p[8]);
+    static int64_t swap64(const unsigned char p[8]);
 
     /**
      * @brief 获取数据类型所占字节数
