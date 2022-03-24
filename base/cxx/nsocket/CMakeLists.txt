@@ -15,6 +15,9 @@ else()
 endif()
 
 [命令行]
+find_package(Threads REQUIRED)
+
+[命令行]
 find_package(OpenSSL 1.1.1 REQUIRED) # 如果启用套接字加密则需要添加
 if (OpenSSL_FOUND)
     message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
@@ -38,6 +41,9 @@ else()
     message(WARNING "Boost not found")
     return()
 endif()
+
+[链接库]
+Threads::Threads
 
 [链接库]
 ${OPENSSL_LIBRARIES}
@@ -65,46 +71,30 @@ ${base_nsocket_websocket_files}
 set(base_nsocket_core_src_list)
 get_cxx_files(nsocket/core src_list)
 list(APPEND base_nsocket_core_src_list ${src_list})
-source_group(3rdparty/base/nsocket/core FILES ${base_nsocket_core_src_list})
 
 set(base_nsocket_http_src_list)
 get_cxx_files(nsocket/http src_list)
 list(APPEND base_nsocket_http_src_list ${src_list})
-source_group(3rdparty/base/nsocket/http FILES ${base_nsocket_http_src_list})
 
 set(base_nsocket_tcp_src_list)
 get_cxx_files(nsocket/tcp src_list)
 list(APPEND base_nsocket_tcp_src_list ${src_list})
-source_group(3rdparty/base/nsocket/tcp FILES ${base_nsocket_tcp_src_list})
 
 set(base_nsocket_websocket_base64_src_list)
 get_cxx_files(nsocket/websocket/base64 src_list)
 list(APPEND base_nsocket_websocket_base64_src_list ${src_list})
-source_group(3rdparty/base/nsocket/websocket/base64 FILES ${base_nsocket_websocket_base64_src_list})
 
 set(base_nsocket_websocket_sha1_src_list)
 get_cxx_files(nsocket/websocket/sha1 src_list)
 list(APPEND base_nsocket_websocket_sha1_src_list ${src_list})
-source_group(3rdparty/base/nsocket/websocket/sha1 FILES ${base_nsocket_websocket_sha1_src_list})
 
 set(base_nsocket_websocket_src_list)
 get_cxx_files(nsocket/websocket src_list)
 list(APPEND base_nsocket_websocket_src_list ${src_list})
-source_group(3rdparty/base/nsocket/websocket FILES ${base_nsocket_websocket_src_list})
 
 set(base_nsocket_src_list)
 get_cxx_files(nsocket src_list)
 list(APPEND base_nsocket_src_list ${src_list})
-source_group(3rdparty/base/nsocket FILES ${base_nsocket_src_list})
-
-set(base_nsocket_files) # 工程中需要把nsocket的文件添加进去
-list(APPEND base_nsocket_files ${base_nsocket_core_src_list}
-                               ${base_nsocket_http_src_list}
-                               ${base_nsocket_tcp_src_list}
-                               ${base_nsocket_websocket_base64_src_list}
-                               ${base_nsocket_websocket_sha1_src_list}
-                               ${base_nsocket_websocket_src_list}
-                               ${base_nsocket_src_list})
 
 # 组装文件列表
 set(base_nsocket_files

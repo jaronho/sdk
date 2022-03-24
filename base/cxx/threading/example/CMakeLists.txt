@@ -6,14 +6,13 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-################################### 添加线程库 ###################################
+####################################### 添加线程库 #######################################
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-################################### 添加threading库 ###################################
-option(enable_fiber "是否启用Boost库的Fiber模块" ON)
-
+####################################### 添加BOOST库 ######################################
 set(Boost_USE_STATIC_LIBS ON) # ON表示链接Boost静态库, OFF或者不设置表示链接动态库
+option(enable_fiber "是否启用Boost库的Fiber模块" ON)
 if(enable_fiber)
     find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time fiber)
     add_definitions(-DENABLE_THREADING_FIBER=1)
@@ -21,7 +20,6 @@ else()
     find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time)
     add_definitions(-DENABLE_THREADING_FIBER=0)
 endif()
-
 if(Boost_FOUND)
     message(STATUS "Boost include path: ${Boost_INCLUDE_DIRS}")
     message(STATUS "Boost library path: ${Boost_LIBRARY_DIRS}")
@@ -32,61 +30,12 @@ else()
     message(WARNING "Boost not found")
     return()
 endif()
-
-set(base_threading_path ..) # 设置threading库路径(可修改)
-include_directories(${base_threading_path})
-
-set(base_threading_asio_src_list)
-get_cxx_files(${base_threading_path}/threading/asio src_list)
-list(APPEND base_threading_asio_src_list ${src_list})
-source_group(3rdparty/base/threading/asio FILES ${base_threading_asio_src_list})
-
-set(base_threading_diagnose_src_list)
-get_cxx_files(${base_threading_path}/threading/diagnose src_list)
-list(APPEND base_threading_diagnose_src_list ${src_list})
-source_group(3rdparty/base/threading/diagnose FILES ${base_threading_diagnose_src_list})
-
-set(base_threading_fiber_src_list)
-if(enable_fiber)
-    get_cxx_files(${base_threading_path}/threading/fiber src_list)
-    list(APPEND base_threading_fiber_src_list ${src_list})
-    source_group(3rdparty/base/threading/fiber FILES ${base_threading_fiber_src_list})
-endif()
-
-set(base_threading_signal_src_list)
-get_cxx_files(${base_threading_path}/threading/signal src_list)
-list(APPEND base_threading_signal_src_list ${src_list})
-source_group(3rdparty/base/threading/signal FILES ${base_threading_signal_src_list})
-
-set(base_threading_task_src_list)
-get_cxx_files(${base_threading_path}/threading/task src_list)
-list(APPEND base_threading_task_src_list ${src_list})
-source_group(3rdparty/base/threading/task FILES ${base_threading_task_src_list})
-
-set(base_threading_timer_src_list)
-get_cxx_files(${base_threading_path}/threading/timer src_list)
-list(APPEND base_threading_timer_src_list ${src_list})
-source_group(3rdparty/base/threading/timer FILES ${base_threading_timer_src_list})
-
-set(base_threading_src_list)
-get_cxx_files(${base_threading_path}/threading src_list)
-list(APPEND base_threading_src_list ${src_list})
-source_group(3rdparty/base/threading FILES ${base_threading_src_list})
-
-set(base_threading_files) # 工程中需要把threading的文件添加进去
-list(APPEND base_threading_files ${base_threading_asio_src_list}
-                                 ${base_threading_diagnose_src_list}
-                                 ${base_threading_fiber_src_list}
-                                 ${base_threading_signal_src_list}
-                                 ${base_threading_task_src_list}
-                                 ${base_threading_timer_src_list}
-                                 ${base_threading_src_list})
-
-print_info(BODY "base threading files:")
-foreach(filename ${base_threading_files})
-    message("    " ${filename})
-endforeach()
 ##########################################################################################
+
+# 添加threading基础库
+add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/threading)
+include_directories(${CMAKE_SOURCE_DIR}/..)
+source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_threading_files})
 
 # 添加示例文件
 set(example_files)
