@@ -6,70 +6,32 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-################################### 添加database库 ###################################
-option(enable_database_crypto "是否启用数据库加解密" ON)
+####################################### 添加线程库 #######################################
+find_package(Threads REQUIRED)
+##########################################################################################
 
-set(base_database_path ..) # 设置database库路径(可修改)
-include_directories(${base_database_path})
-
-if(enable_database_crypto)
-    find_package(OpenSSL 1.1.1 REQUIRED)
-    if (OpenSSL_FOUND)
-        message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
-        message(STATUS "OpenSSL libraries: ${OPENSSL_LIBRARIES}")
-        include_directories(${OPENSSL_INCLUDE_DIR})
-    else()
-        message(WARNING "OpenSSL not found")
-        return()
-    endif()
-
-    include_directories(${base_database_path}/sqlcipher-4.4.3)
-    
+###################################### 添加OPENSSL库 #####################################
+find_package(OpenSSL 1.1.1 REQUIRED) # 如果启用数据库加密则需要添加以下
+if (OpenSSL_FOUND)
+    message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
+    message(STATUS "OpenSSL libraries: ${OPENSSL_LIBRARIES}")
     add_definitions(-DSQLITE_HAS_CODEC)
     add_definitions(-DSQLCIPHER_CRYPTO_OPENSSL)
     add_definitions(-DSQLITE_TEMP_STORE=2)
-    
-    set(sqlcipher_src_list)
-    get_cxx_files(${base_database_path}/sqlcipher-4.4.3 src_list)
-    list(APPEND sqlcipher_src_list ${src_list})
-    source_group(3rdparty/base/sqlcipher-4.4.3 FILES ${sqlcipher_src_list})
+    include_directories(${OPENSSL_INCLUDE_DIR})
 else()
-    include_directories(${base_database_path}/sqlite-3.36.0)
-    
-    set(sqlite_src_list)
-    get_cxx_files(${base_database_path}/sqlite-3.36.0 src_list)
-    list(APPEND sqlite_src_list ${src_list})
-    source_group(3rdparty/base/sqlite-3.36.0 FILES ${sqlite_src_list})
+    message(WARNING "OpenSSL not found")
+    return()
 endif()
-
-set(base_winq_src_list)
-get_cxx_files(${base_database_path}/winq src_list)
-list(APPEND base_winq_src_list ${src_list})
-source_group(3rdparty/base/winq FILES ${base_winq_src_list})
-
-set(base_database_src_list)
-get_cxx_files(${base_database_path}/database src_list)
-list(APPEND base_database_src_list ${src_list})
-source_group(3rdparty/base/database FILES ${base_database_src_list})
-
-set(base_database_files) # 工程中需要把database的文件添加进去
-if(enable_database_crypto)
-    list(APPEND base_database_files ${sqlcipher_src_list})
-else()
-    list(APPEND base_database_files ${sqlite_src_list})
-endif()
-list(APPEND base_database_files ${base_winq_src_list}
-                                ${base_database_src_list})
-
-print_info(BODY "base database files:")
-foreach(filename ${base_database_files})
-    message("    " ${filename})
-endforeach()
 ##########################################################################################
 
-################################### 添加线程库 ###################################
-find_package(Threads REQUIRED)
-##########################################################################################
+# 添加database基础库
+option(enable_database_crypto "是否启用数据库加解密" OFF)
+add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/database)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/..")
+include_directories(${CMAKE_SOURCE_DIR}/../${sqlite_include_dir})
+include_directories(${CMAKE_SOURCE_DIR}/..)
+source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_database_files})
 
 # 添加示例文件
 set(example_files)
