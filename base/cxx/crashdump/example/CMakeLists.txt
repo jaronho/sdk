@@ -10,7 +10,7 @@ include(../cmake/tools.cmake)
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-# 添加堆栈崩溃捕获基础库
+# 添加crashdump基础库
 add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/crashdump)
 include_directories(${CMAKE_SOURCE_DIR}/..)
 source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_crashdump_files})

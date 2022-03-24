@@ -55,7 +55,11 @@ get_cxx_files(database src_list)
 list(APPEND base_database_src_list ${src_list})
 
 # 组装文件列表
-set(base_database_files ${sqlite_src_list} ${base_winq_src_list} ${base_database_src_list} CACHE INTERNAL "") 
+set(base_database_files
+    ${sqlite_src_list}
+    ${base_winq_src_list}
+    ${base_database_src_list}
+    CACHE INTERNAL "") 
 
 # 打印文件列表
 print_info(BODY "base database files:")

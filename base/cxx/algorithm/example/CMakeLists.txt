@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-# 添加算法基础库
+# 添加algorithm基础库
 add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/algorithm)
 include_directories(${CMAKE_SOURCE_DIR}/..)
 source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_algorithm_files})

@@ -35,7 +35,9 @@ get_cxx_files(crashdump src_list)
 list(APPEND base_crashdump_src_list ${src_list})
 
 # 组装文件列表
-set(base_crashdump_files ${base_crashdump_src_list} CACHE INTERNAL "")
+set(base_crashdump_files
+    ${base_crashdump_src_list}
+    CACHE INTERNAL "")
 
 # 打印文件列表
 print_info(BODY "base crashdump files:")
