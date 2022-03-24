@@ -25,4 +25,4 @@ endforeach()
 add_executable(example_algorithm ${base_algorithm_files} ${example_files})
 
 # 链接依赖库
-target_link_libraries(example_algorithm)
+target_link_libraries(example_algorithm ${base_algorithm})

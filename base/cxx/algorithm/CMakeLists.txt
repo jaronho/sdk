@@ -4,7 +4,13 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(cmake/tools.cmake)
 
-################################### 添加algorithm库 ###################################
+#########################################[ 输出 ]#########################################
+#[[
+[源文件]
+${base_algorithm_files}
+]]
+
+##################################### 添加algorithm库 ####################################
 set(base_algorithm_base64_src_list)
 get_cxx_files(algorithm/base64 src_list)
 list(APPEND base_algorithm_base64_src_list ${src_list})
@@ -47,11 +53,10 @@ set(base_algorithm_files
     ${base_algorithm_sm4_src_list}
     ${base_algorithm_snowflake_src_list}
     ${base_algorithm_src_list}
-    CACHE INTERNAL "base_algorithm_files")
+    CACHE INTERNAL "")
 
 # 打印文件列表
 print_info(BODY "base algorithm files:")
 foreach(filename ${base_algorithm_files})
     message("    " ${filename})
 endforeach()
-##########################################################################################

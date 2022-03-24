@@ -6,11 +6,9 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-################################### 添加curlex库 ###################################
+####################################### 添加CURL库 #######################################
 find_package(CURL 7.76.1 REQUIRED)
-
-# 注意: curl库区分ssl和非ssl, 根据业务需要自行手动替换
-if(CURL_FOUND)
+if(CURL_FOUND) # 注意: curl库区分ssl和非ssl, 根据业务需要自行手动替换
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         add_definitions("-DCURL_STATICLIB") # 如果链接静态库则必须添加这个宏
     endif()
@@ -20,23 +18,13 @@ else()
     message(WARNING "CURL not found")
     return()
 endif()
-
-set(base_curlex_path ..) # 设置curlex库路径(可修改)
-include_directories(${base_curlex_path})
-
-set(base_curlex_src_list)
-get_cxx_files(${base_curlex_path}/curlex src_list)
-list(APPEND base_curlex_src_list ${src_list})
-source_group(3rdparty/base/curlex FILES ${base_curlex_src_list})
-
-set(base_curlex_files) # 工程中需要把curlex的文件添加进去
-list(APPEND base_curlex_files ${base_curlex_src_list})
-
-print_info(BODY "base curlex files:")
-foreach(filename ${base_curlex_files})
-    message("    " ${filename})
-endforeach()
 ##########################################################################################
+
+# 添加curlex基础库
+add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/curlex)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/..")
+include_directories(${CMAKE_SOURCE_DIR}/..)
+source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_curlex_files})
 
 # 添加示例文件
 set(example_files)
