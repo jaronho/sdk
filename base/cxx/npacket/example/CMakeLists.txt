@@ -6,11 +6,11 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-################################### 添加线程库 ###################################
+####################################### 添加线程库 #######################################
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-################################### 添加pcap库 ###################################
+####################################### 添加PCAP库 #######################################
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     find_path(PCAP_ROOT_DIR NAMES Include/pcap.h )
     find_path(PCAP_INCLUDE_DIR NAMES pcap.h HINTS ${PCAP_ROOT_DIR}/Include)
@@ -20,11 +20,9 @@ else()
     find_path(PCAP_INCLUDE_DIR NAMES pcap.h HINTS ${PCAP_ROOT_DIR}/include)
     find_library(PCAP_LIBRARIES NAMES pcap HINTS ${PCAP_ROOT_DIR}/lib)
 endif()
-
 message(STATUS "Pcap root dir: ${PCAP_ROOT_DIR}")
 message(STATUS "Pcap include path: ${PCAP_INCLUDE_DIR}")
 message(STATUS "Pcap libraries: ${PCAP_LIBRARIES}")
-
 if("${PCAP_ROOT_DIR}" STREQUAL "PCAP_ROOT_DIR-NOTFOUND" OR 
    "${PCAP_INCLUDE_DIR}" STREQUAL "PCAP_INCLUDE_DIR-NOTFOUND" OR 
    "${PCAP_LIBRARIES}" STREQUAL "PCAP_LIBRARIES-NOTFOUND")
@@ -35,23 +33,10 @@ else()
 endif()
 ##########################################################################################
 
-################################### 添加npacket库 ###################################
-set(base_npacket_path ..) # 设置npacket库路径(可修改)
-include_directories(${base_npacket_path})
-
-set(base_npacket_src_list)
-get_cxx_files(${base_npacket_path}/npacket src_list)
-list(APPEND base_npacket_src_list ${src_list})
-source_group(3rdparty/base/npacket FILES ${base_npacket_src_list})
-
-set(base_npacket_files) # 工程中需要把npacket的文件添加进去
-list(APPEND base_npacket_files ${base_npacket_src_list})
-
-print_info(BODY "base npacket files:")
-foreach(filename ${base_npacket_files})
-    message("    " ${filename})
-endforeach()
-##########################################################################################
+# 添加npacket基础库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/npacket)
+include_directories(${base_npacket_dir})
+source_group(TREE ${base_npacket_dir} PREFIX 3rdparty/base FILES ${base_npacket_files})
 
 # 添加客户端示例文件
 set(example_files)
