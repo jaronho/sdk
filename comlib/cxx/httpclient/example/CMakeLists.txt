@@ -6,15 +6,13 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-################################### 添加线程库 ###################################
+####################################### 添加线程库 #######################################
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-################################### 添加curlex库 ###################################
+####################################### 添加CURL库 #######################################
 find_package(CURL 7.76.1 REQUIRED)
-
-# 注意: curl库区分ssl和非ssl, 根据业务需要自行手动替换
-if(CURL_FOUND)
+if(CURL_FOUND) # 注意: curl库区分ssl和非ssl, 根据业务需要自行手动替换
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         add_definitions("-DCURL_STATICLIB") # 如果链接静态库则必须添加这个宏
     endif()
@@ -24,27 +22,11 @@ else()
     message(WARNING "CURL not found")
     return()
 endif()
-
-set(base_curlex_path ../../../../base/cxx/curlex) # 设置curlex库路径(可修改)
-include_directories(${base_curlex_path})
-
-set(base_curlex_src_list)
-get_cxx_files(${base_curlex_path}/curlex src_list)
-list(APPEND base_curlex_src_list ${src_list})
-source_group(3rdparty/base/curlex FILES ${base_curlex_src_list})
-
-set(base_curlex_files) # 工程中需要把curlex的文件添加进去
-list(APPEND base_curlex_files ${base_curlex_src_list})
-
-print_info(BODY "base curlex files:")
-foreach(filename ${base_curlex_files})
-    message("    " ${filename})
-endforeach()
 ##########################################################################################
 
-################################### 添加threading库 ###################################
+####################################### 添加BOOST库 ######################################
+set(Boost_USE_STATIC_LIBS ON) # ON表示链接Boost静态库, OFF或者不设置表示链接动态库
 option(enable_fiber "是否启用Boost库的Fiber模块" ON)
-
 if(enable_fiber)
     find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time fiber)
     add_definitions(-DENABLE_THREADING_FIBER=1)
@@ -52,7 +34,6 @@ else()
     find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time)
     add_definitions(-DENABLE_THREADING_FIBER=0)
 endif()
-
 if(Boost_FOUND)
     message(STATUS "Boost include path: ${Boost_INCLUDE_DIRS}")
     message(STATUS "Boost library path: ${Boost_LIBRARY_DIRS}")
@@ -63,71 +44,26 @@ else()
     message(WARNING "Boost not found")
     return()
 endif()
-
-set(base_threading_path ../../../../base/cxx/threading) # 设置threading库路径(可修改)
-include_directories(${base_threading_path})
-
-set(base_threading_asio_src_list)
-get_cxx_files(${base_threading_path}/threading/asio src_list)
-list(APPEND base_threading_asio_src_list ${src_list})
-source_group(3rdparty/base/threading/asio FILES ${base_threading_asio_src_list})
-
-set(base_threading_diagnose_src_list)
-get_cxx_files(${base_threading_path}/threading/diagnose src_list)
-list(APPEND base_threading_diagnose_src_list ${src_list})
-source_group(3rdparty/base/threading/diagnose FILES ${base_threading_diagnose_src_list})
-
-set(base_threading_fiber_src_list)
-if(enable_fiber)
-    get_cxx_files(${base_threading_path}/threading/fiber src_list)
-    list(APPEND base_threading_fiber_src_list ${src_list})
-    source_group(3rdparty/base/threading/fiber FILES ${base_threading_fiber_src_list})
-endif()
-
-set(base_threading_task_src_list)
-get_cxx_files(${base_threading_path}/threading/task src_list)
-list(APPEND base_threading_task_src_list ${src_list})
-source_group(3rdparty/base/threading/task FILES ${base_threading_task_src_list})
-
-set(base_threading_src_list)
-get_cxx_files(${base_threading_path}/threading src_list)
-list(APPEND base_threading_src_list ${src_list})
-source_group(3rdparty/base/threading FILES ${base_threading_src_list})
-
-set(base_threading_files) # 工程中需要把threading的文件添加进去
-list(APPEND base_threading_files ${base_threading_asio_src_list}
-                                 ${base_threading_diagnose_src_list}
-                                 ${base_threading_fiber_src_list}
-                                 ${base_threading_task_src_list}
-                                 ${base_threading_src_list})
-
-print_info(BODY "base threading files:")
-foreach(filename ${base_threading_files})
-    message("    " ${filename})
-endforeach()
 ##########################################################################################
 
-################################### 添加httpclient模块 ###################################
-set(httpclient_path ..) # 设置httpclient模块路径(可修改)
-include_directories(${httpclient_path})
+# 添加curlex基础库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/curlex 3rdparty/base/curlex)
+include_directories(${base_curlex_dir})
+source_group(TREE ${base_curlex_dir} PREFIX 3rdparty/base FILES ${base_curlex_files})
 
-set(httpclient_src_list)
-get_cxx_files(${httpclient_path}/httpclient src_list)
-list(APPEND httpclient_src_list ${src_list})
-source_group(3rdparty/comlib/httpclient FILES ${httpclient_src_list})
+# 添加threading基础库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/threading 3rdparty/base/threading)
+include_directories(${base_threading_dir})
+source_group(TREE ${base_threading_dir} PREFIX 3rdparty/base FILES ${base_threading_files})
 
-set(httpclient_files) # 工程中需要把httpclient的文件添加进去
-list(APPEND httpclient_files ${httpclient_src_list})
-
-print_info(BODY "httpclient files:")
-foreach(filename ${httpclient_files})
-    message("    " ${filename})
-endforeach()
-##########################################################################################
+# 添加httpclient公共库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/comlib/httpclient)
+include_directories(${comlib_httpclient_dir})
+source_group(TREE ${comlib_httpclient_dir} PREFIX 3rdparty/comlib FILES ${comlib_httpclient_files})
 
 # 添加示例文件
 set(example_files)
-get_cxx_files(. src_list)
+get_cxx_files(${CMAKE_CURRENT_SOURCE_DIR} src_list)
 list(APPEND example_files ${src_list})
 
 print_info(BODY "example files:")
@@ -136,7 +72,7 @@ foreach(filename ${example_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_httpclient ${base_threading_files} ${base_curlex_files} ${httpclient_files} ${example_files})
+add_executable(example_httpclient ${base_curlex_files} ${base_threading_files} ${comlib_httpclient_files} ${example_files})
 
 # 链接依赖库
-target_link_libraries(example_httpclient Threads::Threads ${Boost_LIBRARIES} CURL::libcurl)
+target_link_libraries(example_httpclient Threads::Threads CURL::libcurl ${Boost_LIBRARIES})

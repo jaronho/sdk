@@ -6,93 +6,13 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-################################### 添加线程库 ###################################
+####################################### 添加线程库 #######################################
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-################################### 添加algorithm库 ###################################
-set(base_algorithm_path ../../../../base/cxx/algorithm) # 设置algorithm库路径(可修改)
-include_directories(${base_algorithm_path})
-
-set(base_algorithm_snowflake_src_list)
-get_cxx_files(${base_algorithm_path}/algorithm/snowflake src_list)
-list(APPEND base_algorithm_snowflake_src_list ${src_list})
-source_group(3rdparty/base/algorithm/snowflake FILES ${base_algorithm_snowflake_src_list})
-
-set(base_algorithm_files) # 工程中需要把algorithm的文件添加进去
-list(APPEND base_algorithm_files ${base_algorithm_snowflake_src_list})
-
-print_info(BODY "base algorithm files:")
-foreach(filename ${base_algorithm_files})
-    message("    " ${filename})
-endforeach()
-##########################################################################################
-
-################################### 添加nsocket库 ###################################
-option(enable_nsocket_openssl "是否启用套接字OpenSSL依赖" ON)
-
+####################################### 添加BOOST库 ######################################
 set(Boost_USE_STATIC_LIBS ON) # ON表示链接Boost静态库, OFF或者不设置表示链接动态库
-if(enable_nsocket_openssl)
-    add_definitions(-DENABLE_NSOCKET_OPENSSL=1)
-    find_package(OpenSSL 1.1.1 REQUIRED)
-    if (OpenSSL_FOUND)
-        message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
-        message(STATUS "OpenSSL libraries: ${OPENSSL_LIBRARIES}")
-        include_directories(${OPENSSL_INCLUDE_DIR})
-    else()
-        message(WARNING "OpenSSL not found")
-        return()
-    endif()
-else()
-    add_definitions(-DENABLE_NSOCKET_OPENSSL=0)
-endif()
-
-find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time)
-
-if(Boost_FOUND)
-    message(STATUS "Boost include path: ${Boost_INCLUDE_DIRS}")
-    message(STATUS "Boost library path: ${Boost_LIBRARY_DIRS}")
-    message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
-    include_directories(${Boost_INCLUDE_DIRS})
-    link_directories(${Boost_LIBRARY_DIRS})
-else()
-    message(WARNING "Boost not found")
-    return()
-endif()
-
-set(base_nsocket_path ../../../../base/cxx/nsocket) # 设置nsocket库路径(可修改)
-include_directories(${base_nsocket_path})
-
-set(base_nsocket_core_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket/core src_list)
-list(APPEND base_nsocket_core_src_list ${src_list})
-source_group(3rdparty/base/nsocket/core FILES ${base_nsocket_core_src_list})
-
-set(base_nsocket_tcp_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket/tcp src_list)
-list(APPEND base_nsocket_tcp_src_list ${src_list})
-source_group(3rdparty/base/nsocket/tcp FILES ${base_nsocket_tcp_src_list})
-
-set(base_nsocket_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket src_list)
-list(APPEND base_nsocket_src_list ${src_list})
-source_group(3rdparty/base/nsocket FILES ${base_nsocket_src_list})
-
-set(base_nsocket_files) # 工程中需要把nsocket的文件添加进去
-list(APPEND base_nsocket_files ${base_nsocket_core_src_list}
-                               ${base_nsocket_tcp_src_list}
-                               ${base_nsocket_src_list})
-
-print_info(BODY "base nsocket files:")
-foreach(filename ${base_nsocket_files})
-    message("    " ${filename})
-endforeach()
-##########################################################################################
-
-################################### 添加threading库 ###################################
 option(enable_fiber "是否启用Boost库的Fiber模块" ON)
-
-set(Boost_USE_STATIC_LIBS ON) # ON表示链接Boost静态库, OFF或者不设置表示链接动态库
 if(enable_fiber)
     find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time fiber)
     add_definitions(-DENABLE_THREADING_FIBER=1)
@@ -100,7 +20,6 @@ else()
     find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time)
     add_definitions(-DENABLE_THREADING_FIBER=0)
 endif()
-
 if(Boost_FOUND)
     message(STATUS "Boost include path: ${Boost_INCLUDE_DIRS}")
     message(STATUS "Boost library path: ${Boost_LIBRARY_DIRS}")
@@ -111,149 +30,40 @@ else()
     message(WARNING "Boost not found")
     return()
 endif()
-
-set(base_threading_path ../../../../base/cxx/threading) # 设置threading库路径(可修改)
-include_directories(${base_threading_path})
-
-set(base_threading_asio_src_list)
-get_cxx_files(${base_threading_path}/threading/asio src_list)
-list(APPEND base_threading_asio_src_list ${src_list})
-source_group(3rdparty/base/threading/asio FILES ${base_threading_asio_src_list})
-
-set(base_threading_diagnose_src_list)
-get_cxx_files(${base_threading_path}/threading/diagnose src_list)
-list(APPEND base_threading_diagnose_src_list ${src_list})
-source_group(3rdparty/base/threading/diagnose FILES ${base_threading_diagnose_src_list})
-
-set(base_threading_fiber_src_list)
-if(enable_fiber)
-    get_cxx_files(${base_threading_path}/threading/fiber src_list)
-    list(APPEND base_threading_fiber_src_list ${src_list})
-    source_group(3rdparty/base/threading/fiber FILES ${base_threading_fiber_src_list})
-endif()
-
-set(base_threading_signal_src_list)
-get_cxx_files(${base_threading_path}/threading/signal src_list)
-list(APPEND base_threading_signal_src_list ${src_list})
-source_group(3rdparty/base/threading/signal FILES ${base_threading_signal_src_list})
-
-set(base_threading_task_src_list)
-get_cxx_files(${base_threading_path}/threading/task src_list)
-list(APPEND base_threading_task_src_list ${src_list})
-source_group(3rdparty/base/threading/task FILES ${base_threading_task_src_list})
-
-set(base_threading_timer_src_list)
-get_cxx_files(${base_threading_path}/threading/timer src_list)
-list(APPEND base_threading_timer_src_list ${src_list})
-source_group(3rdparty/base/threading/timer FILES ${base_threading_timer_src_list})
-
-set(base_threading_src_list)
-get_cxx_files(${base_threading_path}/threading src_list)
-list(APPEND base_threading_src_list ${src_list})
-source_group(3rdparty/base/threading FILES ${base_threading_src_list})
-
-set(base_threading_files) # 工程中需要把threading的文件添加进去
-list(APPEND base_threading_files ${base_threading_asio_src_list}
-                                 ${base_threading_diagnose_src_list}
-                                 ${base_threading_fiber_src_list}
-                                 ${base_threading_signal_src_list}
-                                 ${base_threading_task_src_list}
-                                 ${base_threading_timer_src_list}
-                                 ${base_threading_src_list})
-
-print_info(BODY "base threading files:")
-foreach(filename ${base_threading_files})
-    message("    " ${filename})
-endforeach()
 ##########################################################################################
 
-################################### 添加utility库 ###################################
-set(base_utility_path ../../../../base/cxx/utility) # 设置utility库路径(可修改)
-include_directories(${base_utility_path})
+# 添加algorithm基础库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/algorithm 3rdparty/base/algorithm)
+include_directories(${base_algorithm_dir})
+source_group(TREE ${base_algorithm_dir} PREFIX 3rdparty/base FILES ${base_algorithm_files})
 
-set(base_utility_bytearray_src_list)
-get_cxx_files(${base_utility_path}/utility/bytearray src_list)
-list(APPEND base_utility_bytearray_src_list ${src_list})
-source_group(3rdparty/base/utility/bytearray FILES ${base_utility_bytearray_src_list})
+# 添加nsocket基础库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/nsocket 3rdparty/base/nsocket)
+include_directories(${base_nsocket_dir})
+source_group(TREE ${base_nsocket_dir} PREFIX 3rdparty/base FILES ${base_nsocket_files})
 
-set(base_utility_files) # 工程中需要把utility的文件添加进去
-list(APPEND base_utility_files ${base_utility_bytearray_src_list})
+# 添加threading基础库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/threading 3rdparty/base/threading)
+include_directories(${base_threading_dir})
+source_group(TREE ${base_threading_dir} PREFIX 3rdparty/base FILES ${base_threading_files})
 
-print_info(BODY "base utility files:")
-foreach(filename ${base_utility_files})
-    message("    " ${filename})
-endforeach()
-##########################################################################################
+# 添加utility基础库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/utility 3rdparty/base/utility)
+include_directories(${base_utility_dir})
+source_group(TREE ${base_utility_dir} PREFIX 3rdparty/base FILES ${base_utility_files})
 
-# 添加代理服务文件
-set(broker_files)
-list(APPEND broker_files ../rpc/rpc_broker.cpp
-                         ../rpc/rpc_broker.h
-                         ../rpc/rpc_msg.hpp
-                         broker.cpp)
-
-print_info(BODY "broker files:")
-foreach(filename ${broker_files})
-    message("    " ${filename})
-endforeach()
-
-# 添加客户端示例文件
-set(example_client_files)
-list(APPEND example_client_files ../rpc/rpc_client.cpp
-                                 ../rpc/rpc_client.h
-                                 ../rpc/rpc_msg.hpp
-                                 example_client.cpp)
-
-print_info(BODY "example client files:")
-foreach(filename ${example_client_files})
-    message("    " ${filename})
-endforeach()
-
-# 添加demo客户端1文件
-set(demo_client1_files)
-list(APPEND demo_client1_files ../rpc/rpc_client.cpp
-                               ../rpc/rpc_client.h
-                               ../rpc/rpc_msg.hpp
-                               demo_client1.cpp
-                               demo_def.h)
-
-print_info(BODY "demo client1 files:")
-foreach(filename ${demo_client1_files})
-    message("    " ${filename})
-endforeach()
-
-# 添加demo客户端2文件
-set(demo_client2_files)
-list(APPEND demo_client2_files ../rpc/rpc_client.cpp
-                               ../rpc/rpc_client.h
-                               ../rpc/rpc_msg.hpp
-                               demo_client2.cpp
-                               demo_def.h)
-
-print_info(BODY "demo client2 files:")
-foreach(filename ${demo_client2_files})
-    message("    " ${filename})
-endforeach()
-
-# 添加demo客户端3文件
-set(demo_client3_files)
-list(APPEND demo_client3_files ../rpc/rpc_client.cpp
-                               ../rpc/rpc_client.h
-                               ../rpc/rpc_msg.hpp
-                               demo_client3.cpp
-                               demo_def.h)
-
-print_info(BODY "demo client3 files:")
-foreach(filename ${demo_client3_files})
-    message("    " ${filename})
-endforeach()
+# 添加rpc公共库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/comlib/rpc)
+include_directories(${comlib_rpc_dir})
+source_group(TREE ${comlib_rpc_dir} PREFIX 3rdparty/comlib FILES ${comlib_rpc_broker_files})
+source_group(TREE ${comlib_rpc_dir} PREFIX 3rdparty/comlib FILES ${comlib_rpc_client_files})
 
 # 构建可执行程序
-add_executable(broker ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${broker_files})
-add_executable(example_client ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${example_client_files})
-add_executable(demo_client1 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${demo_client1_files})
-add_executable(demo_client2 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${demo_client2_files})
-add_executable(demo_client3 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${demo_client3_files})
+add_executable(broker ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${comlib_rpc_broker_files} broker.cpp)
+add_executable(example_client ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${comlib_rpc_client_files} example_client.cpp)
+add_executable(demo_client1 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${comlib_rpc_client_files} demo_client1.cpp demo_def.h)
+add_executable(demo_client2 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${comlib_rpc_client_files} demo_client2.cpp demo_def.h)
+add_executable(demo_client3 ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${comlib_rpc_client_files} demo_client3.cpp demo_def.h)
 
 # 链接依赖库
 target_link_libraries(broker Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
