@@ -20,12 +20,17 @@ endif()
 [源目录]
 ${fmt_include_dir}
 
+[源目录]
+${base_logger_dir}
+
 [源文件]
 ${base_logger_files}
 ]]
 
 ###################################### 添加logger库 ######################################
-set(fmt_include_dir fmt-7.1.3/include CACHE INTERNAL "")
+set(fmt_include_dir ${CMAKE_CURRENT_SOURCE_DIR}/fmt-7.1.3/include CACHE INTERNAL "")
+
+set(base_logger_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 
 set(base_fmt_src_list)
 get_cxx_files(${fmt_include_dir}/fmt src_list)

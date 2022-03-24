@@ -6,11 +6,16 @@ include(cmake/tools.cmake)
 
 #########################################[ 输出 ]#########################################
 #[[
+[源目录]
+${base_serial_dir}
+
 [源文件]
 ${base_serial_files}
 ]]
 
 ###################################### 添加serial库 ######################################
+set(base_serial_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
+
 set(base_serial_impl_list_ports_src_list)
 get_cxx_files(serial/impl/list_ports src_list)
 list(APPEND base_serial_impl_list_ports_src_list ${src_list})

@@ -18,6 +18,9 @@ Threads::Threads
 [链接库]
 ${breakpad_libraries}
 
+[源目录]
+${base_crashdump_dir}
+
 [源文件]
 ${base_crashdump_files}
 ]]
@@ -30,6 +33,8 @@ else()
 endif()
 
 ##################################### 添加crashdump库 ####################################
+set(base_crashdump_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
+
 set(base_crashdump_src_list)
 get_cxx_files(crashdump src_list)
 list(APPEND base_crashdump_src_list ${src_list})

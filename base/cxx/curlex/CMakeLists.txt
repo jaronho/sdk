@@ -25,11 +25,16 @@ CURL::libcurl
 
 #########################################[ 输出 ]#########################################
 #[[
+[源目录]
+${base_curlex_dir}
+
 [源文件]
 ${base_curlex_files}
 ]]
 
 ###################################### 添加curlex库 ######################################
+set(base_curlex_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
+
 set(base_curlex_src_list)
 get_cxx_files(curlex src_list)
 list(APPEND base_curlex_src_list ${src_list})

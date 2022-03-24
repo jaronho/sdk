@@ -27,14 +27,14 @@ endif()
 
 # 添加database基础库
 option(enable_database_crypto "是否启用数据库加解密" OFF)
-add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/database)
-include_directories(${CMAKE_SOURCE_DIR}/../${sqlite_include_dir})
-include_directories(${CMAKE_SOURCE_DIR}/..)
-source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_database_files})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/database)
+include_directories(${sqlite_include_dir})
+include_directories(${base_database_dir})
+source_group(TREE ${base_database_dir} PREFIX 3rdparty/base FILES ${base_database_files})
 
 # 添加示例文件
 set(example_files)
-get_cxx_files(. src_list)
+get_cxx_files(${CMAKE_CURRENT_SOURCE_DIR} src_list)
 list(APPEND example_files ${src_list})
 
 print_info(BODY "example files:")

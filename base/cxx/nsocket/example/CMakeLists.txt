@@ -44,13 +44,13 @@ if(enable_nsocket_openssl)
 else()
     add_definitions(-DENABLE_NSOCKET_OPENSSL=0)
 endif()
-add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/nsocket)
-include_directories(${CMAKE_SOURCE_DIR}/..)
-source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_nsocket_files})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/nsocket)
+include_directories(${base_nsocket_dir})
+source_group(TREE ${base_nsocket_dir} PREFIX 3rdparty/base FILES ${base_nsocket_files})
 
 # 添加TCP客户端示例文件
 set(example_tcpclient_files)
-list(APPEND example_tcpclient_files ./client/example_socket_tcpclient.cpp)
+list(APPEND example_tcpclient_files client/example_socket_tcpclient.cpp)
 
 print_info(BODY "example tcp client files:")
 foreach(filename ${example_tcpclient_files})
@@ -59,7 +59,7 @@ endforeach()
 
 # 添加TCP服务端示例文件
 set(example_tcpserver_files)
-list(APPEND example_tcpserver_files ./server/example_socket_tcpserver.cpp)
+list(APPEND example_tcpserver_files server/example_socket_tcpserver.cpp)
 
 print_info(BODY "example tcp server files:")
 foreach(filename ${example_tcpserver_files})
@@ -68,7 +68,7 @@ endforeach()
 
 # 添加HTTP服务端示例文件
 set(example_httpserver_files)
-list(APPEND example_httpserver_files ./server/example_socket_httpserver.cpp)
+list(APPEND example_httpserver_files server/example_socket_httpserver.cpp)
 
 print_info(BODY "example http server files:")
 foreach(filename ${example_httpserver_files})
@@ -77,7 +77,7 @@ endforeach()
 
 # 添加WebSocket服务端示例文件
 set(example_websocketserver_files)
-list(APPEND example_websocketserver_files ./server/example_socket_websocketserver.cpp)
+list(APPEND example_websocketserver_files server/example_socket_websocketserver.cpp)
 
 print_info(BODY "example websocket server files:")
 foreach(filename ${example_websocketserver_files})

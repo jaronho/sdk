@@ -32,16 +32,22 @@ ${OPENSSL_LIBRARIES}
 [源目录]
 ${sqlite_include_dir}
 
+[源目录]
+${base_database_dir}
+
 [源文件]
 ${base_database_files}
 ]]
 
 ##################################### 添加database库 #####################################
 if(enable_database_crypto)
-    set(sqlite_include_dir sqlcipher-4.4.3 CACHE INTERNAL "")
+    set(sqlite_include_dir ${CMAKE_CURRENT_SOURCE_DIR}/sqlcipher-4.4.3 CACHE INTERNAL "")
 else()
-    set(sqlite_include_dir sqlite-3.36.0 CACHE INTERNAL "")
+    set(sqlite_include_dir ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-3.36.0 CACHE INTERNAL "")
 endif()
+
+set(base_database_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
+
 set(sqlite_src_list)
 get_cxx_files(${sqlite_include_dir} src_list)
 list(APPEND sqlite_src_list ${src_list})

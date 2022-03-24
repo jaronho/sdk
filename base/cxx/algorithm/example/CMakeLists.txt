@@ -7,13 +7,13 @@ set(CMAKE_CXX_STANDARD 14)
 include(../cmake/tools.cmake)
 
 # 添加algorithm基础库
-add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/algorithm)
-include_directories(${CMAKE_SOURCE_DIR}/..)
-source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_algorithm_files})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/algorithm)
+include_directories(${base_algorithm_dir})
+source_group(TREE ${base_algorithm_dir} PREFIX 3rdparty/base FILES ${base_algorithm_files})
 
 # 添加示例文件
 set(example_files)
-get_cxx_files(. src_list)
+get_cxx_files(${CMAKE_CURRENT_SOURCE_DIR} src_list)
 list(APPEND example_files ${src_list})
 
 print_info(BODY "example files:")

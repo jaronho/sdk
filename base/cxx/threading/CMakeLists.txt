@@ -39,11 +39,16 @@ ${Boost_LIBRARIES}
 
 #########################################[ 输出 ]#########################################
 #[[
+[源目录]
+${base_threading_dir}
+
 [源文件]
 ${base_threading_files}
 ]]
 
 ##################################### 添加threading库 ####################################
+set(base_threading_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
+
 set(base_threading_asio_src_list)
 get_cxx_files(threading/asio src_list)
 list(APPEND base_threading_asio_src_list ${src_list})

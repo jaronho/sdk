@@ -11,13 +11,13 @@ find_package(Threads REQUIRED)
 ##########################################################################################
 
 # 添加crashdump基础库
-add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/crashdump)
-include_directories(${CMAKE_SOURCE_DIR}/..)
-source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_crashdump_files})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/crashdump)
+include_directories(${base_crashdump_dir})
+source_group(TREE ${base_crashdump_dir} PREFIX 3rdparty/base FILES ${base_crashdump_files})
 
 # 添加示例文件
 set(example_files)
-get_cxx_files(. src_list)
+get_cxx_files(${CMAKE_CURRENT_SOURCE_DIR} src_list)
 list(APPEND example_files ${src_list})
 
 print_info(BODY "example files:")

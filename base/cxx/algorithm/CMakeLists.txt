@@ -6,11 +6,16 @@ include(cmake/tools.cmake)
 
 #########################################[ 输出 ]#########################################
 #[[
+[源目录]
+${base_algorithm_dir}
+
 [源文件]
 ${base_algorithm_files}
 ]]
 
 ##################################### 添加algorithm库 ####################################
+set(base_algorithm_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
+
 set(base_algorithm_base64_src_list)
 get_cxx_files(algorithm/base64 src_list)
 list(APPEND base_algorithm_base64_src_list ${src_list})

@@ -54,6 +54,9 @@ ${Boost_LIBRARIES}
 
 #########################################[ 输出 ]#########################################
 #[[
+[源目录]
+${base_nsocket_dir}
+
 [源文件]
 ${base_nsocket_files}
 
@@ -68,6 +71,8 @@ ${base_nsocket_websocket_files}
 ]]
 
 ###################################### 添加nsocket库 #####################################
+set(base_nsocket_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
+
 set(base_nsocket_core_src_list)
 get_cxx_files(nsocket/core src_list)
 list(APPEND base_nsocket_core_src_list ${src_list})

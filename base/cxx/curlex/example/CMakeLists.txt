@@ -21,13 +21,13 @@ endif()
 ##########################################################################################
 
 # 添加curlex基础库
-add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/curlex)
-include_directories(${CMAKE_SOURCE_DIR}/..)
-source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_curlex_files})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/curlex)
+include_directories(${base_curlex_dir})
+source_group(TREE ${base_curlex_dir} PREFIX 3rdparty/base FILES ${base_curlex_files})
 
 # 添加示例文件
 set(example_files)
-get_cxx_files(. src_list)
+get_cxx_files(${CMAKE_CURRENT_SOURCE_DIR} src_list)
 list(APPEND example_files ${src_list})
 
 print_info(BODY "example files:")

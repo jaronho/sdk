@@ -6,11 +6,16 @@ include(cmake/tools.cmake)
 
 #########################################[ 输出 ]#########################################
 #[[
+[源目录]
+${base_fileparse_dir}
+
 [源文件]
 ${base_fileparse_files}
 ]]
 
 ##################################### 添加fileparse库 ####################################
+set(base_fileparse_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
+
 set(base_fileparse_ini_src_list)
 get_cxx_files(fileparse/ini src_list)
 list(APPEND base_fileparse_ini_src_list ${src_list})
