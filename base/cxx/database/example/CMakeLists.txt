@@ -28,7 +28,6 @@ endif()
 # 添加database基础库
 option(enable_database_crypto "是否启用数据库加解密" OFF)
 add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/database)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/..")
 include_directories(${CMAKE_SOURCE_DIR}/../${sqlite_include_dir})
 include_directories(${CMAKE_SOURCE_DIR}/..)
 source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_database_files})

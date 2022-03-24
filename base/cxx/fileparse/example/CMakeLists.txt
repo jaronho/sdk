@@ -6,29 +6,10 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-################################### 添加fileparse库 ###################################
-set(base_fileparse_path ..) # 设置fileparse库路径(可修改)
-include_directories(${base_fileparse_path})
-
-set(base_fileparse_ini_src_list)
-get_cxx_files(${base_fileparse_path}/fileparse/ini src_list)
-list(APPEND base_fileparse_ini_src_list ${src_list})
-source_group(3rdparty/base/fileparse/ini FILES ${base_fileparse_ini_src_list})
-
-set(base_fileparse_nlohmann_src_list)
-get_cxx_files(${base_fileparse_path}/fileparse/nlohmann src_list)
-list(APPEND base_fileparse_nlohmann_src_list ${src_list})
-source_group(3rdparty/base/fileparse/nlohmann FILES ${base_fileparse_nlohmann_src_list})
-
-set(base_fileparse_files) # 工程中需要把fileparse的文件添加进去
-list(APPEND base_fileparse_files ${base_fileparse_ini_src_list}
-                                 ${base_fileparse_nlohmann_src_list})
-
-print_info(BODY "base fileparse files:")
-foreach(filename ${base_fileparse_files})
-    message("    " ${filename})
-endforeach()
-##########################################################################################
+# 添加fileparse基础库
+add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/fileparse)
+include_directories(${CMAKE_SOURCE_DIR}/..)
+source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_fileparse_files})
 
 # 添加示例文件
 set(example_files)

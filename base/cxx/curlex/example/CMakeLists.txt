@@ -22,7 +22,6 @@ endif()
 
 # 添加curlex基础库
 add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/curlex)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/..")
 include_directories(${CMAKE_SOURCE_DIR}/..)
 source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_curlex_files})
 

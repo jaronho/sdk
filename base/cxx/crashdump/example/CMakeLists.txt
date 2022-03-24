@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.18.0)
 project(example_crashdump)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 include(../cmake/tools.cmake)
 
@@ -13,7 +12,6 @@ find_package(Threads REQUIRED)
 
 # 添加堆栈崩溃捕获基础库
 add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/crashdump)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/..")
 include_directories(${CMAKE_SOURCE_DIR}/..)
 source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_crashdump_files})
 
