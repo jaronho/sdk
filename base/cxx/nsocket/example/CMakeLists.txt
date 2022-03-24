@@ -6,31 +6,25 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(../cmake/tools.cmake)
 
-################################### 添加线程库 ###################################
+####################################### 添加线程库 #######################################
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-################################### 添加nsocket库 ###################################
-option(enable_nsocket_openssl "是否启用套接字OpenSSL依赖" ON)
-
-if(enable_nsocket_openssl)
-    add_definitions(-DENABLE_NSOCKET_OPENSSL=1)
-    find_package(OpenSSL 1.1.1 REQUIRED)
-    if (OpenSSL_FOUND)
-        message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
-        message(STATUS "OpenSSL libraries: ${OPENSSL_LIBRARIES}")
-        include_directories(${OPENSSL_INCLUDE_DIR})
-    else()
-        message(WARNING "OpenSSL not found")
-        return()
-    endif()
+###################################### 添加OPENSSL库 #####################################
+find_package(OpenSSL 1.1.1 REQUIRED) # 如果启用套接字加密则需要添加
+if (OpenSSL_FOUND)
+    message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
+    message(STATUS "OpenSSL libraries: ${OPENSSL_LIBRARIES}")
+    include_directories(${OPENSSL_INCLUDE_DIR})
 else()
-    add_definitions(-DENABLE_NSOCKET_OPENSSL=0)
+    message(WARNING "OpenSSL not found")
+    return()
 endif()
+##########################################################################################
 
+####################################### 添加BOOST库 ######################################
 set(Boost_USE_STATIC_LIBS ON) # ON表示链接Boost静态库, OFF或者不设置表示链接动态库
 find_package(Boost 1.76.0 REQUIRED COMPONENTS date_time)
-
 if(Boost_FOUND)
     message(STATUS "Boost include path: ${Boost_INCLUDE_DIRS}")
     message(STATUS "Boost library path: ${Boost_LIBRARY_DIRS}")
@@ -41,59 +35,18 @@ else()
     message(WARNING "Boost not found")
     return()
 endif()
-
-set(base_nsocket_path ..) # 设置nsocket库路径(可修改)
-include_directories(${base_nsocket_path})
-
-set(base_nsocket_core_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket/core src_list)
-list(APPEND base_nsocket_core_src_list ${src_list})
-source_group(3rdparty/base/nsocket/core FILES ${base_nsocket_core_src_list})
-
-set(base_nsocket_http_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket/http src_list)
-list(APPEND base_nsocket_http_src_list ${src_list})
-source_group(3rdparty/base/nsocket/http FILES ${base_nsocket_http_src_list})
-
-set(base_nsocket_tcp_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket/tcp src_list)
-list(APPEND base_nsocket_tcp_src_list ${src_list})
-source_group(3rdparty/base/nsocket/tcp FILES ${base_nsocket_tcp_src_list})
-
-set(base_nsocket_websocket_base64_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket/websocket/base64 src_list)
-list(APPEND base_nsocket_websocket_base64_src_list ${src_list})
-source_group(3rdparty/base/nsocket/websocket/base64 FILES ${base_nsocket_websocket_base64_src_list})
-
-set(base_nsocket_websocket_sha1_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket/websocket/sha1 src_list)
-list(APPEND base_nsocket_websocket_sha1_src_list ${src_list})
-source_group(3rdparty/base/nsocket/websocket/sha1 FILES ${base_nsocket_websocket_sha1_src_list})
-
-set(base_nsocket_websocket_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket/websocket src_list)
-list(APPEND base_nsocket_websocket_src_list ${src_list})
-source_group(3rdparty/base/nsocket/websocket FILES ${base_nsocket_websocket_src_list})
-
-set(base_nsocket_src_list)
-get_cxx_files(${base_nsocket_path}/nsocket src_list)
-list(APPEND base_nsocket_src_list ${src_list})
-source_group(3rdparty/base/nsocket FILES ${base_nsocket_src_list})
-
-set(base_nsocket_files) # 工程中需要把nsocket的文件添加进去
-list(APPEND base_nsocket_files ${base_nsocket_core_src_list}
-                               ${base_nsocket_http_src_list}
-                               ${base_nsocket_tcp_src_list}
-                               ${base_nsocket_websocket_base64_src_list}
-                               ${base_nsocket_websocket_sha1_src_list}
-                               ${base_nsocket_websocket_src_list}
-                               ${base_nsocket_src_list})
-
-print_info(BODY "base nsocket files:")
-foreach(filename ${base_nsocket_files})
-    message("    " ${filename})
-endforeach()
 ##########################################################################################
+
+# 添加nsocket基础库
+option(enable_nsocket_openssl "是否启用套接字OpenSSL依赖" ON)
+if(enable_nsocket_openssl)
+    add_definitions(-DENABLE_NSOCKET_OPENSSL=1)
+else()
+    add_definitions(-DENABLE_NSOCKET_OPENSSL=0)
+endif()
+add_subdirectory(${CMAKE_SOURCE_DIR}/.. 3rdparty/base/nsocket)
+include_directories(${CMAKE_SOURCE_DIR}/..)
+source_group(TREE ${CMAKE_SOURCE_DIR}/.. PREFIX 3rdparty/base FILES ${base_nsocket_files})
 
 # 添加TCP客户端示例文件
 set(example_tcpclient_files)
@@ -132,29 +85,13 @@ foreach(filename ${example_websocketserver_files})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_nsocket_tcpclient ${base_nsocket_core_src_list}
-                                         ${base_nsocket_tcp_src_list}
-                                         ${base_nsocket_src_list}
-                                         ${example_tcpclient_files})
-add_executable(example_nsocket_tcpserver ${base_nsocket_core_src_list}
-                                         ${base_nsocket_tcp_src_list}
-                                         ${base_nsocket_src_list}
-                                         ${example_tcpserver_files})
-add_executable(example_nsocket_httpserver ${base_nsocket_core_src_list}
-                                          ${base_nsocket_http_src_list}
-                                          ${base_nsocket_tcp_src_list}
-                                          ${base_nsocket_src_list}
-                                          ${example_httpserver_files})
-add_executable(example_nsocket_websocketserver ${base_nsocket_core_src_list}
-                                               ${base_nsocket_tcp_src_list}
-                                               ${base_nsocket_websocket_base64_src_list}
-                                               ${base_nsocket_websocket_sha1_src_list}
-                                               ${base_nsocket_websocket_src_list}
-                                               ${base_nsocket_src_list}
-                                               ${example_websocketserver_files})
+add_executable(example_nsocket_tcpclient ${base_nsocket_tcp_files} ${example_tcpclient_files})
+add_executable(example_nsocket_tcpserver ${base_nsocket_tcp_files} ${example_tcpserver_files})
+add_executable(example_nsocket_httpserver ${base_nsocket_http_files} ${example_httpserver_files})
+add_executable(example_nsocket_websocketserver ${base_nsocket_websocket_files} ${example_websocketserver_files})
 
 # 链接依赖库
-target_link_libraries(example_nsocket_tcpclient Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
-target_link_libraries(example_nsocket_tcpserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
-target_link_libraries(example_nsocket_httpserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
-target_link_libraries(example_nsocket_websocketserver Threads::Threads ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(example_nsocket_tcpclient Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(example_nsocket_tcpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(example_nsocket_httpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(example_nsocket_websocketserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})

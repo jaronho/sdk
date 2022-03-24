@@ -51,7 +51,7 @@ set(base_logger_files
     ${base_logger_impl_src_list}
     ${base_logger_logfile_src_list}
     ${base_logger_src_list}
-    CACHE INTERNAL "") 
+    CACHE INTERNAL "")
 
 # 打印文件列表
 print_info(BODY "base logger files:")

@@ -20,7 +20,10 @@ get_cxx_files(fileparse/nlohmann src_list)
 list(APPEND base_fileparse_nlohmann_src_list ${src_list})
 
 # 组装文件列表
-set(base_fileparse_files ${base_fileparse_ini_src_list} ${base_fileparse_nlohmann_src_list} CACHE INTERNAL "") 
+set(base_fileparse_files
+    ${base_fileparse_ini_src_list}
+    ${base_fileparse_nlohmann_src_list}
+    CACHE INTERNAL "")
 
 # 打印文件列表
 print_info(BODY "base fileparse files:")

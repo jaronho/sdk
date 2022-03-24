@@ -59,7 +59,7 @@ set(base_database_files
     ${sqlite_src_list}
     ${base_winq_src_list}
     ${base_database_src_list}
-    CACHE INTERNAL "") 
+    CACHE INTERNAL "")
 
 # 打印文件列表
 print_info(BODY "base database files:")
