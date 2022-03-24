@@ -19,7 +19,6 @@ set(comlib_httpclient_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 set(comlib_httpclient_src_list)
 get_cxx_files(httpclient src_list)
 list(APPEND comlib_httpclient_src_list ${src_list})
-source_group(3rdparty/comlib/httpclient FILES ${comlib_httpclient_src_list})
 
 # 组装文件列表
 set(comlib_httpclient_files
