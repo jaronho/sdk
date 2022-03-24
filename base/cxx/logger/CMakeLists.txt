@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18.0)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 14) # `std::make_unique`要求最低C++14
 
 include(cmake/tools.cmake)
 
