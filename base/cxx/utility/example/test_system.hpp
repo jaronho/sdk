@@ -28,16 +28,22 @@ void testSystem()
     printf("ret: %d\n", ret);
     printf("out: %s\n", outStr.c_str());
     printf("------------------------------\n");
-#ifndef _WIN32
-    std::string filename = "/root/workspace/1.txt";
+    std::string filename = "1.txt";
+#ifdef _WIN32
+    HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+#else
     int fd = open(filename.c_str(), O_RDWR | O_CREAT, (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH));
+#endif
     if (fd >= 0)
     {
         printf("=========== is lock: %s\n", utility::System::checkFileLock(fd) ? "true" : "false");
-        printf("=========== lock: %s\n", utility::System::tryLockFile(fd, true) ? "true" : "false");
-        std::this_thread::sleep_for(std::chrono::seconds(60));
-        printf("=========== unlock: %s\n", utility::System::tryLockFile(fd, false) ? "true" : "false");
+        printf("=========== lock: %s\n", utility::System::tryLockUnlockFile(fd, true) ? "true" : "false");
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        printf("=========== unlock: %s\n", utility::System::tryLockUnlockFile(fd, false) ? "true" : "false");
+#ifdef _WIN32
+        CloseHandle(fd);
+#else
         close(fd);
-    }
 #endif
+    }
 }

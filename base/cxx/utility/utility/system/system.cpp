@@ -4,9 +4,7 @@
 #include <string.h>
 #include <thread>
 
-#ifdef _WIN32
-#include <Windows.h>
-#else
+#ifndef _WIN32
 #include <fcntl.h>
 #include <unistd.h>
 #endif
@@ -102,14 +100,33 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
 #endif
 }
 
-bool System::tryLockFile(int fd, bool lock, bool block)
+#ifdef _WIN32
+bool System::tryLockUnlockFile(HANDLE fd, bool lock, bool block)
+#else
+bool System::tryLockUnlockFile(int fd, bool lock, bool block)
+#endif
 {
     if (fd <= 0) /* 文件不存在 */
     {
         return false;
     }
 #ifdef _WIN32
-    return false;
+    OVERLAPPED overlapped;
+    memset(&overlapped, 0, sizeof(OVERLAPPED));
+    if (lock)
+    {
+        if (0 == LockFileEx(fd, block ? LOCKFILE_EXCLUSIVE_LOCK : LOCKFILE_FAIL_IMMEDIATELY, (DWORD)0, (DWORD)0, (DWORD)0, &overlapped))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (0 == UnlockFileEx(fd, (DWORD)0, (DWORD)0, (DWORD)0, &overlapped))
+        {
+            return false;
+        }
+    }
 #else
     int lockType = lock ? F_WRLCK : F_UNLCK;
     struct flock fl;
@@ -118,52 +135,95 @@ bool System::tryLockFile(int fd, bool lock, bool block)
     fl.l_start = 0; /* 加锁的起始偏移 */
     fl.l_len = 0; /* 上锁的字节数, 为0时表示锁的区域从起点开始直至最大的可能位置 */
     int ret = fcntl(fd, block ? F_SETLKW : F_SETLK, &fl);
-    if (0 == ret && lockType == fl.l_type)
+    if (0 != ret || lockType != fl.l_type)
     {
-        return true;
+        return false;
     }
-    return false;
 #endif
+    return true;
 }
 
-bool System::tryAutoLockFile(const std::string& filename, const std::function<void()>& func)
+bool System::tryLockFile(const std::string& filename, bool block)
 {
     if (filename.empty())
     {
         return false;
     }
+    /* 打开要加锁的文件(注意: 这里文件句柄不做关闭处理) */
 #ifdef _WIN32
-    return false;
+    HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+    if (!fd)
+    {
+        return false;
+    }
 #else
-    /* 打开要加锁的文件 */
-    int fd = open((filename + ".lock").c_str(), O_RDWR | O_CREAT, 0777);
+    int fd = open(filename.c_str(), O_RDWR | O_CREAT, 0777);
     if (-1 == fd)
     {
         return false;
     }
+#endif
     /* 加锁 */
-    tryLockFile(fd, true, true);
+    return tryLockUnlockFile(fd, true, block);
+}
+
+bool System::tryLockFileTemporary(const std::string& filename, const std::function<void()>& func)
+{
+    if (filename.empty())
+    {
+        return false;
+    }
+    std::string fileLockName = filename + ".lock";
+    /* 打开要加锁的文件 */
+#ifdef _WIN32
+    HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+    if (!fd)
+    {
+        return false;
+    }
+#else
+    int fd = open(fileLockName.c_str(), O_RDWR | O_CREAT, 0777);
+    if (-1 == fd)
+    {
+        return false;
+    }
+#endif
+    /* 加锁 */
+    tryLockUnlockFile(fd, true, true);
     /* 执行逻辑 */
     if (func)
     {
         func();
     }
     /* 解锁 */
-    tryLockFile(fd, false, true);
+    tryLockUnlockFile(fd, false, true);
     /* 关闭加锁文件 */
+#ifdef _WIN32
+    CloseHandle(fd);
+#else
     close(fd);
-    return true;
 #endif
+    return true;
 }
 
+#ifdef _WIN32
+bool System::checkFileLock(HANDLE fd)
+#else
 bool System::checkFileLock(int fd)
+#endif
 {
     if (fd <= 0) /* 文件不存在 */
     {
         return false;
     }
 #ifdef _WIN32
-    return false;
+    /* 尝试解锁 */
+    tryLockUnlockFile(fd, false, false);
+    /* 获取错误码, 参考: https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499- */
+    if (0x9E == GetLastError()) /* The segment is already unlocked */
+    {
+        return false;
+    }
 #else
     struct flock fl;
     fl.l_type = F_RDLCK;
@@ -182,7 +242,14 @@ bool System::checkFileLock(int fd)
 bool System::checkFileLock(const std::string& filename)
 {
 #ifdef _WIN32
-    return false;
+    HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+    if (!fd)
+    {
+        return false;
+    }
+    bool ret = checkFileLock(fd);
+    CloseHandle(fd);
+    return ret;
 #else
     int fd = open(filename.c_str(), O_RDONLY);
     if (fd <= 0) /* 文件不存在 */

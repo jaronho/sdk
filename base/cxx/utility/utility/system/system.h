@@ -2,6 +2,9 @@
 #include <functional>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 namespace utility
 {
@@ -19,27 +22,43 @@ public:
 
     /**
      * @brief 对文件加锁/解锁
-     * @param fd 文件描述符(注意: 如果fd被关闭了,则自动解锁)
+     * @param fd 文件句柄/描述符(注意: 如果fd被关闭了,则自动解锁)
      * @param lock true-加锁, false-解锁
      * @param block true-阻塞(直到其他进程解锁), false-非阻塞
      * @return true-成功, false-失败
      */
-    static bool tryLockFile(int fd, bool lock, bool block = true);
+#ifdef _WIN32
+    static bool tryLockUnlockFile(HANDLE fd, bool lock, bool block = true);
+#else
+    static bool tryLockUnlockFile(int fd, bool lock, bool block = true);
+#endif
 
     /**
-     * @brief 对文件自动加解锁, 自动创建名称为`文件名.lock`的加锁文件
+     * @brief 对文件加锁
+     * @param filename 文件名(注意: 内部将会打开1个文件句柄且不会关闭)
+     * @param block true-阻塞(直到其他进程解锁), false-非阻塞
+     * @return true-成功, false-失败
+     */
+    static bool tryLockFile(const std::string& filename, bool block = true);
+
+    /**
+     * @brief 对文件临时加锁和解锁, 将自动创建名称为`文件名.lock`的加锁文件
      * @param filename 文件名
      * @param func 加解锁期间的执行函数
      * @return true-成功, false-失败
      */
-    static bool tryAutoLockFile(const std::string& filename, const std::function<void()>& func);
+    static bool tryLockFileTemporary(const std::string& filename, const std::function<void()>& func);
 
     /**
      * @brief 对检测文件是否被加锁
-     * @param fd 文件描述符
+     * @param fd 文件句柄/描述符
      * @return true-被加锁, false-未加锁
      */
+#ifdef _WIN32
+    static bool checkFileLock(HANDLE fd);
+#else
     static bool checkFileLock(int fd);
+#endif
 
     /**
      * @brief 对检测文件是否被加锁
