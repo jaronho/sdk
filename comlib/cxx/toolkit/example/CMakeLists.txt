@@ -10,7 +10,7 @@ include(../cmake/tools.cmake)
 find_package(Threads REQUIRED)
 ##########################################################################################
 
-# 添加utility基础库
+# 添加algorithm基础库
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/algorithm 3rdparty/base/algorithm)
 include_directories(${base_algorithm_dir})
 source_group(TREE ${base_algorithm_dir} PREFIX 3rdparty/base FILES ${base_algorithm_files})
