@@ -20,78 +20,104 @@ ${base_utility_dir}
 
 [源文件]
 ${base_utility_files}
+
+[源文件]
+${base_utility_bytearray_files}
+
+[源文件]
+${base_utility_charset_files}
+
+[源文件]
+${base_utility_cmdline_files}
+
+[源文件]
+${base_utility_datetime_files}
+
+[源文件]
+${base_utility_digit_files}
+
+[源文件]
+${base_utility_filesystem_files}
+
+[源文件]
+${base_utility_module_files}
+
+[源文件]
+${base_utility_net_files}
+
+[源文件]
+${base_utility_process_files}
+
+[源文件]
+${base_utility_strtool_files}
+
+[源文件]
+${base_utility_system_files}
+
+[源文件]
+${base_utility_timewatch_files}
+
+[源文件]
+${base_utility_util_files}
 ]]
 
 ################################### 添加utility库 ###################################
 set(base_utility_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 
-set(base_utility_bytearray_src_list)
 get_cxx_files(utility/bytearray src_list)
-list(APPEND base_utility_bytearray_src_list ${src_list})
+set(base_utility_bytearray_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_charset_src_list)
 get_cxx_files(utility/charset src_list)
-list(APPEND base_utility_charset_src_list ${src_list})
+set(base_utility_charset_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_cmdline_src_list)
 get_cxx_files(utility/cmdline src_list)
-list(APPEND base_utility_cmdline_src_list ${src_list})
+set(base_utility_cmdline_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_datetime_src_list)
 get_cxx_files(utility/datetime src_list)
-list(APPEND base_utility_datetime_src_list ${src_list})
+set(base_utility_datetime_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_digit_src_list)
 get_cxx_files(utility/digit src_list)
-list(APPEND base_utility_digit_src_list ${src_list})
+set(base_utility_digit_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_filesystem_src_list)
 get_cxx_files(utility/filesystem src_list)
-list(APPEND base_utility_filesystem_src_list ${src_list})
+set(base_utility_filesystem_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_module_src_list)
 get_cxx_files(utility/module src_list)
-list(APPEND base_utility_module_src_list ${src_list})
+set(base_utility_module_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_net_src_list)
 get_cxx_files(utility/net src_list)
-list(APPEND base_utility_net_src_list ${src_list})
+set(base_utility_net_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_process_src_list)
 get_cxx_files(utility/process src_list)
-list(APPEND base_utility_process_src_list ${src_list})
+set(base_utility_process_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_strtool_src_list)
 get_cxx_files(utility/strtool src_list)
-list(APPEND base_utility_strtool_src_list ${src_list})
+set(base_utility_strtool_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_system_src_list)
 get_cxx_files(utility/system src_list)
-list(APPEND base_utility_system_src_list ${src_list})
+set(base_utility_system_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_timewatch_src_list)
 get_cxx_files(utility/timewatch src_list)
-list(APPEND base_utility_timewatch_src_list ${src_list})
+set(base_utility_timewatch_files ${src_list} CACHE INTERNAL "")
 
-set(base_utility_src_list)
 get_cxx_files(utility src_list)
-list(APPEND base_utility_src_list ${src_list})
+set(base_utility_util_files ${src_list} CACHE INTERNAL "")
 
 # 组装文件列表
 set(base_utility_files
-    ${base_utility_bytearray_src_list}
-    ${base_utility_charset_src_list}
-    ${base_utility_cmdline_src_list}
-    ${base_utility_datetime_src_list}
-    ${base_utility_digit_src_list}
-    ${base_utility_filesystem_src_list}
-    ${base_utility_module_src_list}
-    ${base_utility_net_src_list}
-    ${base_utility_process_src_list}
-    ${base_utility_strtool_src_list}
-    ${base_utility_system_src_list}
-    ${base_utility_timewatch_src_list}
-    ${base_utility_src_list}
+    ${base_utility_bytearray_files}
+    ${base_utility_charset_files}
+    ${base_utility_cmdline_files}
+    ${base_utility_datetime_files}
+    ${base_utility_digit_files}
+    ${base_utility_filesystem_files}
+    ${base_utility_module_files}
+    ${base_utility_net_files}
+    ${base_utility_process_files}
+    ${base_utility_strtool_files}
+    ${base_utility_system_files}
+    ${base_utility_timewatch_files}
+    ${base_utility_util_files}
     CACHE INTERNAL "")
 
 # 打印文件列表

@@ -44,6 +44,9 @@ ${base_threading_dir}
 
 [源文件]
 ${base_threading_files}
+
+[源文件]
+${base_threading_signal_files}
 ]]
 
 ##################################### 添加threading库 ####################################
@@ -63,9 +66,8 @@ if(enable_fiber)
     list(APPEND base_threading_fiber_src_list ${src_list})
 endif()
 
-set(base_threading_signal_src_list)
 get_cxx_files(threading/signal src_list)
-list(APPEND base_threading_signal_src_list ${src_list})
+set(base_threading_signal_files ${src_list} CACHE INTERNAL "")
 
 set(base_threading_task_src_list)
 get_cxx_files(threading/task src_list)
@@ -84,7 +86,7 @@ set(base_threading_files
     ${base_threading_asio_src_list}
     ${base_threading_diagnose_src_list}
     ${base_threading_fiber_src_list}
-    ${base_threading_signal_src_list}
+    ${base_threading_signal_files}
     ${base_threading_task_src_list}
     ${base_threading_timer_src_list}
     ${base_threading_src_list}

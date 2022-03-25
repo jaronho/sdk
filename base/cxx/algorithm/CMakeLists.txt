@@ -11,53 +11,69 @@ ${base_algorithm_dir}
 
 [源文件]
 ${base_algorithm_files}
+
+[源文件]
+${base_algorithm_base64_files}
+
+[源文件]
+${base_algorithm_md5_files}
+
+[源文件]
+${base_algorithm_rc4_files}
+
+[源文件]
+${base_algorithm_sha1_files}
+
+[源文件]
+${base_algorithm_sm3_files}
+
+[源文件]
+${base_algorithm_sm4_files}
+
+[源文件]
+${base_algorithm_snowflake_files}
+
+[源文件]
+${base_algorithm_tvalue_files}
 ]]
 
 ##################################### 添加algorithm库 ####################################
 set(base_algorithm_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 
-set(base_algorithm_base64_src_list)
 get_cxx_files(algorithm/base64 src_list)
-list(APPEND base_algorithm_base64_src_list ${src_list})
+set(base_algorithm_base64_files ${src_list} CACHE INTERNAL "")
 
-set(base_algorithm_md5_src_list)
 get_cxx_files(algorithm/md5 src_list)
-list(APPEND base_algorithm_md5_src_list ${src_list})
+set(base_algorithm_md5_files ${src_list} CACHE INTERNAL "")
 
-set(base_algorithm_rc4_src_list)
 get_cxx_files(algorithm/rc4 src_list)
-list(APPEND base_algorithm_rc4_src_list ${src_list})
+set(base_algorithm_rc4_files ${src_list} CACHE INTERNAL "")
 
-set(base_algorithm_sha1_src_list)
 get_cxx_files(algorithm/sha1 src_list)
-list(APPEND base_algorithm_sha1_src_list ${src_list})
+set(base_algorithm_sha1_files ${src_list} CACHE INTERNAL "")
 
-set(base_algorithm_sm3_src_list)
 get_cxx_files(algorithm/sm3 src_list)
-list(APPEND base_algorithm_sm3_src_list ${src_list})
+set(base_algorithm_sm3_files ${src_list} CACHE INTERNAL "")
 
-set(base_algorithm_sm4_src_list)
 get_cxx_files(algorithm/sm4 src_list)
-list(APPEND base_algorithm_sm4_src_list ${src_list})
+set(base_algorithm_sm4_files ${src_list} CACHE INTERNAL "")
 
-set(base_algorithm_snowflake_src_list)
 get_cxx_files(algorithm/snowflake src_list)
-list(APPEND base_algorithm_snowflake_src_list ${src_list})
+set(base_algorithm_snowflake_files ${src_list} CACHE INTERNAL "")
 
-set(base_algorithm_src_list)
-get_cxx_files(algorithm src_list)
-list(APPEND base_algorithm_src_list ${src_list})
+get_cxx_files(algorithm/tvalue src_list)
+set(base_algorithm_tvalue_files ${src_list} CACHE INTERNAL "")
 
 # 组装文件列表
 set(base_algorithm_files
-    ${base_algorithm_base64_src_list}
-    ${base_algorithm_md5_src_list}
-    ${base_algorithm_rc4_src_list}
-    ${base_algorithm_sha1_src_list}
-    ${base_algorithm_sm3_src_list}
-    ${base_algorithm_sm4_src_list}
-    ${base_algorithm_snowflake_src_list}
-    ${base_algorithm_src_list}
+    ${base_algorithm_base64_files}
+    ${base_algorithm_md5_files}
+    ${base_algorithm_rc4_files}
+    ${base_algorithm_sha1_files}
+    ${base_algorithm_sm3_files}
+    ${base_algorithm_sm4_files}
+    ${base_algorithm_snowflake_files}
+    ${base_algorithm_tvalue_files}
     CACHE INTERNAL "")
 
 # 打印文件列表
