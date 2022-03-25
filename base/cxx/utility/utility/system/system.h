@@ -27,7 +27,7 @@ public:
     static bool tryLockFile(int fd, bool lock, bool block = true);
 
     /**
-     * @brief 对文件自动加解锁
+     * @brief 对文件自动加解锁, 自动创建名称为`文件名.lock`的加锁文件
      * @param filename 文件名
      * @param func 加解锁期间的执行函数
      * @return true-成功, false-失败
