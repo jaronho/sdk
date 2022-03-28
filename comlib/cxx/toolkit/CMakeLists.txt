@@ -11,18 +11,27 @@ ${comlib_toolkit_dir}
 
 [源文件]
 ${comlib_toolkit_files}
+${comlib_toolkit_app_singleton_files}
+${comlib_toolkit_tool_files}
 ]]
 
 ###################################### 添加toolkit模块 ###################################
 set(comlib_toolkit_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 
-set(comlib_toolkit_src_list)
-get_cxx_files(toolkit src_list)
-list(APPEND comlib_toolkit_src_list ${src_list})
+set(comlib_toolkit_app_singleton_files
+    ${CMAKE_CURRENT_SOURCE_DIR}/toolkit/app_singleton.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/toolkit/app_singleton.h
+    CACHE INTERNAL "")
+
+set(comlib_toolkit_tool_files
+    ${CMAKE_CURRENT_SOURCE_DIR}/toolkit/tool.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/toolkit/tool.h
+    CACHE INTERNAL "")
 
 # 组装文件列表
 set(comlib_toolkit_files
-    ${comlib_toolkit_src_list}
+    ${comlib_toolkit_app_singleton_files}
+    ${comlib_toolkit_tool_files}
     CACHE INTERNAL "")
 
 # 打印文件列表
