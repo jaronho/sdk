@@ -1,21 +1,9 @@
 #include "timer.h"
 
-#include <chrono>
-#include <list>
-#include <mutex>
 #include <thread>
 
 namespace threading
 {
-static std::mutex s_mutex;
-static std::unique_ptr<boost::asio::io_context> s_context = nullptr;
-static std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> s_work = nullptr;
-static std::unique_ptr<std::thread> s_thread = nullptr;
-static std::mutex s_mutexTrigger;
-static std::list<std::function<void()>> s_triggerList;
-static std::mutex s_mutexRunOnceCalledTimePoint;
-static std::chrono::steady_clock::time_point s_runOnceCalledTimePoint = std::chrono::steady_clock::now();
-
 #ifdef _WIN32
 namespace
 {
@@ -61,6 +49,15 @@ static void setThreadName(const std::string& name)
 #endif
 }
 
+std::mutex Timer::s_mutex;
+std::unique_ptr<boost::asio::io_context> Timer::s_context = nullptr;
+std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> Timer::s_work = nullptr;
+std::unique_ptr<std::thread> Timer::s_thread = nullptr;
+std::mutex Timer::s_mutexTrigger;
+std::list<Timer::TriggerInfo> Timer::s_triggerList;
+std::mutex Timer::s_mutexRunOnceCalledTimePoint;
+std::chrono::steady_clock::time_point Timer::s_runOnceCalledTimePoint = std::chrono::steady_clock::now();
+
 Timer::Timer()
 {
     std::lock_guard<std::mutex> locker(s_mutex);
@@ -87,14 +84,14 @@ boost::asio::io_context& Timer::getContext()
     return (*s_context);
 }
 
-void Timer::addToTriggerList(const std::function<void()>& func)
+void Timer::addToTriggerList(const Timer::TriggerInfo& info)
 {
     std::lock_guard<std::mutex> locker(s_mutexTrigger);
     if (s_triggerList.size() >= 1024) /* runOnce未被调用或者程序阻塞, 会引起内存泄漏 */
     {
         throw std::exception(std::logic_error("var 's_triggerList' too large"));
     }
-    s_triggerList.emplace_back(func);
+    s_triggerList.emplace_back(info);
 }
 
 bool Timer::isTriggerListWillConsumed(unsigned int timeout)
@@ -114,19 +111,20 @@ void Timer::runOnce()
         std::lock_guard<std::mutex> locker(s_mutexRunOnceCalledTimePoint);
         s_runOnceCalledTimePoint = std::chrono::steady_clock::now();
     }
-    std::function<void()> func = nullptr;
+    TriggerInfo info;
     {
         std::lock_guard<std::mutex> locker(s_mutexTrigger);
         if (s_triggerList.empty())
         {
             return;
         }
-        func = *(s_triggerList.begin());
+        info = *(s_triggerList.begin());
         s_triggerList.pop_front();
     }
-    if (func)
+    const auto timer = info.wpTimer.lock();
+    if (timer && timer->isStarted() && info.func)
     {
-        func();
+        info.func();
     }
 }
 } // namespace threading

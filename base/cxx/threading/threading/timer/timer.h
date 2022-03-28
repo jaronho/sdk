@@ -1,7 +1,10 @@
 #pragma once
 #include <boost/asio.hpp>
+#include <chrono>
 #include <functional>
+#include <list>
 #include <memory>
+#include <mutex>
 
 namespace threading
 {
@@ -42,15 +45,25 @@ public:
 
 protected:
     /**
+     * @brief 触发信息
+     */
+    struct TriggerInfo
+    {
+        std::weak_ptr<Timer> wpTimer;
+        std::function<void()> func = nullptr;
+    };
+
+protected:
+    /**
      * @brief 获取I/O上下文(用于运行定时器)
      */
     boost::asio::io_context& getContext();
 
     /**
      * @brief 添加到触发列表
-     * @param func 触发函数
+     * @param info 触发信息
      */
-    void addToTriggerList(const std::function<void()>& func);
+    void addToTriggerList(const TriggerInfo& info);
 
     /**
      * @brief 检测触发列表是否会被消耗
@@ -58,6 +71,16 @@ protected:
      * @return true-会, false-否
      */
     bool isTriggerListWillConsumed(unsigned int timeout = 5);
+
+private:
+    static std::mutex s_mutex;
+    static std::unique_ptr<boost::asio::io_context> s_context;
+    static std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> s_work;
+    static std::unique_ptr<std::thread> s_thread;
+    static std::mutex s_mutexTrigger;
+    static std::list<TriggerInfo> s_triggerList;
+    static std::mutex s_mutexRunOnceCalledTimePoint;
+    static std::chrono::steady_clock::time_point s_runOnceCalledTimePoint;
 };
 
 using TimerPtr = std::shared_ptr<Timer>;

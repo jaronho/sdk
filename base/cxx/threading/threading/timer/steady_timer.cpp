@@ -106,16 +106,33 @@ void SteadyTimer::onRecover()
 
 void SteadyTimer::onTrigger()
 {
+    {
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        if (!m_started)
+        {
+            return;
+        }
+    }
     /* 触发 */
     if (m_func)
     {
         if (m_executor) /* 有执行者则把回调抛到执行线程 */
         {
-            m_executor->post(m_name, m_func);
+            const std::weak_ptr<Timer> wpTimer = shared_from_this();
+            m_executor->post(m_name, [wpTimer, func = m_func]() {
+                const auto timer = wpTimer.lock();
+                if (timer && timer->isStarted() && func)
+                {
+                    func();
+                }
+            });
         }
         else if (isTriggerListWillConsumed()) /* 触发列表会被消耗, 则把回调添加到触发列表 */
         {
-            addToTriggerList(m_func);
+            Timer::TriggerInfo info;
+            info.wpTimer = shared_from_this();
+            info.func = m_func;
+            addToTriggerList(info);
         }
         else /* 否则直接执行回调(注意: 这是下下策, 存在阻塞定时器线程风险) */
         {
