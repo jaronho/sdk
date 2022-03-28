@@ -7,7 +7,8 @@
 
 int main()
 {
-    toolkit::AppSingleton::create("", "", [&]() { printf("------------------ app already running\n"); });
+    toolkit::AppSingleton::create(
+        "", "", [&](const std::string& pidFile) { printf("------------------ app already running, pidFile: %s\n", pidFile.c_str()); });
     printf("====================== app start\n");
     while (1)
     {

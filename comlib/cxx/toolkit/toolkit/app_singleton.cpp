@@ -12,7 +12,8 @@
 
 namespace toolkit
 {
-void AppSingleton::create(const std::string& pidFilePath, const std::string& pidFileName, const std::function<void()>& exitFunc)
+void AppSingleton::create(const std::string& pidFilePath, const std::string& pidFileName,
+                          const std::function<void(const std::string& pidFile)>& exitFunc)
 {
     static bool s_created = false;
     if (s_created) /* 避免重复创建 */
@@ -52,7 +53,7 @@ void AppSingleton::create(const std::string& pidFilePath, const std::string& pid
 #endif
         if (exitFunc)
         {
-            exitFunc();
+            exitFunc(pidFile);
         }
         exit(0); /* 关闭自身进程 */
     }
