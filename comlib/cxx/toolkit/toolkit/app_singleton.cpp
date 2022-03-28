@@ -15,19 +15,19 @@ namespace toolkit
 void AppSingleton::create(const std::string& pidFilePath, const std::string& pidFileName, const std::function<void()>& exitFunc)
 {
     static bool s_created = false;
-    if (s_created) /* ±ÜÃâÖØ¸´´´½¨ */
+    if (s_created) /* é¿å…é‡å¤åˆ›å»º */
     {
         return;
     }
     s_created = true;
-    /* ´´½¨pidÎÄ¼şÄ¿Â¼ */
+    /* åˆ›å»ºpidæ–‡ä»¶ç›®å½• */
     utility::FileInfo fi(utility::Process::getProcessExeFile());
     utility::PathInfo pi(pidFilePath.empty() ? fi.path() : pidFilePath, true);
     if (!pi.exist() && !pi.create())
     {
         return;
     }
-    /* ´ò¿ªpidÎÄ¼ş */
+    /* æ‰“å¼€pidæ–‡ä»¶ */
     auto pidFile = pi.path() + (pidFileName.empty() ? fi.filename() + ".pid" : pidFileName);
 #ifdef _WIN32
     HANDLE fd = CreateFile(pidFile.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
@@ -42,8 +42,8 @@ void AppSingleton::create(const std::string& pidFilePath, const std::string& pid
         return;
     }
 #endif
-    /* ¼ÓËøpidÎÄ¼ş */
-    if (!utility::System::tryLockUnlockFile(fd, true, false)) /* ¼ÓËøÊ§°Ü, ±íÊ¾ÒÑÓĞ½ø³Ì´ò¿ª */
+    /* åŠ é”pidæ–‡ä»¶ */
+    if (!utility::System::tryLockUnlockFile(fd, true, false)) /* åŠ é”å¤±è´¥, è¡¨ç¤ºå·²æœ‰è¿›ç¨‹æ‰“å¼€ */
     {
 #ifdef _WIN32
         CloseHandle(fd);
@@ -54,9 +54,9 @@ void AppSingleton::create(const std::string& pidFilePath, const std::string& pid
         {
             exitFunc();
         }
-        exit(0); /* ¹Ø±Õ×ÔÉí½ø³Ì */
+        exit(0); /* å…³é—­è‡ªèº«è¿›ç¨‹ */
     }
-    /* Ğ´½ø³ÌIDµ½ÎÄ¼ş */
+    /* å†™è¿›ç¨‹IDåˆ°æ–‡ä»¶ */
     std::string pid = std::to_string(utility::Process::getProcessId());
 #ifdef _WIN32
     WriteFile(fd, pid.c_str(), pid.size(), (DWORD)0, (DWORD)0);

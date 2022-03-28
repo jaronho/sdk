@@ -5,7 +5,7 @@
 namespace toolkit
 {
 /**
- * @brief Ó¦ÓÃµ¥ÀıÀà
+ * @brief åº”ç”¨å•ä¾‹ç±»
  */
 class AppSingleton final
 {
@@ -14,10 +14,10 @@ private:
 
 public:
     /**
-     * @brief ´´½¨Ó¦ÓÃµ¥Àı, ÔÚÓ¦ÓÃ³ÌĞòÖ÷Èë¿Ú½¨Òé×îÏÈµ÷ÓÃ
-     * @param pidFilePath pidÎÄ¼şÂ·¾¶(Ñ¡Ìî), Ä¬ÈÏÔÚ³ÌĞòÎÄ¼şËùÔÚÄ¿Â¼
-     * @param pidFileName pidÎÄ¼şÃû(Ñ¡Ìî), Ä¬ÈÏ`³ÌĞòÃû.pid`
-     * @param exitFunc ³ÌĞòÍË³öÇ°»Øµ÷(Ñ¡Ìî)
+     * @brief åˆ›å»ºåº”ç”¨å•ä¾‹, åœ¨åº”ç”¨ç¨‹åºä¸»å…¥å£å»ºè®®æœ€å…ˆè°ƒç”¨
+     * @param pidFilePath pidæ–‡ä»¶è·¯å¾„(é€‰å¡«), é»˜è®¤åœ¨ç¨‹åºæ–‡ä»¶æ‰€åœ¨ç›®å½•
+     * @param pidFileName pidæ–‡ä»¶å(é€‰å¡«), é»˜è®¤`ç¨‹åºå.pid`
+     * @param exitFunc ç¨‹åºé€€å‡ºå‰å›è°ƒ(é€‰å¡«)
      */
     static void create(const std::string& pidFilePath = "", const std::string& pidFileName = "",
                        const std::function<void()>& exitFunc = nullptr);
