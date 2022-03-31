@@ -26,14 +26,26 @@ include_directories(${comlib_toolkit_dir})
 source_group(TREE ${comlib_toolkit_dir} PREFIX 3rdparty/comlib FILES ${comlib_toolkit_files})
 
 # 构建可执行程序
-add_executable(example_app_singleton 
+add_executable(example_app_singleton
 			   ${base_utility_filesystem_files}
 			   ${base_utility_process_files}
 			   ${base_utility_system_files}
-			   ${comlib_toolkit_files}
+			   ${comlib_toolkit_app_singleton_files}
 			   example_app_singleton.cpp)
-add_executable(example_tool ${base_utility_files} ${comlib_toolkit_files} example_tool.cpp)
+
+add_executable(example_tool
+			   example_tool.cpp)
+
+add_executable(net_bridge_tool
+			   ${base_utility_cmdline_files}
+			   ${base_utility_filesystem_files}
+			   ${base_utility_net_files}
+			   ${base_utility_strtool_files}
+			   ${base_utility_system_files}
+			   ${comlib_toolkit_net_config_files}
+			   net_bridge_tool.cpp)
 
 # 链接依赖库
 target_link_libraries(example_app_singleton Threads::Threads)
 target_link_libraries(example_tool Threads::Threads)
+target_link_libraries(net_bridge_tool Threads::Threads)
