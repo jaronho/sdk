@@ -42,12 +42,13 @@ public:
     static bool tryLockFile(const std::string& filename, bool block = true);
 
     /**
-     * @brief 对文件临时加锁和解锁, 将自动创建名称为`文件名.lock`的加锁文件
+     * @brief 对文件临时加锁和解锁
      * @param filename 文件名
      * @param func 加解锁期间的执行函数
+     * @param suffix 加锁文件后缀名(选填), 若为空则将自动创建名称为`文件名.lock`的加锁文件
      * @return true-成功, false-失败
      */
-    static bool tryLockFileTemporary(const std::string& filename, const std::function<void()>& func);
+    static bool tryLockFileTemporary(const std::string& filename, const std::function<void()>& func, const std::string& suffix = ".lock");
 
     /**
      * @brief 对检测文件是否被加锁

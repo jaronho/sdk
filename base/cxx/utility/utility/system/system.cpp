@@ -167,13 +167,13 @@ bool System::tryLockFile(const std::string& filename, bool block)
     return tryLockUnlockFile(fd, true, block);
 }
 
-bool System::tryLockFileTemporary(const std::string& filename, const std::function<void()>& func)
+bool System::tryLockFileTemporary(const std::string& filename, const std::function<void()>& func, const std::string& suffix)
 {
     if (filename.empty())
     {
         return false;
     }
-    std::string fileLockName = filename + ".lock";
+    std::string fileLockName = filename + (suffix.empty() ? ".lock" : ('.' == suffix[0] ? suffix : ("." + suffix)));
     /* 打开要加锁的文件 */
 #ifdef _WIN32
     HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
