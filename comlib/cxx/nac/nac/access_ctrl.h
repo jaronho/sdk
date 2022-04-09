@@ -24,6 +24,9 @@ enum class BizCode;
  */
 using RespCallback = std::function<void(bool ok, const nlohmann::json& data)>;
 
+class StateHandler;
+class MsgHandler;
+
 /**
  * @brief 观察者(基类), 如果要订阅接入的相关状态和消息, 则只能通过观察者
  */
@@ -47,10 +50,6 @@ protected:
      * @return true-订阅成功, false-订阅失败
      */
     bool subscribeAccessMsg(const BizCode& bizCode, const std::function<void(const nlohmann::json& data)>& func);
-
-private:
-    friend class StateHandler;
-    friend class MsgHandler;
 
 private:
     std::shared_ptr<StateHandler> m_stateHandler = nullptr; /* 连接状态处理器 */
@@ -124,10 +123,6 @@ public:
      * @return 消息序列ID, -1表示发送失败
      */
     int64_t sendMsg(const BizCode& bizCode, const nlohmann::json& data, const RespCallback& callback, unsigned int timeout = 30);
-
-private:
-    friend class StateHandler;
-    friend class MsgHandler;
 
 private:
     /**
