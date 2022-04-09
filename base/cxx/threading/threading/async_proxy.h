@@ -1,5 +1,5 @@
 #pragma once
-
+#include <chrono>
 #include <list>
 #include <mutex>
 
@@ -39,10 +39,11 @@ public:
     static void stop();
 
     /**
-     * @brief 运行单次(用于监听结束回调, 在主逻辑线程中循环调用, 一般是在主线程)
+     * @brief 运行单次(用于监听结束回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
      *        注意: 如果调用execute时有指定任务结束回调的执行线程, 则其回调不受该接口接管
+     * @param maxInterval 接口被调用所允许的最大间隔(选填), 若非0且实际间隔大于此值则回调在工作线程调用
      */
-    static void runOnce();
+    static void runOnce(const std::chrono::steady_clock::duration& maxInterval = std::chrono::seconds(1));
 
     /**
      * @brief 执行异步任务
@@ -62,8 +63,18 @@ public:
                         const ExecutorPtr& finishExecutor = nullptr);
 
 private:
+    /**
+     * @brief 检测结束列表是否会被消耗
+     * @return true-会, false-否
+     */
+    static bool isFinishListWillConsumed();
+
+private:
     static ExecutorPtr s_workerThreads; /* 工作线程池 */
-    static std::mutex s_finishMutex; /* 互斥量 */
+    static std::mutex s_mutexFinish;
     static std::list<AsyncTaskPtr> s_finishList; /* 结束列表 */
+    static std::mutex s_mutexRunOnceCalled;
+    static std::chrono::steady_clock::duration s_runOnceCalledMaxInterval; /* runOnce被调用允许的最大间隔 */
+    static std::chrono::steady_clock::time_point s_runOnceCalledTimePoint; /* runOnce被调用的时间点 */
 };
 } // namespace threading

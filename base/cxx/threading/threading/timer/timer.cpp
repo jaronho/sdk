@@ -55,7 +55,8 @@ std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::execut
 std::unique_ptr<std::thread> Timer::s_thread = nullptr;
 std::mutex Timer::s_mutexTrigger;
 std::list<Timer::TriggerInfo> Timer::s_triggerList;
-std::mutex Timer::s_mutexRunOnceCalledTimePoint;
+std::mutex Timer::s_mutexRunOnceCalled;
+std::chrono::steady_clock::duration Timer::s_runOnceCalledMaxInterval = std::chrono::steady_clock::duration::zero();
 std::chrono::steady_clock::time_point Timer::s_runOnceCalledTimePoint = std::chrono::steady_clock::now();
 
 Timer::Timer()
@@ -94,21 +95,22 @@ void Timer::addToTriggerList(const Timer::TriggerInfo& info)
     s_triggerList.emplace_back(info);
 }
 
-bool Timer::isTriggerListWillConsumed(unsigned int timeout)
+bool Timer::isTriggerListWillConsumed()
 {
-    timeout = (timeout >= 3 ? timeout : 3);
-    std::chrono::seconds elapsed;
+    std::lock_guard<std::mutex> locker(s_mutexRunOnceCalled);
+    if (std::chrono::steady_clock::duration::zero() == s_runOnceCalledMaxInterval)
     {
-        std::lock_guard<std::mutex> locker(s_mutexRunOnceCalledTimePoint);
-        elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - s_runOnceCalledTimePoint);
+        return true;
     }
-    return (elapsed.count() < timeout);
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - s_runOnceCalledTimePoint);
+    return elapsed <= s_runOnceCalledMaxInterval;
 }
 
-void Timer::runOnce()
+void Timer::runOnce(const std::chrono::steady_clock::duration& maxInterval)
 {
     {
-        std::lock_guard<std::mutex> locker(s_mutexRunOnceCalledTimePoint);
+        std::lock_guard<std::mutex> locker(s_mutexRunOnceCalled);
+        s_runOnceCalledMaxInterval = maxInterval;
         s_runOnceCalledTimePoint = std::chrono::steady_clock::now();
     }
     TriggerInfo info;
@@ -122,7 +124,7 @@ void Timer::runOnce()
         s_triggerList.pop_front();
     }
     const auto timer = info.wpTimer.lock();
-    if (timer && timer->isStarted() && info.func)
+    if (timer && info.func)
     {
         info.func();
     }

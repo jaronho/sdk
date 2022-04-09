@@ -1,5 +1,4 @@
 #pragma once
-
 #include "asio/asio_executor.h"
 #if 1 == ENABLE_THREADING_FIBER
 #include "fiber/fiber_executor.h"

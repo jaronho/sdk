@@ -1,5 +1,4 @@
 #pragma once
-
 #include "inifile.h"
 
 namespace ini

@@ -1,5 +1,4 @@
 #pragma once
-
 #include "ini_reader.h"
 
 namespace ini

@@ -1,5 +1,4 @@
 #pragma once
-
 #include <boost/fiber/all.hpp>
 #include <memory>
 #include <thread>

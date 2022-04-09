@@ -106,7 +106,7 @@ void DeadlineTimer::onTrigger()
             const std::weak_ptr<Timer> wpTimer = shared_from_this();
             m_executor->post(m_name, [wpTimer, func = m_func]() {
                 const auto timer = wpTimer.lock();
-                if (timer && timer->isStarted() && func)
+                if (timer && func)
                 {
                     func();
                 }
