@@ -72,6 +72,6 @@ public:
 
 private:
     std::string m_tag; /* 标签 */
-    std::shared_ptr<InnerLogger> m_inner; /* 内部日志记录器 */
+    std::shared_ptr<InnerLogger> m_inner = nullptr; /* 内部日志记录器 */
 };
 } // namespace logger

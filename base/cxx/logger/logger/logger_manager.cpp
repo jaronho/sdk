@@ -39,7 +39,7 @@ Logger LoggerManager::getLogger(const std::string& tagName, const std::string& l
     /* 默认日志器找不到则创建 */
     if (m_logCfg.path.empty())
     {
-        throw std::exception(std::logic_error("var 'm_logCfg.path' is empty"));
+        return Logger();
     }
     LogConfig cfg = m_logCfg;
     cfg.name = name;
