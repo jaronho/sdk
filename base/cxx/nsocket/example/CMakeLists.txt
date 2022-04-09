@@ -91,7 +91,14 @@ add_executable(example_nsocket_httpserver ${base_nsocket_http_files} ${example_h
 add_executable(example_nsocket_websocketserver ${base_nsocket_websocket_files} ${example_websocketserver_files})
 
 # 链接依赖库
-target_link_libraries(example_nsocket_tcpclient Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
-target_link_libraries(example_nsocket_tcpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
-target_link_libraries(example_nsocket_httpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
-target_link_libraries(example_nsocket_websocketserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+if(enable_nsocket_openssl)
+    target_link_libraries(example_nsocket_tcpclient Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_tcpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_httpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_websocketserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+else()
+    target_link_libraries(example_nsocket_tcpclient Threads::Threads ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_tcpserver Threads::Threads ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_httpserver Threads::Threads ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_websocketserver Threads::Threads ${Boost_LIBRARIES})
+endif()

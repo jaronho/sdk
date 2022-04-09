@@ -8,20 +8,31 @@ include(cmake/tools.cmake)
 #[[
 [开关]
 option(enable_database_crypto "是否启用数据库加解密" OFF)
+if(enable_database_crypto)
+    add_definitions(-DSQLITE_HAS_CODEC)
+    add_definitions(-DSQLCIPHER_CRYPTO_OPENSSL)
+    add_definitions(-DSQLITE_TEMP_STORE=2)
+endif()
+
+[命令行]
+find_package(Threads REQUIRED)
 
 [命令行]
 find_package(OpenSSL 1.1.1 REQUIRED) # 如果启用数据库加密则需要添加
 if (OpenSSL_FOUND)
     message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
     message(STATUS "OpenSSL libraries: ${OPENSSL_LIBRARIES}")
-    add_definitions(-DSQLITE_HAS_CODEC)
-    add_definitions(-DSQLCIPHER_CRYPTO_OPENSSL)
-    add_definitions(-DSQLITE_TEMP_STORE=2)
     include_directories(${OPENSSL_INCLUDE_DIR})
 else()
     message(WARNING "OpenSSL not found")
     return()
 endif()
+
+[链接库]
+dl # Linux平台
+
+[链接库]
+Threads::Threads
 
 [链接库]
 ${OPENSSL_LIBRARIES}
