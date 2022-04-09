@@ -178,7 +178,12 @@ std::vector<int> RotatingLogfile::findIndexList(const std::string& path, const s
 
 int RotatingLogfile::findLastIndex(const std::string& path, std::vector<int>& indexList)
 {
-    std::regex pattern(m_baseName + "-([0-9]+)" + (m_extName.empty() ? "" : "\\") + m_extName);
+#ifdef _WIN32
+    const std::string SLASH = "\\";
+#else
+    const std::string SLASH = "/";
+#endif
+    std::regex pattern(m_baseName + "-([0-9]+)" + (m_extName.empty() ? "" : SLASH) + m_extName);
     indexList = findIndexList(path, pattern);
     if (indexList.empty())
     {
@@ -209,10 +214,14 @@ bool RotatingLogfile::rotateFileList()
     {
         /* 删除最早的文件 */
         size_t discardCount = indexList.size() - m_maxFiles;
-        for (size_t i = 0; i < discardCount; ++i)
+        if (discardCount > 0)
         {
-            std::string descardFullName = path + calcFilenameByIndex(indexList[i]);
-            remove(descardFullName.c_str());
+            for (size_t i = 0; i < discardCount; ++i)
+            {
+                std::string descardFullName = path + calcFilenameByIndex(indexList[i]);
+                remove(descardFullName.c_str());
+            }
+            indexList.erase(indexList.begin(), indexList.begin() + discardCount);
         }
         if (1 == m_maxFiles) /* 只允许一个文件, 则清空文件内容 */
         {
@@ -223,7 +232,7 @@ bool RotatingLogfile::rotateFileList()
             m_logfile->close();
             if (m_indexFixed) /* 文件索引值固定, 把后面的文件向前移 */
             {
-                for (size_t i = discardCount + 1, count = indexList.size(); i < count; ++i)
+                for (size_t i = 1; i < indexList.size(); ++i)
                 {
                     std::string prevFullName = path + calcFilenameByIndex(indexList[i - 1]);
                     std::string currFullName = path + calcFilenameByIndex(indexList[i]);
@@ -236,28 +245,22 @@ bool RotatingLogfile::rotateFileList()
                     }
                 }
             }
-            else /* 文件索引值递增 */
+            else /* 文件索引值递增, 删除最早的文件 */
             {
-                std::string descardFullName = path + calcFilenameByIndex(indexList[discardCount]);
+                std::string descardFullName = path + calcFilenameByIndex(indexList[0]);
                 remove(descardFullName.c_str());
-                lastIndex += 1;
+                m_index.store(lastIndex + 1);
             }
-            m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(lastIndex), maxSize);
-            if (m_logfile->open())
-            {
-                m_index.store(lastIndex);
-            }
+            m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index), maxSize);
+            m_logfile->open();
         }
     }
     else /* 不限文件个数, 或未达到最大文件数 */
     {
-        lastIndex += 1;
+        m_index.store(lastIndex + 1);
         m_logfile->close();
-        m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(lastIndex), maxSize);
-        if (m_logfile->open())
-        {
-            m_index.store(lastIndex);
-        }
+        m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index), maxSize);
+        m_logfile->open();
     }
     if (!m_logfile->isOpened())
     {
