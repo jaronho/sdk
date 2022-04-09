@@ -4,8 +4,6 @@
 #include <mutex>
 #include <string>
 
-namespace logger
-{
 /**
  * @brief 日志文件
  */
@@ -37,9 +35,9 @@ public:
      * @brief 构造函数
      * @param path 日志文件路径, 例如: "/home/workdpace/logs" 或 "/home/workdpace/logs/"
      * @param filename 日志文件名, 例如: "demo.log"
-     * @param maxSize 文件最大容量值(字节), 例如: 4M = 4 * 1024 * 1024
+     * @param maxSize 文件最大容量值(字节, 选填), 为0时表示不限制文件大小, 例如: 4M = 4 * 1024 * 1024
      */
-    Logfile(const std::string& path, const std::string& filename, size_t maxSize);
+    explicit Logfile(const std::string& path, const std::string& filename, size_t maxSize = 0);
 
     ~Logfile();
 
@@ -119,10 +117,9 @@ private:
     std::string m_path; /* 日志文件路径 */
     std::string m_filename; /* 日志文件名 */
     std::string m_fullName; /* 日志文件全名(包含路径) */
-    size_t m_maxSize; /* 文件最大容量值 */
+    size_t m_maxSize = 0; /* 文件最大容量值 */
     std::mutex m_mutex; /* 互斥锁 */
     std::fstream m_f; /* 文件流 */
     std::atomic_size_t m_size = {0}; /* 文件当前大小 */
     std::atomic_bool m_enable = {true}; /* 是否启用日志记录功能 */
 };
-} // namespace logger

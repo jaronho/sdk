@@ -12,8 +12,6 @@
 #include <unistd.h>
 #endif
 
-namespace logger
-{
 bool Logfile::createPath(const std::string& path)
 {
     if (path.empty())
@@ -58,10 +56,6 @@ Logfile::Logfile(const std::string& path, const std::string& filename, size_t ma
     if (filename.empty())
     {
         throw std::exception(std::logic_error("arg 'filename' is empty"));
-    }
-    if (maxSize <= 0)
-    {
-        throw std::exception(std::logic_error("arg 'maxSize' <= 0"));
     }
     m_path = path;
     const char& lastPathChar = path[path.length() - 1];
@@ -190,13 +184,16 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
         return Result::disabled;
     }
     size_t contentSize = content.size();
-    if (contentSize > m_maxSize)
+    if (m_maxSize > 0) /* 有限制文件大小 */
     {
-        return Result::too_large;
-    }
-    if (m_size.load() + contentSize > m_maxSize)
-    {
-        return Result::will_full;
+        if (contentSize > m_maxSize)
+        {
+            return Result::too_large;
+        }
+        if (m_size.load() + contentSize > m_maxSize)
+        {
+            return Result::will_full;
+        }
     }
     bool needFlush = false;
     if (m_size.load() > 0 && newline)
@@ -232,4 +229,3 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
     }
     return Result::ok;
 }
-} // namespace logger

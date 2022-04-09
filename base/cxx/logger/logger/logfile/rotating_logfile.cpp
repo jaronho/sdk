@@ -13,8 +13,6 @@
 #include <unistd.h>
 #endif
 
-namespace logger
-{
 RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize,
                                  size_t maxFiles, bool indexFixed)
 {
@@ -25,10 +23,6 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
     if (baseName.empty())
     {
         throw std::exception(std::logic_error("arg 'baseName' is empty"));
-    }
-    if (maxSize <= 0)
-    {
-        throw std::exception(std::logic_error("arg 'maxSize' <= 0"));
     }
     m_baseName = baseName;
     m_extName = extName;
@@ -43,7 +37,7 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
     m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index.load()), maxSize);
 }
 
-size_t RotatingLogfile::getFileIndex() const
+int RotatingLogfile::getFileIndex() const
 {
     return m_index.load();
 }
@@ -159,9 +153,9 @@ void RotatingLogfile::traverseFile(std::string path, std::function<void(const st
 #endif
 }
 
-bool RotatingLogfile::findIndexList(const std::string& path, const std::regex& pattern, std::vector<int>& indexList)
+std::vector<int> RotatingLogfile::findIndexList(const std::string& path, const std::regex& pattern)
 {
-    bool matchFlag = false;
+    std::vector<int> indexList;
     std::smatch results;
     traverseFile(
         path,
@@ -175,23 +169,22 @@ bool RotatingLogfile::findIndexList(const std::string& path, const std::regex& p
             if (std::regex_match(filename, results, pattern))
             {
                 indexList.emplace_back(atoi(results[1].str().c_str()));
-                matchFlag = true;
             }
         },
         false);
     std::sort(indexList.begin(), indexList.end(), [](int a, int b) { return a < b; });
-    return matchFlag;
+    return indexList;
 }
 
 int RotatingLogfile::findLastIndex(const std::string& path, std::vector<int>& indexList)
 {
     std::regex pattern(m_baseName + "-([0-9]+)" + (m_extName.empty() ? "" : "\\") + m_extName);
-    int lastIndex = 1;
-    if (findIndexList(path, pattern, indexList))
+    indexList = findIndexList(path, pattern);
+    if (indexList.empty())
     {
-        lastIndex = indexList[indexList.size() - 1];
+        return 1;
     }
-    return lastIndex;
+    return indexList[indexList.size() - 1];
 }
 
 std::string RotatingLogfile::calcFilenameByIndex(int index)
@@ -228,7 +221,7 @@ bool RotatingLogfile::rotateFileList()
         else /* 允许多个文件 */
         {
             m_logfile->close();
-            if (m_indexFixed) /* 把后面的文件向前移 */
+            if (m_indexFixed) /* 文件索引值固定, 把后面的文件向前移 */
             {
                 for (size_t i = discardCount + 1, count = indexList.size(); i < count; ++i)
                 {
@@ -243,7 +236,7 @@ bool RotatingLogfile::rotateFileList()
                     }
                 }
             }
-            else /* 文件索引值固定 */
+            else /* 文件索引值递增 */
             {
                 std::string descardFullName = path + calcFilenameByIndex(indexList[discardCount]);
                 remove(descardFullName.c_str());
@@ -272,4 +265,3 @@ bool RotatingLogfile::rotateFileList()
     }
     return true;
 }
-} // namespace logger

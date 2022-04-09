@@ -7,8 +7,6 @@
 
 #include "rotating_logfile.h"
 
-namespace logger
-{
 /**
  * @brief 每天日志文件
  */
@@ -19,14 +17,14 @@ public:
      * @brief 构造函数
      * @param path 日志文件路径, 例如: "/home/workspace/logs" 或 "/home/workspace/logs/"
      * @param prefixName 日志文件前缀名(允许为空), 例如: "demo"
-     * @param extName 日志文件后缀名, 例如: "log" 或 ".log"
-     * @param maxSize 文件最大容量值(字节), 例如: 4M = 4 * 1024 * 1024
-     * @param maxFiles 最多文件个数, 为0时表示个数不受限制
-     * @param indexFixed 文件数最大时, true-索引值固定, false-递增
-     * @param createDailyFolder 是否创建每日文件夹
+     * @param extName 日志文件后缀名(允许为空), 例如: "log" 或 ".log"
+     * @param maxSize 文件最大容量值(字节, 选填), 为0时表示不限制文件大小, 例如: 4M = 4 * 1024 * 1024
+     * @param maxFiles 最多文件个数(选填), 为0时表示个数不受限制
+     * @param indexFixed 文件数最大时(选填), true-索引值固定, false-递增
+     * @param createDailyFolder 是否创建每日文件夹(选填)
      */
-    DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& extName, size_t maxSize, size_t maxFiles = 0,
-                 bool indexFixed = false, bool createDailyFolder = true);
+    explicit DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& extName, size_t maxSize = 0,
+                          size_t maxFiles = 0, bool indexFixed = false, bool createDailyFolder = true);
 
     virtual ~DailyLogfile() = default;
 
@@ -43,11 +41,10 @@ private:
     std::string m_prefixName; /* 日志文件前缀名 */
     std::string m_baseName; /* 日志文件名 */
     std::string m_extName; /* 日志文件后缀名 */
-    size_t m_maxSize; /* 文件最大容量值 */
-    size_t m_maxFiles; /* 最多文件个数 */
-    bool m_indexFixed; /* 文件数最大时, 索引值固定还是递增 */
-    bool m_createDailyFolder; /* 是否创建每日文件夹 */
+    size_t m_maxSize = 0; /* 文件最大容量值 */
+    size_t m_maxFiles = 0; /* 最多文件个数 */
+    bool m_indexFixed = false; /* 文件数最大时, 索引值固定还是递增 */
+    bool m_createDailyFolder = true; /* 是否创建每日文件夹 */
     std::mutex m_mutex; /* 互斥锁 */
-    std::shared_ptr<RotatingLogfile> m_rotatingLogfile; /* 滚动日志文件 */
+    std::shared_ptr<RotatingLogfile> m_rotatingLogfile = nullptr; /* 滚动日志文件 */
 };
-} // namespace logger
