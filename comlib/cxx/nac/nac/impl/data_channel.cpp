@@ -2,7 +2,8 @@
 
 namespace nac
 {
-bool DataChannel::connect(const std::string& address, unsigned short port)
+bool DataChannel::connect(const std::string& address, unsigned short port, const std::string& certFile, const std::string& privateKeyFile,
+                          const std::string& privateKeyFilePwd)
 {
     if (m_tcpClient)
     {
@@ -43,7 +44,12 @@ bool DataChannel::connect(const std::string& address, unsigned short port)
             {
                 try
                 {
+#if (1 == ENABLE_NSOCKET_OPENSSL)
+                    auto sslContext = nsocket::TcpClient::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd);
+                    tcpClient->run(address, port, sslContext);
+#else
                     tcpClient->run(address, port);
+#endif
                 }
                 catch (const std::exception& e)
                 {

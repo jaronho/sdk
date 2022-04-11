@@ -63,14 +63,18 @@ public:
      * @brief 连接(连接成功后鉴权如果需要的话)
      * @param address 服务器地址
      * @param port 服务器端口
-     * @param connectTimeout 连接超时(秒), 为0表示系统默认
-     * @param authBizCode 鉴权业务码, 为0时表示不需要鉴权
-     * @param authTimeout 鉴权响应超时(秒), 必须大于0
-     * @param heartbeatBizCode 心跳业务码, 为0时表示不需要发送心跳
-     * @param heartbeatInterval 心跳间隔(秒), 必须大于0
+     * @param certFile 证书文件(选填), 例如: client.crt
+     * @param privateKeyFile 私钥文件(选填), 例如: client.key
+     * @param privateKeyFilePwd 私钥文件密码(选填), 例如: qq123456
+     * @param connectTimeout 连接超时(秒, 选填), 为0表示系统默认
+     * @param authBizCode 鉴权业务码(选填), 为0时表示不需要鉴权
+     * @param authTimeout 鉴权响应超时(秒, 选填), 必须大于0
+     * @param heartbeatBizCode 心跳业务码(选填), 为0时表示不需要发送心跳
+     * @param heartbeatInterval 心跳间隔(秒, 选填), 必须大于0
      * @return true-连接请求中, false-连接失败
      */
-    bool connect(const std::string& address, unsigned int port, unsigned int connectTimeout = 0, unsigned int authBizCode = 0,
+    bool connect(const std::string& address, unsigned int port, const std::string& certFile = "", const std::string& privateKeyFile = "",
+                 const std::string& privateKeyFilePwd = "", unsigned int connectTimeout = 0, unsigned int authBizCode = 0,
                  unsigned int authTimeout = 30, unsigned int heartbeatBizCode = 0, unsigned int heartbeatInterval = 15);
 
     /**
@@ -197,6 +201,9 @@ private:
     std::atomic<int64_t> m_lastSendHeartbeatTime = {0}; /* 最近发送心跳的时间, epoch至今的秒数 */
     std::string m_address; /* 服务器地址 */
     unsigned int m_port = 0; /* 服务器端口 */
+    std::string m_certFile; /* 证书文件 */
+    std::string m_privateKeyFile; /* 私钥文件 */
+    std::string m_privateKeyFilePwd; /* 私钥文件密码 */
     unsigned int m_connectTimeout = 0; /* 连接超时(秒) */
     unsigned int m_authBizCode = 0; /* 鉴权业务码 */
     unsigned int m_authTimeout = 30; /* 鉴权响应超时(秒), 必须大于0 */

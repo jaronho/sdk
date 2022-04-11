@@ -58,7 +58,8 @@ void ConnectService::setHeartbeatDataGenerator(const std::function<std::string()
     m_heartbeatDataGenerator = generator;
 }
 
-bool ConnectService::connect(const std::string& address, unsigned int port, unsigned int connectTimeout, unsigned int authBizCode,
+bool ConnectService::connect(const std::string& address, unsigned int port, const std::string& certFile, const std::string& privateKeyFile,
+                             const std::string& privateKeyFilePwd, unsigned int connectTimeout, unsigned int authBizCode,
                              unsigned int authTimeout, unsigned int heartbeatBizCode, unsigned int heartbeatInterval)
 {
     if (address.empty() || 0 == port)
@@ -87,6 +88,9 @@ bool ConnectService::connect(const std::string& address, unsigned int port, unsi
     updateConnectState(ConnectState::connecting);
     m_address = address;
     m_port = port;
+    m_certFile = certFile;
+    m_privateKeyFile = privateKeyFile;
+    m_privateKeyFilePwd = privateKeyFilePwd;
     m_connectTimeout = connectTimeout;
     m_authBizCode = authBizCode;
     m_authTimeout = authTimeout;
@@ -99,7 +103,7 @@ bool ConnectService::connect(const std::string& address, unsigned int port, unsi
     if (dataChannel)
     {
         startTimetoutTimer();
-        return dataChannel->connect(address, port);
+        return dataChannel->connect(address, port, certFile, privateKeyFile, privateKeyFilePwd);
     }
     return false;
 }
@@ -117,7 +121,7 @@ bool ConnectService::reconnect()
     if (dataChannel)
     {
         startTimetoutTimer();
-        return dataChannel->connect(m_address, m_port);
+        return dataChannel->connect(m_address, m_port, m_certFile, m_privateKeyFile, m_privateKeyFilePwd);
     }
     return false;
 }

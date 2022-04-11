@@ -24,9 +24,13 @@ public:
      * @brief 连接(异步)
      * @param address 服务器地址
      * @param port 服务器端口
+     * @param certFile 证书文件(选填), 例如: client.crt
+     * @param privateKeyFile 私钥文件(选填), 例如: client.key
+     * @param privateKeyFilePwd 私钥文件密码(选填), 例如: qq123456
      * @return true-请求连接中, false-失败
      */
-    bool connect(const std::string& address, unsigned short port);
+    bool connect(const std::string& address, unsigned short port, const std::string& certFile = "", const std::string& privateKeyFile = "",
+                 const std::string& privateKeyFilePwd = "");
 
     /**
      * @brief 断开连接

@@ -63,6 +63,9 @@ struct AccessConfig
 {
     std::string address; /* 服务器地址 */
     unsigned int port = 0; /* 服务器端口 */
+    std::string certFile; /* 证书文件(全路径), 例如: /home/root/client.crt */
+    std::string privateKeyFile; /* 私钥文件(全路径), 例如: /home/root/client.key */
+    std::string privateKeyFilePwd; /* 私钥文件密码, 例如: qq123456 */
     unsigned int connectTimeout = 0; /* 连接超时(秒), 为0表示系统默认 */
     BizCode authBizCode = BizCode(0); /* 鉴权业务码, 为0表示不需要鉴权 */
     unsigned int authTimeout = 30; /* 鉴权超时(秒), 必须大于0 */
