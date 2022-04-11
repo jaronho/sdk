@@ -4,8 +4,8 @@
 #include <mutex>
 #include <sstream>
 
-#include "../fileparse/ini/ini_writer.h"
 #include "cfgkey.hpp"
+#include "fileparse/ini/ini_writer.h"
 
 /**
  * @brief 配置值对象

@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-#include "../fileparse/ini/ini_helper.h"
+#include "fileparse/ini/ini_helper.h"
 
 #define CONFIG_FILENAME "config.ini"
 /* 整型键值对(只读) */
