@@ -7,7 +7,7 @@
 namespace ini
 {
 using INI_MAP_TYPE = std::map<std::string, std::map<std::string, IniSection>>;
-std::mutex g_mutex; /* 互斥锁 */
+std::mutex* g_mutex = nullptr; /* 互斥锁 */
 INI_MAP_TYPE* g_iniMap = nullptr; /* 全局ini映射表 */
 
 void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& key)
@@ -43,7 +43,11 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     std::string sectionName, key;
     splitSectionKey(sectionKey, sectionName, key);
     /* 查找ini映射表 */
-    std::lock_guard<std::mutex> locker(g_mutex);
+    if (!g_mutex)
+    {
+        g_mutex = new std::mutex();
+    }
+    std::lock_guard<std::mutex> locker(*g_mutex);
     if (!g_iniMap)
     {
         g_iniMap = new INI_MAP_TYPE();
@@ -103,7 +107,11 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
 std::map<std::string, IniSection> getIni(const std::string& id)
 {
     /* 查找ini映射表 */
-    std::lock_guard<std::mutex> locker(g_mutex);
+    if (!g_mutex)
+    {
+        g_mutex = new std::mutex();
+    }
+    std::lock_guard<std::mutex> locker(*g_mutex);
     if (!g_iniMap)
     {
         return std::map<std::string, IniSection>();
@@ -123,7 +131,11 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
         return 1;
     }
     /* 查找ini映射表 */
-    std::lock_guard<std::mutex> locker(g_mutex);
+    if (!g_mutex)
+    {
+        g_mutex = new std::mutex();
+    }
+    std::lock_guard<std::mutex> locker(*g_mutex);
     if (!g_iniMap)
     {
         return 2;
@@ -167,7 +179,11 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
         return 1;
     }
     /* 查找ini映射表 */
-    std::lock_guard<std::mutex> locker(g_mutex);
+    if (!g_mutex)
+    {
+        g_mutex = new std::mutex();
+    }
+    std::lock_guard<std::mutex> locker(*g_mutex);
     if (!g_iniMap)
     {
         return 2;
