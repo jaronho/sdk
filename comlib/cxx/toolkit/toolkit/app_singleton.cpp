@@ -1,6 +1,8 @@
 #include "app_singleton.h"
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <fcntl.h>
 #include <unistd.h>
 #endif
