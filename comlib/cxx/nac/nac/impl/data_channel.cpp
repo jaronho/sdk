@@ -38,7 +38,7 @@ bool DataChannel::connect(const std::string& address, unsigned short port, const
             }
         });
         const std::weak_ptr<nsocket::TcpClient> wpTcpClient = m_tcpClient;
-        m_tcpExecutor->post("nac_loop", [wpTcpClient, address, port, logger = m_logger]() {
+        m_tcpExecutor->post("nac_loop", [wpTcpClient, address, port, certFile, privateKeyFile, privateKeyFilePwd, logger = m_logger]() {
             const auto tcpClient = wpTcpClient.lock();
             if (tcpClient)
             {

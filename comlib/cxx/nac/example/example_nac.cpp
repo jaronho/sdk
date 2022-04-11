@@ -79,6 +79,9 @@ int main(int argc, char* argv[])
     nac::AccessConfig acfg;
     acfg.address = "192.168.3.109";
     acfg.port = 9090;
+    acfg.certFile = "";
+    acfg.privateKeyFile = "";
+    acfg.privateKeyFilePwd = "";
     acfg.connectTimeout = 3;
     acfg.authBizCode = nac::BizCode::req_auth;
     acfg.authTimeout = 30;
