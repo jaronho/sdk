@@ -2,9 +2,6 @@
 #include <functional>
 #include <string>
 #include <vector>
-#ifdef _WIN32
-#include <Windows.h>
-#endif
 
 namespace utility
 {
@@ -28,6 +25,7 @@ public:
      * @return true-成功, false-失败
      */
 #ifdef _WIN32
+    typedef void* HANDLE;
     static bool tryLockUnlockFile(HANDLE fd, bool lock, bool block = true);
 #else
     static bool tryLockUnlockFile(int fd, bool lock, bool block = true);

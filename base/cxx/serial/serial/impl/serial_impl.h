@@ -1,8 +1,4 @@
 #pragma once
-
-#ifdef _WIN32
-#include <Windows.h>
-#endif
 #include "serial_define.h"
 
 namespace serial
@@ -228,6 +224,7 @@ protected:
 
 private:
 #ifdef _WIN32
+    typedef void* HANDLE;
     HANDLE m_fd; /* 串口句柄 */
 #else
     int m_fd; /* 串口句柄 */

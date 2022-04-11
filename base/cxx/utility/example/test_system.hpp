@@ -6,6 +6,7 @@
 #include <string>
 #include <thread>
 #ifdef _WIN32
+#include <Windows.h>
 #else
 #include <fcntl.h>
 #include <unistd.h>

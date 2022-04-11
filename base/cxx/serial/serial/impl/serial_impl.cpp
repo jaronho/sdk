@@ -1,6 +1,8 @@
 #include "serial_impl.h"
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
