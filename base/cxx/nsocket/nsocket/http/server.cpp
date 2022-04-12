@@ -4,9 +4,9 @@ namespace nsocket
 {
 namespace http
 {
-Server::Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port)
+Server::Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz)
 {
-    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, false, 1024);
+    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, reuseAddr, bz);
     m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) { handleNewConnection(wpConn); });
     m_tcpServer->setConnectionDataCallback(
         [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });

@@ -56,8 +56,11 @@ public:
      * @param threadCount 线程个数
      * @param host 主机地址
      * @param port 端口
+     * @param reuseAddr 是否允许复用端口(选填), 默认不复用
+     * @param bz 数据缓冲区大小(字节, 选填)
      */
-    Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port);
+    Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr = false,
+           size_t bz = 1024);
 
     /**
      * @brief 是否有效
