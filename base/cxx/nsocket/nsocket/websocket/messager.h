@@ -36,7 +36,7 @@ protected:
 /**
  * @brief 消息接收者(对内容批次接收, 针对大数量的请求, 比如上传文件之类的)
  */
-class Messager_batch final : public Messager
+class Messager_batch : public Messager
 {
 public:
     /**
@@ -69,7 +69,7 @@ protected:
 /**
  * @brief 消息接收者(内容一次性接收, 针对小数据量的请求)
  */
-class Messager_simple final : public Messager
+class Messager_simple : public Messager
 {
 public:
     /**
