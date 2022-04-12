@@ -39,7 +39,7 @@ protected:
 /**
  * @brief 路由(对内容批次接收, 针对大数量的请求, 比如上传文件之类的)
  */
-class Router_batch final : public Router
+class Router_batch : public Router
 {
 public:
     std::function<void(int64_t cid, const REQUEST_PTR& req)> headCb;
@@ -55,7 +55,7 @@ protected:
 /**
  * @brief 路由(内容一次性接收, 针对小数据量的请求)
  */
-class Router_simple final : public Router
+class Router_simple : public Router
 {
 public:
     std::function<RESPONSE_PTR(const REQUEST_PTR& req, const std::string& data)> respHandler;
@@ -73,7 +73,7 @@ private:
 /**
  * @brief 路由(application/x-www-form-urlencoded)
  */
-class Router_x_www_form_urlencoded final : public Router
+class Router_x_www_form_urlencoded : public Router
 {
 public:
     std::function<RESPONSE_PTR(const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields)> respHandler;
@@ -99,7 +99,7 @@ private:
 /**
  * @brief 路由(multipart/form-data)
  */
-class Router_multipart_form_data final : public Router
+class Router_multipart_form_data : public Router
 {
 public:
     std::function<void(int64_t cid, const REQUEST_PTR& req)> headCb;
