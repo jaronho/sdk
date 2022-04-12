@@ -40,9 +40,9 @@ public:
     /**
      * @brief 设置值
      * @param nowValue 当前值
-     * @return true-值更新, false-值不更新
+     * @return 0-值更新, 1-值不更新(值未发生变化), 2-值不更新(未达到重复次数)
      */
-    bool set(const T& nowValue)
+    int set(const T& nowValue)
     {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         /* step1: 比较缓存的值和当前值是否相等 */
@@ -69,7 +69,6 @@ public:
         /* step4: 判断重复次数是否超过设置的最大次数 */
         if (m_repeatCount >= m_okNeedCount)
         {
-            m_repeatCount = 0;
             /* 比较真实的值和当前值是否相等 */
             bool isRealEqualNow = false;
             if (m_equalFunc)
@@ -80,14 +79,22 @@ public:
             {
                 isRealEqualNow = (nowValue == m_realValue);
             }
-            /* 真实的值和当前值不相等, 更新真实的值 */
-            if (!isRealEqualNow)
+            if (!isRealEqualNow) /* 真实的值和当前值不相等, 更新真实的值 */
             {
+                m_repeatCount = 0;
                 m_realValue = nowValue;
-                return true;
+                return 0;
+            }
+            else /* 真实的值和当前值相等, 不更新真实值, 重复次数减1 */
+            {
+                if (m_repeatCount > 0)
+                {
+                    --m_repeatCount;
+                }
+                return 1;
             }
         }
-        return false;
+        return 2;
     }
 
     /**
