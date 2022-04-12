@@ -127,16 +127,12 @@ void SteadyTimer::onTrigger()
                 }
             });
         }
-        else if (isTriggerListWillConsumed()) /* 触发列表会被消耗, 则把回调添加到触发列表 */
+        else /* 则把回调添加到触发列表 */
         {
             Timer::TriggerInfo info;
             info.wpTimer = shared_from_this();
             info.func = m_func;
             addToTriggerList(info);
-        }
-        else /* 否则直接执行回调(注意: 这是下下策, 存在阻塞定时器线程风险) */
-        {
-            m_func();
         }
     }
     /* 继续 */

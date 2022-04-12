@@ -55,9 +55,6 @@ std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::execut
 std::unique_ptr<std::thread> Timer::s_thread = nullptr;
 std::mutex Timer::s_mutexTrigger;
 std::list<Timer::TriggerInfo> Timer::s_triggerList;
-std::mutex Timer::s_mutexRunOnceCalled;
-std::chrono::steady_clock::duration Timer::s_runOnceCalledMaxInterval = std::chrono::steady_clock::duration::zero();
-std::chrono::steady_clock::time_point Timer::s_runOnceCalledTimePoint = std::chrono::steady_clock::now();
 
 Timer::Timer()
 {
@@ -95,24 +92,8 @@ void Timer::addToTriggerList(const Timer::TriggerInfo& info)
     s_triggerList.emplace_back(info);
 }
 
-bool Timer::isTriggerListWillConsumed()
+void Timer::runOnce()
 {
-    std::lock_guard<std::mutex> locker(s_mutexRunOnceCalled);
-    if (std::chrono::steady_clock::duration::zero() == s_runOnceCalledMaxInterval)
-    {
-        return true;
-    }
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - s_runOnceCalledTimePoint);
-    return elapsed <= s_runOnceCalledMaxInterval;
-}
-
-void Timer::runOnce(const std::chrono::steady_clock::duration& maxInterval)
-{
-    {
-        std::lock_guard<std::mutex> locker(s_mutexRunOnceCalled);
-        s_runOnceCalledMaxInterval = maxInterval;
-        s_runOnceCalledTimePoint = std::chrono::steady_clock::now();
-    }
     TriggerInfo info;
     {
         std::lock_guard<std::mutex> locker(s_mutexTrigger);

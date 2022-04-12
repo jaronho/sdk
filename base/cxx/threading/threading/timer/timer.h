@@ -40,9 +40,8 @@ public:
     /**
      * @brief 运行单次(用于监听触发回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
      *        注意: 如果定时器有指定任务触发回调的执行线程, 则其回调不受该接口接管
-     * @param maxInterval 接口被调用所允许的最大间隔(选填), 若非0且实际间隔大于此值则回调在定时器线程调用
      */
-    static void runOnce(const std::chrono::steady_clock::duration& maxInterval = std::chrono::seconds(1));
+    static void runOnce();
 
 protected:
     /**
@@ -67,12 +66,6 @@ protected:
      */
     void addToTriggerList(const TriggerInfo& info);
 
-    /**
-     * @brief 检测触发列表是否会被消耗
-     * @return true-会, false-否
-     */
-    bool isTriggerListWillConsumed();
-
 private:
     static std::mutex s_mutex;
     static std::unique_ptr<boost::asio::io_context> s_context;
@@ -80,9 +73,6 @@ private:
     static std::unique_ptr<std::thread> s_thread;
     static std::mutex s_mutexTrigger;
     static std::list<TriggerInfo> s_triggerList; /* 定时器触发列表 */
-    static std::mutex s_mutexRunOnceCalled;
-    static std::chrono::steady_clock::duration s_runOnceCalledMaxInterval; /* runOnce被调用允许的最大间隔 */
-    static std::chrono::steady_clock::time_point s_runOnceCalledTimePoint; /* runOnce被调用的时间点 */
 };
 
 using TimerPtr = std::shared_ptr<Timer>;
