@@ -4,7 +4,7 @@ namespace nsocket
 {
 namespace http
 {
-void Response::create(Response resp, std::vector<unsigned char>& data)
+void Response::pack(Response resp, std::vector<unsigned char>& data)
 {
     static const std::string CRLF = "\r\n";
     static const std::string SEP = ": ";
@@ -20,7 +20,7 @@ void Response::create(Response resp, std::vector<unsigned char>& data)
     data.insert(data.end(), CRLF.begin(), CRLF.end());
     if (resp.headers.end() == resp.headers.find("Content-Length"))
     {
-        resp.headers.insert(std::make_pair("Content-Length", "0"));
+        resp.headers.insert(std::make_pair("Content-Length", std::to_string(resp.body.size())));
     }
     for (auto iter = resp.headers.begin(); resp.headers.end() != iter; ++iter)
     {
@@ -30,6 +30,7 @@ void Response::create(Response resp, std::vector<unsigned char>& data)
         data.insert(data.end(), CRLF.begin(), CRLF.end());
     }
     data.insert(data.end(), CRLF.begin(), CRLF.end());
+    data.insert(data.end(), resp.body.begin(), resp.body.end());
 }
 } // namespace http
 } // namespace nsocket

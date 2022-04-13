@@ -51,7 +51,7 @@ void Router::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, co
 
 RESPONSE_PTR Router::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
-    return std::make_shared<Response>();
+    return nullptr;
 }
 
 void Router_batch::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)

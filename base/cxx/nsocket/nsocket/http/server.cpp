@@ -252,7 +252,7 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
         }
         /* 响应 */
         std::vector<unsigned char> data;
-        Response::create(*resp, data);
+        Response::pack(*resp, data);
         conn->sendAsync(data, [&, wpConn = session->wpConn](const boost::system::error_code& code, std::size_t length) {
             const auto conn = wpConn.lock();
             if (conn)

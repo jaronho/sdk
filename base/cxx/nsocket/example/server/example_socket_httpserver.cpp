@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
         };
-        r->respHandler = [&](const nsocket::http::REQUEST_PTR& req, const std::string& data) {
+        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
@@ -171,9 +171,13 @@ int main(int argc, char* argv[])
             printf("--- Content(%u):\n", req->getContentLength());
             printf("%s\n", data.c_str());
             printf("-------------------------------------------------------------------\n");
-            return nullptr;
+            std::string result = "{\"code\":0,\"msg\":\"ok\",\"data\":{\"cid\":\"" + std::to_string(cid) + "\",\"host\":\"" + req->host
+                                 + "\",\"port\":" + std::to_string(req->port) + "}}";
+            auto resp = std::make_shared<nsocket::http::Response>();
+            resp->body.insert(resp->body.end(), result.begin(), result.end());
+            return resp;
         };
-        server.addRouter({nsocket::http::Method::POST}, "/simple", r);
+        server.addRouter({nsocket::http::Method::GET, nsocket::http::Method::POST}, "/simple", r);
     }
     {
         auto r = std::make_shared<nsocket::http::Router_x_www_form_urlencoded>();
@@ -188,7 +192,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
         };
-        r->respHandler = [&](const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields) {
+        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields) {
             printf("--------------------------- Form Router ---------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
@@ -219,7 +223,11 @@ int main(int argc, char* argv[])
                 }
             }
             printf("-------------------------------------------------------------------\n");
-            return nullptr;
+            std::string result = "{\"code\":0,\"msg\":\"ok\",\"data\":{\"cid\":\"" + std::to_string(cid) + "\",\"host\":\"" + req->host
+                                 + "\",\"port\":" + std::to_string(req->port) + "}}";
+            auto resp = std::make_shared<nsocket::http::Response>();
+            resp->body.insert(resp->body.end(), result.begin(), result.end());
+            return resp;
         };
         server.addRouter({nsocket::http::Method::POST}, "/form", r);
     }
@@ -325,7 +333,11 @@ int main(int argc, char* argv[])
                 iter->second->close();
                 g_fileHandlerMap.erase(iter);
             }
-            return nullptr;
+            std::string result = "{\"code\":0,\"msg\":\"ok\",\"data\":{\"cid\":\"" + std::to_string(cid) + "\",\"host\":\"" + req->host
+                                 + "\",\"port\":" + std::to_string(req->port) + "}}";
+            auto resp = std::make_shared<nsocket::http::Response>();
+            resp->body.insert(resp->body.end(), result.begin(), result.end());
+            return resp;
         };
         server.addRouter({nsocket::http::Method::POST}, "/multi", r);
     }
