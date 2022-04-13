@@ -38,6 +38,13 @@ static bool parseMultipartFormDataBoundary(const std::string& contentType, std::
     return true;
 }
 
+std::vector<std::string> Router::getAllowMethods()
+{
+    return m_methods;
+}
+
+void Router::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) {}
+
 void Router::onReqHead(int64_t cid, const REQUEST_PTR& req) {}
 
 void Router::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) {}
@@ -45,6 +52,14 @@ void Router::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, co
 RESPONSE_PTR Router::onResponse(int64_t cid, const REQUEST_PTR& req)
 {
     return std::make_shared<Response>();
+}
+
+void Router_batch::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
+{
+    if (methodNotAllowedCb)
+    {
+        methodNotAllowedCb(cid, req);
+    }
 }
 
 void Router_batch::onReqHead(int64_t cid, const REQUEST_PTR& req)
@@ -70,6 +85,14 @@ RESPONSE_PTR Router_batch::onResponse(int64_t cid, const REQUEST_PTR& req)
         return respHandler(cid, req);
     }
     return nullptr;
+}
+
+void Router_simple::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
+{
+    if (methodNotAllowedCb)
+    {
+        methodNotAllowedCb(cid, req);
+    }
 }
 
 void Router_simple::onReqHead(int64_t cid, const REQUEST_PTR& req)
@@ -125,6 +148,14 @@ RESPONSE_PTR Router_simple::onResponse(int64_t cid, const REQUEST_PTR& req)
         }
     }
     return resp;
+}
+
+void Router_x_www_form_urlencoded::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
+{
+    if (methodNotAllowedCb)
+    {
+        methodNotAllowedCb(cid, req);
+    }
 }
 
 void Router_x_www_form_urlencoded::onReqHead(int64_t cid, const REQUEST_PTR& req)
@@ -230,6 +261,14 @@ RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST
         resp = respHandler(req, wrapper->fields);
     }
     return resp;
+}
+
+void Router_multipart_form_data::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
+{
+    if (methodNotAllowedCb)
+    {
+        methodNotAllowedCb(cid, req);
+    }
 }
 
 void Router_multipart_form_data::onReqHead(int64_t cid, const REQUEST_PTR& req)

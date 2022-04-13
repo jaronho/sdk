@@ -174,22 +174,48 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
                 }
                 conn->resizeBuffer(bufferSize);
             }
-            /* 响应头数据 */
-            iter->second->onReqHead(conn->getId(), req);
+            /* 判断是否允许请求的方法 */
+            if (iter->second->m_methods.empty())
+            {
+                req->isMethodAllowed = true;
+            }
+            else
+            {
+                req->isMethodAllowed = false;
+                for (auto method : iter->second->m_methods)
+                {
+                    if (case_insensitive_equal(req->method, method))
+                    {
+                        req->isMethodAllowed = true;
+                        break;
+                    }
+                }
+            }
+            if (req->isMethodAllowed) /* 允许方法, 响应头数据 */
+            {
+                iter->second->onReqHead(conn->getId(), req);
+            }
+            else /* 方法不允许 */
+            {
+                iter->second->onMethodNotAllowed(conn->getId(), req);
+            }
         }
     }
 }
 
 void Server::handleReqContent(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen)
 {
-    const auto conn = session->wpConn.lock();
-    if (conn)
+    if (session->req->isMethodAllowed) /* 允许方法 */
     {
-        /* 路由 */
-        auto iter = m_routerMap.find(session->req->uri);
-        if (m_routerMap.end() != iter)
+        const auto conn = session->wpConn.lock();
+        if (conn)
         {
-            iter->second->onReqContent(conn->getId(), session->req, offset, data, dataLen);
+            /* 路由 */
+            auto iter = m_routerMap.find(session->req->uri);
+            if (m_routerMap.end() != iter)
+            {
+                iter->second->onReqContent(conn->getId(), session->req, offset, data, dataLen);
+            }
         }
     }
 }
@@ -199,33 +225,17 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
     const auto conn = session->wpConn.lock();
     if (conn)
     {
-        /* 路由 */
-        auto iter = m_routerMap.find(session->req->uri);
         std::shared_ptr<Response> resp = nullptr;
-        if (m_routerMap.end() == iter)
+        if (session->req->isMethodAllowed) /* 允许方法 */
         {
-            resp = std::make_shared<Response>();
-            resp->statusCode = StatusCode::client_error_not_found;
-        }
-        else
-        {
-            bool methodSupportFlag = false;
-            if (iter->second->m_methods.empty())
+            /* 路由 */
+            auto iter = m_routerMap.find(session->req->uri);
+            if (m_routerMap.end() == iter) /* 找不到路由 */
             {
-                methodSupportFlag = true;
+                resp = std::make_shared<Response>();
+                resp->statusCode = StatusCode::client_error_not_found;
             }
             else
-            {
-                for (auto method : iter->second->m_methods)
-                {
-                    if (case_insensitive_equal(session->req->method, method))
-                    {
-                        methodSupportFlag = true;
-                        break;
-                    }
-                }
-            }
-            if (methodSupportFlag)
             {
                 resp = iter->second->onResponse(conn->getId(), session->req);
                 if (!resp)
@@ -234,11 +244,11 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
                     resp->statusCode = StatusCode::success_ok;
                 }
             }
-            else
-            {
-                resp = std::make_shared<Response>();
-                resp->statusCode = StatusCode::client_error_method_not_allowed;
-            }
+        }
+        else /* 方法不允许 */
+        {
+            resp = std::make_shared<Response>();
+            resp->statusCode = StatusCode::client_error_method_not_allowed;
         }
         /* 响应 */
         std::vector<unsigned char> data;

@@ -68,6 +68,7 @@ public:
     std::string host; /* 客户端主机 */
     int port = 0; /* 客户端端口 */
     std::string method; /* 方法 */
+    bool isMethodAllowed = true; /* 是否允许该方法 */
     std::string uri; /* URI */
     CaseInsensitiveMultimap queries; /* 查询参数 */
     std::string version; /* 版本 */

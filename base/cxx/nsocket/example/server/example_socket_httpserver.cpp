@@ -135,6 +135,17 @@ int main(int argc, char* argv[])
     /* 添加路由表 */
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
+        r->methodNotAllowedCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
+            printf("-------------------------- Simple Router --------------------------\n");
+            printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
+            printf("Support methods:");
+            for (auto method : r->getAllowMethods())
+            {
+                printf(" %s", method.c_str());
+            }
+            printf("\n");
+            printf("--------------------------------------------------------------------\n");
+        };
         r->respHandler = [&](const nsocket::http::REQUEST_PTR& req, const std::string& data) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -162,10 +173,21 @@ int main(int argc, char* argv[])
             printf("-------------------------------------------------------------------\n");
             return nullptr;
         };
-        server.addRouter({}, "/simple", r);
+        server.addRouter({"POST"}, "/simple", r);
     }
     {
         auto r = std::make_shared<nsocket::http::Router_x_www_form_urlencoded>();
+        r->methodNotAllowedCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
+            printf("-------------------------- Form Router --------------------------\n");
+            printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
+            printf("Support methods:");
+            for (auto method : r->getAllowMethods())
+            {
+                printf(" %s", method.c_str());
+            }
+            printf("\n");
+            printf("--------------------------------------------------------------------\n");
+        };
         r->respHandler = [&](const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields) {
             printf("--------------------------- Form Router ---------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -216,6 +238,17 @@ int main(int argc, char* argv[])
 #endif
 
         auto r = std::make_shared<nsocket::http::Router_multipart_form_data>();
+        r->methodNotAllowedCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
+            printf("-------------------------- Multi Router --------------------------\n");
+            printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
+            printf("Support methods:");
+            for (auto method : r->getAllowMethods())
+            {
+                printf(" %s", method.c_str());
+            }
+            printf("\n");
+            printf("--------------------------------------------------------------------\n");
+        };
         r->headCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("--------------------------- Multi Router ---------------------------\n");
             printf("---     Cid: %lld, Client: %s:%d\n", cid, req->host.c_str(), req->port);
