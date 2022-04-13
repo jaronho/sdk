@@ -7,8 +7,35 @@ namespace nsocket
 {
 namespace http
 {
-static const std::vector<std::string> METHOD_NAMES = {"GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "OPTIONS", "CONNECT", "PATCH"};
+static const std::vector<Method> METHOD_LIST = {Method::CONNECT, Method::DELETE, Method::GET,     Method::HEAD, Method::PATCH,
+                                                Method::POST,    Method::PUT,    Method::OPTIONS, Method::TRACE};
 static const std::vector<std::string> VERSION_NAMES = {"HTTP/0.9", "HTTP/1.0", "HTTP/1.1", "HTTP/2"};
+
+std::string method_desc(const Method& method)
+{
+    switch (method)
+    {
+    case Method::CONNECT:
+        return "CONNECT";
+    case Method::DELETE:
+        return "DELETE";
+    case Method::GET:
+        return "GET";
+    case Method::HEAD:
+        return "HEAD";
+    case Method::PATCH:
+        return "PATCH";
+    case Method::POST:
+        return "POST";
+    case Method::PUT:
+        return "PUT";
+    case Method::OPTIONS:
+        return "OPTIONS";
+    case Method::TRACE:
+        return "TRACE";
+    }
+    return std::to_string((int)method);
+}
 
 /**
  * @breif 百分号编码, URL中传递带%的参数时，那么%就需要进行转义或编码以防止解析URL时造成歧义
@@ -661,11 +688,12 @@ int Request::maxMethodLength()
     static int s_maxLength = 0;
     if (0 == s_maxLength)
     {
-        for (size_t i = 0; i < METHOD_NAMES.size(); ++i)
+        for (size_t i = 0; i < METHOD_LIST.size(); ++i)
         {
-            if (s_maxLength < METHOD_NAMES[i].size())
+            auto methodName = method_desc(METHOD_LIST[i]);
+            if (s_maxLength < methodName.size())
             {
-                s_maxLength = METHOD_NAMES[i].size();
+                s_maxLength = methodName.size();
             }
         }
     }
@@ -674,9 +702,9 @@ int Request::maxMethodLength()
 
 bool Request::checkMethod()
 {
-    for (size_t i = 0; i < METHOD_NAMES.size(); ++i)
+    for (size_t i = 0; i < METHOD_LIST.size(); ++i)
     {
-        if (case_insensitive_equal(METHOD_NAMES[i], method))
+        if (case_insensitive_equal(method_desc(METHOD_LIST[i]), method))
         {
             return true;
         }

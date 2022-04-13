@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
             printf("Support methods:");
             for (auto method : r->getAllowMethods())
             {
-                printf(" %s", method.c_str());
+                printf(" %s", nsocket::http::method_desc(method).c_str());
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
             printf("-------------------------------------------------------------------\n");
             return nullptr;
         };
-        server.addRouter({"POST"}, "/simple", r);
+        server.addRouter({nsocket::http::Method::POST}, "/simple", r);
     }
     {
         auto r = std::make_shared<nsocket::http::Router_x_www_form_urlencoded>();
@@ -183,7 +183,7 @@ int main(int argc, char* argv[])
             printf("Support methods:");
             for (auto method : r->getAllowMethods())
             {
-                printf(" %s", method.c_str());
+                printf(" %s", nsocket::http::method_desc(method).c_str());
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
@@ -221,7 +221,7 @@ int main(int argc, char* argv[])
             printf("-------------------------------------------------------------------\n");
             return nullptr;
         };
-        server.addRouter({"POST"}, "/form", r);
+        server.addRouter({nsocket::http::Method::POST}, "/form", r);
     }
     {
         /* 创建文件路径 */
@@ -244,7 +244,7 @@ int main(int argc, char* argv[])
             printf("Support methods:");
             for (auto method : r->getAllowMethods())
             {
-                printf(" %s", method.c_str());
+                printf(" %s", nsocket::http::method_desc(method).c_str());
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
@@ -327,7 +327,7 @@ int main(int argc, char* argv[])
             }
             return nullptr;
         };
-        server.addRouter({"POST"}, "/multi", r);
+        server.addRouter({nsocket::http::Method::POST}, "/multi", r);
     }
     try
     {

@@ -38,7 +38,7 @@ static bool parseMultipartFormDataBoundary(const std::string& contentType, std::
     return true;
 }
 
-std::vector<std::string> Router::getAllowMethods()
+std::vector<Method> Router::getAllowMethods()
 {
     return m_methods;
 }

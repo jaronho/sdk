@@ -51,11 +51,11 @@ public:
 
     /**
      * @brief 添加路由
-     * @param methods 方法列表, 为空时表示支持所有方法(注意: 正常有且支持1种), 例如: {"GET"}, {"POST"}
+     * @param methods 方法列表, 为空时表示支持所有方法(注意: 正常有且支持1种), 例如: {Method::GET}, {Method::POST}
      * @param uri 服务URI
      * @param router 路由
      */
-    void addRouter(const std::vector<std::string>& methods, const std::string& uri, std::shared_ptr<Router> router);
+    void addRouter(const std::vector<Method>& methods, const std::string& uri, std::shared_ptr<Router> router);
 
     /**
      * @brief 运行(非阻塞)

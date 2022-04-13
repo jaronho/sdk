@@ -10,6 +10,32 @@ namespace nsocket
 namespace http
 {
 /**
+ * @brief HTTP方法
+ */
+#ifdef DELETE
+#undef DELETE
+#endif
+enum class Method
+{
+    CONNECT,
+    DELETE,
+    GET,
+    HEAD,
+    PATCH,
+    POST,
+    PUT,
+    OPTIONS,
+    TRACE
+};
+
+/**
+ * @brief 获取HTTP方法描述
+ * @param method 方法
+ * @return 方法描述
+ */
+std::string method_desc(const Method& method);
+
+/**
  * @brief HTTP请求
  */
 class Request

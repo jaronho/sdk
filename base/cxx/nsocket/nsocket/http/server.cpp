@@ -37,7 +37,7 @@ void Server::setRouterNotFoundCallback(const std::function<void(const REQUEST_PT
     m_routerNotFoundCb = cb;
 }
 
-void Server::addRouter(const std::vector<std::string>& methods, const std::string& uri, std::shared_ptr<Router> router)
+void Server::addRouter(const std::vector<Method>& methods, const std::string& uri, std::shared_ptr<Router> router)
 {
     if (m_routerMap.end() == m_routerMap.find(uri))
     {
@@ -184,7 +184,7 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
                 req->isMethodAllowed = false;
                 for (auto method : iter->second->m_methods)
                 {
-                    if (case_insensitive_equal(req->method, method))
+                    if (case_insensitive_equal(req->method, method_desc(method)))
                     {
                         req->isMethodAllowed = true;
                         break;

@@ -24,7 +24,7 @@ public:
     /**
      * @brief 获取允许的方法
      */
-    std::vector<std::string> getAllowMethods();
+    std::vector<Method> getAllowMethods();
 
 protected:
     /**
@@ -48,7 +48,7 @@ protected:
     virtual RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req);
 
 private:
-    std::vector<std::string> m_methods; /* 支持的方法, 例如: {"GET", "POST"} */
+    std::vector<Method> m_methods; /* 支持的方法, 例如: {Method::POST} */
 };
 
 /**
