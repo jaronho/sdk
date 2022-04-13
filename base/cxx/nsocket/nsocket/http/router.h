@@ -76,7 +76,7 @@ class Router_simple : public Router
 {
 public:
     std::function<void(int64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
-    std::function<RESPONSE_PTR(const REQUEST_PTR& req, const std::string& data)> respHandler;
+    std::function<RESPONSE_PTR(int64_t cid, const REQUEST_PTR& req, const std::string& data)> respHandler;
 
 protected:
     void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;
@@ -96,7 +96,7 @@ class Router_x_www_form_urlencoded : public Router
 {
 public:
     std::function<void(int64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
-    std::function<RESPONSE_PTR(const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields)> respHandler;
+    std::function<RESPONSE_PTR(int64_t cid, const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields)> respHandler;
 
 protected:
     void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;

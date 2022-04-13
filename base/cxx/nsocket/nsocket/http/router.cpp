@@ -144,7 +144,7 @@ RESPONSE_PTR Router_simple::onResponse(int64_t cid, const REQUEST_PTR& req)
     {
         if (respHandler)
         {
-            resp = respHandler(req, *content.get());
+            resp = respHandler(cid, req, *content.get());
         }
     }
     return resp;
@@ -258,7 +258,7 @@ RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST
     RESPONSE_PTR resp = nullptr;
     if (respHandler)
     {
-        resp = respHandler(req, wrapper->fields);
+        resp = respHandler(cid, req, wrapper->fields);
     }
     return resp;
 }
