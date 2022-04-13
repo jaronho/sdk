@@ -36,6 +36,20 @@ enum class Method
 std::string method_desc(const Method& method);
 
 /**
+ * @brief URL编码, URL中传递带%的参数时，那么%就需要进行转义或编码以防止解析URL时造成歧义
+ * @param src 要编码的URL
+ * @return 编码后的URL
+ */
+std::string url_encode(const std::string& src);
+
+/**
+ * @brief URL解码, URL中传递带%的参数时，那么%就需要进行转义或编码以防止解析URL时造成歧义
+ * @param src 要解码的URL
+ * @return 解码后的URL
+ */
+std::string url_decode(const std::string& src);
+
+/**
  * @brief HTTP请求
  */
 class Request

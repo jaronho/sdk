@@ -215,7 +215,7 @@ void Router_x_www_form_urlencoded::onReqContent(int64_t cid, const REQUEST_PTR& 
             {
                 return;
             }
-            wrapper->fields.insert(std::make_pair(wrapper->tmpKey, wrapper->tmpValue));
+            wrapper->fields.insert(std::make_pair(url_decode(wrapper->tmpKey), url_decode(wrapper->tmpValue)));
             wrapper->tmpKeyFlag = true;
             wrapper->tmpKey.clear();
             wrapper->tmpValue.clear();
@@ -253,7 +253,7 @@ RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST
     }
     if (!wrapper->tmpKey.empty())
     {
-        wrapper->fields.insert(std::make_pair(wrapper->tmpKey, wrapper->tmpValue));
+        wrapper->fields.insert(std::make_pair(url_decode(wrapper->tmpKey), url_decode(wrapper->tmpValue)));
     }
     RESPONSE_PTR resp = nullptr;
     if (respHandler)

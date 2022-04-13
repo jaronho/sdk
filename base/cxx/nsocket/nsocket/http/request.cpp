@@ -37,56 +37,50 @@ std::string method_desc(const Method& method)
     return std::to_string((int)method);
 }
 
-/**
- * @breif 百分号编码, URL中传递带%的参数时，那么%就需要进行转义或编码以防止解析URL时造成歧义
- */
-static std::string percentEncode(const std::string& value) noexcept
+std::string url_encode(const std::string& src)
 {
     static const char* HEX_CHARS = "0123456789ABCDEF";
-    std::string result;
-    result.reserve(value.size()); /* 设置最小长度 */
-    for (const auto& ch : value)
+    std::string dst;
+    dst.reserve(src.size()); /* 设置最小长度 */
+    for (const auto& ch : src)
     {
         if ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || '-' == ch || '.' == ch || '_' == ch
             || '~' == ch)
         {
-            result += ch;
+            dst += ch;
         }
         else
         {
-            result += "%" + HEX_CHARS[(unsigned char)ch >> 4] + HEX_CHARS[(unsigned char)ch & 15];
+            dst += "%" + HEX_CHARS[(unsigned char)ch >> 4] + HEX_CHARS[(unsigned char)ch & 15];
         }
     }
-    return result;
+    return dst;
 }
 
-/**
- * @breif 百分号解码, URL中传递带%的参数时，那么%就需要进行转义或编码以防止解析URL时造成歧义
- */
-static std::string percentDecode(const std::string& value) noexcept
+std::string url_decode(const std::string& src)
 {
-    std::string result;
-    result.reserve(value.size() / 3 + (value.size() % 3)); /* 设置最小长度 */
-    for (size_t i = 0; i < value.size(); ++i)
+    std::string dst;
+    dst.reserve(src.size() / 3 + (src.size() % 3)); /* 设置最小长度 */
+    for (size_t i = 0; i < src.size(); ++i)
     {
-        const auto& ch = value[i];
-        if ('%' == ch && i + 2 < value.size())
+        const auto& ch = src[i];
+        if ('%' == ch && i + 2 < src.size())
         {
-            auto hex = value.substr(i + 1, 2);
+            auto hex = src.substr(i + 1, 2);
             auto decodedCh = (char)std::strtol(hex.c_str(), nullptr, 16);
-            result += decodedCh;
+            dst += decodedCh;
             i += 2;
         }
         else if ('+' == ch)
         {
-            result += ' ';
+            dst += ' ';
         }
         else
         {
-            result += ch;
+            dst += ch;
         }
     }
-    return result;
+    return dst;
 }
 
 /**
@@ -301,7 +295,7 @@ int Request::parseQueries(const unsigned char* data, int length)
         {
             if (!m_tmpKey.empty())
             {
-                queries.insert(std::make_pair(m_tmpKey, percentDecode(m_tmpValue)));
+                queries.insert(std::make_pair(url_decode(m_tmpKey), url_decode(m_tmpValue)));
             }
             clearTmp();
             m_parseStep = ParseStep::version;
@@ -330,7 +324,7 @@ int Request::parseQueries(const unsigned char* data, int length)
                 {
                     return 0;
                 }
-                queries.insert(std::make_pair(m_tmpKey, percentDecode(m_tmpValue)));
+                queries.insert(std::make_pair(url_decode(m_tmpKey), url_decode(m_tmpValue)));
                 clearTmp();
             }
             else
