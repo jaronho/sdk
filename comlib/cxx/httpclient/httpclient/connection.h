@@ -85,14 +85,14 @@ public:
     bool setRawData(const char* bytes, size_t count);
 
     /**
-     * @brief 设置表单数据
-     * @param data 表单数据
+     * @brief 设置表单数据, 编码格式: application/x-www-form-urlencoded
+     * @param data 表单数据, 例如: "name=jaron&gender=male&age=33"
      * @return true-成功, false-失败
      */
     bool setFormData(const std::string& data);
 
     /**
-     * @brief 添加多表单文本数据
+     * @brief 添加多表单文本数据, 编码格式: multipart/form-data
      * @param key 键
      * @param value 值
      * @param contentType 内容类型
@@ -101,7 +101,7 @@ public:
     bool appendContentText(const std::string& key, const std::string& value, const std::string& contentType = std::string());
 
     /**
-     * @brief 添加多表单文件
+     * @brief 添加多表单文件, 编码格式: multipart/form-data
      * @param key 键
      * @param filename 文件名(全路径)
      * @return true-成功, false-失败
