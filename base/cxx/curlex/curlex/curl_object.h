@@ -172,14 +172,14 @@ public:
     bool setRawData(const std::vector<char>& bytes);
 
     /**
-     * @brief 设置表单数据(适用于POST/PUT/DELETE)
+     * @brief 设置表单数据(适用于POST/PUT/DELETE), 编码格式: application/x-www-form-urlencoded
      * @param data 表单数据, 例如: "name=jaron&gender=male&age=33"
      * @return true-成功, false-失败
      */
     bool setFormData(const std::string& data);
 
     /**
-     * @brief 添加多部分表单文本数据(适用于POST/PUT/DELETE)
+     * @brief 添加多部分表单文本数据(适用于POST/PUT/DELETE), 编码格式: multipart/form-data
      * @param fieldName 字段名
      * @param text 文本内容
      * @param contentType 内容类型(选填), 例如: text/html, application/json等
@@ -188,7 +188,7 @@ public:
     bool addMultipartFormText(const std::string& fieldName, const std::string& text, const std::string& contentType = std::string());
 
     /**
-     * @brief 添加多部分表单文件数据(适用于POST/PUT/DELETE)
+     * @brief 添加多部分表单文件数据(适用于POST/PUT/DELETE), 编码格式: multipart/form-data
      * @param fieldName 字段名
      * @param filename 文件名称(全路径)
      * @return true-成功, false-失败
