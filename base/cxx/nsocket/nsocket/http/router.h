@@ -3,6 +3,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "multipart_form_data.h"
 #include "request.h"
@@ -34,6 +35,9 @@ protected:
      * @brief 响应客户端
      */
     virtual RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req);
+
+private:
+    std::vector<std::string> m_methods; /* 支持的方法, 例如: {"GET", "POST"} */
 };
 
 /**

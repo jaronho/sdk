@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
             printf("-------------------------------------------------------------------\n");
             return nullptr;
         };
-        server.addRouter("/simple", r);
+        server.addRouter({}, "/simple", r);
     }
     {
         auto r = std::make_shared<nsocket::http::Router_x_www_form_urlencoded>();
@@ -199,7 +199,7 @@ int main(int argc, char* argv[])
             printf("-------------------------------------------------------------------\n");
             return nullptr;
         };
-        server.addRouter("/form", r);
+        server.addRouter({"POST"}, "/form", r);
     }
     {
         /* 创建文件路径 */
@@ -294,7 +294,7 @@ int main(int argc, char* argv[])
             }
             return nullptr;
         };
-        server.addRouter("/multi", r);
+        server.addRouter({"POST"}, "/multi", r);
     }
     try
     {

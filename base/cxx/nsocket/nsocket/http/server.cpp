@@ -37,10 +37,11 @@ void Server::setRouterNotFoundCallback(const std::function<void(const REQUEST_PT
     m_routerNotFoundCb = cb;
 }
 
-void Server::addRouter(const std::string& uri, const std::shared_ptr<Router>& router)
+void Server::addRouter(const std::vector<std::string>& methods, const std::string& uri, std::shared_ptr<Router> router)
 {
     if (m_routerMap.end() == m_routerMap.find(uri))
     {
+        router->m_methods = methods;
         m_routerMap.insert(std::make_pair(uri, router));
     }
 }
@@ -208,11 +209,35 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
         }
         else
         {
-            resp = iter->second->onResponse(conn->getId(), session->req);
-            if (!resp)
+            bool methodSupportFlag = false;
+            if (iter->second->m_methods.empty())
+            {
+                methodSupportFlag = true;
+            }
+            else
+            {
+                for (auto method : iter->second->m_methods)
+                {
+                    if (case_insensitive_equal(session->req->method, method))
+                    {
+                        methodSupportFlag = true;
+                        break;
+                    }
+                }
+            }
+            if (methodSupportFlag)
+            {
+                resp = iter->second->onResponse(conn->getId(), session->req);
+                if (!resp)
+                {
+                    resp = std::make_shared<Response>();
+                    resp->statusCode = StatusCode::success_ok;
+                }
+            }
+            else
             {
                 resp = std::make_shared<Response>();
-                resp->statusCode = StatusCode::success_ok;
+                resp->statusCode = StatusCode::client_error_method_not_allowed;
             }
         }
         /* 响应 */
