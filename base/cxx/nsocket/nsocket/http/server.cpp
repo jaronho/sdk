@@ -37,13 +37,27 @@ void Server::setRouterNotFoundCallback(const std::function<void(const REQUEST_PT
     m_routerNotFoundCb = cb;
 }
 
-void Server::addRouter(const std::vector<Method>& methods, const std::string& uri, std::shared_ptr<Router> router)
+std::vector<std::string> Server::addRouter(const std::vector<Method>& methods, const std::vector<std::string>& uriList,
+                                           std::shared_ptr<Router> router)
 {
-    if (m_routerMap.end() == m_routerMap.find(uri))
+    std::vector<std::string> repeatUriList;
+    for (auto uri : uriList)
     {
-        router->m_methods = methods;
-        m_routerMap.insert(std::make_pair(uri, router));
+        if (uri.empty() || '/' != uri[0])
+        {
+            uri.insert(uri.begin(), '/');
+        }
+        if (m_routerMap.end() == m_routerMap.find(uri)) /* 新的URI */
+        {
+            router->m_methods = methods;
+            m_routerMap.insert(std::make_pair(uri, router));
+        }
+        else /* URI已添加过 */
+        {
+            repeatUriList.emplace_back(uri);
+        }
     }
+    return repeatUriList;
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)

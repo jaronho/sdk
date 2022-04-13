@@ -52,10 +52,12 @@ public:
     /**
      * @brief 添加路由
      * @param methods 方法列表, 为空时表示支持所有方法(注意: 正常有且支持1种), 例如: {Method::GET}, {Method::POST}
-     * @param uri 服务URI
+     * @param uriList 服务URI列表, 例如: {"/", "/index","/index.htm", "/index.html"}
      * @param router 路由
+     * @return 返回已添加过的URI列表
      */
-    void addRouter(const std::vector<Method>& methods, const std::string& uri, std::shared_ptr<Router> router);
+    std::vector<std::string> addRouter(const std::vector<Method>& methods, const std::vector<std::string>& uriList,
+                                       std::shared_ptr<Router> router);
 
     /**
      * @brief 运行(非阻塞)
