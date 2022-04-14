@@ -9,21 +9,21 @@ namespace utility
  */
 typedef struct
 {
-    std::string createTimeFmt(const std::string& fmtStr = "%Y-%m-%d %H:%M:%S")
+    std::string createTimeFmt(const std::string& fmtStr = "%Y-%m-%d %H:%M:%S") const
     {
         char str[64] = {0};
         strftime(str, sizeof(str), fmtStr.c_str(), localtime(&createTime));
         return str;
     };
 
-    std::string modifyTimeFmt(const std::string& fmtStr = "%Y-%m-%d %H:%M:%S")
+    std::string modifyTimeFmt(const std::string& fmtStr = "%Y-%m-%d %H:%M:%S") const
     {
         char str[64] = {0};
         strftime(str, sizeof(str), fmtStr.c_str(), localtime(&modifyTime));
         return str;
     };
 
-    std::string accessTimeFmt(const std::string& fmtStr = "%Y-%m-%d %H:%M:%S")
+    std::string accessTimeFmt(const std::string& fmtStr = "%Y-%m-%d %H:%M:%S") const
     {
         char str[64] = {0};
         strftime(str, sizeof(str), fmtStr.c_str(), localtime(&accessTime));
