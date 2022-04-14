@@ -12,6 +12,7 @@ ${comlib_toolkit_dir}
 [源文件]
 ${comlib_toolkit_files}
 ${comlib_toolkit_app_singleton_files}
+${comlib_toolkit_file_deleter_files}
 ${comlib_toolkit_net_config_files}
 ${comlib_toolkit_tool_files}
 ]]
@@ -22,6 +23,11 @@ set(comlib_toolkit_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 set(comlib_toolkit_app_singleton_files
     ${CMAKE_CURRENT_SOURCE_DIR}/toolkit/app_singleton.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/toolkit/app_singleton.h
+    CACHE INTERNAL "")
+
+set(comlib_toolkit_file_deleter_files
+    ${CMAKE_CURRENT_SOURCE_DIR}/toolkit/file_deleter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/toolkit/file_deleter.h
     CACHE INTERNAL "")
 
 set(comlib_toolkit_net_config_files
@@ -37,6 +43,7 @@ set(comlib_toolkit_tool_files
 # 组装文件列表
 set(comlib_toolkit_files
     ${comlib_toolkit_app_singleton_files}
+    ${comlib_toolkit_file_deleter_files}
     ${comlib_toolkit_net_config_files}
     ${comlib_toolkit_tool_files}
     CACHE INTERNAL "")
