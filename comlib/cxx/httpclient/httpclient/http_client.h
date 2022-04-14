@@ -74,10 +74,10 @@ public:
 
     /**
      * @brief 创建表单数据对象
-     * @param data 表单数据
+     * @param dataMap 表单数据
      * @return 数据对象
      */
-    static curlex::FormRequestDataPtr makeFormData(const std::string& data);
+    static curlex::FormRequestDataPtr makeFormData(const std::map<std::string, std::string>& dataMap);
 
     /**
      * @brief 创建多部份表单数据对象

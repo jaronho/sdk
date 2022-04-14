@@ -37,7 +37,7 @@ std::vector<char> RawRequestData::getBytes() const
     return m_bytes;
 }
 
-FormRequestData::FormRequestData(const std::string& data) : m_data(data) {}
+FormRequestData::FormRequestData(const std::map<std::string, std::string>& dataMap) : m_dataMap(dataMap) {}
 
 RequestData::Type FormRequestData::getType() const
 {
@@ -46,12 +46,21 @@ RequestData::Type FormRequestData::getType() const
 
 std::string FormRequestData::toString() const
 {
-    return m_data;
+    std::string str;
+    for (auto iter = m_dataMap.begin(); m_dataMap.end() != iter; ++iter)
+    {
+        if (!str.empty())
+        {
+            str.append("&");
+        }
+        str.append(iter->first).append("=").append(iter->second);
+    }
+    return str;
 }
 
-std::string FormRequestData::getData() const
+std::map<std::string, std::string> FormRequestData::getDataMap() const
 {
-    return m_data;
+    return m_dataMap;
 }
 
 MultipartFormRequestData::MultipartFormRequestData() {}

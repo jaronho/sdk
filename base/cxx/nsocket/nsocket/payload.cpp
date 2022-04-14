@@ -30,8 +30,7 @@ void Payload::unpack(const std::vector<unsigned char>& data, const HEAD_CALLBACK
         {
             if (m_recvBuffer.size() >= m_headLen)
             {
-                std::vector<unsigned char> head;
-                head.insert(head.end(), m_recvBuffer.begin(), m_recvBuffer.begin() + m_headLen);
+                std::vector<unsigned char> head(m_recvBuffer.begin(), m_recvBuffer.begin() + m_headLen);
                 m_recvBuffer.erase(m_recvBuffer.begin(), m_recvBuffer.begin() + m_headLen); /* 去除包头 */
                 if (headCb)
                 {

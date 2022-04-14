@@ -72,16 +72,16 @@ private:
 using RawRequestDataPtr = std::shared_ptr<RawRequestData>;
 
 /**
- * @brief 表单数据
+ * @brief 表单数据, 格式: application/x-www-form-urlencoded
  */
 class FormRequestData final : public RequestData
 {
 public:
     /**
      * @brief 构造函数
-     * @param data 表单内容
+     * @param dataMap 表单内容
      */
-    FormRequestData(const std::string& data);
+    FormRequestData(const std::map<std::string, std::string>& dataMap);
 
     virtual ~FormRequestData() = default;
 
@@ -93,16 +93,16 @@ public:
      * @brief 获取表单内容
      * @return 表单内容
      */
-    std::string getData() const;
+    std::map<std::string, std::string> getDataMap() const;
 
 private:
-    std::string m_data; /* 表单内容 */
+    std::map<std::string, std::string> m_dataMap; /* 表单内容 */
 };
 
 using FormRequestDataPtr = std::shared_ptr<FormRequestData>;
 
 /**
- * @brief 多部分表单数据
+ * @brief 多部分表单数据, 格式: multipart/form-data
  */
 class MultipartFormRequestData final : public RequestData
 {

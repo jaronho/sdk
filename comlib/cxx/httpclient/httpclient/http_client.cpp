@@ -65,9 +65,9 @@ curlex::RawRequestDataPtr HttpClient::makeRawData(const char* bytes, size_t coun
     return std::make_shared<curlex::RawRequestData>(bytes, count);
 }
 
-curlex::FormRequestDataPtr HttpClient::makeFormData(const std::string& data)
+curlex::FormRequestDataPtr HttpClient::makeFormData(const std::map<std::string, std::string>& dataMap)
 {
-    return std::make_shared<curlex::FormRequestData>(data);
+    return std::make_shared<curlex::FormRequestData>(dataMap);
 }
 
 curlex::MultipartFormRequestDataPtr HttpClient::makeMultipartFormData()

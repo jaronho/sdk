@@ -94,8 +94,17 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
             break;
         }
         case RequestData::Type::form: {
-            auto textReqData = std::dynamic_pointer_cast<FormRequestData>(reqData);
-            obj->setFormData(textReqData->getData());
+            auto formReqData = std::dynamic_pointer_cast<FormRequestData>(reqData);
+            std::string data;
+            for (auto iter = formReqData->getDataMap().begin(); formReqData->getDataMap().end() != iter; ++iter)
+            {
+                if (!data.empty())
+                {
+                    data.append("&");
+                }
+                data.append(iter->first).append("=").append(iter->second);
+            }
+            obj->setFormData(data);
             break;
         }
         case RequestData::Type::multipart_form: {
