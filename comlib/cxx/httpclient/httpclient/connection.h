@@ -86,10 +86,10 @@ public:
 
     /**
      * @brief 设置表单数据, 格式: application/x-www-form-urlencoded
-     * @param data 表单数据, 内部会自动转换为例如: "name=jaron&gender=male&age=33"
+     * @param data fieldMap, 底层会自动转为如: "name=jaron&gender=male&age=33"
      * @return true-成功, false-失败
      */
-    bool setFormData(const std::map<std::string, std::string>& dataMap);
+    bool setFormData(const std::map<std::string, std::string>& fieldMap);
 
     /**
      * @brief 添加多表单文本数据, 格式: multipart/form-data

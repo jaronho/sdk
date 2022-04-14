@@ -328,8 +328,13 @@ void testHttpPostForm()
     str.append("===================== test curl POST form, url: " + url + "\n");
     std::cout << str;
 
+    std::map<std::string, std::string> fieldMap;
+    fieldMap.insert(std::make_pair("name", "jaronho"));
+    fieldMap.insert(std::make_pair("sex", "male"));
+    fieldMap.insert(std::make_pair("age", "33"));
+
     http::Connection conn(url);
-    conn.setFormData("name=jaronho&sex=male&age=33");
+    conn.setFormData(fieldMap);
     conn.setSendProgressFunc([&](int64_t now, int64_t total, double speed) { printProgressInfo("POST form, send", now, total, speed); });
     conn.setRecvProgressFunc([&](int64_t now, int64_t total, double speed) { printProgressInfo("POST form, recv", now, total, speed); });
     conn.doPost([](const curlex::Response& resp) { printSimpleResponse(resp); });

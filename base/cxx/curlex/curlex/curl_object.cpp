@@ -515,11 +515,20 @@ bool CurlObject::setRawData(const std::vector<char>& bytes)
     return true;
 }
 
-bool CurlObject::setFormData(const std::string& data)
+bool CurlObject::setFormData(const std::map<std::string, std::string>& fieldMap)
 {
-    if (data.empty())
+    if (fieldMap.empty())
     {
         return false;
+    }
+    std::string data;
+    for (auto iter = fieldMap.begin(); fieldMap.end() != iter; ++iter)
+    {
+        if (!data.empty())
+        {
+            data.append("&");
+        }
+        data.append(iter->first).append("=").append(iter->second);
     }
     if (!m_sendObject.reset(data))
     {

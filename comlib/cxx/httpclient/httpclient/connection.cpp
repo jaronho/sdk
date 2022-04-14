@@ -62,7 +62,7 @@ bool Connection::setRawData(const char* bytes, size_t count)
     return true;
 }
 
-bool Connection::setFormData(const std::map<std::string, std::string>& dataMap)
+bool Connection::setFormData(const std::map<std::string, std::string>& fieldMap)
 {
     if (m_data)
     {
@@ -72,7 +72,7 @@ bool Connection::setFormData(const std::map<std::string, std::string>& dataMap)
         }
         return true;
     }
-    m_data = HttpClient::makeFormData(dataMap);
+    m_data = HttpClient::makeFormData(fieldMap);
     return true;
 }
 

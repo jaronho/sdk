@@ -81,7 +81,7 @@ public:
      * @brief 构造函数
      * @param dataMap 表单内容
      */
-    FormRequestData(const std::map<std::string, std::string>& dataMap);
+    FormRequestData(const std::map<std::string, std::string>& m_fieldMap);
 
     virtual ~FormRequestData() = default;
 
@@ -93,10 +93,10 @@ public:
      * @brief 获取表单内容
      * @return 表单内容
      */
-    std::map<std::string, std::string> getDataMap() const;
+    std::map<std::string, std::string> getFieldMap() const;
 
 private:
-    std::map<std::string, std::string> m_dataMap; /* 表单内容 */
+    std::map<std::string, std::string> m_fieldMap; /* 表单内容 */
 };
 
 using FormRequestDataPtr = std::shared_ptr<FormRequestData>;

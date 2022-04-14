@@ -173,10 +173,10 @@ public:
 
     /**
      * @brief 设置表单数据(适用于POST/PUT/DELETE), 格式: application/x-www-form-urlencoded
-     * @param data 表单数据, 例如: "name=jaron&gender=male&age=33"
+     * @param fieldMap 表单数据, 内部自动转为如: "name=jaron&gender=male&age=33"
      * @return true-成功, false-失败
      */
-    bool setFormData(const std::string& data);
+    bool setFormData(const std::map<std::string, std::string>& fieldMap);
 
     /**
      * @brief 添加多部分表单文本数据(适用于POST/PUT/DELETE), 格式: multipart/form-data
