@@ -69,6 +69,7 @@ add_executable(example_toolkit
 			   example_toolkit.cpp)
 
 add_executable(file_deleter_tool
+               ${base_fileparse_files}
 			   ${base_utility_cmdline_files}
 			   ${base_utility_datetime_files}
 			   ${base_utility_filesystem_files}
