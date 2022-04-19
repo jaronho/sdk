@@ -372,7 +372,7 @@ std::string DateTime::hhmmss(const char sep1[1], const char sep2[1]) const
 #ifdef _WIN32
         sprintf_s(buf, sizeof(buf), fmtStr.c_str(), hour, minute, second, millisecond);
 #else
-        sprintf(buf, fmtStr.c_str(), hour, minute, second, millisecon);
+        sprintf(buf, fmtStr.c_str(), hour, minute, second, millisecond);
 #endif
     }
     else
