@@ -71,19 +71,22 @@ public:
 
     /**
      * @brief 时分秒格式化字符串
-     * @param sep 分隔符(选填), 例如: ":"
-     * @return 字符串, 例如: "12:32:03"
+     * @param sep1 分隔符(选填), 例如: ":"
+     * @param sep2 分隔符(选填), 例如: "."
+     * @return 字符串, 例如: "12:32:03" 或 "12:32:03.234"
      */
-    std::string hhmmss(const char sep[1] = ":") const;
+    std::string hhmmss(const char sep1[1] = ":", const char sep2[1] = nullptr) const;
 
     /**
      * @brief 年月日时分秒格式化字符串
      * @param sep1 分隔符(选填), 例如: "-"
      * @param sep2 分隔符(选填), 例如: " "
      * @param sep3 分隔符(选填), 例如: ":"
-     * @return 字符串, 例如: "2022-12-03 12:32:03"
+     * @param sep4 分隔符(选填), 例如: "."
+     * @return 字符串, 例如: "2022-12-03 12:32:03" 或 "2022-12-03 12:32:03.234"
      */
-    std::string yyyyMMddhhmmss(const char sep1[1] = "-", const char sep2[1] = " ", const char sep3[1] = ":") const;
+    std::string yyyyMMddhhmmss(const char sep1[1] = "-", const char sep2[1] = " ", const char sep3[1] = ":",
+                               const char sep4[1] = nullptr) const;
 
     /**
      * @brief 获取当前日期

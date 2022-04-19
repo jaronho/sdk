@@ -349,7 +349,7 @@ double DateTime::toTimestamp() const
 
 std::string DateTime::yyyyMMdd(const char sep[1]) const
 {
-    std::string sepStr = sep[0] ? std::string(1, sep[0]) : "";
+    std::string sepStr = (sep && sep[0]) ? std::string(1, sep[0]) : "";
     std::string fmtStr = "%04d" + sepStr + "%02d" + sepStr + "%02d";
     char buf[11] = {0};
 #ifdef _WIN32
@@ -360,31 +360,57 @@ std::string DateTime::yyyyMMdd(const char sep[1]) const
     return buf;
 }
 
-std::string DateTime::hhmmss(const char sep[1]) const
+std::string DateTime::hhmmss(const char sep1[1], const char sep2[1]) const
 {
-    std::string sepStr = sep[0] ? std::string(1, sep[0]) : "";
-    std::string fmtStr = "%02d" + sepStr + "%02d" + sepStr + "%02d";
-    char buf[9] = {0};
+    std::string sep1Str = (sep1 && sep1[0]) ? std::string(1, sep1[0]) : "";
+    std::string fmtStr = "%02d" + sep1Str + "%02d" + sep1Str + "%02d";
+    char buf[13] = {0};
+    if (sep2)
+    {
+        std::string sep2Str = sep2[0] ? std::string(1, sep2[0]) : "";
+        fmtStr += sep2Str + "%03d";
 #ifdef _WIN32
-    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), hour, minute, second);
+        sprintf_s(buf, sizeof(buf), fmtStr.c_str(), hour, minute, second, millisecond);
 #else
-    sprintf(buf, fmtStr.c_str(), hour, minute, second);
+        sprintf(buf, fmtStr.c_str(), hour, minute, second, millisecon);
 #endif
+    }
+    else
+    {
+#ifdef _WIN32
+        sprintf_s(buf, sizeof(buf), fmtStr.c_str(), hour, minute, second);
+#else
+        sprintf(buf, fmtStr.c_str(), hour, minute, second);
+#endif
+    }
     return buf;
 }
 
-std::string DateTime::yyyyMMddhhmmss(const char sep1[1], const char sep2[1], const char sep3[1]) const
+std::string DateTime::yyyyMMddhhmmss(const char sep1[1], const char sep2[1], const char sep3[1], const char sep4[1]) const
 {
-    std::string sep1Str = sep1[0] ? std::string(1, sep1[0]) : "";
-    std::string sep2Str = sep2[0] ? std::string(1, sep2[0]) : "";
-    std::string sep3Str = sep3[0] ? std::string(1, sep3[0]) : "";
+    std::string sep1Str = (sep1 && sep1[0]) ? std::string(1, sep1[0]) : "";
+    std::string sep2Str = (sep2 && sep2[0]) ? std::string(1, sep2[0]) : "";
+    std::string sep3Str = (sep3 && sep3[0]) ? std::string(1, sep3[0]) : "";
     std::string fmtStr = "%04d" + sep1Str + "%02d" + sep1Str + "%02d" + sep2Str + "%02d" + sep3Str + "%02d" + sep3Str + "%02d";
-    char buf[20] = {0};
+    char buf[24] = {0};
+    if (sep4)
+    {
+        std::string sep4Str = sep4[0] ? std::string(1, sep4[0]) : "";
+        fmtStr += sep4Str + "%03d";
 #ifdef _WIN32
-    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute, second);
+        sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute, second, millisecond);
 #else
-    sprintf(buf, fmtStr.c_str(), year, month, day, hour, minute, second);
+        sprintf(buf, fmtStr.c_str(), year, month, day, hour, minute, second, millisecond);
 #endif
+    }
+    else
+    {
+#ifdef _WIN32
+        sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute, second);
+#else
+        sprintf(buf, fmtStr.c_str(), year, month, day, hour, minute, second);
+#endif
+    }
     return buf;
 }
 
