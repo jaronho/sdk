@@ -9,7 +9,7 @@ int main(int argc, char** argv)
     parser.add<std::string>("bridge", 'b', "bridge name, e.g. \"br0\"", true);
     parser.add<std::string>("ports", 'p', "bridge ports, e.g. \"enp2s0 enp4s0\", no need when 'method' is 'del'", false, "");
     parser.parse_check(argc, argv);
-    /* ½âÎö²ÎÊı */
+    /* è§£æå‚æ•° */
     auto method = parser.get<std::string>("method");
     auto bridgeName = parser.get<std::string>("bridge");
     auto bridgePorts = parser.get<std::string>("ports");

@@ -16,7 +16,7 @@ int main(int argc, char** argv)
     parser.add<int>("expire", 't', "expired time (seconds), default 30 days", false, 2592000);
     parser.add<int>("interval", 'i', "detect interval (seconds), default 30 second", false, 30);
     parser.parse_check(argc, argv);
-    /* ½âÎö²ÎÊı */
+    /* è§£æå‚æ•° */
     auto folder = parser.get<std::string>("folder");
     auto both = parser.get<int>("both");
     auto expireTime = parser.get<int>("expire");
@@ -42,9 +42,9 @@ int main(int argc, char** argv)
     printf("[%s]    Expired Time: %d(s)\n", utility::DateTime::getNow().yyyyMMddhhmmss().c_str(), expireTime);
     printf("[%s] Detect Interval: %d(s)\n", utility::DateTime::getNow().yyyyMMddhhmmss().c_str(), interval);
     printf("\n");
-    /* Æô¶¯Òì²½ÈÎÎñÄ£¿é */
+    /* å¯åŠ¨å¼‚æ­¥ä»»åŠ¡æ¨¡å— */
     threading::AsyncProxy::start(1);
-    /* Æô¶¯É¾³ıÆ÷ */
+    /* å¯åŠ¨åˆ é™¤å™¨ */
     toolkit::FileDeleteConfig cfg;
     cfg.folder = folder;
     cfg.both = both > 0;
@@ -59,7 +59,7 @@ int main(int argc, char** argv)
         printf("[%s] delete file: %s, %s\n", nowDate.yyyyMMddhhmmss().c_str(), fullName.c_str(), ok ? "success" : "fail");
     });
     deleter.start(interval, {cfg});
-    /* Ö÷Ñ­»· */
+    /* ä¸»å¾ªç¯ */
     while (1)
     {
         threading::AsyncProxy::runOnce();
