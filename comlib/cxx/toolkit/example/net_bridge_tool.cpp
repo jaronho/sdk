@@ -8,6 +8,7 @@ int main(int argc, char** argv)
     parser.add<std::string>("method", 'm', "[add, del] bridge", true, "add");
     parser.add<std::string>("bridge", 'b', "bridge name, e.g. \"br0\"", true);
     parser.add<std::string>("ports", 'p', "bridge ports, e.g. \"enp2s0 enp4s0\", no need when 'method' is 'del'", false, "");
+    printf("%s\n", parser.usage().c_str());
     parser.parse_check(argc, argv);
     /* 解析参数 */
     auto method = parser.get<std::string>("method");

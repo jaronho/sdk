@@ -12,6 +12,13 @@ namespace toolkit
  */
 struct FileDeleteConfig
 {
+    FileDeleteConfig() = default;
+
+    FileDeleteConfig(const std::string& folder, bool both = true, size_t expireSecond = 2592000)
+        : folder(folder), both(both), expireSecond(expireSecond)
+    {
+    }
+
     std::string folder; /* 指定要在哪个目录进行删除 */
     bool both = true; /* 是否删除文件和目录, true-是, false-只删除文件 */
     size_t expireSecond = (3600 * 24 * 30); /* 过期时间(秒), 文件/目录最后修改时间过期则删除, 默认30天 */
