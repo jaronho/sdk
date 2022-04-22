@@ -1,6 +1,7 @@
 #include "request.h"
 
 #include <math.h>
+#include <string.h>
 #include <vector>
 
 namespace nsocket
@@ -44,14 +45,15 @@ std::string url_encode(const std::string& src)
     dst.reserve(src.size()); /* 设置最小长度 */
     for (const auto& ch : src)
     {
-        if ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || '-' == ch || '.' == ch || '_' == ch
-            || '~' == ch)
+        if ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || strchr("-_.~!*'();:@&=+$,/?#[]", ch))
         {
             dst += ch;
         }
         else
         {
-            dst += "%" + HEX_CHARS[(unsigned char)ch >> 4] + HEX_CHARS[(unsigned char)ch & 15];
+            dst += "%";
+            dst.push_back(HEX_CHARS[(unsigned char)ch >> 4]);
+            dst.push_back(HEX_CHARS[(unsigned char)ch & 15]);
         }
     }
     return dst;
