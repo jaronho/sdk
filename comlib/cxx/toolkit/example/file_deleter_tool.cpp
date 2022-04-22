@@ -56,7 +56,7 @@ int main(int argc, char** argv)
     {
         utility::FileInfo fi(fullFile);
         long long fileSize;
-        char* fileData = fi.data(fileSize, true);
+        char* fileData = fi.readAll(fileSize, true);
         if (fileData)
         {
             auto arr = nlohmann::parse(fileData);
