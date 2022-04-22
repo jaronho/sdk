@@ -91,5 +91,19 @@ public:
         }
         return vec;
     }
+
+    /**
+     * @brief URL编码, URL中传递带%的参数时，那么%就需要进行转义或编码以防止解析URL时造成歧义
+     * @param srcUrl 要编码的URL
+     * @return 编码后的URL
+     */
+    static std::string urlEncode(const std::string& srcUrl);
+
+    /**
+     * @brief URL解码, URL中传递带%的参数时，那么%就需要进行转义或编码以防止解析URL时造成歧义
+     * @param srcUrl 要解码的URL
+     * @return 解码后的URL
+     */
+    static std::string urlDecode(const std::string& srcUrl);
 };
 } // namespace utility

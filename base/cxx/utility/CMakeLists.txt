@@ -100,7 +100,7 @@ set(base_utility_system_files ${src_list} CACHE INTERNAL "")
 get_cxx_files(utility/timewatch src_list)
 set(base_utility_timewatch_files ${src_list} CACHE INTERNAL "")
 
-get_cxx_files(utility src_list)
+get_cxx_files(utility/util src_list)
 set(base_utility_util_files ${src_list} CACHE INTERNAL "")
 
 # 组装文件列表

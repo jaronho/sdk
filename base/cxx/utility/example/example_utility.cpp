@@ -10,6 +10,7 @@
 #include "test_process.hpp"
 #include "test_system.hpp"
 #include "test_timewatch.hpp"
+#include "test_util.hpp"
 
 int main(int argc, char** argv)
 {
@@ -27,6 +28,7 @@ int main(int argc, char** argv)
     testProcess();
     testSystem();
     testTimewatch();
+    testUtil();
 #endif
 #endif
     return 0;
