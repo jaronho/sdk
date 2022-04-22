@@ -7,6 +7,26 @@
 
 namespace utility
 {
+/*
+  ----------------------------------------------------------------------------------------------------
+ |       模式       |                 含义                 |                   说明                   |
+ |------------------|--------------------------------------|------------------------------------------|
+ | std::ios::in     | 打开文件进行读操作                   | 文件不存在时不会创建                     |
+ |------------------|--------------------------------------|------------------------------------------|
+ | std::ios::out    | 打开文件进行写操作                   | 文件不存在时创建新文件, 反之清空文件内容 |
+ |------------------|--------------------------------------|------------------------------------------|
+ | std::ios::in |   | 打开文件进行读写操作                 | 文件不存在时不会创建                     |
+ | std::ios::out    |                                      |                                          |
+ |------------------|--------------------------------------|------------------------------------------|
+ | std::ios::app    | 打开文件并定位到末尾进行写操作(追加) | 文件不存在时创建新文件                   |
+ |------------------|--------------------------------------|------------------------------------------|
+ | std::ios::ate    | 打开文件并定位到末尾                 | 文件不存在时不会创建                     |
+ |------------------|--------------------------------------|------------------------------------------|
+ | std::ios::trunc  | 打开文件若文件已存在则清空文件内容   | 文件不存在时不会创建                     |
+ |------------------|--------------------------------------|------------------------------------------|
+ | std::ios::binary | 以二进制方式打开文件进行读写         | 文件不存在时不会创建                     |
+  ----------------------------------------------------------------------------------------------------
+ */
 class FileInfo
 {
 public:
@@ -108,12 +128,12 @@ public:
     long long size() const;
 
     /**
-     * @brief 获取文件数据
+     * @brief 获取所有文件数据
      * @param fileSize [输出]文件大小, -1-文件不存在, >=0-文件大小
      * @param textFlag true-文本, false-二进制
      * @return 数据(需要外部调用free释放内存)
      */
-    char* data(long long& fileSize, bool textFlag = false) const;
+    char* readAll(long long& fileSize, bool textFlag = false) const;
 
     /**
      * @brief 读取文件数据
@@ -125,10 +145,13 @@ public:
     char* read(size_t offset, size_t& count, bool textFlag = false) const;
 
     /**
-     * @brief 判断是否为文本文件
-     * @return true-文本文件, false-非文本文件
+     * @brief 替换文件中的数据
+     * @param offset 指定的偏移值, 为0时表示从头开始
+     * @param count 指定字节数
+     * @param callback 替换函数(对buffer进行替换, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
+     * @return true-成功, false-失败
      */
-    bool isTextFile() const;
+    bool replace(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback) const;
 
     /**
      * @brief 写文件数据
@@ -151,14 +174,29 @@ public:
     bool write(size_t pos, const char* data, size_t length, int* errCode = nullptr);
 
     /**
+     * @brief 判断是否为文本文件
+     * @return true-文本文件, false-非文本文件
+     */
+    bool isTextFile() const;
+
+    /**
      * @brief 从文件流中读取数据
      * @param f 文件流
      * @param offset 读取的偏移值, 为0时表示从头开始
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
-     * @param textFlag true-文本, false-二进制
      * @return 数据(需要外部调用free释放内存)
      */
-    static char* read(std::fstream& f, size_t offset, size_t& count, bool textFlag = false);
+    static char* read(std::fstream& f, size_t offset, size_t& count);
+
+    /**
+     * @brief 替换文件流中的数据
+     * @param f 文件流
+     * @param offset 指定的偏移值, 为0时表示从头开始
+     * @param count 指定字节数
+     * @param callback 替换函数(对buffer进行替换, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
+     * @return true-成功, false-失败
+     */
+    static bool replace(std::fstream& f, size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback);
 
     /**
      * @brief 判断文件流是否为文本数据

@@ -137,7 +137,7 @@ bool FileInfo::create() const
     {
         return false;
     }
-    std::fstream f(m_fullName, std::ios::out | std::ios::app);
+    std::fstream f(m_fullName, std::ios::app);
     if (f.is_open())
     {
         f.close();
@@ -262,17 +262,16 @@ long long FileInfo::size() const
     {
         return fileSize;
     }
-    std::fstream f(m_fullName, std::ios::in);
+    std::fstream f(m_fullName, std::ios::in | std::ios::ate);
     if (f.is_open())
     {
-        f.seekg(0, std::ios::end);
         fileSize = f.tellg();
         f.close();
     }
     return fileSize;
 }
 
-char* FileInfo::data(long long& fileSize, bool textFlag) const
+char* FileInfo::readAll(long long& fileSize, bool textFlag) const
 {
     if (m_fullName.empty())
     {
@@ -308,30 +307,38 @@ char* FileInfo::read(size_t offset, size_t& count, bool textFlag) const
     {
         return NULL;
     }
-    std::fstream f(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
+    std::fstream f(m_fullName, std::ios::in | std::ios::binary);
     if (!f.is_open())
     {
         return NULL;
     }
-    char* buffer = read(f, offset, count, textFlag);
+    char* buffer = read(f, offset, count);
+    if (buffer && textFlag)
+    {
+        buffer[count] = '\0';
+    }
     f.close();
     return buffer;
 }
 
-bool FileInfo::isTextFile() const
+bool FileInfo::replace(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback) const
 {
     if (m_fullName.empty())
     {
         return false;
     }
-    std::fstream f(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
+    std::fstream f(m_fullName, std::ios::in | std::ios::out);
     if (!f.is_open())
     {
         return false;
     }
-    auto textFlag = isTextData(f);
+    bool ret = replace(f, offset, count, callback);
+    if (ret)
+    {
+        f.flush();
+    }
     f.close();
-    return textFlag;
+    return ret;
 }
 
 bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCode) const
@@ -378,11 +385,11 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode)
         return false;
     }
     {
-        /* 需要保证文件已存在 */
+        /* 文件不存在则需要先创建 */
         FileAttribute attr;
-        if (!getFileAttribute(m_fullName, attr) || !attr.isFile) /* 文件不存在则先创建 */
+        if (!getFileAttribute(m_fullName, attr) || !attr.isFile)
         {
-            std::fstream f(m_fullName, std::ios::out);
+            std::fstream f(m_fullName, std::ios::app);
             if (!f.is_open())
             {
                 if (errCode)
@@ -410,7 +417,23 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode)
     return true;
 }
 
-char* FileInfo::read(std::fstream& f, size_t offset, size_t& count, bool textFlag)
+bool FileInfo::isTextFile() const
+{
+    if (m_fullName.empty())
+    {
+        return false;
+    }
+    std::fstream f(m_fullName, std::ios::in | std::ios::binary);
+    if (!f.is_open())
+    {
+        return false;
+    }
+    bool ret = isTextData(f);
+    f.close();
+    return ret;
+}
+
+char* FileInfo::read(std::fstream& f, size_t offset, size_t& count)
 {
     if (!f.is_open())
     {
@@ -425,17 +448,13 @@ char* FileInfo::read(std::fstream& f, size_t offset, size_t& count, bool textFla
         {
             count = fileSize - offset;
         }
-        size_t buffSize = sizeof(char) * count + (textFlag ? 1 : 0);
+        size_t buffSize = sizeof(char) * count;
         buffer = (char*)malloc(buffSize);
         if (buffer)
         {
             memset(buffer, 0, buffSize);
             f.seekg(offset, std::ios::beg);
             f.read(buffer, count);
-            if (textFlag)
-            {
-                buffer[count] = '\0';
-            }
         }
     }
     else
@@ -443,6 +462,41 @@ char* FileInfo::read(std::fstream& f, size_t offset, size_t& count, bool textFla
         count = 0;
     }
     return buffer;
+}
+
+bool FileInfo::replace(std::fstream& f, size_t offset, size_t count, const std::function<void(char* srcData, size_t count)>& callback)
+{
+    if (!f.is_open() || !callback)
+    {
+        return false;
+    }
+    char* buffer = NULL;
+    f.seekg(0, std::ios::end);
+    size_t fileSize = f.tellg();
+    if (offset < fileSize)
+    {
+        if (offset + count > fileSize)
+        {
+            count = fileSize - offset;
+        }
+        size_t buffSize = sizeof(char) * count;
+        buffer = (char*)malloc(buffSize);
+        if (buffer)
+        {
+            memset(buffer, 0, buffSize);
+            f.seekg(offset, std::ios::beg);
+            f.read(buffer, count);
+            callback(buffer, count);
+            if (buffer)
+            {
+                f.seekg(offset, std::ios::beg);
+                f.write(buffer, count);
+                free(buffer);
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 bool FileInfo::isTextData(std::fstream& f)

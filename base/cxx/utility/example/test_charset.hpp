@@ -78,7 +78,7 @@ void testCharset(int argc, char** argv)
                 if (fi.isTextFile())
                 {
                     long long contentLen;
-                    char* content = fi.data(contentLen, true);
+                    char* content = fi.readAll(contentLen, true);
                     if (content)
                     {
                         printf("      text file content charset:");

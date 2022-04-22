@@ -25,7 +25,7 @@ void testFilesystem()
     {
         printf("exist: true\n");
         long long fileSize;
-        char* fileData = fi.data(fileSize, true);
+        char* fileData = fi.readAll(fileSize, true);
         printf("size: %lld\n", fileSize);
         if (fileData)
         {
