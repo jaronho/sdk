@@ -40,6 +40,43 @@ std::string PathInfo::path() const
     return m_path;
 }
 
+std::string PathInfo::treePath(const std::string& parentPath) const
+{
+    if (parentPath.empty())
+    {
+        return "";
+    }
+    auto pos = m_path.find(parentPath);
+    if (std::string::npos == pos)
+    {
+        return "";
+    }
+    auto treePath = m_path.substr(pos + parentPath.size(), m_path.size() - pos - parentPath.size());
+    if (treePath.empty())
+    {
+        return "";
+    }
+    const char& lastParentPathChar = parentPath[parentPath.size() - 1];
+    const char& firstTreePathChar = treePath[0];
+    if ('/' != lastParentPathChar && '\\' != lastParentPathChar && '/' != firstTreePathChar && '\\' != firstTreePathChar)
+    {
+        return "";
+    }
+    if ('/' == firstTreePathChar || '\\' == firstTreePathChar)
+    {
+        treePath.erase(0, 1);
+    }
+    if (!treePath.empty())
+    {
+        const char& lastTreePathChar = treePath[treePath.size() - 1];
+        if ('/' == lastTreePathChar || '\\' == lastTreePathChar)
+        {
+            treePath.erase(treePath.size() - 1, 1);
+        }
+    }
+    return treePath;
+}
+
 bool PathInfo::isEndWithSlash() const
 {
     const char& lastPathChar = m_path[m_path.size() - 1];

@@ -37,7 +37,7 @@ public:
 
     /**
      * @brief 获取文件路径, 例如: /home/test/
-     * @return 文件路径
+     * @return 文件路径(斜杠结尾)
      */
     std::string path() const;
 

@@ -19,10 +19,17 @@ public:
     virtual ~PathInfo() = default;
 
     /**
-     * @brief 获取路径, 例如: /home/test/
+     * @brief 获取路径, 例如: /home/test/ 或 /home/test
      * @return 路径
      */
     std::string path() const;
+
+    /**
+     * @brief 获取子树路径, 例如: 全路径为/home/test/11/22/33/
+     * @param parentPath 父路径, 例如: /home/test 或 test
+     * @return 子树路径(头尾无斜杠), 例如: 11/22/33
+     */
+    std::string treePath(const std::string& parentPath) const;
 
     /**
      * @brief 判断路径是否斜杠结尾
