@@ -153,7 +153,7 @@ static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errD
 template<typename ValueType>
 static ValueType toValue(const nlohmann::json& j, std::string* errDesc = nullptr)
 {
-    ValueType value;
+    ValueType value = ValueType{};
     toValue(j, value, errDesc);
     return value;
 }
@@ -214,7 +214,7 @@ static bool getter(const json& j, const std::string& key, ValueType& value, std:
 template<typename ValueType>
 static ValueType getter(const json& j, const std::string& key, std::string* errDesc = nullptr)
 {
-    ValueType value;
+    ValueType value = ValueType{};
     getter(j, key, value, errDesc);
     return value;
 }
