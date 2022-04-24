@@ -69,7 +69,7 @@ static void _sha1_transform(unsigned int state[5], const unsigned char buffer[64
      * And the result is written through.  I threw a "const" in, hoping
      * this will cause a diagnostic.
      */
-    CHAR64LONG16* block = (const CHAR64LONG16*)buffer;
+    CHAR64LONG16* block = (CHAR64LONG16*)buffer;
 #endif
     /* Copy context->state[] to working vars */
     a = state[0];
