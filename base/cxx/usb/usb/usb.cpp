@@ -1,7 +1,5 @@
 #include "usb.h"
 
-#include <libusb.h>
-
 namespace usb
 {
 Usb::Usb() : m_busNum(-1), m_portNum(-1), m_address(-1), m_classCode(-1), m_speedLevel(0) {}
