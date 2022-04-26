@@ -1,10 +1,15 @@
 #pragma once
 #include <libusb.h>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace usb
 {
+#ifdef _WIN32
+struct WinUsb;
+#endif
+
 /**
  * @brief USB类
  */
@@ -16,6 +21,12 @@ public:
     Usb(const Usb& src);
 
     virtual ~Usb() = default;
+
+    /**
+     * @brief 获取父节点
+     * @return 父节点
+     */
+    std::shared_ptr<Usb> getParent() const;
 
     /**
      * @brief 获取总线编号
@@ -117,13 +128,26 @@ public:
     static std::vector<Usb> getAllUsbs(bool sf = false, bool pf = false, bool mf = false);
 
 private:
+#ifdef _WIN32
+    static void getWinUsbList(std::vector<WinUsb>& winUsbList);
+    static bool matchWinUsbParent(const std::vector<WinUsb>& winUsbList, std::string parentInstanceId, const std::shared_ptr<Usb>& parent);
+#endif
+
+#ifdef _WIN32
+    static bool parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, const std::vector<WinUsb>& winUsbList, Usb& info);
+#else
+    static bool parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info);
+#endif
+
+private:
+    std::shared_ptr<Usb> m_parent; /* 父节点 */
     int m_busNum; /* 总线编号 */
     int m_portNum; /* 端口编号(Linux中也叫系统编号sysNum) */
     int m_address; /* 地址(每次拔插都会变) */
     int m_classCode; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
     int m_speedLevel; /* 速度等级 */
-    std::string m_vid; /* 厂商ID */
-    std::string m_pid; /* 产品ID */
+    std::string m_vid; /* 厂商ID(小写字母) */
+    std::string m_pid; /* 产品ID(小写字母) */
     std::string m_serial; /* 序列号 */
     std::string m_product; /* 产品名称 */
     std::string m_manufacturer; /* 厂商名称 */
