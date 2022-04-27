@@ -1,7 +1,8 @@
 #include "usb.h"
 
-#ifdef _WIN32
 #include <algorithm>
+
+#ifdef _WIN32
 // Windows.h必须比其他平台文件先包含
 #include <Windows.h>
 // initguid.h必须在devpkey.h前面包含
@@ -34,6 +35,10 @@ static std::string wstring2string(const std::wstring& wstr)
 /**
  * @brief 解析LocationInfo属性, 属性值格式必须为: "Port_#0014.Hub_#0001"
  *        "Hub_#0001"表示busNum为"0001", "Port_#0014"表示portNum值为"0014"
+ * @param propertyBuffer 属性值
+ * @param busNum [输出]总线编号
+ * @param portNum [输出]端口编号
+ * @return true-成功, false-失败
  */
 bool parseLocationInfo(WCHAR propertyBuffer[4096], int& busNum, int& portNum)
 {
@@ -71,6 +76,11 @@ bool parseLocationInfo(WCHAR propertyBuffer[4096], int& busNum, int& portNum)
  *        "VID_0930"表示VID值为"0930", "PID_140A"表示PID值为"140A"
  *        "D04B61EC2646E25150000113"表示为序列号, 注意只有存储设备才有序列号, 且序列号中不含有"&"
  *        例如, 非存储设备的值格式为: "USB\VID_093A&PID_2510\5&31036E8E&0&3"
+ * @param instanceId [输出]实例ID
+ * @param vid [输出]厂商ID(小写字母)
+ * @param pid [输出]产品ID(小写字母)
+ * @param serial [输出]序列号
+ * @return true-成功, false-失败
  */
 bool parseInstanceId(WCHAR propertyBuffer[4096], std::string& instanceId, std::string& vid, std::string& pid, std::string& serial)
 {
@@ -111,6 +121,8 @@ bool parseInstanceId(WCHAR propertyBuffer[4096], std::string& instanceId, std::s
  * @brief 解析Children属性, 属性值格式, 例如: "USBSTOR\Disk&Ven_TOSHIBA&Prod_TransMemory&Rev_PMAP\D04B61EC2646E25150000113&0"
  *        "Prod_TransMemory"表示产品名称为"TransMemory", "Ven_TOSHIBA"表示厂商名称为"TOSHIBA"
  *        如果无产品名称和厂商名称, 格式可能为: "HID\VID_093A&PID_2510\6&365403a8&0&0000"
+ * @param product [输出]产品名称
+ * @param manufacturer [输出]厂商名称
  */
 void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string& manufacturer)
 {
@@ -143,21 +155,30 @@ void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string
     }
 }
 
+/**
+ * @brief Windows平台下获取到的USB信息
+ */
 struct WinUsb
 {
 public:
-    std::string parentInstanceId;
-    std::string instanceId;
-    int busNum;
-    int portNum;
-    std::string vid;
-    std::string pid;
-    std::string serial;
-    std::string product;
-    std::string manufacturer;
+    std::string parentInstanceId; /* 父节点实例ID, 例如: USB\ROOT_HUB30\4&C2333A7&0&0 */
+    std::string instanceId; /* 当前实例ID, 例如: USB\VID_0930&PID_140A\0060E056B626E260100040E4 */
+    int busNum; /* 总线编号 */
+    int portNum; /* 端口编号 */
+    std::string vid; /* 厂商ID(小写字母) */
+    std::string pid; /* 产品ID(小写字母) */
+    std::string serial; /* 序列号 */
+    std::string product; /* 产品名称 */
+    std::string manufacturer; /* 厂商名称 */
 };
 
-int confirmBusNum(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
+/**
+ * @brief 获取祖先节点总线编号(递归查询)
+ * @param info 当前USB信息
+ * @param winUsbList 查询到的USB信息列表
+ * @return 总线编号
+ */
+int getAncestorBusNum(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
 {
     auto parentInstanceId = info.parentInstanceId;
     std::transform(parentInstanceId.begin(), parentInstanceId.end(), parentInstanceId.begin(), tolower);
@@ -167,7 +188,7 @@ int confirmBusNum(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
         std::transform(instanceId.begin(), instanceId.end(), instanceId.begin(), tolower);
         if (parentInstanceId == instanceId)
         {
-            return confirmBusNum(item, winUsbList);
+            return getAncestorBusNum(item, winUsbList);
         }
     }
     return info.busNum;
@@ -340,6 +361,7 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
     {
 #ifdef _WIN32
         std::vector<WinUsb> winUsbList;
+        /* Windows平台下libusb无法打开设备, 需要通过系统API获取详细信息 */
         if (sf || pf || mf)
         {
             getWinUsbList(winUsbList);
@@ -360,6 +382,24 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
         libusb_free_device_list(devList, 1);
     }
     libusb_exit(NULL);
+    /* 根据父节点深度排序(小到大) */
+    std::sort(usbList.begin(), usbList.end(), [](const usb::Usb& a, const usb::Usb& b) {
+        int aDepth = 0;
+        auto aParent = a.getParent();
+        while (aParent)
+        {
+            ++aDepth;
+            aParent = aParent->getParent();
+        }
+        int bDepth = 0;
+        auto bParent = b.getParent();
+        while (bParent)
+        {
+            ++bDepth;
+            bParent = bParent->getParent();
+        }
+        return aDepth < bDepth;
+    });
     return usbList;
 }
 
@@ -424,16 +464,17 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
         }
         winUsbList.emplace_back(info);
     }
+    /* 如果接入了HUB, 那么上面获取到的总线编号需要进一步转为其祖先的总线编号 */
     for (auto& info : winUsbList)
     {
-        info.busNum = confirmBusNum(info, winUsbList);
+        info.busNum = getAncestorBusNum(info, winUsbList);
     }
     SetupDiDestroyDeviceInfoList(deviceInfo);
 }
 
 bool Usb::matchWinUsbParent(const std::vector<WinUsb>& winUsbList, std::string parentInstanceId, const std::shared_ptr<Usb>& parent)
 {
-    if (!parent || !parent->m_parent)
+    if (!parent || !parent->m_parent) /* 到达根节点 */
     {
         return true;
     }
@@ -471,7 +512,7 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
         return false;
     }
     libusb_device* parent = libusb_get_parent(dev);
-    if (parent)
+    if (parent) /* 解析父节点 */
     {
         info.m_parent = std::make_shared<Usb>();
 #ifdef _WIN32
@@ -535,26 +576,25 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
         else
         {
 #ifdef _WIN32
+            /* Windows平台下需要从WinUsb列表中获取详细信息 */
             for (auto item : winUsbList)
             {
-                if (item.busNum == info.m_busNum && item.portNum == info.m_portNum && item.vid == info.m_vid && item.pid == info.m_pid)
+                if (item.busNum == info.m_busNum && item.portNum == info.m_portNum && item.vid == info.m_vid && item.pid == info.m_pid
+                    && matchWinUsbParent(winUsbList, item.parentInstanceId, info.m_parent)) /* WinUsb匹配Usb */
                 {
-                    if (matchWinUsbParent(winUsbList, item.parentInstanceId, info.m_parent))
+                    if (sf)
                     {
-                        if (sf)
-                        {
-                            info.m_serial = item.serial;
-                        }
-                        if (pf)
-                        {
-                            info.m_product = item.product;
-                        }
-                        if (mf)
-                        {
-                            info.m_manufacturer = item.manufacturer;
-                        }
-                        break;
+                        info.m_serial = item.serial;
                     }
+                    if (pf)
+                    {
+                        info.m_product = item.product;
+                    }
+                    if (mf)
+                    {
+                        info.m_manufacturer = item.manufacturer;
+                    }
+                    break;
                 }
             }
 #endif

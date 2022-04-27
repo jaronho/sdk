@@ -129,10 +129,32 @@ public:
 
 private:
 #ifdef _WIN32
+    /**
+     * @brief 利用Windows系统API获取WinUsb列表
+     * @param winUsbList [输出]WinUsb列表
+     */
     static void getWinUsbList(std::vector<WinUsb>& winUsbList);
+
+    /**
+     * @brief 递归判断WinUsb和Usb的父节点是否一致
+     * @param winUsbList WinUsb列表
+     * @param parentInstanceId WinUsb父节点实例ID
+     * @param parent Usb父节点
+     * @return true-一致(表示WinUsb和Usb节点互相匹配), false-不一致
+     */
     static bool matchWinUsbParent(const std::vector<WinUsb>& winUsbList, std::string parentInstanceId, const std::shared_ptr<Usb>& parent);
 #endif
 
+    /**
+     * @brief 解析得到Usb信息
+     * @param dev 设备节点
+     * @param sf 是否获取序列号
+     * @param pf 是否获取产品名称
+     * @param mf 是否获取厂商名称
+     * @param winUsbList WinUsb列表(Windows平台下需要)
+     * @param info [输出]Usb信息
+     * @return true-成功, false-失败
+     */
 #ifdef _WIN32
     static bool parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, const std::vector<WinUsb>& winUsbList, Usb& info);
 #else
