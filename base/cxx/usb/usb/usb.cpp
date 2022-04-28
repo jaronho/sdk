@@ -8,6 +8,7 @@
 // initguid.h必须在devpkey.h前面包含
 #include <initguid.h>
 //
+#include <Dbt.h>
 #include <SetupAPI.h>
 #include <cfgmgr32.h>
 #include <devpkey.h>
@@ -402,6 +403,33 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
     });
     return usbList;
 }
+
+#ifdef _WIN32
+bool Usb::registerDeviceNotify(HANDLE handle)
+{
+    if (!handle)
+    {
+        return false;
+    }
+    static const GUID GUID_DEVINTERFACE_LIST[] = {{0xA5DCBF10, 0x6530, 0x11D2, {0x90, 0x1F, 0x00, 0xC0, 0x4F, 0xB9, 0x51, 0xED}},
+                                                  {0x53f56307, 0xb6bf, 0x11d0, {0x94, 0xf2, 0x00, 0xa0, 0xc9, 0x1e, 0xfb, 0x8b}}};
+    HDEVNOTIFY devNotify;
+    for (int i = 0; i < sizeof(GUID_DEVINTERFACE_LIST) / sizeof(GUID); i++)
+    {
+        DEV_BROADCAST_DEVICEINTERFACE notifyFilter;
+        ZeroMemory(&notifyFilter, sizeof(notifyFilter));
+        notifyFilter.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
+        notifyFilter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
+        notifyFilter.dbcc_classguid = GUID_DEVINTERFACE_LIST[i];
+        devNotify = RegisterDeviceNotification(handle, &notifyFilter, DEVICE_NOTIFY_WINDOW_HANDLE);
+        if (!devNotify)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+#endif
 
 #ifdef _WIN32
 void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)

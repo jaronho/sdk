@@ -127,6 +127,18 @@ public:
      */
     static std::vector<Usb> getAllUsbs(bool sf = false, bool pf = false, bool mf = false);
 
+#ifdef _WIN32
+    /**
+     * @brief 注册设备通知(用于拔插检测)
+     *        如果是窗体程序, 则要监听: WM_DEVICECHANGE, 如果是服务程序, 则要监听: SERVICE_CONTROL_DEVICEEVENT
+     *        插拔事件分别要监听: DBT_DEVICEARRIVAL, DBT_DEVICEREMOVECOMPLETE
+     * @param handle 句柄
+     * @return true-成功, false-失败
+     */
+    typedef void* HANDLE;
+    static bool registerDeviceNotify(HANDLE handle);
+#endif
+
 private:
 #ifdef _WIN32
     /**
