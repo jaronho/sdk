@@ -90,5 +90,12 @@ public:
      * @return true-有网桥, false-无网桥
      */
     static bool deleteBridge(const std::string& name);
+
+    /**
+     * @brief 启用网桥
+     * @param name 网桥名称
+     * @return true-有网桥, false-无网桥
+     */
+    static bool enableBridge(const std::string& name);
 };
 } // namespace toolkit

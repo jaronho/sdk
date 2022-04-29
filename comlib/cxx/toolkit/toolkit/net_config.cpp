@@ -425,4 +425,32 @@ bool NetConfig::deleteBridge(const std::string& name)
     return false;
 #endif
 }
+
+bool NetConfig::enableBridge(const std::string& name)
+{
+    if (name.empty())
+    {
+        return false;
+    }
+#ifdef _WIN32
+    return false;
+#else
+    auto bridgeList = getBridgeInfos();
+    for (const auto& bridgeInfo : bridgeList)
+    {
+        if (0 == name.compare(bridgeInfo.name)) /* 存在网桥 */
+        {
+            /* step1: 启动网络接口, 注意: 这里用ifconfig up, 如果用ifdown/ifup貌似会给自动加上IP地址 */
+            for (const auto& port : bridgeInfo.ports)
+            {
+                utility::System::runCmd("ip addr flush dev " + port + " && ifconfig " + port + " up");
+            }
+            /* step2: 启动网桥, 注意: 需要用ifdown/ifup使配置文件生效, 不能使用ifconfig down/up */
+            utility::System::runCmd("ip addr flush dev " + name + " && ifdown " + name + " && ifup " + name);
+            return true;
+        }
+    }
+    return false;
+#endif
+}
 } // namespace toolkit
