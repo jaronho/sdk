@@ -5,8 +5,8 @@
 
 #define THRD_MESSAGE_EXIT WM_USER + 1
 static const TCHAR CLASS_NAME[] = "Example Win Detect";
-static HWND g_hwnd = NULL;
-static std::vector<usb::Usb> g_usbList;
+static HWND s_hwnd = NULL;
+static std::vector<usb::Usb> s_usbList;
 
 void syncUsbList(const std::vector<usb::Usb>& nowList, std::vector<usb::Usb>* addedList, std::vector<usb::Usb>* removedList)
 {
@@ -17,7 +17,7 @@ void syncUsbList(const std::vector<usb::Usb>& nowList, std::vector<usb::Usb>* ad
         for (const auto& now : nowList)
         {
             bool addedFlag = true;
-            for (const auto& info : g_usbList)
+            for (const auto& info : s_usbList)
             {
                 if (now.getAddress() == info.getAddress())
                 {
@@ -35,7 +35,7 @@ void syncUsbList(const std::vector<usb::Usb>& nowList, std::vector<usb::Usb>* ad
     if (removedList)
     {
         removedList->clear();
-        for (const auto& info : g_usbList)
+        for (const auto& info : s_usbList)
         {
             bool removedFlag = true;
             for (const auto& now : nowList)
@@ -53,7 +53,7 @@ void syncUsbList(const std::vector<usb::Usb>& nowList, std::vector<usb::Usb>* ad
         }
     }
     /* 保存最新 */
-    g_usbList = nowList;
+    s_usbList = nowList;
 }
 
 void handleDeviceArrived()
@@ -98,7 +98,7 @@ void handleDeviceRemoved()
     }
 }
 
-LRESULT CALLBACK WndProc(HWND g_hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK wndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
@@ -113,14 +113,14 @@ LRESULT CALLBACK WndProc(HWND g_hwnd, UINT message, WPARAM wParam, LPARAM lParam
         }
         return 0;
     }
-    return DefWindowProc(g_hwnd, message, wParam, lParam);
+    return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
 DWORD WINAPI threadFunc(LPVOID lpParam)
 {
     /* 步骤1. 注册窗体 */
     WNDCLASS wc = {0};
-    wc.lpfnWndProc = WndProc;
+    wc.lpfnWndProc = wndProc;
     wc.hInstance = GetModuleHandle(NULL);
     wc.lpszClassName = CLASS_NAME;
     if (0 == RegisterClass(&wc))
@@ -129,19 +129,19 @@ DWORD WINAPI threadFunc(LPVOID lpParam)
         return -1;
     }
     /* 步骤2. 创建窗体 */
-    g_hwnd = CreateWindowEx(0, CLASS_NAME, "", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+    s_hwnd = CreateWindowEx(0, CLASS_NAME, "", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
                             NULL, // Parent window
                             NULL, // Menu
                             GetModuleHandle(NULL), // Instance handle
                             NULL // Additional application data
     );
-    if (NULL == g_hwnd)
+    if (NULL == s_hwnd)
     {
         printf("create window fail\n");
         return -1;
     }
     /* 步骤3. 注册设备通知消息 */
-    if (!usb::Usb::registerDeviceNotify(g_hwnd))
+    if (!usb::Usb::registerDeviceNotify(s_hwnd))
     {
         printf("register device notify fail\n");
         return -1;
@@ -164,7 +164,7 @@ DWORD WINAPI threadFunc(LPVOID lpParam)
 int main()
 {
     /* 初始USB列表 */
-    g_usbList = usb::Usb::getAllUsbs(true, true, true);
+    s_usbList = usb::Usb::getAllUsbs(true, true, true);
     /* 创建线程(控制台程序主线程无法接收Windows消息) */
     DWORD threadId;
     HANDLE threadHandle = CreateThread(NULL, 0, threadFunc, NULL, 0, &threadId);
