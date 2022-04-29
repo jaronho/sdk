@@ -3,6 +3,12 @@
 #include <memory>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+// Windows.h必须比其他平台文件先包含
+#include <Windows.h>
+//
+#include <Dbt.h>
+#endif
 
 namespace usb
 {
@@ -135,7 +141,6 @@ public:
      * @param handle 句柄
      * @return true-成功, false-失败
      */
-    typedef void* HANDLE;
     static bool registerDeviceNotify(HANDLE handle);
 #endif
 

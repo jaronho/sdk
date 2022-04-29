@@ -3,12 +3,9 @@
 #include <algorithm>
 
 #ifdef _WIN32
-// Windows.h必须比其他平台文件先包含
-#include <Windows.h>
 // initguid.h必须在devpkey.h前面包含
 #include <initguid.h>
 //
-#include <Dbt.h>
 #include <SetupAPI.h>
 #include <cfgmgr32.h>
 #include <devpkey.h>
