@@ -326,7 +326,11 @@ void testCurlPostForm()
     std::cout << "===================== test curl POST form" << std::endl;
     std::cout << "url: " << url << std::endl;
 
-    auto data = std::make_shared<curlex::FormRequestData>("name=jaronho&sex=male&age=33");
+    std::map<std::string, std::string> filedMap;
+    filedMap.insert(std::make_pair("name", "jaronho"));
+    filedMap.insert(std::make_pair("sex", "male"));
+    filedMap.insert(std::make_pair("age", "33"));
+    auto data = std::make_shared<curlex::FormRequestData>(filedMap);
     auto req = std::make_shared<curlex::SimpleRequest>(url);
     req->setData(data);
     curlex::FuncSet funcSet;

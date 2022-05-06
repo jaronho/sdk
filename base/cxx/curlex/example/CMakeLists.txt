@@ -7,13 +7,20 @@ set(CMAKE_CXX_STANDARD 14) # `std::make_unique`要求最低C++14
 include(../cmake/tools.cmake)
 
 ####################################### 添加CURL库 #######################################
+option(use_curl_staticlib "是否使用CURL静态库" OFF) # ON表示链接CURL静态库, OFF或者不设置表示链接动态库(目前只支持Windows)
 find_package(CURL 7.76.1 REQUIRED)
-if(CURL_FOUND) # 注意: curl库区分ssl和非ssl, 根据业务需要自行手动替换
+if(CURL_FOUND) # 注意: curl库区分ssl和非ssl
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-        add_definitions("-DCURL_STATICLIB") # 如果链接静态库则必须添加这个宏
+        if(use_curl_staticlib)
+            add_definitions("-DCURL_STATICLIB") # 如果链接静态库则必须添加这个宏
+        endif()
+        set(CURL_INCLUDE_DIRS $ENV{CURL_HOME}/include) # 读取环境变量`CURL_HOME`的值
     endif()
+    set(CURL_LIBRARY_DIRS ${CURL_INCLUDE_DIRS}/../lib)
     message(STATUS "CURL include path: ${CURL_INCLUDE_DIRS}")
+    message(STATUS "CURL library path: ${CURL_LIBRARY_DIRS}")
     include_directories(${CURL_INCLUDE_DIRS})
+    link_directories(${CURL_LIBRARY_DIRS})
 else()
     message(WARNING "CURL not found")
     return()
@@ -39,4 +46,14 @@ endforeach()
 add_executable(example_curlex ${base_curlex_files} ${example_files})
 
 # 链接依赖库
-target_link_libraries(example_curlex CURL::libcurl)
+target_link_libraries(example_curlex ${curl_libraries})
+
+# 拷贝动态链接库
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    add_custom_command(
+        TARGET example_curlex
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${CURL_INCLUDE_DIRS}/../bin/libcurl.dll "$(OutDir)/libcurl.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy ${CURL_INCLUDE_DIRS}/../bin/libcurl-d.dll "$(OutDir)/libcurl-d.dll"
+    )
+endif()
