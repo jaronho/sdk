@@ -143,6 +143,10 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
     for (size_t index = 0; index < totalFileCount; ++index)
     {
         utility::FileInfo srcFileInfo(srcFilelist[index]);
+        if (0 != srcFileInfo.name().find(m_srcPathInfo.path())) /* 源文件路径不正确 */
+        {
+            return FileInfo::CopyResult::src_open_failed;
+        }
         auto destFile = m_destPathInfo.path() + srcFileInfo.name().substr(m_srcPathInfo.path().size());
         /* 判断或创建目标目录 */
         utility::PathInfo destPathInfo(utility::FileInfo(destFile).path());
