@@ -1,3 +1,6 @@
+#include <Windows.h>
+//
+#include <Dbt.h>
 #include <stdio.h>
 #include <thread>
 
