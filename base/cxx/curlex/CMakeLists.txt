@@ -38,7 +38,7 @@ ${base_curlex_dir}
 ${base_curlex_files}
 ]]
 
-##################################### 添加breakpad库 #####################################
+##################################### 添加CURL库 #####################################
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     if(use_curl_staticlib) # 设置Debug和Release链接不同的静态库
         set(curl_libraries debug libcurl-d.lib optimized libcurl.lib winmm.lib wldap32.lib ws2_32.lib CACHE INTERNAL "")
