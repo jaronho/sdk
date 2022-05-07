@@ -89,7 +89,7 @@ public:
     std::string getSerial() const;
 
     /**
-     * @brief 获取产品名称
+     * @brief 获取产品名称, 说明: 正常情况下可以根据是否包含`keyboard`或`mouse`来判断键盘/鼠标
      * @return 产品名称
      */
     std::string getProduct() const;

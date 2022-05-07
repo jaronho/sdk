@@ -152,28 +152,6 @@ bool UsbInfo::isValid() const
     return (getBusNum() < 0 || getPortNum() < 0 || getAddress() < 0 || getVid().empty() || getPid().empty());
 }
 
-bool UsbInfo::isKeyboard() const
-{
-    if (isHid())
-    {
-        auto product = getProduct();
-        std::transform(product.begin(), product.end(), product.begin(), tolower);
-        return (std::string::npos != product.find("keyboard"));
-    }
-    return false;
-}
-
-bool UsbInfo::isMouse() const
-{
-    if (isHid())
-    {
-        auto product = getProduct();
-        std::transform(product.begin(), product.end(), product.begin(), tolower);
-        return (std::string::npos != product.find("mouse"));
-    }
-    return false;
-}
-
 std::string UsbInfo::describe() const
 {
     std::string desc;

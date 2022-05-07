@@ -32,18 +32,6 @@ public:
     bool isValid() const;
 
     /**
-     * @brief 是否键盘
-     * @return true-是, false-否
-     */
-    bool isKeyboard() const;
-
-    /**
-     * @brief 是否鼠标
-     * @return true-是, false-否
-     */
-    bool isMouse() const;
-
-    /**
      * @brief 描述信息
      */
     std::string describe() const;
