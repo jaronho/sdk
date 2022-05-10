@@ -1,4 +1,4 @@
-#include <chrono>
+﻿#include <chrono>
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
@@ -69,7 +69,7 @@ int hexStrToBytes(const std::string& hexStr, char** bytes)
  */
 void showAllPorts(const std::vector<serial::PortInfo> portList)
 {
-    printf("==================== list all serial port ====================\n");
+    printf("==================== 当前识别到的所有串口 ====================\n");
     for (size_t i = 0, portCount = portList.size(); i < portCount; ++i)
     {
         if (i > 0)
@@ -78,31 +78,36 @@ void showAllPorts(const std::vector<serial::PortInfo> portList)
         }
         if (portCount < 10)
         {
-            printf("[%zu]        Name: %s\n", (i + 1), portList[i].port.c_str());
+            printf("[%zu] 端口号: %s\n", (i + 1), portList[i].port.c_str());
+            printf("    描  述: %s\n", portList[i].description.c_str());
+            printf("    硬件ID: %s\n", portList[i].hardwareId.c_str());
         }
         else if (portCount < 100)
         {
-            printf("[%02zu]       Name: %s\n", (i + 1), portList[i].port.c_str());
+            printf("[%02zu] 端口号: %s\n", (i + 1), portList[i].port.c_str());
+            printf("     描  述: %s\n", portList[i].description.c_str());
+            printf("     硬件ID: %s\n", portList[i].hardwareId.c_str());
         }
         else
         {
-            printf("[%03zu]      Name: %s\n", (i + 1), portList[i].port.c_str());
+            printf("[%03zu] 端口号: %s\n", (i + 1), portList[i].port.c_str());
+            printf("      描  述: %s\n", portList[i].description.c_str());
+            printf("      硬件ID: %s\n", portList[i].hardwareId.c_str());
         }
-        printf("    Description: %s\n", portList[i].description.c_str());
-        printf("    Hardware ID: %s\n", portList[i].hardwareId.c_str());
         if (i == portCount - 1)
         {
             printf("----------------------------------------\n");
         }
     }
+    printf("\n");
 }
 
 /**
  * @brief 打开串口 
  */
 void openSerial(const std::string& port, unsigned long baudrate, const serial::Databits& databits, const serial::ParityType& parity,
-                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, bool sendHex, bool hideRecv, bool showHex,
-                bool autoLine)
+                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, bool sendHex, bool showHex, bool autoLine,
+                bool hideRecv)
 {
     /* 串口设置及打开 */
     g_com.setPort(port);
@@ -111,72 +116,72 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     g_com.setParity(parity);
     g_com.setStopbits(stopbits);
     g_com.setFlowcontrol(flowcontrol);
-    printf("  port: %s\n", port.c_str());
-    printf("  baud: %ld\n", baudrate);
+    printf("端口号: %s\n", port.c_str());
+    printf("波特率: %ld\n", baudrate);
     switch (databits)
     {
     case serial::Databits::five:
-        printf("  data: 5\n");
+        printf("数据位: 5\n");
         break;
     case serial::Databits::six:
-        printf("  data: 6\n");
+        printf("数据位: 6\n");
         break;
     case serial::Databits::seven:
-        printf("  data: 7\n");
+        printf("数据位: 7\n");
         break;
     case serial::Databits::eight:
-        printf("  data: 8\n");
+        printf("数据位: 8\n");
         break;
     }
     switch (parity)
     {
     case serial::ParityType::none:
-        printf("parity: None\n");
+        printf("校验位: None\n");
         break;
     case serial::ParityType::odd:
-        printf("parity: Odd\n");
+        printf("校验位: Odd\n");
         break;
     case serial::ParityType::even:
-        printf("parity: Even\n");
+        printf("校验位: Even\n");
         break;
     case serial::ParityType::mark:
-        printf("parity: Mark\n");
+        printf("校验位: Mark\n");
         break;
     case serial::ParityType::space:
-        printf("parity: Space\n");
+        printf("校验位: Space\n");
         break;
     }
     switch (stopbits)
     {
     case serial::Stopbits::one:
-        printf("  stop: 1\n");
+        printf("停止位: 1\n");
         break;
     case serial::Stopbits::one_and_half:
-        printf("  stop: 1.5\n");
+        printf("停止位: 1.5\n");
         break;
     case serial::Stopbits::two:
-        printf("  stop: 2\n");
+        printf("停止位: 2\n");
         break;
     }
     switch (flowcontrol)
     {
     case serial::FlowcontrolType::none:
-        printf("  flow: None\n");
+        printf("流  控: None\n");
         break;
     case serial::FlowcontrolType::software:
-        printf("  flow: Software\n");
+        printf("流  控: Software\n");
         break;
     case serial::FlowcontrolType::hardware:
-        printf("  flow: Hardware\n");
+        printf("流  控: Hardware\n");
         break;
     }
     printf("\n");
     if (!g_com.open())
     {
-        printf("serial open failed!\n");
+        printf("串口打开失败!\n");
         return;
     }
-    printf("serial open success.\n");
+    printf("串口打开成功.\n");
     /* 开线程用于发送 */
     std::thread th([&]() {
         while (1)
@@ -240,7 +245,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                     std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - g_lastRecvTimestamp);
                 if (elapsed.count() >= 400)
                 {
-                    fprintf(stderr, "\n========== total receive length: %zu (byte)\n", g_totalRecvLength);
+                    fprintf(stderr, "\n========== 总的接收长度: %zu (字节)\n", g_totalRecvLength);
                     g_totalRecvLength = 0;
                 }
             }
@@ -251,22 +256,35 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
 
 int main(int argc, char** argv)
 {
-    printf("***********************************************************************************************************\n");
-    printf("** Options:                                                                                              **\n");
-    printf("**                                                                                                       **\n");
-    printf("** [-s]                   show all serial port.                                                          **\n");
-    printf("** [-port name]           specify the name of the port to open, e.g. COM1, /dev/ttyS0, /dev/ttyUSB0.     **\n");
-    printf("** [-baud baudrate]       specify the baudrate.                                                          **\n");
-    printf("** [-data databits]       specify the data bits, [ 5, 6, 7, 8 ].                                         **\n");
-    printf("** [-parity parity]       specify the parity, [ None: N|n, Even: E|e, Odd: O|o, Mark: M|m, Space: S|s ]. **\n");
-    printf("** [-stop stopbits]       specify the stop bits, [ 1, 1.5, 2 ].                                          **\n");
-    printf("** [-flow flowcontrol]    specify the flow control, [ None: N|n, Software: S|s, Hardware: H|h ].         **\n");
-    printf("** [--txhex]              specify the send format with hex.                                              **\n");
-    printf("** [--rxhide]             specify whether hide receive.                                                  **\n");
-    printf("** [--rxhex]              specify the receive show with hex.                                             **\n");
-    printf("** [--rxline]             specify the receive auto new line.                                             **\n");
-    printf("**                                                                                                       **\n");
-    printf("***********************************************************************************************************\n");
+    printf("*************************************************************************************************************\n");
+    printf("** 说明: 串口调试工具, 支持: 收/发数据, ASCII/十六进制. 打开成功后在控制台输入字符并回车即可发送.          **\n");
+    printf("**                                                                                                         **\n");
+    printf("** 选项:                                                                                                   **\n");
+    printf("**                                                                                                         **\n");
+    printf("** [-s]                显示所有串口端口.                                                                   **\n");
+#ifdef _WIN32
+    printf("** [-port 端口号]      串口端口号(必填), 例如: COM1, COM2, COM3等.                                         **\n");
+#else
+    printf("** [-port 端口号]      串口端口号(必填), 例如: /dev/ttyS0, /dev/ttyUSB0等.                                 **\n");
+#endif
+    printf("** [-baud 波特率]      波特率(选填), 例如: 9600, 19200, 38400, 115200等, 默认: 115200.                     **\n");
+    printf("** [-data 数据位]      数据位(选填), 值: [5, 6, 7, 8], 默认: 8.                                            **\n");
+    printf("** [-parity 校验位]    校验位(选填), 值: [None: N|n, Even: E|e, Odd: O|o, Mark: M|m, Space: S|s], 默认: N. **\n");
+    printf("** [-stop 停止位]      停止位(选填), 值: [1, 1.5, 2], 默认: 1.                                             **\n");
+    printf("** [-flow 流控]        流控(选填), 值: [None: N|n, Software: S|s, Hardware: H|h], 默认: N.                 **\n");
+    printf("** [--txhex]           使用十六进制格式发送数据(选填), 默认: ASCII.                                        **\n");
+    printf("** [--rxhex]           使用十六进制格式显示接收数据(选填), 默认: ASCII.                                    **\n");
+    printf("** [--rxline]          自动换行接收数据(选填), 默认: 不自动换行.                                           **\n");
+    printf("** [--rxhide]          隐藏接收到的数据(选填), 默认: 显示.                                                 **\n");
+    printf("**                                                                                                         **\n");
+    printf("** 示例:                                                                                                   **\n");
+#ifdef _WIN32
+    printf("**       serial_tool.exe -baud 115200 -data 8 -parity N -stop 1 -flow N --rxhex -port COM1                 **\n");
+#else
+    printf("**       ./serial_tool -baud 115200 -data 8 -parity N -stop 1 -flow N --rxhex -port /dev/ttyUSB0           **\n");
+#endif
+    printf("**                                                                                                         **\n");
+    printf("*************************************************************************************************************\n");
     printf("\n");
     /* 参数标识: 0-没有找到, 1-值错误, 2-值正确 */
     int flagShow = 0;
@@ -277,9 +295,9 @@ int main(int argc, char** argv)
     int flagStopbits = 2;
     int flagFlowcontrol = 2;
     int flagTxHex = 0;
-    int flagRxHide = 0;
     int flagRxHex = 0;
     int flagRxAutoLine = 0;
+    int flagRxHide = 0;
     /* 错误的参数值 */
     std::string valDatabits;
     std::string valParity;
@@ -308,12 +326,6 @@ int main(int argc, char** argv)
             i += 1;
             continue;
         }
-        else if (0 == key.compare("--rxhide")) /* 是否显示接收 */
-        {
-            flagRxHide = 2;
-            i += 1;
-            continue;
-        }
         else if (0 == key.compare("--rxhex")) /* 接收显示十六进制 */
         {
             flagRxHex = 2;
@@ -323,6 +335,12 @@ int main(int argc, char** argv)
         else if (0 == key.compare("--rxline")) /* 接收显示自动换行 */
         {
             flagRxAutoLine = 2;
+            i += 1;
+            continue;
+        }
+        else if (0 == key.compare("--rxhide")) /* 是否显示接收 */
+        {
+            flagRxHide = 2;
             i += 1;
             continue;
         }
@@ -453,9 +471,9 @@ int main(int argc, char** argv)
     flagStopbits = 2;
     flagFlowcontrol = 2;
     flagTxHex = 0;
-    flagRxHide = 0;
     flagRxHex = 0;
     flagRxAutoLine = 0;
+    flagRxHide = 0;
     portName = "COM26";
     baudrate = 38400;
     databits = serial::Databits::seven;
@@ -476,56 +494,56 @@ int main(int argc, char** argv)
     {
         if (0 == flagShow)
         {
-            printf("Error: missing -port option.\n");
+            printf("错误: 缺少端口选项 -port\n");
             return 0;
         }
     }
     else if (1 == flagPortName)
     {
-        printf("Error: port '%s' is invalid.\n", portName.c_str());
+        printf("错误: 端口 '%s' 无效.\n", portName.c_str());
         return 0;
     }
     std::string errorStr;
     /* 判断波特率 */
     if (0 == flagBaurate)
     {
-        errorStr += "Error: missing -baud option.\n";
+        errorStr += "错误: 缺少波特率选项 -baud\n";
     }
     /* 判断数据位 */
     if (0 == flagDatabits)
     {
-        errorStr += "Error: missing -data option.\n";
+        errorStr += "错误: 缺少数据位选项 -data\n";
     }
     else if (1 == flagDatabits)
     {
-        errorStr += "Error: data bits '" + valDatabits + "' is invalid.\n";
+        errorStr += "错误: 数据位 '" + valDatabits + "' 无效.\n";
     }
     /* 判断校验位 */
     if (0 == flagParity)
     {
-        errorStr += "Error: missing -parity option.\n";
+        errorStr += "错误: 缺少校验位选项 -parity\n";
     }
     else if (1 == flagParity)
     {
-        errorStr += "Error: parity '" + valParity + "' is invalid.\n";
+        errorStr += "错误: 校验位 '" + valParity + "' 无效.\n";
     }
     /* 判断停止位 */
     if (0 == flagStopbits)
     {
-        errorStr += "Error: missing -stop option.\n";
+        errorStr += "错误: 缺少停止位选项 -stop\n";
     }
     else if (1 == flagStopbits)
     {
-        errorStr += "Error: stop bits '" + valStopbits + "' is invalid.\n";
+        errorStr += "错误: 停止位 '" + valStopbits + "' 无效.\n";
     }
     /* 判断流控 */
     if (0 == flagFlowcontrol)
     {
-        errorStr += "Error: missing -flow option.\n";
+        errorStr += "错误: 缺少流控选项 -flow\n";
     }
     else if (1 == flagFlowcontrol)
     {
-        errorStr += "Error: flow control '" + valFlowcontrol + "' is invalid.\n";
+        errorStr += "错误: 流控 '" + valFlowcontrol + "' 无效.\n";
     }
     /* 参数判断 */
     if (!errorStr.empty())
@@ -537,7 +555,7 @@ int main(int argc, char** argv)
         return 0;
     }
     /* 打开串口 */
-    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, 2 == flagTxHex, 2 == flagRxHide, 2 == flagRxHex,
-               2 == flagRxAutoLine);
+    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, 2 == flagTxHex, 2 == flagRxHex, 2 == flagRxAutoLine,
+               2 == flagRxHide);
     return 0;
 }
