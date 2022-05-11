@@ -105,6 +105,7 @@ InnerLoggerImpl::InnerLoggerImpl(const LogConfig& cfg) : InnerLogger(cfg.path, c
 {
     m_dailyLog = std::make_shared<DailyLogfile>(cfg.path, cfg.name, cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount, cfg.fileIndexFixed,
                                                 cfg.newFolderDaily);
+    m_level.store(cfg.level);
     m_consoleEnable.store(cfg.consoleEnable);
 }
 

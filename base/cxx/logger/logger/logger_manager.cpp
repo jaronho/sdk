@@ -26,7 +26,7 @@ void LoggerManager::start(const LogConfig& cfg, const std::string& defultTagName
     m_defaultTagName = defultTagName;
 }
 
-Logger LoggerManager::getLogger(const std::string& tagName, const std::string& loggerName)
+Logger LoggerManager::getLogger(const std::string& tagName, int level, const std::string& loggerName)
 {
     auto name = loggerName.empty() ? m_logCfg.name : loggerName;
     auto tag = tagName.empty() ? m_defaultTagName : tagName;
@@ -43,6 +43,7 @@ Logger LoggerManager::getLogger(const std::string& tagName, const std::string& l
     }
     LogConfig cfg = m_logCfg;
     cfg.name = name;
+    cfg.level = level < 0 ? cfg.level : level;
     InnerLoggerPtr innerLogger = createInnerLogger(cfg);
     m_loggerMap.insert(std::make_pair(name, innerLogger));
     return Logger(tag, innerLogger);

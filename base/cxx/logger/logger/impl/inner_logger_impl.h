@@ -59,8 +59,8 @@ public:
                const std::string& msg) override;
 
 private:
-    std::atomic_int m_level = {LEVEL_TRACE}; /* 日志等级 */
     std::shared_ptr<DailyLogfile> m_dailyLog; /* 每天日志文件 */
+    std::atomic_int m_level = {LEVEL_TRACE}; /* 日志等级 */
     std::atomic_bool m_consoleEnable = {false}; /* 是否输出到控制台(默认不输出) */
 };
 

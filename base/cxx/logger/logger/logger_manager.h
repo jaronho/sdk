@@ -96,10 +96,11 @@ public:
     /**
      * @brief 获取日志记录器
      * @param tagName 日志标签
+     * @param level 日志等级, -1表示使用配置中的等级
      * @param loggerName 日志记录器名称
      * @return 日志记录器
      */
-    static Logger getLogger(const std::string& tagName = std::string(), const std::string& loggerName = std::string());
+    static Logger getLogger(const std::string& tagName = std::string(), int level = -1, const std::string& loggerName = std::string());
 
 private:
     /**

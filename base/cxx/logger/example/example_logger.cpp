@@ -10,12 +10,13 @@ int main()
     cfg.path = "log";
     cfg.name = "app"; /* 默认的日志记录器名称 */
     cfg.fileExtName = ".log";
+    cfg.level = logger::LEVEL_TRACE;
     cfg.fileMaxSize = 20 * 1024 * 1024;
     cfg.fileMaxCount = 5;
     cfg.fileIndexFixed = true;
     cfg.newFolderDaily = true;
     logger::LoggerManager::start(cfg, "who");
-    auto logger1 = logger::LoggerManager::getLogger("test", "main_");
+    auto logger1 = logger::LoggerManager::getLogger("test", -1, "main_");
     logger1.setConsoleEnable(true);
     for (int i = 0; i < 100; ++i)
     {
@@ -44,7 +45,7 @@ int main()
             FATAL_LOG(logger1, "hello world, I'm main, i[{}]", i);
         }
     }
-    auto logger2 = logger::LoggerManager::getLogger("ceshi", "main_");
+    auto logger2 = logger::LoggerManager::getLogger("ceshi", -1, "main_");
     logger2.setConsoleEnable(true);
     logger2.setLevel(logger::LEVEL_INFO);
     for (int i = 0; i < 100; ++i)
@@ -59,7 +60,7 @@ int main()
             logger2.setLevel(logger::LEVEL_DEBUG);
         }
     }
-    auto logger3 = logger::LoggerManager::getLogger("test", "hw_");
+    auto logger3 = logger::LoggerManager::getLogger("test", -1, "hw_");
     for (int i = 0; i < 100; ++i)
     {
         INFO_LOG(logger3, "hello world, I'm hw, i[{}]", i);
