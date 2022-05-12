@@ -427,13 +427,17 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
         /* 在子进程中执行该程序 */
         if (args.empty()) /* 无进程参数 */
         {
-            execlp(exeFile.c_str(), exeFile.c_str(), NULL);
+            int ret = execlp(exeFile.c_str(), exeFile.c_str(), NULL);
+            if (-1 == ret) /* 注意: 子进程执行失败, 需要退出子进程空间, 否则会在子进程中继续执行父进程的后续逻辑 */
+            {
+                exit(0);
+            }
         }
         else /* 有进程参数 */
         {
             int argvCount;
             char** argv = string2argv(cmdline, argvCount);
-            execvp(exeFile.c_str(), argv);
+            int ret = execvp(exeFile.c_str(), argv);
             if (argv)
             {
                 for (int i = 0; i < argvCount; ++i)
@@ -444,6 +448,10 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
                     }
                 }
                 free(argv);
+            }
+            if (-1 == ret) /* 注意: 子进程执行失败, 需要退出子进程空间, 否则会在子进程中继续执行父进程的后续逻辑 */
+            {
+                exit(0);
             }
         }
     }
