@@ -197,47 +197,120 @@ std::string Sqlite::Stmt::toString()
 
 void Sqlite::ValueMap::insert(const std::string& key, const std::string& value)
 {
-    m_values[key] = value;
+    auto iter = m_values.find(key);
+    if (m_values.end() == iter)
+    {
+        m_values.insert(std::make_pair(key, value));
+    }
+    else
+    {
+        iter->second = value;
+    }
 }
 
 void Sqlite::ValueMap::insert(const std::string& key, int value)
 {
-    m_values[key] = std::to_string(value);
+    auto iter = m_values.find(key);
+    if (m_values.end() == iter)
+    {
+        m_values.insert(std::make_pair(key, std::to_string(value)));
+    }
+    else
+    {
+        iter->second = std::to_string(value);
+    }
 }
 
 void Sqlite::ValueMap::insert(const std::string& key, unsigned int value)
 {
+    auto iter = m_values.find(key);
+    if (m_values.end() == iter)
+    {
+        m_values.insert(std::make_pair(key, std::to_string(value)));
+    }
+    else
+    {
+        iter->second = std::to_string(value);
+    }
     m_values[key] = std::to_string(value);
 }
 
 void Sqlite::ValueMap::insert(const std::string& key, long value)
 {
-    m_values[key] = std::to_string(value);
+    auto iter = m_values.find(key);
+    if (m_values.end() == iter)
+    {
+        m_values.insert(std::make_pair(key, std::to_string(value)));
+    }
+    else
+    {
+        iter->second = std::to_string(value);
+    }
 }
 
 void Sqlite::ValueMap::insert(const std::string& key, unsigned long value)
 {
-    m_values[key] = std::to_string(value);
+    auto iter = m_values.find(key);
+    if (m_values.end() == iter)
+    {
+        m_values.insert(std::make_pair(key, std::to_string(value)));
+    }
+    else
+    {
+        iter->second = std::to_string(value);
+    }
 }
 
 void Sqlite::ValueMap::insert(const std::string& key, long long value)
 {
-    m_values[key] = std::to_string(value);
+    auto iter = m_values.find(key);
+    if (m_values.end() == iter)
+    {
+        m_values.insert(std::make_pair(key, std::to_string(value)));
+    }
+    else
+    {
+        iter->second = std::to_string(value);
+    }
 }
 
 void Sqlite::ValueMap::insert(const std::string& key, unsigned long long value)
 {
-    m_values[key] = std::to_string(value);
+    auto iter = m_values.find(key);
+    if (m_values.end() == iter)
+    {
+        m_values.insert(std::make_pair(key, std::to_string(value)));
+    }
+    else
+    {
+        iter->second = std::to_string(value);
+    }
 }
 
 void Sqlite::ValueMap::insert(const std::string& key, float value)
 {
-    m_values[key] = std::to_string(value);
+    auto iter = m_values.find(key);
+    if (m_values.end() == iter)
+    {
+        m_values.insert(std::make_pair(key, std::to_string(value)));
+    }
+    else
+    {
+        iter->second = std::to_string(value);
+    }
 }
 
 void Sqlite::ValueMap::insert(const std::string& key, double value)
 {
-    m_values[key] = std::to_string(value);
+    auto iter = m_values.find(key);
+    if (m_values.end() == iter)
+    {
+        m_values.insert(std::make_pair(key, std::to_string(value)));
+    }
+    else
+    {
+        iter->second = std::to_string(value);
+    }
 }
 
 Sqlite::Sqlite(const std::string& path, const std::string& password)
