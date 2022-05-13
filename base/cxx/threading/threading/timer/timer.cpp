@@ -55,6 +55,7 @@ std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::execut
 std::unique_ptr<std::thread> Timer::s_thread = nullptr;
 std::mutex Timer::s_mutexTrigger;
 std::list<Timer::TriggerInfo> Timer::s_triggerList;
+std::function<int(int nowTotalCount)> Timer::s_triggerAddBeforeFunc = nullptr;
 
 Timer::Timer()
 {
@@ -85,11 +86,29 @@ boost::asio::io_context& Timer::getContext()
 void Timer::addToTriggerList(const Timer::TriggerInfo& info)
 {
     std::lock_guard<std::mutex> locker(s_mutexTrigger);
-    if (s_triggerList.size() >= 1024) /* runOnce未被调用或者程序阻塞, 会引起内存泄漏 */
+    if (s_triggerAddBeforeFunc)
     {
-        throw std::exception(std::logic_error("var 's_triggerList' too large"));
+        switch (s_triggerAddBeforeFunc(s_triggerList.size()))
+        {
+        case 1: /* 丢弃最新 */
+            return;
+        case 2: /* 丢弃最早 */
+            s_triggerList.pop_front();
+            break;
+        case 3: /* 丢弃所有 */
+            s_triggerList.clear();
+            break;
+        default: /* 继续添加(可能会内存持续上涨) */
+            break;
+        }
     }
     s_triggerList.emplace_back(info);
+}
+
+void Timer::setTriggerAddBeforeFunc(const std::function<int(int nowTotalCount)>& func)
+{
+    std::lock_guard<std::mutex> locker(s_mutexTrigger);
+    s_triggerAddBeforeFunc = func;
 }
 
 void Timer::runOnce()

@@ -30,8 +30,12 @@ public:
     /**
      * @brief 启动模块
      * @param threadCount 用于执行异步任务的线程个数
+     * @param func 函数, 说明: runOnce未被调用或者程序阻塞时结束列表会一直增长, 会造成内存泄漏, 此函数
+     *                        用于监听当前总的结束列表数量, 然后可以自行决定是否要抛异常还是其他处理方式
+     *                   参数: nowTotalCount-当前总的结束数量
+     *                   返回值: 1-丢弃最新, 2-丢弃最早, 3-丢弃所有, 0和其他值-继续添加(可能会内存持续上涨)           
      */
-    static void start(size_t threadCount = 4);
+    static void start(size_t threadCount = 4, const std::function<int(int nowTotalCount)>& func = nullptr);
 
     /**
      * @brief 停止模块
@@ -65,5 +69,6 @@ private:
     static ExecutorPtr s_workerThreads; /* 工作线程池 */
     static std::mutex s_mutexFinish;
     static std::list<AsyncTaskPtr> s_finishList; /* 结束列表 */
+    static std::function<int(int nowTotalCount)> s_finishAddBeforeFunc; /* 添加添加前函数 */
 };
 } // namespace threading

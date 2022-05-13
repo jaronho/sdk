@@ -7,13 +7,16 @@ namespace threading
 ExecutorPtr AsyncProxy::s_workerThreads = nullptr;
 std::mutex AsyncProxy::s_mutexFinish;
 std::list<AsyncTaskPtr> AsyncProxy::s_finishList;
+std::function<int(int nowTotalCount)> AsyncProxy::s_finishAddBeforeFunc;
 
-void AsyncProxy::start(size_t threadCount)
+void AsyncProxy::start(size_t threadCount, const std::function<int(int nowTotalCount)>& func)
 {
     if (!s_workerThreads)
     {
         s_workerThreads = ThreadProxy::createAsioExecutor("worker", std::max<size_t>(1U, threadCount));
     }
+    std::lock_guard<std::mutex> locker(s_mutexFinish);
+    s_finishAddBeforeFunc = func;
 }
 
 void AsyncProxy::stop()
@@ -70,9 +73,21 @@ void AsyncProxy::execute(const AsyncTaskPtr& task, const ExecutorPtr& finishExec
                     else /* 则把回调添加到结束列表 */
                     {
                         std::lock_guard<std::mutex> locker(s_mutexFinish);
-                        if (s_finishList.size() >= 1024) /* runOnce未被调用或者程序阻塞, 会引起内存泄漏 */
+                        if (s_finishAddBeforeFunc)
                         {
-                            throw std::exception(std::logic_error("var 's_finishList' too large"));
+                            switch (s_finishAddBeforeFunc(s_finishList.size()))
+                            {
+                            case 1: /* 丢弃最新 */
+                                return;
+                            case 2: /* 丢弃最早 */
+                                s_finishList.pop_front();
+                                break;
+                            case 3: /* 丢弃所有 */
+                                s_finishList.clear();
+                                break;
+                            default: /* 继续添加(可能会内存持续上涨) */
+                                break;
+                            }
                         }
                         s_finishList.emplace_back(task);
                     }

@@ -45,6 +45,14 @@ int main()
 {
     int mainPid = threading::Platform::getThreadId();
     g_workers = threading::ThreadProxy::createAsioExecutor("workers", 6); /* 创建工作线程(6个线程) */
+    threading::Timer::setTriggerAddBeforeFunc([&](int nowTotalCount) {
+        if (nowTotalCount >= 1024)
+        {
+            printf("Warning: timer trigger too large [%d], please check whether main thread blocking !", nowTotalCount);
+            return 2;
+        }
+        return 0;
+    });
     /* 定时器1 */
     int count1 = 0;
     auto tm1 = std::make_shared<threading::SteadyTimer>(std::chrono::seconds(0), std::chrono::milliseconds(5000), "", [mainPid, &count1]() {

@@ -38,6 +38,15 @@ public:
     virtual void stop() = 0;
 
     /**
+     * @brief 设置触发器添加前函数
+     *        说明: runOnce未被调用或者程序阻塞时触发器列表会一直增长, 会造成内存泄漏, 此函数
+     *              用于监听当前总的触发列表数量, 然后可以自行决定是否要抛异常还是其他处理方式
+     * @param func 函数, 参数: nowTotalCount-当前总的触发器数量
+     *                   返回值: 1-丢弃最新, 2-丢弃最早, 3-丢弃所有, 0和其他值-继续添加(可能会内存持续上涨)
+     */
+    static void setTriggerAddBeforeFunc(const std::function<int(int nowTotalCount)>& func);
+
+    /**
      * @brief 运行单次(用于监听触发回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
      *        注意: 如果定时器有指定任务触发回调的执行线程, 则其回调不受该接口接管
      */
@@ -73,6 +82,7 @@ private:
     static std::unique_ptr<std::thread> s_thread;
     static std::mutex s_mutexTrigger;
     static std::list<TriggerInfo> s_triggerList; /* 定时器触发列表 */
+    static std::function<int(int nowTotalCount)> s_triggerAddBeforeFunc; /* 触发器添加前函数 */
 };
 
 using TimerPtr = std::shared_ptr<Timer>;
