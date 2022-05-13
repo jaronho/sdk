@@ -67,10 +67,10 @@ void AsyncProxy::execute(const AsyncTaskPtr& task, const ExecutorPtr& finishExec
                     {
                         ThreadProxy::async("worker.async.finish" + tag, task->finishCb, finishExecutor);
                     }
-                    else /* Ôò°Ñ»Øµ÷Ìí¼Óµ½½áÊøÁĞ±í */
+                    else /* åˆ™æŠŠå›è°ƒæ·»åŠ åˆ°ç»“æŸåˆ—è¡¨ */
                     {
                         std::lock_guard<std::mutex> locker(s_mutexFinish);
-                        if (s_finishList.size() >= 1024) /* runOnceÎ´±»µ÷ÓÃ»òÕß³ÌĞò×èÈû, »áÒıÆğÄÚ´æĞ¹Â© */
+                        if (s_finishList.size() >= 1024) /* runOnceæœªè¢«è°ƒç”¨æˆ–è€…ç¨‹åºé˜»å¡, ä¼šå¼•èµ·å†…å­˜æ³„æ¼ */
                         {
                             throw std::exception(std::logic_error("var 's_finishList' too large"));
                         }
