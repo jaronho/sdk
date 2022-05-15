@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <thread>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 #include "../serial/serial.h"
 
@@ -176,9 +179,41 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         break;
     }
     printf("\n");
-    if (!g_com.open())
+    auto ret = g_com.open();
+    if (0 != ret)
     {
-        printf("串口打开失败!\n");
+        if (1 == ret)
+        {
+            printf("串口打开失败, 端口为空!\n");
+        }
+        else if (2 == ret)
+        {
+#ifdef _WIN32
+            DWORD dw = GetLastError();
+            LPVOID lpMsgBuf;
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dw,
+                          MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
+            printf("串口打开失败, 错误码: %d, 错误描述: %s\n", dw, (char*)lpMsgBuf);
+            LocalFree(lpMsgBuf);
+#else
+            if (0 == errno)
+            {
+                printf("串口打开失败, 该串口被其他进程使用中\n");
+            }
+            else
+            {
+                printf("串口打开失败, 错误码: %d, 错误描述: %s\n", errno, strerror(errno));
+            }
+#endif
+        }
+        else if (3 == ret)
+        {
+            printf("串口打开失败, 配置失败\n");
+        }
+        else
+        {
+            printf("串口打开失败, \n");
+        }
         return;
     }
     printf("串口打开成功.\n");
@@ -474,11 +509,11 @@ int main(int argc, char** argv)
     flagRxHex = 0;
     flagRxAutoLine = 0;
     flagRxHide = 0;
-    portName = "COM26";
-    baudrate = 38400;
-    databits = serial::Databits::seven;
-    pariry = serial::ParityType::even;
-    stopbits = serial::Stopbits::two;
+    portName = "COM27";
+    baudrate = 115200;
+    databits = serial::Databits::eight;
+    pariry = serial::ParityType::none;
+    stopbits = serial::Stopbits::one;
     flowcontrol = serial::FlowcontrolType::none;
 #endif
     /* 判断端口是否正确 */

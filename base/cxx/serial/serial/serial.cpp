@@ -17,11 +17,10 @@ Serial::Serial()
     m_impl = std::make_shared<SerialImpl>();
 }
 
-bool Serial::open()
+int Serial::open()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    int ret = m_impl->open();
-    return (0 == ret);
+    return m_impl->open();
 }
 
 bool Serial::close()

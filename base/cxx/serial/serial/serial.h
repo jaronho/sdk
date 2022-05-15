@@ -21,9 +21,9 @@ public:
 
     /**
      * @brief 打开串口
-     * @return true-成功, false-失败
+     * @return 0-成功, 1-端口为空, 2-打开失败, 3-配置失败
      */
-    bool open();
+    int open();
 
     /**
      * @brief 关闭串口
