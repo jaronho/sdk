@@ -212,7 +212,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         }
         else
         {
-            printf("串口打开失败, \n");
+            printf("串口打开失败[%d]\n", ret);
         }
         return;
     }
