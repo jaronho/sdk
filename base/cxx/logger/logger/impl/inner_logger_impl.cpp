@@ -129,7 +129,7 @@ bool InnerLoggerImpl::isConsoleEnable() const
 
 void InnerLoggerImpl::setConsoleEnable(bool enable)
 {
-    m_consoleEnable.store(true);
+    m_consoleEnable.store(enable);
 }
 
 void InnerLoggerImpl::print(int level, const std::string& tag, const std::string& file, int line, const std::string& func,

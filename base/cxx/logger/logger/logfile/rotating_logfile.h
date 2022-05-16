@@ -2,7 +2,6 @@
 #include <atomic>
 #include <functional>
 #include <mutex>
-#include <regex>
 #include <string>
 #include <vector>
 
@@ -58,9 +57,8 @@ private:
      * @brief 遍历指定路径文件
      * @param path 路径, 例如: "/home/workdpace/logs" 或 "/home/workdpace/logs/"
      * @param callback 回调
-     * @param recursive 是否递归遍历
      */
-    void traverseFile(std::string path, std::function<void(const std::string& fullName)> callback, bool recursive = true);
+    void traverseFile(std::string path, std::function<void(const std::string& fullName)> callback);
 
     /**
      * @brief 查找指定路径下匹配的文件名索引列表
@@ -68,7 +66,7 @@ private:
      * @param pattern 匹配模式(正则表达式)
      * @return 匹配到的索引列表(按降序排序)
      */
-    std::vector<int> findIndexList(const std::string& path, const std::regex& pattern);
+    std::vector<int> findIndexList(const std::string& path, const std::string& pattern);
 
     /**
      * @brief 查找指定路径下的最后的索引值

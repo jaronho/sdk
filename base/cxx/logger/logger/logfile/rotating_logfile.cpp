@@ -1,6 +1,7 @@
 #include "rotating_logfile.h"
 
 #include <iostream>
+#include <regex>
 #include <stdexcept>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -68,7 +69,7 @@ Logfile::Result RotatingLogfile::record(const std::string& content, bool newline
     return ret;
 }
 
-void RotatingLogfile::traverseFile(std::string path, std::function<void(const std::string& fullName)> callback, bool recursive)
+void RotatingLogfile::traverseFile(std::string path, std::function<void(const std::string& fullName)> callback)
 {
     if (path.empty())
     {
@@ -91,31 +92,35 @@ void RotatingLogfile::traverseFile(std::string path, std::function<void(const st
     _finddata_t fileData;
     int handle = _findfirst((path + "*.*").c_str(), &fileData);
 #endif
-    if (-1 == handle || !(_A_SUBDIR & fileData.attrib))
+    if (-1 == handle)
     {
         return;
     }
-#ifdef _WIN64
-    while (0 == _findnexti64(handle, &fileData))
-#else
-    while (0 == _findnext(handle, &fileData))
-#endif
+    if (_A_SUBDIR & fileData.attrib)
     {
-        if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
+#ifdef _WIN64
+        while (0 == _findnexti64(handle, &fileData))
+#else
+        while (0 == _findnext(handle, &fileData))
+#endif
         {
-            continue;
-        }
-        std::string subName = path + fileData.name;
-        if (_A_ARCH & fileData.attrib) /* 文件 */
-        {
-            if (callback)
+            if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
             {
-                callback(subName);
+                continue;
             }
-        }
-        if (recursive)
-        {
-            traverseFile(subName, callback, true);
+            std::string subName = path + fileData.name;
+            struct _stat64 st;
+            if (0 != _stat64(subName.c_str(), &st))
+            {
+                continue;
+            }
+            if (S_IFREG & st.st_mode) /* 文件 */
+            {
+                if (callback)
+                {
+                    callback(subName);
+                }
+            }
         }
     }
     _findclose(handle);
@@ -133,19 +138,16 @@ void RotatingLogfile::traverseFile(std::string path, std::function<void(const st
             continue;
         }
         std::string subName = path + dirp->d_name;
-        struct stat64 subStat;
-        if (0 == stat64(subName.c_str(), &subStat))
+        struct stat64 st;
+        if (0 != stat64(subName.c_str(), &st))
         {
-            if (S_IFREG & subStat.st_mode) /* 文件 */
+            continue;
+        }
+        if (S_IFREG & st.st_mode) /* 文件 */
+        {
+            if (callback)
             {
-                if (callback)
-                {
-                    callback(subName);
-                }
-            }
-            if (recursive)
-            {
-                traverseFile(subName, callback, true);
+                callback(subName);
             }
         }
     }
@@ -153,25 +155,23 @@ void RotatingLogfile::traverseFile(std::string path, std::function<void(const st
 #endif
 }
 
-std::vector<int> RotatingLogfile::findIndexList(const std::string& path, const std::regex& pattern)
+std::vector<int> RotatingLogfile::findIndexList(const std::string& path, const std::string& pattern)
 {
     std::vector<int> indexList;
+    std::regex re(pattern);
     std::smatch results;
-    traverseFile(
-        path,
-        [&](const std::string& fullName) {
-            std::string filename = fullName;
-            size_t pos = filename.find_last_of("/\\");
-            if (pos < filename.size())
-            {
-                filename = filename.substr(pos + 1, filename.size() - 1);
-            }
-            if (std::regex_match(filename, results, pattern))
-            {
-                indexList.emplace_back(atoi(results[1].str().c_str()));
-            }
-        },
-        false);
+    traverseFile(path, [&](const std::string& fullName) {
+        std::string filename = fullName;
+        size_t pos = filename.find_last_of("/\\");
+        if (pos < filename.size())
+        {
+            filename = filename.substr(pos + 1, filename.size() - 1);
+        }
+        if (std::regex_match(filename, results, re))
+        {
+            indexList.emplace_back(atoi(results[1].str().c_str()));
+        }
+    });
     std::sort(indexList.begin(), indexList.end(), [](int a, int b) { return a < b; });
     return indexList;
 }
@@ -183,7 +183,7 @@ int RotatingLogfile::findLastIndex(const std::string& path, std::vector<int>& in
 #else
     const std::string SLASH = "/";
 #endif
-    std::regex pattern(m_baseName + "-([0-9]+)" + (m_extName.empty() ? "" : SLASH) + m_extName);
+    std::string pattern = m_baseName + "-([0-9]+)" + m_extName;
     indexList = findIndexList(path, pattern);
     if (indexList.empty())
     {
