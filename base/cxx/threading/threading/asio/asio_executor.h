@@ -9,7 +9,7 @@
 namespace threading
 {
 /**
- * @brief asio线程
+ * @brief asio线程, 注意: 如果线程内执行死循环, 当要杀死线程时需要先退出循环, 否则会阻塞调用线程
  */
 class AsioExecutor final : public Executor
 {

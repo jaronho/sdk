@@ -20,7 +20,7 @@ class ThreadProxy final
 {
 public:
     /**
-     * @brief 创建asio线程
+     * @brief 创建asio线程, 注意: 如果线程内执行死循环, 当要杀死线程时需要先退出循环, 否则会阻塞调用线程
      * @param name 任务名称
      * @param threadCount 线程个数
      * @param 线程执行者
