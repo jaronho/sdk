@@ -595,7 +595,7 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
             }
             if (mf)
             {
-                char manufacturer[256] = {0}; /* 产品名称 */
+                char manufacturer[256] = {0}; /* 厂商名称 */
                 libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, (unsigned char*)manufacturer, sizeof(manufacturer));
                 info.m_manufacturer = manufacturer;
             }
