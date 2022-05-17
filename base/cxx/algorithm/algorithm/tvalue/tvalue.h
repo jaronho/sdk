@@ -135,8 +135,8 @@ public:
 
 private:
     std::recursive_mutex m_mutex;
-    T m_realValue; /* 真实的值 */
-    T m_tempValue; /* 缓存的值 */
+    T m_realValue = T{}; /* 真实的值 */
+    T m_tempValue = T{}; /* 缓存的值 */
     int m_okNeedCount = 0; /* 成功所需要的次数 */
     int m_repeatCount = 0; /* 连续重复次数 */
     TVALUE_EQUAL_FUNC m_equalFunc = nullptr; /* 值相等比较函数 */
