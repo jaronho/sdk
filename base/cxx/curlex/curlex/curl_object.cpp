@@ -1,19 +1,21 @@
 #include "curl_object.h"
 
-#include <atomic>
 #include <chrono>
+#include <mutex>
 #include <string.h>
 
 namespace curlex
 {
-std::atomic_uint g_objectCount = {0}; /* 全局对象个数 */
+std::mutex g_mutexObjectCount;
+int g_objectCount = 0; /* 全局对象个数 */
 
 /**
  * @brief Curl对象被创建
  */
 void onCurlObjectCreate()
 {
-    if (0 == g_objectCount.load())
+    std::lock_guard<std::mutex> locker(g_mutexObjectCount);
+    if (0 == g_objectCount)
     {
         auto code = curl_global_init(CURL_GLOBAL_ALL);
         if (CURLE_OK != code)
@@ -22,7 +24,7 @@ void onCurlObjectCreate()
             return;
         }
     }
-    g_objectCount.store(g_objectCount.load() + 1);
+    g_objectCount += 1;
 }
 
 /**
@@ -30,9 +32,11 @@ void onCurlObjectCreate()
  */
 void onCurlObejctDestroy()
 {
-    g_objectCount.store(g_objectCount.load() - 1);
-    if (0 == g_objectCount.load())
+    std::lock_guard<std::mutex> locker(g_mutexObjectCount);
+    g_objectCount -= 1;
+    if (g_objectCount <= 0)
     {
+        g_objectCount = 0;
         curl_global_cleanup();
     }
 }
