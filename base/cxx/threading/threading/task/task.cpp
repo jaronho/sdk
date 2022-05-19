@@ -4,22 +4,22 @@
 
 namespace threading
 {
-static std::atomic<int64_t> s_timestamp{0}; /* 注意: std::atomic_int64_t在某些平台下未定义 */
-static std::atomic_int s_count{0};
+static std::atomic<int64_t> s_taskTimestamp{0}; /* 注意: std::atomic_int64_t在某些平台下未定义 */
+static std::atomic_int s_taskNum{0};
 
 Task::Task(const std::string& name) : m_name(name)
 {
     auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (nt == s_timestamp)
+    if (nt == s_taskTimestamp)
     {
-        ++s_count;
+        ++s_taskNum;
     }
     else
     {
-        s_count = 0;
-        s_timestamp = nt;
+        s_taskNum = 0;
+        s_taskTimestamp = nt;
     }
-    m_id = (s_timestamp << 12) + (s_count & 0xFFF);
+    m_id = (s_taskTimestamp << 12) + (s_taskNum & 0xFFF);
 }
 
 int64_t Task::getId() const

@@ -13,9 +13,9 @@ class ThreadProxy;
 class Timer;
 
 /**
- * @brief 定时器触发丢弃类型
+ * @brief 丢弃类型
  */
-enum class TimerTriggerDiscard
+enum class DiscardType
 {
     none, /* 不丢弃 */
     discard_newest, /* 丢弃最新 */
@@ -58,30 +58,30 @@ using TaskExceptionStateCallback = std::function<void(const std::string& executo
                                                       int64_t taskId, const std::string& taskName, const std::string& msg)>;
 
 /**
- * @brief 定时器触发回调
- * @param triggerCount 当前要触发的定时器数量(不包含当前新触发的)
+ * @brief 触发器创建回调
+ * @param triggerCount 当前触发器数量(不包含新创建的)
  * @param timerId 定时器ID
  * @param timerName 定时器名称
  * @return 丢弃类型
  */
-using TimerTriggerCallback = std::function<TimerTriggerDiscard(int triggerCount, int64_t timerId, const std::string& timerName)>;
+using TriggerCreateCallback = std::function<DiscardType(int triggerCount, int64_t timerId, const std::string& timerName)>;
 
 /**
- * @brief 定时器触发(正常)状态回调
+ * @brief 触发器(正常)状态回调
  * @param timerId 定时器ID
  * @param timerName 定时器名称
  * @param prevElapsed 前一个状态耗时
  */
-using TimerTriggerNormalStateCallback =
+using TriggerNormalStateCallback =
     std::function<void(int64_t timerId, const std::string& timerName, const std::chrono::steady_clock::duration& prevElapsed)>;
 
 /**
- * @brief 定时器触发(异常)状态回调
+ * @brief 触发器(异常)状态回调
  * @param timerId 定时器ID
  * @param timerName 定时器名称
  * @param msg 异常消息
  */
-using TimerTriggerExceptionStateCallback = std::function<void(int64_t timerId, const std::string& timerName, const std::string& msg)>;
+using TriggerExceptionStateCallback = std::function<void(int64_t timerId, const std::string& timerName, const std::string& msg)>;
 
 /**
  * @brief 诊断信息收集模块
@@ -101,51 +101,51 @@ public:
 
     /**
 	 * @brief 设置任务绑定回调
-	 * @param taskBindCb 任务绑定回调
+	 * @param bindedCb 绑定回调
 	 */
-    static void setTaskBindCallback(const TaskBindCallback& taskBindCb);
+    static void setTaskBindedCallback(const TaskBindCallback& bindedCb);
 
     /**
 	 * @brief 设置任务运行状态回调
-	 * @param taskStateCb 任务状态回调
+	 * @param stateCb 状态回调
 	 */
-    static void setTaskRunningStateCallback(const TaskNormalStateCallback& taskStateCb);
+    static void setTaskRunningStateCallback(const TaskNormalStateCallback& stateCb);
 
     /**
 	 * @brief 设置任务结束状态回调
-	 * @param taskStateCb 任务状态回调
+	 * @param stateCb 状态回调
 	 */
-    static void setTaskFinishedStateCallback(const TaskNormalStateCallback& taskStateCb);
+    static void setTaskFinishedStateCallback(const TaskNormalStateCallback& stateCb);
 
     /**
 	 * @brief 设置任务异常状态回调
-	 * @param taskStateCb 任务状态回调
+	 * @param stateCb 状态回调
 	 */
-    static void setTaskExceptionStateCallback(const TaskExceptionStateCallback& taskStateCb);
+    static void setTaskExceptionStateCallback(const TaskExceptionStateCallback& stateCb);
 
     /**
-	 * @brief 设置定时器触发回调
-	 * @param timerTriggerCb 定时器触发回调
+	 * @brief 设置触发器创建回调
+	 * @param createdCb 创建回调
 	 */
-    static void setTimerTriggerCallback(const TimerTriggerCallback& timerTriggerCb);
+    static void setTriggerCreatedCallback(const TriggerCreateCallback& createdCb);
 
     /**
-	 * @brief 设置定时器触发运行状态回调
-	 * @param timerTriggerStateCb 定时器触发状态回调
+	 * @brief 设置触发器运行状态回调
+	 * @param stateCb 状态回调
 	 */
-    static void setTimerTriggerRunningStateCallback(const TimerTriggerNormalStateCallback& timerTriggerStateCb);
+    static void setTriggerRunningStateCallback(const TriggerNormalStateCallback& stateCb);
 
     /**
-	 * @brief 设置定时器触发结束状态回调
-	 * @param timerTriggerStateCb 定时器触发状态回调
+	 * @brief 设置触发器结束状态回调
+	 * @param stateCb 状态回调
 	 */
-    static void setTimerTriggerFinishedStateCallback(const TimerTriggerNormalStateCallback& timerTriggerStateCb);
+    static void setTriggerFinishedStateCallback(const TriggerNormalStateCallback& stateCb);
 
     /**
-	 * @brief 设置定时器触发异常状态回调
-	 * @param timerTriggerStateCb 定时器触发状态回调
+	 * @brief 设置触发器异常状态回调
+	 * @param stateCb 状态回调
 	 */
-    static void setTimerTriggerExceptionStateCallback(const TimerTriggerExceptionStateCallback& timerTriggerStateCb);
+    static void setTriggerExceptionStateCallback(const TriggerExceptionStateCallback& stateCb);
 
     /**
      * @brief 获取任务诊断信息, 格式例如:
@@ -168,15 +168,15 @@ public:
     static std::string getTaskDiagnoseInfo();
 
     /**
-     * @brief 获取定时器诊断信息, 格式例如:
-        [ // 定时器触发列表
-            // 触发信息: 定时器ID/名称, 状态(triggered,queuing,running,finished), 排队(queue)/执行(run)耗时(单位: ns,us,ms)
+     * @brief 获取触发器诊断信息, 格式例如:
+        [ // 触发器列表
+            // 触发器信息: 定时器ID/名称, 状态(created,queuing,running,finished), 排队(queue)/执行(run)耗时(单位: ns,us,ms)
             {"id":6770523674243072,"name":"timer_1","state":"running","queue":"516 ms","run":"5 ms"},
             {"id":6770523674245234,"name":"timer_2","state":"running","queue":"900 ms","run":"1002 ms"}
         ]
      * @return 诊断信息字符串(JSON)
      */
-    static std::string getTimerDiagnoseInfo();
+    static std::string getTriggerDiagnoseInfo();
 
 protected:
     /**
@@ -224,35 +224,35 @@ protected:
     static void onTaskException(int threadId, const std::string& threadName, const Task* task, const std::string& msg);
 
     /**
-     * @brief 响应定时器触发(模块内部接口)
+     * @brief 响应触发器创建(模块内部接口)
      * @param triggerCount 当前要触发的定时器数量(不包含当前新触发的)
      * @param oldestTriggerId 最早的触发ID
      * @param triggerId 触发ID
      * @param timer 定时器
      */
-    static TimerTriggerDiscard onTimerTrigger(int triggerCount, int64_t oldestTriggerId, int64_t triggerId, const Timer* timer);
+    static DiscardType onTriggerCreated(int triggerCount, int64_t oldestTriggerId, int64_t triggerId, const Timer* timer);
 
     /**
-     * @brief 响应定时器触发开始运行(模块内部接口)
+     * @brief 响应触发器开始运行(模块内部接口)
      * @param triggerId 触发ID
      * @param timer 定时器
      */
-    static void onTimerTriggerRunning(int64_t triggerId, const Timer* timer);
+    static void onTriggerRunning(int64_t triggerId, const Timer* timer);
 
     /**
-     * @brief 响应定时器触发运行结束(模块内部接口)
+     * @brief 响应触发器运行结束(模块内部接口)
      * @param triggerId 触发ID
      * @param timer 定时器
      */
-    static void onTimerTriggerFinished(int64_t triggerId, const Timer* timer);
+    static void onTriggerFinished(int64_t triggerId, const Timer* timer);
 
     /**
-     * @brief 响应定时器触发运行异常(模块内部接口)
+     * @brief 响应触发器运行异常(模块内部接口)
      * @param triggerId 触发ID
      * @param timer 定时器
      * @param msg 异常消息
      */
-    static void onTimerTriggerException(int64_t triggerId, const Timer* timer, const std::string& msg);
+    static void onTriggerException(int64_t triggerId, const Timer* timer, const std::string& msg);
 
     /**
      * @brief 响应定时器销毁(模块内部接口)

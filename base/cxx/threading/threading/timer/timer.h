@@ -65,7 +65,7 @@ protected:
     boost::asio::io_context& getContext();
 
     /**
-     * @brief 添加到触发列表
+     * @brief 添加到触发器列表
      * @param timer 定时器
      */
     void addToTriggerList(const std::shared_ptr<Timer>& timer);

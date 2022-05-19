@@ -11,28 +11,28 @@ namespace threading
 {
 static std::atomic_bool s_enabled = {false}; /* 是否开启诊断功能(默认关闭) */
 static std::mutex s_mutexTask;
-static std::unordered_map<const Executor*, diagnose::ExecutorInfoPtr> s_taskExecutors; /* 全局任务执行者 */
-static TaskBindCallback s_taskBindCallback = nullptr; /* 任务绑定回调 */
+static std::unordered_map<const Executor*, diagnose::DiagExecutorPtr> s_executorList; /* 执行者(线程池)列表 */
+static TaskBindCallback s_taskBindedCallback = nullptr; /* 任务绑定回调 */
 static TaskNormalStateCallback s_taskRunningStateCallback = nullptr; /* 任务运行状态回调 */
 static TaskNormalStateCallback s_taskFinishedStateCallback = nullptr; /* 任务结束状态回调 */
 static TaskExceptionStateCallback s_taskExceptionStateCallback = nullptr; /* 任务异常状态回调 */
 static std::mutex s_mutexTimer;
-static std::unordered_map<int64_t, diagnose::TimerTriggerInfoPtr> s_timerTriggers; /* 定时器触发表 */
-static TimerTriggerCallback s_timerTriggerCallback = nullptr; /* 定时器触发回调 */
-static TimerTriggerNormalStateCallback s_timerTriggerRunningStateCallback = nullptr; /* 定时器触发运行状态回调 */
-static TimerTriggerNormalStateCallback s_timerTriggerFinishedStateCallback = nullptr; /* 定时器触发结束状态回调 */
-static TimerTriggerExceptionStateCallback s_timerTriggerExceptionStateCallback = nullptr; /* 定时器触发异常状态回调 */
+static std::unordered_map<int64_t, diagnose::DiagTriggerPtr> s_triggerList; /* 触发器列表 */
+static TriggerCreateCallback s_triggerCreatedCallback = nullptr; /* 触发器创建回调 */
+static TriggerNormalStateCallback s_triggerRunningStateCallback = nullptr; /* 触发器运行状态回调 */
+static TriggerNormalStateCallback s_triggerFinishedStateCallback = nullptr; /* 触发器结束状态回调 */
+static TriggerExceptionStateCallback s_triggerExceptionStateCallback = nullptr; /* 触发器异常状态回调 */
 
-static diagnose::TaskInfoPtr getTaskInfo(const Task* task)
+static diagnose::DiagTaskPtr getDiagTask(const Task* task)
 {
     if (!task)
     {
         return {};
     }
-    for (const auto& iter : s_taskExecutors)
+    for (const auto& iter : s_executorList)
     {
-        auto taskIter = iter.second->tasks.find(task);
-        if (iter.second->tasks.end() != taskIter)
+        auto taskIter = iter.second->taskList.find(task);
+        if (iter.second->taskList.end() != taskIter)
         {
             return taskIter->second;
         }
@@ -40,18 +40,18 @@ static diagnose::TaskInfoPtr getTaskInfo(const Task* task)
     return {};
 }
 
-static void delTaskInfo(const Task* task)
+static void delDiagTask(const Task* task)
 {
     if (!task)
     {
         return;
     }
-    for (const auto& iter : s_taskExecutors)
+    for (const auto& iter : s_executorList)
     {
-        auto taskIter = iter.second->tasks.find(task);
-        if (iter.second->tasks.end() != taskIter)
+        auto taskIter = iter.second->taskList.find(task);
+        if (iter.second->taskList.end() != taskIter)
         {
-            iter.second->tasks.erase(taskIter);
+            iter.second->taskList.erase(taskIter);
             return;
         }
     }
@@ -75,17 +75,17 @@ static std::string taskStateToString(const Task::State& state)
     return std::string();
 }
 
-static std::string timerTriggerStateToString(const diagnose::TimerTriggerState& state)
+static std::string triggerStateToString(const diagnose::TriggerState& state)
 {
     switch (state)
     {
-    case diagnose::TimerTriggerState::triggered:
-        return "triggered";
-    case diagnose::TimerTriggerState::queuing:
+    case diagnose::TriggerState::created:
+        return "created";
+    case diagnose::TriggerState::queuing:
         return "queuing";
-    case diagnose::TimerTriggerState::running:
+    case diagnose::TriggerState::running:
         return "running";
-    case diagnose::TimerTriggerState::finished:
+    case diagnose::TriggerState::finished:
         return "finished";
     default:
         break;
@@ -107,76 +107,76 @@ static std::string durationToString(const std::chrono::steady_clock::duration& d
     return std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()) + " ms";
 }
 
-static std::string taskInfoToString(const diagnose::TaskInfoPtr& taskInfo, bool showRun)
+static std::string diagTaskToString(const diagnose::DiagTaskPtr& diagTask, bool showRun)
 {
     static const std::chrono::steady_clock::time_point zero{};
     std::string result;
     result += "{";
-    result += "\"id\":" + std::to_string(taskInfo->task->getId());
+    result += "\"id\":" + std::to_string(diagTask->task->getId());
     result += ",";
-    result += "\"name\":\"" + taskInfo->task->getName() + "\"";
+    result += "\"name\":\"" + diagTask->task->getName() + "\"";
     result += ",";
-    result += "\"thread_id\":" + std::to_string(taskInfo->attachThreadId);
+    result += "\"thread_id\":" + std::to_string(diagTask->attachThreadId);
     result += ",";
-    result += "\"thread_name\":\"" + taskInfo->attachThreadName + "\"";
+    result += "\"thread_name\":\"" + diagTask->attachThreadName + "\"";
     result += ",";
-    result += "\"state\":\"" + (taskInfo->exceptionMsg.empty() ? taskStateToString(taskInfo->task->getState()) : "abnormal") + "\"";
-    if (!taskInfo->exceptionMsg.empty())
+    result += "\"state\":\"" + (diagTask->exceptionMsg.empty() ? taskStateToString(diagTask->task->getState()) : "abnormal") + "\"";
+    if (!diagTask->exceptionMsg.empty())
     {
         result += ",";
-        result += "\"error\":\"" + taskInfo->exceptionMsg + "\"";
+        result += "\"error\":\"" + diagTask->exceptionMsg + "\"";
     }
     auto now = std::chrono::steady_clock::now();
     /* 排队耗时 */
-    if (taskInfo->queuing > zero)
+    if (diagTask->queuing > zero)
     {
         result += ",";
-        result += "\"queue\":\"" + durationToString((taskInfo->running > zero ? taskInfo->running : now) - taskInfo->queuing) + "\"";
+        result += "\"queue\":\"" + durationToString((diagTask->running > zero ? diagTask->running : now) - diagTask->queuing) + "\"";
     }
     /* 运行耗时 */
-    if (showRun && taskInfo->running > zero)
+    if (showRun && diagTask->running > zero)
     {
         result += ",";
-        if (taskInfo->finished > zero)
+        if (diagTask->finished > zero)
         {
-            result += "\"run\":\"" + durationToString(taskInfo->finished - taskInfo->running) + "\"";
+            result += "\"run\":\"" + durationToString(diagTask->finished - diagTask->running) + "\"";
         }
-        else if (taskInfo->abnormal > zero)
+        else if (diagTask->abnormal > zero)
         {
-            result += "\"run\":\"" + durationToString(taskInfo->abnormal - taskInfo->running) + "\"";
+            result += "\"run\":\"" + durationToString(diagTask->abnormal - diagTask->running) + "\"";
         }
         else
         {
-            result += "\"run\":\"" + durationToString(now - taskInfo->running) + "\"";
+            result += "\"run\":\"" + durationToString(now - diagTask->running) + "\"";
         }
     }
     result += "}";
     return result;
 }
 
-static std::string executorInfoToString(const diagnose::ExecutorInfoPtr& executorInfo)
+static std::string diagExecutorToString(const diagnose::DiagExecutorPtr& executorInfo)
 {
     std::string result;
     result += "{";
     result += "\"name\":\"" + executorInfo->executor->getName() + "\"";
     result += ",";
-    result += "\"count\":" + std::to_string(executorInfo->tasks.size());
+    result += "\"count\":" + std::to_string(executorInfo->taskList.size());
     result += ",";
     result += "\"task\":[";
-    for (auto iter = executorInfo->tasks.begin(); executorInfo->tasks.end() != iter; ++iter)
+    for (auto iter = executorInfo->taskList.begin(); executorInfo->taskList.end() != iter; ++iter)
     {
-        if (executorInfo->tasks.begin() != iter)
+        if (executorInfo->taskList.begin() != iter)
         {
             result += ",";
         }
-        result += taskInfoToString(iter->second, true);
+        result += diagTaskToString(iter->second, true);
     }
     result += "]";
     result += "}";
     return result;
 }
 
-static std::string timerTriggerInfoToString(const diagnose::TimerTriggerInfoPtr& timerTriggerInfo, bool showRun)
+static std::string diagTriggerToString(const diagnose::DiagTriggerPtr& timerTriggerInfo, bool showRun)
 {
     static const std::chrono::steady_clock::time_point zero{};
     std::string result;
@@ -185,8 +185,7 @@ static std::string timerTriggerInfoToString(const diagnose::TimerTriggerInfoPtr&
     result += ",";
     result += "\"name\":\"" + timerTriggerInfo->timer->getName() + "\"";
     result += ",";
-    result +=
-        "\"state\":\"" + (timerTriggerInfo->exceptionMsg.empty() ? timerTriggerStateToString(timerTriggerInfo->state) : "abnormal") + "\"";
+    result += "\"state\":\"" + (timerTriggerInfo->exceptionMsg.empty() ? triggerStateToString(timerTriggerInfo->state) : "abnormal") + "\"";
     if (!timerTriggerInfo->exceptionMsg.empty())
     {
         result += ",";
@@ -233,13 +232,13 @@ void Diagnose::onExecutorCreated(const Executor* executor)
         return;
     }
     std::lock_guard<std::mutex> locker(s_mutexTask);
-    const auto iter = s_taskExecutors.find(executor);
-    if (s_taskExecutors.end() != iter)
+    const auto iter = s_executorList.find(executor);
+    if (s_executorList.end() != iter)
     {
         return;
     }
-    auto executorInfo = std::make_unique<diagnose::ExecutorInfo>(executor);
-    s_taskExecutors.insert(std::make_pair(executor, std::move(executorInfo)));
+    auto executorInfo = std::make_unique<diagnose::DiagExecutor>(executor);
+    s_executorList.insert(std::make_pair(executor, std::move(executorInfo)));
 }
 
 void Diagnose::onExecutorDestroyed(const Executor* executor)
@@ -253,13 +252,13 @@ void Diagnose::onExecutorDestroyed(const Executor* executor)
         return;
     }
     std::lock_guard<std::mutex> locker(s_mutexTask);
-    const auto iter = s_taskExecutors.find(executor);
-    if (s_taskExecutors.end() == iter)
+    const auto iter = s_executorList.find(executor);
+    if (s_executorList.end() == iter)
     {
         return;
     }
-    iter->second->tasks.clear();
-    s_taskExecutors.erase(iter);
+    iter->second->taskList.clear();
+    s_executorList.erase(iter);
 }
 
 void Diagnose::bindTaskToExecutor(const Task* task, const Executor* executor)
@@ -272,35 +271,35 @@ void Diagnose::bindTaskToExecutor(const Task* task, const Executor* executor)
     {
         return;
     }
-    TaskBindCallback bindCallback;
+    TaskBindCallback bindedCallback;
     std::string executorName;
     int taskCount = 0;
     int64_t taskId = 0;
     std::string taskName;
     {
         std::lock_guard<std::mutex> locker(s_mutexTask);
-        const auto iter = s_taskExecutors.find(executor);
-        if (s_taskExecutors.end() == iter)
+        const auto iter = s_executorList.find(executor);
+        if (s_executorList.end() == iter)
         {
             return;
         }
-        if (iter->second->tasks.end() != iter->second->tasks.find(task))
+        if (iter->second->taskList.end() != iter->second->taskList.find(task))
         {
             return;
         }
-        auto taskInfo = std::make_shared<diagnose::TaskInfo>(task);
-        taskInfo->attachExecutorName = executor->getName();
-        taskInfo->queuing = std::chrono::steady_clock::now();
-        iter->second->tasks.insert(std::make_pair(task, taskInfo));
-        bindCallback = s_taskBindCallback;
+        auto diagTask = std::make_shared<diagnose::DiagTask>(task);
+        diagTask->attachExecutorName = executor->getName();
+        diagTask->queuing = std::chrono::steady_clock::now();
+        iter->second->taskList.insert(std::make_pair(task, diagTask));
+        bindedCallback = s_taskBindedCallback;
         executorName = executor->getName();
-        taskCount = iter->second->tasks.size();
+        taskCount = iter->second->taskList.size();
         taskId = task->getId();
         taskName = task->getName();
     }
-    if (bindCallback)
+    if (bindedCallback)
     {
-        bindCallback(executorName, taskCount, taskId, taskName);
+        bindedCallback(executorName, taskCount, taskId, taskName);
     }
 }
 
@@ -317,18 +316,18 @@ void Diagnose::onTaskRunning(int threadId, const std::string& threadName, const 
     std::chrono::steady_clock::duration prevElapsed;
     {
         std::lock_guard<std::mutex> locker(s_mutexTask);
-        auto taskInfo = getTaskInfo(task);
-        if (!taskInfo)
+        auto diagTask = getDiagTask(task);
+        if (!diagTask)
         {
             return;
         }
-        taskInfo->running = std::chrono::steady_clock::now();
-        taskInfo->attachThreadId = threadId;
-        taskInfo->attachThreadName = threadName;
+        diagTask->running = std::chrono::steady_clock::now();
+        diagTask->attachThreadId = threadId;
+        diagTask->attachThreadName = threadName;
         runningCallback = s_taskRunningStateCallback;
-        executorName = taskInfo->attachExecutorName;
+        executorName = diagTask->attachExecutorName;
         taskId = task->getId();
-        prevElapsed = taskInfo->running - taskInfo->queuing;
+        prevElapsed = diagTask->running - diagTask->queuing;
     }
     if (runningCallback)
     {
@@ -349,19 +348,19 @@ void Diagnose::onTaskFinished(int threadId, const std::string& threadName, const
     std::chrono::steady_clock::duration prevElapsed;
     {
         std::lock_guard<std::mutex> locker(s_mutexTask);
-        auto taskInfo = getTaskInfo(task);
-        if (!taskInfo)
+        auto diagTask = getDiagTask(task);
+        if (!diagTask)
         {
             return;
         }
-        taskInfo->finished = std::chrono::steady_clock::now();
-        taskInfo->attachThreadId = threadId;
-        taskInfo->attachThreadName = threadName;
+        diagTask->finished = std::chrono::steady_clock::now();
+        diagTask->attachThreadId = threadId;
+        diagTask->attachThreadName = threadName;
         finishedCallback = s_taskFinishedStateCallback;
-        executorName = taskInfo->attachExecutorName;
+        executorName = diagTask->attachExecutorName;
         taskId = task->getId();
-        prevElapsed = taskInfo->finished - taskInfo->running;
-        delTaskInfo(task);
+        prevElapsed = diagTask->finished - diagTask->running;
+        delDiagTask(task);
     }
     if (finishedCallback)
     {
@@ -381,19 +380,19 @@ void Diagnose::onTaskException(int threadId, const std::string& threadName, cons
     std::string taskName;
     {
         std::lock_guard<std::mutex> locker(s_mutexTask);
-        auto taskInfo = getTaskInfo(task);
-        if (!taskInfo)
+        auto diagTask = getDiagTask(task);
+        if (!diagTask)
         {
             return;
         }
-        taskInfo->abnormal = std::chrono::steady_clock::now();
-        taskInfo->attachThreadId = threadId;
-        taskInfo->attachThreadName = threadName;
-        taskInfo->exceptionMsg = msg;
+        diagTask->abnormal = std::chrono::steady_clock::now();
+        diagTask->attachThreadId = threadId;
+        diagTask->attachThreadName = threadName;
+        diagTask->exceptionMsg = msg;
         exceptionCallback = s_taskExceptionStateCallback;
-        executorName = taskInfo->attachExecutorName;
+        executorName = diagTask->attachExecutorName;
         taskId = task->getId();
-        delTaskInfo(task);
+        delDiagTask(task);
     }
     if (exceptionCallback)
     {
@@ -401,65 +400,65 @@ void Diagnose::onTaskException(int threadId, const std::string& threadName, cons
     }
 }
 
-TimerTriggerDiscard Diagnose::onTimerTrigger(int triggerCount, int64_t oldestTriggerId, int64_t triggerId, const Timer* timer)
+DiscardType Diagnose::onTriggerCreated(int triggerCount, int64_t oldestTriggerId, int64_t triggerId, const Timer* timer)
 {
     if (!s_enabled)
     {
-        return TimerTriggerDiscard::none;
+        return DiscardType::none;
     }
-    TimerTriggerCallback triggerCallback;
+    TriggerCreateCallback createdCallback;
     {
         std::lock_guard<std::mutex> locker(s_mutexTimer);
-        triggerCallback = s_timerTriggerCallback;
+        createdCallback = s_triggerCreatedCallback;
     }
-    auto discardType = triggerCallback ? triggerCallback(triggerCount, timer->getId(), timer->getName()) : TimerTriggerDiscard::none;
+    auto discardType = createdCallback ? createdCallback(triggerCount, timer->getId(), timer->getName()) : DiscardType::none;
     {
         std::lock_guard<std::mutex> locker(s_mutexTimer);
         switch (discardType)
         {
-        case TimerTriggerDiscard::discard_newest: /* 丢弃最新 */
+        case DiscardType::discard_newest: /* 丢弃最新 */
             return discardType;
-        case TimerTriggerDiscard::discard_oldest: /* 丢弃最早 */
+        case DiscardType::discard_oldest: /* 丢弃最早 */
         {
-            auto iter = s_timerTriggers.find(oldestTriggerId);
-            if (s_timerTriggers.end() != iter)
+            auto iter = s_triggerList.find(oldestTriggerId);
+            if (s_triggerList.end() != iter)
             {
-                s_timerTriggers.erase(iter);
+                s_triggerList.erase(iter);
             }
         }
         break;
-        case TimerTriggerDiscard::discard_all: /* 丢弃所有 */
-            s_timerTriggers.clear();
+        case DiscardType::discard_all: /* 丢弃所有 */
+            s_triggerList.clear();
             break;
         default: /* 不丢弃(可能会内存持续上涨) */
             break;
         }
-        auto timerTriggerInfo = std::make_shared<diagnose::TimerTriggerInfo>(timer);
-        timerTriggerInfo->state = diagnose::TimerTriggerState::queuing;
+        auto timerTriggerInfo = std::make_shared<diagnose::DiagTrigger>(timer);
+        timerTriggerInfo->state = diagnose::TriggerState::queuing;
         timerTriggerInfo->queuing = std::chrono::steady_clock::now();
-        s_timerTriggers.insert(std::make_pair(triggerId, timerTriggerInfo));
+        s_triggerList.insert(std::make_pair(triggerId, timerTriggerInfo));
     }
     return discardType;
 }
 
-void Diagnose::onTimerTriggerRunning(int64_t triggerId, const Timer* timer)
+void Diagnose::onTriggerRunning(int64_t triggerId, const Timer* timer)
 {
     if (!s_enabled)
     {
         return;
     }
-    TimerTriggerNormalStateCallback runningCallback;
+    TriggerNormalStateCallback runningCallback;
     std::chrono::steady_clock::duration prevElapsed;
     {
         std::lock_guard<std::mutex> locker(s_mutexTimer);
-        auto iter = s_timerTriggers.find(triggerId);
-        if (s_timerTriggers.end() == iter)
+        auto iter = s_triggerList.find(triggerId);
+        if (s_triggerList.end() == iter)
         {
             return;
         }
-        iter->second->state = diagnose::TimerTriggerState::running;
+        iter->second->state = diagnose::TriggerState::running;
         iter->second->running = std::chrono::steady_clock::now();
-        runningCallback = s_timerTriggerRunningStateCallback;
+        runningCallback = s_triggerRunningStateCallback;
         prevElapsed = iter->second->running - iter->second->queuing;
     }
     if (runningCallback)
@@ -468,26 +467,26 @@ void Diagnose::onTimerTriggerRunning(int64_t triggerId, const Timer* timer)
     }
 }
 
-void Diagnose::onTimerTriggerFinished(int64_t triggerId, const Timer* timer)
+void Diagnose::onTriggerFinished(int64_t triggerId, const Timer* timer)
 {
     if (!s_enabled)
     {
         return;
     }
-    TimerTriggerNormalStateCallback finishedCallback;
+    TriggerNormalStateCallback finishedCallback;
     std::chrono::steady_clock::duration prevElapsed;
     {
         std::lock_guard<std::mutex> locker(s_mutexTimer);
-        auto iter = s_timerTriggers.find(triggerId);
-        if (s_timerTriggers.end() == iter)
+        auto iter = s_triggerList.find(triggerId);
+        if (s_triggerList.end() == iter)
         {
             return;
         }
-        iter->second->state = diagnose::TimerTriggerState::finished;
+        iter->second->state = diagnose::TriggerState::finished;
         iter->second->finished = std::chrono::steady_clock::now();
-        finishedCallback = s_timerTriggerFinishedStateCallback;
+        finishedCallback = s_triggerFinishedStateCallback;
         prevElapsed = iter->second->finished - iter->second->running;
-        s_timerTriggers.erase(iter);
+        s_triggerList.erase(iter);
     }
     if (finishedCallback)
     {
@@ -495,26 +494,26 @@ void Diagnose::onTimerTriggerFinished(int64_t triggerId, const Timer* timer)
     }
 }
 
-void Diagnose::onTimerTriggerException(int64_t triggerId, const Timer* timer, const std::string& msg)
+void Diagnose::onTriggerException(int64_t triggerId, const Timer* timer, const std::string& msg)
 {
     if (!s_enabled)
     {
         return;
     }
-    TimerTriggerExceptionStateCallback exceptionCallback;
+    TriggerExceptionStateCallback exceptionCallback;
     std::chrono::steady_clock::duration prevElapsed;
     {
         std::lock_guard<std::mutex> locker(s_mutexTimer);
-        auto iter = s_timerTriggers.find(triggerId);
-        if (s_timerTriggers.end() == iter)
+        auto iter = s_triggerList.find(triggerId);
+        if (s_triggerList.end() == iter)
         {
             return;
         }
-        iter->second->state = diagnose::TimerTriggerState::finished;
+        iter->second->state = diagnose::TriggerState::finished;
         iter->second->abnormal = std::chrono::steady_clock::now();
         iter->second->exceptionMsg = msg;
-        exceptionCallback = s_timerTriggerExceptionStateCallback;
-        s_timerTriggers.erase(iter);
+        exceptionCallback = s_triggerExceptionStateCallback;
+        s_triggerList.erase(iter);
     }
     if (exceptionCallback)
     {
@@ -529,11 +528,11 @@ void Diagnose::onTimerDestroy(const Timer* timer)
         return;
     }
     std::lock_guard<std::mutex> locker(s_mutexTimer);
-    for (auto iter = s_timerTriggers.begin(); s_timerTriggers.end() != iter;)
+    for (auto iter = s_triggerList.begin(); s_triggerList.end() != iter;)
     {
         if (timer == iter->second->timer)
         {
-            s_timerTriggers.erase(iter);
+            s_triggerList.erase(iter);
         }
         else
         {
@@ -547,52 +546,52 @@ void Diagnose::setEnable()
     s_enabled = true;
 }
 
-void Diagnose::setTaskBindCallback(const TaskBindCallback& taskBindCb)
+void Diagnose::setTaskBindedCallback(const TaskBindCallback& bindedCb)
 {
     std::lock_guard<std::mutex> locker(s_mutexTask);
-    s_taskBindCallback = taskBindCb;
+    s_taskBindedCallback = bindedCb;
 }
 
-void Diagnose::setTaskRunningStateCallback(const TaskNormalStateCallback& taskStateCb)
+void Diagnose::setTaskRunningStateCallback(const TaskNormalStateCallback& stateCb)
 {
     std::lock_guard<std::mutex> locker(s_mutexTask);
-    s_taskRunningStateCallback = taskStateCb;
+    s_taskRunningStateCallback = stateCb;
 }
 
-void Diagnose::setTaskFinishedStateCallback(const TaskNormalStateCallback& taskStateCb)
+void Diagnose::setTaskFinishedStateCallback(const TaskNormalStateCallback& stateCb)
 {
     std::lock_guard<std::mutex> locker(s_mutexTask);
-    s_taskFinishedStateCallback = taskStateCb;
+    s_taskFinishedStateCallback = stateCb;
 }
 
-void Diagnose::setTaskExceptionStateCallback(const TaskExceptionStateCallback& taskStateCb)
+void Diagnose::setTaskExceptionStateCallback(const TaskExceptionStateCallback& stateCb)
 {
     std::lock_guard<std::mutex> locker(s_mutexTask);
-    s_taskExceptionStateCallback = taskStateCb;
+    s_taskExceptionStateCallback = stateCb;
 }
 
-void Diagnose::setTimerTriggerCallback(const TimerTriggerCallback& timerTriggerCb)
+void Diagnose::setTriggerCreatedCallback(const TriggerCreateCallback& createdCb)
 {
     std::lock_guard<std::mutex> locker(s_mutexTimer);
-    s_timerTriggerCallback = timerTriggerCb;
+    s_triggerCreatedCallback = createdCb;
 }
 
-void Diagnose::setTimerTriggerRunningStateCallback(const TimerTriggerNormalStateCallback& timerTriggerStateCb)
+void Diagnose::setTriggerRunningStateCallback(const TriggerNormalStateCallback& stateCb)
 {
     std::lock_guard<std::mutex> locker(s_mutexTimer);
-    s_timerTriggerRunningStateCallback = timerTriggerStateCb;
+    s_triggerRunningStateCallback = stateCb;
 }
 
-void Diagnose::setTimerTriggerFinishedStateCallback(const TimerTriggerNormalStateCallback& timerTriggerStateCb)
+void Diagnose::setTriggerFinishedStateCallback(const TriggerNormalStateCallback& stateCb)
 {
     std::lock_guard<std::mutex> locker(s_mutexTimer);
-    s_timerTriggerFinishedStateCallback = timerTriggerStateCb;
+    s_triggerFinishedStateCallback = stateCb;
 }
 
-void Diagnose::setTimerTriggerExceptionStateCallback(const TimerTriggerExceptionStateCallback& timerTriggerStateCb)
+void Diagnose::setTriggerExceptionStateCallback(const TriggerExceptionStateCallback& stateCb)
 {
     std::lock_guard<std::mutex> locker(s_mutexTimer);
-    s_timerTriggerExceptionStateCallback = timerTriggerStateCb;
+    s_triggerExceptionStateCallback = stateCb;
 }
 
 std::string Diagnose::getTaskDiagnoseInfo()
@@ -601,32 +600,32 @@ std::string Diagnose::getTaskDiagnoseInfo()
     result += "[";
     {
         std::lock_guard<std::mutex> locker(s_mutexTask);
-        for (auto iter = s_taskExecutors.begin(); s_taskExecutors.end() != iter; ++iter)
+        for (auto iter = s_executorList.begin(); s_executorList.end() != iter; ++iter)
         {
-            if (s_taskExecutors.begin() != iter)
+            if (s_executorList.begin() != iter)
             {
                 result += ",";
             }
-            result += executorInfoToString(iter->second);
+            result += diagExecutorToString(iter->second);
         }
     }
     result += "]";
     return result;
 }
 
-std::string Diagnose::getTimerDiagnoseInfo()
+std::string Diagnose::getTriggerDiagnoseInfo()
 {
     std::string result;
     result += "[";
     {
         std::lock_guard<std::mutex> locker(s_mutexTimer);
-        for (auto iter = s_timerTriggers.begin(); s_timerTriggers.end() != iter; ++iter)
+        for (auto iter = s_triggerList.begin(); s_triggerList.end() != iter; ++iter)
         {
-            if (s_timerTriggers.begin() != iter)
+            if (s_triggerList.begin() != iter)
             {
                 result += ",";
             }
-            result += timerTriggerInfoToString(iter->second, true);
+            result += diagTriggerToString(iter->second, true);
         }
     }
     result += "]";

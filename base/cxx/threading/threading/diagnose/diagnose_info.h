@@ -12,11 +12,11 @@ namespace threading
 namespace diagnose
 {
 /**
- * @brief 任务信息
+ * @brief 任务诊断信息
  */
-struct TaskInfo
+struct DiagTask
 {
-    TaskInfo(const Task* task) : task(task) {}
+    DiagTask(const Task* task) : task(task) {}
     const Task* task;
     std::chrono::steady_clock::time_point queuing{}; /* 开始排队时间点 */
     std::chrono::steady_clock::time_point running{}; /* 开始运行时间点 */
@@ -27,44 +27,44 @@ struct TaskInfo
     std::string attachThreadName; /* 挂靠的线程名称 */
     std::string exceptionMsg; /* 异常消息 */
 };
-using TaskInfoPtr = std::shared_ptr<TaskInfo>;
+using DiagTaskPtr = std::shared_ptr<DiagTask>;
 
 /**
- * @brief 执行者信息
+ * @brief 执行者诊断信息
  */
-struct ExecutorInfo
+struct DiagExecutor
 {
-    ExecutorInfo(const Executor* executor) : executor(executor) {}
+    DiagExecutor(const Executor* executor) : executor(executor) {}
     const Executor* executor;
-    std::unordered_map<const Task*, TaskInfoPtr> tasks; /* 任务列表 */
+    std::unordered_map<const Task*, DiagTaskPtr> taskList; /* 任务列表 */
 };
-using ExecutorInfoPtr = std::unique_ptr<ExecutorInfo>;
+using DiagExecutorPtr = std::unique_ptr<DiagExecutor>;
 
 /**
- * @brief 定时器触发状态
+ * @brief 触发器状态
  */
-enum class TimerTriggerState
+enum class TriggerState
 {
-    triggered, /* 已触发 */
+    created, /* 已创建 */
     queuing, /* 排队中 */
     running, /* 运行中 */
     finished /* 已完成 */
 };
 
 /**
- * @brief 定时器触发信息
+ * @brief 触发器诊断信息
  */
-struct TimerTriggerInfo
+struct DiagTrigger
 {
-    TimerTriggerInfo(const Timer* timer) : timer(timer) {}
+    DiagTrigger(const Timer* timer) : timer(timer) {}
     const Timer* timer;
-    TimerTriggerState state = TimerTriggerState::triggered; /* 触发状态 */
-    std::chrono::steady_clock::time_point queuing{}; /* 触发排队时间点 */
-    std::chrono::steady_clock::time_point running{}; /* 触发执行时间点 */
-    std::chrono::steady_clock::time_point finished{}; /* 执行结束时间点 */
+    TriggerState state = TriggerState::created; /* 触发状态 */
+    std::chrono::steady_clock::time_point queuing{}; /* 开始排队时间点 */
+    std::chrono::steady_clock::time_point running{}; /* 开始运行时间点 */
+    std::chrono::steady_clock::time_point finished{}; /* 运行结束时间点 */
     std::chrono::steady_clock::time_point abnormal{}; /* 出现异常时间点 */
     std::string exceptionMsg; /* 异常消息 */
 };
-using TimerTriggerInfoPtr = std::shared_ptr<TimerTriggerInfo>;
+using DiagTriggerPtr = std::shared_ptr<DiagTrigger>;
 } // namespace diagnose
 } // namespace threading
