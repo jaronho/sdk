@@ -79,7 +79,7 @@ public:
     virtual void run() = 0;
 
 private:
-    int64_t m_id; /* ID */
+    int64_t m_id = 0; /* ID */
     const std::string m_name; /* 任务名称 */
     std::atomic<State> m_state = {State::created}; /* 任务状态 */
     std::atomic_bool m_cancelled = {false}; /* 是否已取消 */

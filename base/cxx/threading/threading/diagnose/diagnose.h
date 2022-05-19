@@ -15,10 +15,11 @@ class ThreadProxy;
 /**
  * @brief 任务绑定到执行者回调
  * @param executorName 执行者名称
+ * @param taskCount 当前执行者中的任务数量(包含当前新绑定的)
  * @param taskId 任务ID
  * @param taskName 任务名称
  */
-using TaskBindCallback = std::function<void(const std::string& executorName, int64_t taskId, const std::string& taskName)>;
+using TaskBindCallback = std::function<void(const std::string& executorName, int taskCount, int64_t taskId, const std::string& taskName)>;
 
 /**
  * @brief 任务(正常)状态回调
@@ -81,7 +82,7 @@ public:
 
     /**
      * @brief 获取诊断信息
-     * @return 诊断信息字符串
+     * @return 诊断信息字符串(JSON)
      */
     static std::string getDiagnoseInfo();
 
@@ -131,12 +132,11 @@ protected:
     static void onTaskException(int threadId, const std::string& threadName, const Task* task, const std::string& msg);
 
 private:
-    static void printLog(const std::string& msg);
-    static TaskInfoPtr getTaskInfo(const Task* task);
+    static diagnose::TaskInfoPtr getTaskInfo(const Task* task);
     static void delTaskInfo(const Task* task);
     static std::string taskStateToString(const Task::State& state);
     static std::string durationToString(const std::chrono::steady_clock::duration& duration);
-    static std::string taskInfoToString(const TaskInfoPtr& taskInfo, bool showRun = true);
-    static std::string executorInfoToString(const ExecutorInfoPtr& executorInfo);
+    static std::string taskInfoToString(const diagnose::TaskInfoPtr& taskInfo, bool showRun = true);
+    static std::string executorInfoToString(const diagnose::ExecutorInfoPtr& executorInfo);
 };
 } // namespace threading

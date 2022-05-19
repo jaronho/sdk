@@ -9,6 +9,8 @@
 
 namespace threading
 {
+namespace diagnose
+{
 /**
  * @brief 任务信息
  */
@@ -37,4 +39,5 @@ struct ExecutorInfo
     std::unordered_map<const Task*, TaskInfoPtr> tasks; /* 任务列表 */
 };
 using ExecutorInfoPtr = std::unique_ptr<ExecutorInfo>;
+} // namespace diagnose
 } // namespace threading

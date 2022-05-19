@@ -1,6 +1,5 @@
 #include "task.h"
 
-#include <atomic>
 #include <chrono>
 
 namespace threading
