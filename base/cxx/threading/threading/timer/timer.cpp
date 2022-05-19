@@ -109,7 +109,7 @@ Timer::Timer(const std::string& name, const std::function<void()>& func, const E
 
 Timer::~Timer()
 {
-    //Diagnose::onTimerDestroy(this);
+    Diagnose::onTimerDestroy(this);
 }
 
 int64_t Timer::getId() const
@@ -165,7 +165,7 @@ void Timer::addToTriggerList(const std::shared_ptr<Timer>& timer)
     }
     int64_t triggerId = (s_timestampInner << 12) + (s_countInner & 0xFFF);
     /* 添加到触发列表 */
-    auto discardType = TimerTriggerDiscard::none; //Diagnose::onTimerTrigger(triggerCount, oldestTriggerId, triggerId, timer.get());
+    auto discardType = Diagnose::onTimerTrigger(triggerCount, oldestTriggerId, triggerId, timer.get());
     {
         std::lock_guard<std::mutex> locker(s_mutexTriggerList);
         switch (discardType)
@@ -209,17 +209,17 @@ void Timer::runOnce()
         {
             try
             {
-                //Diagnose::onTimerTriggerRunning(trigger->id, timer.get());
+                Diagnose::onTimerTriggerRunning(trigger->id, timer.get());
                 timer->m_func();
-                //Diagnose::onTimerTriggerFinished(trigger->id, timer.get());
+                Diagnose::onTimerTriggerFinished(trigger->id, timer.get());
             }
             catch (const std::exception& e)
             {
-                //Diagnose::onTimerTriggerException(trigger->id, timer.get(), e.what());
+                Diagnose::onTimerTriggerException(trigger->id, timer.get(), e.what());
             }
             catch (...)
             {
-                //Diagnose::onTimerTriggerException(trigger->id, timer.get(), "unknown exception");
+                Diagnose::onTimerTriggerException(trigger->id, timer.get(), "unknown exception");
             }
         }
     }
