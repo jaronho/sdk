@@ -26,6 +26,11 @@ void SteadyTimer::setInterval(const std::chrono::steady_clock::duration& interva
     m_interval = interval;
 }
 
+std::string SteadyTimer::getName() const
+{
+    return m_name;
+}
+
 bool SteadyTimer::isStarted()
 {
     std::lock_guard<std::recursive_mutex> locker(m_mutex);

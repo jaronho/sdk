@@ -34,6 +34,12 @@ public:
     virtual ~Task() = default;
 
     /**
+     * @brief 获取ID
+     * @return 任务ID
+     */
+    int64_t getId() const;
+
+    /**
 	 * @brief 获取名称
 	 * @return 任务名称
 	 */
@@ -73,6 +79,7 @@ public:
     virtual void run() = 0;
 
 private:
+    int64_t m_id; /* ID */
     const std::string m_name; /* 任务名称 */
     std::atomic<State> m_state = {State::created}; /* 任务状态 */
     std::atomic_bool m_cancelled = {false}; /* 是否已取消 */

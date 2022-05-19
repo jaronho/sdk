@@ -22,6 +22,12 @@ public:
     virtual ~Timer() = default;
 
     /**
+	 * @brief 获取名称
+	 * @return 定时器名称
+	 */
+    virtual std::string getName() const = 0;
+
+    /**
      * @brief 是否已启动
      * @return true-已启动, false-未启动
      */
@@ -58,7 +64,6 @@ protected:
      */
     struct TriggerInfo
     {
-        std::string name;
         std::weak_ptr<Timer> wpTimer;
         std::function<void()> func = nullptr;
     };

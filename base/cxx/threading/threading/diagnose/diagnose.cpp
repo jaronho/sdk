@@ -101,7 +101,7 @@ void Diagnose::bindTaskToExecutor(const Task* task, const Executor* executor)
     iter->second->tasks.insert(std::make_pair(task, taskInfo));
     if (s_taskBindCallback)
     {
-        s_taskBindCallback(executor->getName(), task->getName());
+        s_taskBindCallback(executor->getName(), task->getId(), task->getName());
     }
 }
 
@@ -118,8 +118,8 @@ void Diagnose::onTaskRunning(int threadId, const std::string& threadName, const 
     taskInfo->attachThreadName = threadName;
     if (s_taskRunningStateCallback)
     {
-        s_taskRunningStateCallback(taskInfo->attachExecutorName, taskInfo->attachThreadId, taskInfo->attachThreadName, task->getName(),
-                                   taskInfo->running - taskInfo->queuing);
+        s_taskRunningStateCallback(taskInfo->attachExecutorName, taskInfo->attachThreadId, taskInfo->attachThreadName, task->getId(),
+                                   task->getName(), taskInfo->running - taskInfo->queuing);
     }
 }
 
@@ -136,8 +136,8 @@ void Diagnose::onTaskFinished(int threadId, const std::string& threadName, const
     taskInfo->attachThreadName = threadName;
     if (s_taskFinishedStateCallback)
     {
-        s_taskFinishedStateCallback(taskInfo->attachExecutorName, taskInfo->attachThreadId, taskInfo->attachThreadName, task->getName(),
-                                    taskInfo->finished - taskInfo->running);
+        s_taskFinishedStateCallback(taskInfo->attachExecutorName, taskInfo->attachThreadId, taskInfo->attachThreadName, task->getId(),
+                                    task->getName(), taskInfo->finished - taskInfo->running);
     }
     delTaskInfo(task);
 }
@@ -156,8 +156,8 @@ void Diagnose::onTaskException(int threadId, const std::string& threadName, cons
     taskInfo->exceptionMsg = msg;
     if (s_taskExceptionStateCallback)
     {
-        s_taskExceptionStateCallback(taskInfo->attachExecutorName, taskInfo->attachThreadId, taskInfo->attachThreadName, task->getName(),
-                                     msg);
+        s_taskExceptionStateCallback(taskInfo->attachExecutorName, taskInfo->attachThreadId, taskInfo->attachThreadName, task->getId(),
+                                     task->getName(), msg);
     }
     delTaskInfo(task);
 }
@@ -197,7 +197,7 @@ std::string Diagnose::durationToString(const std::chrono::steady_clock::duration
 std::string Diagnose::taskInfoToString(const TaskInfoPtr& taskInfo, bool showRun)
 {
     static const std::chrono::steady_clock::time_point zero{};
-    auto result = "Task [" + taskInfo->task->getName() + "]";
+    auto result = "Task [" + std::to_string(taskInfo->task->getId()) + ", " + taskInfo->task->getName() + "]";
     if (taskInfo->attachThreadId > 0)
     {
         result += ", thread [" + std::to_string(taskInfo->attachThreadId) + ", " + taskInfo->attachThreadName + "]";

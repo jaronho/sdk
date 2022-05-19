@@ -42,6 +42,12 @@ public:
     void setInterval(const std::chrono::steady_clock::duration& interval);
 
     /**
+	 * @brief 获取名称
+	 * @return 定时器名称
+	 */
+    std::string getName() const override;
+
+    /**
      * @brief 是否已启动
      * @return true-已启动, false-未启动
      */

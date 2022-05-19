@@ -20,6 +20,11 @@ void DeadlineTimer::setDeadline(const std::chrono::system_clock::time_point& dea
     m_deadline = deadline;
 }
 
+std::string DeadlineTimer::getName() const
+{
+    return m_name;
+}
+
 bool DeadlineTimer::isStarted()
 {
     std::lock_guard<std::recursive_mutex> locker(m_mutex);

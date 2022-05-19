@@ -35,6 +35,12 @@ public:
     void setDeadline(const std::chrono::system_clock::time_point& deadline);
 
     /**
+	 * @brief 获取名称
+	 * @return 定时器名称
+	 */
+    std::string getName() const override;
+
+    /**
      * @brief 是否已启动
      * @return true-已启动, false-未启动
      */

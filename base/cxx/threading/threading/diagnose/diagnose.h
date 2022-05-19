@@ -15,31 +15,35 @@ class ThreadProxy;
 /**
  * @brief 任务绑定到执行者回调
  * @param executorName 执行者名称
+ * @param taskId 任务ID
  * @param taskName 任务名称
  */
-using TaskBindCallback = std::function<void(const std::string& executorName, const std::string& taskName)>;
+using TaskBindCallback = std::function<void(const std::string& executorName, int64_t taskId, const std::string& taskName)>;
 
 /**
  * @brief 任务(正常)状态回调
  * @param executorName 执行者名称
  * @param threadId 线程ID
  * @param threadName 线程名称
+ * @param taskId 任务ID
  * @param taskName 任务名称
  * @param prevElapsed 前一个状态耗时
  */
-using TaskNormalStateCallback = std::function<void(const std::string& executorName, int threadId, const std::string& threadName,
-                                                   const std::string& taskName, const std::chrono::steady_clock::duration& prevElapsed)>;
+using TaskNormalStateCallback =
+    std::function<void(const std::string& executorName, int threadId, const std::string& threadName, int64_t taskId,
+                       const std::string& taskName, const std::chrono::steady_clock::duration& prevElapsed)>;
 
 /**
  * @brief 任务(异常)状态回调
  * @param executorName 执行者名称
  * @param threadId 线程ID
  * @param threadName 线程名称
+ * @param taskId 任务ID
  * @param taskName 任务名称
  * @param msg 异常消息
  */
 using TaskExceptionStateCallback = std::function<void(const std::string& executorName, int threadId, const std::string& threadName,
-                                                      const std::string& taskName, const std::string& msg)>;
+                                                      int64_t taskId, const std::string& taskName, const std::string& msg)>;
 
 /**
  * @brief 诊断信息收集模块
