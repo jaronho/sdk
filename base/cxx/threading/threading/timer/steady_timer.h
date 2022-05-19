@@ -5,7 +5,6 @@
 #include <mutex>
 #include <string>
 
-#include "../asio/asio_executor.h"
 #include "timer.h"
 
 namespace threading
@@ -42,18 +41,6 @@ public:
     void setInterval(const std::chrono::steady_clock::duration& interval);
 
     /**
-	 * @brief 获取名称
-	 * @return 定时器名称
-	 */
-    std::string getName() const override;
-
-    /**
-     * @brief 是否已启动
-     * @return true-已启动, false-未启动
-     */
-    bool isStarted() override;
-
-    /**
      * @brief 启动
      */
     void start() override;
@@ -78,10 +65,6 @@ private:
     std::recursive_mutex m_mutex;
     std::chrono::steady_clock::duration m_delay; /* 首次触发延迟时间 */
     std::chrono::steady_clock::duration m_interval; /* 定时器间隔 */
-    std::string m_name; /* 定时器名称 */
-    std::function<void()> m_func; /* 触发执行函数 */
-    ExecutorPtr m_executor; /* 指定线程(执行者) */
-    bool m_started; /* 是否已启动 */
     std::shared_ptr<boost::asio::steady_timer> m_timer; /* boost稳定定时器 */
 };
 

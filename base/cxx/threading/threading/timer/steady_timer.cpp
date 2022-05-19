@@ -4,7 +4,7 @@ namespace threading
 {
 SteadyTimer::SteadyTimer(const std::chrono::steady_clock::duration& delay, const std::chrono::steady_clock::duration& interval,
                          const std::string& name, const std::function<void()>& func, const ExecutorPtr& executor)
-    : m_delay(delay), m_interval(interval), m_name(name), m_func(func), m_executor(executor), m_started(false)
+    : Timer(name, func, executor), m_delay(delay), m_interval(interval)
 {
     m_timer = std::make_shared<boost::asio::steady_timer>(getContext());
 }
@@ -24,17 +24,6 @@ void SteadyTimer::setInterval(const std::chrono::steady_clock::duration& interva
 {
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     m_interval = interval;
-}
-
-std::string SteadyTimer::getName() const
-{
-    return m_name;
-}
-
-bool SteadyTimer::isStarted()
-{
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
-    return m_started;
 }
 
 void SteadyTimer::start()
@@ -124,7 +113,7 @@ void SteadyTimer::onTrigger()
         if (m_executor) /* 有执行者则把回调抛到执行线程 */
         {
             const std::weak_ptr<Timer> wpTimer = shared_from_this();
-            m_executor->post(m_name, [wpTimer, func = m_func]() {
+            m_executor->post(getName(), [wpTimer, func = m_func]() {
                 const auto timer = wpTimer.lock();
                 if (timer && func)
                 {
@@ -134,10 +123,7 @@ void SteadyTimer::onTrigger()
         }
         else /* 则把回调添加到触发列表 */
         {
-            Timer::TriggerInfo info;
-            info.wpTimer = shared_from_this();
-            info.func = m_func;
-            addToTriggerList(info);
+            addToTriggerList(shared_from_this());
         }
     }
     /* 继续 */

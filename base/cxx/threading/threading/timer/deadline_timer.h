@@ -5,7 +5,6 @@
 #include <mutex>
 #include <string>
 
-#include "../asio/asio_executor.h"
 #include "timer.h"
 
 namespace threading
@@ -33,18 +32,6 @@ public:
      * @param deadline 触发时间
      */
     void setDeadline(const std::chrono::system_clock::time_point& deadline);
-
-    /**
-	 * @brief 获取名称
-	 * @return 定时器名称
-	 */
-    std::string getName() const override;
-
-    /**
-     * @brief 是否已启动
-     * @return true-已启动, false-未启动
-     */
-    bool isStarted() override;
 
     /**
      * @brief 启动, 说明: 尽量不要在`stop`后立即调用
@@ -75,10 +62,6 @@ private:
 private:
     std::recursive_mutex m_mutex;
     std::atomic<std::chrono::system_clock::time_point> m_deadline; /* 触发时间点 */
-    std::string m_name; /* 定时器名称 */
-    std::function<void()> m_func; /* 触发执行函数 */
-    ExecutorPtr m_executor; /* 指定线程(执行者) */
-    bool m_started; /* 是否已启动 */
     std::shared_ptr<boost::asio::system_timer> m_timer; /* boost截至时间定时器 */
 };
 

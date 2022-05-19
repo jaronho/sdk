@@ -4,7 +4,7 @@ namespace threading
 {
 DeadlineTimer::DeadlineTimer(const std::chrono::system_clock::time_point& deadline, const std::string& name,
                              const std::function<void()>& func, const ExecutorPtr& executor)
-    : m_deadline(deadline), m_name(name), m_func(func), m_executor(executor), m_started(false)
+    : Timer(name, func, executor), m_deadline(deadline)
 {
     m_timer = std::make_shared<boost::asio::system_timer>(getContext());
 }
@@ -18,17 +18,6 @@ void DeadlineTimer::setDeadline(const std::chrono::system_clock::time_point& dea
 {
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     m_deadline = deadline;
-}
-
-std::string DeadlineTimer::getName() const
-{
-    return m_name;
-}
-
-bool DeadlineTimer::isStarted()
-{
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
-    return m_started;
 }
 
 void DeadlineTimer::start()
@@ -109,7 +98,7 @@ void DeadlineTimer::onTrigger()
         if (m_executor) /* 有执行者则把回调抛到执行线程 */
         {
             const std::weak_ptr<Timer> wpTimer = shared_from_this();
-            m_executor->post(m_name, [wpTimer, func = m_func]() {
+            m_executor->post(getName(), [wpTimer, func = m_func]() {
                 const auto timer = wpTimer.lock();
                 if (timer && func)
                 {
@@ -119,10 +108,7 @@ void DeadlineTimer::onTrigger()
         }
         else /* 则把回调添加到触发列表 */
         {
-            Timer::TriggerInfo info;
-            info.wpTimer = shared_from_this();
-            info.func = m_func;
-            addToTriggerList(info);
+            addToTriggerList(shared_from_this());
         }
     }
 }

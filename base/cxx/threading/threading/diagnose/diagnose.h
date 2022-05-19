@@ -13,6 +13,17 @@ class FiberExecutor;
 class ThreadProxy;
 
 /**
+ * @brief 定时器触发丢弃类型
+ */
+enum class TimerTriggerDiscard
+{
+    none, /* 不丢弃 */
+    discard_newest, /* 丢弃最新 */
+    discard_oldest, /* 丢弃最早 */
+    discard_all /* 丢弃所有 */
+};
+
+/**
  * @brief 任务绑定到执行者回调
  * @param executorName 执行者名称
  * @param taskCount 当前执行者中的任务数量(包含当前新绑定的)
