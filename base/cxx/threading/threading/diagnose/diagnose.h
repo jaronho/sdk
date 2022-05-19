@@ -148,7 +148,7 @@ public:
             {
                 "name":"workers", // 执行者(线程池)名称
                 "count":16, // 线程池中所有未结束的任务数量
-                "task": // 任务列表: 任务ID/名称, 所在线程ID/名称, 状态(created,queuing,running,finished), 各状态耗时(单位: ns,us,ms)
+                "task": // 任务列表: 任务ID/名称, 所在线程ID/名称, 状态(created,queuing,running,finished), 排队(queue)/执行(run)耗时(单位: ns,us,ms)
                 [
                     // 任务信息: 任务ID/名称, 所在线程ID/名称, 状态(created,queuing,running,finished), 各状态耗时(单位: ns,us,ms)
                     {"id":6770523678363649,"name":"task_3","thread_id":19288,"thread_name":"workers-2","state":"running","queue":"71 us","run":"4004 ms"},
@@ -165,7 +165,7 @@ public:
     /**
      * @brief 获取定时器诊断信息, 格式例如:
         [ // 定时器触发列表
-            // 触发信息: 定时器ID/名称, 状态(triggered,queuing,running,finished), 各状态耗时(单位: ns,us,ms)
+            // 触发信息: 定时器ID/名称, 状态(triggered,queuing,running,finished), 排队(queue)/执行(run)耗时(单位: ns,us,ms)
             {"id":6770523674243072,"name":"timer_1","state":"running","queue":"516 ms","run":"5 ms"},
             {"id":6770523674245234,"name":"timer_2","state":"running","queue":"900 ms","run":"1002 ms"}
         ]
