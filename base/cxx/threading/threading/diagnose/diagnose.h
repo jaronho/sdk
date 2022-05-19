@@ -95,6 +95,11 @@ class Diagnose final
 
 public:
     /**
+	 * @brief 设置开启诊断功能, 注意: 如果要开启则必须要先于其他所有线程组件调用
+	 */
+    static void setEnable();
+
+    /**
 	 * @brief 设置任务绑定回调
 	 * @param taskBindCb 任务绑定回调
 	 */

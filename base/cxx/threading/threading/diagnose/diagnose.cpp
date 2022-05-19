@@ -1,5 +1,6 @@
 #include "diagnose.h"
 
+#include <atomic>
 #include <iostream>
 #include <mutex>
 #include <unordered_map>
@@ -8,6 +9,7 @@
 
 namespace threading
 {
+static std::atomic_bool s_enabled = {false}; /* 是否开启诊断功能(默认关闭) */
 static std::mutex s_mutexTask;
 static std::unordered_map<const Executor*, diagnose::ExecutorInfoPtr> s_taskExecutors; /* 全局任务执行者 */
 static TaskBindCallback s_taskBindCallback = nullptr; /* 任务绑定回调 */
@@ -222,6 +224,10 @@ static std::string timerTriggerInfoToString(const diagnose::TimerTriggerInfoPtr&
 
 void Diagnose::onExecutorCreated(const Executor* executor)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     if (!executor)
     {
         return;
@@ -238,6 +244,10 @@ void Diagnose::onExecutorCreated(const Executor* executor)
 
 void Diagnose::onExecutorDestroyed(const Executor* executor)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     if (!executor)
     {
         return;
@@ -254,6 +264,10 @@ void Diagnose::onExecutorDestroyed(const Executor* executor)
 
 void Diagnose::bindTaskToExecutor(const Task* task, const Executor* executor)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     if (!task || !executor)
     {
         return;
@@ -292,6 +306,10 @@ void Diagnose::bindTaskToExecutor(const Task* task, const Executor* executor)
 
 void Diagnose::onTaskRunning(int threadId, const std::string& threadName, const Task* task)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     TaskNormalStateCallback runningCallback;
     std::string executorName;
     int64_t taskId = 0;
@@ -320,6 +338,10 @@ void Diagnose::onTaskRunning(int threadId, const std::string& threadName, const 
 
 void Diagnose::onTaskFinished(int threadId, const std::string& threadName, const Task* task)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     TaskNormalStateCallback finishedCallback;
     std::string executorName;
     int64_t taskId = 0;
@@ -349,6 +371,10 @@ void Diagnose::onTaskFinished(int threadId, const std::string& threadName, const
 
 void Diagnose::onTaskException(int threadId, const std::string& threadName, const Task* task, const std::string& msg)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     TaskExceptionStateCallback exceptionCallback;
     std::string executorName;
     int64_t taskId = 0;
@@ -377,6 +403,10 @@ void Diagnose::onTaskException(int threadId, const std::string& threadName, cons
 
 TimerTriggerDiscard Diagnose::onTimerTrigger(int triggerCount, int64_t oldestTriggerId, int64_t triggerId, const Timer* timer)
 {
+    if (!s_enabled)
+    {
+        return TimerTriggerDiscard::none;
+    }
     TimerTriggerCallback triggerCallback;
     {
         std::lock_guard<std::mutex> locker(s_mutexTimer);
@@ -414,6 +444,10 @@ TimerTriggerDiscard Diagnose::onTimerTrigger(int triggerCount, int64_t oldestTri
 
 void Diagnose::onTimerTriggerRunning(int64_t triggerId, const Timer* timer)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     TimerTriggerNormalStateCallback runningCallback;
     std::chrono::steady_clock::duration prevElapsed;
     {
@@ -436,6 +470,10 @@ void Diagnose::onTimerTriggerRunning(int64_t triggerId, const Timer* timer)
 
 void Diagnose::onTimerTriggerFinished(int64_t triggerId, const Timer* timer)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     TimerTriggerNormalStateCallback finishedCallback;
     std::chrono::steady_clock::duration prevElapsed;
     {
@@ -459,6 +497,10 @@ void Diagnose::onTimerTriggerFinished(int64_t triggerId, const Timer* timer)
 
 void Diagnose::onTimerTriggerException(int64_t triggerId, const Timer* timer, const std::string& msg)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     TimerTriggerExceptionStateCallback exceptionCallback;
     std::chrono::steady_clock::duration prevElapsed;
     {
@@ -482,6 +524,10 @@ void Diagnose::onTimerTriggerException(int64_t triggerId, const Timer* timer, co
 
 void Diagnose::onTimerDestroy(const Timer* timer)
 {
+    if (!s_enabled)
+    {
+        return;
+    }
     std::lock_guard<std::mutex> locker(s_mutexTimer);
     for (auto iter = s_timerTriggers.begin(); s_timerTriggers.end() != iter;)
     {
@@ -494,6 +540,11 @@ void Diagnose::onTimerDestroy(const Timer* timer)
             ++iter;
         }
     }
+}
+
+void Diagnose::setEnable()
+{
+    s_enabled = true;
 }
 
 void Diagnose::setTaskBindCallback(const TaskBindCallback& taskBindCb)
