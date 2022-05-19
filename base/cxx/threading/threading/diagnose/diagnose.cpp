@@ -4,6 +4,8 @@
 #include <mutex>
 #include <unordered_map>
 
+#include "diagnose_info.h"
+
 namespace threading
 {
 static std::mutex s_mutexTask;
@@ -13,7 +15,7 @@ static TaskNormalStateCallback s_taskRunningStateCallback = nullptr; /* 任务�
 static TaskNormalStateCallback s_taskFinishedStateCallback = nullptr; /* 任务结束状态回调 */
 static TaskExceptionStateCallback s_taskExceptionStateCallback = nullptr; /* 任务异常状态回调 */
 
-diagnose::TaskInfoPtr Diagnose::getTaskInfo(const Task* task)
+static diagnose::TaskInfoPtr getTaskInfo(const Task* task)
 {
     if (!task)
     {
@@ -30,7 +32,7 @@ diagnose::TaskInfoPtr Diagnose::getTaskInfo(const Task* task)
     return {};
 }
 
-void Diagnose::delTaskInfo(const Task* task)
+static void delTaskInfo(const Task* task)
 {
     if (!task)
     {
@@ -45,6 +47,107 @@ void Diagnose::delTaskInfo(const Task* task)
             return;
         }
     }
+}
+
+static std::string taskStateToString(const Task::State& state)
+{
+    switch (state)
+    {
+    case Task::State::created:
+        return "created";
+    case Task::State::queuing:
+        return "queuing";
+    case Task::State::running:
+        return "running";
+    case Task::State::finished:
+        return "finished";
+    default:
+        break;
+    }
+    return std::string();
+}
+
+static std::string durationToString(const std::chrono::steady_clock::duration& duration)
+{
+    using namespace std::chrono_literals;
+    if (duration < 1us)
+    {
+        return std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count()) + " ns";
+    }
+    if (duration < 1ms)
+    {
+        return std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(duration).count()) + " us";
+    }
+    return std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()) + " ms";
+}
+
+static std::string taskInfoToString(const diagnose::TaskInfoPtr& taskInfo, bool showRun)
+{
+    static const std::chrono::steady_clock::time_point zero{};
+    std::string result;
+    result += "{";
+    result += "\"id\":" + std::to_string(taskInfo->task->getId());
+    result += ",";
+    result += "\"name\":\"" + taskInfo->task->getName() + "\"";
+    result += ",";
+    result += "\"thread_id\":" + std::to_string(taskInfo->attachThreadId);
+    result += ",";
+    result += "\"thread_name\":\"" + taskInfo->attachThreadName + "\"";
+    result += ",";
+    result += "\"state\":\"" + (taskInfo->exceptionMsg.empty() ? taskStateToString(taskInfo->task->getState()) : "abnormal") + "\"";
+    if (!taskInfo->exceptionMsg.empty())
+    {
+        result += ",";
+        result += "\"error\":\"" + taskInfo->exceptionMsg + "\"";
+    }
+    auto now = std::chrono::steady_clock::now();
+    /* 排队耗时 */
+    if (taskInfo->queuing > zero)
+    {
+        result += ",";
+        result += "\"queue\":\"" + durationToString((taskInfo->running > zero ? taskInfo->running : now) - taskInfo->queuing) + "\"";
+    }
+    /* 运行耗时 */
+    if (showRun && taskInfo->running > zero)
+    {
+        result += ",";
+        if (taskInfo->finished > zero)
+        {
+            result += "\"run\":\"" + durationToString(taskInfo->finished - taskInfo->running) + "\"";
+        }
+        else if (taskInfo->abnormal > zero)
+        {
+            result += "\"run\":\"" + durationToString(taskInfo->abnormal - taskInfo->running) + "\"";
+        }
+        else
+        {
+            result += "\"run\":\"" + durationToString(now - taskInfo->running) + "\"";
+        }
+    }
+    result += "}";
+    return result;
+}
+
+static std::string executorInfoToString(const diagnose::ExecutorInfoPtr& executorInfo)
+{
+    std::string result;
+    result += "{";
+    result += "\"name\":\"" + executorInfo->executor->getName() + "\"";
+    result += ",";
+    result += "\"count\":" + std::to_string(executorInfo->tasks.size());
+    result += ",";
+    result += "\"task\":[";
+    for (auto iter = executorInfo->tasks.begin(); executorInfo->tasks.end() != iter; ++iter)
+    {
+        if (executorInfo->tasks.begin() != iter)
+        {
+            result += ",";
+        }
+        result += taskInfoToString(iter->second, true);
+    }
+    result += "]";
+    result += "}";
+    return result;
 }
 
 void Diagnose::onExecutorCreated(const Executor* executor)
@@ -200,107 +303,6 @@ void Diagnose::onTaskException(int threadId, const std::string& threadName, cons
     {
         exceptionCallback(executorName, threadId, threadName, taskId, taskName, msg);
     }
-}
-
-std::string Diagnose::taskStateToString(const Task::State& state)
-{
-    switch (state)
-    {
-    case Task::State::created:
-        return "created";
-    case Task::State::queuing:
-        return "queuing";
-    case Task::State::running:
-        return "running";
-    case Task::State::finished:
-        return "finished";
-    default:
-        break;
-    }
-    return std::string();
-}
-
-std::string Diagnose::durationToString(const std::chrono::steady_clock::duration& duration)
-{
-    using namespace std::chrono_literals;
-    if (duration < 1us)
-    {
-        return std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count()) + " ns";
-    }
-    if (duration < 1ms)
-    {
-        return std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(duration).count()) + " us";
-    }
-    return std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()) + " ms";
-}
-
-std::string Diagnose::taskInfoToString(const diagnose::TaskInfoPtr& taskInfo, bool showRun)
-{
-    static const std::chrono::steady_clock::time_point zero{};
-    std::string result;
-    result += "{";
-    result += "\"id\":" + std::to_string(taskInfo->task->getId());
-    result += ",";
-    result += "\"name\":\"" + taskInfo->task->getName() + "\"";
-    result += ",";
-    result += "\"thread_id\":" + std::to_string(taskInfo->attachThreadId);
-    result += ",";
-    result += "\"thread_name\":\"" + taskInfo->attachThreadName + "\"";
-    result += ",";
-    result += "\"state\":\"" + (taskInfo->exceptionMsg.empty() ? taskStateToString(taskInfo->task->getState()) : "abnormal") + "\"";
-    if (!taskInfo->exceptionMsg.empty())
-    {
-        result += ",";
-        result += "\"error\":\"" + taskInfo->exceptionMsg + "\"";
-    }
-    auto now = std::chrono::steady_clock::now();
-    /* 排队耗时 */
-    if (taskInfo->queuing > zero)
-    {
-        result += ",";
-        result += "\"queue\":\"" + durationToString((taskInfo->running > zero ? taskInfo->running : now) - taskInfo->queuing) + "\"";
-    }
-    /* 运行耗时 */
-    if (showRun && taskInfo->running > zero)
-    {
-        result += ",";
-        if (taskInfo->finished > zero)
-        {
-            result += "\"run\":\"" + durationToString(taskInfo->finished - taskInfo->running) + "\"";
-        }
-        else if (taskInfo->abnormal > zero)
-        {
-            result += "\"run\":\"" + durationToString(taskInfo->abnormal - taskInfo->running) + "\"";
-        }
-        else
-        {
-            result += "\"run\":\"" + durationToString(now - taskInfo->running) + "\"";
-        }
-    }
-    result += "}";
-    return result;
-}
-
-std::string Diagnose::executorInfoToString(const diagnose::ExecutorInfoPtr& executorInfo)
-{
-    std::string result;
-    result += "{";
-    result += "\"name\":\"" + executorInfo->executor->getName() + "\"";
-    result += ",";
-    result += "\"count\":" + std::to_string(executorInfo->tasks.size());
-    result += ",";
-    result += "\"task\":[";
-    for (auto iter = executorInfo->tasks.begin(); executorInfo->tasks.end() != iter; ++iter)
-    {
-        if (executorInfo->tasks.begin() != iter)
-        {
-            result += ",";
-        }
-        result += taskInfoToString(iter->second, true);
-    }
-    result += "]";
-    result += "}";
-    return result;
 }
 
 void Diagnose::setTaskBindCallback(const TaskBindCallback& taskBindCb)

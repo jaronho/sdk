@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 #include "../task/executor.h"
-#include "../task/task.h"
+#include "../timer/timer.h"
 
 namespace threading
 {
@@ -39,5 +39,20 @@ struct ExecutorInfo
     std::unordered_map<const Task*, TaskInfoPtr> tasks; /* 任务列表 */
 };
 using ExecutorInfoPtr = std::unique_ptr<ExecutorInfo>;
+
+/**
+ * @brief 定时器触发信息
+ */
+struct TimerTriggerInfo
+{
+    TimerTriggerInfo(const Timer* timer) : timer(timer) {}
+    const Timer* timer;
+    std::chrono::steady_clock::time_point queuing{}; /* 触发排队时间点 */
+    std::chrono::steady_clock::time_point running{}; /* 触发执行时间点 */
+    std::chrono::steady_clock::time_point finished{}; /* 执行结束时间点 */
+    std::chrono::steady_clock::time_point abnormal{}; /* 出现异常时间点 */
+    std::string exceptionMsg; /* 异常消息 */
+};
+using TimerTriggerInfoPtr = std::shared_ptr<TimerTriggerInfo>;
 } // namespace diagnose
 } // namespace threading

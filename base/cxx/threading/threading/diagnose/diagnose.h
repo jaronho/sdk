@@ -4,7 +4,6 @@
 
 #include "../task/executor.h"
 #include "../task/task.h"
-#include "diagnose_info.h"
 
 namespace threading
 {
@@ -141,13 +140,5 @@ protected:
      * @param msg 异常消息
      */
     static void onTaskException(int threadId, const std::string& threadName, const Task* task, const std::string& msg);
-
-private:
-    static diagnose::TaskInfoPtr getTaskInfo(const Task* task);
-    static void delTaskInfo(const Task* task);
-    static std::string taskStateToString(const Task::State& state);
-    static std::string durationToString(const std::chrono::steady_clock::duration& duration);
-    static std::string taskInfoToString(const diagnose::TaskInfoPtr& taskInfo, bool showRun = true);
-    static std::string executorInfoToString(const diagnose::ExecutorInfoPtr& executorInfo);
 };
 } // namespace threading
