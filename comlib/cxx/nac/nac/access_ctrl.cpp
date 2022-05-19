@@ -30,18 +30,18 @@ private:
 class MsgHandler
 {
 public:
-    MsgHandler(const std::function<void(const nlohmann::json& data)>& func) : m_func(func) {}
+    MsgHandler(const std::function<void(unsigned long long seqId, const nlohmann::json& data)>& func) : m_func(func) {}
 
-    void operator()(const nlohmann::json& data)
+    void operator()(unsigned long long seqId, const nlohmann::json& data)
     {
         if (m_func)
         {
-            m_func(data);
+            m_func(seqId, data);
         }
     }
 
 private:
-    std::function<void(const nlohmann::json& data)> m_func = nullptr; /* 消息处理函数 */
+    std::function<void(unsigned long long seqId, const nlohmann::json& data)> m_func = nullptr; /* 消息处理函数 */
 };
 
 AccessObserver::~AccessObserver()
@@ -73,7 +73,8 @@ bool AccessObserver::subscribeAccessState(const std::function<void(const Connect
     return false;
 }
 
-bool AccessObserver::subscribeAccessMsg(const BizCode& bizCode, const std::function<void(const nlohmann::json& data)>& func)
+bool AccessObserver::subscribeAccessMsg(const BizCode& bizCode,
+                                        const std::function<void(unsigned long long seqId, const nlohmann::json& data)>& func)
 {
     if (func)
     {
@@ -173,13 +174,14 @@ void AccessCtrl::stop()
     m_connectService->disconnect();
 }
 
-int64_t AccessCtrl::sendMsg(const BizCode& bizCode, const nlohmann::json& data, const RespCallback& callback, unsigned int timeout)
+int64_t AccessCtrl::sendMsg(const BizCode& bizCode, unsigned long long seqId, const nlohmann::json& data, const RespCallback& callback,
+                            unsigned int timeout)
 {
     if (bizCode == m_cfg.authBizCode || bizCode == m_cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
     {
         return -1;
     }
-    return m_sessionManager->sendMsg((unsigned int)bizCode, nlohmann::dump(data), timeout,
+    return m_sessionManager->sendMsg((unsigned int)bizCode, seqId, nlohmann::dump(data), timeout,
                                      [&, callback](bool sendOk, unsigned int bizCode, int64_t seqId, const std::string& data) {
                                          if (callback)
                                          {
@@ -268,7 +270,7 @@ void AccessCtrl::onReceiveMsg(unsigned int bizCode, int64_t seqId, const std::st
         auto handler = wpHandler.lock();
         if (handler)
         {
-            (*handler)(obj);
+            (*handler)(seqId, obj);
         }
     }
 }

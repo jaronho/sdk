@@ -114,11 +114,12 @@ void SessionManager::setMsgReceiver(const MsgReceiver& receiver)
     m_msgReceiver = receiver;
 }
 
-int64_t SessionManager::sendMsg(unsigned int bizCode, const std::string& data, int timeout, const ResponseCallback& callback)
+int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, const std::string& data, int timeout,
+                                const ResponseCallback& callback)
 {
     auto pkt = std::make_shared<ProtocolAdapter::Packet>();
     pkt->bizCode = bizCode;
-    pkt->seqId = algorithm::Snowflake::easyGenerate();
+    pkt->seqId = seqId > 0 ? seqId : algorithm::Snowflake::easyGenerate();
     pkt->data = data;
     /* 添加路由 */
     auto session = std::make_shared<Session>(bizCode, pkt->seqId, shared_from_this(), callback);

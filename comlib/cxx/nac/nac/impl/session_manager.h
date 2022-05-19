@@ -45,12 +45,13 @@ public:
     /**
      * @brief 发送消息
      * @param bizCode 业务码
+     * @param seqId 序列ID, 如果填0则内部自动生成
      * @param data 数据
      * @param timeout 超时, 大于0时表示需要等待服务端响应数据, 等于0表示不需要响应
      * @param callback 响应回调
      * @return 序列ID
      */
-    int64_t sendMsg(unsigned int bizCode, const std::string& data, int timeout, const ResponseCallback& callback);
+    int64_t sendMsg(unsigned int bizCode, unsigned long long seqId, const std::string& data, int timeout, const ResponseCallback& callback);
 
     /**
      * @brief 清除会话路由表

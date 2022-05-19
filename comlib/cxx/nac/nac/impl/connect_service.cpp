@@ -228,7 +228,7 @@ void ConnectService::sendAuthMsg()
             authData = m_authDataGenerator();
         }
         const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
-        auto seqId = sessionManager->sendMsg(m_authBizCode, authData, m_authTimeout,
+        auto seqId = sessionManager->sendMsg(m_authBizCode, 0, authData, m_authTimeout,
                                              [wpSelf](bool sendOk, unsigned int bizCode, int64_t seqId, const std::string& data) {
                                                  const auto self = wpSelf.lock();
                                                  if (self)
@@ -361,7 +361,7 @@ void ConnectService::sendHeartbeatMsg()
             {
                 heartbeatData = m_heartbeatDataGenerator();
             }
-            sessionManager->sendMsg(m_heartbeatBizCode, heartbeatData, 0, nullptr);
+            sessionManager->sendMsg(m_heartbeatBizCode, 0, heartbeatData, 0, nullptr);
         }
     }
 }

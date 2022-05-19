@@ -22,6 +22,7 @@ enum class BizCode
     /*********************************************************************
      * 服务端通知(`notify_`), 取值: 2xxx
      *********************************************************************/
+    notify_proc_upgrade = 2001, /* 客户端程序升级 */
 };
 } // namespace nac
 
@@ -32,20 +33,9 @@ class Login final : public nac::AccessObserver
 public:
     Login()
     {
-        subscribeAccessState([&](const nac::ConnectState& state) {
-            switch (state)
-            {
-            case nac::ConnectState::idle:
-                break;
-            case nac::ConnectState::connecting:
-                break;
-            case nac::ConnectState::connected:
-                reqLogin();
-                break;
-            case nac::ConnectState::disconnected:
-                break;
-            }
-        });
+        subscribeAccessState([&](const nac::ConnectState& state) { onAccessState(state); });
+        subscribeAccessMsg(nac::BizCode::notify_proc_upgrade,
+                           [&](unsigned long long seqId, const nlohmann::json& data) { onNotifyProcUpgrage(seqId, data); });
     }
 
     ~Login()
@@ -56,8 +46,27 @@ public:
     void reqLogin()
     {
         nlohmann::json data;
-        nac::AccessCtrl::getInstance().sendMsg(nac::BizCode::req_login, data, [&](bool ok, const nlohmann::json& data) {});
+        nac::AccessCtrl::getInstance().sendMsg(nac::BizCode::req_login, 0, data, [&](bool ok, const nlohmann::json& data) {});
     }
+
+private:
+    void onAccessState(const nac::ConnectState& state)
+    {
+        switch (state)
+        {
+        case nac::ConnectState::idle:
+            break;
+        case nac::ConnectState::connecting:
+            break;
+        case nac::ConnectState::connected:
+            reqLogin();
+            break;
+        case nac::ConnectState::disconnected:
+            break;
+        }
+    }
+
+    void onNotifyProcUpgrage(unsigned long long seqId, const nlohmann::json& data) {}
 };
 
 int main(int argc, char* argv[])

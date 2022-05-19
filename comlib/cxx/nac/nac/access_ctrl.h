@@ -49,7 +49,7 @@ protected:
      * @param func 消息处理函数
      * @return true-订阅成功, false-订阅失败
      */
-    bool subscribeAccessMsg(const BizCode& bizCode, const std::function<void(const nlohmann::json& data)>& func);
+    bool subscribeAccessMsg(const BizCode& bizCode, const std::function<void(unsigned long long seqId, const nlohmann::json& data)>& func);
 
 private:
     std::shared_ptr<StateHandler> m_stateHandler = nullptr; /* 连接状态处理器 */
@@ -120,12 +120,14 @@ public:
     /**
      * @brief 发送消息
      * @param bizCode 业务码
+     * @param seqId 序列ID, 若填0则内部自动生成
      * @param data 业务数据
      * @param callback 响应回调
      * @param timeout 响应超时(秒), 为0时表示不需要响应
      * @return 消息序列ID, -1表示发送失败
      */
-    int64_t sendMsg(const BizCode& bizCode, const nlohmann::json& data, const RespCallback& callback, unsigned int timeout = 30);
+    int64_t sendMsg(const BizCode& bizCode, unsigned long long seqId, const nlohmann::json& data, const RespCallback& callback,
+                    unsigned int timeout = 30);
 
 private:
     /**
