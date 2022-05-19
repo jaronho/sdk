@@ -47,13 +47,13 @@ int main()
     g_workers = threading::ThreadProxy::createAsioExecutor("workers", 6); /* 创建工作线程(6个线程) */
     /* 定时器1 */
     int count1 = 0;
-    auto tm1 = std::make_shared<threading::SteadyTimer>(std::chrono::seconds(0), std::chrono::milliseconds(5000), "", [mainPid, &count1]() {
+    auto tm1 = std::make_shared<threading::SteadyTimer>("", std::chrono::seconds(0), std::chrono::milliseconds(5000), [mainPid, &count1]() {
         ++count1;
         printf("===== [%d:%d] SteadyTimer === %d\n", mainPid, threading::Platform::getThreadId(), count1);
     });
     tm1->start();
     /* 定时器2 */
-    auto tm2 = std::make_shared<threading::DeadlineTimer>(std::chrono::system_clock::now() + std::chrono::seconds(10), "",
+    auto tm2 = std::make_shared<threading::DeadlineTimer>("", std::chrono::system_clock::now() + std::chrono::seconds(10),
                                                           [&]() { printf("========== DeadlineTimer over\n"); });
     tm2->start();
     /* 信号 */

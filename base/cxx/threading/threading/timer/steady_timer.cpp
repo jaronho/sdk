@@ -2,8 +2,9 @@
 
 namespace threading
 {
-SteadyTimer::SteadyTimer(const std::chrono::steady_clock::duration& delay, const std::chrono::steady_clock::duration& interval,
-                         const std::string& name, const std::function<void()>& func, const ExecutorPtr& executor)
+SteadyTimer::SteadyTimer(const std::string& name, const std::chrono::steady_clock::duration& delay,
+                         const std::chrono::steady_clock::duration& interval, const std::function<void()>& func,
+                         const ExecutorPtr& executor)
     : Timer(name, func, executor), m_delay(delay), m_interval(interval)
 {
     m_timer = std::make_shared<boost::asio::steady_timer>(getContext());
@@ -121,7 +122,7 @@ void SteadyTimer::onTrigger()
                 }
             });
         }
-        else /* 则把回调添加到触发列表 */
+        else /* 把回调添加到触发器列表 */
         {
             addToTriggerList(shared_from_this());
         }

@@ -17,14 +17,15 @@ class SteadyTimer final : public Timer, public std::enable_shared_from_this<Stea
 public:
     /**
      * @brief 构造函数
+     * @param name 名称
      * @param delay 首次触发的延时, <=0表示马上触发
      * @param interval 触发间隔, <=0表示不重复触发
-     * @param name 名称
      * @param func 回调
      * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`runOnce`接管
      */
-    SteadyTimer(const std::chrono::steady_clock::duration& delay, const std::chrono::steady_clock::duration& interval,
-                const std::string& name, const std::function<void()>& func, const ExecutorPtr& executor = nullptr);
+    SteadyTimer(const std::string& name, const std::chrono::steady_clock::duration& delay,
+                const std::chrono::steady_clock::duration& interval, const std::function<void()>& func,
+                const ExecutorPtr& executor = nullptr);
 
     virtual ~SteadyTimer();
 

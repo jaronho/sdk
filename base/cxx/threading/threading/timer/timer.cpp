@@ -59,7 +59,7 @@ static void setThreadName(const std::string& name)
  */
 struct Trigger
 {
-    int64_t id = 0; /* 触发ID */
+    int64_t id = 0; /* ID */
     std::weak_ptr<Timer> wpTimer; /* 定时器 */
 };
 
@@ -127,6 +127,43 @@ bool Timer::isStarted() const
     return m_started;
 }
 
+void Timer::runOnce()
+{
+    /* 获取首个触发器 */
+    std::shared_ptr<Trigger> trigger = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(s_mutexTriggerList);
+        if (s_triggerList.empty())
+        {
+            return;
+        }
+        trigger = *(s_triggerList.begin());
+        s_triggerList.pop_front();
+    }
+    /* 执行触发器 */
+    if (trigger)
+    {
+        const auto timer = trigger->wpTimer.lock();
+        if (timer && timer->m_func)
+        {
+            try
+            {
+                Diagnose::onTriggerRunning(trigger->id, timer.get());
+                timer->m_func();
+                Diagnose::onTriggerFinished(trigger->id, timer.get());
+            }
+            catch (const std::exception& e)
+            {
+                Diagnose::onTriggerException(trigger->id, timer.get(), e.what());
+            }
+            catch (...)
+            {
+                Diagnose::onTriggerException(trigger->id, timer.get(), "unknown exception");
+            }
+        }
+    }
+}
+
 boost::asio::io_context& Timer::getContext()
 {
     return (*s_context);
@@ -182,46 +219,9 @@ void Timer::addToTriggerList(const std::shared_ptr<Timer>& timer)
             break;
         }
         auto trigger = std::make_shared<Trigger>();
-        trigger->wpTimer = timer;
         trigger->id = triggerId;
+        trigger->wpTimer = timer;
         s_triggerList.emplace_back(trigger);
-    }
-}
-
-void Timer::runOnce()
-{
-    /* 获取首个触发器 */
-    std::shared_ptr<Trigger> trigger = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(s_mutexTriggerList);
-        if (s_triggerList.empty())
-        {
-            return;
-        }
-        trigger = *(s_triggerList.begin());
-        s_triggerList.pop_front();
-    }
-    /* 执行触发器 */
-    if (trigger)
-    {
-        const auto timer = trigger->wpTimer.lock();
-        if (timer && timer->m_func)
-        {
-            try
-            {
-                Diagnose::onTriggerRunning(trigger->id, timer.get());
-                timer->m_func();
-                Diagnose::onTriggerFinished(trigger->id, timer.get());
-            }
-            catch (const std::exception& e)
-            {
-                Diagnose::onTriggerException(trigger->id, timer.get(), e.what());
-            }
-            catch (...)
-            {
-                Diagnose::onTriggerException(trigger->id, timer.get(), "unknown exception");
-            }
-        }
     }
 }
 } // namespace threading

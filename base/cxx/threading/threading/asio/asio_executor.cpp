@@ -46,7 +46,7 @@ void AsioExecutor::join()
 TaskPtr AsioExecutor::post(const TaskPtr& task)
 {
     task->setState(Task::State::queuing);
-    Diagnose::bindTaskToExecutor(task.get(), this);
+    Diagnose::onTaskCreated(this, task.get());
     std::unordered_map<int, std::string> threadIdNameMap;
     {
         std::lock_guard<std::mutex> locker(m_mapMutex);

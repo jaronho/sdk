@@ -2,13 +2,16 @@
 #include <chrono>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace threading
 {
-class Executor;
-class Task;
 class AsioExecutor;
+class AsyncProxy;
+class AsyncTask;
+class Executor;
 class FiberExecutor;
+class Task;
 class ThreadProxy;
 class Timer;
 
@@ -24,13 +27,75 @@ enum class DiscardType
 };
 
 /**
- * @brief 任务绑定到执行者回调
+ * @brief 诊断状态
+ */
+enum class DiagnoseState
+{
+    created, /* 已创建 */
+    queuing, /* 排队中 */
+    running, /* 运行中 */
+    finished /* 已完成 */
+};
+
+/**
+ * @brief 任务诊断信息
+ */
+struct TaskDiagnoseInfo
+{
+    int64_t taskId = 0; /* 任务ID */
+    std::string taskName; /* 任务名称 */
+    int64_t threadId = 0; /* 任务所在线程ID */
+    std::string threadName; /* 任务所在线程名称 */
+    DiagnoseState state = DiagnoseState::created; /* 状态 */
+    std::chrono::steady_clock::duration queue; /* 排队耗时 */
+    std::chrono::steady_clock::duration run; /* 运行耗时 */
+    std::string exceptionMsg; /* 异常信息 */
+};
+
+/**
+ * @brief 执行者(线程池)诊断信息
+ */
+struct ExecutorDiagnoseInfo
+{
+    std::string name; /* 执行者(线程池)名称 */
+    std::vector<TaskDiagnoseInfo> taskInfoList; /* 任务信息列表 */
+};
+
+/**
+ * @brief 结束器诊断信息
+ */
+struct FinisherDiagnoseInfo
+{
+    int64_t taskId = 0; /* 任务ID */
+    std::string taskName; /* 任务名称 */
+    DiagnoseState state = DiagnoseState::created; /* 状态 */
+    std::chrono::steady_clock::duration queue; /* 排队耗时 */
+    std::chrono::steady_clock::duration run; /* 运行耗时 */
+    std::string exceptionMsg; /* 异常信息 */
+};
+
+/**
+ * @brief 触发器诊断信息
+ */
+struct TriggerDiagnoseInfo
+{
+    int64_t timerId = 0; /* 定时器ID */
+    std::string timerName; /* 定时器名称 */
+    DiagnoseState state = DiagnoseState::created; /* 状态 */
+    std::chrono::steady_clock::duration queue; /* 排队耗时 */
+    std::chrono::steady_clock::duration run; /* 运行耗时 */
+    std::string exceptionMsg; /* 异常信息 */
+};
+
+/**
+ * @brief 任务创建回调
  * @param executorName 执行者名称
  * @param taskCount 当前执行者中的任务数量(包含当前新绑定的)
  * @param taskId 任务ID
  * @param taskName 任务名称
  */
-using TaskBindCallback = std::function<void(const std::string& executorName, int taskCount, int64_t taskId, const std::string& taskName)>;
+using TaskCreatedCallback =
+    std::function<void(const std::string& executorName, int taskCount, int64_t taskId, const std::string& taskName)>;
 
 /**
  * @brief 任务(正常)状态回调
@@ -56,6 +121,32 @@ using TaskNormalStateCallback =
  */
 using TaskExceptionStateCallback = std::function<void(const std::string& executorName, int threadId, const std::string& threadName,
                                                       int64_t taskId, const std::string& taskName, const std::string& msg)>;
+
+/**
+ * @brief 结束器创建回调
+ * @param finisherCount 当前触发器数量(不包含新创建的)
+ * @param taskId 任务ID
+ * @param taskName 任务名称
+ * @return 丢弃类型
+ */
+using FinisherCreateCallback = std::function<DiscardType(int finisherCount, int64_t taskId, const std::string& taskName)>;
+
+/**
+ * @brief 结束器(正常)状态回调
+ * @param taskId 任务ID
+ * @param taskName 任务名称
+ * @param prevElapsed 前一个状态耗时
+ */
+using FinisherNormalStateCallback =
+    std::function<void(int64_t taskId, const std::string& taskName, const std::chrono::steady_clock::duration& prevElapsed)>;
+
+/**
+ * @brief 结束器(异常)状态回调
+ * @param taskId 任务ID
+ * @param taskName 任务名称
+ * @param msg 异常消息
+ */
+using FinisherExceptionStateCallback = std::function<void(int64_t taskId, const std::string& taskName, const std::string& msg)>;
 
 /**
  * @brief 触发器创建回调
@@ -89,6 +180,8 @@ using TriggerExceptionStateCallback = std::function<void(int64_t timerId, const 
 class Diagnose final
 {
     friend AsioExecutor;
+    friend AsyncProxy;
+    friend AsyncTask;
     friend FiberExecutor;
     friend ThreadProxy;
     friend Timer;
@@ -100,10 +193,10 @@ public:
     static void setEnable();
 
     /**
-	 * @brief 设置任务绑定回调
-	 * @param bindedCb 绑定回调
+	 * @brief 设置任务创建回调
+	 * @param createdCb 创建回调
 	 */
-    static void setTaskBindedCallback(const TaskBindCallback& bindedCb);
+    static void setTaskCreatedCallback(const TaskCreatedCallback& createdCb);
 
     /**
 	 * @brief 设置任务运行状态回调
@@ -122,6 +215,30 @@ public:
 	 * @param stateCb 状态回调
 	 */
     static void setTaskExceptionStateCallback(const TaskExceptionStateCallback& stateCb);
+
+    /**
+	 * @brief 设置结束器创建回调
+	 * @param createdCb 创建回调
+	 */
+    static void setFinisherCreatedCallback(const FinisherCreateCallback& createdCb);
+
+    /**
+	 * @brief 设置结束器运行状态回调
+	 * @param stateCb 状态回调
+	 */
+    static void setFinisherRunningStateCallback(const FinisherNormalStateCallback& stateCb);
+
+    /**
+	 * @brief 设置结束器结束状态回调
+	 * @param stateCb 状态回调
+	 */
+    static void setFinisherFinishedStateCallback(const FinisherNormalStateCallback& stateCb);
+
+    /**
+	 * @brief 设置结束器异常状态回调
+	 * @param stateCb 状态回调
+	 */
+    static void setFinisherExceptionStateCallback(const FinisherExceptionStateCallback& stateCb);
 
     /**
 	 * @brief 设置触发器创建回调
@@ -148,35 +265,22 @@ public:
     static void setTriggerExceptionStateCallback(const TriggerExceptionStateCallback& stateCb);
 
     /**
-     * @brief 获取任务诊断信息, 格式例如:
-        [ // 执行者(线程池)列表
-            {
-                "name":"workers", // 执行者(线程池)名称
-                "count":16, // 线程池中所有未结束的任务数量
-                "task": // 任务列表: 任务ID/名称, 所在线程ID/名称, 状态(created,queuing,running,finished), 排队(queue)/执行(run)耗时(单位: ns,us,ms)
-                [
-                    // 任务信息: 任务ID/名称, 所在线程ID/名称, 状态(created,queuing,running,finished), 各状态耗时(单位: ns,us,ms)
-                    {"id":6770523678363649,"name":"task_3","thread_id":19288,"thread_name":"workers-2","state":"running","queue":"71 us","run":"4004 ms"},
-                    {"id":6770523674263553,"name":"task_1","thread_id":24100,"thread_name":"workers-1","state":"running","queue":"67 us","run":"5005 ms"},
-                    {"id":6770523688615937,"name":"task_8","thread_id":0,"thread_name":"","state":"queuing","queue":"1502 ms"},
-                    {"id":6770523686563841,"name":"task_7","thread_id":0,"thread_name":"","state":"queuing","queue":"2002 ms"}
-                ]
-            }
-        ]
-     * @return 诊断信息字符串(JSON)
+     * @brief 获取任务诊断信息
+     * @return 诊断信息列表
      */
-    static std::string getTaskDiagnoseInfo();
+    static std::vector<ExecutorDiagnoseInfo> getTaskDiagnoseInfo();
 
     /**
-     * @brief 获取触发器诊断信息, 格式例如:
-        [ // 触发器列表
-            // 触发器信息: 定时器ID/名称, 状态(created,queuing,running,finished), 排队(queue)/执行(run)耗时(单位: ns,us,ms)
-            {"id":6770523674243072,"name":"timer_1","state":"running","queue":"516 ms","run":"5 ms"},
-            {"id":6770523674245234,"name":"timer_2","state":"running","queue":"900 ms","run":"1002 ms"}
-        ]
-     * @return 诊断信息字符串(JSON)
+     * @brief 获取结束器诊断信息
+     * @return 诊断信息列表
      */
-    static std::string getTriggerDiagnoseInfo();
+    static std::vector<FinisherDiagnoseInfo> getFinisherDiagnoseInfo();
+
+    /**
+     * @brief 获取触发器诊断信息
+     * @return 诊断信息列表
+     */
+    static std::vector<TriggerDiagnoseInfo> getTriggerDiagnoseInfo();
 
 protected:
     /**
@@ -192,11 +296,11 @@ protected:
     static void onExecutorDestroyed(const Executor* executor);
 
     /**
-     * @brief 把任务绑定到执行者(模块内部接口)
-     * @param task 任务
+     * @brief 响应任务创建(模块内部接口)
      * @param executor 执行者
+     * @param task 任务
      */
-    static void bindTaskToExecutor(const Task* task, const Executor* executor);
+    static void onTaskCreated(const Executor* executor, const Task* task);
 
     /**
      * @brief 响应任务开始运行(模块内部接口)
@@ -224,31 +328,62 @@ protected:
     static void onTaskException(int threadId, const std::string& threadName, const Task* task, const std::string& msg);
 
     /**
+     * @brief 响应结束器创建(模块内部接口)
+     * @param finisherCount 当前已创建的结束器数量(不包含当前新创建的)
+     * @param oldestFinisherId 最早的触发ID
+     * @param finisherId 结束器ID
+     * @param task 任务
+     */
+    static DiscardType onFinisherCreated(int finisherCount, int64_t oldestFinisherId, int64_t finisherId, const AsyncTask* task);
+
+    /**
+     * @brief 结束结束器开始运行(模块内部接口)
+     * @param finisherId 结束器ID
+     * @param task 任务
+     */
+    static void onFinisherRunning(int64_t finisherId, const AsyncTask* task);
+
+    /**
+     * @brief 响应结束器运行结束(模块内部接口)
+     * @param finisherId 结束器ID
+     * @param task 任务
+     */
+    static void onFinisherFinished(int64_t finisherId, const AsyncTask* task);
+
+    /**
+     * @brief 响应结束器运行异常(模块内部接口)
+     * @param finisherId 结束器ID
+     * @param task 任务
+     * @param msg 异常消息
+     */
+    static void onFinisherException(int64_t finisherId, const AsyncTask* task, const std::string& msg);
+
+    /**
      * @brief 响应触发器创建(模块内部接口)
-     * @param triggerCount 当前要触发的定时器数量(不包含当前新触发的)
-     * @param oldestTriggerId 最早的触发ID
-     * @param triggerId 触发ID
+     * @param triggerCount 当前已创建的触发器数量(不包含当前新创建的)
+     * @param oldestTriggerId 最早的触发器ID
+     * @param triggerId 触发器ID
      * @param timer 定时器
      */
     static DiscardType onTriggerCreated(int triggerCount, int64_t oldestTriggerId, int64_t triggerId, const Timer* timer);
 
     /**
      * @brief 响应触发器开始运行(模块内部接口)
-     * @param triggerId 触发ID
+     * @param triggerId 触发器ID
      * @param timer 定时器
      */
     static void onTriggerRunning(int64_t triggerId, const Timer* timer);
 
     /**
      * @brief 响应触发器运行结束(模块内部接口)
-     * @param triggerId 触发ID
+     * @param triggerId 触发器ID
      * @param timer 定时器
      */
     static void onTriggerFinished(int64_t triggerId, const Timer* timer);
 
     /**
      * @brief 响应触发器运行异常(模块内部接口)
-     * @param triggerId 触发ID
+     * @param triggerId 触发器ID
      * @param timer 定时器
      * @param msg 异常消息
      */

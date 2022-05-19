@@ -2,7 +2,7 @@
 
 namespace threading
 {
-DeadlineTimer::DeadlineTimer(const std::chrono::system_clock::time_point& deadline, const std::string& name,
+DeadlineTimer::DeadlineTimer(const std::string& name, const std::chrono::system_clock::time_point& deadline,
                              const std::function<void()>& func, const ExecutorPtr& executor)
     : Timer(name, func, executor), m_deadline(deadline)
 {
@@ -106,7 +106,7 @@ void DeadlineTimer::onTrigger()
                 }
             });
         }
-        else /* 则把回调添加到触发列表 */
+        else /* 把回调添加到触发器列表 */
         {
             addToTriggerList(shared_from_this());
         }
