@@ -38,7 +38,7 @@ public:
     ~TimeWatcher();
 
     /**
-	 * @brief 观察
+	 * @brief 观察耗时
 	 * @param subTag 子标签
 	 * @param watchFunc 观察函数(若有设置,则回调该函数,否则回调构造时所设置的函数)
 	 */
@@ -67,10 +67,10 @@ private:
 /* 创建时间观察者(非线程安全) */
 #define MAKE_TIME_WATCHER(watcher, watchFunc, endFunc, tag) utility::TimeWatcher watcher(watchFunc, endFunc, tag)
 
-/* 时间观察者观察(非线程安全) */
+/* 时间观察者观察耗时(非线程安全) */
 #define TIME_WATCHER_WATCH(watcher, subTag) watcher.watch(subTag)
 
-/* 时间观察者观察(非线程安全) */
+/* 时间观察者检测超时(非线程安全) */
 #define TIME_WATCHER_CHECK(watcher, timeout) watcher.check(timeout)
 
 /* 启动简单时间观察者(非线程安全,自动命名变量) */
