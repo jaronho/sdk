@@ -7,7 +7,7 @@
 #include "logger.h"
 #include "logger_define.h"
 
-#define __LOG_IMPL(logger, func, filename, lineNumber, funcName, f, ...) \
+#define __LOGGER_LOG_IMPL__(logger, func, filename, lineNumber, funcName, f, ...) \
     try \
     { \
         (logger).func(filename, lineNumber, funcName, fmt::format(FMT_STRING(f), ##__VA_ARGS__)); \
@@ -22,61 +22,61 @@
     }
 
 #ifdef _WIN32
-#define __FN(x) strrchr(x, '\\') ? strrchr(x, '\\') + 1 : x
+#define __LOGGER_FILENAME__(x) strrchr(x, '\\') ? strrchr(x, '\\') + 1 : x
 #else
-#define __FN(x) strrchr(x, '/') ? strrchr(x, '/') + 1 : x
+#define __LOGGER_FILENAME__(x) strrchr(x, '/') ? strrchr(x, '/') + 1 : x
 #endif
 
 #if (1 == ENABLE_LOGGER_DETAIL) /* 显示: [文件名(全路径) 行号 函数名] 内容 */
-#define TRACE_LOG(logger, f, ...) __LOG_IMPL(logger, trace, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define DEBUG_LOG(logger, f, ...) __LOG_IMPL(logger, debug, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define INFO_LOG(logger, f, ...) __LOG_IMPL(logger, info, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define WARN_LOG(logger, f, ...) __LOG_IMPL(logger, warn, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define ERROR_LOG(logger, f, ...) __LOG_IMPL(logger, error, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define FATAL_LOG(logger, f, ...) __LOG_IMPL(logger, fatal, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define TRACE_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, trace, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define DEBUG_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, debug, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define INFO_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, info, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define WARN_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, warn, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define ERROR_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, error, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define FATAL_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, fatal, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
 #elif (2 == ENABLE_LOGGER_DETAIL) /* 显示: [文件名 行号 函数名] 内容 */
-#define TRACE_LOG(logger, f, ...) __LOG_IMPL(logger, trace, __FN(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define DEBUG_LOG(logger, f, ...) __LOG_IMPL(logger, debug, __FN(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define INFO_LOG(logger, f, ...) __LOG_IMPL(logger, info, __FN(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define WARN_LOG(logger, f, ...) __LOG_IMPL(logger, warn, __FN(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define ERROR_LOG(logger, f, ...) __LOG_IMPL(logger, error, __FN(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define FATAL_LOG(logger, f, ...) __LOG_IMPL(logger, fatal, __FN(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define TRACE_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, trace, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define DEBUG_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, debug, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define INFO_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, info, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define WARN_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, warn, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define ERROR_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, error, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define FATAL_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, fatal, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
 #elif (3 == ENABLE_LOGGER_DETAIL) /* 显示: [文件名(全路径) 行号] 内容 */
-#define TRACE_LOG(logger, f, ...) __LOG_IMPL(logger, trace, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
-#define DEBUG_LOG(logger, f, ...) __LOG_IMPL(logger, debug, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
-#define INFO_LOG(logger, f, ...) __LOG_IMPL(logger, info, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
-#define WARN_LOG(logger, f, ...) __LOG_IMPL(logger, warn, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
-#define ERROR_LOG(logger, f, ...) __LOG_IMPL(logger, error, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
-#define FATAL_LOG(logger, f, ...) __LOG_IMPL(logger, fatal, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
+#define TRACE_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, trace, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
+#define DEBUG_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, debug, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
+#define INFO_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, info, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
+#define WARN_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, warn, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
+#define ERROR_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, error, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
+#define FATAL_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, fatal, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
 #elif (4 == ENABLE_LOGGER_DETAIL) /* 显示: [文件名 行号] 内容 */
-#define TRACE_LOG(logger, f, ...) __LOG_IMPL(logger, trace, __FN(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
-#define DEBUG_LOG(logger, f, ...) __LOG_IMPL(logger, debug, __FN(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
-#define INFO_LOG(logger, f, ...) __LOG_IMPL(logger, info, __FN(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
-#define WARN_LOG(logger, f, ...) __LOG_IMPL(logger, warn, __FN(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
-#define ERROR_LOG(logger, f, ...) __LOG_IMPL(logger, error, __FN(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
-#define FATAL_LOG(logger, f, ...) __LOG_IMPL(logger, fatal, __FN(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
+#define TRACE_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, trace, __LOGGER_FILENAME__(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
+#define DEBUG_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, debug, __LOGGER_FILENAME__(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
+#define INFO_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, info, __LOGGER_FILENAME__(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
+#define WARN_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, warn, __LOGGER_FILENAME__(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
+#define ERROR_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, error, __LOGGER_FILENAME__(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
+#define FATAL_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, fatal, __LOGGER_FILENAME__(__FILE__), __LINE__, "", f, ##__VA_ARGS__)
 #elif (5 == ENABLE_LOGGER_DETAIL) /* 显示: [函数名] 内容 */
-#define TRACE_LOG(logger, f, ...) __LOG_IMPL(logger, trace, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
-#define DEBUG_LOG(logger, f, ...) __LOG_IMPL(logger, debug, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
-#define INFO_LOG(logger, f, ...) __LOG_IMPL(logger, info, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
-#define WARN_LOG(logger, f, ...) __LOG_IMPL(logger, warn, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
-#define ERROR_LOG(logger, f, ...) __LOG_IMPL(logger, error, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
-#define FATAL_LOG(logger, f, ...) __LOG_IMPL(logger, fatal, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
+#define TRACE_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, trace, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
+#define DEBUG_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, debug, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
+#define INFO_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, info, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
+#define WARN_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, warn, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
+#define ERROR_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, error, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
+#define FATAL_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, fatal, "", 0, __FUNCTION__, f, ##__VA_ARGS__)
 #else /* 显示: 内容 */
-#define TRACE_LOG(logger, f, ...) __LOG_IMPL(logger, trace, "", 0, "", f, ##__VA_ARGS__)
-#define DEBUG_LOG(logger, f, ...) __LOG_IMPL(logger, debug, "", 0, "", f, ##__VA_ARGS__)
-#define INFO_LOG(logger, f, ...) __LOG_IMPL(logger, info, "", 0, "", f, ##__VA_ARGS__)
-#define WARN_LOG(logger, f, ...) __LOG_IMPL(logger, warn, "", 0, "", f, ##__VA_ARGS__)
-#define ERROR_LOG(logger, f, ...) __LOG_IMPL(logger, error, "", 0, "", f, ##__VA_ARGS__)
-#define FATAL_LOG(logger, f, ...) __LOG_IMPL(logger, fatal, "", 0, "", f, ##__VA_ARGS__)
+#define TRACE_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, trace, "", 0, "", f, ##__VA_ARGS__)
+#define DEBUG_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, debug, "", 0, "", f, ##__VA_ARGS__)
+#define INFO_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, info, "", 0, "", f, ##__VA_ARGS__)
+#define WARN_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, warn, "", 0, "", f, ##__VA_ARGS__)
+#define ERROR_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, error, "", 0, "", f, ##__VA_ARGS__)
+#define FATAL_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, fatal, "", 0, "", f, ##__VA_ARGS__)
 #endif
 /* 显示(纯净版): 内容 */
-#define TRACE_LOG_PURE(logger, f, ...) __LOG_IMPL(logger, trace, "", 0, "", f, ##__VA_ARGS__)
-#define DEBUG_LOG_PURE(logger, f, ...) __LOG_IMPL(logger, debug, "", 0, "", f, ##__VA_ARGS__)
-#define INFO_LOG_PURE(logger, f, ...) __LOG_IMPL(logger, info, "", 0, "", f, ##__VA_ARGS__)
-#define WARN_LOG_PURE(logger, f, ...) __LOG_IMPL(logger, warn, "", 0, "", f, ##__VA_ARGS__)
-#define ERROR_LOG_PURE(logger, f, ...) __LOG_IMPL(logger, error, "", 0, "", f, ##__VA_ARGS__)
-#define FATAL_LOG_PURE(logger, f, ...) __LOG_IMPL(logger, fatal, "", 0, "", f, ##__VA_ARGS__)
+#define TRACE_LOG_PURE(logger, f, ...) __LOGGER_LOG_IMPL__(logger, trace, "", 0, "", f, ##__VA_ARGS__)
+#define DEBUG_LOG_PURE(logger, f, ...) __LOGGER_LOG_IMPL__(logger, debug, "", 0, "", f, ##__VA_ARGS__)
+#define INFO_LOG_PURE(logger, f, ...) __LOGGER_LOG_IMPL__(logger, info, "", 0, "", f, ##__VA_ARGS__)
+#define WARN_LOG_PURE(logger, f, ...) __LOGGER_LOG_IMPL__(logger, warn, "", 0, "", f, ##__VA_ARGS__)
+#define ERROR_LOG_PURE(logger, f, ...) __LOGGER_LOG_IMPL__(logger, error, "", 0, "", f, ##__VA_ARGS__)
+#define FATAL_LOG_PURE(logger, f, ...) __LOGGER_LOG_IMPL__(logger, fatal, "", 0, "", f, ##__VA_ARGS__)
 
 namespace logger
 {
