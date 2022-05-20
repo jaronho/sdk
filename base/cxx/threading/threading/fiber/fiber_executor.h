@@ -15,7 +15,7 @@ class FiberExecutor final : public Executor
 public:
     /**
      * @brief 构造函数
-     * @param name 线程名称
+     * @param name 线程名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param maxFiberCount 队列中允许的fiber最大个数, 这里默认最多1024个fiber
      * @param stackSize 每个fiber的栈空间大小(字节), 这里默认统一为512Kb
      */

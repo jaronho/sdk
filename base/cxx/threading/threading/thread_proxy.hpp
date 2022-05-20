@@ -21,7 +21,7 @@ class ThreadProxy final
 public:
     /**
      * @brief 创建asio线程, 注意: 如果线程内执行死循环, 当要杀死线程时需要先退出循环, 否则会阻塞调用线程
-     * @param name 任务名称
+     * @param name 任务名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param threadCount 线程个数
      * @param 线程执行者
      */
@@ -32,7 +32,7 @@ public:
 
     /**
      * @brief 同步接口
-     * @param taskName 任务名称
+     * @param taskName 任务名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param function 任务逻辑函数
      * @param executor 指定要执行的线程
      * @param timeout 超时时间
@@ -62,7 +62,7 @@ public:
 
     /**
      * @brief 同步接口
-     * @param taskName 任务名称
+     * @param taskName 任务名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param function 任务逻辑函数
      * @param executor 指定要执行的线程
      * @param timeout 超时时间
@@ -100,7 +100,7 @@ public:
 
     /**
      * @brief 异步接口
-     * @param taskName 任务名称
+     * @param taskName 任务名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param function 任务逻辑函数
      * @param executor 指定要执行的线程
      */
@@ -112,7 +112,7 @@ public:
 #if 1 == ENABLE_THREADING_FIBER
     /**
      * @brief 创建asio线程
-     * @param name 线程名称
+     * @param name 线程名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param maxFiberCount 队列中允许的fiber最大个数, 这里默认最多1024个fiber
      * @param stackSize 每个fiber的栈空间大小(字节), 这里默认统一为512Kb
      * @param 线程执行者
@@ -144,7 +144,7 @@ public:
 
     /**
      * @brief 同步接口(注意: 只用于从fiber线程切到asio线程)
-     * @param taskName 任务名称
+     * @param taskName 任务名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param function 任务逻辑函数
      * @param executor 指定要执行的线程
      */
@@ -161,7 +161,7 @@ public:
 
     /**
      * @brief 同步接口(注意: 只用于从fiber线程切到asio线程)
-     * @param taskName 任务名称
+     * @param taskName 任务名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param function 任务逻辑函数
      * @param executor 指定要执行的线程
      * @return 任意类型

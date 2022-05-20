@@ -59,11 +59,11 @@ public:
      * @param task 异步任务
      * @param finishExecutor 指定结束回调的执行线程(选填), 若非空则其回调不受runOnce接管
      */
-    static void execute(const AsyncTaskPtr& task, const ExecutorPtr& finishExecutor = nullptr);
+    static void execute(const std::shared_ptr<AsyncTask>& task, const ExecutorPtr& finishExecutor = nullptr);
 
     /**
      * @brief 执行异步任务
-     * @param taskName 任务名
+     * @param taskName 任务名(强烈建议设置唯一标识, 以方便后续诊断)
      * @param func 异步任务执行函数(在worker线程调用)
      * @param finishCb 结束回调(在主逻辑线程调用)
      * @param finishExecutor 指定结束回调的执行线程(选填), 若非空则其回调不受runOnce接管

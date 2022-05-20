@@ -16,7 +16,7 @@ class AsioExecutor final : public Executor
 public:
     /**
      * @brief 构造函数
-     * @param name 线程名称
+     * @param name 线程名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param threadCount 线程个数
      */
     AsioExecutor(const std::string& name, size_t threadCount = 1);

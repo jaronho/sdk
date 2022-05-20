@@ -17,7 +17,7 @@ class DeadlineTimer final : public Timer, public std::enable_shared_from_this<De
 public:
     /**
      * @brief 构造函数
-     * @param name 名称
+     * @param name 名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param deadline 触发时间
      * @param func 回调
      * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`runOnce`接管

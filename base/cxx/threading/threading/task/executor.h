@@ -15,7 +15,7 @@ class Executor
 public:
     /**
      * @brief 构造函数
-     * @param name 执行者名称
+     * @param name 执行者名称(强烈建议设置唯一标识, 以方便后续诊断)
      */
     Executor(const std::string& name);
 

@@ -1,9 +1,10 @@
 #include <iostream>
 
-#include "threading//signal/scoped_signal_connection.h"
+#include "threading/async_proxy.h"
 #include "threading/platform.h"
 #include "threading/signal/async_signal.h"
 #include "threading/signal/basic_signal.h"
+#include "threading/signal/scoped_signal_connection.h"
 #include "threading/thread_proxy.hpp"
 #include "threading/timer/deadline_timer.h"
 #include "threading/timer/steady_timer.h"
@@ -45,6 +46,7 @@ int main()
 {
     int mainPid = threading::Platform::getThreadId();
     g_workers = threading::ThreadProxy::createAsioExecutor("workers", 6); /* 创建工作线程(6个线程) */
+    threading::AsyncProxy::start(6); /* 创建异步任务线程(6个线程) */
     /* 定时器1 */
     int count1 = 0;
     auto tm1 = std::make_shared<threading::SteadyTimer>("", std::chrono::seconds(0), std::chrono::milliseconds(5000), [mainPid, &count1]() {
@@ -77,13 +79,22 @@ int main()
         g_sig4(index);
         /* 抛任务到工作线程执行 */
         threading::ThreadProxy::async(
-            "task_" + std::to_string(++index),
+            THREADING_CALLER + "_" + std::to_string(++index),
             [mainPid, index]() {
                 printf("----- [%d:%d] [%lld]\n", mainPid, threading::Platform::getThreadId(), index);
                 std::this_thread::sleep_for(std::chrono::milliseconds(2000));
             },
             g_workers);
+        /* 抛任务到异步任务线程执行 */
+        threading::AsyncProxy::execute(
+            THREADING_CALLER,
+            [&]() {
+                printf("----- [%d:%d] async func\n", mainPid, threading::Platform::getThreadId());
+                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            },
+            [&]() { printf("----- [%d:%d] async func finished\n", mainPid, threading::Platform::getThreadId()); });
         /* 监听定时器回调 */
+        threading::AsyncProxy::runOnce();
         threading::Timer::runOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }

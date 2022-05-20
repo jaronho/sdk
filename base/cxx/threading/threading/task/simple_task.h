@@ -13,7 +13,7 @@ class SimpleTask : public Task
 public:
     /**
      * @brief 构造函数
-     * @param name 任务名称
+     * @param name 任务名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param func 需要执行的函数
      */
     SimpleTask(const std::string& name, const std::function<void()>& func);

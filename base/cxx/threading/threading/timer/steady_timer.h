@@ -17,7 +17,7 @@ class SteadyTimer final : public Timer, public std::enable_shared_from_this<Stea
 public:
     /**
      * @brief 构造函数
-     * @param name 名称
+     * @param name 名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param delay 首次触发的延时, <=0表示马上触发
      * @param interval 触发间隔, <=0表示不重复触发
      * @param func 回调

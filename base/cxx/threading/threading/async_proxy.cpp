@@ -12,7 +12,7 @@ namespace threading
 struct Finisher
 {
     int64_t id = 0; /* ID */
-    AsyncTaskPtr task; /* 异步任务 */
+    std::shared_ptr<AsyncTask> task; /* 异步任务 */
 };
 
 static ExecutorPtr s_workerThreads = nullptr; /* 工作线程池 */
@@ -146,7 +146,7 @@ void AsyncProxy::runOnce()
     }
 }
 
-void AsyncProxy::execute(const AsyncTaskPtr& task, const ExecutorPtr& finishExecutor)
+void AsyncProxy::execute(const std::shared_ptr<AsyncTask>& task, const ExecutorPtr& finishExecutor)
 {
     if (!s_workerThreads)
     {
