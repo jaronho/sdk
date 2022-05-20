@@ -35,7 +35,8 @@ void FileDeleter::start(int interval, const std::vector<FileDeleteConfig>& cfgLi
     }
     else
     {
-        m_detectTimer = std::make_shared<threading::SteadyTimer>(std::chrono::seconds(0), detectInterval, "", [&]() { onDetectTimer(); });
+        m_detectTimer = std::make_shared<threading::SteadyTimer>(THREADING_CALLER, std::chrono::steady_clock::duration::zero(),
+                                                                 detectInterval, [&]() { onDetectTimer(); });
     }
     m_detectTimer->start();
 }
@@ -48,7 +49,7 @@ void FileDeleter::onDetectTimer()
         cfgList = m_cfgList;
     }
     /* 由于文件删除会进行I/O耗时操作, 这里异步执行 */
-    threading::AsyncProxy::execute([&, cfgList]() {
+    threading::AsyncProxy::execute(THREADING_CALLER, [&, cfgList]() {
         for (auto cfg : cfgList)
         {
             handleConfig(cfg);

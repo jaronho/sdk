@@ -280,14 +280,14 @@ void ConnectService::startTimetoutTimer()
         else
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
-            m_timeoutTimer = std::make_shared<threading::SteadyTimer>(
-                std::chrono::seconds(m_connectTimeout), std::chrono::seconds::duration::zero(), "nac.connect.timeout", [wpSelf]() {
-                    const auto self = wpSelf.lock();
-                    if (self)
-                    {
-                        self->onTimetoutTimer();
-                    }
-                });
+            m_timeoutTimer = std::make_shared<threading::SteadyTimer>("nac.connect.timeout", std::chrono::seconds(m_connectTimeout),
+                                                                      std::chrono::seconds::duration::zero(), [wpSelf]() {
+                                                                          const auto self = wpSelf.lock();
+                                                                          if (self)
+                                                                          {
+                                                                              self->onTimetoutTimer();
+                                                                          }
+                                                                      });
         }
         m_timeoutTimer->start();
     }
@@ -320,14 +320,14 @@ void ConnectService::startHeartbeatTimer()
         else
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
-            m_heartbeatTimer = std::make_shared<threading::SteadyTimer>(
-                std::chrono::seconds(m_heartbeatInterval), std::chrono::seconds(m_heartbeatInterval), "nac.heartbeat", [wpSelf]() {
-                    const auto self = wpSelf.lock();
-                    if (self)
-                    {
-                        self->onHeartbeatTimer();
-                    }
-                });
+            m_heartbeatTimer = std::make_shared<threading::SteadyTimer>("nac.heartbeat", std::chrono::seconds(m_heartbeatInterval),
+                                                                        std::chrono::seconds(m_heartbeatInterval), [wpSelf]() {
+                                                                            const auto self = wpSelf.lock();
+                                                                            if (self)
+                                                                            {
+                                                                                self->onHeartbeatTimer();
+                                                                            }
+                                                                        });
         }
         m_heartbeatTimer->start();
     }
@@ -379,8 +379,8 @@ void ConnectService::startOfflineCheckTimer()
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
             m_offlineCheckTimer =
-                std::make_shared<threading::SteadyTimer>(std::chrono::seconds(m_offlineCheckInterval),
-                                                         std::chrono::seconds(m_offlineCheckInterval), "nac.offline.check", [wpSelf]() {
+                std::make_shared<threading::SteadyTimer>("nac.offline.check", std::chrono::seconds(m_offlineCheckInterval),
+                                                         std::chrono::seconds(m_offlineCheckInterval), [wpSelf]() {
                                                              const auto self = wpSelf.lock();
                                                              if (self)
                                                              {

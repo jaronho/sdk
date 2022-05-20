@@ -154,9 +154,8 @@ bool AccessCtrl::start(const AccessConfig& cfg)
         }
         else
         {
-            m_retryTimer = std::make_shared<threading::SteadyTimer>(std::chrono::seconds(cfg.retryInterval[0]),
-                                                                    std::chrono::steady_clock::duration::zero(), "nac.connect.retry",
-                                                                    [&]() { onRetryTimer(); });
+            m_retryTimer = std::make_shared<threading::SteadyTimer>("nac.connect.retry", std::chrono::seconds(cfg.retryInterval[0]),
+                                                                    std::chrono::steady_clock::duration::zero(), [&]() { onRetryTimer(); });
         }
     }
     /* 首次连接 */

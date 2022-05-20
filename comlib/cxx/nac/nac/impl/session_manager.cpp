@@ -28,14 +28,14 @@ public:
         if (!m_timeoutTimer)
         {
             const std::weak_ptr<SessionManager::Session> wpSelf = shared_from_this();
-            m_timeoutTimer = std::make_shared<threading::SteadyTimer>(
-                std::chrono::seconds(seconds), std::chrono::steady_clock::duration::zero(), "nac.session.timeout", [wpSelf]() {
-                    const auto self = wpSelf.lock();
-                    if (self)
-                    {
-                        self->onTimeout();
-                    }
-                });
+            m_timeoutTimer = std::make_shared<threading::SteadyTimer>("nac.session.timeout", std::chrono::seconds(seconds),
+                                                                      std::chrono::steady_clock::duration::zero(), [wpSelf]() {
+                                                                          const auto self = wpSelf.lock();
+                                                                          if (self)
+                                                                          {
+                                                                              self->onTimeout();
+                                                                          }
+                                                                      });
         }
         m_timeoutTimer->start();
         return true;
