@@ -7,16 +7,16 @@
 #include <string>
 
 #ifdef _WIN32
-#define __THREADING_SHORT_FILENAME__(x) strrchr(x, '\\') ? strrchr(x, '\\') + 1 : x
+#define __THREADING_FILENAME__(x) strrchr(x, '\\') ? strrchr(x, '\\') + 1 : x
 #else
-#define __THREADING_SHORT_FILENAME__(x) strrchr(x, '/') ? strrchr(x, '/') + 1 : x
+#define __THREADING_FILENAME__(x) strrchr(x, '/') ? strrchr(x, '/') + 1 : x
 #endif
 
 /**
  * @brief 宏定义线程接口调用者(自动拼接: 文件名_行号_函数名)
  */
 #define THREADING_CALLER \
-    std::string(__THREADING_SHORT_FILENAME__(__FILE__)).append("_").append(std::to_string(__LINE__)).append("_").append(__FUNCTION__)
+    std::string(__THREADING_FILENAME__(__FILE__)).append("_").append(std::to_string(__LINE__)).append("_").append(__FUNCTION__)
 
 namespace threading
 {
