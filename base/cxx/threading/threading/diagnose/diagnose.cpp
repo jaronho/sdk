@@ -209,44 +209,47 @@ std::vector<ExecutorDiagnoseInfo> Diagnose::getTaskDiagnoseInfo()
         edi.name = iter->second->executor->getName();
         for (auto taskIter = iter->second->taskList.begin(); iter->second->taskList.end() != taskIter; ++taskIter)
         {
-            TaskDiagnoseInfo tdi;
-            tdi.taskId = taskIter->second->task->getId();
-            tdi.taskName = taskIter->second->task->getName();
-            tdi.threadId = taskIter->second->threadId;
-            tdi.threadName = taskIter->second->threadName;
+            TaskDiagnoseInfo info;
+            info.taskId = taskIter->second->task->getId();
+            info.taskName = taskIter->second->task->getName();
+            info.threadId = taskIter->second->threadId;
+            info.threadName = taskIter->second->threadName;
             switch (taskIter->second->task->getState())
             {
             case Task::State::created:
-                tdi.state = DiagnoseState::created;
+                info.state = DiagnoseState::created;
+                info.queue = std::chrono::steady_clock::duration::zero();
+                info.run = std::chrono::steady_clock::duration::zero();
                 break;
             case Task::State::queuing:
-                tdi.state = DiagnoseState::queuing;
-                tdi.queue = std::chrono::steady_clock::now() - taskIter->second->queuing;
+                info.state = DiagnoseState::queuing;
+                info.queue = std::chrono::steady_clock::now() - taskIter->second->queuing;
+                info.run = std::chrono::steady_clock::duration::zero();
                 break;
             case Task::State::running:
-                tdi.state = DiagnoseState::running;
-                tdi.queue = taskIter->second->running - taskIter->second->queuing;
-                tdi.run = std::chrono::steady_clock::now() - taskIter->second->running;
+                info.state = DiagnoseState::running;
+                info.queue = taskIter->second->running - taskIter->second->queuing;
+                info.run = std::chrono::steady_clock::now() - taskIter->second->running;
                 break;
             case Task::State::finished:
-                tdi.state = DiagnoseState::finished;
+                info.state = DiagnoseState::finished;
                 std::chrono::steady_clock::time_point zero{};
                 if (taskIter->second->finished > zero)
                 {
-                    tdi.run = taskIter->second->finished - taskIter->second->running;
+                    info.run = taskIter->second->finished - taskIter->second->running;
                 }
                 else if (taskIter->second->abnormal > zero)
                 {
-                    tdi.run = taskIter->second->abnormal - taskIter->second->running;
+                    info.run = taskIter->second->abnormal - taskIter->second->running;
                 }
                 else
                 {
-                    tdi.run = std::chrono::steady_clock::now() - taskIter->second->running;
+                    info.run = std::chrono::steady_clock::now() - taskIter->second->running;
                 }
                 break;
             }
-            tdi.exceptionMsg = taskIter->second->exceptionMsg;
-            edi.taskInfoList.emplace_back(tdi);
+            info.exceptionMsg = taskIter->second->exceptionMsg;
+            edi.taskInfoList.emplace_back(info);
         }
         infoList.emplace_back(edi);
     }
@@ -259,37 +262,38 @@ std::vector<FinisherDiagnoseInfo> Diagnose::getFinisherDiagnoseInfo()
     std::lock_guard<std::mutex> locker(s_mutexFinisher);
     for (auto iter = s_finisherList.begin(); s_finisherList.end() != iter; ++iter)
     {
-        FinisherDiagnoseInfo fdi;
-        fdi.taskId = iter->second->task->getId();
-        fdi.taskName = iter->second->task->getName();
-        fdi.state = iter->second->state;
+        FinisherDiagnoseInfo info;
+        info.taskId = iter->second->task->getId();
+        info.taskName = iter->second->task->getName();
+        info.state = iter->second->state;
         switch (iter->second->state)
         {
         case DiagnoseState::queuing:
-            fdi.state = DiagnoseState::queuing;
-            fdi.queue = std::chrono::steady_clock::now() - iter->second->queuing;
+            info.state = DiagnoseState::queuing;
+            info.queue = std::chrono::steady_clock::now() - iter->second->queuing;
+            info.run = std::chrono::steady_clock::duration::zero();
             break;
         case DiagnoseState::running:
-            fdi.queue = iter->second->running - iter->second->queuing;
-            fdi.run = std::chrono::steady_clock::now() - iter->second->running;
+            info.queue = iter->second->running - iter->second->queuing;
+            info.run = std::chrono::steady_clock::now() - iter->second->running;
             break;
         case DiagnoseState::finished:
             std::chrono::steady_clock::time_point zero{};
             if (iter->second->finished > zero)
             {
-                fdi.run = iter->second->finished - iter->second->running;
+                info.run = iter->second->finished - iter->second->running;
             }
             else if (iter->second->abnormal > zero)
             {
-                fdi.run = iter->second->abnormal - iter->second->running;
+                info.run = iter->second->abnormal - iter->second->running;
             }
             else
             {
-                fdi.run = std::chrono::steady_clock::now() - iter->second->running;
+                info.run = std::chrono::steady_clock::now() - iter->second->running;
             }
             break;
         }
-        infoList.emplace_back(fdi);
+        infoList.emplace_back(info);
     }
     return infoList;
 }
@@ -300,37 +304,38 @@ std::vector<TriggerDiagnoseInfo> Diagnose::getTriggerDiagnoseInfo()
     std::lock_guard<std::mutex> locker(s_mutexTrigger);
     for (auto iter = s_triggerList.begin(); s_triggerList.end() != iter; ++iter)
     {
-        TriggerDiagnoseInfo tdi;
-        tdi.timerId = iter->second->timer->getId();
-        tdi.timerName = iter->second->timer->getName();
-        tdi.state = iter->second->state;
+        TriggerDiagnoseInfo info;
+        info.timerId = iter->second->timer->getId();
+        info.timerName = iter->second->timer->getName();
+        info.state = iter->second->state;
         switch (iter->second->state)
         {
         case DiagnoseState::queuing:
-            tdi.state = DiagnoseState::queuing;
-            tdi.queue = std::chrono::steady_clock::now() - iter->second->queuing;
+            info.state = DiagnoseState::queuing;
+            info.queue = std::chrono::steady_clock::now() - iter->second->queuing;
+            info.run = std::chrono::steady_clock::duration::zero();
             break;
         case DiagnoseState::running:
-            tdi.queue = iter->second->running - iter->second->queuing;
-            tdi.run = std::chrono::steady_clock::now() - iter->second->running;
+            info.queue = iter->second->running - iter->second->queuing;
+            info.run = std::chrono::steady_clock::now() - iter->second->running;
             break;
         case DiagnoseState::finished:
             std::chrono::steady_clock::time_point zero{};
             if (iter->second->finished > zero)
             {
-                tdi.run = iter->second->finished - iter->second->running;
+                info.run = iter->second->finished - iter->second->running;
             }
             else if (iter->second->abnormal > zero)
             {
-                tdi.run = iter->second->abnormal - iter->second->running;
+                info.run = iter->second->abnormal - iter->second->running;
             }
             else
             {
-                tdi.run = std::chrono::steady_clock::now() - iter->second->running;
+                info.run = std::chrono::steady_clock::now() - iter->second->running;
             }
             break;
         }
-        infoList.emplace_back(tdi);
+        infoList.emplace_back(info);
     }
     return infoList;
 }
