@@ -56,12 +56,12 @@ public:
         {
             m_timeoutTimer.reset();
         }
+        WARN_LOG(m_logger, "会话超时({}秒): 未收到业务响应数据, bizCode[{}], seqId[{}].", m_timeout, m_bizCode, m_seqId);
         const auto sessionManager = m_wpSessionManager.lock();
         if (sessionManager)
         {
             sessionManager->onResponseCallback(false, m_bizCode, m_seqId, m_responseCb);
         }
-        WARN_LOG(m_logger, "会话超时({}秒): bizCode[{}], seqId[{}].", m_timeout, m_bizCode, m_seqId);
     }
 
     void onResponse(const std::string& data)
@@ -154,6 +154,7 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
             }
             else /* 发送失败 */
             {
+                WARN_LOG(self->m_logger, "数据发送失败, bizCode: {}, seqId: {}.", bizCode, seqId);
                 self->onResponseCallback(false, bizCode, seqId, callback);
             }
         }
@@ -163,6 +164,7 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
         return pkt->seqId;
     }
     /* 发送失败 */
+    WARN_LOG(m_logger, "数据发送失败, bizCode: {}, seqId: {}.", bizCode, seqId);
     onResponseCallback(false, bizCode, pkt->seqId, callback);
     return -1;
 }
@@ -227,10 +229,6 @@ void SessionManager::onResponseCallback(bool sendOk, unsigned int bizCode, int64
     }
     if (found)
     {
-        if (!sendOk)
-        {
-            WARN_LOG(m_logger, "数据发送失败, bizCode: {}, seqId: {}.", bizCode, seqId);
-        }
         if (callback)
         {
             callback(sendOk, bizCode, seqId, "");
