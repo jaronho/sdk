@@ -125,7 +125,7 @@ void AccessCtrl::setAuthResultCallback(const std::function<bool(const nlohmann::
     m_connectService->setAuthResultCallback([callback](const std::string& data) {
         if (callback)
         {
-            return callback(nlohmann::dump(data));
+            return callback(nlohmann::parse(data));
         }
         return true;
     });
