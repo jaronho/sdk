@@ -70,7 +70,7 @@ public:
     static std::vector<utility::Net::IfaceInfo> getEthernetCards();
 
     /**
-     * @brief 修改以太网卡名(修改成功后需要重启才能生效)
+     * @brief 修改以太网卡名(修改成功后需要重启网络才能生效)
      * @param macNameMap 要修改名称的网卡, key: MAC地址, value: 网卡名
      * @return true-有修改, false-无修改
      */
@@ -97,5 +97,14 @@ public:
      * @return true-有网桥, false-无网桥
      */
     static bool enableBridge(const std::string& name);
+
+    /**
+     * @brief 检测ping是否可通(阻塞)
+     * @param src 本机要使用的网络接口(当本机有多个网卡时, 可以指定使用哪一个), 为空表示默认, 例如: 网卡名(enp1s0) 或 IP(192.168.3.123)
+     * @param dest 目标地址, 可以为IP或域名
+     * @param timeout 超时时间(单位: 秒), 小等于0表示使用默认超时
+     * @return true-可通, false-不通
+     */
+    static bool checkPing(const std::string& src, const std::string& dest, int timeout = 1);
 };
 } // namespace toolkit

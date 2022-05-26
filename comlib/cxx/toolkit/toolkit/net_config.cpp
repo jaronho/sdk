@@ -453,4 +453,43 @@ bool NetConfig::enableBridge(const std::string& name)
     return false;
 #endif
 }
+
+bool NetConfig::checkPing(const std::string& src, const std::string& dest, int timeout)
+{
+    if (dest.empty())
+    {
+        return false;
+    }
+    std::string command;
+    command += "ping";
+    /* 设置次数 */
+#ifdef _WIN32
+    command += " -n 1";
+#else
+    command += " -c 1";
+#endif
+    /* 设置超时(秒) */
+    if (timeout > 0)
+    {
+        command += " -w " + std::to_string(timeout);
+    }
+    /* 设置本机要使用的网络接口 */
+    if (!src.empty())
+    {
+#ifdef _WIN32
+        command += " -S " + src;
+#else
+        command += " -I " + src;
+#endif
+    }
+    /* 设置目标地址 */
+    command += " " + dest;
+    /* 执行和解析 */
+    std::string outStr; /* 这里需要读取输出, 否则Linux下会失败 */
+    if (0 != utility::System::runCmd(command, &outStr))
+    {
+        return false;
+    }
+    return true;
+}
 } // namespace toolkit
