@@ -148,14 +148,14 @@ std::string Serial::read(size_t size)
 
 std::string Serial::readAll()
 {
-    static const size_t BUF_SIZE = 1024;
+    static const size_t BUF_SIZE = 1025;
     char buf[BUF_SIZE] = {0};
     std::string bytes;
     std::lock_guard<std::mutex> locker(m_mutex);
     size_t canReadCount = m_impl->availableForRead();
     while (canReadCount > 0)
     {
-        size_t willReadCount = BUF_SIZE;
+        size_t willReadCount = BUF_SIZE - 1;
         if (canReadCount < willReadCount)
         {
             willReadCount = canReadCount;
