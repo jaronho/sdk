@@ -160,15 +160,16 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
         content.append("[").append(func).append("]");
     }
     content.append(" ").append(msg); /* 内容 */
-    /* 记录到日志文件 */
+    /* 日志记录/打印 */
     if (level >= m_level)
     {
+        /* 记录到文件 */
         m_dailyLog->record(content, true);
-    }
-    /* 打印到控制台 */
-    if (m_consoleEnable)
-    {
-        fmt::print(getLevelTextStyle(level), "{}\n", content);
+        /* 打印到控制台 */
+        if (m_consoleEnable)
+        {
+            fmt::print(getLevelTextStyle(level), "{}\n", content);
+        }
     }
 }
 } // namespace logger
