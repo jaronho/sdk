@@ -426,7 +426,7 @@ bool NetConfig::deleteBridge(const std::string& name)
 #endif
 }
 
-bool NetConfig::enableBridge(const std::string& name)
+bool NetConfig::setBridgeEnable(const std::string& name, bool enable)
 {
     if (name.empty())
     {
@@ -440,13 +440,23 @@ bool NetConfig::enableBridge(const std::string& name)
     {
         if (0 == name.compare(bridgeInfo.name)) /* 存在网桥 */
         {
-            /* step1: 启动网络接口, 注意: 这里用ifconfig up, 如果用ifdown/ifup貌似会给自动加上IP地址 */
-            for (const auto& port : bridgeInfo.ports)
+            if (enable) /* 启动网络接口 */
             {
-                utility::System::runCmd("ip addr flush dev " + port + " && ifconfig " + port + " up");
+                for (const auto& port : bridgeInfo.ports)
+                {
+                    /* 注意: 这里用ifconfig up, 如果用ifdown/ifup貌似会给自动加上IP地址 */
+                    utility::System::runCmd("ip addr flush dev " + port + " && ifconfig " + port + " down && ifconfig " + port + " up");
+                }
             }
-            /* step2: 启动网桥, 注意: 需要用ifdown/ifup使配置文件生效, 不能使用ifconfig down/up */
-            utility::System::runCmd("ip addr flush dev " + name + " && ifdown " + name + " && ifup " + name);
+            if (enable) /* 启动网桥 */
+            {
+                /* 需要用ifdown/ifup使配置文件生效, 不能使用ifconfig down/up */
+                utility::System::runCmd("ip addr flush dev " + name + " && ifdown " + name + " && ifup " + name);
+            }
+            else /* 停用网桥 */
+            {
+                utility::System::runCmd("ifdown " + name);
+            }
             return true;
         }
     }

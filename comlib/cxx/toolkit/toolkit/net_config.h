@@ -92,11 +92,12 @@ public:
     static bool deleteBridge(const std::string& name);
 
     /**
-     * @brief 启用网桥
+     * @brief 启用/禁用网桥
      * @param name 网桥名称
+     * @param enable true-启用, false-禁用
      * @return true-有网桥, false-无网桥
      */
-    static bool enableBridge(const std::string& name);
+    static bool setBridgeEnable(const std::string& name, bool enable);
 
     /**
      * @brief 检测ping是否可通(阻塞)
