@@ -39,11 +39,11 @@ public:
      * @brief 十进制数字转十六进制字符串
      * @param dec 十进制数字
      * @param bit 十六进制字符串的位数(选填), 不足的则补0
-     * @param prefix 是否加上前缀"0x"(选填), 默认加上
-     * @param isUpper 是否输出大写(选填), 默认小写
+     * @param prefix 是否加上前缀"0x"(选填), 默认无
+     * @param isUpper 是否输出大写(选填), 默认大写
      * @return 十六进制字符串
      */
-    static std::string dec2hex(unsigned int dec, unsigned int bit = 0, bool prefix = true, bool isUpper = false);
+    static std::string dec2hex(unsigned int dec, unsigned int bit = 0, bool prefix = false, bool isUpper = true);
 
     /**
      * @brief 十六进制字符串转十进制数字
