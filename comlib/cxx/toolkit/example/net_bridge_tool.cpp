@@ -34,7 +34,7 @@ int main(int argc, char** argv)
             printf(" %s", port.c_str());
         }
         printf("\n");
-        if (toolkit::NetConfig::modifyBridge(bridgeName, portList))
+        if (toolkit::NetConfig::configBridge(bridgeName, portList))
         {
             printf("modify bridge\n");
         }

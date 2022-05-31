@@ -240,7 +240,7 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
     return netcardList;
 }
 
-bool NetConfig::modifyEthernetCardName(const std::map<std::string, std::string>& macNameMap)
+bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>& macNameMap)
 {
     struct ModifyInfo
     {
@@ -332,7 +332,7 @@ bool NetConfig::modifyEthernetCardName(const std::map<std::string, std::string>&
 #endif
 }
 
-bool NetConfig::modifyBridge(const std::string& name, const std::vector<std::string>& ports)
+bool NetConfig::configBridge(const std::string& name, const std::vector<std::string>& ports)
 {
     if (name.empty())
     {
@@ -426,7 +426,7 @@ bool NetConfig::deleteBridge(const std::string& name)
 #endif
 }
 
-bool NetConfig::setBridgeEnable(const std::string& name, bool enable)
+bool NetConfig::enableBridge(const std::string& name)
 {
     if (name.empty())
     {
@@ -440,23 +440,14 @@ bool NetConfig::setBridgeEnable(const std::string& name, bool enable)
     {
         if (0 == name.compare(bridgeInfo.name)) /* 存在网桥 */
         {
-            if (enable) /* 启动网络接口 */
+            /* step1. 启动网络接口 */
+            for (const auto& port : bridgeInfo.ports)
             {
-                for (const auto& port : bridgeInfo.ports)
-                {
-                    /* 注意: 这里用ifconfig up, 如果用ifdown/ifup貌似会给自动加上IP地址 */
-                    utility::System::runCmd("ip addr flush dev " + port + " && ifconfig " + port + " down && ifconfig " + port + " up");
-                }
+                /* 注意: 这里用ifconfig up, 如果用ifdown/ifup貌似会给自动加上IP地址 */
+                utility::System::runCmd("ip addr flush dev " + port + " && ifconfig " + port + " down && ifconfig " + port + " up");
             }
-            if (enable) /* 启动网桥 */
-            {
-                /* 需要用ifdown/ifup使配置文件生效, 不能使用ifconfig down/up */
-                utility::System::runCmd("ip addr flush dev " + name + " && ifdown " + name + " && ifup " + name);
-            }
-            else /* 停用网桥 */
-            {
-                utility::System::runCmd("ifdown " + name);
-            }
+            /* step2. 启动网桥, 需要用ifdown/ifup使配置文件生效, 不能使用ifconfig down/up */
+            utility::System::runCmd("ip addr flush dev " + name + " && ifdown " + name + " && ifup " + name);
             return true;
         }
     }

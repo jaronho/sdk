@@ -70,19 +70,19 @@ public:
     static std::vector<utility::Net::IfaceInfo> getEthernetCards();
 
     /**
-     * @brief 修改以太网卡名(修改成功后需要重启网络才能生效)
-     * @param macNameMap 要修改名称的网卡, key: MAC地址, value: 网卡名
-     * @return true-有修改, false-无修改
+     * @brief 配置以太网卡名(成功后需要重启网络才能生效)
+     * @param macNameMap 要配置的网卡, key: MAC地址, value: 网卡名
+     * @return true-有配置操作, false-无配置操作
      */
-    static bool modifyEthernetCardName(const std::map<std::string, std::string>& macNameMap);
+    static bool configEthernetCardName(const std::map<std::string, std::string>& macNameMap);
 
     /**
-     * @brief 添加/修改网桥
+     * @brief 配置网桥
      * @param name 网桥名称
      * @param ports 网络接口
-     * @return true-有添加/修改, false-无添加/修改
+     * @return true-有配置操作, false-无配置操作
      */
-    static bool modifyBridge(const std::string& name, const std::vector<std::string>& ports);
+    static bool configBridge(const std::string& name, const std::vector<std::string>& ports);
 
     /**
      * @brief 删除网桥
@@ -92,12 +92,11 @@ public:
     static bool deleteBridge(const std::string& name);
 
     /**
-     * @brief 启用/禁用网桥
+     * @brief 启用(重启)网桥
      * @param name 网桥名称
-     * @param enable true-启用, false-禁用
      * @return true-有网桥, false-无网桥
      */
-    static bool setBridgeEnable(const std::string& name, bool enable);
+    static bool enableBridge(const std::string& name);
 
     /**
      * @brief 检测ping是否可通(阻塞)
