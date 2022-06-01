@@ -99,6 +99,37 @@ std::vector<std::string> StrTool::split(const std::string& str, const std::strin
     return strList;
 }
 
+std::vector<std::string> StrTool::split(const std::string& str, int sepNum)
+{
+    std::vector<std::string> strList;
+    if (str.empty())
+    {
+        return strList;
+    }
+    if (sepNum > 0)
+    {
+        std::string sepStr;
+        for (size_t i = 0; i < str.size(); ++i)
+        {
+            if (sepStr.size() == sepNum)
+            {
+                strList.emplace_back(sepStr);
+                sepStr.clear();
+            }
+            sepStr.push_back(str[i]);
+        }
+        if (!sepStr.empty())
+        {
+            strList.emplace_back(sepStr);
+        }
+    }
+    else
+    {
+        strList.emplace_back(str);
+    }
+    return strList;
+}
+
 std::string StrTool::join(const std::vector<std::string>& strList, const std::string& sep, size_t count)
 {
     if (0 == count || count > strList.size())

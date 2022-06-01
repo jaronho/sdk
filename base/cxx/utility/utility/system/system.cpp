@@ -268,8 +268,8 @@ void System::waitForTime(unsigned int maxMS, const std::function<bool()>& func, 
 {
     if (func)
     {
-        std::chrono::steady_clock::time_point endTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(maxMS);
-        while (std::chrono::steady_clock::now() < endTime)
+        auto endTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(maxMS);
+        while (0 == maxMS || std::chrono::steady_clock::now() < endTime)
         {
             if (func())
             {
@@ -289,7 +289,7 @@ void System::waitForCount(unsigned int maxCount, const std::function<bool()>& fu
     if (func)
     {
         unsigned int count = 0;
-        while (count < maxCount)
+        while (0 == maxCount || count < maxCount)
         {
             if (func())
             {

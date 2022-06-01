@@ -67,6 +67,14 @@ public:
     static std::vector<std::string> split(const std::string& str, const std::string& sep);
 
     /**
+     * @brief 分割
+     * @param str 字符串
+     * @param sepNum 分割的数量
+     * @return 分割后的子字符串列表
+     */
+    static std::vector<std::string> split(const std::string& str, int sepNum);
+
+    /**
      * @brief 组合
      * @param strList 字符串列表
      * @param sep 组合的符号(选填), 默认为空
