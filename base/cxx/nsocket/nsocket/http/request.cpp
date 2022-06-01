@@ -88,9 +88,9 @@ std::string url_decode(const std::string& src)
 /**
  * @breif 十六进制转十进制
  */
-static unsigned int hex2dec(const std::string& hexStr)
+static unsigned long long hex2dec(const std::string& hexStr)
 {
-    unsigned int dec = 0;
+    unsigned long long dec = 0;
     size_t len = hexStr.size();
     size_t start = 0;
     if (len >= 3)
@@ -114,15 +114,15 @@ static unsigned int hex2dec(const std::string& hexStr)
         const char& ch = hexStr.at(i);
         if (ch >= '0' && ch <= '9')
         {
-            dec += ((unsigned int)(ch)-48) * (unsigned int)(pow(16, len - i - 1));
+            dec += ((unsigned long long)(ch)-48) * (unsigned long long)(pow(16, len - i - 1));
         }
         else if (ch >= 'A' && ch <= 'F')
         {
-            dec += ((unsigned int)(ch)-55) * (unsigned int)(pow(16, len - i - 1));
+            dec += ((unsigned long long)(ch)-55) * (unsigned long long)(pow(16, len - i - 1));
         }
         else if (ch >= 'a' && ch <= 'f')
         {
-            dec += ((unsigned int)(ch)-87) * (unsigned int)(pow(16, len - i - 1));
+            dec += ((unsigned long long)(ch)-87) * (unsigned long long)(pow(16, len - i - 1));
         }
         else
         {

@@ -54,10 +54,10 @@ bool Digit::isHex(const std::string& hexStr)
     return true;
 }
 
-std::string Digit::dec2bin(unsigned int dec, unsigned int bit)
+std::string Digit::dec2bin(unsigned long long dec, unsigned int bit)
 {
     std::string binStr;
-    for (unsigned int i = dec; i; i = i / 2)
+    for (unsigned long long i = dec; i; i = i / 2)
     {
         binStr += i % 2 ? '1' : '0';
     }
@@ -73,9 +73,9 @@ std::string Digit::dec2bin(unsigned int dec, unsigned int bit)
     return binStr;
 }
 
-unsigned int Digit::bin2dec(const std::string& binStr)
+unsigned long long Digit::bin2dec(const std::string& binStr)
 {
-    unsigned int dec = 0;
+    unsigned long long dec = 0;
     for (size_t i = 0, len = binStr.size(); i < len; ++i)
     {
         const char& ch = binStr.at(i);
@@ -85,7 +85,7 @@ unsigned int Digit::bin2dec(const std::string& binStr)
         }
         else if ('1' == ch)
         {
-            dec += (unsigned int)(pow(2, len - i - 1));
+            dec += (unsigned long long)(pow(2, len - i - 1));
         }
         else
         {
@@ -95,11 +95,11 @@ unsigned int Digit::bin2dec(const std::string& binStr)
     return dec;
 }
 
-static std::string dec2hexImpl(unsigned int dec, bool isUpper)
+static std::string dec2hexImpl(unsigned long long dec, bool isUpper)
 {
     std::string hexStr = "";
-    unsigned int temp = dec / 16;
-    unsigned int left = dec % 16;
+    unsigned long long temp = dec / 16;
+    unsigned long long left = dec % 16;
     if (temp > 0)
     {
         hexStr += dec2hexImpl(temp, isUpper);
@@ -115,7 +115,7 @@ static std::string dec2hexImpl(unsigned int dec, bool isUpper)
     return hexStr;
 }
 
-std::string Digit::dec2hex(unsigned int dec, unsigned int bit, bool prefix, bool isUpper)
+std::string Digit::dec2hex(unsigned long long dec, unsigned int bit, bool prefix, bool isUpper)
 {
     std::string hexStr = dec2hexImpl(dec, isUpper);
     while (hexStr.size() < bit)
@@ -129,9 +129,9 @@ std::string Digit::dec2hex(unsigned int dec, unsigned int bit, bool prefix, bool
     return hexStr;
 }
 
-unsigned int Digit::hex2dec(const std::string& hexStr)
+unsigned long long Digit::hex2dec(const std::string& hexStr)
 {
-    unsigned int dec = 0;
+    unsigned long long dec = 0;
     size_t len = hexStr.size();
     size_t start = 0;
     if (len >= 3)
@@ -155,15 +155,15 @@ unsigned int Digit::hex2dec(const std::string& hexStr)
         const char& ch = hexStr.at(i);
         if (ch >= '0' && ch <= '9')
         {
-            dec += ((unsigned int)(ch)-48) * (unsigned int)(pow(16, len - i - 1));
+            dec += ((unsigned long long)(ch)-48) * (unsigned long long)(pow(16, len - i - 1));
         }
         else if (ch >= 'A' && ch <= 'F')
         {
-            dec += ((unsigned int)(ch)-55) * (unsigned int)(pow(16, len - i - 1));
+            dec += ((unsigned long long)(ch)-55) * (unsigned long long)(pow(16, len - i - 1));
         }
         else if (ch >= 'a' && ch <= 'f')
         {
-            dec += ((unsigned int)(ch)-87) * (unsigned int)(pow(16, len - i - 1));
+            dec += ((unsigned long long)(ch)-87) * (unsigned long long)(pow(16, len - i - 1));
         }
         else
         {
