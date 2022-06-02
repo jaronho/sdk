@@ -190,20 +190,19 @@ std::string UsbInfo::describe() const
     return desc;
 }
 
-std::vector<UsbInfo> UsbInfo::queryUsbInfos(const std::function<bool(const Usb& item)>& filterFunc, bool mustHaveDevNode, bool mf)
+std::vector<UsbInfo> UsbInfo::queryUsbInfos(const std::function<bool(const UsbInfo& info)>& filterFunc, bool mustHaveDevNode, bool mf)
 {
     std::vector<UsbInfo> usbInfoList;
     auto usbList = Usb::getAllUsbs(true, true, mf);
     for (size_t i = 0; i < usbList.size(); ++i)
     {
-        const auto& item = usbList[i];
-        if (!filterFunc || filterFunc(item))
+        UsbInfo info(usbList[i]);
+        if (!filterFunc || filterFunc(info))
         {
-            UsbInfo info(item);
 #ifndef _WIN32
-            if (mustHaveDevNode && (item.isHid() || item.isStorage())) /* 只需获取HID和存储类型的设备节点 */
+            if (mustHaveDevNode && (info.isHid() || info.isStorage())) /* 只需获取HID和存储类型的设备节点 */
             {
-                info.m_devNodes = queryUsbDevNodes(item.getBusNum(), item.getPortNum(), item.getAddress());
+                info.m_devNodes = queryUsbDevNodes(info.getBusNum(), info.getPortNum(), info.getAddress());
                 if (info.m_devNodes.empty())
                 {
                     continue;

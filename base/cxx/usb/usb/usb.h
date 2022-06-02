@@ -174,12 +174,12 @@ private:
 #endif
 
 private:
-    std::shared_ptr<Usb> m_parent; /* 父节点 */
-    int m_busNum; /* 总线编号 */
-    int m_portNum; /* 端口编号(Linux中也叫系统编号sysNum) */
-    int m_address; /* 地址(每次拔插都会变) */
-    int m_classCode; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
-    int m_speedLevel; /* 速度等级 */
+    std::shared_ptr<Usb> m_parent = nullptr; /* 父节点 */
+    int m_busNum = 0; /* 总线编号 */
+    int m_portNum = 0; /* 端口编号(Linux中也叫系统编号sysNum) */
+    int m_address = 0; /* 地址(每次拔插都会变) */
+    int m_classCode = 0; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
+    int m_speedLevel = 0; /* 速度等级 */
     std::string m_vid; /* 厂商ID(小写字母) */
     std::string m_pid; /* 产品ID(小写字母) */
     std::string m_serial; /* 序列号 */
