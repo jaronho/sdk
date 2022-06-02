@@ -486,11 +486,31 @@ bool NetConfig::checkPing(const std::string& src, const std::string& dest, int t
     /* 设置目标地址 */
     command += " " + dest;
     /* 执行和解析 */
-    std::string outStr; /* 这里需要读取输出, 否则Linux下会失败 */
-    if (0 != utility::System::runCmd(command, &outStr))
+    std::vector<std::string> outVec; /* 这里需要读取输出, 否则Linux下会失败 */
+    if (0 != utility::System::runCmd(command, nullptr, &outVec))
     {
         return false;
     }
-    return true;
+    /* 计算有效的行数 */
+    int validLineCount = 0;
+    for (auto line : outVec)
+    {
+        if (!line.empty())
+        {
+            ++validLineCount;
+        }
+    }
+#ifdef _WIN32
+    if (6 == validLineCount) /* Windows平台下可通时, 有效行数为6 */
+    {
+        return true;
+    }
+#else
+    if (5 == validLineCount) /* Linux平台下可通时, 有效行数为5 */
+    {
+        return true;
+    }
+#endif
+    return false;
 }
 } // namespace toolkit
