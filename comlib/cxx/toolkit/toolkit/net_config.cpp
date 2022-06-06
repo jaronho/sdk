@@ -240,7 +240,7 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
     return netcardList;
 }
 
-bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>& macNameMap)
+bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>& macNameMap, int waitUp)
 {
     struct ModifyInfo
     {
@@ -273,14 +273,14 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
                 /* 设置配置行字符串 */
                 auto line = "SUBSYSTEM==\"net\", ACTION==\"add\", ATTR{address}==\"" + macFmt1 + "\", NAME=\"" + name + "\"";
                 lineList.emplace_back(line);
-                if (0 != iface.name.compare(name)) /* 网卡名有变化才进行命令操作 */
+                if (0 != iface.name.compare(name)) /* 网卡名有变更才进行命令操作 */
                 {
                     ModifyInfo mi;
                     mi.iface = iface;
                     mi.name = name;
                     modifyList.emplace_back(mi);
                     /* 使用命令重命名(暂时重命名为临时名称, 避免名称冲突), 不然要使配置文件生效的话需要重启 */
-                    auto command = "ifconfig " + iface.name + " down && ip link set " + iface.name + " name " + TMP_PREFIX + name;
+                    auto command = "ip link set " + iface.name + " down && ip link set " + iface.name + " name " + TMP_PREFIX + name;
                     utility::System::runCmd(command);
                 }
             }
@@ -292,7 +292,7 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
     }
     /* 写配置文件 */
     auto content = utility::StrTool::join(lineList, "\n");
-    utility::FileInfo fi("/etc/udev/rules.d/70-persistent-net.rules"); /* 注意: 该文件修改完需要重启系统才能生效 */
+    utility::FileInfo fi("/etc/udev/rules.d/70-persistent-net.rules"); /* 注意: 该文件修改完需要重启系统或网络才能生效 */
     fi.write(content.c_str(), content.size());
     /* 使用命令操作 */
     for (size_t i = 0; i < modifyList.size(); ++i)
@@ -314,11 +314,11 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
             }
         }
         /* step3: 启动网卡 */
-        command += " && ifconfig " + mi.name + " up";
+        command += " && ip link set " + mi.name + " up";
         utility::System::runCmd(command);
     }
     /* 延迟等待网卡启动完毕 */
-    utility::System::waitForTime(2000, [&]() {
+    utility::System::waitForTime(waitUp, [&]() {
         for (size_t i = 0; i < modifyList.size(); ++i)
         {
             if (!isNetcardUp(modifyList[i].name)) /* 有网卡未启动 */
@@ -349,7 +349,7 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
         const auto& bridgeInfo = bridgeList[i];
         if (0 == name.compare(bridgeInfo.name)) /* 存在网桥 */
         {
-            if (bridgeInfo.checkSamePorts(ports)) /* 网桥无需修改 */
+            if (bridgeInfo.checkSamePorts(ports)) /* 网桥端口无变化 */
             {
                 return false;
             }
@@ -384,12 +384,12 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
     {
         utility::System::runCmd("brctl addif " + name + " " + ports[i]);
     }
-    /* step3: 启动网络接口, 注意: 这里用ifconfig up, 如果用ifdown/ifup貌似会给自动加上IP地址 */
+    /* step3: 启动网络接口 */
     for (size_t i = 0; i < ports.size(); ++i)
     {
-        utility::System::runCmd("ip addr flush dev " + ports[i] + " && ifconfig " + ports[i] + " up");
+        utility::System::runCmd("ip addr flush dev " + ports[i] + " && ip link set " + ports[i] + " up");
     }
-    /* step4: 启动网桥, 注意: 需要用ifdown/ifup使配置文件生效, 不能使用ifconfig down/up */
+    /* step4: 启动网桥, 使用ifdown/ifup使配置文件生效 */
     utility::System::runCmd("ip addr flush dev " + name + " && ifdown " + name + " && ifup " + name);
     return true;
 #endif
@@ -416,7 +416,7 @@ bool NetConfig::deleteBridge(const std::string& name)
                 utility::System::runCmd("brctl delif " + bridgeInfo.name + " " + bridgeInfo.ports[j]);
             }
             /* 停止网桥 */
-            utility::System::runCmd("ifconfig " + bridgeInfo.name + " down");
+            utility::System::runCmd("ip link set " + bridgeInfo.name + " down");
             /* 删除网桥 */
             utility::System::runCmd("brctl delbr " + bridgeInfo.name);
             return true;
@@ -443,10 +443,9 @@ bool NetConfig::enableBridge(const std::string& name)
             /* step1. 启动网络接口 */
             for (const auto& port : bridgeInfo.ports)
             {
-                /* 注意: 这里用ifconfig up, 如果用ifdown/ifup貌似会给自动加上IP地址 */
-                utility::System::runCmd("ip addr flush dev " + port + " && ifconfig " + port + " down && ifconfig " + port + " up");
+                utility::System::runCmd("ip addr flush dev " + port + " && ip link set " + port + " down && ip link set " + port + " up");
             }
-            /* step2. 启动网桥, 需要用ifdown/ifup使配置文件生效, 不能使用ifconfig down/up */
+            /* step2. 启动网桥, 使用ifdown/ifup使配置文件生效 */
             utility::System::runCmd("ip addr flush dev " + name + " && ifdown " + name + " && ifup " + name);
             return true;
         }
@@ -491,22 +490,25 @@ bool NetConfig::checkPing(const std::string& src, const std::string& dest, int t
     {
         return false;
     }
-    /* 计算有效的行数 */
-    int validLineCount = 0;
-    for (auto line : outVec)
+    /* 去除空行 */
+    for (auto iter = outVec.begin(); outVec.end() != iter;)
     {
-        if (!line.empty())
+        if (iter->empty())
         {
-            ++validLineCount;
+            outVec.erase(iter);
+        }
+        else
+        {
+            ++iter;
         }
     }
 #ifdef _WIN32
-    if (6 == validLineCount) /* Windows平台下可通时, 有效行数为6 */
+    if (6 == outVec.size()) /* Windows平台下可通时, 返回6行 */
     {
         return true;
     }
 #else
-    if (5 == validLineCount) /* Linux平台下可通时, 有效行数为5 */
+    if (5 == outVec.size()) /* Linux平台下可通时, 返回5行 */
     {
         return true;
     }

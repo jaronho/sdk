@@ -70,11 +70,12 @@ public:
     static std::vector<utility::Net::IfaceInfo> getEthernetCards();
 
     /**
-     * @brief 配置以太网卡名(成功后需要重启网络才能生效)
+     * @brief 配置以太网卡名(成功后需要重启系统或网络才能生效)
      * @param macNameMap 要配置的网卡, key: MAC地址, value: 网卡名
+     * @param waitUp 等待网卡启动时间(单位: 毫秒), 选填
      * @return true-有配置操作, false-无配置操作
      */
-    static bool configEthernetCardName(const std::map<std::string, std::string>& macNameMap);
+    static bool configEthernetCardName(const std::map<std::string, std::string>& macNameMap, int waitUp = 2000);
 
     /**
      * @brief 配置网桥

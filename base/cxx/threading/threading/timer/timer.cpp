@@ -89,7 +89,7 @@ Timer::Timer(const std::string& name, const std::function<void()>& func, const E
     if (!s_thread)
     {
         s_thread = std::make_unique<std::thread>([] {
-            setThreadName("threading::timer");
+            setThreadName("thd::timer");
             s_context->run();
         });
     }

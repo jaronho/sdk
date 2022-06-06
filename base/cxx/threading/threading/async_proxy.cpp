@@ -96,7 +96,7 @@ void AsyncProxy::start(size_t threadCount)
 {
     if (!s_workerThreads)
     {
-        s_workerThreads = ThreadProxy::createAsioExecutor("threading::worker", std::max<size_t>(1U, threadCount));
+        s_workerThreads = ThreadProxy::createAsioExecutor("thd::worker", std::max<size_t>(1U, threadCount));
     }
 }
 
