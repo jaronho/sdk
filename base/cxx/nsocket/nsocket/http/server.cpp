@@ -251,12 +251,10 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             }
             else
             {
-                resp = iter->second->onResponse(conn->getId(), session->req);
-                if (!resp)
-                {
-                    resp = std::make_shared<Response>();
-                    resp->statusCode = StatusCode::success_ok;
-                }
+                iter->second->onResponse(conn->getId(), session->req, [&, wpConn = session->wpConn](const std::shared_ptr<Response>& resp) {
+                    sendResponse(wpConn, resp);
+                });
+                return;
             }
         }
         else /* 方法不允许 */
@@ -264,10 +262,24 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             resp = std::make_shared<Response>();
             resp->statusCode = StatusCode::client_error_method_not_allowed;
         }
-        /* 响应 */
+        /* 发送响应数据 */
+        sendResponse(session->wpConn, resp);
+    }
+}
+
+void Server::sendResponse(const std::weak_ptr<TcpConnection>& wpConn, std::shared_ptr<Response> resp)
+{
+    const auto conn = wpConn.lock();
+    if (conn)
+    {
+        if (!resp)
+        {
+            resp = std::make_shared<Response>();
+            resp->statusCode = StatusCode::success_ok;
+        }
         std::vector<unsigned char> data;
         Response::pack(*resp, data);
-        conn->sendAsync(data, [&, wpConn = session->wpConn](const boost::system::error_code& code, std::size_t length) {
+        conn->sendAsync(data, [&, wpConn](const boost::system::error_code& code, std::size_t length) {
             const auto conn = wpConn.lock();
             if (conn)
             {

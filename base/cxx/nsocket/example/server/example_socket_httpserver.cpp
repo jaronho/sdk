@@ -146,7 +146,8 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
         };
-        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data) {
+        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
+                             const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
@@ -181,7 +182,10 @@ int main(int argc, char* argv[])
             result.append("</html>");
             auto resp = std::make_shared<nsocket::http::Response>();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            return resp;
+            if (sendRespFunc)
+            {
+                sendRespFunc(resp);
+            }
         };
         server.addRouter({nsocket::http::Method::GET}, {"/", "index", "index.htm", "index.html"}, r);
     }
@@ -198,7 +202,8 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
         };
-        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data) {
+        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
+                             const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
@@ -227,7 +232,10 @@ int main(int argc, char* argv[])
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
             auto resp = std::make_shared<nsocket::http::Response>();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            return resp;
+            if (sendRespFunc)
+            {
+                sendRespFunc(resp);
+            }
         };
         server.addRouter({nsocket::http::Method::GET, nsocket::http::Method::POST}, {"/simple"}, r);
     }
@@ -244,7 +252,8 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
         };
-        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields) {
+        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields,
+                             const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
             printf("--------------------------- Form Router ---------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
@@ -279,7 +288,10 @@ int main(int argc, char* argv[])
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
             auto resp = std::make_shared<nsocket::http::Response>();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            return resp;
+            if (sendRespFunc)
+            {
+                sendRespFunc(resp);
+            }
         };
         server.addRouter({nsocket::http::Method::POST}, {"/form"}, r);
     }
@@ -376,7 +388,7 @@ int main(int argc, char* argv[])
                 }
             }
         };
-        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
             /* 为了安全性起见, 在请求结束后, 再一次查找是否有未关闭的文件句柄, 有的话则关闭 */
             auto iter = g_fileHandlerMap.find(cid);
             if (g_fileHandlerMap.end() != iter)
@@ -389,7 +401,10 @@ int main(int argc, char* argv[])
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
             auto resp = std::make_shared<nsocket::http::Response>();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            return resp;
+            if (sendRespFunc)
+            {
+                sendRespFunc(resp);
+            }
         };
         server.addRouter({nsocket::http::Method::POST}, {"/multi"}, r);
     }

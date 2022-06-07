@@ -111,6 +111,11 @@ private:
      */
     void handleReqFinish(const std::shared_ptr<Session>& session);
 
+    /**
+     * @brief 发送响应
+     */
+    void sendResponse(const std::weak_ptr<TcpConnection>& wpConn, std::shared_ptr<Response> resp);
+
 private:
     std::shared_ptr<TcpServer> m_tcpServer; /* TCP服务器 */
     std::mutex m_mutex;

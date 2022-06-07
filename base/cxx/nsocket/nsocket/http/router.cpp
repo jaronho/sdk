@@ -49,9 +49,12 @@ void Router::onReqHead(int64_t cid, const REQUEST_PTR& req) {}
 
 void Router::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) {}
 
-RESPONSE_PTR Router::onResponse(int64_t cid, const REQUEST_PTR& req)
+void Router::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
-    return nullptr;
+    if (sendRespFunc)
+    {
+        sendRespFunc(nullptr);
+    }
 }
 
 void Router_batch::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
@@ -78,13 +81,19 @@ void Router_batch::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offs
     }
 }
 
-RESPONSE_PTR Router_batch::onResponse(int64_t cid, const REQUEST_PTR& req)
+void Router_batch::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
-    if (respHandler)
+    if (sendRespFunc)
     {
-        return respHandler(cid, req);
+        if (respHandler)
+        {
+            respHandler(cid, req, sendRespFunc);
+        }
+        else
+        {
+            sendRespFunc(nullptr);
+        }
     }
-    return nullptr;
 }
 
 void Router_simple::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
@@ -126,7 +135,7 @@ void Router_simple::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t off
     }
 }
 
-RESPONSE_PTR Router_simple::onResponse(int64_t cid, const REQUEST_PTR& req)
+void Router_simple::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
     std::shared_ptr<std::string> content = nullptr;
     {
@@ -139,15 +148,17 @@ RESPONSE_PTR Router_simple::onResponse(int64_t cid, const REQUEST_PTR& req)
             m_contentMap.erase(iter);
         }
     }
-    RESPONSE_PTR resp = nullptr;
-    if (content)
+    if (sendRespFunc)
     {
-        if (respHandler)
+        if (content && respHandler)
         {
-            resp = respHandler(cid, req, *content.get());
+            respHandler(cid, req, *content.get(), sendRespFunc);
+        }
+        else
+        {
+            sendRespFunc(nullptr);
         }
     }
-    return resp;
 }
 
 void Router_x_www_form_urlencoded::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
@@ -234,7 +245,7 @@ void Router_x_www_form_urlencoded::onReqContent(int64_t cid, const REQUEST_PTR& 
     }
 }
 
-RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST_PTR& req)
+void Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
     std::shared_ptr<Wrapper> wrapper = nullptr;
     {
@@ -247,20 +258,21 @@ RESPONSE_PTR Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST
             m_wrapperMap.erase(iter);
         }
     }
-    if (!wrapper)
+    if (sendRespFunc)
     {
-        return nullptr;
+        if (wrapper && respHandler)
+        {
+            if (!wrapper->tmpKey.empty())
+            {
+                wrapper->fields.insert(std::make_pair(url_decode(wrapper->tmpKey), url_decode(wrapper->tmpValue)));
+            }
+            respHandler(cid, req, wrapper->fields, sendRespFunc);
+        }
+        else
+        {
+            sendRespFunc(nullptr);
+        }
     }
-    if (!wrapper->tmpKey.empty())
-    {
-        wrapper->fields.insert(std::make_pair(url_decode(wrapper->tmpKey), url_decode(wrapper->tmpValue)));
-    }
-    RESPONSE_PTR resp = nullptr;
-    if (respHandler)
-    {
-        resp = respHandler(cid, req, wrapper->fields);
-    }
-    return resp;
 }
 
 void Router_multipart_form_data::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
@@ -335,7 +347,7 @@ void Router_multipart_form_data::onReqContent(int64_t cid, const REQUEST_PTR& re
     }
 }
 
-RESPONSE_PTR Router_multipart_form_data::onResponse(int64_t cid, const REQUEST_PTR& req)
+void Router_multipart_form_data::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
     {
         /* 限定锁区间, 避免阻塞其他路由, 提高并发性 */
@@ -346,12 +358,17 @@ RESPONSE_PTR Router_multipart_form_data::onResponse(int64_t cid, const REQUEST_P
             m_formMap.erase(iter);
         }
     }
-    RESPONSE_PTR resp = nullptr;
-    if (respHandler)
+    if (sendRespFunc)
     {
-        resp = respHandler(cid, req);
+        if (respHandler)
+        {
+            respHandler(cid, req, sendRespFunc);
+        }
+        else
+        {
+            sendRespFunc(nullptr);
+        }
     }
-    return resp;
 }
 } // namespace http
 } // namespace nsocket

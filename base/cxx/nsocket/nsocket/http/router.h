@@ -45,7 +45,7 @@ protected:
     /**
      * @brief 响应客户端
      */
-    virtual RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req);
+    virtual void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc);
 
 private:
     std::vector<Method> m_methods; /* 支持的方法, 例如: {Method::POST} */
@@ -60,13 +60,13 @@ public:
     std::function<void(int64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
     std::function<void(int64_t cid, const REQUEST_PTR& req)> headCb;
     std::function<void(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)> contentCb;
-    std::function<RESPONSE_PTR(int64_t cid, const REQUEST_PTR& req)> respHandler;
+    std::function<void(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
 
 protected:
     void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;
     void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
     void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
+    void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
 };
 
 /**
@@ -76,13 +76,13 @@ class Router_simple : public Router
 {
 public:
     std::function<void(int64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
-    std::function<RESPONSE_PTR(int64_t cid, const REQUEST_PTR& req, const std::string& data)> respHandler;
+    std::function<void(int64_t cid, const REQUEST_PTR& req, const std::string& data, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
 
 protected:
     void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;
     void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
     void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
+    void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
 
 private:
     std::mutex m_mutex;
@@ -96,13 +96,14 @@ class Router_x_www_form_urlencoded : public Router
 {
 public:
     std::function<void(int64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
-    std::function<RESPONSE_PTR(int64_t cid, const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields)> respHandler;
+    std::function<void(int64_t cid, const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields, const SEND_RESPONSE_FUNC& sendRespFunc)>
+        respHandler;
 
 protected:
     void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;
     void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
     void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
+    void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
 
 private:
     struct Wrapper
@@ -131,13 +132,13 @@ public:
     std::function<void(int64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& filename,
                        const std::string& contentType, size_t offset, const unsigned char* data, int dataLen, bool finish)>
         fileCb;
-    std::function<RESPONSE_PTR(int64_t cid, const REQUEST_PTR& req)> respHandler;
+    std::function<void(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
 
 protected:
     void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;
     void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
     void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    RESPONSE_PTR onResponse(int64_t cid, const REQUEST_PTR& req) override;
+    void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
 
 private:
     std::mutex m_mutex;
