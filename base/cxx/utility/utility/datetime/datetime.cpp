@@ -360,6 +360,19 @@ std::string DateTime::yyyyMMdd(const char sep[1]) const
     return buf;
 }
 
+std::string DateTime::hhmm(const char sep1[1]) const
+{
+    std::string sep1Str = (sep1 && sep1[0]) ? std::string(1, sep1[0]) : "";
+    std::string fmtStr = "%02d" + sep1Str + "%02d";
+    char buf[6] = {0};
+#ifdef _WIN32
+    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), hour, minute);
+#else
+    sprintf(buf, fmtStr.c_str(), hour, minute);
+#endif
+    return buf;
+}
+
 std::string DateTime::hhmmss(const char sep1[1], const char sep2[1]) const
 {
     std::string sep1Str = (sep1 && sep1[0]) ? std::string(1, sep1[0]) : "";
@@ -383,6 +396,21 @@ std::string DateTime::hhmmss(const char sep1[1], const char sep2[1]) const
         sprintf(buf, fmtStr.c_str(), hour, minute, second);
 #endif
     }
+    return buf;
+}
+
+std::string DateTime::yyyyMMddhhmm(const char sep1[1], const char sep2[1], const char sep3[1]) const
+{
+    std::string sep1Str = (sep1 && sep1[0]) ? std::string(1, sep1[0]) : "";
+    std::string sep2Str = (sep2 && sep2[0]) ? std::string(1, sep2[0]) : "";
+    std::string sep3Str = (sep3 && sep3[0]) ? std::string(1, sep3[0]) : "";
+    std::string fmtStr = "%04d" + sep1Str + "%02d" + sep1Str + "%02d" + sep2Str + "%02d" + sep3Str + "%02d";
+    char buf[17] = {0};
+#ifdef _WIN32
+    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute);
+#else
+    sprintf(buf, fmtStr.c_str(), year, month, day, hour, minute);
+#endif
     return buf;
 }
 
