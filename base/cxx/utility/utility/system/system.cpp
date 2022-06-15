@@ -56,10 +56,10 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
     }
     if (outStr || outVec)
     {
-        const size_t bufferSize = 1024;
+        const size_t bufferSize = 1025;
         char buffer[bufferSize] = {0};
         std::string line;
-        while (fread(buffer, 1, bufferSize, stream) > 0)
+        while (fread(buffer, 1, bufferSize - 1, stream) > 0)
         {
             if (outStr)
             {
