@@ -90,6 +90,7 @@ bool parseInstanceId(WCHAR propertyBuffer[4096], std::string& instanceId, std::s
     pid.clear();
     serial.clear();
     std::string buffer = wstring2string(propertyBuffer);
+    instanceId = buffer;
     auto pos = buffer.find("VID_");
     if (std::string::npos == pos || pos + 8 > buffer.size())
     {
@@ -114,7 +115,6 @@ bool parseInstanceId(WCHAR propertyBuffer[4096], std::string& instanceId, std::s
             serial.clear();
         }
     }
-    instanceId = buffer;
     return true;
 }
 
@@ -172,6 +172,28 @@ public:
     std::string product; /* 产品名称 */
     std::string manufacturer; /* 厂商名称 */
 };
+
+/**
+ * @brief 判断是否祖先
+ * @param info 当前USB信息
+ * @param winUsbList 查询到的USB信息列表
+ * @return true-是, false-否
+ */
+bool isAncestor(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
+{
+    auto parentInstanceId = info.parentInstanceId;
+    std::transform(parentInstanceId.begin(), parentInstanceId.end(), parentInstanceId.begin(), tolower);
+    for (const auto& item : winUsbList)
+    {
+        auto instanceId = item.instanceId;
+        std::transform(instanceId.begin(), instanceId.end(), instanceId.begin(), tolower);
+        if (parentInstanceId == instanceId)
+        {
+            return false;
+        }
+    }
+    return true;
+}
 
 /**
  * @brief 获取祖先节点总线编号(递归查询)
@@ -463,25 +485,17 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
         info.parentInstanceId = wstring2string(propertyBuffer);
         /* 解析BusNum, PortNum */
         memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (!SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_LocationInfo, &propertyType,
-                                       reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
+        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_LocationInfo, &propertyType,
+                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
         {
-            continue;
-        }
-        if (!parseLocationInfo(propertyBuffer, info.busNum, info.portNum))
-        {
-            continue;
+            parseLocationInfo(propertyBuffer, info.busNum, info.portNum);
         }
         /* 解析VID, PID, 序列号 */
         memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (!SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_InstanceId, &propertyType,
-                                       reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
+        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_InstanceId, &propertyType,
+                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
         {
-            continue;
-        }
-        if (!parseInstanceId(propertyBuffer, info.instanceId, info.vid, info.pid, info.serial))
-        {
-            continue;
+            parseInstanceId(propertyBuffer, info.instanceId, info.vid, info.pid, info.serial);
         }
         /* 解析产品名称, 厂商名称 */
         memset(propertyBuffer, 0, sizeof(propertyBuffer));
@@ -491,6 +505,16 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
             parseChildren(propertyBuffer, info.product, info.manufacturer);
         }
         winUsbList.emplace_back(info);
+    }
+    /* 筛选出祖先并确定busNum */
+    int ancestorBusNum = 1;
+    for (auto& info : winUsbList)
+    {
+        if (isAncestor(info, winUsbList))
+        {
+            info.busNum = ancestorBusNum;
+            ++ancestorBusNum;
+        }
     }
     /* 如果接入了HUB, 那么上面获取到的总线编号需要进一步转为其祖先的总线编号 */
     for (auto& info : winUsbList)
