@@ -97,38 +97,65 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
         ERROR_LOG(m_logger, "数据发送错误: 未连接.");
         return false;
     }
-    const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
-    m_tcpClient->sendAsync(data, [wpSelf, callback, logger = m_logger](const boost::system::error_code& code, std::size_t length) {
-        const auto self = wpSelf.lock();
-        if (code)
-        {
-            ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
-        }
-        else
-        {
-            if (self)
+    try
+    {
+        const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
+        m_tcpClient->sendAsync(data, [wpSelf, callback, logger = m_logger](const boost::system::error_code& code, std::size_t length) {
+            const auto self = wpSelf.lock();
+            if (code)
             {
-                self->sigUpdateSendTime();
+                ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
             }
             else
             {
-                ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
+                if (self)
+                {
+                    self->sigUpdateSendTime();
+                }
+                else
+                {
+                    ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
+                }
             }
-        }
-        if (callback)
-        {
-            callback(!code, length);
-        }
-    });
-    return true;
+            if (callback)
+            {
+                callback(!code, length);
+            }
+        });
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        ERROR_LOG(m_logger, "数据发送错误: {}.", e.what());
+    }
+    catch (...)
+    {
+        ERROR_LOG(m_logger, "数据发送错误: 未知原因.");
+    }
+    if (callback)
+    {
+        callback(false, 0);
+    }
+    return false;
 }
 
 void DataChannel::disconnectImpl()
 {
-    if (m_tcpClient)
+    try
     {
-        m_tcpClient->stop();
-        m_tcpClient.reset();
+        if (m_tcpClient)
+        {
+            m_tcpClient->stop();
+            m_tcpClient.reset();
+        }
+    }
+    catch (const std::exception& e)
+    {
+        ERROR_LOG(m_logger, "断开连接错误: {}.", e.what());
+    }
+    catch (...)
+    {
+        ERROR_LOG(m_logger, "断开连接错误: 未知原因.");
     }
 }
 
