@@ -5,13 +5,13 @@ namespace nac
 bool DataChannel::connect(const std::string& address, unsigned short port, const std::string& certFile, const std::string& privateKeyFile,
                           const std::string& privateKeyFilePwd)
 {
-    if (m_tcpClient)
-    {
-        WARN_LOG(m_logger, "连接失败: 重复连接.");
-        return false;
-    }
     try
     {
+        if (m_tcpClient)
+        {
+            WARN_LOG(m_logger, "连接失败: 重复连接.");
+            return false;
+        }
         INFO_LOG(m_logger, "连接服务器: {}:{}.", address, port);
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
         m_tcpClient = std::make_shared<nsocket::TcpClient>();
@@ -92,13 +92,13 @@ bool DataChannel::isOpened()
 
 bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCallback& callback)
 {
-    if (!isOpened())
-    {
-        ERROR_LOG(m_logger, "数据发送错误: 未连接.");
-        return false;
-    }
     try
     {
+        if (!isOpened())
+        {
+            ERROR_LOG(m_logger, "数据发送错误: 未连接.");
+            return false;
+        }
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
         m_tcpClient->sendAsync(data, [wpSelf, callback, logger = m_logger](const boost::system::error_code& code, std::size_t length) {
             const auto self = wpSelf.lock();
