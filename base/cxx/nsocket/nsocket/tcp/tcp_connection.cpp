@@ -1,6 +1,5 @@
 #include "tcp_connection.h"
 
-#include <atomic>
 #include <chrono>
 
 namespace nsocket

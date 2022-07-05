@@ -12,7 +12,6 @@ TcpClient::TcpClient(size_t bz)
 #endif
     , m_onConnectCallback(nullptr)
     , m_onDataCallback(nullptr)
-    , m_runStatus(RunStatus::none)
 {
 }
 
@@ -89,7 +88,7 @@ boost::system::error_code TcpClient::send(const std::vector<unsigned char>& data
 {
     boost::system::error_code code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
     length = 0;
-    if (!m_ioContext.stopped() && m_tcpConn && isRunning())
+    if (isRunning() && !m_ioContext.stopped() && m_tcpConn)
     {
         code = m_tcpConn->send(data, length);
     }
@@ -98,7 +97,7 @@ boost::system::error_code TcpClient::send(const std::vector<unsigned char>& data
 
 void TcpClient::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
-    if (m_ioContext.stopped())
+    if (!isRunning() || m_ioContext.stopped())
     {
         if (onSendCb)
         {
@@ -132,14 +131,14 @@ void TcpClient::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND
 
 void TcpClient::stop()
 {
-    if (!m_ioContext.stopped())
+    if (isRunning() && !m_ioContext.stopped())
     {
         const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
         boost::asio::post(m_ioContext, [wpSelf]() {
             const auto self = wpSelf.lock();
             if (self)
             {
-                const auto lastStatus = self->m_runStatus;
+                const auto lastStatus = self->m_runStatus.load();
                 self->m_runStatus = RunStatus::stop;
                 if (RunStatus::start != lastStatus)
                 {
@@ -152,6 +151,10 @@ void TcpClient::stop()
                 self->m_ioContext.stop();
             }
         });
+    }
+    else
+    {
+        m_runStatus = RunStatus::stop;
     }
 }
 

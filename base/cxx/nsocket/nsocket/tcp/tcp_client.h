@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <string>
 
 #include "tcp_connection.h"
@@ -108,6 +109,6 @@ private:
         start, /* 开始 */
         stop /* 停止 */
     };
-    RunStatus m_runStatus; /* 运行状态 */
+    std::atomic<RunStatus> m_runStatus = {RunStatus::none}; /* 运行状态 */
 };
 } // namespace nsocket

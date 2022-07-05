@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <boost/asio/io_context.hpp>
 #include <memory>
 #include <vector>
@@ -138,8 +139,8 @@ private:
 private:
     int64_t m_id; /* ID */
     std::shared_ptr<SocketTcpBase> m_socketTcpBase; /* 套接字 */
-    bool m_isEnableSSL; /* 是否启用SSL */
-    bool m_isConnected; /* 是否已连接上 */
+    std::atomic_bool m_isEnableSSL = {false}; /* 是否启用SSL */
+    std::atomic_bool m_isConnected = {false}; /* 是否已连接上 */
     std::vector<unsigned char> m_recvBuf; /* 接收缓冲区 */
     TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
     TCP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */
