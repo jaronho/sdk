@@ -188,6 +188,7 @@ void ConnectService::onConnectStatusChanged(bool isConnected)
             {
                 updateConnectState(ConnectState::connected);
                 startHeartbeatTimer();
+                startOfflineCheckTimer();
             }
         }
     }
@@ -260,6 +261,7 @@ void ConnectService::onAuthResult(bool ok, const std::string& data)
                 INFO_LOG(m_logger, "鉴权成功.");
                 updateConnectState(ConnectState::connected);
                 startHeartbeatTimer();
+                startOfflineCheckTimer();
                 return;
             }
         }
