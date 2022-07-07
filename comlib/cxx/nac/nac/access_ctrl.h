@@ -70,7 +70,8 @@ struct AccessConfig
     BizCode authBizCode = BizCode(0); /* 鉴权业务码, 为0表示不需要鉴权 */
     unsigned int authTimeout = 30; /* 鉴权超时(秒), 必须大于0 */
     BizCode heartbeatBizCode = BizCode(0); /* 心跳业务码, 为0表示不需要发送心跳 */
-    unsigned int heatbeatInterval = 15; /* 心跳间隔(秒), 必须大于0 */
+    unsigned int heartbeatInterval = 15; /* 心跳间隔(秒), 必须大于0 */
+    unsigned int heartbeatFixedInterval = 0; /* 心跳固定间隔(秒), 在该周期内至少发送一次心跳, <=心跳间隔则根据心跳间隔定时发送 */
     std::vector<unsigned int> retryInterval = {1}; /* 重试间隔(秒), 示例: {1, 1, 1, 1, 1, 2, 4, 8, 10} */
 };
 

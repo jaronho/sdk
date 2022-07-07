@@ -95,7 +95,8 @@ int main(int argc, char* argv[])
     acfg.authBizCode = nac::BizCode::req_auth;
     acfg.authTimeout = 30;
     acfg.heartbeatBizCode = nac::BizCode::req_hearbeat;
-    acfg.heatbeatInterval = 15;
+    acfg.heartbeatInterval = 15;
+    acfg.heartbeatFixedInterval = 3 * acfg.heartbeatInterval;
     acfg.retryInterval = {1};
     while (!nac::AccessCtrl::getInstance().start(acfg))
     {

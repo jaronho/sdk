@@ -60,7 +60,8 @@ void ConnectService::setHeartbeatDataGenerator(const std::function<std::string()
 
 bool ConnectService::connect(const std::string& address, unsigned int port, const std::string& certFile, const std::string& privateKeyFile,
                              const std::string& privateKeyFilePwd, unsigned int connectTimeout, unsigned int authBizCode,
-                             unsigned int authTimeout, unsigned int heartbeatBizCode, unsigned int heartbeatInterval)
+                             unsigned int authTimeout, unsigned int heartbeatBizCode, unsigned int heartbeatInterval,
+                             unsigned int heartbeatFixedInterval)
 {
     if (address.empty() || 0 == port)
     {
@@ -82,8 +83,9 @@ bool ConnectService::connect(const std::string& address, unsigned int port, cons
         WARN_LOG(m_logger, "连接失败: 当前状态 {} 不对.", m_connectState.load());
         return false;
     }
-    INFO_LOG(m_logger, "连接配置信息: 服务器[{}:{}], 连接超时[{}秒], 鉴权(业务码[{}], 超时[{}秒]), 心跳(业务码[{}], 超时[{}秒]).", address,
-             port, connectTimeout, authBizCode, authTimeout, heartbeatBizCode, heartbeatInterval);
+    INFO_LOG(m_logger,
+             "连接配置: 服务器[{}:{}], 连接超时[{}秒], 鉴权(业务码[{}], 超时[{}秒]), 心跳(业务码[{}], 间隔[{}秒], 固定间隔[{}秒]).",
+             address, port, connectTimeout, authBizCode, authTimeout, heartbeatBizCode, heartbeatInterval, heartbeatFixedInterval);
     m_disconnectType = DisconnectType::unknown;
     updateConnectState(ConnectState::connecting);
     m_address = address;
@@ -96,8 +98,8 @@ bool ConnectService::connect(const std::string& address, unsigned int port, cons
     m_authTimeout = authTimeout;
     m_heartbeatBizCode = heartbeatBizCode;
     m_heartbeatInterval = heartbeatInterval;
-    m_heartbeatMaxInterval = (m_heartbeatInterval * 4);
-    m_offlineTime = (m_heartbeatMaxInterval + 1);
+    m_heartbeatFixedInterval = heartbeatFixedInterval;
+    m_offlineTime = (m_heartbeatFixedInterval + 1);
     m_offlineCheckInterval = ceil(m_offlineTime / 2.0);
     const auto dataChannel = m_wpDataChannel.lock();
     if (dataChannel)
@@ -134,16 +136,6 @@ void ConnectService::disconnect()
         return;
     }
     releaseConnection(DisconnectType::external_call);
-    m_address.clear();
-    m_port = 0;
-    m_connectTimeout = 0;
-    m_authBizCode = 0;
-    m_authTimeout = 30;
-    m_heartbeatBizCode = 0;
-    m_heartbeatInterval = 15;
-    m_heartbeatMaxInterval = (m_heartbeatInterval * 4);
-    m_offlineTime = (m_heartbeatMaxInterval + 1);
-    m_offlineCheckInterval = ceil(m_offlineTime / 2.0);
     updateConnectState(ConnectState::idle);
 }
 
@@ -340,7 +332,7 @@ void ConnectService::onHeartbeatTimer()
     auto t = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::steady_clock::now());
     auto now = t.time_since_epoch().count();
     /* 超过一定时间未向服务发送数据, 或者超过一定时间未发送心跳包, 需要发送心跳包来维持连接 */
-    if ((now - m_lastSendTime > m_heartbeatInterval) || (now - m_lastSendHeartbeatTime > m_heartbeatMaxInterval))
+    if ((now - m_lastSendTime >= m_heartbeatInterval) || (now - m_lastSendHeartbeatTime >= m_heartbeatFixedInterval))
     {
         if (ConnectState::connected == m_connectState)
         {
@@ -400,7 +392,7 @@ void ConnectService::onOfflineCheckTimer()
     auto now = t.time_since_epoch().count();
     bool isUnRecvServerData = false;
     /* 超过一定时间未收到服务端数据包, 表示掉线 */
-    if (now - m_lastRecvTime > m_offlineTime)
+    if (now - m_lastRecvTime >= m_offlineTime)
     {
         isUnRecvServerData = true;
     }
