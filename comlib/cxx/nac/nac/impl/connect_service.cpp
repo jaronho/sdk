@@ -99,8 +99,7 @@ bool ConnectService::connect(const std::string& address, unsigned int port, cons
     m_heartbeatBizCode = heartbeatBizCode;
     m_heartbeatInterval = heartbeatInterval;
     m_heartbeatFixedInterval = heartbeatFixedInterval;
-    m_offlineTime = (m_heartbeatFixedInterval + 1);
-    m_offlineCheckInterval = ceil(m_offlineTime / 2.0);
+    m_offlineTime = std::max<unsigned int>(heartbeatInterval, heartbeatFixedInterval) + 1;
     const auto dataChannel = m_wpDataChannel.lock();
     if (dataChannel)
     {
@@ -306,22 +305,17 @@ void ConnectService::startHeartbeatTimer()
 {
     if (m_heartbeatBizCode > 0)
     {
-        if (m_heartbeatTimer)
-        {
-            m_heartbeatTimer->setDelay(std::chrono::seconds(m_heartbeatInterval));
-            m_heartbeatTimer->setInterval(std::chrono::seconds(m_heartbeatInterval));
-        }
-        else
+        if (!m_heartbeatTimer)
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
-            m_heartbeatTimer = std::make_shared<threading::SteadyTimer>("nac.heartbeat", std::chrono::seconds(m_heartbeatInterval),
-                                                                        std::chrono::seconds(m_heartbeatInterval), [wpSelf]() {
-                                                                            const auto self = wpSelf.lock();
-                                                                            if (self)
-                                                                            {
-                                                                                self->onHeartbeatTimer();
-                                                                            }
-                                                                        });
+            m_heartbeatTimer =
+                std::make_shared<threading::SteadyTimer>("nac.heartbeat", std::chrono::seconds(1), std::chrono::seconds(1), [wpSelf]() {
+                    const auto self = wpSelf.lock();
+                    if (self)
+                    {
+                        self->onHeartbeatTimer();
+                    }
+                });
         }
         m_heartbeatTimer->start();
     }
@@ -364,23 +358,17 @@ void ConnectService::startOfflineCheckTimer()
 {
     if (m_heartbeatBizCode > 0)
     {
-        if (m_offlineCheckTimer)
-        {
-            m_offlineCheckTimer->setDelay(std::chrono::seconds(m_offlineCheckInterval));
-            m_offlineCheckTimer->setInterval(std::chrono::seconds(m_offlineCheckInterval));
-        }
-        else
+        if (!m_offlineCheckTimer)
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
             m_offlineCheckTimer =
-                std::make_shared<threading::SteadyTimer>("nac.offline.check", std::chrono::seconds(m_offlineCheckInterval),
-                                                         std::chrono::seconds(m_offlineCheckInterval), [wpSelf]() {
-                                                             const auto self = wpSelf.lock();
-                                                             if (self)
-                                                             {
-                                                                 self->onOfflineCheckTimer();
-                                                             }
-                                                         });
+                std::make_shared<threading::SteadyTimer>("nac.offline.check", std::chrono::seconds(1), std::chrono::seconds(1), [wpSelf]() {
+                    const auto self = wpSelf.lock();
+                    if (self)
+                    {
+                        self->onOfflineCheckTimer();
+                    }
+                });
         }
         m_offlineCheckTimer->start();
     }
