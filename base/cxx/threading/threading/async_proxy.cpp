@@ -150,7 +150,8 @@ void AsyncProxy::execute(const std::shared_ptr<AsyncTask>& task, const ExecutorP
 {
     if (!s_workerThreads)
     {
-        throw std::exception(std::logic_error("var 's_workerThreads' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] var 's_workerThreads' is null");
     }
     ThreadProxy::async(task, s_workerThreads);
 }
@@ -160,7 +161,8 @@ void AsyncProxy::execute(const std::string& taskName, const std::function<void()
 {
     if (!s_workerThreads)
     {
-        throw std::exception(std::logic_error("var 's_workerThreads' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] var 's_workerThreads' is null");
     }
     if (func)
     {

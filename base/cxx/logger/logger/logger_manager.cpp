@@ -15,11 +15,13 @@ void LoggerManager::start(const LogConfig& cfg, const std::string& defultTagName
 {
     if (cfg.path.empty())
     {
-        throw std::exception(std::logic_error("arg 'cfg.path' is empty"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] arg 'cfg.path' is empty");
     }
     if (cfg.name.empty())
     {
-        throw std::exception(std::logic_error("arg 'cfg.name' is empty"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] arg 'cfg.name' is empty");
     }
     std::lock_guard<std::mutex> locker(m_mutex);
     m_logCfg = cfg;

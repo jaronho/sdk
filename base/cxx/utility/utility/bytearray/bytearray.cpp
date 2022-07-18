@@ -23,7 +23,7 @@ int16_t ByteArray::read16(const unsigned char p[2], bool bigEndium)
 {
     if (!p)
     {
-        throw std::exception(std::logic_error("arg 'p' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'p' is null");
     }
     int16_t n = 0;
     if (bigEndium)
@@ -43,7 +43,7 @@ void ByteArray::write16(unsigned char p[2], int16_t n, bool bigEndium)
 {
     if (!p)
     {
-        throw std::exception(std::logic_error("arg 'p' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'p' is null");
     }
     if (bigEndium)
     {
@@ -80,7 +80,7 @@ int16_t ByteArray::swap16(const unsigned char p[2])
 {
     if (!p)
     {
-        throw std::exception(std::logic_error("arg 'p' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'p' is null");
     }
     return (((int16_t)p[0] << 8) | (int16_t)p[1]);
 }
@@ -89,7 +89,7 @@ int32_t ByteArray::read32(const unsigned char p[4], bool bigEndium)
 {
     if (!p)
     {
-        throw std::exception(std::logic_error("arg 'p' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'p' is null");
     }
     int32_t n = 0;
     if (bigEndium)
@@ -113,7 +113,7 @@ void ByteArray::write32(unsigned char p[4], int32_t n, bool bigEndium)
 {
     if (!p)
     {
-        throw std::exception(std::logic_error("arg 'p' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'p' is null");
     }
     if (bigEndium)
     {
@@ -158,7 +158,7 @@ int32_t ByteArray::swap32(const unsigned char p[4])
 {
     if (!p)
     {
-        throw std::exception(std::logic_error("arg 'p' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'p' is null");
     }
     return (((int32_t)p[0] << 24) | ((int32_t)p[1] << 16) | ((int32_t)p[2] << 8) | (int32_t)p[3]);
 }
@@ -167,7 +167,7 @@ int64_t ByteArray::read64(const unsigned char p[8], bool bigEndium)
 {
     if (!p)
     {
-        throw std::exception(std::logic_error("arg 'p' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'p' is null");
     }
     int64_t n = 0;
     if (bigEndium)
@@ -199,7 +199,7 @@ void ByteArray::write64(unsigned char p[8], int64_t n, bool bigEndium)
 {
     if (!p)
     {
-        throw std::exception(std::logic_error("arg 'p' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'p' is null");
     }
     if (bigEndium)
     {
@@ -264,7 +264,7 @@ int64_t ByteArray::swap64(const unsigned char p[8])
 {
     if (!p)
     {
-        throw std::exception(std::logic_error("arg 'p' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'p' is null");
     }
     int32_t low = (int32_t)p[0] | ((int32_t)p[1] << 8) | ((int32_t)p[2] << 16) | ((int32_t)p[3] << 24);
     int32_t high = (int32_t)p[4] | ((int32_t)p[5] << 8) | ((int32_t)p[6] << 16) | ((int32_t)p[7] << 24);
@@ -323,7 +323,8 @@ bool ByteArray::allocate(uint32_t totalSize)
             void* p = realloc(m_buffer, totalSize);
             if (!p)
             {
-                throw std::exception(std::logic_error("var 'p' is null"));
+                throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                                       + "] var 'p' is null");
             }
             m_buffer = (unsigned char*)p;
         }
@@ -334,7 +335,8 @@ bool ByteArray::allocate(uint32_t totalSize)
     }
     if (!m_buffer)
     {
-        throw std::exception(std::logic_error("var 'm_buffer' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] var 'm_buffer' is null");
     }
     memset(m_buffer, 0, totalSize);
     m_totalSize = totalSize;
@@ -669,7 +671,7 @@ unsigned char* ByteArray::readBytes(uint32_t& len)
     unsigned char* r = (unsigned char*)malloc(len);
     if (!r)
     {
-        throw std::exception(std::logic_error("var 'r' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] var 'r' is null");
     }
     memcpy(r, p, len);
     return r;
@@ -724,7 +726,7 @@ char* ByteArray::readString(uint32_t& len)
     char* r = (char*)malloc(len + (size_t)1);
     if (!r)
     {
-        throw std::exception(std::logic_error("var 'r' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] var 'r' is null");
     }
     strcpy(r, (char*)p);
     *(r + len) = '\0';

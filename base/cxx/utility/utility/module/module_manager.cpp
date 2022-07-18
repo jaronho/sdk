@@ -26,7 +26,8 @@ bool ModuleManager::registerCreator(const std::type_info& type, const Creator& c
     auto iter = m_creators.find(type);
     if (m_creators.end() != iter)
     {
-        throw std::exception(std::logic_error("already exist '" + std::string(type.name()) + "' creator"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] already exist '"
+                               + std::string(type.name()) + "' creator");
     }
     m_creators[type] = creator;
     return true;

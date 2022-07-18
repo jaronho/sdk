@@ -19,7 +19,8 @@ PathInfo::PathInfo(const std::string& path, bool autoEndWithSlash) : m_path(revi
 {
     if (m_path.empty())
     {
-        throw std::exception(std::logic_error("var 'm_path' is empty"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] var 'm_path' is empty");
     }
     if (autoEndWithSlash)
     {

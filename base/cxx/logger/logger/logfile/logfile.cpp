@@ -51,11 +51,12 @@ Logfile::Logfile(const std::string& path, const std::string& filename, size_t ma
 {
     if (path.empty())
     {
-        throw std::exception(std::logic_error("arg 'path' is empty"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'path' is empty");
     }
     if (filename.empty())
     {
-        throw std::exception(std::logic_error("arg 'filename' is empty"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] arg 'filename' is empty");
     }
     m_path = path;
     const char& lastPathChar = path[path.length() - 1];
@@ -184,7 +185,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
         return Result::disabled;
     }
     size_t contentSize = content.size();
-    if (m_maxSize > 0) /* ÓÐÏÞÖÆÎÄ¼þ´óÐ¡ */
+    if (m_maxSize > 0) /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½Ð¡ */
     {
         if (contentSize > m_maxSize)
         {

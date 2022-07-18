@@ -503,7 +503,8 @@ bool FileInfo::isTextData(std::fstream& f)
 {
     if (!f.is_open())
     {
-        throw std::exception(std::logic_error("arg 'f' is not opened"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] arg 'f' is not opened");
     }
     f.seekg(0, std::ios::beg);
     char ch[1] = {0};

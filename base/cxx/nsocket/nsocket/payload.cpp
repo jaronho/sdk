@@ -9,7 +9,8 @@ Payload::Payload(unsigned int headLen) : m_headLen(headLen), m_bodyLen(0)
 {
     if (headLen < 4)
     {
-        throw std::exception(std::logic_error("arg 'headLen' = " + std::to_string(headLen) + " is invalid"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] arg 'headLen' = " + std::to_string(headLen) + " is invalid");
     }
 }
 
@@ -38,7 +39,8 @@ void Payload::unpack(const std::vector<unsigned char>& data, const HEAD_CALLBACK
                 }
                 else
                 {
-                    throw std::exception(std::logic_error("arg 'headCb' is invalid"));
+                    throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                                           + "] arg 'headCb' is invalid");
                 }
                 if (m_bodyLen < 0) /* 出错 */
                 {

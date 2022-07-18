@@ -8,7 +8,7 @@ DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixNam
 {
     if (path.empty())
     {
-        throw std::exception(std::logic_error("arg 'path' is empty"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'path' is empty");
     }
     m_path = path;
     m_prefixName = m_baseName = prefixName;

@@ -6,7 +6,7 @@ Sqlite::Stmt::Stmt(std::shared_ptr<std::recursive_mutex> mutex, sqlite3* db, con
 {
     if (!mutex)
     {
-        throw std::exception(std::logic_error("arg 'mutex' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'mutex' is null");
     }
     mutex->lock();
     m_mutex = mutex;

@@ -19,11 +19,12 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
 {
     if (path.empty())
     {
-        throw std::exception(std::logic_error("arg 'path' is empty"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'path' is empty");
     }
     if (baseName.empty())
     {
-        throw std::exception(std::logic_error("arg 'baseName' is empty"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] arg 'baseName' is empty");
     }
     m_baseName = baseName;
     m_extName = extName;

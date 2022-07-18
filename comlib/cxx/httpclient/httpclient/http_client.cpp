@@ -79,7 +79,8 @@ void HttpClient::easyDelete(const curlex::RequestPtr& req, const curlex::FuncSet
 {
     if (!s_workers)
     {
-        throw std::exception(std::logic_error("var 's_workers' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] var 's_workers' is null");
     }
     threading::ThreadProxy::async(
         "http.easy_delete|" + req->getUrl(),
@@ -95,7 +96,8 @@ void HttpClient::easyGet(const curlex::RequestPtr& req, const curlex::FuncSet& f
 {
     if (!s_workers)
     {
-        throw std::exception(std::logic_error("var 's_workers' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] var 's_workers' is null");
     }
     threading::ThreadProxy::async(
         "http.easy_get|" + req->getUrl(),
@@ -111,7 +113,8 @@ void HttpClient::easyPut(const curlex::RequestPtr& req, const curlex::FuncSet& f
 {
     if (!s_workers)
     {
-        throw std::exception(std::logic_error("var 's_workers' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] var 's_workers' is null");
     }
     threading::ThreadProxy::async(
         "http.easy_put|" + req->getUrl(),
@@ -127,7 +130,8 @@ void HttpClient::easyPost(const curlex::RequestPtr& req, const curlex::FuncSet& 
 {
     if (!s_workers)
     {
-        throw std::exception(std::logic_error("var 's_workers' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] var 's_workers' is null");
     }
     threading::ThreadProxy::async(
         "http.easy_post|" + req->getUrl(),
@@ -144,7 +148,8 @@ void HttpClient::easyDownload(const curlex::RequestPtr& req, const std::string& 
 {
     if (!s_workers)
     {
-        throw std::exception(std::logic_error("var 's_workers' is null"));
+        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
+                               + "] var 's_workers' is null");
     }
     threading::ThreadProxy::async(
         "http.easy_download|" + req->getUrl(),
