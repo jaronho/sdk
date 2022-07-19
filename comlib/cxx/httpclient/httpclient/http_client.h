@@ -1,11 +1,9 @@
 #pragma once
 
-#include <list>
-#include <mutex>
+#include <functional>
 #include <string>
 
 #include "curlex/curlex.h"
-#include "threading/thread_proxy.hpp"
 
 namespace http
 {
@@ -16,11 +14,43 @@ namespace http
 using ResponseCallback = std::function<void(curlex::Response& resp)>;
 
 /**
+ * @brief 响应处理(正常)状态回调
+ * @param url 请求URL
+ * @param prevElapsed 前一个状态耗时(毫秒)
+ */
+using ResponseProcessNormalStateCallback = std::function<void(const std::string& url, int prevElapsed)>;
+
+/**
+ * @brief 响应处理异常状态回调
+ * @param url 请求URL
+ * @param msg 异常消息
+ */
+using ResponseProcessExceptionStateCallback = std::function<void(const std::string& url, const std::string& msg)>;
+
+/**
  * @brief HTTP客户端模块
  */
 class HttpClient
 {
 public:
+    /**
+     * @brief 设置响应处理运行(开始)状态回调
+     * @param stateCb 状态回调
+     */
+    static void setResponseProcessRunningStateCallback(const ResponseProcessNormalStateCallback& stateCb);
+
+    /**
+     * @brief 设置响应处理结束状态回调
+     * @param stateCb 状态回调
+     */
+    static void setResponseProcessFinishedStateCallback(const ResponseProcessNormalStateCallback& stateCb);
+
+    /**
+     * @brief 设置响应处理异常状态回调
+     * @param stateCb 状态回调
+     */
+    static void setResponseProcessExceptionStateCallback(const ResponseProcessExceptionStateCallback& stateCb);
+
     /**
      * @brief 启动模块
      * @param threadCount 用于执行网络事件的线程个数
@@ -135,19 +165,5 @@ private:
      * @param respCb 响应回调
      */
     static void insertRespList(const curlex::Response& resp, const ResponseCallback& respCb);
-
-    /**
-     * @brief 响应参数, 用于跨线程传输
-     */
-    struct RespParam
-    {
-        curlex::Response resp;
-        ResponseCallback respCb = nullptr;
-    };
-
-private:
-    static threading::ExecutorPtr s_workers; /* 网络线程池 */
-    static std::mutex s_respMutex; /* 互斥量 */
-    static std::list<std::shared_ptr<RespParam>> s_respList; /* 响应列表 */
 };
 } // namespace http
