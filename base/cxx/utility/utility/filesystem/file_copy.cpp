@@ -215,15 +215,18 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
 
 std::string FileCopy::checkDestFile(const std::string& destFile)
 {
-    int num = 0;
     auto newDestFile = destFile;
     utility::FileInfo fi(newDestFile);
-    while (fi.exist())
+    if (fi.exist())
     {
-        ++num;
-        auto suffix = fi.extname().empty() ? "" : ("." + fi.extname());
+        const auto suffix = fi.extname().empty() ? "" : ("." + fi.extname());
+        unsigned int num = 1;
         newDestFile = fi.path() + fi.basename() + "(" + std::to_string(num) + ")" + suffix;
-        fi = utility::FileInfo(newDestFile);
+        while (utility::FileInfo(newDestFile).exist())
+        {
+            ++num;
+            newDestFile = fi.path() + fi.basename() + "(" + std::to_string(num) + ")" + suffix;
+        }
     }
     return newDestFile;
 }
