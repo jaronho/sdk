@@ -212,7 +212,7 @@ private:
     }
 
     /**
-     * @brief 响应HTTP响应异常结束状态
+     * @brief 响应HTTP响应处理异常状态
      */
     void onHttpResponseProcessExceptionStateCallback(const std::string& url, const std::string& msg)
     {

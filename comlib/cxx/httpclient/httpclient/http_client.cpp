@@ -23,7 +23,7 @@ static std::mutex s_respMutex;
 static std::list<std::shared_ptr<RespParam>> s_respList; /* 响应列表 */
 static std::mutex s_stateCallbackMutex;
 static ResponseProcessNormalStateCallback s_finishedStateCallback = nullptr; /* 响应处理结束状态回调 */
-static ResponseProcessExceptionStateCallback s_exceptionStateCallback = nullptr; /* 响应异常状态回调 */
+static ResponseProcessExceptionStateCallback s_exceptionStateCallback = nullptr; /* 响应处理异常状态回调 */
 
 void HttpClient::setResponseProcessFinishedStateCallback(const ResponseProcessNormalStateCallback& stateCb)
 {
