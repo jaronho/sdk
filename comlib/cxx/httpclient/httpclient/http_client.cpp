@@ -22,15 +22,8 @@ static threading::ExecutorPtr s_workers = nullptr; /* 网络线程池 */
 static std::mutex s_respMutex;
 static std::list<std::shared_ptr<RespParam>> s_respList; /* 响应列表 */
 static std::mutex s_stateCallbackMutex;
-static ResponseProcessNormalStateCallback s_runningStateCallback = nullptr; /* 响应处理运行(开始)状态回调 */
 static ResponseProcessNormalStateCallback s_finishedStateCallback = nullptr; /* 响应处理结束状态回调 */
 static ResponseProcessExceptionStateCallback s_exceptionStateCallback = nullptr; /* 响应异常状态回调 */
-
-void HttpClient::setResponseProcessRunningStateCallback(const ResponseProcessNormalStateCallback& stateCb)
-{
-    std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-    s_runningStateCallback = stateCb;
-}
 
 void HttpClient::setResponseProcessFinishedStateCallback(const ResponseProcessNormalStateCallback& stateCb)
 {
@@ -78,15 +71,6 @@ void HttpClient::runOnce()
     {
         try
         {
-            ResponseProcessNormalStateCallback runningStateCallback = nullptr;
-            {
-                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-                runningStateCallback = s_runningStateCallback;
-            }
-            if (runningStateCallback)
-            {
-                runningStateCallback(param->resp.url, param->resp.elapsed);
-            }
             auto beg = std::chrono::steady_clock::now();
             param->respCb(param->resp);
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();

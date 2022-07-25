@@ -34,12 +34,6 @@ class HttpClient
 {
 public:
     /**
-     * @brief 设置响应处理运行(开始)状态回调
-     * @param stateCb 状态回调
-     */
-    static void setResponseProcessRunningStateCallback(const ResponseProcessNormalStateCallback& stateCb);
-
-    /**
      * @brief 设置响应处理结束状态回调
      * @param stateCb 状态回调
      */
