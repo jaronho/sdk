@@ -146,7 +146,7 @@ void AsyncProxy::runOnce()
     }
 }
 
-void AsyncProxy::execute(const std::shared_ptr<AsyncTask>& task, const ExecutorPtr& finishExecutor)
+void AsyncProxy::execute(const std::shared_ptr<AsyncTask>& task)
 {
     if (!s_workerThreads)
     {
@@ -169,7 +169,8 @@ void AsyncProxy::execute(const std::string& taskName, const std::function<void()
         auto task = std::make_shared<AsyncTask>(taskName);
         task->func = func;
         task->finishCb = finishCb;
-        execute(task, finishExecutor);
+        task->finishExecutor = finishExecutor;
+        execute(task);
     }
 }
 } // namespace threading

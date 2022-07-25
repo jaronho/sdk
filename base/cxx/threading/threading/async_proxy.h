@@ -57,9 +57,8 @@ public:
     /**
      * @brief 执行异步任务
      * @param task 异步任务
-     * @param finishExecutor 指定结束回调的执行线程(选填), 若非空则其回调不受runOnce接管
      */
-    static void execute(const std::shared_ptr<AsyncTask>& task, const ExecutorPtr& finishExecutor = nullptr);
+    static void execute(const std::shared_ptr<AsyncTask>& task);
 
     /**
      * @brief 执行异步任务
