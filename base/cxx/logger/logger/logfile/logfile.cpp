@@ -81,13 +81,13 @@ Logfile::~Logfile()
 bool Logfile::isOpened()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    return m_f.is_open();
+    return (m_f ? true : false);
 }
 
 bool Logfile::open()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    if (m_f.is_open())
+    if (m_f)
     {
         return true;
     }
@@ -96,24 +96,30 @@ bool Logfile::open()
         printf("create path [%s] fail, errno[%d], desc: %s\n", m_path.c_str(), errno, strerror(errno));
         return false;
     }
-    m_f.open(m_fullName, std::ios::out | std::ios::binary | std::ios::app);
-    if (!m_f.is_open())
+    m_f = fopen(m_fullName.c_str(), "ab+");
+    if (!m_f)
     {
         printf("open file [%s] fail, errno[%d], desc: %s\n", m_fullName.c_str(), errno, strerror(errno));
         return false;
     }
-    m_f.seekg(0, std::ios::end);
-    m_size.store(m_f.tellg());
+#ifdef _WIN32
+    _fseeki64(m_f, 0, SEEK_END);
+    m_size.store(_ftelli64(m_f));
+#else
+    fseeko64(m_f, 0, SEEK_END);
+    m_size.store(ftello64(m_f));
+#endif
     return true;
 }
 
 void Logfile::close()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    if (m_f.is_open())
+    if (m_f)
     {
-        m_f.flush();
-        m_f.close();
+        fflush(m_f);
+        fclose(m_f);
+        m_f = nullptr;
     }
     m_size.store(0);
 }
@@ -156,16 +162,22 @@ size_t Logfile::getSize() const
 void Logfile::clear()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    if (m_f.is_open())
+    if (m_f)
     {
-        m_f.close();
+        fclose(m_f);
+        m_f = nullptr;
     }
     remove(m_fullName.c_str());
-    m_f.open(m_fullName, std::ios::out | std::ios::binary | std::ios::app);
-    if (m_f.is_open())
+    m_f = fopen(m_fullName.c_str(), "ab+");
+    if (m_f)
     {
-        m_f.seekg(0, std::ios::end);
-        m_size.store(m_f.tellg());
+#ifdef _WIN32
+        _fseeki64(m_f, 0, SEEK_END);
+        m_size.store(_ftelli64(m_f));
+#else
+        fseeko64(m_f, 0, SEEK_END);
+        m_size.store(ftello64(m_f));
+#endif
     }
     else
     {
@@ -176,7 +188,7 @@ void Logfile::clear()
 Logfile::Result Logfile::record(const std::string& content, bool newline)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    if (!m_f.is_open())
+    if (!m_f)
     {
         return Result::invalid;
     }
@@ -185,7 +197,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
         return Result::disabled;
     }
     size_t contentSize = content.size();
-    if (m_maxSize > 0) /* �������ļ���С */
+    if (m_maxSize > 0) /* 有限制文件大小 */
     {
         if (contentSize > m_maxSize)
         {
@@ -199,10 +211,10 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
     bool needFlush = false;
     if (m_size.load() > 0 && newline)
     {
-        m_f.write("\n", 1);
-        if (!m_f.good())
+        if (0 == fwrite("\n", 1, 1, m_f))
         {
-            m_f.close();
+            fclose(m_f);
+            m_f = nullptr;
             return Result::newline_failed;
         }
         m_size.store(m_size.load() + 1);
@@ -210,10 +222,10 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
     }
     if (contentSize > 0)
     {
-        m_f.write(content.c_str(), contentSize);
-        if (!m_f.good())
+        if (0 == fwrite(content.c_str(), 1, contentSize, m_f))
         {
-            m_f.close();
+            fclose(m_f);
+            m_f = nullptr;
             return Result::content_failed;
         }
         m_size.store(m_size.load() + contentSize);
@@ -221,10 +233,10 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
     }
     if (needFlush)
     {
-        m_f.flush();
-        if (!m_f.good())
+        if (0 != fflush(m_f))
         {
-            m_f.close();
+            fclose(m_f);
+            m_f = nullptr;
             return Result::flush_failed;
         }
     }

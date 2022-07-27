@@ -1,7 +1,6 @@
 #include "curlex.h"
 
-#include <fstream>
-#include <iostream>
+#include <stdio.h>
 
 namespace curlex
 {
@@ -190,29 +189,27 @@ bool curlDownload(const RequestPtr& req, const std::string& filename, bool recov
     {
         return false;
     }
-    std::fstream f(filename, recover ? std::ios::out | std::ios::binary : std::ios::out | std::ios::binary | std::ios::app);
-    if (!f.is_open())
+    auto f = fopen(filename.c_str(), recover ? "wb+" : "ab+");
+    if (!f)
     {
         return false;
     }
-    f.seekg(0, std::ios::end);
-    auto offset = f.tellg();
+#ifdef _WIN32
+    _fseeki64(f, 0, SEEK_END);
+    auto offset = _ftelli64(f);
+#else
+    fseeko64(f, 0, SEEK_END);
+    auto offset = ftello64(f);
+#endif
     auto obj = createCurlObject(req, funcSet);
     if (offset > 0)
     {
         obj->setResumeOffset(offset);
     }
-    obj->setRecvFunc([&f](void* bytes, size_t count) {
-        f.write((const char*)bytes, count);
-        if (f.good())
-        {
-            return count;
-        }
-        return (size_t)0;
-    });
+    obj->setRecvFunc([&f](void* bytes, size_t count) { return fwrite(bytes, 1, count, f); });
     auto ret = obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
-    f.flush();
-    f.close();
+    fflush(f);
+    fclose(f);
     return ret;
 }
 } // namespace curlex

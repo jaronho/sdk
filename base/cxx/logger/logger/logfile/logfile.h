@@ -1,7 +1,7 @@
 #pragma once
 #include <atomic>
-#include <fstream>
 #include <mutex>
+#include <stdio.h>
 #include <string>
 
 /**
@@ -119,7 +119,7 @@ private:
     std::string m_fullName; /* 日志文件全名(包含路径) */
     size_t m_maxSize = 0; /* 文件最大容量值 */
     std::mutex m_mutex; /* 互斥锁 */
-    std::fstream m_f; /* 文件流 */
+    FILE* m_f = nullptr; /* 文件指针 */
     std::atomic_size_t m_size = {0}; /* 文件当前大小 */
     std::atomic_bool m_enable = {true}; /* 是否启用日志记录功能 */
 };

@@ -202,8 +202,8 @@ bool IniFile::save()
     {
         return true;
     }
-    std::fstream f(m_filename, std::ios::out | std::ios::binary);
-    if (!f.is_open())
+    auto f = fopen(m_filename.c_str(), "wb+");
+    if (!f)
     {
         return false;
     }
@@ -231,9 +231,9 @@ bool IniFile::save()
             data.append(itemIter->key).append("=").append(itemIter->value).append("\n"); /* 写项内容 */
         }
     }
-    f.write(data.c_str(), data.size());
-    f.flush();
-    f.close();
+    fwrite(data.c_str(), 1, data.size(), f);
+    fflush(f);
+    fclose(f);
     m_changed = false;
     return true;
 }

@@ -1,15 +1,15 @@
 #include "ini_writer.h"
 
-#include <fstream>
+#include <stdio.h>
 
 namespace ini
 {
 int IniWriter::open(const std::string& filename, std::string& errorDesc)
 {
-    std::fstream f(filename, std::ios::out | std::ios::app);
-    if (f.is_open())
+    auto f = fopen(filename.c_str(), "ab+");
+    if (f)
     {
-        f.close();
+        fclose(f);
     }
     return IniFile::open(filename, false, errorDesc);
 }
