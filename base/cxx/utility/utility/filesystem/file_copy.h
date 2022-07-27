@@ -58,10 +58,11 @@ public:
      * @param filterFunc 过滤函数
      * @param stopFunc 停止函数(选填)
      * @param tmpSuffix 临时后缀名(选填), 默认不使用临时文件
+     * @param blocks 拷贝块大小, 为空时表示使用默认(最大64Kb)
      */
     FileCopy(const std::string& srcPath, const std::vector<std::string>& srcFilelist, const std::string& destPath, bool clearDest,
              bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc = nullptr,
-             const std::string& tmpSuffix = "");
+             const std::string& tmpSuffix = "", const std::vector<FileInfo::CopyBlock>& blocks = {});
     FileCopy() = default;
     virtual ~FileCopy() = default;
 
@@ -104,11 +105,12 @@ private:
      * @brief 拷贝源文件列表
      * @param srcFilelist 源文件列表
      * @param totalFileSize 源文件总大小
+     * @param blocks 拷贝块大小
      * @param destFilelist [输出]目标文件列表
      * @return 拷贝结果
      */
     FileInfo::CopyResult copySrcFileList(const std::vector<std::string>& srcFilelist, size_t totalFileSize,
-                                         std::vector<std::string>* destFilelist);
+                                         const std::vector<FileInfo::CopyBlock>& blocks, std::vector<std::string>* destFilelist);
 
     /**
      * @brief 检测目标文件是否存在同名
@@ -124,6 +126,7 @@ private:
     bool m_clearDestPath; /* 拷贝前是否清空目标目录 */
     bool m_coverDestFile; /* 当目标目录已有同名文件时是否覆盖 */
     std::string m_tmpSuffix; /* 临时后缀名 */
+    std::vector<FileInfo::CopyBlock> m_blocks; /* 文件块列表 */
     FileCopyFilterFunc m_filterFunc; /* 过滤函数 */
     FileCopyStopFunc m_stopFunc; /* 停止函数 */
     FileCopyBeginCallback m_beginCallback; /* 开始回调 */

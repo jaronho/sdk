@@ -1,13 +1,30 @@
 #pragma once
-#include <fstream>
 #include <functional>
+#include <stdio.h>
 #include <string>
+#include <vector>
 
 #include "fs_define.h"
 
 namespace utility
 {
 /*
+ 说明: 对于文件的操作, FILE* 会比 std::fstream 效率高, 特别是写文件
+ (1)FILE 文件操作模式说明
+  ------------------------------------------------------------------------------------------
+ |  模式  |                 含义                 |             说明                         |
+ |--------|--------------------------------------|------------------------------------------|
+ |    r   | 打开文件进行读操作                   | 文件不存在时不会创建                     |
+ |--------|--------------------------------------|------------------------------------------|
+ |    w   | 打开文件进行写操作                   | 文件不存在时创建新文件, 反之清空文件内容 |
+ |--------|--------------------------------------|------------------------------------------|
+ |    a   | 打开文件并定位到末尾进行写操作(追加) | 文件不存在时创建新文件                   |
+ |--------|--------------------------------------|------------------------------------------|
+ |    b   | 指定文件内容为二进制方式             | 文件不存在时不会创建                     |
+ |--------|--------------------------------------|------------------------------------------|
+ |    +   | 指定文件支持读写模式                 | 文件不存在时不会创建                     |
+  ------------------------------------------------------------------------------------------
+ (2)std::fstream 文件操作模式说明
   ----------------------------------------------------------------------------------------------------
  |       模式       |                 含义                 |                   说明                   |
  |------------------|--------------------------------------|------------------------------------------|
@@ -38,6 +55,15 @@ public:
         memory_alloc_failed, /* 内存分配失败 */
         stop, /* 停止拷贝 */
         size_unequal /* 源文件和目标文件大小不一致 */
+    };
+
+    /**
+     * @brief 文件拷贝块, 拷贝大于指定大小的文件时, 指定拷贝内存块大小
+     */
+    struct CopyBlock
+    {
+        size_t fileSize; /* 文件大小(单位:字节) */
+        size_t blockSize; /* 块大小(单位:字节) */
     };
 
 public:
@@ -115,11 +141,12 @@ public:
      * @param destFilename 目标文件(全路径)
      * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
      * @param progressCb 进度回调, 参数: now-已拷贝字节数, total-总字节数, 返回值: true-继续, false-停止拷贝
-     * @param maxBlockSize 设置拷贝块的最大单位(字节), 为0时表示不限制
+     * @param blocks 拷贝块大小, 为空时表示使用默认(最大64Kb)
      * @return 拷贝结果
      */
     CopyResult copy(const std::string& destFilename, int* errCode = nullptr,
-                    const std::function<bool(size_t now, size_t total)>& progressCb = nullptr, size_t maxBlockSize = 0) const;
+                    const std::function<bool(size_t now, size_t total)>& progressCb = nullptr,
+                    const std::vector<FileInfo::CopyBlock>& blocks = {}) const;
 
     /**
      * @brief 文件大小
@@ -145,15 +172,6 @@ public:
     char* read(size_t offset, size_t& count, bool textFlag = false) const;
 
     /**
-     * @brief 替换文件中的数据
-     * @param offset 指定的偏移值, 为0时表示从头开始
-     * @param count 指定字节数
-     * @param callback 替换函数(对buffer进行替换, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
-     * @return true-成功, false-失败
-     */
-    bool replace(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback) const;
-
-    /**
      * @brief 写文件数据
      * @param data 数据
      * @param length 数据长度
@@ -174,36 +192,56 @@ public:
     bool write(size_t pos, const char* data, size_t length, int* errCode = nullptr);
 
     /**
+     * @brief 替换文件中的数据
+     * @param offset 指定的偏移值, 为0时表示从头开始
+     * @param count 指定字节数
+     * @param callback 替换函数(对buffer进行替换, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
+     * @return true-成功, false-失败
+     */
+    bool replace(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback) const;
+
+    /**
      * @brief 判断是否为文本文件
      * @return true-文本文件, false-非文本文件
      */
     bool isTextFile() const;
 
     /**
-     * @brief 从文件流中读取数据
-     * @param f 文件流
+     * @brief 从文件中读取数据
+     * @param f 文件指针
      * @param offset 读取的偏移值, 为0时表示从头开始
-     * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
+     * @param count [输入/输出]要读取的字节数(返回实际读取的字节数), 为0时表示读取所有
+     * @param textFlag true-文本, false-二进制
      * @return 数据(需要外部调用free释放内存)
      */
-    static char* read(std::fstream& f, size_t offset, size_t& count);
+    static char* read(FILE* f, size_t offset, size_t& count, bool textFlag);
 
     /**
-     * @brief 替换文件流中的数据
-     * @param f 文件流
+     * @brief 向文件中写入数据
+     * @param f 文件指针
+     * @param offset 写入的偏移值, 为0时表示从头开始
+     * @param data 数据
+     * @param count 要写入的字节数
+     * @return true-成功, false-失败
+     */
+    static bool write(FILE* f, size_t offset, const char* data, size_t count);
+
+    /**
+     * @brief 替换文件中的数据
+     * @param f 文件指针
      * @param offset 指定的偏移值, 为0时表示从头开始
      * @param count 指定字节数
      * @param callback 替换函数(对buffer进行替换, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
      * @return true-成功, false-失败
      */
-    static bool replace(std::fstream& f, size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback);
+    static bool replace(FILE* f, size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback);
 
     /**
-     * @brief 判断文件流是否为文本数据
-     * @param f 文件流
+     * @brief 判断文件是否为文本数据
+     * @param f 文件指针
      * @return true-文本数据, false-二进制数据
      */
-    static bool isTextData(std::fstream& f);
+    static bool isTextData(FILE* f);
 
 private:
     std::string m_fullName; /* 全路径文件名 */

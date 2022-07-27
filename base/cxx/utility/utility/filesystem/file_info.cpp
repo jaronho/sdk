@@ -9,39 +9,36 @@
 
 namespace utility
 {
-struct FileBlockSize
-{
-    size_t fileSize; /* 文件大小(单位:字节) */
-    size_t blockSize; /* 块大小(单位:字节) */
-};
-
 /**
  * @brief 计算块大小 
  * @param fileSize 文件大小
- * @param maxBlockSize 最大的块大小
+ * @param blocks 文件块列表
  * @return 块大小, 为0表示文件为空
  */
-static size_t calcBlockSize(size_t fileSize, size_t maxBlockSize)
+static size_t calcCopyBlockSize(size_t fileSize, std::vector<FileInfo::CopyBlock> blocks)
 {
-    /* 文件/块大小映射 */
-    static const int MB = 1024 * 1024;
-    static const FileBlockSize FILE_BLOCK_SIZE_MAP[] = {{1024 * MB, 4 * MB}, {512 * MB, 4 * MB}, {256 * MB, 4 * MB},
-                                                        {128 * MB, 2 * MB},  {64 * MB, 2 * MB},  {32 * MB, 2 * MB},
-                                                        {16 * MB, 1 * MB},   {4 * MB, 1 * MB},   {1 * MB, 1 * MB}};
-    /* 根据文件大小等级计算块大小 */
     size_t blockSize = fileSize;
-    const int MAP_COUNT = sizeof(FILE_BLOCK_SIZE_MAP) / sizeof(FileBlockSize);
-    for (int i = 0; i < MAP_COUNT; ++i)
+    if (blocks.empty())
     {
-        if (fileSize >= FILE_BLOCK_SIZE_MAP[i].fileSize)
+        static const int DEFAULT_MAX_BLOCK_SIZE = 64 * 1024; /* 默认不能超过64Kb */
+        if (blockSize > DEFAULT_MAX_BLOCK_SIZE)
         {
-            blockSize = FILE_BLOCK_SIZE_MAP[i].blockSize;
-            break;
+            blockSize = DEFAULT_MAX_BLOCK_SIZE;
         }
     }
-    if (maxBlockSize > 0 && blockSize > maxBlockSize)
+    else
     {
-        blockSize = maxBlockSize;
+        /* 对块大小进行从降序排序 */
+        std::sort(blocks.begin(), blocks.end(), [](FileInfo::CopyBlock a, FileInfo::CopyBlock b) { return a.fileSize > b.fileSize; });
+        /* 根据文件大小等级计算块大小 */
+        for (size_t i = 0; i < blocks.size(); ++i)
+        {
+            if (fileSize >= blocks[i].fileSize)
+            {
+                blockSize = blocks[i].blockSize;
+                break;
+            }
+        }
     }
     return blockSize;
 }
@@ -137,10 +134,10 @@ bool FileInfo::create() const
     {
         return false;
     }
-    std::fstream f(m_fullName, std::ios::app);
-    if (f.is_open())
+    auto f = fopen(m_fullName.c_str(), "ab+");
+    if (f)
     {
-        f.close();
+        fclose(f);
         return true;
     }
     return false;
@@ -160,7 +157,8 @@ bool FileInfo::remove() const
 }
 
 FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCode,
-                                    const std::function<bool(size_t now, size_t total)>& progressCb, size_t maxBlockSize) const
+                                    const std::function<bool(size_t now, size_t total)>& progressCb,
+                                    const std::vector<FileInfo::CopyBlock>& blocks) const
 {
     if (errCode)
     {
@@ -171,8 +169,8 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         return CopyResult::src_open_failed;
     }
     /* 打开源文件 */
-    std::fstream srcFile(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
-    if (!srcFile.is_open())
+    auto srcFile = fopen(m_fullName.c_str(), "rb");
+    if (!srcFile)
     {
         if (errCode)
         {
@@ -180,74 +178,85 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         }
         return CopyResult::src_open_failed;
     }
-    size_t srcFileSize = srcFile.tellg();
-    srcFile.seekg(0, std::ios::beg);
+#ifdef _WIN32
+    _fseeki64(srcFile, 0, SEEK_END);
+    auto srcFileSize = _ftelli64(srcFile);
+    _fseeki64(srcFile, 0, SEEK_SET);
+#else
+    fseeko64(srcFile, 0, SEEK_END);
+    auto srcFileSize = ftello64(srcFile);
+    fseeko64(srcFile, 0, SEEK_SET);
+#endif
     /* 打开目标文件 */
-    std::fstream destFile(destFilename, std::ios::out | std::ios::binary);
-    if (!destFile.is_open())
+    auto destFile = fopen(destFilename.c_str(), "wb+");
+    if (!destFile)
     {
         if (errCode)
         {
             *errCode = errno;
         }
-        srcFile.close();
+        fclose(srcFile);
         return CopyResult::dest_open_failed;
     }
-    /* 计算和分配块 */
-    size_t blockSize = calcBlockSize(srcFileSize, maxBlockSize);
+    /* 计算和分配内存块 */
+    auto blockSize = calcCopyBlockSize(srcFileSize, blocks);
     if (0 == blockSize) /* 源文件为空 */
     {
-        srcFile.close();
-        destFile.close();
+        fclose(srcFile);
+        fclose(destFile);
         return CopyResult::ok;
     }
-    char* block = (char*)malloc(sizeof(char) * blockSize);
+    auto block = (char*)malloc(blockSize);
     if (!block)
     {
         if (errCode)
         {
             *errCode = errno;
         }
-        srcFile.close();
-        destFile.close();
+        fclose(srcFile);
+        fclose(destFile);
         return CopyResult::memory_alloc_failed;
     }
     /* 拷贝文件内容 */
-    size_t nowSize = 0, readSize = 0;
+    size_t nowSize = 0, readSize = 0, writeSize = 0;
     bool stopFlag = false;
-    while (!srcFile.eof())
+    while (!feof(srcFile))
     {
-        memset(block, 0, sizeof(char) * blockSize);
-        srcFile.read(block, blockSize);
-        readSize = srcFile.gcount();
+        memset(block, 0, blockSize);
+        readSize = fread(block, 1, blockSize, srcFile);
         if (0 == readSize)
         {
-            if (errCode)
-            {
-                *errCode = errno;
-            }
+            printf("---------------------------- 111\n");
             break;
         }
-        destFile.write(block, readSize);
-        nowSize += readSize;
-        if (progressCb)
+        writeSize = fwrite(block, 1, readSize, destFile);
+        if (0 == writeSize)
         {
-            if (!progressCb(nowSize, srcFileSize))
-            {
-                stopFlag = true;
-                break;
-            }
+            printf("---------------------------- 222\n");
+            break;
+        }
+        nowSize += writeSize;
+        //#ifdef _WIN32
+        //        _fseeki64(srcFile, nowSize, SEEK_SET);
+        //#else
+        //        fseeko64(srcFile, nowSize, SEEK_SET);
+        //#endif
+        if (progressCb && !progressCb(nowSize, srcFileSize))
+        {
+            stopFlag = true;
+            break;
         }
     }
-    free(block);
-    destFile.flush();
     /* 关闭文件句柄 */
-    srcFile.close();
-    destFile.close();
-    if (stopFlag)
+    free(block);
+    fclose(srcFile);
+    if (stopFlag) /* 停止拷贝 */
     {
+        fclose(destFile);
         return CopyResult::stop;
     }
+    fflush(destFile);
+    fclose(destFile);
     if (nowSize != srcFileSize)
     {
         return CopyResult::size_unequal;
@@ -262,11 +271,17 @@ long long FileInfo::size() const
     {
         return fileSize;
     }
-    std::fstream f(m_fullName, std::ios::in | std::ios::ate);
-    if (f.is_open())
+    auto f = fopen(m_fullName.c_str(), "rb");
+    if (f)
     {
-        fileSize = f.tellg();
-        f.close();
+#ifdef _WIN32
+        _fseeki64(f, 0, SEEK_END);
+        fileSize = _ftelli64(f);
+#else
+        fseeko64(f, 0, SEEK_END);
+        fileSize = ftello64(f);
+#endif
+        fclose(f);
     }
     return fileSize;
 }
@@ -278,26 +293,16 @@ char* FileInfo::readAll(long long& fileSize, bool textFlag) const
         fileSize = -1;
         return NULL;
     }
-    std::fstream f(m_fullName, std::ios::in | std::ios::binary | std::ios::ate);
-    if (!f.is_open())
+    auto f = fopen(m_fullName.c_str(), "rb");
+    if (!f)
     {
         fileSize = -1;
         return NULL;
     }
-    fileSize = f.tellg();
-    f.seekg(0, std::ios::beg);
-    size_t dataSize = sizeof(char) * fileSize + (textFlag ? 1 : 0);
-    char* fileData = (char*)malloc(dataSize);
-    if (fileData)
-    {
-        memset(fileData, 0, dataSize);
-        f.read(fileData, fileSize);
-        if (textFlag)
-        {
-            fileData[fileSize] = '\0';
-        }
-    }
-    f.close();
+    size_t count;
+    auto fileData = read(f, 0, count, textFlag);
+    fileSize = count;
+    fclose(f);
     return fileData;
 }
 
@@ -307,38 +312,14 @@ char* FileInfo::read(size_t offset, size_t& count, bool textFlag) const
     {
         return NULL;
     }
-    std::fstream f(m_fullName, std::ios::in | std::ios::binary);
-    if (!f.is_open())
+    auto f = fopen(m_fullName.c_str(), "rb");
+    if (!f)
     {
         return NULL;
     }
-    char* buffer = read(f, offset, count);
-    if (buffer && textFlag)
-    {
-        buffer[count] = '\0';
-    }
-    f.close();
+    auto buffer = read(f, offset, count, textFlag);
+    fclose(f);
     return buffer;
-}
-
-bool FileInfo::replace(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback) const
-{
-    if (m_fullName.empty())
-    {
-        return false;
-    }
-    std::fstream f(m_fullName, std::ios::in | std::ios::out);
-    if (!f.is_open())
-    {
-        return false;
-    }
-    bool ret = replace(f, offset, count, callback);
-    if (ret)
-    {
-        f.flush();
-    }
-    f.close();
-    return ret;
 }
 
 bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCode) const
@@ -355,8 +336,8 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
     {
         return false;
     }
-    std::fstream f(m_fullName, std::ios::out | (isAppend ? (std::ios::binary | std::ios::app) : std::ios::binary));
-    if (!f.is_open())
+    auto f = fopen(m_fullName.c_str(), isAppend ? "ab+" : "wb+");
+    if (!f)
     {
         if (errCode)
         {
@@ -364,10 +345,13 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
         }
         return false;
     }
-    f.write(data, length);
-    f.flush();
-    f.close();
-    return true;
+    auto ret = write(f, 0, data, length);
+    if (ret)
+    {
+        fflush(f);
+    }
+    fclose(f);
+    return ret;
 }
 
 bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode)
@@ -384,25 +368,9 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode)
     {
         return false;
     }
-    {
-        /* 文件不存在则需要先创建 */
-        FileAttribute attr;
-        if (!getFileAttribute(m_fullName, attr) || !attr.isFile)
-        {
-            std::fstream f(m_fullName, std::ios::app);
-            if (!f.is_open())
-            {
-                if (errCode)
-                {
-                    *errCode = errno;
-                }
-                return false;
-            }
-            f.close();
-        }
-    }
-    std::fstream f(m_fullName, std::ios::in | std::ios::out); /* 该模式下需要文件已经存在 */
-    if (!f.is_open())
+    /* 如果文件不存在则需要先创建文件 */
+    auto f = fopen(m_fullName.c_str(), "ab+");
+    if (!f)
     {
         if (errCode)
         {
@@ -410,11 +378,43 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode)
         }
         return false;
     }
-    f.seekp(pos, std::ios::beg);
-    f.write(data, length);
-    f.flush();
-    f.close();
-    return true;
+    fclose(f);
+    f = fopen(m_fullName.c_str(), "rb+"); /* 该模式允许在指定位置写入数据, 但需要文件已经创建 */
+    if (!f)
+    {
+        if (errCode)
+        {
+            *errCode = errno;
+        }
+        return false;
+    }
+    auto ret = write(f, pos, data, length);
+    if (ret)
+    {
+        fflush(f);
+    }
+    fclose(f);
+    return ret;
+}
+
+bool FileInfo::replace(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback) const
+{
+    if (m_fullName.empty())
+    {
+        return false;
+    }
+    auto f = fopen(m_fullName.c_str(), "rb+");
+    if (!f)
+    {
+        return false;
+    }
+    auto ret = replace(f, offset, count, callback);
+    if (ret)
+    {
+        fflush(f);
+    }
+    fclose(f);
+    return ret;
 }
 
 bool FileInfo::isTextFile() const
@@ -423,38 +423,56 @@ bool FileInfo::isTextFile() const
     {
         return false;
     }
-    std::fstream f(m_fullName, std::ios::in | std::ios::binary);
-    if (!f.is_open())
+    auto f = fopen(m_fullName.c_str(), "rb");
+    if (!f)
     {
         return false;
     }
-    bool ret = isTextData(f);
-    f.close();
+    auto ret = isTextData(f);
+    fclose(f);
     return ret;
 }
 
-char* FileInfo::read(std::fstream& f, size_t offset, size_t& count)
+char* FileInfo::read(FILE* f, size_t offset, size_t& count, bool textFlag)
 {
-    if (!f.is_open())
+    if (!f)
     {
+        count = 0;
         return NULL;
     }
     char* buffer = NULL;
-    f.seekg(0, std::ios::end);
-    size_t fileSize = f.tellg();
+#ifdef _WIN32
+    _fseeki64(f, 0, SEEK_END);
+    auto fileSize = _ftelli64(f);
+#else
+    fseeko64(f, 0, SEEK_END);
+    auto fileSize = ftello64(f);
+#endif
+    if (0 == count)
+    {
+        count = fileSize;
+    }
     if (offset < fileSize)
     {
         if (offset + count > fileSize)
         {
             count = fileSize - offset;
         }
-        size_t buffSize = sizeof(char) * count;
+        auto buffSize = count + (textFlag ? 1 : 0);
         buffer = (char*)malloc(buffSize);
         if (buffer)
         {
             memset(buffer, 0, buffSize);
-            f.seekg(offset, std::ios::beg);
-            f.read(buffer, count);
+#ifdef _WIN32
+            _fseeki64(f, offset, SEEK_SET);
+#else
+            fseeko64(f, offset, SEEK_SET);
+#endif
+            count = fread(buffer, 1, buffSize, f);
+            if (textFlag)
+            {
+                buffer[buffSize - 1] = '\0';
+            }
         }
     }
     else
@@ -464,33 +482,63 @@ char* FileInfo::read(std::fstream& f, size_t offset, size_t& count)
     return buffer;
 }
 
-bool FileInfo::replace(std::fstream& f, size_t offset, size_t count, const std::function<void(char* srcData, size_t count)>& callback)
+bool FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
 {
-    if (!f.is_open() || !callback)
+    if (!f || !data || 0 == count)
     {
         return false;
     }
-    char* buffer = NULL;
-    f.seekg(0, std::ios::end);
-    size_t fileSize = f.tellg();
+#ifdef _WIN32
+    _fseeki64(f, offset, SEEK_SET);
+#else
+    fseeko64(f, offset, SEEK_SET);
+#endif
+    if (fwrite(data, 1, count, f) > 0)
+    {
+        return true;
+    }
+    return false;
+}
+
+bool FileInfo::replace(FILE* f, size_t offset, size_t count, const std::function<void(char* srcData, size_t count)>& callback)
+{
+    if (!f || !callback)
+    {
+        return false;
+    }
+#ifdef _WIN32
+    _fseeki64(f, 0, SEEK_END);
+    auto fileSize = _ftelli64(f);
+#else
+    fseeko64(f, 0, SEEK_END);
+    auto fileSize = ftello64(f);
+#endif
     if (offset < fileSize)
     {
         if (offset + count > fileSize)
         {
             count = fileSize - offset;
         }
-        size_t buffSize = sizeof(char) * count;
-        buffer = (char*)malloc(buffSize);
+        auto buffSize = count;
+        auto buffer = (char*)malloc(buffSize);
         if (buffer)
         {
             memset(buffer, 0, buffSize);
-            f.seekg(offset, std::ios::beg);
-            f.read(buffer, count);
+#ifdef _WIN32
+            _fseeki64(f, offset, SEEK_SET);
+#else
+            fseeko64(f, offset, SEEK_SET);
+#endif
+            count = fread(buffer, 1, count, f);
             callback(buffer, count);
             if (buffer)
             {
-                f.seekg(offset, std::ios::beg);
-                f.write(buffer, count);
+#ifdef _WIN32
+                _fseeki64(f, offset, SEEK_SET);
+#else
+                fseeko64(f, offset, SEEK_SET);
+#endif
+                fwrite(buffer, 1, count, f);
                 free(buffer);
                 return true;
             }
@@ -499,20 +547,23 @@ bool FileInfo::replace(std::fstream& f, size_t offset, size_t count, const std::
     return false;
 }
 
-bool FileInfo::isTextData(std::fstream& f)
+bool FileInfo::isTextData(FILE* f)
 {
-    if (!f.is_open())
+    if (!f)
     {
         throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
                                + "] arg 'f' is not opened");
     }
-    f.seekg(0, std::ios::beg);
+#ifdef _WIN32
+    _fseeki64(f, 0, SEEK_SET);
+#else
+    fseeko64(f, 0, SEEK_SET);
+#endif
     char ch[1] = {0};
-    while (!f.eof())
+    while (!feof(f))
     {
-        memset(ch, 0, sizeof(char));
-        f.read(ch, 1);
-        if (0 == f.gcount())
+        memset(ch, 0, 1);
+        if (0 == fread(ch, 1, 1, f))
         {
             break;
         }

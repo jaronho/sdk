@@ -3,12 +3,14 @@
 namespace utility
 {
 FileCopy::FileCopy(const std::string& srcPath, const std::vector<std::string>& srcFilelist, const std::string& destPath, bool clearDest,
-                   bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc, const std::string& tmpSuffix)
+                   bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc, const std::string& tmpSuffix,
+                   const std::vector<FileInfo::CopyBlock>& blocks)
     : m_srcPathInfo(srcPath, true)
     , m_srcFilelist(srcFilelist)
     , m_destPathInfo(destPath, true)
     , m_clearDestPath(clearDest)
     , m_coverDestFile(coverDest)
+    , m_blocks(blocks)
     , m_filterFunc(filterFunc)
     , m_stopFunc(stopFunc)
     , m_errCode(0)
@@ -107,7 +109,7 @@ FileInfo::CopyResult FileCopy::copyAllFiles(std::vector<std::string>* destFileli
     {
         return FileInfo::CopyResult::stop;
     }
-    return copySrcFileList(srcFilelist, totalFileSize, destFilelist);
+    return copySrcFileList(srcFilelist, totalFileSize, m_blocks, destFilelist);
 }
 
 FileInfo::CopyResult FileCopy::copyAssignFiles(std::vector<std::string>* destFilelist)
@@ -125,11 +127,11 @@ FileInfo::CopyResult FileCopy::copyAssignFiles(std::vector<std::string>* destFil
             totalFileSize += fileSize;
         }
     }
-    return copySrcFileList(m_srcFilelist, totalFileSize, destFilelist);
+    return copySrcFileList(m_srcFilelist, totalFileSize, m_blocks, destFilelist);
 }
 
 FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& srcFilelist, size_t totalFileSize,
-                                               std::vector<std::string>* destFilelist)
+                                               const std::vector<FileInfo::CopyBlock>& blocks, std::vector<std::string>* destFilelist)
 {
     if (destFilelist)
     {
@@ -173,17 +175,20 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
         {
             destFileTmp = destFile + m_tmpSuffix;
         }
-        auto result = srcFileInfo.copy(destFileTmp, &errCode, [&](size_t now, size_t total) {
-            if (m_stopFunc && m_stopFunc())
-            {
-                return false;
-            }
-            if (m_singleProgressCallback)
-            {
-                m_singleProgressCallback(srcFileInfo.name(), total, now);
-            }
-            return true;
-        });
+        auto result = srcFileInfo.copy(
+            destFileTmp, &errCode,
+            [&](size_t now, size_t total) {
+                if (m_stopFunc && m_stopFunc())
+                {
+                    return false;
+                }
+                if (m_singleProgressCallback)
+                {
+                    m_singleProgressCallback(srcFileInfo.name(), total, now);
+                }
+                return true;
+            },
+            blocks);
         /* 拷贝结果处理 */
         if (FileInfo::CopyResult::ok == result)
         {
