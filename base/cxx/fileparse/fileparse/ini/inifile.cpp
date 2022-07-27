@@ -46,7 +46,7 @@ std::string getLine(FILE* f)
     if (f)
     {
         char ch;
-        while (EOF != (ch = fgetc(f)) && '\n' != ch)
+        while (!feof(f) && '\n' != (ch = fgetc(f)))
         {
             line.push_back(ch);
         }
