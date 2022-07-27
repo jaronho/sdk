@@ -217,6 +217,13 @@ public:
     static char* read(FILE* f, size_t offset, size_t& count, bool textFlag);
 
     /**
+     * @brief 从文本文件中读取一行
+     * @param f 文件指针
+     * @return 行数据
+     */
+    static std::string readLine(FILE* f);
+
+    /**
      * @brief 向文件中写入数据
      * @param f 文件指针
      * @param offset 写入的偏移值, 为0时表示从头开始

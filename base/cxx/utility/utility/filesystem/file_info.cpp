@@ -482,6 +482,29 @@ char* FileInfo::read(FILE* f, size_t offset, size_t& count, bool textFlag)
     return buffer;
 }
 
+std::string FileInfo::readLine(FILE* f)
+{
+    std::string line;
+    if (f)
+    {
+        char ch;
+        while (EOF != (ch = fgetc(f)) && '\n' != ch)
+        {
+            line.push_back(ch);
+        }
+        if (line.size() >= 3 && (0xEF == (unsigned char)line[0] && 0xBB == (unsigned char)line[1] && 0xBF == (unsigned char)line[2]))
+        {
+            line = line.substr(3); /* 跳过BOM */
+        }
+        long long lastIndex = line.size() - 1;
+        if (lastIndex >= 0 && '\r' == line[lastIndex])
+        {
+            line.erase(lastIndex); /* 去除回车符 */
+        }
+    }
+    return line;
+}
+
 bool FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
 {
     if (!f || !data || 0 == count)
