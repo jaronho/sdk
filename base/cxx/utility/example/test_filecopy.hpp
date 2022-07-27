@@ -81,15 +81,20 @@ void testFileCopy(int argc, char** argv)
         break;
     case utility::FileInfo::CopyResult::src_open_failed:
         printf("\nfile copy fail: source file %s open fail: %d %s\n", failSrcFile.c_str(), failCode, strerror(failCode));
+        break;
     case utility::FileInfo::CopyResult::dest_open_failed:
         printf("\nfile copy fail: destination file %s open fail: %d %s\n", failDestFile.c_str(), failCode, strerror(failCode));
+        break;
     case utility::FileInfo::CopyResult::memory_alloc_failed:
         printf("\nfile copy fail: source file %s, destination file: %s, memory allocate fail: %d %s\n", failSrcFile.c_str(),
                failDestFile.c_str(), failCode, strerror(failCode));
+        break;
     case utility::FileInfo::CopyResult::stop:
         printf("\nfile copy fail: source file %s, destination file: %s, stop\n", failSrcFile.c_str(), failDestFile.c_str());
+        break;
     case utility::FileInfo::CopyResult::size_unequal:
         printf("\nfile copy fail: source file %s != destination file %s\n", failSrcFile.c_str(), failDestFile.c_str());
+        break;
     }
     std::chrono::steady_clock::time_point tm2 = std::chrono::steady_clock::now();
     printf("cost: %lld ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(tm2 - tm1).count());
