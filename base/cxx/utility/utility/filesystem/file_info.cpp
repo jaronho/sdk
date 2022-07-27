@@ -488,18 +488,20 @@ std::string FileInfo::readLine(FILE* f)
     if (f)
     {
         char ch;
-        while (EOF != (ch = fgetc(f)) && '\n' != ch)
+        while (!feof(f) && '\n' != (ch = fgetc(f)))
         {
             line.push_back(ch);
         }
+        /* BOM字符检测 */
         if (line.size() >= 3 && (0xEF == (unsigned char)line[0] && 0xBB == (unsigned char)line[1] && 0xBF == (unsigned char)line[2]))
         {
-            line = line.substr(3); /* 跳过BOM */
+            line = line.substr(3);
         }
+        /* 非显示字符检测 */
         long long lastIndex = line.size() - 1;
-        if (lastIndex >= 0 && '\r' == line[lastIndex])
+        if (lastIndex >= 0 && ('\r' == line[lastIndex] || 0xFF == (unsigned char)line[lastIndex]))
         {
-            line.erase(lastIndex); /* 去除回车符 */
+            line.erase(lastIndex);
         }
     }
     return line;
