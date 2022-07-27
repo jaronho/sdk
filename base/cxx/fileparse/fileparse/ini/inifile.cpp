@@ -96,7 +96,7 @@ IniFile::~IniFile()
 int IniFile::open(const std::string& filename, bool allowTailComment, std::string& errorDesc)
 {
     errorDesc.clear();
-    auto f = fopen(filename.c_str(), "rb+");
+    auto f = fopen(filename.c_str(), "rb");
     if (!f)
     {
         errorDesc = "can't open file [" + filename + "]";
