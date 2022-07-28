@@ -74,10 +74,6 @@ void FileDeleter::handleConfig(const FileDeleteConfig& cfg)
         {
             return false;
         }
-        if (1 == depth && attr.isHidden) /* 第1层且为隐藏的目录(跳过) */
-        {
-            return false;
-        }
         auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
         if (nowTimestamp - modifyTimestamp >= cfg.expireSecond) /* 过期, 需要删除 */
         {
@@ -90,10 +86,6 @@ void FileDeleter::handleConfig(const FileDeleteConfig& cfg)
         return false;
     };
     auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-        if (1 == depth && attr.isHidden) /* 第1层且为隐藏的文件(跳过) */
-        {
-            return;
-        }
         auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
         if (nowTimestamp - modifyTimestamp >= cfg.expireSecond) /* 过期, 需要删除 */
         {
