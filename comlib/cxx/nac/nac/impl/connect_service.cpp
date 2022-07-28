@@ -352,6 +352,10 @@ void ConnectService::sendHeartbeatMsg()
     {
         auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
         m_lastSendHeartbeatTime = t.time_since_epoch().count();
+        {
+            std::lock_guard<std::mutex> locker(m_mutexLastSendHeartbeatDateTime);
+            m_lastSendHeartbeatDateTime = utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
+        }
         const auto sessionManager = m_wpSessionManager.lock();
         if (sessionManager)
         {
@@ -416,9 +420,16 @@ void ConnectService::onOfflineCheckTimer()
                 std::lock_guard<std::mutex> locker(m_mutexLastSendDateTime);
                 lastSendDateTime = m_lastSendDateTime;
             }
-            WARN_LOG(m_logger, "网络掉线(原因: {}), 最近接收包时间({}): {}, 最近发送包时间({}): {}, 掉线判定时间({}): {} 秒.",
-                     isDataChannelClose ? "通道被关闭." : "长时间未收到包.", m_lastRecvTime, lastRecvDateTime, m_lastSendTime,
-                     lastSendDateTime, now, m_offlineTime);
+            std::string lastSendHeartbeatDateTime;
+            {
+                std::lock_guard<std::mutex> locker(m_mutexLastSendHeartbeatDateTime);
+                lastSendHeartbeatDateTime = m_lastSendHeartbeatDateTime;
+            }
+            WARN_LOG(
+                m_logger,
+                "网络掉线(原因: {}), 最近接收包时间({}): {}, 最近发送包时间({}): {}, 最近发送心跳时间({}): {}, 掉线判定时间({}): {} 秒.",
+                isDataChannelClose ? "通道被关闭." : "长时间未收到包.", m_lastRecvTime, lastRecvDateTime, m_lastSendTime, lastSendDateTime,
+                m_lastSendHeartbeatTime, lastSendHeartbeatDateTime, now, m_offlineTime);
             releaseConnection(DisconnectType::offline);
             updateConnectState(ConnectState::disconnected);
         }

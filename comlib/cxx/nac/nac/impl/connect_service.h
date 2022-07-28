@@ -206,6 +206,8 @@ private:
     std::string m_lastRecvDateTime; /* 最近接收数据日期, 年月日时分秒, 用于日志打印 */
     std::mutex m_mutexLastSendDateTime;
     std::string m_lastSendDateTime; /* 最近发送数据日期, 年月日时分秒, 用于日志打印 */
+    std::mutex m_mutexLastSendHeartbeatDateTime;
+    std::string m_lastSendHeartbeatDateTime; /* 最近发送心跳日期, 年月日时分秒, 用于日志打印 */
     std::string m_address; /* 服务器地址 */
     unsigned int m_port = 0; /* 服务器端口 */
     std::string m_certFile; /* 证书文件 */
