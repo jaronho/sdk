@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <mutex>
 
 #include "session_manager.h"
 #include "threading/timer/steady_timer.h"
@@ -198,9 +199,13 @@ private:
     std::function<std::string()> m_authDataGenerator = nullptr; /* 鉴权数据生成器 */
     std::function<bool(const std::string& data)> m_authResultCb = nullptr; /* 鉴权结果回调 */
     std::function<std::string()> m_heartbeatDataGenerator = nullptr; /* 心跳数据生成器 */
-    std::atomic<int64_t> m_lastRecvTime = {0}; /* 最近接收到数据的时间, epoch至今的秒数 */
-    std::atomic<int64_t> m_lastSendTime = {0}; /* 最近发送数据的时间, epoch至今的秒数 */
+    std::atomic<int64_t> m_lastRecvTime = {0}; /* 最近接收数据时间, epoch至今的秒数 */
+    std::atomic<int64_t> m_lastSendTime = {0}; /* 最近发送数据时间, epoch至今的秒数 */
     std::atomic<int64_t> m_lastSendHeartbeatTime = {0}; /* 最近发送心跳的时间, epoch至今的秒数 */
+    std::mutex m_mutexLastRecvDateTime;
+    std::string m_lastRecvDateTime; /* 最近接收数据日期, 年月日时分秒, 用于日志打印 */
+    std::mutex m_mutexLastSendDateTime;
+    std::string m_lastSendDateTime; /* 最近发送数据日期, 年月日时分秒, 用于日志打印 */
     std::string m_address; /* 服务器地址 */
     unsigned int m_port = 0; /* 服务器端口 */
     std::string m_certFile; /* 证书文件 */
