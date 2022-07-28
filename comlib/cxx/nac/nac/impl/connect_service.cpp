@@ -395,7 +395,24 @@ void ConnectService::onOfflineCheckTimer()
     {
         if (ConnectState::connecting == m_connectState || ConnectState::connected == m_connectState)
         {
-            WARN_LOG(m_logger, "网络掉线.");
+            /* 时间戳(秒)转日期字符串 */
+            static auto timestampToDate = [](int64_t timestamp) -> std::string {
+                auto tp = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>(std::chrono::seconds(timestamp));
+                auto tt = std::chrono::system_clock::to_time_t(tp);
+                auto dt = std::gmtime(&tt);
+                char buf[20] = {0};
+#ifdef _WIN32
+                sprintf_s(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d", dt->tm_year + 1900, dt->tm_mon + 1, dt->tm_mday, dt->tm_hour,
+                          dt->tm_min, dt->tm_sec);
+#else
+                sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d", dt->tm_year + 1900, dt->tm_mon + 1, dt->tm_mday, dt->tm_hour, dt->tm_min,
+                        dt->tm_sec);
+#endif
+                return buf;
+            };
+            WARN_LOG(m_logger, "网络掉线(原因: {}), 最近发送包时间: {}, 最近接收包时间: {}, 掉线判定时间: {} 秒.",
+                     isDataChannelClose ? "通道被关闭." : "长时间未收到包.", timestampToDate(m_lastSendTime),
+                     timestampToDate(m_lastRecvTime), m_offlineTime);
             releaseConnection(DisconnectType::offline);
             updateConnectState(ConnectState::disconnected);
         }
