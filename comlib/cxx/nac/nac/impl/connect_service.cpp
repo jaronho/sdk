@@ -118,6 +118,7 @@ bool ConnectService::reconnect()
         WARN_LOG(m_logger, "重连失败: 当前状态 {} 不对.", m_connectState.load());
         return false;
     }
+    INFO_LOG(m_logger, "重新连接");
     m_disconnectType = DisconnectType::unknown;
     updateConnectState(ConnectState::connecting);
     const auto dataChannel = m_wpDataChannel.lock();
@@ -200,7 +201,7 @@ void ConnectService::onConnectStatusChanged(bool isConnected)
 
 void ConnectService::onUpdateLastRecvTime()
 {
-    auto t = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::steady_clock::now());
+    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
     m_lastRecvTime = t.time_since_epoch().count();
     {
         std::lock_guard<std::mutex> locker(m_mutexLastRecvDateTime);
@@ -210,7 +211,7 @@ void ConnectService::onUpdateLastRecvTime()
 
 void ConnectService::onUpdateLastSendTime()
 {
-    auto t = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::steady_clock::now());
+    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
     m_lastSendTime = t.time_since_epoch().count();
     {
         std::lock_guard<std::mutex> locker(m_mutexLastSendDateTime);
@@ -333,10 +334,10 @@ void ConnectService::startHeartbeatTimer()
 
 void ConnectService::onHeartbeatTimer()
 {
-    auto t = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::steady_clock::now());
+    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
     auto now = t.time_since_epoch().count();
     /* 超过一定时间未向服务发送数据, 或者超过一定时间未发送心跳包, 需要发送心跳包来维持连接 */
-    if ((now - m_lastSendTime >= m_heartbeatInterval) || (now - m_lastSendHeartbeatTime >= m_heartbeatFixedInterval))
+    if ((now - m_lastSendTime >= (m_heartbeatInterval * 1000)) || (now - m_lastSendHeartbeatTime >= (m_heartbeatFixedInterval * 1000)))
     {
         if (ConnectState::connected == m_connectState)
         {
@@ -349,7 +350,7 @@ void ConnectService::sendHeartbeatMsg()
 {
     if (m_heartbeatBizCode > 0) /* 需要定时发送心跳 */
     {
-        auto t = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::steady_clock::now());
+        auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
         m_lastSendHeartbeatTime = t.time_since_epoch().count();
         const auto sessionManager = m_wpSessionManager.lock();
         if (sessionManager)
@@ -386,11 +387,11 @@ void ConnectService::startOfflineCheckTimer()
 
 void ConnectService::onOfflineCheckTimer()
 {
-    auto t = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::steady_clock::now());
+    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
     auto now = t.time_since_epoch().count();
     bool isUnRecvServerData = false;
     /* 超过一定时间未收到服务端数据包, 表示掉线 */
-    if (now - m_lastRecvTime >= m_offlineTime)
+    if (now - m_lastRecvTime >= (m_offlineTime * 1000))
     {
         isUnRecvServerData = true;
     }
@@ -415,8 +416,9 @@ void ConnectService::onOfflineCheckTimer()
                 std::lock_guard<std::mutex> locker(m_mutexLastSendDateTime);
                 lastSendDateTime = m_lastSendDateTime;
             }
-            WARN_LOG(m_logger, "网络掉线(原因: {}), 最近接收包时间: {}, 最近发送包时间: {}, 掉线判定时间: {} 秒.",
-                     isDataChannelClose ? "通道被关闭." : "长时间未收到包.", lastRecvDateTime, lastSendDateTime, m_offlineTime);
+            WARN_LOG(m_logger, "网络掉线(原因: {}), 最近接收包时间({}): {}, 最近发送包时间({}): {}, 掉线判定时间({}): {} 秒.",
+                     isDataChannelClose ? "通道被关闭." : "长时间未收到包.", m_lastRecvTime, lastRecvDateTime, m_lastSendTime,
+                     lastSendDateTime, now, m_offlineTime);
             releaseConnection(DisconnectType::offline);
             updateConnectState(ConnectState::disconnected);
         }
