@@ -206,7 +206,7 @@ void ConnectService::onConnectStatusChanged(bool isConnected)
 
 void ConnectService::onUpdateLastRecvTime(std::chrono::steady_clock::time_point tp)
 {
-    m_lastRecvTime = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
+    m_lastRecvTime = std::chrono::time_point_cast<std::chrono::seconds>(tp).time_since_epoch().count();
     {
         std::lock_guard<std::mutex> locker(m_mutexLastRecvDateTime);
         m_lastRecvDateTime = utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
@@ -215,7 +215,7 @@ void ConnectService::onUpdateLastRecvTime(std::chrono::steady_clock::time_point 
 
 void ConnectService::onUpdateLastSendTime(std::chrono::steady_clock::time_point tp)
 {
-    m_lastSendTime = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
+    m_lastSendTime = std::chrono::time_point_cast<std::chrono::seconds>(tp).time_since_epoch().count();
     {
         std::lock_guard<std::mutex> locker(m_mutexLastSendDateTime);
         m_lastSendDateTime = utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
@@ -342,9 +342,9 @@ void ConnectService::startHeartbeatTimer()
 void ConnectService::onHeartbeatTimer()
 {
     auto tp = std::chrono::steady_clock::now();
-    auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
+    auto now = std::chrono::time_point_cast<std::chrono::seconds>(tp).time_since_epoch().count();
     /* 超过一定时间未向服务发送数据, 或者超过一定时间未发送心跳包, 需要发送心跳包来维持连接 */
-    if ((now - m_lastSendTime >= (m_heartbeatInterval * 1000)) || (now - m_lastSendHeartbeatTime >= (m_heartbeatFixedInterval * 1000)))
+    if ((now - m_lastSendTime >= m_heartbeatInterval) || (now - m_lastSendHeartbeatTime >= m_heartbeatFixedInterval))
     {
         if (ConnectState::connected == m_connectState)
         {
@@ -358,7 +358,7 @@ void ConnectService::sendHeartbeatMsg()
     if (m_heartbeatBizCode > 0) /* 需要定时发送心跳 */
     {
         auto tp = std::chrono::steady_clock::now();
-        m_lastSendHeartbeatTime = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
+        m_lastSendHeartbeatTime = std::chrono::time_point_cast<std::chrono::seconds>(tp).time_since_epoch().count();
         {
             std::lock_guard<std::mutex> locker(m_mutexLastSendHeartbeatDateTime);
             m_lastSendHeartbeatDateTime = utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
@@ -401,10 +401,10 @@ void ConnectService::startOfflineCheckTimer()
 void ConnectService::onOfflineCheckTimer()
 {
     auto tp = std::chrono::steady_clock::now();
-    auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
+    auto now = std::chrono::time_point_cast<std::chrono::seconds>(tp).time_since_epoch().count();
     bool isUnRecvServerData = false;
-    /* 超过一定时间未收到服务端数据包(注意: 这里要先转为秒再进行>判断, 不进行=判断), 表示掉线 */
-    if ((unsigned int)((now - m_lastRecvTime) / 1000) > m_offlineTime)
+    /* 超过一定时间未收到服务端数据包(注意: 这里进行>判断, 不进行=判断), 表示掉线 */
+    if ((now - m_lastRecvTime) > m_offlineTime)
     {
         isUnRecvServerData = true;
     }
