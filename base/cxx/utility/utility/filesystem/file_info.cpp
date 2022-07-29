@@ -219,7 +219,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     }
     /* 拷贝文件内容 */
     size_t nowSize = 0, readSize = 0, writeSize = 0;
-    bool stopFlag = false;
+    CopyResult result = CopyResult::ok;
     while (!feof(srcFile))
     {
         memset(block, 0, blockSize);
@@ -231,35 +231,38 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         readSize = fread(block, 1, blockSize, srcFile);
         if (0 == readSize)
         {
+            result = CopyResult::src_read_failed;
             break;
         }
         writeSize = fwrite(block, 1, readSize, destFile);
         if (0 == writeSize)
         {
+            result = CopyResult::dest_write_failed;
             break;
         }
         nowSize += writeSize;
         if (progressCb && !progressCb(nowSize, srcFileSize))
         {
-            stopFlag = true;
+            result = CopyResult::stop;
             break;
         }
     }
     /* 关闭文件句柄 */
     free(block);
     fclose(srcFile);
-    if (stopFlag) /* 停止拷贝 */
+    if (CopyResult::ok == result)
     {
-        fclose(destFile);
-        return CopyResult::stop;
+        if (nowSize == srcFileSize)
+        {
+            fflush(destFile);
+        }
+        else
+        {
+            result = CopyResult::size_unequal;
+        }
     }
-    fflush(destFile);
     fclose(destFile);
-    if (nowSize != srcFileSize)
-    {
-        return CopyResult::size_unequal;
-    }
-    return CopyResult::ok;
+    return result;
 }
 
 long long FileInfo::size() const

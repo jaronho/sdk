@@ -89,6 +89,12 @@ void testFileCopy(int argc, char** argv)
         printf("\nfile copy fail: source file %s, destination file: %s, memory allocate fail: %d %s\n", failSrcFile.c_str(),
                failDestFile.c_str(), failCode, strerror(failCode));
         break;
+    case utility::FileInfo::CopyResult::src_read_failed:
+        printf("\nfile copy fail: source file %s read fail\n", failSrcFile.c_str());
+        break;
+    case utility::FileInfo::CopyResult::dest_write_failed:
+        printf("\nfile copy fail: destination file: %s write fail\n", failDestFile.c_str());
+        break;
     case utility::FileInfo::CopyResult::stop:
         printf("\nfile copy fail: source file %s, destination file: %s, stop\n", failSrcFile.c_str(), failDestFile.c_str());
         break;

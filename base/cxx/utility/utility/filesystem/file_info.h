@@ -53,6 +53,8 @@ public:
         src_open_failed, /* 源文件打开失败 */
         dest_open_failed, /* 目标文件打开失败 */
         memory_alloc_failed, /* 内存分配失败 */
+        src_read_failed, /* 源文件读失败 */
+        dest_write_failed, /* 目标文件写失败 */
         stop, /* 停止拷贝 */
         size_unequal /* 源文件和目标文件大小不一致 */
     };
