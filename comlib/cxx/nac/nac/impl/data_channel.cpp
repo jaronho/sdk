@@ -2,6 +2,11 @@
 
 namespace nac
 {
+void DataChannel::setHandleExecutor(const std::weak_ptr<threading::Executor>& wpHandleExecutor)
+{
+    m_wpHandleExecutor = wpHandleExecutor;
+}
+
 bool DataChannel::connect(const std::string& address, unsigned short port, const std::string& certFile, const std::string& privateKeyFile,
                           const std::string& privateKeyFilePwd)
 {
@@ -14,27 +19,52 @@ bool DataChannel::connect(const std::string& address, unsigned short port, const
         }
         INFO_LOG(m_logger, "连接服务器: {}:{}.", address, port);
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
+        const auto wpHandleExecutor = m_wpHandleExecutor;
         m_tcpClient = std::make_shared<nsocket::TcpClient>();
-        m_tcpClient->setConnectCallback([wpSelf, logger = m_logger](const boost::system::error_code& code) {
-            const auto self = wpSelf.lock();
-            if (self)
+        m_tcpClient->setConnectCallback([wpSelf, wpHandleExecutor, logger = m_logger](const boost::system::error_code& code) {
+            const auto handlerExecutor = wpHandleExecutor.lock();
+            if (handlerExecutor)
             {
-                self->onConnected(code);
+                auto fn = [wpSelf, code, logger]() {
+                    const auto self = wpSelf.lock();
+                    if (self)
+                    {
+                        self->onConnected(code);
+                    }
+                    else
+                    {
+                        ERROR_LOG(logger, "连接错误: 数据通道为空.");
+                    }
+                };
+                handlerExecutor->post("nac_connect", fn);
             }
             else
             {
-                ERROR_LOG(logger, "连接错误: 数据通道为空.");
+                WARN_LOG(logger, "连接回调警告: 报文处理线程为空.");
             }
         });
-        m_tcpClient->setDataCallback([wpSelf, logger = m_logger](const std::vector<unsigned char>& data) {
-            const auto& self = wpSelf.lock();
-            if (self)
+        m_tcpClient->setDataCallback([wpSelf, wpHandleExecutor, logger = m_logger](const std::vector<unsigned char>& data) {
+            const auto handlerExecutor = wpHandleExecutor.lock();
+            if (handlerExecutor)
             {
-                self->onRecvData(data);
+                auto tp = std::chrono::steady_clock::now();
+                auto fn = [wpSelf, tp, data, logger]() {
+                    const auto& self = wpSelf.lock();
+                    if (self)
+                    {
+                        self->sigUpdateRecvTime(tp);
+                        self->onRecvData(data);
+                    }
+                    else
+                    {
+                        ERROR_LOG(logger, "数据接收错误: 数据通道为空.");
+                    }
+                };
+                handlerExecutor->post("nac_recv", fn);
             }
             else
             {
-                ERROR_LOG(logger, "数据接收错误: 数据通道为空.");
+                WARN_LOG(logger, "数据接收警告: 报文处理线程为空.");
             }
         });
         const std::weak_ptr<nsocket::TcpClient> wpTcpClient = m_tcpClient;
@@ -100,28 +130,42 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
             return false;
         }
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
-        m_tcpClient->sendAsync(data, [wpSelf, callback, logger = m_logger](const boost::system::error_code& code, std::size_t length) {
-            const auto self = wpSelf.lock();
-            if (code)
-            {
-                ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
-            }
-            else
-            {
-                if (self)
+        const auto wpHandleExecutor = m_wpHandleExecutor;
+        m_tcpClient->sendAsync(
+            data, [wpSelf, wpHandleExecutor, callback, logger = m_logger](const boost::system::error_code& code, std::size_t length) {
+                const auto handlerExecutor = wpHandleExecutor.lock();
+                if (handlerExecutor)
                 {
-                    self->sigUpdateSendTime();
+                    auto tp = std::chrono::steady_clock::now();
+                    auto fn = [wpSelf, callback, tp, code, length, logger]() {
+                        const auto self = wpSelf.lock();
+                        if (code)
+                        {
+                            ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
+                        }
+                        else
+                        {
+                            if (self)
+                            {
+                                self->sigUpdateSendTime(tp);
+                            }
+                            else
+                            {
+                                ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
+                            }
+                        }
+                        if (callback)
+                        {
+                            callback(!code, length);
+                        }
+                    };
+                    handlerExecutor->post("nac_sendcb", fn);
                 }
                 else
                 {
-                    ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
+                    WARN_LOG(logger, "数据发送警告: 报文处理线程为空.");
                 }
-            }
-            if (callback)
-            {
-                callback(!code, length);
-            }
-        });
+            });
         return true;
     }
     catch (const std::exception& e)
@@ -175,7 +219,6 @@ void DataChannel::onConnected(const boost::system::error_code& code)
 
 void DataChannel::onRecvData(const std::vector<unsigned char>& data)
 {
-    sigUpdateRecvTime();
     auto result = sigRecvData(data);
     if (!result.empty())
     {

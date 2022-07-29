@@ -1,4 +1,6 @@
 #pragma once
+#include <chrono>
+
 #include "logger/logger_manager.h"
 #include "nsocket/tcp/tcp_client.h"
 #include "threading/signal/basic_signal.h"
@@ -20,6 +22,12 @@ public:
     using SendCallback = std::function<void(bool ok, size_t length)>;
 
 public:
+    /**
+     * @brief 设置报文处理线程
+     * @param wpHandleExecutor 报文处理线程
+     */
+    void setHandleExecutor(const std::weak_ptr<threading::Executor>& wpHandleExecutor);
+
     /**
      * @brief 连接(异步)
      * @param address 服务器地址
@@ -66,13 +74,15 @@ public:
 
     /**
      * @brief 同步信号: 更新接收时间
+     * @param tp 时间点
      */
-    threading::BasicSignal<void()> sigUpdateRecvTime;
+    threading::BasicSignal<void(std::chrono::steady_clock::time_point tp)> sigUpdateRecvTime;
 
     /**
      * @brief 同步信号: 更新发送时间
+     * @param tp 时间点
      */
-    threading::BasicSignal<void()> sigUpdateSendTime;
+    threading::BasicSignal<void(std::chrono::steady_clock::time_point tp)> sigUpdateSendTime;
 
 private:
     /**
@@ -91,7 +101,8 @@ private:
     void onRecvData(const std::vector<unsigned char>& data);
 
 private:
-    threading::ExecutorPtr m_tcpExecutor = threading::ThreadProxy::createAsioExecutor("nac", 1); /* TCP报文收发线程 */
+    threading::ExecutorPtr m_tcpExecutor = threading::ThreadProxy::createAsioExecutor("nac::loop", 1); /* TCP报文收发线程 */
+    std::weak_ptr<threading::Executor> m_wpHandleExecutor; /* 报文处理线程 */
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* TCP客户端 */
     logger::Logger m_logger = logger::LoggerManager::getLogger("NAC");
 };

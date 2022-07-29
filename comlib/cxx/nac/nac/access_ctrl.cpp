@@ -91,13 +91,16 @@ bool AccessObserver::subscribeAccessMsg(const BizCode& bizCode,
 AccessCtrl::AccessCtrl()
 {
     m_dataChannel = std::make_shared<DataChannel>();
+    m_dataChannel->setHandleExecutor(m_handleExecutor);
     m_protocolAdapter = std::make_shared<ProtocolAdapterCustom>();
     m_protocolAdapter->setDataChannel(m_dataChannel);
     m_sessionManager = std::make_shared<SessionManager>();
+    m_sessionManager->setTriggerExecutor(m_handleExecutor);
     m_sessionManager->setProtocolAdapter(m_protocolAdapter);
     m_sessionManager->setMsgReceiver(
         [&](unsigned int bizCode, int64_t seqId, const std::string& data) { onReceiveMsg(bizCode, seqId, data); });
     m_connectService = std::make_shared<ConnectService>();
+    m_connectService->setTriggerExecutor(m_handleExecutor);
     m_connectService->setDataChannel(m_dataChannel);
     m_connectService->setSessionManager(m_sessionManager);
     m_connectService->setConnectCallback([&](const ConnectState& state) { onConnectStateChanged(state); });
@@ -154,8 +157,9 @@ bool AccessCtrl::start(const AccessConfig& cfg)
         }
         else
         {
-            m_retryTimer = std::make_shared<threading::SteadyTimer>("nac.connect.retry", std::chrono::seconds(cfg.retryInterval[0]),
-                                                                    std::chrono::steady_clock::duration::zero(), [&]() { onRetryTimer(); });
+            m_retryTimer = std::make_shared<threading::SteadyTimer>(
+                "nac.connect.retry", std::chrono::seconds(cfg.retryInterval[0]), std::chrono::steady_clock::duration::zero(),
+                [&]() { onRetryTimer(); }, m_handleExecutor);
         }
     }
     /* 首次连接 */

@@ -178,6 +178,7 @@ private:
     void onRetryTimer();
 
 private:
+    threading::ExecutorPtr m_handleExecutor = threading::ThreadProxy::createAsioExecutor("nac::handle", 1); /* 报文处理线程 */
     std::shared_ptr<DataChannel> m_dataChannel; /* 数据通道 */
     std::shared_ptr<ProtocolAdapter> m_protocolAdapter; /* 协议适配器 */
     std::shared_ptr<SessionManager> m_sessionManager; /* 会话管理器 */

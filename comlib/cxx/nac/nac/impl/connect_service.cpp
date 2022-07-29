@@ -4,6 +4,11 @@
 
 namespace nac
 {
+void ConnectService::setTriggerExecutor(const std::weak_ptr<threading::Executor>& wpTriggerExecutor)
+{
+    m_wpTriggerExecutor = wpTriggerExecutor;
+}
+
 void ConnectService::setDataChannel(const std::shared_ptr<DataChannel>& dataChannel)
 {
     m_connections.clear();
@@ -17,18 +22,18 @@ void ConnectService::setDataChannel(const std::shared_ptr<DataChannel>& dataChan
                 self->onConnectStatusChanged(isConnected);
             }
         }));
-        m_connections.emplace_back(dataChannel->sigUpdateRecvTime.connect([wpSelf]() -> void {
+        m_connections.emplace_back(dataChannel->sigUpdateRecvTime.connect([wpSelf](std::chrono::steady_clock::time_point tp) -> void {
             const auto self = wpSelf.lock();
             if (self)
             {
-                self->onUpdateLastRecvTime();
+                self->onUpdateLastRecvTime(tp);
             }
         }));
-        m_connections.emplace_back(dataChannel->sigUpdateSendTime.connect([wpSelf]() -> void {
+        m_connections.emplace_back(dataChannel->sigUpdateSendTime.connect([wpSelf](std::chrono::steady_clock::time_point tp) -> void {
             const auto self = wpSelf.lock();
             if (self)
             {
-                self->onUpdateLastSendTime();
+                self->onUpdateLastSendTime(tp);
             }
         }));
     }
@@ -199,20 +204,18 @@ void ConnectService::onConnectStatusChanged(bool isConnected)
     }
 }
 
-void ConnectService::onUpdateLastRecvTime()
+void ConnectService::onUpdateLastRecvTime(std::chrono::steady_clock::time_point tp)
 {
-    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
-    m_lastRecvTime = t.time_since_epoch().count();
+    m_lastRecvTime = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
     {
         std::lock_guard<std::mutex> locker(m_mutexLastRecvDateTime);
         m_lastRecvDateTime = utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
     }
 }
 
-void ConnectService::onUpdateLastSendTime()
+void ConnectService::onUpdateLastSendTime(std::chrono::steady_clock::time_point tp)
 {
-    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
-    m_lastSendTime = t.time_since_epoch().count();
+    m_lastSendTime = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
     {
         std::lock_guard<std::mutex> locker(m_mutexLastSendDateTime);
         m_lastSendDateTime = utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
@@ -284,14 +287,16 @@ void ConnectService::startTimetoutTimer()
         else
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
-            m_timeoutTimer = std::make_shared<threading::SteadyTimer>("nac.connect.timeout", std::chrono::seconds(m_connectTimeout),
-                                                                      std::chrono::seconds::duration::zero(), [wpSelf]() {
-                                                                          const auto self = wpSelf.lock();
-                                                                          if (self)
-                                                                          {
-                                                                              self->onTimetoutTimer();
-                                                                          }
-                                                                      });
+            m_timeoutTimer = std::make_shared<threading::SteadyTimer>(
+                "nac.connect.timeout", std::chrono::seconds(m_connectTimeout), std::chrono::seconds::duration::zero(),
+                [wpSelf]() {
+                    const auto self = wpSelf.lock();
+                    if (self)
+                    {
+                        self->onTimetoutTimer();
+                    }
+                },
+                m_wpTriggerExecutor.lock());
         }
         m_timeoutTimer->start();
     }
@@ -319,14 +324,16 @@ void ConnectService::startHeartbeatTimer()
         if (!m_heartbeatTimer)
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
-            m_heartbeatTimer =
-                std::make_shared<threading::SteadyTimer>("nac.heartbeat", std::chrono::seconds(1), std::chrono::seconds(1), [wpSelf]() {
+            m_heartbeatTimer = std::make_shared<threading::SteadyTimer>(
+                "nac.heartbeat", std::chrono::seconds(1), std::chrono::seconds(1),
+                [wpSelf]() {
                     const auto self = wpSelf.lock();
                     if (self)
                     {
                         self->onHeartbeatTimer();
                     }
-                });
+                },
+                m_wpTriggerExecutor.lock());
         }
         m_heartbeatTimer->start();
     }
@@ -334,8 +341,8 @@ void ConnectService::startHeartbeatTimer()
 
 void ConnectService::onHeartbeatTimer()
 {
-    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
-    auto now = t.time_since_epoch().count();
+    auto tp = std::chrono::steady_clock::now();
+    auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
     /* 超过一定时间未向服务发送数据, 或者超过一定时间未发送心跳包, 需要发送心跳包来维持连接 */
     if ((now - m_lastSendTime >= (m_heartbeatInterval * 1000)) || (now - m_lastSendHeartbeatTime >= (m_heartbeatFixedInterval * 1000)))
     {
@@ -350,8 +357,8 @@ void ConnectService::sendHeartbeatMsg()
 {
     if (m_heartbeatBizCode > 0) /* 需要定时发送心跳 */
     {
-        auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
-        m_lastSendHeartbeatTime = t.time_since_epoch().count();
+        auto tp = std::chrono::steady_clock::now();
+        m_lastSendHeartbeatTime = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
         {
             std::lock_guard<std::mutex> locker(m_mutexLastSendHeartbeatDateTime);
             m_lastSendHeartbeatDateTime = utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
@@ -376,14 +383,16 @@ void ConnectService::startOfflineCheckTimer()
         if (!m_offlineCheckTimer)
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
-            m_offlineCheckTimer =
-                std::make_shared<threading::SteadyTimer>("nac.offline.check", std::chrono::seconds(1), std::chrono::seconds(1), [wpSelf]() {
+            m_offlineCheckTimer = std::make_shared<threading::SteadyTimer>(
+                "nac.offline.check", std::chrono::seconds(1), std::chrono::seconds(1),
+                [wpSelf]() {
                     const auto self = wpSelf.lock();
                     if (self)
                     {
                         self->onOfflineCheckTimer();
                     }
-                });
+                },
+                m_wpTriggerExecutor.lock());
         }
         m_offlineCheckTimer->start();
     }
@@ -391,8 +400,8 @@ void ConnectService::startOfflineCheckTimer()
 
 void ConnectService::onOfflineCheckTimer()
 {
-    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now());
-    auto now = t.time_since_epoch().count();
+    auto tp = std::chrono::steady_clock::now();
+    auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
     bool isUnRecvServerData = false;
     /* 超过一定时间未收到服务端数据包, 表示掉线 */
     if (now - m_lastRecvTime >= (m_offlineTime * 1000))
