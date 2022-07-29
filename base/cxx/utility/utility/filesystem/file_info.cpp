@@ -223,24 +223,22 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     while (!feof(srcFile))
     {
         memset(block, 0, blockSize);
+#ifdef _WIN32
+        _fseeki64(srcFile, nowSize, SEEK_SET);
+#else
+        fseeko64(srcFile, nowSize, SEEK_SET);
+#endif
         readSize = fread(block, 1, blockSize, srcFile);
         if (0 == readSize)
         {
-            printf("---------------------------- 111\n");
             break;
         }
         writeSize = fwrite(block, 1, readSize, destFile);
         if (0 == writeSize)
         {
-            printf("---------------------------- 222\n");
             break;
         }
         nowSize += writeSize;
-        //#ifdef _WIN32
-        //        _fseeki64(srcFile, nowSize, SEEK_SET);
-        //#else
-        //        fseeko64(srcFile, nowSize, SEEK_SET);
-        //#endif
         if (progressCb && !progressCb(nowSize, srcFileSize))
         {
             stopFlag = true;
