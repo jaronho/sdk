@@ -178,6 +178,11 @@ private:
     void sendHeartbeatMsg();
 
     /**
+     * @brief 响应鉴权结果
+     */
+    void onHeartbeatResult(bool ok, const std::string& data);
+
+    /**
      * @brief 开始掉线检测定时器
      */
     void startOfflineCheckTimer();

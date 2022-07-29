@@ -357,23 +357,52 @@ void ConnectService::sendHeartbeatMsg()
 {
     if (m_heartbeatBizCode > 0) /* 需要定时发送心跳 */
     {
-        auto tp = std::chrono::steady_clock::now();
-        m_lastSendHeartbeatTime = std::chrono::time_point_cast<std::chrono::seconds>(tp).time_since_epoch().count();
-        {
-            std::lock_guard<std::mutex> locker(m_mutexLastSendHeartbeatDateTime);
-            m_lastSendHeartbeatDateTime = utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
-        }
         const auto sessionManager = m_wpSessionManager.lock();
         if (sessionManager)
         {
+            auto tp = std::chrono::steady_clock::now();
+            m_lastSendHeartbeatTime = std::chrono::time_point_cast<std::chrono::seconds>(tp).time_since_epoch().count();
+            {
+                std::lock_guard<std::mutex> locker(m_mutexLastSendHeartbeatDateTime);
+                m_lastSendHeartbeatDateTime = utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
+            }
             std::string heartbeatData;
             if (m_heartbeatDataGenerator)
             {
                 heartbeatData = m_heartbeatDataGenerator();
             }
-            sessionManager->sendMsg(m_heartbeatBizCode, 0, heartbeatData, 0, nullptr);
+            const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
+            sessionManager->sendMsg(m_heartbeatBizCode, 0, heartbeatData, 0,
+                                    [wpSelf](bool sendOk, unsigned int bizCode, int64_t seqId, const std::string& data) {
+                                        const auto self = wpSelf.lock();
+                                        if (self)
+                                        {
+                                            self->onHeartbeatResult(sendOk, data);
+                                        }
+                                    });
         }
     }
+}
+
+void ConnectService::onHeartbeatResult(bool ok, const std::string& data)
+{
+    std::string lastRecvDateTime;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexLastRecvDateTime);
+        lastRecvDateTime = m_lastRecvDateTime;
+    }
+    std::string lastSendDateTime;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexLastSendDateTime);
+        lastSendDateTime = m_lastSendDateTime;
+    }
+    std::string lastSendHeartbeatDateTime;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexLastSendHeartbeatDateTime);
+        lastSendHeartbeatDateTime = m_lastSendHeartbeatDateTime;
+    }
+    TRACE_LOG(m_logger, "发送心跳包[{}], 最近接收包时间({}): {}, 最近发送包时间({}): {}, 最近发送心跳时间({}): {}", ok ? "成功." : "失败.",
+              m_lastRecvTime, lastRecvDateTime, m_lastSendTime, lastSendDateTime, m_lastSendHeartbeatTime, lastSendHeartbeatDateTime);
 }
 
 void ConnectService::startOfflineCheckTimer()

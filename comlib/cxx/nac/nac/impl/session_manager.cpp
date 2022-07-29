@@ -62,7 +62,7 @@ public:
         const auto sessionManager = m_wpSessionManager.lock();
         if (sessionManager)
         {
-            sessionManager->onResponseCallback(false, m_bizCode, m_seqId, m_responseCb);
+            sessionManager->onResponseCallback(false, m_bizCode, m_seqId, true, m_responseCb);
         }
     }
 
@@ -156,13 +156,13 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
                 }
                 else /* 不需要应答, 直接通知成功 */
                 {
-                    self->onResponseCallback(true, bizCode, seqId, callback);
+                    self->onResponseCallback(true, bizCode, seqId, false, callback);
                 }
             }
             else /* 发送失败 */
             {
                 WARN_LOG(self->m_logger, "数据发送失败, bizCode: {}, seqId: {}.", bizCode, seqId);
-                self->onResponseCallback(false, bizCode, seqId, callback);
+                self->onResponseCallback(false, bizCode, seqId, timeout > 0, callback);
             }
         }
     });
@@ -172,7 +172,7 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
     }
     /* 发送失败 */
     WARN_LOG(m_logger, "数据发送失败, bizCode: {}, seqId: {}.", bizCode, seqId);
-    onResponseCallback(false, bizCode, pkt->seqId, callback);
+    onResponseCallback(false, bizCode, pkt->seqId, timeout > 0, callback);
     return -1;
 }
 
@@ -222,7 +222,7 @@ void SessionManager::onProcessPacket(const std::shared_ptr<ProtocolAdapter::Pack
     }
 }
 
-void SessionManager::onResponseCallback(bool sendOk, unsigned int bizCode, int64_t seqId, const ResponseCallback& callback)
+void SessionManager::onResponseCallback(bool sendOk, unsigned int bizCode, int64_t seqId, bool waitResp, const ResponseCallback& callback)
 {
     bool found = false;
     {
@@ -234,7 +234,7 @@ void SessionManager::onResponseCallback(bool sendOk, unsigned int bizCode, int64
             found = true;
         }
     }
-    if (found)
+    if (!waitResp || found)
     {
         if (callback)
         {

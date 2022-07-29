@@ -124,7 +124,7 @@ public:
      * @param seqId 序列ID, 若填0则内部自动生成
      * @param data 业务数据
      * @param callback 响应回调
-     * @param timeout 响应超时(秒), 为0时表示不需要响应
+     * @param timeout 响应超时(秒), 为0时表示不需要等待服务端响应数据
      * @return 消息序列ID, -1表示发送失败
      */
     int64_t sendMsg(const BizCode& bizCode, unsigned long long seqId, const nlohmann::json& data, const RespCallback& callback,

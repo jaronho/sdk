@@ -53,7 +53,7 @@ public:
      * @param bizCode 业务码
      * @param seqId 序列ID, 如果填0则内部自动生成
      * @param data 数据
-     * @param timeout 超时, 大于0时表示需要等待服务端响应数据, 等于0表示不需要响应
+     * @param timeout 超时, 大于0时表示需要等待服务端响应数据, 等于0表示不需要等待服务端响应数据
      * @param callback 响应回调
      * @return 序列ID
      */
@@ -76,9 +76,10 @@ private:
      * @param sendOk 是否发送成功
      * @param bizcode 业务码
      * @param seqId 序列ID
-     * @param callback 发送响应回调
+     * @param waitResp 是否需要等待服务端响应数据
+     * @param callback 响应回调
      */
-    void onResponseCallback(bool sendOk, unsigned int bizCode, int64_t seqId, const ResponseCallback& callback);
+    void onResponseCallback(bool sendOk, unsigned int bizCode, int64_t seqId, bool waitResp, const ResponseCallback& callback);
 
 private:
     class Session;
