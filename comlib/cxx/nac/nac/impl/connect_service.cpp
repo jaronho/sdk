@@ -403,8 +403,8 @@ void ConnectService::onOfflineCheckTimer()
     auto tp = std::chrono::steady_clock::now();
     auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(tp).time_since_epoch().count();
     bool isUnRecvServerData = false;
-    /* 超过一定时间未收到服务端数据包, 表示掉线 */
-    if (now - m_lastRecvTime >= (m_offlineTime * 1000))
+    /* 超过一定时间未收到服务端数据包(注意: 这里要先转为秒再进行>判断, 不进行=判断), 表示掉线 */
+    if ((unsigned int)((now - m_lastRecvTime) / 1000) > m_offlineTime)
     {
         isUnRecvServerData = true;
     }
