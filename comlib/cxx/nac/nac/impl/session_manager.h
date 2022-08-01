@@ -31,10 +31,10 @@ public:
 
 public:
     /**
-     * @brief 设置定时触发器线程
-     * @param wpTriggerExecutor 定时触发器线程
+     * @brief 设置数据通道
+     * @param dataChannel 数据层
      */
-    void setTriggerExecutor(const std::weak_ptr<threading::Executor>& wpTriggerExecutor);
+    void setDataChannel(const std::shared_ptr<DataChannel>& dataChannel);
 
     /**
      * @brief 设置协议适配器
@@ -86,8 +86,8 @@ private:
     friend Session;
 
 private:
-    std::weak_ptr<threading::Executor> m_wpTriggerExecutor; /* 定时触发器线程 */
     std::vector<threading::ScopedSignalConnection> m_connections; /* 信号连接 */
+    std::weak_ptr<DataChannel> m_wpDataChannel; /* 数据通道 */
     std::weak_ptr<ProtocolAdapter> m_wpProtocolAdapter; /* 协议适配器 */
     MsgReceiver m_msgReceiver = nullptr; /* 消息接收者 */
     std::mutex m_mutexSessionMap;

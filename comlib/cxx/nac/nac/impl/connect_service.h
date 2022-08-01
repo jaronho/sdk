@@ -25,12 +25,6 @@ class ConnectService final : public std::enable_shared_from_this<ConnectService>
 {
 public:
     /**
-     * @brief 设置定时触发器线程
-     * @param wpTriggerExecutor 定时触发器线程
-     */
-    void setTriggerExecutor(const std::weak_ptr<threading::Executor>& wpTriggerExecutor);
-
-    /**
      * @brief 设置数据通道
      * @param dataChannel 数据层
      */
@@ -203,7 +197,6 @@ private:
     void updateConnectState(const ConnectState& state);
 
 private:
-    std::weak_ptr<threading::Executor> m_wpTriggerExecutor; /* 定时触发器线程 */
     std::vector<threading::ScopedSignalConnection> m_connections; /* 信号连接 */
     std::weak_ptr<DataChannel> m_wpDataChannel; /* 数据通道 */
     std::weak_ptr<SessionManager> m_wpSessionManager; /* 会话管理器 */

@@ -2,9 +2,9 @@
 
 namespace nac
 {
-void DataChannel::setHandleExecutor(const std::weak_ptr<threading::Executor>& wpHandleExecutor)
+std::weak_ptr<threading::Executor> DataChannel::getPktExecutor()
 {
-    m_wpHandleExecutor = wpHandleExecutor;
+    return m_pktExecutor;
 }
 
 bool DataChannel::connect(const std::string& address, unsigned short port, const std::string& certFile, const std::string& privateKeyFile,
@@ -19,11 +19,11 @@ bool DataChannel::connect(const std::string& address, unsigned short port, const
         }
         INFO_LOG(m_logger, "连接服务器: {}:{}.", address, port);
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
-        const auto wpHandleExecutor = m_wpHandleExecutor;
+        const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
         m_tcpClient = std::make_shared<nsocket::TcpClient>();
-        m_tcpClient->setConnectCallback([wpSelf, wpHandleExecutor, logger = m_logger](const boost::system::error_code& code) {
-            const auto handlerExecutor = wpHandleExecutor.lock();
-            if (handlerExecutor)
+        m_tcpClient->setConnectCallback([wpSelf, wpPktExecutor, logger = m_logger](const boost::system::error_code& code) {
+            const auto pktExecutor = wpPktExecutor.lock();
+            if (pktExecutor)
             {
                 auto fn = [wpSelf, code, logger]() {
                     const auto self = wpSelf.lock();
@@ -36,16 +36,16 @@ bool DataChannel::connect(const std::string& address, unsigned short port, const
                         ERROR_LOG(logger, "连接错误: 数据通道为空.");
                     }
                 };
-                handlerExecutor->post("nac_connect", fn);
+                pktExecutor->post("nac.connect", fn);
             }
             else
             {
                 WARN_LOG(logger, "连接回调警告: 报文处理线程为空.");
             }
         });
-        m_tcpClient->setDataCallback([wpSelf, wpHandleExecutor, logger = m_logger](const std::vector<unsigned char>& data) {
-            const auto handlerExecutor = wpHandleExecutor.lock();
-            if (handlerExecutor)
+        m_tcpClient->setDataCallback([wpSelf, wpPktExecutor, logger = m_logger](const std::vector<unsigned char>& data) {
+            const auto pktExecutor = wpPktExecutor.lock();
+            if (pktExecutor)
             {
                 auto tp = std::chrono::steady_clock::now();
                 auto fn = [wpSelf, tp, data, logger]() {
@@ -60,7 +60,7 @@ bool DataChannel::connect(const std::string& address, unsigned short port, const
                         ERROR_LOG(logger, "数据接收错误: 数据通道为空.");
                     }
                 };
-                handlerExecutor->post("nac_recv", fn);
+                pktExecutor->post("nac.recv", fn);
             }
             else
             {
@@ -68,7 +68,7 @@ bool DataChannel::connect(const std::string& address, unsigned short port, const
             }
         });
         const std::weak_ptr<nsocket::TcpClient> wpTcpClient = m_tcpClient;
-        m_tcpExecutor->post("nac_loop", [wpTcpClient, address, port, certFile, privateKeyFile, privateKeyFilePwd, logger = m_logger]() {
+        m_tcpExecutor->post("nac.loop", [wpTcpClient, address, port, certFile, privateKeyFile, privateKeyFilePwd, logger = m_logger]() {
             const auto tcpClient = wpTcpClient.lock();
             if (tcpClient)
             {
@@ -130,11 +130,11 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
             return false;
         }
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
-        const auto wpHandleExecutor = m_wpHandleExecutor;
+        const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
         m_tcpClient->sendAsync(
-            data, [wpSelf, wpHandleExecutor, callback, logger = m_logger](const boost::system::error_code& code, std::size_t length) {
-                const auto handlerExecutor = wpHandleExecutor.lock();
-                if (handlerExecutor)
+            data, [wpSelf, wpPktExecutor, callback, logger = m_logger](const boost::system::error_code& code, std::size_t length) {
+                const auto pktExecutor = wpPktExecutor.lock();
+                if (pktExecutor)
                 {
                     auto tp = std::chrono::steady_clock::now();
                     auto fn = [wpSelf, callback, tp, code, length, logger]() {
@@ -159,7 +159,7 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
                             callback(!code, length);
                         }
                     };
-                    handlerExecutor->post("nac_sendcb", fn);
+                    pktExecutor->post("nac.sendcb", fn);
                 }
                 else
                 {

@@ -23,10 +23,9 @@ public:
 
 public:
     /**
-     * @brief 设置报文处理线程
-     * @param wpHandleExecutor 报文处理线程
+     * @brief 获取报文处理线程
      */
-    void setHandleExecutor(const std::weak_ptr<threading::Executor>& wpHandleExecutor);
+    std::weak_ptr<threading::Executor> getPktExecutor();
 
     /**
      * @brief 连接(异步)
@@ -102,7 +101,7 @@ private:
 
 private:
     threading::ExecutorPtr m_tcpExecutor = threading::ThreadProxy::createAsioExecutor("nac::loop", 1); /* TCP报文收发线程 */
-    std::weak_ptr<threading::Executor> m_wpHandleExecutor; /* 报文处理线程 */
+    threading::ExecutorPtr m_pktExecutor = threading::ThreadProxy::createAsioExecutor("nac::packet", 1); /* 报文处理线程 */
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* TCP客户端 */
     logger::Logger m_logger = logger::LoggerManager::getLogger("NAC");
 };

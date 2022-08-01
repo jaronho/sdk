@@ -18,7 +18,7 @@ public:
         stopTimer();
     }
 
-    bool startTimer(int seconds, const std::weak_ptr<threading::Executor>& wpTriggerExecutor)
+    bool startTimer(int seconds, const std::weak_ptr<threading::Executor>& wpPktExecutor)
     {
         if (seconds <= 0)
         {
@@ -37,7 +37,7 @@ public:
                         self->onTimeout();
                     }
                 },
-                wpTriggerExecutor.lock());
+                wpPktExecutor.lock());
         }
         m_timeoutTimer->start();
         return true;
@@ -94,9 +94,9 @@ private:
     logger::Logger m_logger = logger::LoggerManager::getLogger("NAC");
 };
 
-void SessionManager::setTriggerExecutor(const std::weak_ptr<threading::Executor>& wpTriggerExecutor)
+void SessionManager::setDataChannel(const std::shared_ptr<DataChannel>& dataChannel)
 {
-    m_wpTriggerExecutor = wpTriggerExecutor;
+    m_wpDataChannel = dataChannel;
 }
 
 void SessionManager::setProtocolAdapter(const std::shared_ptr<ProtocolAdapter>& adapter)
@@ -130,7 +130,8 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
     pkt->data = data;
     /* 添加路由 */
     auto session = std::make_shared<Session>(bizCode, pkt->seqId, shared_from_this(), callback);
-    if (session->startTimer(timeout, m_wpTriggerExecutor))
+    const auto dataChannel = m_wpDataChannel.lock();
+    if (session->startTimer(timeout, dataChannel ? dataChannel->getPktExecutor().lock() : nullptr))
     {
         std::lock_guard<std::mutex> locker(m_mutexSessionMap);
         m_sessionMap.emplace(pkt->seqId, session);

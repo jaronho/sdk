@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <list>
 #include <map>
 
@@ -16,6 +17,21 @@ namespace nac
  * @brief 业务码(需要外部定义)
  */
 enum class BizCode;
+
+/**
+ * @brief 连接状态处理耗时回调(用于诊断)
+ * @param state 连接状态
+ * @param elapsed 处理耗时(毫秒)
+ */
+using StateProcessElapsedCallback = std::function<void(const ConnectState& state, int elapsed)>;
+
+/**
+ * @brief 业务处理耗时回调(用于诊断)
+ * @param bizCode 业务码
+ * @param seqId 序列ID
+ * @param elapsed 处理耗时(毫秒)
+ */
+using BizProcessElapsedCallback = std::function<void(const BizCode& bizCode, unsigned long long seqId, int elapsed)>;
 
 /**
  * @brief 响应回调
@@ -76,7 +92,7 @@ struct AccessConfig
 };
 
 /**
- * @brief 接入控制(对外接口), 需要依赖定时器`Timer`执行`runOnce`
+ * @brief 接入控制(对外接口)
  */
 class AccessCtrl final
 {
@@ -87,6 +103,18 @@ private:
 
 public:
     static AccessCtrl& getInstance();
+
+    /**
+     * @brief 设置连接状态处理耗时回调
+     * @param callback 耗时回调
+     */
+    void setStateProcessElapsedCallback(const StateProcessElapsedCallback& callback);
+
+    /**
+     * @brief 设置业务处理耗时回调
+     * @param callback 耗时回调
+     */
+    void setBizProcessElapsedCallback(const BizProcessElapsedCallback& callback);
 
     /**
      * @brief 设置鉴权数据生成器
@@ -178,7 +206,7 @@ private:
     void onRetryTimer();
 
 private:
-    threading::ExecutorPtr m_handleExecutor = threading::ThreadProxy::createAsioExecutor("nac::handle", 1); /* 报文处理线程 */
+    threading::ExecutorPtr m_bizExecutor = threading::ThreadProxy::createAsioExecutor("nac::biz", 1); /* 业务处理线程 */
     std::shared_ptr<DataChannel> m_dataChannel; /* 数据通道 */
     std::shared_ptr<ProtocolAdapter> m_protocolAdapter; /* 协议适配器 */
     std::shared_ptr<SessionManager> m_sessionManager; /* 会话管理器 */
@@ -189,5 +217,8 @@ private:
     std::mutex m_mutexMsgHandlerMap;
     std::map<BizCode, std::list<std::weak_ptr<MsgHandler>>> m_msgHandlerMap; /* 消息处理器列表 */
     AccessConfig m_cfg; /* 接入配置 */
+    std::mutex m_mutexProcessElpasedCallback;
+    StateProcessElapsedCallback m_stateProcessElapsedCallback = nullptr; /* 连接状态处理耗时回调 */
+    BizProcessElapsedCallback m_bizProcessElapsedCallback = nullptr; /* 业务处理耗时回调 */
 };
 } // namespace nac

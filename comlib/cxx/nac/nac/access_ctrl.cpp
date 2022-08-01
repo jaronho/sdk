@@ -91,16 +91,14 @@ bool AccessObserver::subscribeAccessMsg(const BizCode& bizCode,
 AccessCtrl::AccessCtrl()
 {
     m_dataChannel = std::make_shared<DataChannel>();
-    m_dataChannel->setHandleExecutor(m_handleExecutor);
     m_protocolAdapter = std::make_shared<ProtocolAdapterCustom>();
     m_protocolAdapter->setDataChannel(m_dataChannel);
     m_sessionManager = std::make_shared<SessionManager>();
-    m_sessionManager->setTriggerExecutor(m_handleExecutor);
+    m_sessionManager->setDataChannel(m_dataChannel);
     m_sessionManager->setProtocolAdapter(m_protocolAdapter);
     m_sessionManager->setMsgReceiver(
         [&](unsigned int bizCode, int64_t seqId, const std::string& data) { onReceiveMsg(bizCode, seqId, data); });
     m_connectService = std::make_shared<ConnectService>();
-    m_connectService->setTriggerExecutor(m_handleExecutor);
     m_connectService->setDataChannel(m_dataChannel);
     m_connectService->setSessionManager(m_sessionManager);
     m_connectService->setConnectCallback([&](const ConnectState& state) { onConnectStateChanged(state); });
@@ -112,7 +110,19 @@ AccessCtrl& AccessCtrl::getInstance()
     return s_instance;
 }
 
-void AccessCtrl::AccessCtrl::setAuthDataGenerator(const std::function<nlohmann::json()>& generator)
+void AccessCtrl::setStateProcessElapsedCallback(const StateProcessElapsedCallback& callback)
+{
+    std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
+    m_stateProcessElapsedCallback = callback;
+}
+
+void AccessCtrl::setBizProcessElapsedCallback(const BizProcessElapsedCallback& callback)
+{
+    std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
+    m_bizProcessElapsedCallback = callback;
+}
+
+void AccessCtrl::setAuthDataGenerator(const std::function<nlohmann::json()>& generator)
 {
     m_connectService->setAuthDataGenerator([generator]() {
         if (generator)
@@ -159,7 +169,7 @@ bool AccessCtrl::start(const AccessConfig& cfg)
         {
             m_retryTimer = std::make_shared<threading::SteadyTimer>(
                 "nac.connect.retry", std::chrono::seconds(cfg.retryInterval[0]), std::chrono::steady_clock::duration::zero(),
-                [&]() { onRetryTimer(); }, m_handleExecutor);
+                [&]() { onRetryTimer(); }, m_dataChannel->getPktExecutor().lock());
         }
     }
     /* 首次连接 */
@@ -184,13 +194,30 @@ int64_t AccessCtrl::sendMsg(const BizCode& bizCode, unsigned long long seqId, co
     {
         return -1;
     }
-    return m_sessionManager->sendMsg((unsigned int)bizCode, seqId, nlohmann::dump(data), timeout,
-                                     [&, callback](bool sendOk, unsigned int bizCode, int64_t seqId, const std::string& data) {
-                                         if (callback)
-                                         {
-                                             callback(sendOk, nlohmann::parse(data));
-                                         }
-                                     });
+    const std::weak_ptr<threading::Executor> wpBizExecutor = m_bizExecutor;
+    return m_sessionManager->sendMsg(
+        (unsigned int)bizCode, seqId, nlohmann::dump(data), timeout,
+        [&, wpBizExecutor, callback](bool sendOk, unsigned int bizCode, int64_t seqId, const std::string& data) {
+            const auto bizExecutor = wpBizExecutor.lock();
+            if (bizExecutor)
+            {
+                bizExecutor->post("nac.api.resp", [&, sendOk, bizCode, seqId, data, callback]() {
+                    auto beg = std::chrono::steady_clock::now();
+                    if (callback)
+                    {
+                        callback(sendOk, nlohmann::parse(data));
+                    }
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
+                    {
+                        std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
+                        if (m_bizProcessElapsedCallback)
+                        {
+                            m_bizProcessElapsedCallback((BizCode)bizCode, seqId, elapsed);
+                        }
+                    }
+                });
+            }
+        });
 }
 
 bool AccessCtrl::subscribeState(const std::shared_ptr<StateHandler>& handler)
@@ -267,15 +294,26 @@ void AccessCtrl::onReceiveMsg(unsigned int bizCode, int64_t seqId, const std::st
         }
         handlerList = iter->second;
     }
-    auto obj = nlohmann::parse(data);
-    for (const auto& wpHandler : handlerList)
-    {
-        auto handler = wpHandler.lock();
-        if (handler)
+    m_bizExecutor->post("nac.api.notify", [&, handlerList, bizCode, seqId, data]() {
+        auto beg = std::chrono::steady_clock::now();
+        auto obj = nlohmann::parse(data);
+        for (const auto& wpHandler : handlerList)
         {
-            (*handler)(seqId, obj);
+            auto handler = wpHandler.lock();
+            if (handler)
+            {
+                (*handler)(seqId, obj);
+            }
         }
-    }
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
+        {
+            std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
+            if (m_bizProcessElapsedCallback)
+            {
+                m_bizProcessElapsedCallback((BizCode)bizCode, seqId, elapsed);
+            }
+        }
+    });
 }
 
 void AccessCtrl::onConnectStateChanged(const ConnectState& state)
@@ -285,14 +323,25 @@ void AccessCtrl::onConnectStateChanged(const ConnectState& state)
         std::lock_guard<std::mutex> locker(m_mutexStateHandlerList);
         handlerList = m_stateHandlerList;
     }
-    for (const auto& wpHandler : handlerList)
-    {
-        auto handler = wpHandler.lock();
-        if (handler)
+    m_bizExecutor->post("nac.api.state", [&, handlerList, state]() {
+        auto beg = std::chrono::steady_clock::now();
+        for (const auto& wpHandler : handlerList)
         {
-            (*handler)(state);
+            auto handler = wpHandler.lock();
+            if (handler)
+            {
+                (*handler)(state);
+            }
         }
-    }
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
+        {
+            std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
+            if (m_stateProcessElapsedCallback)
+            {
+                m_stateProcessElapsedCallback(state, elapsed);
+            }
+        }
+    });
     if (ConnectState::disconnected == state) /* 断开连接, 重连 */
     {
         if (m_retryTimer)

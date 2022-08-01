@@ -4,11 +4,6 @@
 
 namespace nac
 {
-void ConnectService::setTriggerExecutor(const std::weak_ptr<threading::Executor>& wpTriggerExecutor)
-{
-    m_wpTriggerExecutor = wpTriggerExecutor;
-}
-
 void ConnectService::setDataChannel(const std::shared_ptr<DataChannel>& dataChannel)
 {
     m_connections.clear();
@@ -287,6 +282,7 @@ void ConnectService::startTimetoutTimer()
         else
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
+            const auto dataChannel = m_wpDataChannel.lock();
             m_timeoutTimer = std::make_shared<threading::SteadyTimer>(
                 "nac.connect.timeout", std::chrono::seconds(m_connectTimeout), std::chrono::seconds::duration::zero(),
                 [wpSelf]() {
@@ -296,7 +292,7 @@ void ConnectService::startTimetoutTimer()
                         self->onTimetoutTimer();
                     }
                 },
-                m_wpTriggerExecutor.lock());
+                dataChannel ? dataChannel->getPktExecutor().lock() : nullptr);
         }
         m_timeoutTimer->start();
     }
@@ -324,6 +320,7 @@ void ConnectService::startHeartbeatTimer()
         if (!m_heartbeatTimer)
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
+            const auto dataChannel = m_wpDataChannel.lock();
             m_heartbeatTimer = std::make_shared<threading::SteadyTimer>(
                 "nac.heartbeat", std::chrono::seconds(1), std::chrono::seconds(1),
                 [wpSelf]() {
@@ -333,7 +330,7 @@ void ConnectService::startHeartbeatTimer()
                         self->onHeartbeatTimer();
                     }
                 },
-                m_wpTriggerExecutor.lock());
+                dataChannel ? dataChannel->getPktExecutor().lock() : nullptr);
         }
         m_heartbeatTimer->start();
     }
@@ -401,8 +398,8 @@ void ConnectService::onHeartbeatResult(bool ok, const std::string& data)
         std::lock_guard<std::mutex> locker(m_mutexLastSendHeartbeatDateTime);
         lastSendHeartbeatDateTime = m_lastSendHeartbeatDateTime;
     }
-    TRACE_LOG(m_logger, "发送心跳包[{}], 最近接收包时间({}): {}, 最近发送包时间({}): {}, 最近发送心跳时间({}): {}", ok ? "成功." : "失败.",
-              m_lastRecvTime, lastRecvDateTime, m_lastSendTime, lastSendDateTime, m_lastSendHeartbeatTime, lastSendHeartbeatDateTime);
+    TRACE_LOG(m_logger, "发送心跳{}, 最近发送心跳({}): {}, 最近接收包({}): {}, 最近发送包({}): {}", ok ? "[成功]" : "[失败]",
+              m_lastSendHeartbeatTime, lastSendHeartbeatDateTime, m_lastRecvTime, lastRecvDateTime, m_lastSendTime, lastSendDateTime);
 }
 
 void ConnectService::startOfflineCheckTimer()
@@ -412,6 +409,7 @@ void ConnectService::startOfflineCheckTimer()
         if (!m_offlineCheckTimer)
         {
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
+            const auto dataChannel = m_wpDataChannel.lock();
             m_offlineCheckTimer = std::make_shared<threading::SteadyTimer>(
                 "nac.offline.check", std::chrono::seconds(1), std::chrono::seconds(1),
                 [wpSelf]() {
@@ -421,7 +419,7 @@ void ConnectService::startOfflineCheckTimer()
                         self->onOfflineCheckTimer();
                     }
                 },
-                m_wpTriggerExecutor.lock());
+                dataChannel ? dataChannel->getPktExecutor().lock() : nullptr);
         }
         m_offlineCheckTimer->start();
     }
@@ -463,11 +461,9 @@ void ConnectService::onOfflineCheckTimer()
                 std::lock_guard<std::mutex> locker(m_mutexLastSendHeartbeatDateTime);
                 lastSendHeartbeatDateTime = m_lastSendHeartbeatDateTime;
             }
-            WARN_LOG(
-                m_logger,
-                "网络掉线(原因: {}), 最近接收包时间({}): {}, 最近发送包时间({}): {}, 最近发送心跳时间({}): {}, 掉线判定时间({}): {} 秒.",
-                isDataChannelClose ? "通道被关闭." : "长时间未收到包.", m_lastRecvTime, lastRecvDateTime, m_lastSendTime, lastSendDateTime,
-                m_lastSendHeartbeatTime, lastSendHeartbeatDateTime, now, m_offlineTime);
+            WARN_LOG(m_logger, "网络掉线(原因: {}, 最近发送心跳({}): {}, 最近接收包({}): {}, 最近发送包({}): {}, 掉线判定({}): {} 秒.",
+                     isDataChannelClose ? "通道被关闭)" : "长时间未收到包)", m_lastSendHeartbeatTime, lastSendHeartbeatDateTime,
+                     m_lastRecvTime, lastRecvDateTime, m_lastSendTime, lastSendDateTime, now, m_offlineTime);
             releaseConnection(DisconnectType::offline);
             updateConnectState(ConnectState::disconnected);
         }
