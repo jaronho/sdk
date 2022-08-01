@@ -7,6 +7,11 @@ Connection::Connection(const std::string& url)
     m_req = HttpClient::makeSimpleRequest(url);
 }
 
+Connection::Connection(const std::string& caFile, const std::string& url)
+{
+    m_req = HttpClient::makeSsl1WayRequest(caFile, url);
+}
+
 Connection::Connection(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
                        const std::string& url)
 {

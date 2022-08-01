@@ -48,6 +48,12 @@ public:
     CurlObject();
 
     /**
+     * @brief 构造函数(SSL单向认证)
+     * @param caFile 证书文件, 例如: ca.crt
+     */
+    CurlObject(const std::string& caFile);
+
+    /**
      * @brief 构造函数(SSL双向认证)
      * @param certFile 证书文件, 例如: client.crt
      * @param privateKeyFile 私钥文件, 例如: client.key
@@ -62,7 +68,7 @@ public:
      */
     CurlObject(const std::string& user, const std::string& password);
 
-    ~CurlObject(void);
+    ~CurlObject();
 
     /**
      * @brief 设置CURL选项
@@ -208,6 +214,7 @@ public:
 
 private:
     bool initialize();
+    bool initialize(const std::string& caFile);
     bool initialize(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd);
     bool initialize(const std::string& user, const std::string& password);
     friend size_t onSendDataFunc(void* buffer, size_t size, size_t number, void* userdata);

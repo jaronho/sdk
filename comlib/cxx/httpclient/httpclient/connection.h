@@ -20,6 +20,13 @@ public:
     Connection(const std::string& url);
 
     /**
+     * @brief 构造函数(SSL单向验证)
+     * @param caFile 证书文件, 例如: ca.crt
+     * @param url 服务器URL
+     */
+    Connection(const std::string& caFile, const std::string& url);
+
+    /**
      * @brief 构造函数(SSL双向验证)
      * @param certFile 证书文件, 例如: client.crt
      * @param privateKeyFile 私钥文件, 例如: client.key

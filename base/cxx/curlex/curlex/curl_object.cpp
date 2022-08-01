@@ -200,7 +200,23 @@ CurlObject::CurlObject()
         curl_easy_cleanup(m_curl);
         m_curl = nullptr;
         perror("curl initialize failed!");
+    }
+}
+
+CurlObject::CurlObject(const std::string& caFile)
+{
+    onCurlObjectCreate();
+    m_curl = curl_easy_init();
+    if (!m_curl)
+    {
+        perror("curl_easy_init failed!");
         return;
+    }
+    if (!initialize(caFile))
+    {
+        curl_easy_cleanup(m_curl);
+        m_curl = nullptr;
+        perror("curl initialize failed!");
     }
 }
 
@@ -218,7 +234,6 @@ CurlObject::CurlObject(const std::string& certFile, const std::string& privateKe
         curl_easy_cleanup(m_curl);
         m_curl = nullptr;
         perror("curl initialize failed!");
-        return;
     }
 }
 
@@ -236,7 +251,6 @@ CurlObject::CurlObject(const std::string& user, const std::string& password)
         curl_easy_cleanup(m_curl);
         m_curl = nullptr;
         perror("curl initialize failed!");
-        return;
     }
 }
 
@@ -283,6 +297,33 @@ bool CurlObject::initialize()
     return CURLE_OK == code;
 }
 
+bool CurlObject::initialize(const std::string& caFile)
+{
+    memset(m_errorBuffer, 0, CURL_ERROR_SIZE);
+    auto code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_SSL_VERIFYPEER, 0L); /* 单向验证中设置不验证服务器证书有效性 */
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_SSL_VERIFYHOST, 0L); /* 单向验证中设置不检验证书中的主机名和你访问的主机名是否一致 */
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_CAINFO, caFile.c_str());
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_NOSIGNAL, 1L);
+    return CURLE_OK == code;
+}
+
 bool CurlObject::initialize(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
 {
     memset(m_errorBuffer, 0, CURL_ERROR_SIZE);
@@ -311,22 +352,25 @@ bool CurlObject::initialize(const std::string& certFile, const std::string& priv
     {
         return false;
     }
-    code = setOption(CURLOPT_SSLKEYTYPE, "PEM");
-    if (CURLE_OK != code)
+    if (!privateKeyFile.empty())
     {
-        return false;
-    }
-    code = setOption(CURLOPT_SSLKEY, privateKeyFile.c_str());
-    if (CURLE_OK != code)
-    {
-        return false;
-    }
-    if (!privateKeyFilePwd.empty())
-    {
-        code = setOption(CURLOPT_KEYPASSWD, privateKeyFilePwd.c_str());
+        code = setOption(CURLOPT_SSLKEYTYPE, "PEM");
         if (CURLE_OK != code)
         {
             return false;
+        }
+        code = setOption(CURLOPT_SSLKEY, privateKeyFile.c_str());
+        if (CURLE_OK != code)
+        {
+            return false;
+        }
+        if (!privateKeyFilePwd.empty())
+        {
+            code = setOption(CURLOPT_KEYPASSWD, privateKeyFilePwd.c_str());
+            if (CURLE_OK != code)
+            {
+                return false;
+            }
         }
     }
     code = setOption(CURLOPT_NOSIGNAL, 1L);

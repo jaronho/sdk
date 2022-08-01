@@ -116,6 +116,11 @@ curlex::SimpleRequestPtr HttpClient::makeSimpleRequest(const std::string& url)
     return std::make_shared<curlex::SimpleRequest>(url);
 }
 
+curlex::Ssl1WayRequestPtr HttpClient::makeSsl1WayRequest(const std::string& caFile, const std::string& url)
+{
+    return std::make_shared<curlex::Ssl1WayRequest>(caFile, url);
+}
+
 curlex::Ssl2WayRequestPtr HttpClient::makeSsl2WayRequest(const std::string& certFile, const std::string& privateKeyFile,
                                                          const std::string& privateKeyFilePwd, const std::string& url)
 {

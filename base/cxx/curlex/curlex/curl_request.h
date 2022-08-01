@@ -20,6 +20,7 @@ public:
     enum class Type
     {
         simple, /* 简单 */
+        ssl_1way, /* SSL单向验证 */
         ssl_2way, /* SSL双向验证 */
         user_pwd /* 带用户名密码 */
     };
@@ -185,6 +186,30 @@ public:
 };
 
 using SimpleRequestPtr = std::shared_ptr<SimpleRequest>;
+
+/**
+ * @brief SSL单向认证请求类
+ */
+class Ssl1WayRequest final : public Request
+{
+public:
+    Ssl1WayRequest(const std::string& caFile, const std::string& url);
+
+    virtual ~Ssl1WayRequest() = default;
+
+    Type getType() const override;
+
+    /**
+     * @brief 获取证书文件
+     * @return 证书文件
+     */
+    std::string getCaFile() const;
+
+private:
+    std::string m_caFile; /* 证书文件, 例如: ca.crt */
+};
+
+using Ssl1WayRequestPtr = std::shared_ptr<Ssl1WayRequest>;
 
 /**
  * @brief SSL双向认证请求类

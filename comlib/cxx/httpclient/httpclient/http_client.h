@@ -69,6 +69,14 @@ public:
     static curlex::SimpleRequestPtr makeSimpleRequest(const std::string& url);
 
     /**
+     * @brief 创建SSL(单向验证)请求对象
+     * @param caFile 证书文件, 例如: ca.crt
+     * @param url 资源地址
+     * @return 请求对象
+     */
+    static curlex::Ssl1WayRequestPtr makeSsl1WayRequest(const std::string& caFile, const std::string& url);
+
+    /**
      * @brief 创建SSL(双向验证)请求对象
      * @param certFile 证书文件, 例如: client.crt
      * @param privateKeyFile 私钥文件, 例如: client.key

@@ -113,6 +113,18 @@ Request::Type SimpleRequest::getType() const
     return Type::simple;
 }
 
+Ssl1WayRequest::Ssl1WayRequest(const std::string& caFile, const std::string& url) : Request(url), m_caFile(caFile) {}
+
+Request::Type Ssl1WayRequest::getType() const
+{
+    return Type::ssl_1way;
+}
+
+std::string Ssl1WayRequest::getCaFile() const
+{
+    return m_caFile;
+}
+
 Ssl2WayRequest::Ssl2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
                                const std::string& url)
     : Request(url), m_certFile(certFile), m_privateKeyFile(privateKeyFile), m_privateKeyFilePwd(privateKeyFilePwd)
