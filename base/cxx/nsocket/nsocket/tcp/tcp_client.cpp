@@ -231,6 +231,11 @@ void TcpClient::handleConnect(const boost::system::error_code& code, bool async)
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl1WayContext(const std::string& caFile)
+{
+    return TcpConnection::makeSsl1WayContextClient(boost::asio::ssl::context::sslv23_client, caFile, true);
+}
+
 std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl2WayContext(const std::string& certFile, const std::string& privateKeyFile,
                                                                         const std::string& privateKeyFilePwd)
 {

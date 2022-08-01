@@ -257,6 +257,80 @@ boost::asio::ip::tcp::endpoint TcpConnection::getRemoteEndpoint() const
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSsl1WayContextClient(boost::asio::ssl::context::method m,
+                                                                                   const std::string& caFile, bool allowSelfSigned)
+{
+    auto sslContext = std::make_shared<boost::asio::ssl::context>(m);
+    if (!caFile.empty())
+    {
+        sslContext->load_verify_file(caFile);
+    }
+    sslContext->set_verify_mode(boost::asio::ssl::verify_peer);
+    sslContext->set_verify_callback([allowSelfSigned](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
+        X509_STORE_CTX* cts = ctx.native_handle();
+        X509* cert = X509_STORE_CTX_get_current_cert(cts);
+        int errorCode = X509_STORE_CTX_get_error(cts);
+        switch (errorCode)
+        {
+        case X509_V_OK:
+            preverified = true;
+            break;
+        case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+        case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+            if (allowSelfSigned)
+            {
+                preverified = true;
+            }
+            break;
+        default:
+            break;
+        }
+        return preverified;
+    });
+    return sslContext;
+}
+
+std::shared_ptr<boost::asio::ssl::context>
+TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::method m, const std::string& certFile, const std::string& privateKeyFile,
+                                        const std::string& privateKeyFilePwd, bool allowSelfSigned)
+{
+    if (certFile.empty() || privateKeyFile.empty())
+    {
+        return nullptr;
+    }
+    auto sslContext = std::make_shared<boost::asio::ssl::context>(m);
+    sslContext->use_certificate_file(certFile, boost::asio::ssl::context::pem);
+    /* 注意: 需要先调用`set_password_callback`再调用`use_private_key_file`自动填充密码, 否则若有密码时会提示需要输入密码 */
+    sslContext->set_password_callback(
+        [privateKeyFilePwd](std::size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
+            return privateKeyFilePwd;
+        });
+    sslContext->use_private_key_file(privateKeyFile, boost::asio::ssl::context::pem);
+    sslContext->set_verify_mode(boost::asio::ssl::verify_peer);
+    sslContext->set_verify_callback([allowSelfSigned](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
+        X509_STORE_CTX* cts = ctx.native_handle();
+        X509* cert = X509_STORE_CTX_get_current_cert(cts);
+        int errorCode = X509_STORE_CTX_get_error(cts);
+        switch (errorCode)
+        {
+        case X509_V_OK:
+            preverified = true;
+            break;
+        case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+        case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+            if (allowSelfSigned)
+            {
+                preverified = true;
+            }
+            break;
+        default:
+            break;
+        }
+        return preverified;
+    });
+    return sslContext;
+}
+
 std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::method m,
                                                                              const std::string& certFile, const std::string& privateKeyFile,
                                                                              const std::string& privateKeyFilePwd, bool allowSelfSigned)
@@ -274,7 +348,7 @@ std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSsl2WayContext(boo
         });
     sslContext->use_private_key_file(privateKeyFile, boost::asio::ssl::context::pem);
     sslContext->set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert
-                                | boost::asio::ssl::verify_client_once);
+                                | boost::asio::ssl::verify_client_once); /* 配置启用双向认证 */
     sslContext->set_verify_callback([allowSelfSigned](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
         X509_STORE_CTX* cts = ctx.native_handle();
         X509* cert = X509_STORE_CTX_get_current_cert(cts);

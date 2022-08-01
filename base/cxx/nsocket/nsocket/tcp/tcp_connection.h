@@ -117,6 +117,29 @@ public:
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
+     * @brief 创建客户端SSL(单向验证)上下文
+     * @param m 方法, 例如: 可以用sslv23_client
+     * @param caFile 根证书文件, 例如: ca.crt
+     * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
+     * @return SSL上下文
+     */
+    static std::shared_ptr<boost::asio::ssl::context> makeSsl1WayContextClient(boost::asio::ssl::context::method m,
+                                                                               const std::string& caFile, bool allowSelfSigned = true);
+
+    /**
+     * @brief 创建服务端SSL(单向验证)上下文(当证书文件,私钥文件,私钥文件密码都为空时返回空)
+     * @param m 方法, 例如: 可以用sslv23_server
+     * @param certFile 证书文件, 例如: client.crt 或 server.crt
+     * @param privateKeyFile 私钥文件, 例如: client.key 或 server.key
+     * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
+     * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
+     * @return SSL上下文
+     */
+    static std::shared_ptr<boost::asio::ssl::context>
+    makeSsl1WayContextServer(boost::asio::ssl::context::method m, const std::string& certFile, const std::string& privateKeyFile,
+                             const std::string& privateKeyFilePwd, bool allowSelfSigned = true);
+
+    /**
      * @brief 创建SSL(双向验证)上下文(当证书文件,私钥文件,私钥文件密码都为空时返回空)
      * @param m 方法, 例如: 客户端可以用sslv23_client, 服务端可以用sslv23_server
      * @param certFile 证书文件, 例如: client.crt 或 server.crt
