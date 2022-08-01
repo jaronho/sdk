@@ -71,7 +71,8 @@ void testFileCopy(int argc, char** argv)
     /* 开始拷贝 */
     printf("start copy ...\n");
     std::chrono::steady_clock::time_point tm1 = std::chrono::steady_clock::now();
-    utility::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc, nullptr, ".tmp");
+    utility::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc, nullptr, ".tmp",
+                         std::vector<utility::FileInfo::CopyBlock>{}, 3000);
     fc.setCallback(beginCb, totalProgressCb, singleProgressCb);
     auto result = fc.start(nullptr, &failSrcFile, &failDestFile, &failCode);
     switch (result)

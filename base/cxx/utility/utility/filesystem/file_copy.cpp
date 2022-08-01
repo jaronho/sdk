@@ -4,13 +4,14 @@ namespace utility
 {
 FileCopy::FileCopy(const std::string& srcPath, const std::vector<std::string>& srcFilelist, const std::string& destPath, bool clearDest,
                    bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc, const std::string& tmpSuffix,
-                   const std::vector<FileInfo::CopyBlock>& blocks)
+                   const std::vector<FileInfo::CopyBlock>& blocks, unsigned int retryTime)
     : m_srcPathInfo(srcPath, true)
     , m_srcFilelist(srcFilelist)
     , m_destPathInfo(destPath, true)
     , m_clearDestPath(clearDest)
     , m_coverDestFile(coverDest)
     , m_blocks(blocks)
+    , m_retryTime(retryTime)
     , m_filterFunc(filterFunc)
     , m_stopFunc(stopFunc)
     , m_errCode(0)
@@ -188,7 +189,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
                 }
                 return true;
             },
-            blocks);
+            blocks, m_retryTime);
         /* 拷贝结果处理 */
         if (FileInfo::CopyResult::ok == result)
         {

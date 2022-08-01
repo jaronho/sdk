@@ -1,6 +1,7 @@
 #include "file_info.h"
 
 #include <algorithm>
+#include <chrono>
 #include <stdexcept>
 #include <string.h>
 #ifndef _WIN32
@@ -158,7 +159,7 @@ bool FileInfo::remove() const
 
 FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCode,
                                     const std::function<bool(size_t now, size_t total)>& progressCb,
-                                    const std::vector<FileInfo::CopyBlock>& blocks) const
+                                    const std::vector<FileInfo::CopyBlock>& blocks, unsigned int retryTime) const
 {
     if (errCode)
     {
@@ -219,6 +220,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     }
     /* 拷贝文件内容 */
     size_t nowSize = 0, readSize = 0, writeSize = 0;
+    auto nt = std::chrono::steady_clock::now();
     CopyResult result = CopyResult::ok;
     while (!feof(srcFile))
     {
@@ -231,16 +233,25 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         readSize = fread(block, 1, blockSize, srcFile);
         if (0 == readSize)
         {
-            result = CopyResult::src_read_failed;
-            break;
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - nt).count() >= retryTime)
+            {
+                result = CopyResult::src_read_failed;
+                break;
+            }
+            continue;
         }
         writeSize = fwrite(block, 1, readSize, destFile);
         if (0 == writeSize)
         {
-            result = CopyResult::dest_write_failed;
-            break;
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - nt).count() >= retryTime)
+            {
+                result = CopyResult::dest_write_failed;
+                break;
+            }
+            continue;
         }
         nowSize += writeSize;
+        nt = std::chrono::steady_clock::now();
         if (progressCb && !progressCb(nowSize, srcFileSize))
         {
             result = CopyResult::stop;
