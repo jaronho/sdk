@@ -6,6 +6,18 @@ set(CMAKE_CXX_STANDARD 14) # `std::make_unique`要求最低C++14
 
 include(../cmake/tools.cmake)
 
+###################################### 添加OPENSSL库 #####################################
+find_package(OpenSSL 1.1.1 REQUIRED) # 如果启用套接字加密则需要添加
+if (OpenSSL_FOUND)
+    message(STATUS "OpenSSL include path: ${OPENSSL_INCLUDE_DIR}")
+    message(STATUS "OpenSSL libraries: ${OPENSSL_LIBRARIES}")
+    include_directories(${OPENSSL_INCLUDE_DIR})
+else()
+    message(WARNING "OpenSSL not found")
+    return()
+endif()
+##########################################################################################
+
 ####################################### 添加CURL库 #######################################
 option(use_curl_staticlib "是否使用CURL静态库" OFF) # ON表示链接CURL静态库, OFF或者不设置表示链接动态库(目前只支持Windows)
 find_package(CURL 7.76.1 REQUIRED)
@@ -46,13 +58,15 @@ endforeach()
 add_executable(example_curlex ${base_curlex_files} ${example_files})
 
 # 链接依赖库
-target_link_libraries(example_curlex ${curl_libraries})
+target_link_libraries(example_curlex ${OPENSSL_LIBRARIES} ${curl_libraries})
 
 # 拷贝动态链接库
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     add_custom_command(
         TARGET example_curlex
         POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${OPENSSL_INCLUDE_DIR}/../bin/libcrypto-1_1-x64.dll "$(OutDir)/libcrypto-1_1-x64.dll"
+        COMMAND ${CMAKE_COMMAND} -E copy ${OPENSSL_INCLUDE_DIR}/../bin/libssl-1_1-x64.dll "$(OutDir)/libssl-1_1-x64.dll"
         COMMAND ${CMAKE_COMMAND} -E copy ${CURL_INCLUDE_DIRS}/../bin/libcurl.dll "$(OutDir)/libcurl.dll"
         COMMAND ${CMAKE_COMMAND} -E copy ${CURL_INCLUDE_DIRS}/../bin/libcurl-d.dll "$(OutDir)/libcurl-d.dll"
     )
