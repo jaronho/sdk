@@ -12,9 +12,10 @@ int main(int argc, char* argv[])
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
     printf("** [-p]                   server port, default: 4335                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    printf("** [-cf]                  specify certificate file. e.g. client.crt                                      **\n");
+    printf("** [-cf]                  specify certificate file. e.g. client.crt, ca.crt                              **\n");
     printf("** [-pkf]                 specify private key file, e.g. client.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
+    printf("** [-w]                   specify ssl way verify [1, 2], default: 1                                      **\n");
 #endif
     printf("**                                                                                                       **\n");
     printf("***********************************************************************************************************\n");
@@ -24,6 +25,7 @@ int main(int argc, char* argv[])
     std::string certFile;
     std::string privateKeyFile;
     std::string privateKeyFilePwd;
+    int way = 1;
     for (int i = 1; i < argc;)
     {
         const char* key = argv[i];
@@ -73,6 +75,15 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
+        else if (0 == strcmp(key, "-w")) /* SSL校验 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                way = atoi(argv[i]);
+                ++i;
+            }
+        }
 #endif
         else
         {
@@ -86,6 +97,14 @@ int main(int argc, char* argv[])
     if (serverPort <= 0)
     {
         serverPort = 4335;
+    }
+    if (way < 1)
+    {
+        way = 1;
+    }
+    else if (way > 2)
+    {
+        way = 2;
     }
     auto client = std::make_shared<nsocket::TcpClient>();
     /* 设置连接回调 */
@@ -123,7 +142,15 @@ int main(int argc, char* argv[])
         try
         {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-            auto sslContext = nsocket::TcpClient::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd);
+            std::shared_ptr<boost::asio::ssl::context> sslContext;
+            if (1 == way)
+            {
+                sslContext = nsocket::TcpClient::getSsl1WayContext(certFile);
+            }
+            else
+            {
+                sslContext = nsocket::TcpClient::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd);
+            }
             client->run(serverHost, serverPort, sslContext);
 #else
             client->run(serverHost, serverPort);

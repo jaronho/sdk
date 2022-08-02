@@ -21,6 +21,7 @@ int main(int argc, char* argv[])
     printf("** [-cf]                  specify certificate file. e.g. server.crt                                      **\n");
     printf("** [-pkf]                 specify private key file, e.g. server.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
+    printf("** [-w]                   specify ssl way verify [1, 2], default: 1                                      **\n");
 #endif
     printf("**                                                                                                       **\n");
     printf("***********************************************************************************************************\n");
@@ -30,6 +31,7 @@ int main(int argc, char* argv[])
     std::string certFile;
     std::string privateKeyFile;
     std::string privateKeyFilePwd;
+    int way = 1;
     for (int i = 1; i < argc;)
     {
         const char* key = argv[i];
@@ -79,6 +81,15 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
+        else if (0 == strcmp(key, "-w")) /* SSL校验 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                way = atoi(argv[i]);
+                ++i;
+            }
+        }
 #endif
         else
         {
@@ -93,7 +104,15 @@ int main(int argc, char* argv[])
     {
         serverPort = 4335;
     }
-    printf("server: %s:%d\n", serverHost.c_str(), serverPort);
+    if (way < 1)
+    {
+        way = 1;
+    }
+    else if (way > 2)
+    {
+        way = 2;
+    }
+    printf("server: %s:%d, ssl way: %d\n", serverHost.c_str(), serverPort, way);
     auto server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, serverHost, serverPort);
     if (!server->isValid())
     {
@@ -193,7 +212,15 @@ int main(int argc, char* argv[])
         try
         {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-            auto sslContext = nsocket::TcpServer::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+            std::shared_ptr<boost::asio::ssl::context> sslContext;
+            if (1 == way) /* 单向SSL */
+            {
+                sslContext = nsocket::TcpServer::getSsl1WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+            }
+            else /* 双向SSL */
+            {
+                sslContext = nsocket::TcpServer::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+            }
             server->run(sslContext);
 #else
             server->run();
