@@ -4,6 +4,8 @@
 
 namespace nac
 {
+static const size_t MAX_BODY_SIZE = 10 * 1024 * 1024; /* 最大包体大小 */
+
 /**
  * @brief 包头
  */
@@ -21,6 +23,11 @@ ProtocolAdapterCustom::ProtocolAdapterCustom()
 
 bool ProtocolAdapterCustom::sendPacket(const std::shared_ptr<Packet>& pkt, const DataChannel::SendCallback& callback)
 {
+    if (pkt->data.size() >= MAX_BODY_SIZE) /* 限制负载数据大小 */
+    {
+        ERROR_LOG(m_logger, "数据发送错误: 包体大小 {} 太长.", pkt->data.size());
+        return false;
+    }
     const auto dataChannel = m_wpDataChannel.lock();
     if (dataChannel)
     {
@@ -54,10 +61,10 @@ bool ProtocolAdapterCustom::onRecvData(const std::vector<unsigned char>& data)
         [&](const std::vector<unsigned char>& head) {
             int offset = 0;
             s_pktHead.bodyLen = utility::ByteArray::read32(head.data() + offset, true); /* 包体长度 */
-            if (s_pktHead.bodyLen >= 10 * 1024 * 1024) /* 限制负载数据不能超过10Mb */
+            if (s_pktHead.bodyLen >= MAX_BODY_SIZE) /* 限制负载数据大小 */
             {
                 ret = false;
-                ERROR_LOG(m_logger, "数据解析错误: 包头 {} 太长.", s_pktHead.bodyLen);
+                ERROR_LOG(m_logger, "数据解析错误: 包体大小 {} 太长.", s_pktHead.bodyLen);
                 return -1;
             }
             offset += sizeof(s_pktHead.bodyLen);
