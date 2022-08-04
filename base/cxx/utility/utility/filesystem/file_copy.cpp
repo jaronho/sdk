@@ -145,6 +145,10 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
     }
     for (size_t index = 0; index < totalFileCount; ++index)
     {
+        if (m_stopFunc && m_stopFunc())
+        {
+            return FileInfo::CopyResult::stop;
+        }
         utility::FileInfo srcFileInfo(srcFilelist[index]);
         if (0 != srcFileInfo.name().find(m_srcPathInfo.path())) /* 源文件路径不正确 */
         {
