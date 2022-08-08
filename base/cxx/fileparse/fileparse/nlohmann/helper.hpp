@@ -159,6 +159,49 @@ static ValueType toValue(const nlohmann::json& j, std::string* errDesc = nullptr
 }
 
 /**
+ * @brief 判断是否存在子项
+ * @tparam ValueType 要获取的类型
+ * @param j json对象
+ * @param key 子项的key
+ * @param errDesc [输出]错误描述(选填)
+ * @return true-存在, false-不存在
+ */
+template<typename ValueType>
+static bool exist(const json& j, const std::string& key, std::string* errDesc = nullptr)
+{
+    std::string errorDescribe;
+    try
+    {
+        auto iter = j.find(key);
+        if (j.end() != iter)
+        {
+            if (!iter.value().is_null() || std::is_enum<ValueType>::value)
+            {
+                return true;
+            }
+            errorDescribe = "null";
+        }
+        else
+        {
+            errorDescribe = "unfound";
+        }
+    }
+    catch (const std::exception& e)
+    {
+        errorDescribe = e.what();
+    }
+    catch (...)
+    {
+        errorDescribe = "unknown exception";
+    }
+    if (errDesc)
+    {
+        *errDesc = errorDescribe;
+    }
+    return false;
+}
+
+/**
  * @brief 获取子项值
  * @tparam ValueType 要获取的类型
  * @param j json对象
