@@ -1,6 +1,7 @@
 #include "usb_info.h"
 
 #include <algorithm>
+#include <map>
 #include <string.h>
 #ifndef _WIN32
 #include <libudev.h>
@@ -101,22 +102,19 @@ static std::map<std::string, std::string> queryUsbDevNodes(int busNum, int portN
                         auto outStr = runCommand(std::string("blkid ") + devNode);
                         std::transform(outStr.begin(), outStr.end(), outStr.begin(), toupper);
                         /* 例如: /dev/sdb /dev/sdb1 几乎只有 /dev/sdb1 可挂载 */
-                        if (!outStr.empty() && std::string::npos == outStr.find("PTUUID") && std::string::npos == outStr.find("PTTYPE")
-                            && std::string::npos != outStr.find("UUID"))
+                        static const std::string UUID_FLAG = " UUID=\"";
+                        static const std::string TYPE_FLAG = " TYPE=\"";
+                        auto typePos = outStr.find(TYPE_FLAG);
+                        if (std::string::npos != outStr.find(UUID_FLAG) && std::string::npos != typePos)
                         {
-                            static const std::string TYPE_FLAG = "TYPE=\"";
                             std::string fstype;
-                            auto pos = outStr.find(TYPE_FLAG);
-                            if (std::string::npos != pos)
+                            for (size_t i = typePos + TYPE_FLAG.size(); i < outStr.size(); ++i)
                             {
-                                for (size_t i = pos + TYPE_FLAG.size(); i < outStr.size(); ++i)
+                                if ('"' == outStr[i])
                                 {
-                                    if ('"' == outStr[i])
-                                    {
-                                        break;
-                                    }
-                                    fstype.push_back(outStr[i]);
+                                    break;
                                 }
+                                fstype.push_back(outStr[i]);
                             }
                             std::transform(fstype.begin(), fstype.end(), fstype.begin(), tolower);
                             devNodes.insert(std::make_pair(devNode, fstype));
@@ -157,7 +155,7 @@ bool UsbInfo::operator!=(const UsbInfo& other) const
     return true;
 }
 
-std::map<std::string, std::string> UsbInfo::getDevNodes() const
+std::vector<UsbInfo::DevNode> UsbInfo::getDevNodes() const
 {
     return m_devNodes;
 }
@@ -193,17 +191,16 @@ std::string UsbInfo::describe() const
     {
         desc.append("\n");
         desc.append("devNodes: ");
-        size_t i = 0;
-        for (auto iter = m_devNodes.begin(); m_devNodes.end() != iter; ++iter, ++i)
+        for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
             if (i > 0)
             {
                 desc.append(", ");
             }
-            desc.append(iter->first);
-            if (!iter->second.empty())
+            desc.append(m_devNodes[i].name);
+            if (!m_devNodes[i].fstype.empty())
             {
-                desc.append("(").append(iter->second).append(")");
+                desc.append("(").append(m_devNodes[i].fstype).append(")");
             }
         }
     }
@@ -222,10 +219,14 @@ std::vector<UsbInfo> UsbInfo::queryUsbInfos(const std::function<bool(const UsbIn
 #ifndef _WIN32
             if (mustHaveDevNode && (info.isHid() || info.isStorage())) /* 只需获取HID和存储类型的设备节点 */
             {
-                info.m_devNodes = queryUsbDevNodes(info.getBusNum(), info.getPortNum(), info.getAddress());
-                if (info.m_devNodes.empty())
+                auto devNodes = queryUsbDevNodes(info.getBusNum(), info.getPortNum(), info.getAddress());
+                if (devNodes.empty())
                 {
                     continue;
+                }
+                for (auto iter = devNodes.begin(); devNodes.end() != iter; ++iter)
+                {
+                    info.m_devNodes.emplace_back(DevNode(iter->first, iter->second));
                 }
             }
 #endif

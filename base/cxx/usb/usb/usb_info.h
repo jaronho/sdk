@@ -1,6 +1,5 @@
 #pragma once
 #include <functional>
-#include <map>
 
 #include "usb.h"
 
@@ -12,6 +11,18 @@ namespace usb
 class UsbInfo : public Usb
 {
 public:
+    /**
+     * @brief 设备节点
+     */
+    struct DevNode
+    {
+        DevNode(const std::string& name, const std::string& fstype) : name(name), fstype(fstype) {}
+
+        std::string name; /* 节点名, 如: /dev/sdb, /dev/sdb4, /dev/hidraw0 /dev/hidraw1 */
+        std::string fstype; /* 文件系统类型, 如果是存储设备则为: exfat, vfat, ntfs等 */
+    };
+
+public:
     UsbInfo() = default;
 
     UsbInfo(const Usb& src);
@@ -22,9 +33,9 @@ public:
 
     /**
      * @brief 获取节点列表
-     * @return 设备节点列表, key-节点(如: /dev/sda1), value-类型(如果是存储设备则可能为: exfat, vfat, ntfs等)
+     * @return 设备节点列表
      */
-    std::map<std::string, std::string> getDevNodes() const;
+    std::vector<DevNode> getDevNodes() const;
 
     /**
      * @brief 是否有效
@@ -51,7 +62,6 @@ public:
                                               bool mf = false);
 
 private:
-    /* 节点(可能多个), key-节点(如: /dev/sdb, /dev/sdb4, /dev/hidraw0 /dev/hidraw1), value-类型(如果是存储设备则为: exfat, vfat, ntfs等) */
-    std::map<std::string, std::string> m_devNodes;
+    std::vector<DevNode> m_devNodes; /* 节点(可能多个) */
 };
 } // namespace usb

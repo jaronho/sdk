@@ -86,17 +86,16 @@ int main(int argc, char** argv)
                     auto devNodes = info.getDevNodes();
                     line += "\"devNodes\":";
                     line += "[";
-                    size_t i = 0;
-                    for (auto iter = devNodes.begin(); devNodes.end() != iter; ++iter, ++i)
+                    for (size_t i = 0; i < devNodes.size(); ++i)
                     {
                         if (i > 0)
                         {
                             line += ",";
                         }
-                        line += "\"" + iter->first;
-                        if (!iter->second.empty())
+                        line += "\"" + devNodes[i].name;
+                        if (!devNodes[i].fstype.empty())
                         {
-                            line += "(" + iter->second + ")";
+                            line += "(" + devNodes[i].fstype + ")";
                         }
                         line += "\"";
                     }
