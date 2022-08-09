@@ -25,7 +25,7 @@ bool ProtocolAdapterCustom::sendPacket(const std::shared_ptr<Packet>& pkt, const
 {
     if (pkt->data.size() >= MAX_BODY_SIZE) /* 限制负载数据大小 */
     {
-        ERROR_LOG(m_logger, "数据发送错误: 包体大小 {} 太长.", pkt->data.size());
+        ERROR_LOG(m_logger, "数据发送错误: 包体大小 {} 太长, 业务码 {}, 序列ID {}.", pkt->data.size(), pkt->bizCode, pkt->seqId);
         return false;
     }
     const auto dataChannel = m_wpDataChannel.lock();
