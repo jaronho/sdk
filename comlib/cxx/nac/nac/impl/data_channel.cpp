@@ -131,41 +131,45 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
         }
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
         const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
-        m_tcpClient->sendAsync(
-            data, [wpSelf, wpPktExecutor, callback, logger = m_logger](const boost::system::error_code& code, std::size_t length) {
-                const auto pktExecutor = wpPktExecutor.lock();
-                if (pktExecutor)
-                {
-                    auto tp = std::chrono::steady_clock::now();
-                    auto fn = [wpSelf, callback, tp, code, length, logger]() {
-                        const auto self = wpSelf.lock();
-                        if (code)
+        m_tcpClient->sendAsync(data, [wpSelf, wpPktExecutor, dataLength = data.size(), callback,
+                                      logger = m_logger](const boost::system::error_code& code, std::size_t length) {
+            const auto pktExecutor = wpPktExecutor.lock();
+            if (pktExecutor)
+            {
+                auto tp = std::chrono::steady_clock::now();
+                auto fn = [wpSelf, dataLength, callback, tp, code, length, logger]() {
+                    const auto self = wpSelf.lock();
+                    if (code)
+                    {
+                        ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
+                    }
+                    else
+                    {
+                        if (self)
                         {
-                            ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
+                            self->sigUpdateSendTime(tp);
                         }
                         else
                         {
-                            if (self)
-                            {
-                                self->sigUpdateSendTime(tp);
-                            }
-                            else
-                            {
-                                ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
-                            }
+                            ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
                         }
-                        if (callback)
+                        if (length < dataLength)
                         {
-                            callback(!code, length);
+                            ERROR_LOG(logger, "数据发送错误: 总长度 {}, 只发送 {}.", dataLength, length);
                         }
-                    };
-                    pktExecutor->post("nac.sendcb", fn);
-                }
-                else
-                {
-                    WARN_LOG(logger, "数据发送警告: 报文处理线程为空.");
-                }
-            });
+                    }
+                    if (callback)
+                    {
+                        callback(!code && (length == dataLength), length);
+                    }
+                };
+                pktExecutor->post("nac.sendcb", fn);
+            }
+            else
+            {
+                WARN_LOG(logger, "数据发送警告: 报文处理线程为空.");
+            }
+        });
         return true;
     }
     catch (const std::exception& e)
