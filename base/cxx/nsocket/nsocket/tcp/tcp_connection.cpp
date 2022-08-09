@@ -154,32 +154,85 @@ void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type
 
 boost::system::error_code TcpConnection::send(const std::vector<unsigned char>& data, size_t& length)
 {
-    boost::system::error_code code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
     length = 0;
+    return sendImpl(data, length);
+}
+
+void TcpConnection::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
+{
+    sendAsyncImpl(0, data, onSendCb);
+}
+
+boost::system::error_code TcpConnection::sendImpl(const std::vector<unsigned char>& data, size_t& length)
+{
+    boost::system::error_code code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
     if (m_socketTcpBase && m_isConnected)
     {
         m_socketTcpBase->send(
             boost::asio::buffer(data.data(), data.size()),
             [&code, &length](const boost::system::error_code& ec, std::size_t len) {
                 code = ec;
-                length = len;
+                length += len;
             },
             false);
+        if (!code && length < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
+        {
+            std::vector<unsigned char> remainData;
+            remainData.insert(remainData.end(), data.begin() + length, data.end());
+            return sendImpl(remainData, length);
+        }
     }
     return code;
 }
 
-void TcpConnection::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
+void TcpConnection::sendAsyncImpl(std::size_t sendedLength, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
     if (m_socketTcpBase && m_isConnected)
     {
-        m_socketTcpBase->send(boost::asio::buffer(data.data(), data.size()), onSendCb, true);
+        const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
+        m_socketTcpBase->send(
+            boost::asio::buffer(data.data(), data.size()),
+            [wpSelf, sendedLength, data, onSendCb](const boost::system::error_code& code, std::size_t length) {
+                auto totalSendedLength = sendedLength + length;
+                if (code) /* 发送失败 */
+                {
+                    if (onSendCb)
+                    {
+                        onSendCb(code, totalSendedLength);
+                    }
+                }
+                else /* 发送成功 */
+                {
+                    if (length < data.size()) /* 未发送完, 继续发送剩余数据 */
+                    {
+                        const auto self = wpSelf.lock();
+                        if (self)
+                        {
+                            std::vector<unsigned char> remainData;
+                            remainData.insert(remainData.end(), data.begin() + length, data.end());
+                            self->sendAsyncImpl(totalSendedLength, remainData, onSendCb);
+                        }
+                        else if (onSendCb)
+                        {
+                            onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), totalSendedLength);
+                        }
+                    }
+                    else /* 全部发送完毕 */
+                    {
+                        if (onSendCb)
+                        {
+                            onSendCb(code, totalSendedLength);
+                        }
+                    }
+                }
+            },
+            true);
     }
     else
     {
         if (onSendCb)
         {
-            onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+            onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), sendedLength);
         }
     }
 }

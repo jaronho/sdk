@@ -155,6 +155,22 @@ public:
 
 private:
     /**
+     * @brief 发送数据(同步)内部实现
+     * @param data 数据
+     * @param length [输出]已发送数据的长度
+     * @param 错误码
+     */
+    boost::system::error_code sendImpl(const std::vector<unsigned char>& data, size_t& length);
+
+    /**
+     * @brief 发送数据(异步)内部实现
+     * @param sendedLength 已发送长度
+     * @param data 数据
+     * @param onSendCb 发送回调
+     */
+    void sendAsyncImpl(std::size_t sendedLength, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
+
+    /**
      * @brief 接收数据(只需要调用一次, 内部递归调用)
      */
     void recv();
