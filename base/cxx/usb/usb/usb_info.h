@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <map>
 
 #include "usb.h"
 
@@ -21,9 +22,9 @@ public:
 
     /**
      * @brief 获取节点列表
-     * @return 设备节点列表
+     * @return 设备节点列表, key-节点(如: /dev/sda1), value-类型(如果是存储设备则可能为: exfat, vfat, ntfs等)
      */
-    std::vector<std::string> getDevNodes() const;
+    std::map<std::string, std::string> getDevNodes() const;
 
     /**
      * @brief 是否有效
@@ -50,6 +51,7 @@ public:
                                               bool mf = false);
 
 private:
-    std::vector<std::string> m_devNodes; /* 节点(可能多个), 例如: /dev/sdb, /dev/sdb4, /dev/hidraw0 /dev/hidraw1 */
+    /* 节点(可能多个), key-节点(如: /dev/sdb, /dev/sdb4, /dev/hidraw0 /dev/hidraw1), value-类型(如果是存储设备则为: exfat, vfat, ntfs等) */
+    std::map<std::string, std::string> m_devNodes;
 };
 } // namespace usb

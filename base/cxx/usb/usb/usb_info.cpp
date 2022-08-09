@@ -43,9 +43,9 @@ static std::string runCommand(const std::string& cmd)
  * @param address 地址
  * @return USB设备节点列表 
  */
-static std::vector<std::string> queryUsbDevNodes(int busNum, int portNum, int address)
+static std::map<std::string, std::string> queryUsbDevNodes(int busNum, int portNum, int address)
 {
-    std::vector<std::string> devNodes;
+    std::map<std::string, std::string> devNodes;
     struct udev* udev = udev_new();
     if (!udev)
     {
@@ -104,12 +104,27 @@ static std::vector<std::string> queryUsbDevNodes(int busNum, int portNum, int ad
                         if (!outStr.empty() && std::string::npos == outStr.find("PTUUID") && std::string::npos == outStr.find("PTTYPE")
                             && std::string::npos != outStr.find("UUID"))
                         {
-                            devNodes.emplace_back(devNode);
+                            static const std::string TYPE_FLAG = "TYPE=\"";
+                            std::string fstype;
+                            auto pos = outStr.find(TYPE_FLAG);
+                            if (std::string::npos != pos)
+                            {
+                                for (size_t i = pos + TYPE_FLAG.size(); i < outStr.size(); ++i)
+                                {
+                                    if ('"' == outStr[i])
+                                    {
+                                        break;
+                                    }
+                                    fstype.push_back(outStr[i]);
+                                }
+                            }
+                            std::transform(fstype.begin(), fstype.end(), fstype.begin(), tolower);
+                            devNodes.insert(std::make_pair(devNode, fstype));
                         }
                     }
                     else
                     {
-                        devNodes.emplace_back(devNode);
+                        devNodes.insert(std::make_pair(devNode, ""));
                     }
                 }
             }
@@ -142,7 +157,7 @@ bool UsbInfo::operator!=(const UsbInfo& other) const
     return true;
 }
 
-std::vector<std::string> UsbInfo::getDevNodes() const
+std::map<std::string, std::string> UsbInfo::getDevNodes() const
 {
     return m_devNodes;
 }
@@ -178,13 +193,18 @@ std::string UsbInfo::describe() const
     {
         desc.append("\n");
         desc.append("devNodes: ");
-        for (size_t i = 0; i < m_devNodes.size(); ++i)
+        size_t i = 0;
+        for (auto iter = m_devNodes.begin(); m_devNodes.end() != iter; ++iter, ++i)
         {
             if (i > 0)
             {
                 desc.append(", ");
             }
-            desc.append(m_devNodes[i]);
+            desc.append(iter->first);
+            if (!iter->second.empty())
+            {
+                desc.append("(").append(iter->second).append(")");
+            }
         }
     }
     return desc;
