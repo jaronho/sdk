@@ -154,8 +154,9 @@ void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type
 
 boost::system::error_code TcpConnection::send(const std::vector<unsigned char>& data, size_t& length)
 {
+    size_t len = 0;
     length = 0;
-    return sendImpl(data, length);
+    return sendImpl(data, len, length);
 }
 
 void TcpConnection::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
@@ -163,8 +164,9 @@ void TcpConnection::sendAsync(const std::vector<unsigned char>& data, const TCP_
     sendAsyncImpl(0, data, onSendCb);
 }
 
-boost::system::error_code TcpConnection::sendImpl(const std::vector<unsigned char>& data, size_t& length)
+boost::system::error_code TcpConnection::sendImpl(const std::vector<unsigned char>& data, size_t& length, std::size_t& totalSendedLength)
 {
+    length = 0;
     boost::system::error_code code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
     if (m_socketTcpBase && m_isConnected)
     {
@@ -172,14 +174,15 @@ boost::system::error_code TcpConnection::sendImpl(const std::vector<unsigned cha
             boost::asio::buffer(data.data(), data.size()),
             [&code, &length](const boost::system::error_code& ec, std::size_t len) {
                 code = ec;
-                length += len;
+                length = len;
             },
             false);
+        totalSendedLength += length;
         if (!code && length < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
         {
             std::vector<unsigned char> remainData;
             remainData.insert(remainData.end(), data.begin() + length, data.end());
-            return sendImpl(remainData, length);
+            return sendImpl(remainData, length, totalSendedLength);
         }
     }
     return code;
