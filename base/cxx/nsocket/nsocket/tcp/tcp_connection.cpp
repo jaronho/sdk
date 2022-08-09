@@ -194,46 +194,30 @@ void TcpConnection::sendAsyncImpl(std::size_t sendedLength, const std::vector<un
             boost::asio::buffer(data.data(), data.size()),
             [wpSelf, sendedLength, data, onSendCb](const boost::system::error_code& code, std::size_t length) {
                 auto totalSendedLength = sendedLength + length;
-                if (code) /* 发送失败 */
+                if (!code && length < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
                 {
-                    if (onSendCb)
+                    const auto self = wpSelf.lock();
+                    if (self)
                     {
-                        onSendCb(code, totalSendedLength);
+                        std::vector<unsigned char> remainData;
+                        remainData.insert(remainData.end(), data.begin() + length, data.end());
+                        self->sendAsyncImpl(totalSendedLength, remainData, onSendCb);
+                    }
+                    else if (onSendCb)
+                    {
+                        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), totalSendedLength);
                     }
                 }
-                else /* 发送成功 */
+                else if (onSendCb)
                 {
-                    if (length < data.size()) /* 未发送完, 继续发送剩余数据 */
-                    {
-                        const auto self = wpSelf.lock();
-                        if (self)
-                        {
-                            std::vector<unsigned char> remainData;
-                            remainData.insert(remainData.end(), data.begin() + length, data.end());
-                            self->sendAsyncImpl(totalSendedLength, remainData, onSendCb);
-                        }
-                        else if (onSendCb)
-                        {
-                            onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), totalSendedLength);
-                        }
-                    }
-                    else /* 全部发送完毕 */
-                    {
-                        if (onSendCb)
-                        {
-                            onSendCb(code, totalSendedLength);
-                        }
-                    }
+                    onSendCb(code, totalSendedLength);
                 }
             },
             true);
     }
-    else
+    else if (onSendCb)
     {
-        if (onSendCb)
-        {
-            onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), sendedLength);
-        }
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), sendedLength);
     }
 }
 
