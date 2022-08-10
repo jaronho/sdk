@@ -75,7 +75,18 @@ bool DataChannel::connect(const std::string& address, unsigned short port, const
                 try
                 {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-                    auto sslContext = nsocket::TcpClient::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd);
+                    std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
+                    if (!certFile.empty())
+                    {
+                        if (privateKeyFile.empty()) /* SSL单向验证 */
+                        {
+                            sslContext = nsocket::TcpClient::getSsl1WayContext(certFile);
+                        }
+                        else /* SSL双向验证 */
+                        {
+                            sslContext = nsocket::TcpClient::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd);
+                        }
+                    }
                     tcpClient->run(address, port, sslContext);
 #else
                     tcpClient->run(address, port);
@@ -122,17 +133,22 @@ bool DataChannel::isOpened()
 
 bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCallback& callback)
 {
+    auto dataLength = data.size();
     try
     {
         if (!isOpened())
         {
             ERROR_LOG(m_logger, "数据发送错误: 未连接.");
+            if (callback)
+            {
+                callback(false, dataLength, 0);
+            }
             return false;
         }
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
         const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
-        m_tcpClient->sendAsync(data, [wpSelf, wpPktExecutor, dataLength = data.size(), callback,
-                                      logger = m_logger](const boost::system::error_code& code, std::size_t length) {
+        m_tcpClient->sendAsync(data, [wpSelf, wpPktExecutor, dataLength, callback, logger = m_logger](const boost::system::error_code& code,
+                                                                                                      size_t length) {
             const auto pktExecutor = wpPktExecutor.lock();
             if (pktExecutor)
             {
@@ -153,14 +169,15 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
                         {
                             ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
                         }
-                        if (length < dataLength)
+                        if (length > 0 && length < dataLength)
                         {
-                            ERROR_LOG(logger, "数据发送错误: 总长度 {}, 只发送 {}.", dataLength, length);
+                            ERROR_LOG(logger, "数据发送错误: 总长度 {}, 只发送 {}, 需要断开连接.", dataLength, length);
+                            self->disconnectImpl();
                         }
                     }
                     if (callback)
                     {
-                        callback(!code && (length == dataLength), length);
+                        callback(!code && (length == dataLength), dataLength, length);
                     }
                 };
                 pktExecutor->post("nac.sendcb", fn);
@@ -168,6 +185,10 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
             else
             {
                 WARN_LOG(logger, "数据发送警告: 报文处理线程为空.");
+                if (callback)
+                {
+                    callback(!code && (length == dataLength), dataLength, length);
+                }
             }
         });
         return true;
@@ -182,7 +203,7 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
     }
     if (callback)
     {
-        callback(false, 0);
+        callback(false, dataLength, 0);
     }
     return false;
 }

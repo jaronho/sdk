@@ -17,9 +17,10 @@ public:
     /**
      * @brief 数据发送回调
      * @param ok 是否成功
-     * @param length 数据已发送长度
+     * @param dataLength 数据总长度
+     * @param sentLength 数据已发送长度
      */
-    using SendCallback = std::function<void(bool ok, size_t length)>;
+    using SendCallback = std::function<void(bool ok, size_t dataLength, size_t sentLength)>;
 
 public:
     /**

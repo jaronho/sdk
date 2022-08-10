@@ -8,7 +8,7 @@ namespace nac
 class SessionManager::Session final : public std::enable_shared_from_this<SessionManager::Session>
 {
 public:
-    Session(unsigned int bizCode, int64_t seqId, const std::shared_ptr<SessionManager>& sessionManager, const ResponseCallback& responseCb)
+    Session(unsigned int bizCode, int64_t seqId, const std::shared_ptr<SessionManager>& sessionManager, ResponseCallback responseCb)
         : m_bizCode(bizCode), m_seqId(seqId), m_wpSessionManager(sessionManager), m_responseCb(std::move(responseCb))
     {
     }
@@ -145,35 +145,34 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
     }
     /* 发送数据包 */
     const std::weak_ptr<SessionManager> wpSelf = shared_from_this();
-    bool ret = adapter->sendPacket(pkt, [wpSelf, timeout, bizCode, seqId = pkt->seqId, callback](bool ok, size_t length) {
-        const auto self = wpSelf.lock();
-        if (self)
-        {
-            if (ok) /* 发送成功 */
+    bool ret =
+        adapter->sendPacket(pkt, [wpSelf, timeout, bizCode, seqId = pkt->seqId, callback](bool ok, size_t dataLength, size_t length) {
+            const auto self = wpSelf.lock();
+            if (self)
             {
-                if (timeout > 0) /* 需要应答, 需等待服务器应答或超时再处理 */
+                if (ok) /* 发送成功 */
                 {
-                    /* 这里不处理 */
+                    if (timeout > 0) /* 需要应答, 需等待服务器应答或超时再处理 */
+                    {
+                        /* 这里不处理 */
+                    }
+                    else /* 不需要应答, 直接通知成功 */
+                    {
+                        self->onResponseCallback(true, bizCode, seqId, false, callback);
+                    }
                 }
-                else /* 不需要应答, 直接通知成功 */
+                else /* 发送失败 */
                 {
-                    self->onResponseCallback(true, bizCode, seqId, false, callback);
+                    WARN_LOG(self->m_logger, "数据发送失败, bizCode: {}, seqId: {}.", bizCode, seqId);
+                    self->onResponseCallback(false, bizCode, seqId, timeout > 0, callback);
                 }
             }
-            else /* 发送失败 */
-            {
-                WARN_LOG(self->m_logger, "数据发送失败, bizCode: {}, seqId: {}.", bizCode, seqId);
-                self->onResponseCallback(false, bizCode, seqId, timeout > 0, callback);
-            }
-        }
-    });
+        });
     if (ret) /* 发送成功, 返回seqId */
     {
         return pkt->seqId;
     }
     /* 发送失败 */
-    WARN_LOG(m_logger, "数据发送失败, bizCode: {}, seqId: {}.", bizCode, seqId);
-    onResponseCallback(false, bizCode, pkt->seqId, timeout > 0, callback);
     return -1;
 }
 

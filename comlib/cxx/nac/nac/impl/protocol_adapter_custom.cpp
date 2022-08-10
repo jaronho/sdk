@@ -23,9 +23,14 @@ ProtocolAdapterCustom::ProtocolAdapterCustom()
 
 bool ProtocolAdapterCustom::sendPacket(const std::shared_ptr<Packet>& pkt, const DataChannel::SendCallback& callback)
 {
-    if (pkt->data.size() >= MAX_BODY_SIZE) /* 限制负载数据大小 */
+    auto dataLength = m_payload->getHeadLen() + pkt->data.size();
+    if (dataLength >= MAX_BODY_SIZE) /* 限制数据包大小 */
     {
         ERROR_LOG(m_logger, "数据发送错误: 包体大小 {} 太长, 业务码 {}, 序列ID {}.", pkt->data.size(), pkt->bizCode, pkt->seqId);
+        if (callback)
+        {
+            callback(false, dataLength, 0);
+        }
         return false;
     }
     const auto dataChannel = m_wpDataChannel.lock();
@@ -41,6 +46,10 @@ bool ProtocolAdapterCustom::sendPacket(const std::shared_ptr<Packet>& pkt, const
     else
     {
         ERROR_LOG(m_logger, "数据包发送错误: 数据通道为空.");
+        if (callback)
+        {
+            callback(false, dataLength, 0);
+        }
     }
     return false;
 }
@@ -61,7 +70,7 @@ bool ProtocolAdapterCustom::onRecvData(const std::vector<unsigned char>& data)
         [&](const std::vector<unsigned char>& head) {
             int offset = 0;
             s_pktHead.bodyLen = utility::ByteArray::read32(head.data() + offset, true); /* 包体长度 */
-            if (s_pktHead.bodyLen >= MAX_BODY_SIZE) /* 限制负载数据大小 */
+            if (m_payload->getHeadLen() + (size_t)s_pktHead.bodyLen >= MAX_BODY_SIZE) /* 限制数据包大小 */
             {
                 ret = false;
                 ERROR_LOG(m_logger, "数据解析错误: 包体大小 {} 太长.", s_pktHead.bodyLen);
