@@ -31,7 +31,13 @@ public:
     Payload(unsigned int headLen);
 
     /**
-     * @brief 重置
+     * @brief 获取包头长度
+     * @return 包头长度
+     */
+    unsigned int getHeadLen() const;
+
+    /**
+     * @brief 重置缓冲区
      */
     void reset();
 

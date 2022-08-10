@@ -86,7 +86,7 @@ void TcpClient::run(const std::string& host, unsigned int port, bool async)
 
 boost::system::error_code TcpClient::send(const std::vector<unsigned char>& data, size_t& length)
 {
-    boost::system::error_code code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
+    auto code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
     length = 0;
     if (isRunning() && !m_ioContext.stopped() && m_tcpConn)
     {
@@ -117,7 +117,7 @@ void TcpClient::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND
                      *  1.根据boost中async_send说明, data最好保证生命周期存在到回调执行前, 这里将data绑定到回调中.
                      *  2.单元测纯TCP试验没绑到回调时确实会崩.
                      */
-                    self->m_tcpConn->sendAsync(data, [onSendCb, data](const boost::system::error_code& code, std::size_t length) {
+                    self->m_tcpConn->sendAsync(data, [onSendCb, data](const boost::system::error_code& code, size_t length) {
                         if (onSendCb)
                         {
                             onSendCb(code, length);

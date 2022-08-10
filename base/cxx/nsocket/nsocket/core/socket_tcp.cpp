@@ -35,17 +35,27 @@ void SocketTcp::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLB
 {
     if (m_socket.is_open())
     {
-        if (async)
+        if (0 == data.size())
         {
-            m_socket.async_send(data, onSendCb);
+            if (onSendCb)
+            {
+                onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_message_available), 0);
+            }
         }
         else
         {
-            boost::system::error_code code;
-            std::size_t length = m_socket.send(data, boost::asio::socket_base::message_flags(0), code);
-            if (onSendCb)
+            if (async)
             {
-                onSendCb(code, length);
+                m_socket.async_send(data, onSendCb);
+            }
+            else
+            {
+                boost::system::error_code code;
+                auto length = m_socket.send(data, boost::asio::socket_base::message_flags(0), code);
+                if (onSendCb)
+                {
+                    onSendCb(code, length);
+                }
             }
         }
     }
@@ -129,17 +139,27 @@ void SocketTls::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLB
 {
     if (sslStream.lowest_layer().is_open())
     {
-        if (async)
+        if (0 == data.size())
         {
-            sslStream.async_write_some(boost::asio::buffer(data), onSendCb);
+            if (onSendCb)
+            {
+                onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_message_available), 0);
+            }
         }
         else
         {
-            boost::system::error_code code;
-            std::size_t length = sslStream.write_some(data, code);
-            if (onSendCb)
+            if (async)
             {
-                onSendCb(code, length);
+                sslStream.async_write_some(boost::asio::buffer(data), onSendCb);
+            }
+            else
+            {
+                boost::system::error_code code;
+                auto length = sslStream.write_some(data, code);
+                if (onSendCb)
+                {
+                    onSendCb(code, length);
+                }
             }
         }
     }

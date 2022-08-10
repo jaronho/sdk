@@ -14,6 +14,11 @@ Payload::Payload(unsigned int headLen) : m_headLen(headLen), m_bodyLen(0)
     }
 }
 
+unsigned int Payload::getHeadLen() const
+{
+    return m_headLen;
+}
+
 void Payload::reset()
 {
     m_recvBuffer.clear();

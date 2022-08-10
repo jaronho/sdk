@@ -20,14 +20,14 @@ using TCP_CONNECT_CALLBACK = std::function<void(const boost::system::error_code&
  * @param code 错误码
  * @param length 数据长度
  */
-using TCP_SEND_CALLBACK = std::function<void(const boost::system::error_code& code, std::size_t length)>;
+using TCP_SEND_CALLBACK = std::function<void(const boost::system::error_code& code, size_t length)>;
 
 /**
  * @brief TCP接收回调
  * @param code 错误码
  * @param length 数据长度
  */
-using TCP_RECV_CALLBACK = std::function<void(const boost::system::error_code& code, std::size_t length)>;
+using TCP_RECV_CALLBACK = std::function<void(const boost::system::error_code& code, size_t length)>;
 
 /**
  * @brief TLS握手回调

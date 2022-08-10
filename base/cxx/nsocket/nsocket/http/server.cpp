@@ -279,7 +279,7 @@ void Server::sendResponse(const std::weak_ptr<TcpConnection>& wpConn, std::share
         }
         std::vector<unsigned char> data;
         Response::pack(*resp, data);
-        conn->sendAsync(data, [&, wpConn](const boost::system::error_code& code, std::size_t length) {
+        conn->sendAsync(data, [&, wpConn](const boost::system::error_code& code, size_t length) {
             const auto conn = wpConn.lock();
             if (conn)
             {

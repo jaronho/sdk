@@ -157,19 +157,18 @@ private:
     /**
      * @brief 发送数据(同步)内部实现
      * @param data 数据
-     * @param length [输出]本次已发送数据的长度
-     * @param totalSendedLength [输出]总的已发送数据的长度
+     * @param totalSentLength [输出]总的已发送数据的长度
      * @param 错误码
      */
-    boost::system::error_code sendImpl(const std::vector<unsigned char>& data, size_t& length, std::size_t& totalSendedLength);
+    boost::system::error_code sendImpl(const std::vector<unsigned char>& data, size_t& totalSentLength);
 
     /**
      * @brief 发送数据(异步)内部实现
-     * @param sendedLength 已发送长度
+     * @param sentLength 总的已发送数据的长度
      * @param data 数据
      * @param onSendCb 发送回调
      */
-    void sendAsyncImpl(std::size_t sendedLength, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
+    void sendAsyncImpl(size_t totalSentLength, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
 
     /**
      * @brief 接收数据(只需要调用一次, 内部递归调用)

@@ -222,7 +222,7 @@ void Server::handleRequest(const std::shared_ptr<Session>& session)
         Response::create(*resp, session->m_req->getSecWebSocketKey(), data);
         /* 响应客户端, 用于通知客户端WebSocket连接建立成功 */
         std::weak_ptr<Session> wpSession = session;
-        conn->sendAsync(data, [&, wpSession](const boost::system::error_code& code, std::size_t length) {
+        conn->sendAsync(data, [&, wpSession](const boost::system::error_code& code, size_t length) {
             const auto session = wpSession.lock();
             if (session)
             {

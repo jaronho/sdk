@@ -154,9 +154,8 @@ void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type
 
 boost::system::error_code TcpConnection::send(const std::vector<unsigned char>& data, size_t& length)
 {
-    size_t len = 0;
     length = 0;
-    return sendImpl(data, len, length);
+    return sendImpl(data, length);
 }
 
 void TcpConnection::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
@@ -164,63 +163,80 @@ void TcpConnection::sendAsync(const std::vector<unsigned char>& data, const TCP_
     sendAsyncImpl(0, data, onSendCb);
 }
 
-boost::system::error_code TcpConnection::sendImpl(const std::vector<unsigned char>& data, size_t& length, std::size_t& totalSendedLength)
+boost::system::error_code TcpConnection::sendImpl(const std::vector<unsigned char>& data, size_t& totalSentLength)
 {
-    length = 0;
-    boost::system::error_code code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
+    auto code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
     if (m_socketTcpBase && m_isConnected)
     {
-        m_socketTcpBase->send(
-            boost::asio::buffer(data.data(), data.size()),
-            [&code, &length](const boost::system::error_code& ec, std::size_t len) {
-                code = ec;
-                length = len;
-            },
-            false);
-        totalSendedLength += length;
-        if (!code && length < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
+        if (data.empty())
         {
-            std::vector<unsigned char> remainData;
-            remainData.insert(remainData.end(), data.begin() + length, data.end());
-            return sendImpl(remainData, length, totalSendedLength);
+            code = boost::system::errc::make_error_code(boost::system::errc::no_message_available);
+        }
+        else
+        {
+            size_t sentLength = 0;
+            m_socketTcpBase->send(
+                boost::asio::buffer(data.data(), data.size()),
+                [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
+                    code = ec;
+                    sentLength = length;
+                },
+                false);
+            totalSentLength += sentLength;
+            if (!code && sentLength < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
+            {
+                std::vector<unsigned char> remainData;
+                remainData.insert(remainData.end(), data.begin() + sentLength, data.end());
+                return sendImpl(remainData, totalSentLength);
+            }
         }
     }
     return code;
 }
 
-void TcpConnection::sendAsyncImpl(std::size_t sendedLength, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
+void TcpConnection::sendAsyncImpl(size_t totalSentLength, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
     if (m_socketTcpBase && m_isConnected)
     {
-        const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
-        m_socketTcpBase->send(
-            boost::asio::buffer(data.data(), data.size()),
-            [wpSelf, sendedLength, data, onSendCb](const boost::system::error_code& code, std::size_t length) {
-                auto totalSendedLength = sendedLength + length;
-                if (!code && length < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
-                {
-                    const auto self = wpSelf.lock();
-                    if (self)
+        if (data.empty())
+        {
+            if (onSendCb)
+            {
+                onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_message_available), totalSentLength);
+            }
+        }
+        else
+        {
+            const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
+            m_socketTcpBase->send(
+                boost::asio::buffer(data.data(), data.size()),
+                [wpSelf, totalSentLength, data, onSendCb](const boost::system::error_code& code, size_t length) {
+                    auto nowTotalSentLength = totalSentLength + length;
+                    if (!code && length < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
                     {
-                        std::vector<unsigned char> remainData;
-                        remainData.insert(remainData.end(), data.begin() + length, data.end());
-                        self->sendAsyncImpl(totalSendedLength, remainData, onSendCb);
+                        const auto self = wpSelf.lock();
+                        if (self)
+                        {
+                            std::vector<unsigned char> remainData;
+                            remainData.insert(remainData.end(), data.begin() + length, data.end());
+                            self->sendAsyncImpl(nowTotalSentLength, remainData, onSendCb);
+                        }
+                        else if (onSendCb)
+                        {
+                            onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), nowTotalSentLength);
+                        }
                     }
                     else if (onSendCb)
                     {
-                        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), totalSendedLength);
+                        onSendCb(code, nowTotalSentLength);
                     }
-                }
-                else if (onSendCb)
-                {
-                    onSendCb(code, totalSendedLength);
-                }
-            },
-            true);
+                },
+                true);
+        }
     }
     else if (onSendCb)
     {
-        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), sendedLength);
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), totalSentLength);
     }
 }
 
@@ -229,7 +245,7 @@ void TcpConnection::TcpConnection::recv()
     if (m_socketTcpBase)
     {
         const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
-        m_socketTcpBase->recv(boost::asio::buffer(m_recvBuf), [wpSelf](const boost::system::error_code& code, std::size_t length) {
+        m_socketTcpBase->recv(boost::asio::buffer(m_recvBuf), [wpSelf](const boost::system::error_code& code, size_t length) {
             const auto self = wpSelf.lock();
             if (self)
             {
@@ -342,7 +358,7 @@ TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::method m, con
     sslContext->use_certificate_file(certFile, boost::asio::ssl::context::pem);
     /* 注意: 需要先调用`set_password_callback`再调用`use_private_key_file`自动填充密码, 否则若有密码时会提示需要输入密码 */
     sslContext->set_password_callback(
-        [privateKeyFilePwd](std::size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
+        [privateKeyFilePwd](size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
             return privateKeyFilePwd;
         });
     sslContext->use_private_key_file(privateKeyFile, boost::asio::ssl::context::pem);
@@ -383,7 +399,7 @@ std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSsl2WayContext(boo
     sslContext->use_certificate_file(certFile, boost::asio::ssl::context::pem);
     /* 注意: 需要先调用`set_password_callback`再调用`use_private_key_file`自动填充密码, 否则若有密码时会提示需要输入密码 */
     sslContext->set_password_callback(
-        [privateKeyFilePwd](std::size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
+        [privateKeyFilePwd](size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
             return privateKeyFilePwd;
         });
     sslContext->use_private_key_file(privateKeyFile, boost::asio::ssl::context::pem);
