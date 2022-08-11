@@ -86,7 +86,7 @@ public:
         {
             std::vector<unsigned char> buffer;
             pack(msg, buffer);
-            conn->sendAsync(buffer, [&, callback](const boost::system::error_code& code, std::size_t length) {
+            conn->send(buffer, [&, callback](const boost::system::error_code& code, std::size_t length) {
                 const auto conn = m_wpConn.lock();
                 if (conn)
                 {
