@@ -174,9 +174,10 @@ boost::system::error_code TcpConnection::sendImpl(const std::vector<unsigned cha
         }
         else
         {
+            auto sbz = m_socketTcpBase->getSendBufferSize();
             size_t sentLength = 0;
             m_socketTcpBase->send(
-                boost::asio::buffer(data.data(), data.size()),
+                boost::asio::buffer(data.data(), data.size() > sbz ? sbz : data.size()),
                 [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
                     code = ec;
                     sentLength = length;
@@ -207,9 +208,10 @@ void TcpConnection::sendAsyncImpl(size_t totalSentLength, const std::vector<unsi
         }
         else
         {
+            auto sbz = m_socketTcpBase->getSendBufferSize();
             const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
             m_socketTcpBase->send(
-                boost::asio::buffer(data.data(), data.size()),
+                boost::asio::buffer(data.data(), data.size() > sbz ? sbz : data.size()),
                 [wpSelf, totalSentLength, data, onSendCb](const boost::system::error_code& code, size_t length) {
                     auto nowTotalSentLength = totalSentLength + length;
                     if (!code && length < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
@@ -310,6 +312,15 @@ boost::asio::ip::tcp::endpoint TcpConnection::getRemoteEndpoint() const
         return m_socketTcpBase->getRemoteEndpoint();
     }
     return boost::asio::ip::tcp::endpoint();
+}
+
+bool TcpConnection::setNonBlock(bool nonBlock)
+{
+    if (m_socketTcpBase)
+    {
+        return m_socketTcpBase->setNonBlock(nonBlock);
+    }
+    return false;
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)

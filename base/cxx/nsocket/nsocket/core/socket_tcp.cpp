@@ -44,6 +44,16 @@ void SocketTcp::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLB
         }
         else
         {
+            boost::asio::socket_base::send_buffer_size opt;
+            m_socket.get_option(opt);
+            if (data.size() > opt.value())
+            {
+                if (onSendCb)
+                {
+                    onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_buffer_space), 0);
+                }
+                return;
+            }
             if (async)
             {
                 m_socket.async_send(data, onSendCb);
@@ -103,14 +113,84 @@ boost::asio::ip::tcp::endpoint SocketTcp::getRemoteEndpoint() const
     return m_socket.remote_endpoint(code);
 }
 
+bool SocketTcp::isNonBlock() const
+{
+    return m_socket.non_blocking();
+}
+
+bool SocketTcp::setNonBlock(bool nonBlock)
+{
+    if (m_socket.is_open())
+    {
+        boost::system::error_code code;
+        m_socket.non_blocking(nonBlock, code);
+        if (!code)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+size_t SocketTcp::getSendBufferSize() const
+{
+    if (m_socket.is_open())
+    {
+        boost::asio::socket_base::send_buffer_size opt;
+        m_socket.get_option(opt);
+        return opt.value();
+    }
+    return 0;
+}
+
+bool SocketTcp::setSendBufferSize(size_t bufferSize)
+{
+    if (m_socket.is_open() && bufferSize > 0)
+    {
+        boost::system::error_code code;
+        m_socket.set_option(boost::asio::socket_base::send_buffer_size(bufferSize), code);
+        if (!code)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+size_t SocketTcp::getRecvBufferSize() const
+{
+    if (m_socket.is_open())
+    {
+        boost::asio::socket_base::receive_buffer_size opt;
+        m_socket.get_option(opt);
+        return opt.value();
+    }
+    return 0;
+}
+
+bool SocketTcp::setRecvBufferSize(size_t bufferSize)
+{
+    if (m_socket.is_open() && bufferSize > 0)
+    {
+        boost::system::error_code code;
+        m_socket.set_option(boost::asio::socket_base::receive_buffer_size(bufferSize), code);
+        if (!code)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-SocketTls::SocketTls(boost::asio::ip::tcp::socket socket, boost::asio::ssl::context& sslContext) : sslStream(std::move(socket), sslContext)
+SocketTls::SocketTls(boost::asio::ip::tcp::socket socket, boost::asio::ssl::context& sslContext)
+    : m_sslStream(std::move(socket), sslContext)
 {
 }
 
 void SocketTls::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async)
 {
-    if (sslStream.lowest_layer().is_open())
+    if (m_sslStream.lowest_layer().is_open())
     {
         if (onConnectCb)
         {
@@ -121,12 +201,12 @@ void SocketTls::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
     {
         if (async)
         {
-            sslStream.lowest_layer().async_connect(point, onConnectCb);
+            m_sslStream.lowest_layer().async_connect(point, onConnectCb);
         }
         else
         {
             boost::system::error_code code;
-            sslStream.lowest_layer().connect(point, code);
+            m_sslStream.lowest_layer().connect(point, code);
             if (onConnectCb)
             {
                 onConnectCb(code);
@@ -137,7 +217,7 @@ void SocketTls::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
 
 void SocketTls::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb, bool async)
 {
-    if (sslStream.lowest_layer().is_open())
+    if (m_sslStream.lowest_layer().is_open())
     {
         if (0 == data.size())
         {
@@ -148,14 +228,24 @@ void SocketTls::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLB
         }
         else
         {
+            boost::asio::socket_base::send_buffer_size opt;
+            m_sslStream.lowest_layer().get_option(opt);
+            if (data.size() > opt.value())
+            {
+                if (onSendCb)
+                {
+                    onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_buffer_space), 0);
+                }
+                return;
+            }
             if (async)
             {
-                sslStream.async_write_some(boost::asio::buffer(data), onSendCb);
+                m_sslStream.async_write_some(boost::asio::buffer(data), onSendCb);
             }
             else
             {
                 boost::system::error_code code;
-                auto length = sslStream.write_some(data, code);
+                auto length = m_sslStream.write_some(data, code);
                 if (onSendCb)
                 {
                     onSendCb(code, length);
@@ -171,9 +261,9 @@ void SocketTls::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLB
 
 void SocketTls::recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CALLBACK& onRecvCb)
 {
-    if (sslStream.lowest_layer().is_open())
+    if (m_sslStream.lowest_layer().is_open())
     {
-        sslStream.async_read_some(boost::asio::buffer(data), onRecvCb);
+        m_sslStream.async_read_some(boost::asio::buffer(data), onRecvCb);
     }
     else if (onRecvCb)
     {
@@ -183,42 +273,111 @@ void SocketTls::recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CAL
 
 void SocketTls::bind(const boost::asio::ip::tcp::endpoint& host, boost::system::error_code& code)
 {
-    sslStream.lowest_layer().bind(host, code);
+    m_sslStream.lowest_layer().bind(host, code);
 }
 
 void SocketTls::close()
 {
-    if (sslStream.lowest_layer().is_open())
+    if (m_sslStream.lowest_layer().is_open())
     {
         boost::system::error_code code;
-        sslStream.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, code);
-        sslStream.lowest_layer().close(code);
+        m_sslStream.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, code);
+        m_sslStream.lowest_layer().close(code);
     }
 }
 
 bool SocketTls::isOpened() const
 {
-    return sslStream.lowest_layer().is_open();
+    return m_sslStream.lowest_layer().is_open();
 }
 
 boost::asio::ip::tcp::endpoint SocketTls::getRemoteEndpoint() const
 {
     boost::system::error_code code;
-    return sslStream.lowest_layer().remote_endpoint(code);
+    return m_sslStream.lowest_layer().remote_endpoint(code);
+}
+
+bool SocketTls::isNonBlock() const
+{
+    return m_sslStream.lowest_layer().non_blocking();
+}
+
+bool SocketTls::setNonBlock(bool nonBlock)
+{
+    if (m_sslStream.lowest_layer().is_open())
+    {
+        boost::system::error_code code;
+        m_sslStream.lowest_layer().non_blocking(nonBlock, code);
+        if (!code)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+size_t SocketTls::getSendBufferSize() const
+{
+    if (m_sslStream.lowest_layer().is_open())
+    {
+        boost::asio::socket_base::send_buffer_size opt;
+        m_sslStream.lowest_layer().get_option(opt);
+        return opt.value();
+    }
+    return 0;
+}
+
+bool SocketTls::setSendBufferSize(size_t bufferSize)
+{
+    if (m_sslStream.lowest_layer().is_open() && bufferSize > 0)
+    {
+        boost::system::error_code code;
+        m_sslStream.lowest_layer().set_option(boost::asio::socket_base::send_buffer_size(bufferSize), code);
+        if (!code)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+size_t SocketTls::getRecvBufferSize() const
+{
+    if (m_sslStream.lowest_layer().is_open())
+    {
+        boost::asio::socket_base::receive_buffer_size opt;
+        m_sslStream.lowest_layer().get_option(opt);
+        return opt.value();
+    }
+    return 0;
+}
+
+bool SocketTls::setRecvBufferSize(size_t bufferSize)
+{
+    if (m_sslStream.lowest_layer().is_open() && bufferSize > 0)
+    {
+        boost::system::error_code code;
+        m_sslStream.lowest_layer().set_option(boost::asio::socket_base::receive_buffer_size(bufferSize), code);
+        if (!code)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 void SocketTls::handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb, bool async)
 {
-    if (sslStream.lowest_layer().is_open())
+    if (m_sslStream.lowest_layer().is_open())
     {
         if (async)
         {
-            sslStream.async_handshake(type, onHandshakeCb);
+            m_sslStream.async_handshake(type, onHandshakeCb);
         }
         else
         {
             boost::system::error_code code;
-            sslStream.handshake(type, code);
+            m_sslStream.handshake(type, code);
             if (onHandshakeCb)
             {
                 onHandshakeCb(code);

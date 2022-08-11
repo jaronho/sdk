@@ -115,6 +115,13 @@ public:
      */
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const;
 
+    /**
+     * @brief 设置非阻塞(说明: 需要连接成功后才调用)
+     * @param nonBlock true-非阻塞, false-阻塞
+     * @return true-设置成功, false-设置失败
+     */
+    bool setNonBlock(bool nonBlock);
+
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 创建客户端SSL(单向验证)上下文

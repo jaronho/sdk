@@ -50,6 +50,12 @@ public:
     virtual void close() = 0;
     virtual bool isOpened() const = 0;
     virtual boost::asio::ip::tcp::endpoint getRemoteEndpoint() const = 0;
+    virtual bool isNonBlock() const = 0;
+    virtual bool setNonBlock(bool nonBlock) = 0;
+    virtual size_t getSendBufferSize() const = 0;
+    virtual bool setSendBufferSize(size_t bufferSize) = 0;
+    virtual size_t getRecvBufferSize() const = 0;
+    virtual bool setRecvBufferSize(size_t bufferSize) = 0;
 };
 
 /**
@@ -75,6 +81,18 @@ public:
     bool isOpened() const override;
 
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const override;
+
+    bool isNonBlock() const override;
+
+    bool setNonBlock(bool nonBlock) override;
+
+    size_t getSendBufferSize() const override;
+
+    bool setSendBufferSize(size_t bufferSize) override;
+
+    size_t getRecvBufferSize() const override;
+
+    bool setRecvBufferSize(size_t bufferSize) override;
 
 private:
     boost::asio::ip::tcp::socket m_socket;
@@ -105,10 +123,22 @@ public:
 
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const override;
 
+    bool isNonBlock() const override;
+
+    bool setNonBlock(bool nonBlock) override;
+
+    size_t getSendBufferSize() const override;
+
+    bool setSendBufferSize(size_t bufferSize) override;
+
+    size_t getRecvBufferSize() const override;
+
+    bool setRecvBufferSize(size_t bufferSize) override;
+
     void handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb, bool async = true);
 
 private:
-    boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sslStream;
+    boost::asio::ssl::stream<boost::asio::ip::tcp::socket> m_sslStream;
 };
 #endif
 } // namespace nsocket
