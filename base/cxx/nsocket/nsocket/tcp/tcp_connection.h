@@ -158,6 +158,11 @@ private:
      */
     void recv();
 
+    /**
+     * @brief 关闭(内部实现)
+     */
+    void closeImpl();
+
 private:
     int64_t m_id; /* ID */
     std::shared_ptr<SocketTcpBase> m_socketTcpBase; /* 套接字 */

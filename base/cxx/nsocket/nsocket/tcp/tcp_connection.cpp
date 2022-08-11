@@ -72,7 +72,7 @@ void TcpConnection::connect(const boost::asio::ip::tcp::endpoint& point, bool as
                 {
                     if (code) /* 连接失败 */
                     {
-                        self->close();
+                        self->closeImpl();
                         if (self->m_onConnectCallback)
                         {
                             self->m_onConnectCallback(code);
@@ -122,7 +122,7 @@ void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type
                 {
                     if (code) /* 握手失败 */
                     {
-                        self->close();
+                        self->closeImpl();
                         if (onHandshakeCb)
                         {
                             onHandshakeCb(code);
@@ -143,7 +143,7 @@ void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type
     }
     else
     {
-        close();
+        closeImpl();
         if (onHandshakeCb)
         {
             onHandshakeCb(boost::system::errc::make_error_code(boost::system::errc::not_a_socket));
@@ -202,8 +202,9 @@ void TcpConnection::TcpConnection::recv()
             {
                 if (code) /* 接收失败 */
                 {
-                    self->close();
-                    if (self->m_onConnectCallback)
+                    bool connectedFlag = self->m_isConnected;
+                    self->closeImpl();
+                    if (connectedFlag && self->m_onConnectCallback)
                     {
                         self->m_onConnectCallback(code);
                     }
@@ -227,7 +228,7 @@ void TcpConnection::TcpConnection::recv()
     }
     else
     {
-        close();
+        closeImpl();
         if (m_onConnectCallback)
         {
             m_onConnectCallback(boost::system::errc::make_error_code(boost::system::errc::not_a_socket));
@@ -235,12 +236,22 @@ void TcpConnection::TcpConnection::recv()
     }
 }
 
-void TcpConnection::close()
+void TcpConnection::closeImpl()
 {
     m_isConnected = false;
     if (m_socketTcpBase)
     {
         m_socketTcpBase->close();
+    }
+}
+
+void TcpConnection::close()
+{
+    bool connectedFlag = m_isConnected;
+    closeImpl();
+    if (connectedFlag && m_onConnectCallback)
+    {
+        m_onConnectCallback(boost::system::errc::make_error_code(boost::system::errc::interrupted));
     }
 }
 

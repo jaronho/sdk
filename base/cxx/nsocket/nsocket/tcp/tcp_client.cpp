@@ -138,11 +138,11 @@ void TcpClient::stop()
                 {
                     return;
                 }
+                self->m_ioContext.stop();
                 if (self->m_tcpConn)
                 {
                     self->m_tcpConn->close();
                 }
-                self->m_ioContext.stop();
             }
         });
     }
