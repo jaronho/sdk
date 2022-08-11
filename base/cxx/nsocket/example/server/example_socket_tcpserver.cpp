@@ -164,7 +164,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                conn->sendAsync(data, [&, wpConn](const boost::system::error_code& code, std::size_t length) {
+                conn->send(data, [&, wpConn](const boost::system::error_code& code, std::size_t length) {
                     const auto conn = wpConn.lock();
                     if (conn)
                     {
