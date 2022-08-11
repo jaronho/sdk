@@ -240,7 +240,7 @@ void SocketTls::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLB
             }
             if (async)
             {
-                m_sslStream.async_write_some(boost::asio::buffer(data), onSendCb);
+                m_sslStream.async_write_some(data, onSendCb);
             }
             else
             {
@@ -263,7 +263,7 @@ void SocketTls::recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CAL
 {
     if (m_sslStream.lowest_layer().is_open())
     {
-        m_sslStream.async_read_some(boost::asio::buffer(data), onRecvCb);
+        m_sslStream.async_read_some(data, onRecvCb);
     }
     else if (onRecvCb)
     {
