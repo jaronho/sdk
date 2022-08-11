@@ -146,7 +146,7 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
     /* 发送数据包 */
     const std::weak_ptr<SessionManager> wpSelf = shared_from_this();
     bool ret =
-        adapter->sendPacket(pkt, [wpSelf, timeout, bizCode, seqId = pkt->seqId, callback](bool ok, size_t dataLength, size_t length) {
+        adapter->sendPacket(pkt, [wpSelf, timeout, bizCode, seqId = pkt->seqId, callback](bool ok, size_t dataLength, size_t sentLength) {
             const auto self = wpSelf.lock();
             if (self)
             {
