@@ -152,50 +152,7 @@ void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type
 }
 #endif
 
-boost::system::error_code TcpConnection::send(const std::vector<unsigned char>& data, size_t& length)
-{
-    length = 0;
-    return sendImpl(data, length);
-}
-
-void TcpConnection::sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
-{
-    sendAsyncImpl(0, data, onSendCb);
-}
-
-boost::system::error_code TcpConnection::sendImpl(const std::vector<unsigned char>& data, size_t& totalSentLength)
-{
-    auto code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
-    if (m_socketTcpBase && m_isConnected)
-    {
-        if (data.empty())
-        {
-            code = boost::system::errc::make_error_code(boost::system::errc::no_message_available);
-        }
-        else
-        {
-            auto sbz = m_socketTcpBase->getSendBufferSize();
-            size_t sentLength = 0;
-            m_socketTcpBase->send(
-                boost::asio::buffer(data.data(), data.size() > sbz ? sbz : data.size()),
-                [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
-                    code = ec;
-                    sentLength = length;
-                },
-                false);
-            totalSentLength += sentLength;
-            if (!code && sentLength < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
-            {
-                std::vector<unsigned char> remainData;
-                remainData.insert(remainData.end(), data.begin() + sentLength, data.end());
-                return sendImpl(remainData, totalSentLength);
-            }
-        }
-    }
-    return code;
-}
-
-void TcpConnection::sendAsyncImpl(size_t totalSentLength, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
+void TcpConnection::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
     if (m_socketTcpBase && m_isConnected)
     {
@@ -203,42 +160,34 @@ void TcpConnection::sendAsyncImpl(size_t totalSentLength, const std::vector<unsi
         {
             if (onSendCb)
             {
-                onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_message_available), totalSentLength);
+                onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_message_available), 0);
             }
         }
         else
         {
-            auto sbz = m_socketTcpBase->getSendBufferSize();
-            const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
-            m_socketTcpBase->send(
-                boost::asio::buffer(data.data(), data.size() > sbz ? sbz : data.size()),
-                [wpSelf, totalSentLength, data, onSendCb](const boost::system::error_code& code, size_t length) {
-                    auto nowTotalSentLength = totalSentLength + length;
-                    if (!code && length < data.size()) /* 发送成功但未发送完, 继续发送剩余数据 */
-                    {
-                        const auto self = wpSelf.lock();
-                        if (self)
-                        {
-                            std::vector<unsigned char> remainData;
-                            remainData.insert(remainData.end(), data.begin() + length, data.end());
-                            self->sendAsyncImpl(nowTotalSentLength, remainData, onSendCb);
-                        }
-                        else if (onSendCb)
-                        {
-                            onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), nowTotalSentLength);
-                        }
-                    }
-                    else if (onSendCb)
-                    {
-                        onSendCb(code, nowTotalSentLength);
-                    }
-                },
-                true);
+            boost::system::error_code code;
+            size_t sentLength = 0;
+            while (sentLength < data.size()) /* 循环发送所有数据 */
+            {
+                m_socketTcpBase->send(boost::asio::buffer(data.data() + sentLength, data.size() - sentLength),
+                                      [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
+                                          code = ec;
+                                          sentLength += length;
+                                      });
+                if (code) /* 发送失败 */
+                {
+                    break;
+                }
+            }
+            if (onSendCb)
+            {
+                onSendCb(code, sentLength);
+            }
         }
     }
     else if (onSendCb)
     {
-        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), totalSentLength);
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
     }
 }
 

@@ -80,17 +80,9 @@ public:
     /**
      * @brief 发送数据(同步)
      * @param data 数据
-     * @param length [输出]已发送数据的长度
-     * @param 错误码
-     */
-    boost::system::error_code send(const std::vector<unsigned char>& data, size_t& length);
-
-    /**
-     * @brief 发送数据(异步)
-     * @param data 数据
      * @param onSendCb 发送回调
      */
-    void sendAsync(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
+    void send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
 
     /**
      * @brief 关闭
@@ -161,22 +153,6 @@ public:
 #endif
 
 private:
-    /**
-     * @brief 发送数据(同步)内部实现
-     * @param data 数据
-     * @param totalSentLength [输出]总的已发送数据的长度
-     * @param 错误码
-     */
-    boost::system::error_code sendImpl(const std::vector<unsigned char>& data, size_t& totalSentLength);
-
-    /**
-     * @brief 发送数据(异步)内部实现
-     * @param sentLength 总的已发送数据的长度
-     * @param data 数据
-     * @param onSendCb 发送回调
-     */
-    void sendAsyncImpl(size_t totalSentLength, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb);
-
     /**
      * @brief 接收数据(只需要调用一次, 内部递归调用)
      */

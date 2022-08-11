@@ -49,10 +49,10 @@ public:
     /**
      * @brief 发送数据(同步)
      * @param data 数据
-     * @param length [输出]已发送数据的长度
+     * @param sentLength [输出]已发送数据的长度
      * @param 错误码
      */
-    boost::system::error_code send(const std::vector<unsigned char>& data, size_t& length);
+    boost::system::error_code send(const std::vector<unsigned char>& data, size_t& sentLength);
 
     /**
      * @brief 发送数据(异步)

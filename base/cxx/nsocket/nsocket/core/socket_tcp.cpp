@@ -31,7 +31,7 @@ void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
     }
 }
 
-void SocketTcp::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb, bool async)
+void SocketTcp::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb)
 {
     if (m_socket.is_open())
     {
@@ -44,28 +44,11 @@ void SocketTcp::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLB
         }
         else
         {
-            boost::asio::socket_base::send_buffer_size opt;
-            m_socket.get_option(opt);
-            if (data.size() > opt.value())
+            boost::system::error_code code;
+            auto length = m_socket.send(data, boost::asio::socket_base::message_flags(0), code);
+            if (onSendCb)
             {
-                if (onSendCb)
-                {
-                    onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_buffer_space), 0);
-                }
-                return;
-            }
-            if (async)
-            {
-                m_socket.async_send(data, onSendCb);
-            }
-            else
-            {
-                boost::system::error_code code;
-                auto length = m_socket.send(data, boost::asio::socket_base::message_flags(0), code);
-                if (onSendCb)
-                {
-                    onSendCb(code, length);
-                }
+                onSendCb(code, length);
             }
         }
     }
@@ -215,7 +198,7 @@ void SocketTls::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
     }
 }
 
-void SocketTls::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb, bool async)
+void SocketTls::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb)
 {
     if (m_sslStream.lowest_layer().is_open())
     {
@@ -228,28 +211,11 @@ void SocketTls::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLB
         }
         else
         {
-            boost::asio::socket_base::send_buffer_size opt;
-            m_sslStream.lowest_layer().get_option(opt);
-            if (data.size() > opt.value())
+            boost::system::error_code code;
+            auto length = m_sslStream.write_some(data, code);
+            if (onSendCb)
             {
-                if (onSendCb)
-                {
-                    onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_buffer_space), 0);
-                }
-                return;
-            }
-            if (async)
-            {
-                m_sslStream.async_write_some(data, onSendCb);
-            }
-            else
-            {
-                boost::system::error_code code;
-                auto length = m_sslStream.write_some(data, code);
-                if (onSendCb)
-                {
-                    onSendCb(code, length);
-                }
+                onSendCb(code, length);
             }
         }
     }
