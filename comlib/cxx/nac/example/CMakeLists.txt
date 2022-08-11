@@ -67,7 +67,7 @@ include_directories(${base_logger_dir})
 source_group(TREE ${base_logger_dir} PREFIX 3rdparty/base FILES ${base_logger_files})
 
 # 添加nsocket基础库
-option(enable_nsocket_openssl "是否启用套接字OpenSSL依赖" OFF)
+option(enable_nsocket_openssl "是否启用套接字OpenSSL依赖" ON)
 if(enable_nsocket_openssl)
     add_definitions(-DENABLE_NSOCKET_OPENSSL=1)
 else()
@@ -92,18 +92,26 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/comlib/nac)
 include_directories(${comlib_nac_dir})
 source_group(TREE ${comlib_nac_dir} PREFIX 3rdparty/comlib FILES ${comlib_nac_files})
 
-# 添加示例文件
-set(example_files)
-get_cxx_files(. src_list)
-list(APPEND example_files ${src_list})
+# 添加客户端示例文件
+set(example_client_files)
+list(APPEND example_client_files access_def.h example_client.cpp)
 
-print_info(BODY "example files:")
-foreach(filename ${example_files})
+print_info(BODY "example client files:")
+foreach(filename ${example_client_files})
+    message("    " ${filename})
+endforeach()
+
+# 添加服务端示例文件
+set(example_server_files)
+list(APPEND example_server_files access_def.h example_server.cpp)
+
+print_info(BODY "example server files:")
+foreach(filename ${example_server_files})
     message("    " ${filename})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_nac
+add_executable(example_client
                ${base_algorithm_files}
                ${base_fileparse_files}
                ${base_logger_files}
@@ -111,11 +119,22 @@ add_executable(example_nac
                ${base_threading_files}
                ${base_utility_files}
                ${comlib_nac_files}
-               ${example_files})
+               ${example_client_files})
+
+add_executable(example_server
+               ${base_algorithm_files}
+               ${base_fileparse_files}
+               ${base_logger_files}
+               ${base_nsocket_files}
+               ${base_threading_files}
+               ${base_utility_files}
+               ${example_server_files})
 
 # 链接依赖库
 if(enable_nsocket_openssl)
-    target_link_libraries(example_nac Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+    target_link_libraries(example_client Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+    target_link_libraries(example_server Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
 else()
-    target_link_libraries(example_nac Threads::Threads ${Boost_LIBRARIES})
+    target_link_libraries(example_client Threads::Threads ${Boost_LIBRARIES})
+    target_link_libraries(example_server Threads::Threads ${Boost_LIBRARIES})
 endif()
