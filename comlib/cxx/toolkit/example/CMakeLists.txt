@@ -84,16 +84,7 @@ add_executable(file_deleter_tool
 			   ${comlib_toolkit_file_deleter_files}
 			   file_deleter_tool.cpp)
 
-add_executable(net_bridge_tool
-			   ${base_utility_cmdline_files}
-			   ${base_utility_filesystem_files}
-			   ${base_utility_net_files}
-			   ${base_utility_strtool_files}
-			   ${base_utility_system_files}
-			   ${comlib_toolkit_net_config_files}
-			   net_bridge_tool.cpp)
 # 链接依赖库
 target_link_libraries(example_app_singleton Threads::Threads)
 target_link_libraries(example_toolkit Threads::Threads)
 target_link_libraries(file_deleter_tool Threads::Threads ${Boost_LIBRARIES})
-target_link_libraries(net_bridge_tool Threads::Threads)

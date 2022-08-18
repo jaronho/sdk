@@ -384,73 +384,7 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
     {
         utility::System::runCmd("brctl addif " + name + " " + ports[i]);
     }
-    /* step3: 启动网络接口 */
-    for (size_t i = 0; i < ports.size(); ++i)
-    {
-        utility::System::runCmd("ip addr flush dev " + ports[i] + " && ip link set " + ports[i] + " up");
-    }
-    /* step4: 启动网桥, 使用ifdown/ifup使配置文件生效 */
-    utility::System::runCmd("ip addr flush dev " + name + " && ifdown " + name + " && ifup " + name);
     return true;
-#endif
-}
-
-bool NetConfig::deleteBridge(const std::string& name)
-{
-    if (name.empty())
-    {
-        return false;
-    }
-#ifdef _WIN32
-    return false;
-#else
-    auto bridgeList = getBridgeInfos();
-    for (size_t i = 0; i < bridgeList.size(); ++i)
-    {
-        const auto& bridgeInfo = bridgeList[i];
-        if (0 == name.compare(bridgeInfo.name)) /* 存在网桥 */
-        {
-            /* 删除网络接口 */
-            for (size_t j = 0; j < bridgeInfo.ports.size(); ++j)
-            {
-                utility::System::runCmd("brctl delif " + bridgeInfo.name + " " + bridgeInfo.ports[j]);
-            }
-            /* 停止网桥 */
-            utility::System::runCmd("ip link set " + bridgeInfo.name + " down");
-            /* 删除网桥 */
-            utility::System::runCmd("brctl delbr " + bridgeInfo.name);
-            return true;
-        }
-    }
-    return false;
-#endif
-}
-
-bool NetConfig::enableBridge(const std::string& name)
-{
-    if (name.empty())
-    {
-        return false;
-    }
-#ifdef _WIN32
-    return false;
-#else
-    auto bridgeList = getBridgeInfos();
-    for (const auto& bridgeInfo : bridgeList)
-    {
-        if (0 == name.compare(bridgeInfo.name)) /* 存在网桥 */
-        {
-            /* step1. 启动网络接口 */
-            for (const auto& port : bridgeInfo.ports)
-            {
-                utility::System::runCmd("ip addr flush dev " + port + " && ip link set " + port + " down && ip link set " + port + " up");
-            }
-            /* step2. 启动网桥, 使用ifdown/ifup使配置文件生效 */
-            utility::System::runCmd("ip addr flush dev " + name + " && ifdown " + name + " && ifup " + name);
-            return true;
-        }
-    }
-    return false;
 #endif
 }
 

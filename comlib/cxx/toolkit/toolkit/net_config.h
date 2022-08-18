@@ -78,26 +78,12 @@ public:
     static bool configEthernetCardName(const std::map<std::string, std::string>& macNameMap, int waitUp = 2000);
 
     /**
-     * @brief 配置网桥
+     * @brief 配置网桥(不会自动启动网桥)
      * @param name 网桥名称
      * @param ports 网络接口
      * @return true-有配置操作, false-无配置操作
      */
     static bool configBridge(const std::string& name, const std::vector<std::string>& ports);
-
-    /**
-     * @brief 删除网桥
-     * @param name 网桥名称
-     * @return true-有网桥, false-无网桥
-     */
-    static bool deleteBridge(const std::string& name);
-
-    /**
-     * @brief 启用(重启)网桥
-     * @param name 网桥名称
-     * @return true-有网桥, false-无网桥
-     */
-    static bool enableBridge(const std::string& name);
 
     /**
      * @brief 检测ping是否可通(阻塞)
