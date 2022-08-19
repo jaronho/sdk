@@ -14,13 +14,13 @@
 
 namespace toolkit
 {
-void AppSingleton::create(const std::string& pidFilePath, const std::string& pidFileName,
+bool AppSingleton::create(const std::string& pidFilePath, const std::string& pidFileName,
                           const std::function<void(const std::string& pidFile)>& exitFunc)
 {
     static bool s_created = false;
     if (s_created) /* 避免重复创建 */
     {
-        return;
+        return true;
     }
     s_created = true;
     /* 创建pid文件目录 */
@@ -28,7 +28,7 @@ void AppSingleton::create(const std::string& pidFilePath, const std::string& pid
     utility::PathInfo pi(pidFilePath.empty() ? fi.path() : pidFilePath, true);
     if (!pi.exist() && !pi.create())
     {
-        return;
+        return false;
     }
     /* 打开pid文件 */
     auto pidFile = pi.path() + (pidFileName.empty() ? fi.filename() + ".pid" : pidFileName);
@@ -36,13 +36,13 @@ void AppSingleton::create(const std::string& pidFilePath, const std::string& pid
     HANDLE fd = CreateFile(pidFile.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
     if (!fd)
     {
-        return;
+        return false;
     }
 #else
     int fd = open(pidFile.c_str(), O_RDWR | O_CREAT, 0777);
     if (-1 == fd)
     {
-        return;
+        return false;
     }
 #endif
     /* 加锁pid文件 */
@@ -58,13 +58,21 @@ void AppSingleton::create(const std::string& pidFilePath, const std::string& pid
             exitFunc(pidFile);
         }
         exit(0); /* 关闭自身进程 */
+        return false;
     }
     /* 写进程ID到文件 */
     std::string pid = std::to_string(utility::Process::getProcessId());
 #ifdef _WIN32
-    WriteFile(fd, pid.c_str(), pid.size(), (DWORD)0, (DWORD)0);
+    if (!WriteFile(fd, pid.c_str(), pid.size(), (DWORD)0, (DWORD)0))
+    {
+        return false;
+    }
 #else
-    write(fd, pid.c_str(), pid.size());
+    if (-1 == write(fd, pid.c_str(), pid.size()))
+    {
+        return false;
+    }
 #endif
+    return true;
 }
 } // namespace toolkit

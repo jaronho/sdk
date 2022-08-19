@@ -18,8 +18,9 @@ public:
      * @param pidFilePath pid文件路径(选填), 默认在程序文件所在目录
      * @param pidFileName pid文件名(选填), 默认`程序名.pid`
      * @param exitFunc 程序退出前回调(选填), 参数: pidFile-运行中的进程锁文件
+     * @return true-成功, false-失败
      */
-    static void create(const std::string& pidFilePath = "", const std::string& pidFileName = "",
+    static bool create(const std::string& pidFilePath = "", const std::string& pidFileName = "",
                        const std::function<void(const std::string& pidFile)>& exitFunc = nullptr);
 };
 } // namespace toolkit
