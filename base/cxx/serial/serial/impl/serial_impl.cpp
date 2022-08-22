@@ -228,9 +228,9 @@ bool SerialImpl::close()
     return true;
 }
 
-bool SerialImpl::isOpened() const
+bool SerialImpl::isOpened()
 {
-    return (INVALID_HANDLE_VALUE != m_fd);
+    return (availableForRead() >= 0);
 }
 
 std::string SerialImpl::getPort() const
@@ -337,48 +337,51 @@ void SerialImpl::setTimeout(const Timeout& timeout)
     }
 }
 
-size_t SerialImpl::availableForRead()
+ssize_t SerialImpl::availableForRead()
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
-        return 0;
+        return -1;
     }
 #ifdef _WIN32
     COMSTAT cs;
     if (!ClearCommError(m_fd, NULL, &cs))
     {
-        return 0;
+        m_fd = INVALID_HANDLE_VALUE;
+        return -1;
     }
-    return static_cast<size_t>(cs.cbInQue);
+    return cs.cbInQue;
 #else
     int count = 0;
     if (-1 == ioctl(m_fd, TIOCINQ, &count))
     {
-        return 0;
+        m_fd = INVALID_HANDLE_VALUE;
+        return -1;
     }
-    return static_cast<size_t>(count);
+    return count;
 #endif
 }
 
-size_t SerialImpl::read(char* buffer, size_t size)
+ssize_t SerialImpl::read(char* buffer, size_t size)
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
-        return 0;
+        return -1;
     }
     if (!buffer || 0 == size)
     {
         return 0;
     }
     memset(buffer, 0, size);
-    size_t len = 0;
+    ssize_t len = 0;
 #ifdef _WIN32
     DWORD count;
     if (!ReadFile(m_fd, buffer, static_cast<DWORD>(size), &count, NULL))
     {
-        return 0;
+        m_fd = INVALID_HANDLE_VALUE;
+        return -1;
     }
-    len = static_cast<size_t>(count);
+    len = count;
 #else
     /* 计算总超时时间(单位:毫秒), 常数 + (乘数 * 请求字节数) */
     unsigned int totalTimeout = m_timeout.readTimeoutConstant + m_timeout.readTimeoutMultiplier * static_cast<unsigned int>(size);
@@ -386,7 +389,12 @@ size_t SerialImpl::read(char* buffer, size_t size)
     while (len < size)
     {
         ssize_t count = ::read(m_fd, buffer + len, size - len);
-        if (count <= 0)
+        if (count < 0)
+        {
+            m_fd = INVALID_HANDLE_VALUE;
+            return -1;
+        }
+        else if (0 == count)
         {
             /* 超时时间为剩余的总超时和字节间超时的最小值 */
             if (std::min(timeoutTimer.remaining(), static_cast<long>(m_timeout.interByteTimeout)) <= 0)
@@ -395,7 +403,7 @@ size_t SerialImpl::read(char* buffer, size_t size)
             }
             continue;
         }
-        len += static_cast<size_t>(count); /* 更新已读字节数 */
+        len += count; /* 更新已读字节数 */
     }
 #endif
     if (len > 0)
@@ -405,11 +413,11 @@ size_t SerialImpl::read(char* buffer, size_t size)
     return len;
 }
 
-size_t SerialImpl::write(const char* data, size_t length)
+ssize_t SerialImpl::write(const char* data, size_t length)
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
-        return 0;
+        return -1;
     }
     if (!data || 0 == length)
     {
@@ -419,18 +427,24 @@ size_t SerialImpl::write(const char* data, size_t length)
     DWORD len;
     if (!WriteFile(m_fd, data, static_cast<DWORD>(length), &len, NULL))
     {
-        return 0;
+        m_fd = INVALID_HANDLE_VALUE;
+        return -1;
     }
-    return static_cast<size_t>(len);
+    return len;
 #else
-    size_t len = 0;
+    ssize_t len = 0;
     /* 计算总超时时间(单位:毫秒), 常数 + (乘数 * 请求字节数) */
     unsigned int totalTimeout = m_timeout.writeTimeoutConstant + m_timeout.writeTimeoutMultiplier * static_cast<unsigned int>(length);
     MillisecondTimer timeoutTimer(totalTimeout);
     while (len < length)
     {
         ssize_t count = ::write(m_fd, data + len, length - len);
-        if (count <= 0)
+        if (count < 0)
+        {
+            m_fd = INVALID_HANDLE_VALUE;
+            return -1;
+        }
+        else if (0 == count)
         {
             /* 超时时间为剩余的总超时和字节间超时的最小值 */
             if (std::min(timeoutTimer.remaining(), static_cast<long>(m_timeout.interByteTimeout)) <= 0)
@@ -439,7 +453,7 @@ size_t SerialImpl::write(const char* data, size_t length)
             }
             continue;
         }
-        len += static_cast<size_t>(count); /* 更新已写字节数 */
+        len += count; /* 更新已写字节数 */
     }
     return len;
 #endif

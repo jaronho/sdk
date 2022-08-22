@@ -1,4 +1,10 @@
 #pragma once
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#else
+#include <sys/types.h>
+#endif
 #include "serial_define.h"
 
 namespace serial
@@ -26,7 +32,7 @@ public:
      * @brief 是否已打开
      * @return true-是, false-否
      */
-    bool isOpened() const;
+    bool isOpened();
 
     /**
      * @brief 获取端口
@@ -123,9 +129,9 @@ public:
 
     /**
      * @brief 获取可读字节数
-     * @param 可读字节数
+     * @param 可读字节数, 小于0表示异常(需要重新打开串口)
      */
-    size_t availableForRead();
+    ssize_t availableForRead();
 
     /**
      * @brief 读数据, 有3种情况会返回:
@@ -134,17 +140,17 @@ public:
      *        (3)触发异常
      * @param buffer 缓冲区
      * @param size 缓冲区大小(要读的字节数)
-     * @return 读到的字节数
+     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
      */
-    size_t read(char* buffer, size_t size);
+    ssize_t read(char* buffer, size_t size);
 
     /**
      * @brief 写数据
      * @param data 数据内容
      * @param length 数据长度
-     * @return 写入的数据长度
+     * @return 写入的数据长度, 小于0表示异常(需要重新打开串口)
      */
-    size_t write(const char* data, size_t length);
+    ssize_t write(const char* data, size_t length);
 
     /**
      * @brief 刷新(输入/输出)缓冲区

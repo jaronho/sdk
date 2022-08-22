@@ -132,9 +132,9 @@ public:
 
     /**
      * @brief 获取可读字节数
-     * @param 可读字节数
+     * @param 可读字节数, 小于0表示异常(需要重新打开串口)
      */
-    size_t availableForRead();
+    ssize_t availableForRead();
 
     /**
      * @brief 读数据, 有3种情况会返回:
@@ -143,9 +143,9 @@ public:
      *        (3)触发异常
      * @param buffer 缓冲区
      * @param size 缓冲区大小(要读的字节数)
-     * @return 读到的字节数
+     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
      */
-    size_t read(char* buffer, size_t size);
+    ssize_t read(char* buffer, size_t size);
 
     /**
      * @brief 读数据
@@ -180,23 +180,23 @@ public:
      * @brief 写数据
      * @param data 数据内容
      * @param length 数据长度
-     * @return 写入的数据长度
+     * @return 写入的数据长度, 小于0表示异常(需要重新打开串口)
      */
-    size_t write(const char* data, size_t size);
+    ssize_t write(const char* data, size_t size);
 
     /**
      * @brief 写数据
      * @param data 数据内容
-     * @return 写入的数据长度
+     * @return 写入的数据长度, 小于0表示异常(需要重新打开串口)
      */
-    size_t write(const std::string& data);
+    ssize_t write(const std::string& data);
 
     /**
      * @brief 写数据
      * @param data 数据内容
-     * @return 写入的数据长度
+     * @return 写入的数据长度, 小于0表示异常(需要重新打开串口)
      */
-    size_t write(const std::vector<char>& data);
+    ssize_t write(const std::vector<char>& data);
 
     /**
      * @brief 刷新(输入/输出)缓冲区

@@ -219,7 +219,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     printf("串口打开成功.\n");
     /* 开线程用于发送 */
     std::thread th([&]() {
-        while (1)
+        while (g_com.isOpened())
         {
             char input[1024] = {0};
             std::cin.getline(input, sizeof(input));
@@ -241,7 +241,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     });
     th.detach();
     /* 监听串口数据, 坑爹: 这里打印只能输出到stderr, 用stdout的话会阻塞(不知道啥原因) */
-    while (1)
+    while (g_com.isOpened())
     {
         std::string bytes = g_com.readAll();
         if (!hideRecv)
@@ -287,6 +287,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
+    fprintf(stderr, "串口被关闭.\n");
 }
 
 int main(int argc, char** argv)
