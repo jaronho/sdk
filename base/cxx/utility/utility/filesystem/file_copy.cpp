@@ -44,6 +44,18 @@ FileInfo::CopyResult FileCopy::start(std::vector<std::string>* destFilelist, std
     {
         destFilelist->clear();
     }
+    if (failSrcFile)
+    {
+        failSrcFile->clear();
+    }
+    if (failDestFile)
+    {
+        failDestFile->clear();
+    }
+    if (errCode)
+    {
+        *errCode = 0;
+    }
     m_failSrcFile.clear();
     m_failDestFile.clear();
     m_errCode = 0;
