@@ -58,7 +58,8 @@ private:
     /**
      * @brief 处理配置
      */
-    void handleConfig(const FileDeleteConfig& cfg);
+    void handleConfig(const FileDeleteConfig& cfg, const std::function<void(const std::string& fullName, bool ok)>& folderDeletedCb,
+                      const std::function<void(const std::string& fullName, bool ok)>& fileDeletedCb);
 
 private:
     threading::SteadyTimerPtr m_detectTimer = nullptr; /* 检测定时器 */

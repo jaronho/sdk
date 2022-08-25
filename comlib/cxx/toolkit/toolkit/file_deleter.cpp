@@ -35,10 +35,14 @@ void FileDeleter::start(int interval, const std::vector<FileDeleteConfig>& cfgLi
     }
     else
     {
-        m_detectTimer = std::make_shared<threading::SteadyTimer>(THREADING_CALLER, std::chrono::steady_clock::duration::zero(),
-                                                                 detectInterval, [&]() { onDetectTimer(); });
+        m_detectTimer = std::make_shared<threading::SteadyTimer>(THREADING_CALLER, detectInterval,
+                                                                 std::chrono::steady_clock::duration::zero(), [&]() { onDetectTimer(); });
     }
     m_detectTimer->start();
+    if (std::chrono::steady_clock::duration::zero() != detectInterval)
+    {
+        onDetectTimer();
+    }
 }
 
 void FileDeleter::onDetectTimer()
@@ -49,15 +53,24 @@ void FileDeleter::onDetectTimer()
         cfgList = m_cfgList;
     }
     /* 由于文件删除会进行I/O耗时操作, 这里异步执行 */
-    threading::AsyncProxy::execute(THREADING_CALLER, [&, cfgList]() {
-        for (auto cfg : cfgList)
-        {
-            handleConfig(cfg);
-        }
-    });
+    const std::weak_ptr<threading::SteadyTimer> wpDetectTimer = m_detectTimer;
+    threading::AsyncProxy::execute(THREADING_CALLER,
+                                   [&, wpDetectTimer, cfgList, folderDeletedCb = m_folderDeletedCb, fileDeletedCb = m_fileDeletedCb]() {
+                                       const auto detectTimer = wpDetectTimer.lock();
+                                       if (detectTimer)
+                                       {
+                                           for (auto cfg : cfgList)
+                                           {
+                                               handleConfig(cfg, folderDeletedCb, fileDeletedCb);
+                                           }
+                                           detectTimer->start();
+                                       }
+                                   });
 }
 
-void FileDeleter::handleConfig(const FileDeleteConfig& cfg)
+void FileDeleter::handleConfig(const FileDeleteConfig& cfg,
+                               const std::function<void(const std::string& fullName, bool ok)>& folderDeletedCb,
+                               const std::function<void(const std::string& fullName, bool ok)>& fileDeletedCb)
 {
     if (cfg.expireSecond <= 0) /* 过期时间无效 */
     {
@@ -78,9 +91,9 @@ void FileDeleter::handleConfig(const FileDeleteConfig& cfg)
         if (nowTimestamp - modifyTimestamp >= cfg.expireSecond) /* 过期, 需要删除 */
         {
             auto ok = utility::PathInfo(name).remove();
-            if (m_folderDeletedCb)
+            if (folderDeletedCb)
             {
-                m_folderDeletedCb(name, ok);
+                folderDeletedCb(name, ok);
             }
         }
         return false;
@@ -90,9 +103,9 @@ void FileDeleter::handleConfig(const FileDeleteConfig& cfg)
         if (nowTimestamp - modifyTimestamp >= cfg.expireSecond) /* 过期, 需要删除 */
         {
             auto ok = utility::FileInfo(name).remove();
-            if (m_fileDeletedCb)
+            if (fileDeletedCb)
             {
-                m_fileDeletedCb(name, ok);
+                fileDeletedCb(name, ok);
             }
         }
     };
