@@ -59,6 +59,18 @@ public:
     std::string getClassDesc() const;
 
     /**
+     * @brief 获取设备子类型编码
+     * @return 子类型编码
+     */
+    int getSubClassCode() const;
+
+    /**
+     * @brief 获取设备协议编码
+     * @return 协议编码
+     */
+    int getProtocolCode() const;
+
+    /**
      * @brief 获取速度等级
      * @return 速度等级
      */
@@ -105,6 +117,12 @@ public:
      * @return 设备名称
      */
     std::string getDeviceName() const;
+
+    /**
+     * @brief 获取设备描述(Windows下才有值)
+     * @return 设备描述
+     */
+    std::string getDeviceDesc() const;
 
     /**
      * @brief 判断是否HID(键盘/鼠标/加密狗等)类型
@@ -185,6 +203,8 @@ private:
     int m_portNum = 0; /* 端口编号(Linux中也叫系统编号sysNum) */
     int m_address = 0; /* 地址(每次拔插都会变) */
     int m_classCode = 0; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
+    int m_subClassCode = 0; /* 设备子类型编码 */
+    int m_protocolCode = 0; /* 设备协议编码 */
     int m_speedLevel = 0; /* 速度等级 */
     std::string m_vid; /* 厂商ID(小写字母) */
     std::string m_pid; /* 产品ID(小写字母) */
@@ -192,5 +212,6 @@ private:
     std::string m_product; /* 产品名称 */
     std::string m_manufacturer; /* 厂商名称 */
     std::string m_deviceName; /* 设备名称(Windows下才有值) */
+    std::string m_deviceDesc; /* 设备描述(Windows下才有值) */
 };
 } // namespace usb

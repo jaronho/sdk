@@ -65,6 +65,7 @@ int main(int argc, char** argv)
             printf("= manufacturer: %s\n", info.getManufacturer().c_str());
 #ifdef _WIN32
             printf("=   deviceName: %s\n", info.getDeviceName().c_str());
+            printf("=   deviceDesc: %s\n", info.getDeviceDesc().c_str());
 #endif
         }
     }

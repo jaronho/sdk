@@ -83,6 +83,8 @@ int main(int argc, char** argv)
 #ifdef _WIN32
                 line += ",";
                 line += "\"deviceName\":\"" + info.getDeviceName() + "\"";
+                line += ",";
+                line += "\"deviceDesc\":\"" + info.getDeviceDesc() + "\"";
 #endif
 #ifndef _WIN32
                 line += ",";

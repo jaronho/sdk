@@ -156,13 +156,6 @@ void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string
     }
 }
 
-void parseBusReportedDeviceDesc(WCHAR propertyBuffer[4096], std::string& deviceName)
-{
-    deviceName.clear();
-    std::string buffer = wstring2string(propertyBuffer);
-    deviceName = buffer;
-}
-
 /**
  * @brief Windows平台下获取到的USB信息
  */
@@ -179,6 +172,7 @@ public:
     std::string product; /* 产品名称 */
     std::string manufacturer; /* 厂商名称 */
     std::string deviceName; /* 设备名称 */
+    std::string deviceDesc; /* 设备描述 */
 };
 
 /**
@@ -226,7 +220,17 @@ int getAncestorBusNum(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
 }
 #endif
 
-Usb::Usb() : m_parent(nullptr), m_busNum(-1), m_portNum(-1), m_address(-1), m_classCode(-1), m_speedLevel(0) {}
+Usb::Usb()
+    : m_parent(nullptr)
+    , m_busNum(-1)
+    , m_portNum(-1)
+    , m_address(-1)
+    , m_classCode(-1)
+    , m_subClassCode(-1)
+    , m_protocolCode(-1)
+    , m_speedLevel(0)
+{
+}
 
 Usb::Usb(const Usb& src)
 {
@@ -235,6 +239,8 @@ Usb::Usb(const Usb& src)
     m_portNum = src.m_portNum;
     m_address = src.m_address;
     m_classCode = src.m_classCode;
+    m_subClassCode = src.m_subClassCode;
+    m_protocolCode = src.m_protocolCode;
     m_speedLevel = src.m_speedLevel;
     m_vid = src.m_vid;
     m_pid = src.m_pid;
@@ -242,6 +248,7 @@ Usb::Usb(const Usb& src)
     m_product = src.m_product;
     m_manufacturer = src.m_manufacturer;
     m_deviceName = src.m_deviceName;
+    m_deviceDesc = src.m_deviceDesc;
 }
 
 std::shared_ptr<Usb> Usb::getParent() const
@@ -315,6 +322,16 @@ std::string Usb::getClassDesc() const
     return std::to_string(m_classCode);
 }
 
+int Usb::getSubClassCode() const
+{
+    return m_subClassCode;
+}
+
+int Usb::getProtocolCode() const
+{
+    return m_protocolCode;
+}
+
 int Usb::getSpeedLevel() const
 {
     return m_speedLevel;
@@ -368,6 +385,11 @@ std::string Usb::getManufacturer() const
 std::string Usb::getDeviceName() const
 {
     return m_deviceName;
+}
+
+std::string Usb::getDeviceDesc() const
+{
+    return m_deviceDesc;
 }
 
 bool Usb::isHid() const
@@ -523,7 +545,14 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
         if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_BusReportedDeviceDesc, &propertyType,
                                       reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
         {
-            parseBusReportedDeviceDesc(propertyBuffer, info.deviceName);
+            info.deviceName = wstring2string(propertyBuffer);
+        }
+        /* 解析设备描述 */
+        memset(propertyBuffer, 0, sizeof(propertyBuffer));
+        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_DeviceDesc, &propertyType,
+                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
+        {
+            info.deviceDesc = wstring2string(propertyBuffer);
         }
         winUsbList.emplace_back(info);
     }
@@ -614,6 +643,8 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
         }
     }
     info.m_classCode = classCode;
+    info.m_subClassCode = desc.bDeviceSubClass;
+    info.m_protocolCode = desc.bDeviceProtocol;
     info.m_speedLevel = libusb_get_device_speed(dev); /* 速度等级 */
     char vid[6] = {0}; /* 厂商ID */
     sprintf(vid, "%04x", desc.idVendor);
@@ -668,6 +699,7 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
                         info.m_manufacturer = item.manufacturer;
                     }
                     info.m_deviceName = item.deviceName;
+                    info.m_deviceDesc = item.deviceDesc;
                     break;
                 }
             }
