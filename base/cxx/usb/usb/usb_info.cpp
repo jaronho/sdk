@@ -187,6 +187,10 @@ std::string UsbInfo::describe() const
     desc.append("product: ").append(getProduct());
     desc.append(", ");
     desc.append("manufacturer: ").append(getManufacturer());
+#ifdef _WIN32
+    desc.append(", ");
+    desc.append("deviceName: ").append(getDeviceName());
+#endif
     if (m_devNodes.size() > 0)
     {
         desc.append("\n");

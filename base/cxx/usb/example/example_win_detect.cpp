@@ -73,10 +73,10 @@ void handleDeviceArrived()
     {
         auto item = addedList[i];
         printf("[%02d] busNum: %d, portNum: %d, address: %d\n     classCode: %d, classDesc: %s\n     vid: %s, pid: %s, serial: %s, "
-               "product: %s, manufacturer: %s\n",
+               "product: %s, manufacturer: %s, deviceName: %s\n",
                (i + 1), item.getBusNum(), item.getPortNum(), item.getAddress(), item.getClassCode(), item.getClassDesc().c_str(),
                item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(), item.getProduct().c_str(),
-               item.getManufacturer().c_str());
+               item.getManufacturer().c_str(), item.getDeviceName().c_str());
     }
 }
 
@@ -94,10 +94,10 @@ void handleDeviceRemoved()
     {
         auto item = removedList[i];
         printf("[%02d] busNum: %d, portNum: %d, address: %d\n     classCode: %d, classDesc: %s\n     vid: %s, pid: %s, serial: %s, "
-               "product: %s, manufacturer: %s\n",
+               "product: %s, manufacturer: %s, deviceName: %s\n",
                (i + 1), item.getBusNum(), item.getPortNum(), item.getAddress(), item.getClassCode(), item.getClassDesc().c_str(),
                item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(), item.getProduct().c_str(),
-               item.getManufacturer().c_str());
+               item.getManufacturer().c_str(), item.getDeviceName().c_str());
     }
 }
 

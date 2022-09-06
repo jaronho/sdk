@@ -156,6 +156,13 @@ void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string
     }
 }
 
+void parseBusReportedDeviceDesc(WCHAR propertyBuffer[4096], std::string& deviceName)
+{
+    deviceName.clear();
+    std::string buffer = wstring2string(propertyBuffer);
+    deviceName = buffer;
+}
+
 /**
  * @brief Windows平台下获取到的USB信息
  */
@@ -171,6 +178,7 @@ public:
     std::string serial; /* 序列号 */
     std::string product; /* 产品名称 */
     std::string manufacturer; /* 厂商名称 */
+    std::string deviceName; /* 设备名称 */
 };
 
 /**
@@ -233,6 +241,7 @@ Usb::Usb(const Usb& src)
     m_serial = src.m_serial;
     m_product = src.m_product;
     m_manufacturer = src.m_manufacturer;
+    m_deviceName = src.m_deviceName;
 }
 
 std::shared_ptr<Usb> Usb::getParent() const
@@ -354,6 +363,11 @@ std::string Usb::getProduct() const
 std::string Usb::getManufacturer() const
 {
     return m_manufacturer;
+}
+
+std::string Usb::getDeviceName() const
+{
+    return m_deviceName;
 }
 
 bool Usb::isHid() const
@@ -504,6 +518,13 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
         {
             parseChildren(propertyBuffer, info.product, info.manufacturer);
         }
+        /* 解析设备名称 */
+        memset(propertyBuffer, 0, sizeof(propertyBuffer));
+        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_BusReportedDeviceDesc, &propertyType,
+                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
+        {
+            parseBusReportedDeviceDesc(propertyBuffer, info.deviceName);
+        }
         winUsbList.emplace_back(info);
     }
     /* 筛选出祖先并确定busNum */
@@ -646,6 +667,7 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
                     {
                         info.m_manufacturer = item.manufacturer;
                     }
+                    info.m_deviceName = item.deviceName;
                     break;
                 }
             }

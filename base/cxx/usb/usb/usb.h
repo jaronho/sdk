@@ -101,6 +101,12 @@ public:
     std::string getManufacturer() const;
 
     /**
+     * @brief 获取设备名称(Windows下才有值)
+     * @return 设备名称
+     */
+    std::string getDeviceName() const;
+
+    /**
      * @brief 判断是否HID(键盘/鼠标/加密狗等)类型
      * @return true-是, false-否
      */
@@ -185,5 +191,6 @@ private:
     std::string m_serial; /* 序列号 */
     std::string m_product; /* 产品名称 */
     std::string m_manufacturer; /* 厂商名称 */
+    std::string m_deviceName; /* 设备名称(Windows下才有值) */
 };
 } // namespace usb

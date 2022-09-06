@@ -63,6 +63,9 @@ int main(int argc, char** argv)
             printf("=       serial: %s\n", info.getSerial().c_str());
             printf("=      product: %s\n", info.getProduct().c_str());
             printf("= manufacturer: %s\n", info.getManufacturer().c_str());
+#ifdef _WIN32
+            printf("=   deviceName: %s\n", info.getDeviceName().c_str());
+#endif
         }
     }
     printf("\n");

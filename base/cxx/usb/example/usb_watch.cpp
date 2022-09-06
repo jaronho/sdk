@@ -80,6 +80,10 @@ int main(int argc, char** argv)
                 line += "\"product\":\"" + info.getProduct() + "\"";
                 line += ",";
                 line += "\"manufacturer\":\"" + info.getManufacturer() + "\"";
+#ifdef _WIN32
+                line += ",";
+                line += "\"deviceName\":\"" + info.getDeviceName() + "\"";
+#endif
 #ifndef _WIN32
                 line += ",";
                 {
