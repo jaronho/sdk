@@ -72,11 +72,11 @@ void handleDeviceArrived()
     for (size_t i = 0; i < addedList.size(); ++i)
     {
         auto item = addedList[i];
-        printf("[%02d] busNum: %d, portNum: %d, address: %d\n     classCode: %d, classDesc: %s\n     vid: %s, pid: %s, serial: %s, "
-               "product: %s, manufacturer: %s, deviceName: %s, deviceDesc: %s\n",
+        printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
+               "%s, serial: %s, product: %s, manufacturer: %s, deviceName: %s, deviceDesc: %s\n",
                (i + 1), item.getBusNum(), item.getPortNum(), item.getAddress(), item.getClassCode(), item.getClassDesc().c_str(),
-               item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(), item.getProduct().c_str(),
-               item.getManufacturer().c_str(), item.getDeviceName().c_str(), item.getDeviceDesc().c_str());
+               item.getSubClassCode(), item.getProtocolCode(), item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(),
+               item.getProduct().c_str(), item.getManufacturer().c_str(), item.getDeviceName().c_str(), item.getDeviceDesc().c_str());
     }
 }
 
@@ -93,11 +93,11 @@ void handleDeviceRemoved()
     for (size_t i = 0; i < removedList.size(); ++i)
     {
         auto item = removedList[i];
-        printf("[%02d] busNum: %d, portNum: %d, address: %d\n     classCode: %d, classDesc: %s\n     vid: %s, pid: %s, serial: %s, "
-               "product: %s, manufacturer: %s, deviceName: %s, deviceDesc: %s\n",
+        printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
+               "%s, serial: %s, product: %s, manufacturer: %s, deviceName: %s, deviceDesc: %s\n",
                (i + 1), item.getBusNum(), item.getPortNum(), item.getAddress(), item.getClassCode(), item.getClassDesc().c_str(),
-               item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(), item.getProduct().c_str(),
-               item.getManufacturer().c_str(), item.getDeviceName().c_str(), item.getDeviceDesc().c_str());
+               item.getSubClassCode(), item.getProtocolCode(), item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(),
+               item.getProduct().c_str(), item.getManufacturer().c_str(), item.getDeviceName().c_str(), item.getDeviceDesc().c_str());
     }
 }
 

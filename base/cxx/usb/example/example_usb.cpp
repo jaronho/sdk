@@ -56,7 +56,10 @@ int main(int argc, char** argv)
             printf("=       busNum: %d\n", info.getBusNum());
             printf("=      portNum: %d\n", info.getPortNum());
             printf("=      address: %d\n", info.getAddress());
-            printf("=        class: %s\n", info.getClassDesc().c_str());
+            printf("=        class: %d\n", info.getClassCode());
+            printf("=    classDesc: %s\n", info.getClassDesc().c_str());
+            printf("=     subClass: %d\n", info.getSubClassCode());
+            printf("=     protocol: %d\n", info.getProtocolCode());
             printf("=        speed: %s\n", info.getSpeedDesc().c_str());
             printf("=          vid: %s\n", info.getVid().c_str());
             printf("=          pid: %s\n", info.getPid().c_str());

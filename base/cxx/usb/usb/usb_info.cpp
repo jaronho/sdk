@@ -174,7 +174,13 @@ std::string UsbInfo::describe() const
     desc.append(", ");
     desc.append("address: ").append(std::to_string(getAddress()));
     desc.append(", ");
-    desc.append("class: ").append(getClassDesc());
+    desc.append("class: ").append(std::to_string(getClassCode()));
+    desc.append(", ");
+    desc.append("classDesc: ").append(getClassDesc());
+    desc.append(", ");
+    desc.append("subClass: ").append(std::to_string(getSubClassCode()));
+    desc.append(", ");
+    desc.append("protocol: ").append(std::to_string(getProtocolCode()));
     desc.append(", ");
     desc.append("speed: ").append(getSpeedDesc());
     desc.append("\n");
@@ -190,6 +196,8 @@ std::string UsbInfo::describe() const
 #ifdef _WIN32
     desc.append(", ");
     desc.append("deviceName: ").append(getDeviceName());
+    desc.append(", ");
+    desc.append("deviceDesc: ").append(getDeviceDesc());
 #endif
     if (m_devNodes.size() > 0)
     {

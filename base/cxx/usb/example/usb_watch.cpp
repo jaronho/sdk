@@ -63,9 +63,13 @@ int main(int argc, char** argv)
                 line += ",";
                 line += "\"address\":" + std::to_string(info.getAddress());
                 line += ",";
-                line += "\"classCode\":" + std::to_string(info.getClassCode());
+                line += "\"class\":" + std::to_string(info.getClassCode());
                 line += ",";
                 line += "\"classDesc\":\"" + info.getClassDesc() + "\"";
+                line += ",";
+                line += "\"subClass\":" + std::to_string(info.getSubClassCode());
+                line += ",";
+                line += "\"protocol\":" + std::to_string(info.getProtocolCode());
                 line += ",";
                 line += "\"speedLevel\":" + std::to_string(info.getSpeedLevel());
                 line += ",";
