@@ -327,4 +327,18 @@ std::vector<char> StrTool::fromHex(const std::string& hexStr, const std::string&
     }
     return bytes;
 }
+
+std::string StrTool::fillPlace(const std::string& str, char c, size_t length, bool leftFlag)
+{
+    if (str.size() >= length)
+    {
+        return str;
+    }
+    auto count = length - str.size();
+    if (leftFlag)
+    {
+        return (std::string(count, c) + str);
+    }
+    return (str + std::string(count, c));
+}
 } // namespace utility

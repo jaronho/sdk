@@ -146,5 +146,15 @@ public:
      * @return 字节流
      */
     static std::vector<char> fromHex(const std::string& hexStr, const std::string& sep = "");
+
+    /**
+     * @brief 字符串补位
+     * @param str 原始字符串
+     * @param c 补位字符, 例如: '0'
+     * @param length 补位后总长度
+     * @param leftFlag true-补位字符串左边, false-补位字符串右边
+     * @param 补位后的字符串
+     */
+    static std::string fillPlace(const std::string& str, char c, size_t length, bool leftFlag = true);
 };
 } // namespace utility
