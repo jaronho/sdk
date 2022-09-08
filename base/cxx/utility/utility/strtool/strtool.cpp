@@ -246,6 +246,22 @@ bool StrTool::isEndWith(std::string str, std::string end, bool caseSensitive)
     return false;
 }
 
+size_t StrTool::findCount(std::string str, std::string pattern, bool caseSensitive, bool overlap)
+{
+    if (!caseSensitive)
+    {
+        std::transform(str.begin(), str.end(), str.begin(), tolower);
+        std::transform(pattern.begin(), pattern.end(), pattern.begin(), tolower);
+    }
+    size_t count = 0;
+    for (size_t i = 0; std::string::npos != (i = str.find(pattern, i));)
+    {
+        i += (overlap ? 1 : pattern.size());
+        ++count;
+    }
+    return count;
+}
+
 std::string StrTool::toHex(const char* bytes, unsigned int byteCount, bool upper, const std::string& sep)
 {
     std::string hexStr;

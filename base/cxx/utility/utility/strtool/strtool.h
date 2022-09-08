@@ -130,6 +130,16 @@ public:
     static bool isEndWith(std::string str, std::string end, bool caseSensitive = true);
 
     /**
+     * @brief 查找指定字符串个数
+     * @param str 字符串
+     * @param pattern 字符串
+     * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
+     * @param overlap 是否可重叠查找(选填), true-是(例如: "aaa"中可找到2个"aa"), false-否(例如: "aaa"中可找到1个"aa")
+     * @return 找到的个数
+     */
+    static size_t findCount(std::string str, std::string pattern, bool caseSensitive = true, bool overlap = true);
+
+    /**
      * @brief 转为16进制字符串
      * @param bytes 字节流
      * @param byteCount 字节数
