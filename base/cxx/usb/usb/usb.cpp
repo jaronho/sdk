@@ -677,34 +677,31 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
             }
             libusb_close(handle);
         }
-        else
-        {
 #ifdef _WIN32
-            /* Windows平台下需要从WinUsb列表中获取详细信息 */
-            for (auto item : winUsbList)
+        /* Windows平台下需要从WinUsb列表中获取详细信息 */
+        for (auto item : winUsbList)
+        {
+            if (item.busNum == info.m_busNum && item.portNum == info.m_portNum && item.vid == info.m_vid && item.pid == info.m_pid
+                && matchWinUsbParent(winUsbList, item.parentInstanceId, info.m_parent)) /* WinUsb匹配Usb */
             {
-                if (item.busNum == info.m_busNum && item.portNum == info.m_portNum && item.vid == info.m_vid && item.pid == info.m_pid
-                    && matchWinUsbParent(winUsbList, item.parentInstanceId, info.m_parent)) /* WinUsb匹配Usb */
+                if (sf && info.m_serial.empty())
                 {
-                    if (sf)
-                    {
-                        info.m_serial = item.serial;
-                    }
-                    if (pf)
-                    {
-                        info.m_product = item.product;
-                    }
-                    if (mf)
-                    {
-                        info.m_manufacturer = item.manufacturer;
-                    }
-                    info.m_deviceName = item.deviceName;
-                    info.m_deviceDesc = item.deviceDesc;
-                    break;
+                    info.m_serial = item.serial;
                 }
+                if (pf && info.m_product.empty())
+                {
+                    info.m_product = item.product;
+                }
+                if (mf && info.m_manufacturer.empty())
+                {
+                    info.m_manufacturer = item.manufacturer;
+                }
+                info.m_deviceName = item.deviceName;
+                info.m_deviceDesc = item.deviceDesc;
+                break;
             }
-#endif
         }
+#endif
     }
     return true;
 }
