@@ -109,14 +109,22 @@ int main(int argc, char* argv[])
     auto client = std::make_shared<nsocket::TcpClient>();
     /* 设置连接回调 */
     client->setConnectCallback([&](const boost::system::error_code& code) {
+        auto localEndpoint = client->getLocalEndpoint();
+        auto clientHost = localEndpoint.address().to_string();
+        auto clientPort = localEndpoint.port();
+        auto remoteEndpoint = client->getRemoteEndpoint();
+        auto serverHost = remoteEndpoint.address().to_string();
+        auto serverPort = remoteEndpoint.port();
         if (code)
         {
-            printf("============================== on connect fail, %d, %s\n", code.value(), code.message().c_str());
+            printf("============================== [%s:%d] on connect [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort,
+                   serverHost.c_str(), serverPort, code.value(), code.message().c_str());
             exit(0);
         }
         else
         {
-            printf("============================== on connect ok\n");
+            printf("============================== [%s:%d] on connect [%s:%d] ok\n", clientHost.c_str(), clientPort, serverHost.c_str(),
+                   serverPort);
         }
     });
     /* 设置数据回调 */
@@ -142,16 +150,23 @@ int main(int argc, char* argv[])
         try
         {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-            std::shared_ptr<boost::asio::ssl::context> sslContext;
-            if (1 == way)
+            if (certFile.empty())
             {
-                sslContext = nsocket::TcpClient::getSsl1WayContext(certFile);
+                client->run(serverHost, serverPort);
             }
             else
             {
-                sslContext = nsocket::TcpClient::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd);
+                std::shared_ptr<boost::asio::ssl::context> sslContext;
+                if (1 == way || privateKeyFile.empty())
+                {
+                    sslContext = nsocket::TcpClient::getSsl1WayContext(certFile);
+                }
+                else
+                {
+                    sslContext = nsocket::TcpClient::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd);
+                }
+                client->run(serverHost, serverPort, sslContext);
             }
-            client->run(serverHost, serverPort, sslContext);
 #else
             client->run(serverHost, serverPort);
 #endif

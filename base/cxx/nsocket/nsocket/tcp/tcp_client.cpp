@@ -157,6 +157,24 @@ bool TcpClient::isRunning() const
     return RunStatus::start == m_runStatus;
 }
 
+boost::asio::ip::tcp::endpoint TcpClient::getLocalEndpoint() const
+{
+    if (m_tcpConn)
+    {
+        return m_tcpConn->getLocalEndpoint();
+    }
+    return boost::asio::ip::tcp::endpoint();
+}
+
+boost::asio::ip::tcp::endpoint TcpClient::getRemoteEndpoint() const
+{
+    if (m_tcpConn)
+    {
+        return m_tcpConn->getRemoteEndpoint();
+    }
+    return boost::asio::ip::tcp::endpoint();
+}
+
 void TcpClient::handleConnect(const boost::system::error_code& code, bool async)
 {
     if (m_tcpConn)

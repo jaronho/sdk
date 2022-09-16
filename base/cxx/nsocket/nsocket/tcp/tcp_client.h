@@ -72,6 +72,18 @@ public:
      */
     bool isRunning() const;
 
+    /**
+     * @brief 获取本端端点
+     * @return 本端端点
+     */
+    boost::asio::ip::tcp::endpoint getLocalEndpoint() const;
+
+    /**
+     * @brief 获取远端端点
+     * @return 远端端点
+     */
+    boost::asio::ip::tcp::endpoint getRemoteEndpoint() const;
+
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 获取SSL(单向验证)上下文

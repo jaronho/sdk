@@ -73,6 +73,7 @@ public:
     virtual void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) = 0;
     virtual void close() = 0;
     virtual bool isOpened() const = 0;
+    virtual boost::asio::ip::tcp::endpoint getLocalEndpoint() const = 0;
     virtual boost::asio::ip::tcp::endpoint getRemoteEndpoint() const = 0;
     virtual bool isNonBlock() const = 0;
     virtual bool setNonBlock(bool nonBlock) = 0;
@@ -103,6 +104,8 @@ public:
     void close() override;
 
     bool isOpened() const override;
+
+    boost::asio::ip::tcp::endpoint getLocalEndpoint() const override;
 
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const override;
 
@@ -144,6 +147,8 @@ public:
     void close() override;
 
     bool isOpened() const override;
+
+    boost::asio::ip::tcp::endpoint getLocalEndpoint() const override;
 
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const override;
 

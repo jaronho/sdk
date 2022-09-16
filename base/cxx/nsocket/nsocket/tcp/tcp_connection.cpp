@@ -265,6 +265,15 @@ bool TcpConnection::isConnected() const
     return m_isConnected;
 }
 
+boost::asio::ip::tcp::endpoint TcpConnection::getLocalEndpoint() const
+{
+    if (m_socketTcpBase)
+    {
+        return m_socketTcpBase->getLocalEndpoint();
+    }
+    return boost::asio::ip::tcp::endpoint();
+}
+
 boost::asio::ip::tcp::endpoint TcpConnection::getRemoteEndpoint() const
 {
     if (m_socketTcpBase)

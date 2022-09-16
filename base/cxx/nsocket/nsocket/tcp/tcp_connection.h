@@ -102,6 +102,12 @@ public:
     bool isConnected() const;
 
     /**
+     * @brief 获取本端端点
+     * @return 本端端点
+     */
+    boost::asio::ip::tcp::endpoint getLocalEndpoint() const;
+
+    /**
      * @brief 获取远端端点
      * @return 远端端点
      */

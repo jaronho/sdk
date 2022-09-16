@@ -90,6 +90,12 @@ bool SocketTcp::isOpened() const
     return m_socket.is_open();
 }
 
+boost::asio::ip::tcp::endpoint SocketTcp::getLocalEndpoint() const
+{
+    boost::system::error_code code;
+    return m_socket.local_endpoint(code);
+}
+
 boost::asio::ip::tcp::endpoint SocketTcp::getRemoteEndpoint() const
 {
     boost::system::error_code code;
@@ -255,6 +261,12 @@ void SocketTls::close()
 bool SocketTls::isOpened() const
 {
     return m_sslStream.lowest_layer().is_open();
+}
+
+boost::asio::ip::tcp::endpoint SocketTls::getLocalEndpoint() const
+{
+    boost::system::error_code code;
+    return m_sslStream.lowest_layer().local_endpoint(code);
 }
 
 boost::asio::ip::tcp::endpoint SocketTls::getRemoteEndpoint() const

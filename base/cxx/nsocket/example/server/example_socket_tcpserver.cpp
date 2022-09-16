@@ -212,16 +212,23 @@ int main(int argc, char* argv[])
         try
         {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-            std::shared_ptr<boost::asio::ssl::context> sslContext;
-            if (1 == way) /* 单向SSL */
+            if (certFile.empty())
             {
-                sslContext = nsocket::TcpServer::getSsl1WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+                server->run();
             }
-            else /* 双向SSL */
+            else
             {
-                sslContext = nsocket::TcpServer::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+                std::shared_ptr<boost::asio::ssl::context> sslContext;
+                if (1 == way) /* 单向SSL */
+                {
+                    sslContext = nsocket::TcpServer::getSsl1WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+                }
+                else /* 双向SSL */
+                {
+                    sslContext = nsocket::TcpServer::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+                }
+                server->run(sslContext);
             }
-            server->run(sslContext);
 #else
             server->run();
 #endif
