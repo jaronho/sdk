@@ -8,14 +8,13 @@ include(cmake/tools.cmake)
 #[[
 [命令行]
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-    find_path(PCAP_ROOT_DIR NAMES Include/pcap.h )
-    find_path(PCAP_INCLUDE_DIR NAMES pcap.h HINTS ${PCAP_ROOT_DIR}/Include)
-    find_library(PCAP_LIBRARIES NAMES wpcap HINTS ${PCAP_ROOT_DIR}/Lib/x64) # 如果工程要生成32位的, 则不需要加x64
-else()
-    find_path(PCAP_ROOT_DIR NAMES include/pcap.h )
-    find_path(PCAP_INCLUDE_DIR NAMES pcap.h HINTS ${PCAP_ROOT_DIR}/include)
-    find_library(PCAP_LIBRARIES NAMES pcap HINTS ${PCAP_ROOT_DIR}/lib)
-endif()
+    find_path(PCAP_INCLUDE_DIR NAMES pcap.h)
+    find_library(PCAP_LIBRARIES NAMES wpcap HINTS ${PCAP_INCLUDE_DIR}/../Lib/x64) # 如果工程要生成32位的, 则不需要加x64
+else ()
+    find_path(PCAP_INCLUDE_DIR NAMES pcap.h)
+    find_library(PCAP_LIBRARIES NAMES pcap HINTS ${PCAP_INCLUDE_DIR}/../lib)
+endif ()
+set(PCAP_ROOT_DIR ${PCAP_INCLUDE_DIR}/../)
 message(STATUS "Pcap root dir: ${PCAP_ROOT_DIR}")
 message(STATUS "Pcap include path: ${PCAP_INCLUDE_DIR}")
 message(STATUS "Pcap libraries: ${PCAP_LIBRARIES}")
