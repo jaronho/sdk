@@ -768,15 +768,12 @@ void Diagnose::onTimerDestroy(const Timer* timer)
         return;
     }
     std::lock_guard<std::mutex> locker(s_mutexTrigger);
-    for (auto iter = s_triggerList.begin(); s_triggerList.end() != iter;)
+    for (auto iter = s_triggerList.begin(); s_triggerList.end() != iter; ++iter)
     {
         if (timer == iter->second->timer)
         {
             s_triggerList.erase(iter);
-        }
-        else
-        {
-            ++iter;
+            return;
         }
     }
 }
