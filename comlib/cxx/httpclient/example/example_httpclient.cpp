@@ -1,6 +1,8 @@
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <thread>
 
 #include "httpclient/connection.h"
 #include "threading/platform.h"
@@ -71,6 +73,9 @@ void printResponse(const curlex::Response& resp)
     std::string str;
     str.append("[" + std::to_string(tid) + "] response => \n");
     str.append("{\n");
+    str.append("    url:" + resp.url + ",\n");
+    str.append("    localEndpoint:" + resp.localIp + ":" + std::to_string(resp.localPort) + ",\n");
+    str.append("    remoteEndpoint:" + resp.remoteIp + ":" + std::to_string(resp.remotePort) + ",\n");
     str.append("    curlCode:" + std::to_string(resp.curlCode) + ",\n");
     str.append("    errorDesc:" + resp.errorDesc + ",\n");
     str.append("    httpCode:" + std::to_string(resp.httpCode) + ",\n");
@@ -101,6 +106,9 @@ void printSimpleResponse(const curlex::Response& resp)
     std::string str;
     str.append("[" + std::to_string(tid) + "] response => \n");
     str.append("{\n");
+    str.append("    url:" + resp.url + ",\n");
+    str.append("    localEndpoint:" + resp.localIp + ":" + std::to_string(resp.localPort) + ",\n");
+    str.append("    remoteEndpoint:" + resp.remoteIp + ":" + std::to_string(resp.remotePort) + ",\n");
     str.append("    curlCode:" + std::to_string(resp.curlCode) + ",\n");
     str.append("    errorDesc:" + resp.errorDesc + ",\n");
     str.append("    httpCode:" + std::to_string(resp.httpCode) + ",\n");
