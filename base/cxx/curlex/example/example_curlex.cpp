@@ -67,6 +67,9 @@ void printResponse(const curlex::Response& resp)
 {
     std::cout << "response => " << std::endl;
     std::cout << "{" << std::endl;
+    std::cout << "    url:" << resp.url << "," << std::endl;
+    std::cout << "    localEndpoint:" << resp.localIp << ":" << resp.localPort << "," << std::endl;
+    std::cout << "    remoteEndpoint:" << resp.remoteIp << ":" << resp.remotePort << "," << std::endl;
     std::cout << "    curlCode:" << resp.curlCode << "," << std::endl;
     std::cout << "    errorDesc:" << resp.errorDesc << "," << std::endl;
     std::cout << "    httpCode:" << resp.httpCode << "," << std::endl;
@@ -95,6 +98,9 @@ void printSimpleResponse(const curlex::Response& resp)
 {
     std::cout << "response => " << std::endl;
     std::cout << "{" << std::endl;
+    std::cout << "    url:" << resp.url << "," << std::endl;
+    std::cout << "    localEndpoint:" << resp.localIp << ":" << resp.localPort << "," << std::endl;
+    std::cout << "    remoteEndpoint:" << resp.remoteIp << ":" << resp.remotePort << "," << std::endl;
     std::cout << "    curlCode:" << resp.curlCode << "," << std::endl;
     std::cout << "    errorDesc:" << resp.errorDesc << "," << std::endl;
     std::cout << "    httpCode:" << resp.httpCode << "," << std::endl;

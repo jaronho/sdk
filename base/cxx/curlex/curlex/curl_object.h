@@ -203,6 +203,10 @@ public:
 
     /**
      * @brief 执行请求
+     * @param localIp 本端IP
+     * @param localPort 本端端口
+     * @param remoteIp 远端IP
+     * @param remotePort 远端端口
      * @param curlCode curl码, 注意: 当值为42, 错误信息为"Callback aborted"时, 是由于进度函数返回true停止了执行
      * @param errorDesc 错误信息
      * @param respCode http响应码
@@ -210,7 +214,8 @@ public:
      * @param respElapsed http响应时间(毫秒)
      * @return true-成功, false-失败
      */
-    bool perform(int& curlCode, std::string& errorDesc, int& respCode, std::map<std::string, std::string>& respHeaders, int& respElapsed);
+    bool perform(std::string& localIp, unsigned int& localPort, std::string& remoteIp, unsigned int& remotePort, int& curlCode,
+                 std::string& errorDesc, int& respCode, std::map<std::string, std::string>& respHeaders, int& respElapsed);
 
 private:
     bool initialize();

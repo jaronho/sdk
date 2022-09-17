@@ -136,7 +136,8 @@ bool curlDelete(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
+    return obj->perform(resp.localIp, resp.localPort, resp.remoteIp, resp.remotePort, resp.curlCode, resp.errorDesc, resp.httpCode,
+                        resp.headers, resp.elapsed);
 }
 
 bool curlGet(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
@@ -147,7 +148,8 @@ bool curlGet(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
+    return obj->perform(resp.localIp, resp.localPort, resp.remoteIp, resp.remotePort, resp.curlCode, resp.errorDesc, resp.httpCode,
+                        resp.headers, resp.elapsed);
 }
 
 bool curlPut(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
@@ -168,7 +170,8 @@ bool curlPut(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
+    return obj->perform(resp.localIp, resp.localPort, resp.remoteIp, resp.remotePort, resp.curlCode, resp.errorDesc, resp.httpCode,
+                        resp.headers, resp.elapsed);
 }
 
 bool curlPost(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
@@ -184,7 +187,8 @@ bool curlPost(const RequestPtr& req, const FuncSet& funcSet, Response& resp)
         resp.body.append(static_cast<char*>(bytes), count);
         return count;
     });
-    return obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
+    return obj->perform(resp.localIp, resp.localPort, resp.remoteIp, resp.remotePort, resp.curlCode, resp.errorDesc, resp.httpCode,
+                        resp.headers, resp.elapsed);
 }
 
 bool curlDownload(const RequestPtr& req, const std::string& filename, bool recover, const FuncSet& funcSet, Response& resp)
@@ -212,7 +216,8 @@ bool curlDownload(const RequestPtr& req, const std::string& filename, bool recov
         obj->setResumeOffset(offset);
     }
     obj->setRecvFunc([&f](void* bytes, size_t count) { return fwrite(bytes, 1, count, f); });
-    auto ret = obj->perform(resp.curlCode, resp.errorDesc, resp.httpCode, resp.headers, resp.elapsed);
+    auto ret = obj->perform(resp.localIp, resp.localPort, resp.remoteIp, resp.remotePort, resp.curlCode, resp.errorDesc, resp.httpCode,
+                            resp.headers, resp.elapsed);
     fflush(f);
     fclose(f);
     return ret;

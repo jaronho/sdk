@@ -622,9 +622,13 @@ bool CurlObject::addMultipartFormFile(const std::string& fieldName, const std::s
     return CURL_FORMADD_OK == code;
 }
 
-bool CurlObject::perform(int& curlCode, std::string& errorDesc, int& respCode, std::map<std::string, std::string>& respHeaders,
-                         int& respElapsed)
+bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::string& remoteIp, unsigned int& remotePort, int& curlCode,
+                         std::string& errorDesc, int& respCode, std::map<std::string, std::string>& respHeaders, int& respElapsed)
 {
+    localIp.clear();
+    localPort = 0;
+    remoteIp.clear();
+    remotePort = 0;
     curlCode = -1;
     errorDesc.clear();
     respCode = -1;
@@ -733,6 +737,18 @@ bool CurlObject::perform(int& curlCode, std::string& errorDesc, int& respCode, s
         return false;
     }
     code = curl_easy_perform(m_curl);
+    char* szLocalIp = nullptr;
+    if (CURLE_OK == curl_easy_getinfo(m_curl, CURLINFO_LOCAL_IP, &szLocalIp) && szLocalIp)
+    {
+        localIp = szLocalIp;
+    }
+    curl_easy_getinfo(m_curl, CURLINFO_LOCAL_PORT, &localPort);
+    char* szRemoteIp = nullptr;
+    if (CURLE_OK == curl_easy_getinfo(m_curl, CURLINFO_PRIMARY_IP, &szRemoteIp) && szRemoteIp)
+    {
+        remoteIp = szRemoteIp;
+    }
+    curl_easy_getinfo(m_curl, CURLINFO_PRIMARY_PORT, &remotePort);
     curlCode = static_cast<int>(code);
     errorDesc = m_errorBuffer;
     curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &respCode);

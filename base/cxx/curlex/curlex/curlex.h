@@ -46,6 +46,10 @@ struct FuncSet
 struct Response
 {
     std::string url; /* 对应的请求url */
+    std::string localIp; /* 本端IP */
+    unsigned int localPort = 0; /* 本端端口 */
+    std::string remoteIp; /* 远端IP */
+    unsigned int remotePort = 0; /* 远端端口 */
     int curlCode = -1; /* curl码 */
     std::string errorDesc; /* 错误描述 */
     int httpCode = -1; /* http码 */
