@@ -126,9 +126,18 @@ void DataChannel::disconnect()
     disconnectImpl();
 }
 
-bool DataChannel::isOpened()
+bool DataChannel::isOpened() const
 {
     return (m_tcpClient && m_tcpClient->isRunning());
+}
+
+boost::asio::ip::tcp::endpoint DataChannel::getLocalEndpoint() const
+{
+    if (m_tcpClient)
+    {
+        return m_tcpClient->getLocalEndpoint();
+    }
+    return boost::asio::ip::tcp::endpoint();
 }
 
 bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCallback& callback)

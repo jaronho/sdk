@@ -220,6 +220,11 @@ int64_t AccessCtrl::sendMsg(const BizCode& bizCode, unsigned long long seqId, co
         });
 }
 
+boost::asio::ip::tcp::endpoint AccessCtrl::getLocalEndpoint() const
+{
+    return m_dataChannel->getLocalEndpoint();
+}
+
 bool AccessCtrl::subscribeState(const std::shared_ptr<StateHandler>& handler)
 {
     if (handler)

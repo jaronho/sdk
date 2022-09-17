@@ -49,7 +49,13 @@ public:
      * @brief 连接是否已打开
      * @return true-已打开, false-未打开
      */
-    bool isOpened();
+    bool isOpened() const;
+
+    /**
+     * @brief 获取本端端点
+     * @return 本端端点
+     */
+    boost::asio::ip::tcp::endpoint getLocalEndpoint() const;
 
     /**
      * @brief 发送数据(异步)

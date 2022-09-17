@@ -158,6 +158,12 @@ public:
     int64_t sendMsg(const BizCode& bizCode, unsigned long long seqId, const nlohmann::json& data, const RespCallback& callback,
                     unsigned int timeout = 30);
 
+    /**
+     * @brief 获取本端端点
+     * @return 本端端点
+     */
+    boost::asio::ip::tcp::endpoint getLocalEndpoint() const;
+
 private:
     /**
      * @brief 订阅状态, 在观察者中自动调用, 外部模块不直接调用
