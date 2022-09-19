@@ -12,10 +12,10 @@ Connection::Connection(const std::string& caFile, const std::string& url)
     m_req = HttpClient::makeSsl1WayRequest(caFile, url);
 }
 
-Connection::Connection(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
-                       const std::string& url)
+Connection::Connection(const curlex::FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
+                       const std::string& privateKeyFilePwd, const std::string& url)
 {
-    m_req = HttpClient::makeSsl2WayRequest(certFile, privateKeyFile, privateKeyFilePwd, url);
+    m_req = HttpClient::makeSsl2WayRequest(fileFmt, certFile, privateKeyFile, privateKeyFilePwd, url);
 }
 
 Connection::Connection(const std::string& username, const std::string& password, const std::string& url)

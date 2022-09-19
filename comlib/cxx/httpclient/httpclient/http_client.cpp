@@ -121,10 +121,11 @@ curlex::Ssl1WayRequestPtr HttpClient::makeSsl1WayRequest(const std::string& caFi
     return std::make_shared<curlex::Ssl1WayRequest>(caFile, url);
 }
 
-curlex::Ssl2WayRequestPtr HttpClient::makeSsl2WayRequest(const std::string& certFile, const std::string& privateKeyFile,
-                                                         const std::string& privateKeyFilePwd, const std::string& url)
+curlex::Ssl2WayRequestPtr HttpClient::makeSsl2WayRequest(const curlex::FileFormat& fileFmt, const std::string& certFile,
+                                                         const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
+                                                         const std::string& url)
 {
-    return std::make_shared<curlex::Ssl2WayRequest>(certFile, privateKeyFile, privateKeyFilePwd, url);
+    return std::make_shared<curlex::Ssl2WayRequest>(fileFmt, certFile, privateKeyFile, privateKeyFilePwd, url);
 }
 
 curlex::UserpwdRequestPtr HttpClient::makeUserpwdRequest(const std::string& username, const std::string& password, const std::string& url)
