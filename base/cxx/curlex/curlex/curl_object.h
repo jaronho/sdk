@@ -37,6 +37,16 @@ using CurlProgressFunc = std::function<bool(int64_t nowUploaded, int64_t totalUp
 using CurlDebugFunc = std::function<void(curl_infotype type, const std::string& info)>;
 
 /**
+ * @param 文件格式
+ */
+enum class FileFormat
+{
+    DER,
+    PEM,
+    ENG
+};
+
+/**
  * @brief Curl的C++封装
  */
 class CurlObject
@@ -55,11 +65,13 @@ public:
 
     /**
      * @brief 构造函数(SSL双向认证)
+     * @param fileFmt 文件格式
      * @param certFile 证书文件, 例如: client.crt
      * @param privateKeyFile 私钥文件, 例如: client.key
      * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
      */
-    CurlObject(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd);
+    CurlObject(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
+               const std::string& privateKeyFilePwd);
 
     /**
      * @brief 构造函数
@@ -220,7 +232,8 @@ public:
 private:
     bool initialize();
     bool initialize(const std::string& caFile);
-    bool initialize(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd);
+    bool initialize(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
+                    const std::string& privateKeyFilePwd);
     bool initialize(const std::string& user, const std::string& password);
     friend size_t onSendDataFunc(void* buffer, size_t size, size_t number, void* userdata);
     friend size_t onRecvDataFunc(void* buffer, size_t size, size_t number, void* userdata);

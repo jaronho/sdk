@@ -125,15 +125,20 @@ std::string Ssl1WayRequest::getCaFile() const
     return m_caFile;
 }
 
-Ssl2WayRequest::Ssl2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
-                               const std::string& url)
-    : Request(url), m_certFile(certFile), m_privateKeyFile(privateKeyFile), m_privateKeyFilePwd(privateKeyFilePwd)
+Ssl2WayRequest::Ssl2WayRequest(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
+                               const std::string& privateKeyFilePwd, const std::string& url)
+    : Request(url), m_fileFormat(fileFmt), m_certFile(certFile), m_privateKeyFile(privateKeyFile), m_privateKeyFilePwd(privateKeyFilePwd)
 {
 }
 
 Request::Type Ssl2WayRequest::getType() const
 {
     return Type::ssl_2way;
+}
+
+FileFormat Ssl2WayRequest::getFileFormat() const
+{
+    return m_fileFormat;
 }
 
 std::string Ssl2WayRequest::getCertFile() const

@@ -220,7 +220,8 @@ CurlObject::CurlObject(const std::string& caFile)
     }
 }
 
-CurlObject::CurlObject(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
+CurlObject::CurlObject(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
+                       const std::string& privateKeyFilePwd)
 {
     onCurlObjectCreate();
     m_curl = curl_easy_init();
@@ -229,7 +230,7 @@ CurlObject::CurlObject(const std::string& certFile, const std::string& privateKe
         perror("curl_easy_init failed!");
         return;
     }
-    if (!initialize(certFile, privateKeyFile, privateKeyFilePwd))
+    if (!initialize(fileFmt, certFile, privateKeyFile, privateKeyFilePwd))
     {
         curl_easy_cleanup(m_curl);
         m_curl = nullptr;
@@ -324,8 +325,22 @@ bool CurlObject::initialize(const std::string& caFile)
     return CURLE_OK == code;
 }
 
-bool CurlObject::initialize(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
+bool CurlObject::initialize(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
+                            const std::string& privateKeyFilePwd)
 {
+    std::string fileFmtStr = "PEM";
+    if (FileFormat::DER == fileFmt)
+    {
+        fileFmtStr = "DER";
+    }
+    else if (FileFormat::PEM == fileFmt)
+    {
+        fileFmtStr = "PEM";
+    }
+    else if (FileFormat::ENG == fileFmt)
+    {
+        fileFmtStr = "ENG";
+    }
     memset(m_errorBuffer, 0, CURL_ERROR_SIZE);
     auto code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
     if (CURLE_OK != code)
@@ -342,7 +357,7 @@ bool CurlObject::initialize(const std::string& certFile, const std::string& priv
     {
         return false;
     }
-    code = setOption(CURLOPT_SSLCERTTYPE, "PEM");
+    code = setOption(CURLOPT_SSLCERTTYPE, fileFmtStr);
     if (CURLE_OK != code)
     {
         return false;
@@ -352,7 +367,7 @@ bool CurlObject::initialize(const std::string& certFile, const std::string& priv
     {
         return false;
     }
-    code = setOption(CURLOPT_SSLKEYTYPE, "PEM");
+    code = setOption(CURLOPT_SSLKEYTYPE, fileFmtStr);
     if (CURLE_OK != code)
     {
         return false;

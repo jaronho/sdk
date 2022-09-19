@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include "curl_object.h"
 #include "curl_req_data.h"
 
 namespace curlex
@@ -201,12 +202,12 @@ public:
 
     /**
      * @brief 获取证书文件
-     * @return 证书文件
+     * @return 根证书文件
      */
     std::string getCaFile() const;
 
 private:
-    std::string m_caFile; /* 证书文件, 例如: ca.crt */
+    std::string m_caFile; /* 根证书文件, 例如: ca.crt */
 };
 
 using Ssl1WayRequestPtr = std::shared_ptr<Ssl1WayRequest>;
@@ -217,12 +218,18 @@ using Ssl1WayRequestPtr = std::shared_ptr<Ssl1WayRequest>;
 class Ssl2WayRequest final : public Request
 {
 public:
-    Ssl2WayRequest(const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
-                   const std::string& url);
+    Ssl2WayRequest(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
+                   const std::string& privateKeyFilePwd, const std::string& url);
 
     virtual ~Ssl2WayRequest() = default;
 
     Type getType() const override;
+
+    /**
+     * @brief 获取文件格式
+     * @return 文件格式
+     */
+    FileFormat getFileFormat() const;
 
     /**
      * @brief 获取证书文件
@@ -243,6 +250,7 @@ public:
     std::string getPrivateKeyFilePwd() const;
 
 private:
+    FileFormat m_fileFormat = FileFormat::PEM; /* 文件格式 */
     std::string m_certFile; /* 证书文件, 例如: client.crt */
     std::string m_privateKeyFile; /* 私钥文件, 例如: client.key */
     std::string m_privateKeyFilePwd; /* 私钥文件密码, 例如: qq123456 */

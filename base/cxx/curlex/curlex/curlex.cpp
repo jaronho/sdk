@@ -27,7 +27,8 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
     }
     case Request::Type::ssl_2way: {
         auto sslReq = std::dynamic_pointer_cast<Ssl2WayRequest>(req);
-        obj = std::make_shared<CurlObject>(sslReq->getCertFile(), sslReq->getPrivateKeyFile(), sslReq->getPrivateKeyFilePwd());
+        obj = std::make_shared<CurlObject>(sslReq->getFileFormat(), sslReq->getCertFile(), sslReq->getPrivateKeyFile(),
+                                           sslReq->getPrivateKeyFilePwd());
         break;
     }
     case Request::Type::user_pwd: {
