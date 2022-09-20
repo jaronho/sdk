@@ -56,6 +56,7 @@ int main(int argc, char* argv[])
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
     printf("** [-p]                   server port, default: 4335                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    printf("** [-pem]                 specify file format [0-DER, 1-PEM]. default: 1                                 **\n");
     printf("** [-cf]                  specify certificate file. e.g. client.crt, ca.crt                              **\n");
     printf("** [-pkf]                 specify private key file, e.g. client.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
@@ -66,6 +67,7 @@ int main(int argc, char* argv[])
     printf("\n");
     std::string serverHost;
     int serverPort = 0;
+    int pem = 1;
     std::string certFile;
     std::string privateKeyFile;
     std::string privateKeyFilePwd;
@@ -92,6 +94,15 @@ int main(int argc, char* argv[])
             }
         }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+        else if (0 == strcmp(key, "-pem")) /* 文件格式 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                pem = atoi(argv[i]);
+                ++i;
+            }
+        }
         else if (0 == strcmp(key, "-cf")) /* 证书文件 */
         {
             ++i;
@@ -141,6 +152,14 @@ int main(int argc, char* argv[])
     if (serverPort <= 0)
     {
         serverPort = 4335;
+    }
+    if (pem < 0)
+    {
+        pem = 0;
+    }
+    else if (pem > 1)
+    {
+        pem = 1;
     }
     if (sslWay < 0)
     {
@@ -278,7 +297,7 @@ int main(int argc, char* argv[])
             }
         });
     /* 创建线程专门用于网络I/O事件轮询 */
-    std::thread th([&, certFile, privateKeyFile, privateKeyFilePwd]() {
+    std::thread th([&, pem, certFile, privateKeyFile, privateKeyFilePwd]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
@@ -286,11 +305,15 @@ int main(int argc, char* argv[])
             std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
             if (1 == sslWay) /* 单向SSL */
             {
-                sslContext = nsocket::TcpServer::getSsl1WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+                sslContext = nsocket::TcpServer::getSsl1WayContext(pem ? boost::asio::ssl::context::file_format::pem
+                                                                       : boost::asio::ssl::context::file_format::asn1,
+                                                                   certFile, privateKeyFile, privateKeyFilePwd, true);
             }
             else if (2 == sslWay) /* 双向SSL */
             {
-                sslContext = nsocket::TcpServer::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd, true);
+                sslContext = nsocket::TcpServer::getSsl2WayContext(pem ? boost::asio::ssl::context::file_format::pem
+                                                                       : boost::asio::ssl::context::file_format::asn1,
+                                                                   certFile, privateKeyFile, privateKeyFilePwd, true);
             }
             server->run(sslContext);
 #else

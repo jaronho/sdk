@@ -7,8 +7,8 @@ std::weak_ptr<threading::Executor> DataChannel::getPktExecutor()
     return m_pktExecutor;
 }
 
-bool DataChannel::connect(const std::string& address, unsigned short port, const std::string& certFile, const std::string& privateKeyFile,
-                          const std::string& privateKeyFilePwd)
+bool DataChannel::connect(const std::string& address, unsigned short port, bool filePEM, const std::string& certFile,
+                          const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
 {
     try
     {
@@ -68,7 +68,8 @@ bool DataChannel::connect(const std::string& address, unsigned short port, const
             }
         });
         const std::weak_ptr<nsocket::TcpClient> wpTcpClient = m_tcpClient;
-        m_tcpExecutor->post("nac.loop", [wpTcpClient, address, port, certFile, privateKeyFile, privateKeyFilePwd, logger = m_logger]() {
+        m_tcpExecutor->post("nac.loop", [wpTcpClient, address, port, filePEM, certFile, privateKeyFile, privateKeyFilePwd,
+                                         logger = m_logger]() {
             const auto tcpClient = wpTcpClient.lock();
             if (tcpClient)
             {
@@ -78,13 +79,14 @@ bool DataChannel::connect(const std::string& address, unsigned short port, const
                     std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
                     if (!certFile.empty())
                     {
+                        auto fmt = (filePEM ? boost::asio::ssl::context::file_format::pem : boost::asio::ssl::context::file_format::asn1);
                         if (privateKeyFile.empty()) /* SSL单向验证 */
                         {
-                            sslContext = nsocket::TcpClient::getSsl1WayContext(certFile);
+                            sslContext = nsocket::TcpClient::getSsl1WayContext(fmt, certFile);
                         }
                         else /* SSL双向验证 */
                         {
-                            sslContext = nsocket::TcpClient::getSsl2WayContext(certFile, privateKeyFile, privateKeyFilePwd);
+                            sslContext = nsocket::TcpClient::getSsl2WayContext(fmt, certFile, privateKeyFile, privateKeyFilePwd);
                         }
                     }
                     tcpClient->run(address, port, sslContext);

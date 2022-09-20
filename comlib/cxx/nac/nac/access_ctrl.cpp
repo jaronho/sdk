@@ -173,8 +173,8 @@ bool AccessCtrl::start(const AccessConfig& cfg)
         }
     }
     /* 首次连接 */
-    return m_connectService->connect(cfg.address, cfg.port, cfg.certFile, cfg.privateKeyFile, cfg.privateKeyFilePwd, cfg.connectTimeout,
-                                     (unsigned int)cfg.authBizCode, cfg.authTimeout, (unsigned int)cfg.heartbeatBizCode,
+    return m_connectService->connect(cfg.address, cfg.port, cfg.filePEM, cfg.certFile, cfg.privateKeyFile, cfg.privateKeyFilePwd,
+                                     cfg.connectTimeout, (unsigned int)cfg.authBizCode, cfg.authTimeout, (unsigned int)cfg.heartbeatBizCode,
                                      cfg.heartbeatInterval, cfg.heartbeatFixedInterval);
 }
 

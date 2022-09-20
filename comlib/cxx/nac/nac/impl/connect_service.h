@@ -64,6 +64,7 @@ public:
      * @brief 连接(连接成功后鉴权如果需要的话)
      * @param address 服务器地址
      * @param port 服务器端口
+     * @param filePEM (证书/私钥)文件是否为PEM格式, true-是, flalse-否(DER格式)
      * @param certFile 证书文件(选填), 例如: client.crt
      * @param privateKeyFile 私钥文件(选填), 例如: client.key
      * @param privateKeyFilePwd 私钥文件密码(选填), 例如: qq123456
@@ -75,10 +76,10 @@ public:
      * @param heartbeatFixedInterval 心跳固定间隔(秒, 选填), 在该周期内至少发送一次心跳, <=心跳间隔则根据心跳间隔定时发送
      * @return true-连接请求中, false-连接失败
      */
-    bool connect(const std::string& address, unsigned int port, const std::string& certFile = "", const std::string& privateKeyFile = "",
-                 const std::string& privateKeyFilePwd = "", unsigned int connectTimeout = 0, unsigned int authBizCode = 0,
-                 unsigned int authTimeout = 30, unsigned int heartbeatBizCode = 0, unsigned int heartbeatInterval = 15,
-                 unsigned int heartbeatFixedInterval = 60);
+    bool connect(const std::string& address, unsigned int port, bool filePEM = true, const std::string& certFile = "",
+                 const std::string& privateKeyFile = "", const std::string& privateKeyFilePwd = "", unsigned int connectTimeout = 0,
+                 unsigned int authBizCode = 0, unsigned int authTimeout = 30, unsigned int heartbeatBizCode = 0,
+                 unsigned int heartbeatInterval = 15, unsigned int heartbeatFixedInterval = 60);
 
     /**
      * @brief 重连, 注意: 主动断开连接再调重连则无效
@@ -215,6 +216,7 @@ private:
     std::string m_lastSendHeartbeatDateTime; /* 最近发送心跳日期, 年月日时分秒, 用于日志打印 */
     std::string m_address; /* 服务器地址 */
     unsigned int m_port = 0; /* 服务器端口 */
+    bool m_filePEM = true; /* (证书/私钥)文件是否为PEM格式 */
     std::string m_certFile; /* 证书文件 */
     std::string m_privateKeyFile; /* 私钥文件 */
     std::string m_privateKeyFilePwd; /* 私钥文件密码 */

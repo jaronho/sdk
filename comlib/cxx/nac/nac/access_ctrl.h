@@ -79,6 +79,7 @@ struct AccessConfig
 {
     std::string address; /* 服务器地址 */
     unsigned int port = 0; /* 服务器端口 */
+    bool filePEM = true; /* (证书/私钥)文件是否为PEM格式, true-是, flalse-否(DER格式) */
     std::string certFile; /* 证书文件(全路径), 例如: /home/root/client.crt */
     std::string privateKeyFile; /* 私钥文件(全路径), 例如: /home/root/client.key */
     std::string privateKeyFilePwd; /* 私钥文件密码, 例如: qq123456 */

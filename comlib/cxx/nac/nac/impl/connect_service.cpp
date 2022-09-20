@@ -60,10 +60,10 @@ void ConnectService::setHeartbeatDataGenerator(const std::function<std::string()
     m_heartbeatDataGenerator = generator;
 }
 
-bool ConnectService::connect(const std::string& address, unsigned int port, const std::string& certFile, const std::string& privateKeyFile,
-                             const std::string& privateKeyFilePwd, unsigned int connectTimeout, unsigned int authBizCode,
-                             unsigned int authTimeout, unsigned int heartbeatBizCode, unsigned int heartbeatInterval,
-                             unsigned int heartbeatFixedInterval)
+bool ConnectService::connect(const std::string& address, unsigned int port, bool filePEM, const std::string& certFile,
+                             const std::string& privateKeyFile, const std::string& privateKeyFilePwd, unsigned int connectTimeout,
+                             unsigned int authBizCode, unsigned int authTimeout, unsigned int heartbeatBizCode,
+                             unsigned int heartbeatInterval, unsigned int heartbeatFixedInterval)
 {
     if (address.empty() || 0 == port)
     {
@@ -92,6 +92,7 @@ bool ConnectService::connect(const std::string& address, unsigned int port, cons
     updateConnectState(ConnectState::connecting);
     m_address = address;
     m_port = port;
+    m_filePEM = filePEM;
     m_certFile = certFile;
     m_privateKeyFile = privateKeyFile;
     m_privateKeyFilePwd = privateKeyFilePwd;
@@ -106,7 +107,7 @@ bool ConnectService::connect(const std::string& address, unsigned int port, cons
     if (dataChannel)
     {
         startTimetoutTimer();
-        return dataChannel->connect(address, port, certFile, privateKeyFile, privateKeyFilePwd);
+        return dataChannel->connect(address, port, filePEM, certFile, privateKeyFile, privateKeyFilePwd);
     }
     return false;
 }
@@ -125,7 +126,7 @@ bool ConnectService::reconnect()
     if (dataChannel)
     {
         startTimetoutTimer();
-        return dataChannel->connect(m_address, m_port, m_certFile, m_privateKeyFile, m_privateKeyFilePwd);
+        return dataChannel->connect(m_address, m_port, m_filePEM, m_certFile, m_privateKeyFile, m_privateKeyFilePwd);
     }
     return false;
 }
