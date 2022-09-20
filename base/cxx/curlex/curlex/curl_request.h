@@ -201,13 +201,13 @@ public:
     Type getType() const override;
 
     /**
-     * @brief 获取证书文件
-     * @return 根证书文件
+     * @brief 获取(根)证书文件
+     * @return (根)证书文件
      */
     std::string getCaFile() const;
 
 private:
-    std::string m_caFile; /* 根证书文件, 例如: ca.crt */
+    std::string m_caFile; /* (根)证书文件, 例如: ca.crt */
 };
 
 using Ssl1WayRequestPtr = std::shared_ptr<Ssl1WayRequest>;

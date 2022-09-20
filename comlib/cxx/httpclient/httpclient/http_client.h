@@ -70,7 +70,7 @@ public:
 
     /**
      * @brief 创建SSL(单向验证)请求对象
-     * @param caFile 根证书文件, 例如: ca.crt
+     * @param caFile (根)证书文件, 例如: ca.crt
      * @param url 资源地址
      * @return 请求对象
      */

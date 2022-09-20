@@ -141,24 +141,28 @@ public:
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 获取SSL(单向向验证)上下文(当证书文件或私钥文件为空时返回空)
+     * @param fileFmt 文件格式
      * @param certFile 证书文件, 例如: server.crt
      * @param privateKeyFile 私钥文件, 例如: server.key
      * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
      * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
      * @return SSL上下文
      */
-    static std::shared_ptr<boost::asio::ssl::context> getSsl1WayContext(const std::string& certFile, const std::string& privateKeyFile,
+    static std::shared_ptr<boost::asio::ssl::context> getSsl1WayContext(boost::asio::ssl::context::file_format fileFmt,
+                                                                        const std::string& certFile, const std::string& privateKeyFile,
                                                                         const std::string& privateKeyFilePwd, bool allowSelfSigned = true);
 
     /**
      * @brief 获取SSL(双向验证)上下文(当证书文件或私钥文件为空时返回空)
+     * @param fileFmt 文件格式
      * @param certFile 证书文件, 例如: server.crt
      * @param privateKeyFile 私钥文件, 例如: server.key
      * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
      * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
      * @return SSL上下文
      */
-    static std::shared_ptr<boost::asio::ssl::context> getSsl2WayContext(const std::string& certFile, const std::string& privateKeyFile,
+    static std::shared_ptr<boost::asio::ssl::context> getSsl2WayContext(boost::asio::ssl::context::file_format fileFmt,
+                                                                        const std::string& certFile, const std::string& privateKeyFile,
                                                                         const std::string& privateKeyFilePwd, bool allowSelfSigned = true);
 #endif
 

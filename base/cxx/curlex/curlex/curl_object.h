@@ -59,7 +59,7 @@ public:
 
     /**
      * @brief 构造函数(SSL单向认证)
-     * @param caFile 根证书文件, 例如: ca.crt
+     * @param caFile (根)证书文件, 例如: ca.crt
      */
     CurlObject(const std::string& caFile);
 

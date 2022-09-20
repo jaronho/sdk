@@ -87,19 +87,23 @@ public:
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 获取SSL(单向验证)上下文
-     * @param caFile 根证书文件, 例如: ca.crt
+     * @param fileFmt 文件格式
+     * @param certFile 证书文件, 例如: ca.crt
      * @return SSL上下文
      */
-    static std::shared_ptr<boost::asio::ssl::context> getSsl1WayContext(const std::string& caFile);
+    static std::shared_ptr<boost::asio::ssl::context> getSsl1WayContext(boost::asio::ssl::context::file_format fileFmt,
+                                                                        const std::string& certFile);
 
     /**
      * @brief 获取SSL(双向验证)上下文(当证书文件或私钥文件为空时返回空)
+     * @param fileFmt 文件格式
      * @param certFile 证书文件, 例如: client.crt
      * @param privateKeyFile 私钥文件, 例如: client.key
      * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
      * @return SSL上下文
      */
-    static std::shared_ptr<boost::asio::ssl::context> getSsl2WayContext(const std::string& certFile, const std::string& privateKeyFile,
+    static std::shared_ptr<boost::asio::ssl::context> getSsl2WayContext(boost::asio::ssl::context::file_format fileFmt,
+                                                                        const std::string& certFile, const std::string& privateKeyFile,
                                                                         const std::string& privateKeyFilePwd);
 #endif
 

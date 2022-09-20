@@ -243,15 +243,18 @@ void TcpClient::handleConnect(const boost::system::error_code& code, bool async)
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl1WayContext(const std::string& caFile)
+std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl1WayContext(boost::asio::ssl::context::file_format fileFmt,
+                                                                        const std::string& certFile)
 {
-    return TcpConnection::makeSsl1WayContextClient(boost::asio::ssl::context::sslv23_client, caFile, true);
+    return TcpConnection::makeSsl1WayContextClient(boost::asio::ssl::context::sslv23_client, fileFmt, certFile, true);
 }
 
-std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl2WayContext(const std::string& certFile, const std::string& privateKeyFile,
+std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl2WayContext(boost::asio::ssl::context::file_format fileFmt,
+                                                                        const std::string& certFile, const std::string& privateKeyFile,
                                                                         const std::string& privateKeyFilePwd)
 {
-    return TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_client, certFile, privateKeyFile, privateKeyFilePwd, true);
+    return TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_client, fileFmt, certFile, privateKeyFile, privateKeyFilePwd,
+                                             true);
 }
 #endif
 } // namespace nsocket

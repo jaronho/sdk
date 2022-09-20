@@ -21,7 +21,7 @@ public:
 
     /**
      * @brief 构造函数(SSL单向验证)
-     * @param caFile 根证书文件, 例如: ca.crt
+     * @param caFile (根)证书文件, 例如: ca.crt
      * @param url 服务器URL
      */
     Connection(const std::string& caFile, const std::string& url);
