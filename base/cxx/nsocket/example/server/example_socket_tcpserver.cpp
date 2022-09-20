@@ -29,10 +29,10 @@ int main(int argc, char* argv[])
     printf("\n");
     std::string serverHost;
     int serverPort = 0;
-    int pem = 0;
-    std::string certFile = "D:\\workspace\\sdk\\base\\cxx\\nsocket\\example\\build-win\\Debug\\server.cer";
-    std::string privateKeyFile = "D:\\workspace\\sdk\\base\\cxx\\nsocket\\example\\build-win\\Debug\\server1.key";
-    std::string privateKeyFilePwd = "qq123456";
+    int pem = 1;
+    std::string certFile;
+    std::string privateKeyFile;
+    std::string privateKeyFilePwd;
     int way = 1;
     for (int i = 1; i < argc;)
     {
