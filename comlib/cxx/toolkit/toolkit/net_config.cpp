@@ -210,8 +210,11 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
             if (0 == vendorId.compare(tmpVendorId)) /* 厂商ID一致, 找到编组 */
             {
                 iter->emplace_back(iface);
-                /* 排序(网卡名小的排在前面) */
-                std::sort(iter->begin(), iter->end(), [](utility::Net::IfaceInfo a, utility::Net::IfaceInfo b) { return a.name < b.name; });
+                /* 排序(网卡地址小的排在前面) */
+                std::sort(iter->begin(), iter->end(), [](utility::Net::IfaceInfo a, utility::Net::IfaceInfo b) {
+                    return utility::StrTool::toLower(utility::StrTool::join(a.mac, ":"))
+                           < utility::StrTool::toLower(utility::StrTool::join(b.mac, ":"));
+                });
                 findFlag = true;
                 break;
             }
