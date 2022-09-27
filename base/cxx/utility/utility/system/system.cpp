@@ -266,42 +266,62 @@ bool System::checkFileLock(const std::string& filename)
 
 void System::waitForTime(unsigned int maxMS, const std::function<bool()>& func, unsigned int loopGap)
 {
-    if (func)
+    if (0 == maxMS)
     {
-        auto endTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(maxMS);
-        while (0 == maxMS || std::chrono::steady_clock::now() < endTime)
+        if (func)
         {
-            if (func())
-            {
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(loopGap));
+            func();
         }
     }
     else
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(maxMS));
+        if (func)
+        {
+            auto endTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(maxMS);
+            while (std::chrono::steady_clock::now() < endTime)
+            {
+                if (func())
+                {
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(loopGap));
+            }
+        }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(maxMS));
+        }
     }
 }
 
 void System::waitForCount(unsigned int maxCount, const std::function<bool()>& func, unsigned int loopGap)
 {
-    if (func)
+    if (0 == maxCount)
     {
-        unsigned int count = 0;
-        while (0 == maxCount || count < maxCount)
+        if (func)
         {
-            if (func())
-            {
-                break;
-            }
-            ++count;
-            std::this_thread::sleep_for(std::chrono::milliseconds(loopGap));
+            func();
         }
     }
     else
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(maxCount * loopGap));
+        if (func)
+        {
+            unsigned int count = 0;
+            while (count < maxCount)
+            {
+                if (func())
+                {
+                    break;
+                }
+                ++count;
+                std::this_thread::sleep_for(std::chrono::milliseconds(loopGap));
+            }
+        }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(maxCount * loopGap));
+        }
     }
 }
 

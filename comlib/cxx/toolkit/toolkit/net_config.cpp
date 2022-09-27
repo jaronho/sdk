@@ -243,7 +243,7 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
     return netcardList;
 }
 
-bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>& macNameMap, int waitUp)
+bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>& macNameMap)
 {
     struct ModifyInfo
     {
@@ -303,8 +303,14 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
         const auto& mi = modifyList[i];
         /* step1: 修改网卡名(命名为正式名称) */
         std::string command = "ip link set " + TMP_PREFIX + mi.name + " name " + mi.name;
-        /* step2: 同步IP地址, 子网掩码, 广播地址 */
-        if (!mi.iface.ipv4.empty())
+        /* step2: 启动网卡 */
+        command += " && ip link set " + mi.name + " up";
+        /* step3: 同步IP地址, 子网掩码, 广播地址 */
+        if (mi.iface.ipv4.empty())
+        {
+            command += " && ip addr flush dev  " + mi.name;
+        }
+        else
         {
             command += " && ifconfig " + mi.name + " " + mi.iface.ipv4;
             if (!mi.iface.netmask.empty())
@@ -316,21 +322,8 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
                 command += " broadcast " + mi.iface.broadcast;
             }
         }
-        /* step3: 启动网卡 */
-        command += " && ip link set " + mi.name + " up";
         utility::System::runCmd(command);
     }
-    /* 延迟等待网卡启动完毕 */
-    utility::System::waitForTime(waitUp, [&]() {
-        for (size_t i = 0; i < modifyList.size(); ++i)
-        {
-            if (!isNetcardUp(modifyList[i].name)) /* 有网卡未启动 */
-            {
-                return false;
-            }
-        }
-        return true;
-    });
     return true;
 #endif
 }
