@@ -11,21 +11,25 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     find_path(PCAP_INCLUDE_DIR NAMES pcap.h)
     find_library(PCAP_LIBRARIES NAMES wpcap HINTS ${PCAP_INCLUDE_DIR}/../Lib/x64) # 如果工程要生成32位的, 则不需要加x64
 else ()
-    find_path(PCAP_INCLUDE_DIR NAMES pcap.h)
+    if ("$ENV{PCAP_ROOT}" STREQUAL "") # 如果有手动配置PCAP环境变量PCAP_ROOT, 则从环境变量中获取
+        find_path(PCAP_INCLUDE_DIR NAMES pcap.h)
+    else () # 自动查找
+        set(PCAP_INCLUDE_DIR $ENV{PCAP_ROOT}/include)
+    endif ()
     find_library(PCAP_LIBRARIES NAMES pcap HINTS ${PCAP_INCLUDE_DIR}/../lib)
 endif ()
 set(PCAP_ROOT_DIR ${PCAP_INCLUDE_DIR}/../)
 message(STATUS "Pcap root dir: ${PCAP_ROOT_DIR}")
 message(STATUS "Pcap include path: ${PCAP_INCLUDE_DIR}")
 message(STATUS "Pcap libraries: ${PCAP_LIBRARIES}")
-if("${PCAP_ROOT_DIR}" STREQUAL "PCAP_ROOT_DIR-NOTFOUND" OR 
-   "${PCAP_INCLUDE_DIR}" STREQUAL "PCAP_INCLUDE_DIR-NOTFOUND" OR 
-   "${PCAP_LIBRARIES}" STREQUAL "PCAP_LIBRARIES-NOTFOUND")
+if ("${PCAP_ROOT_DIR}" STREQUAL "PCAP_ROOT_DIR-NOTFOUND" OR
+        "${PCAP_INCLUDE_DIR}" STREQUAL "PCAP_INCLUDE_DIR-NOTFOUND" OR
+        "${PCAP_LIBRARIES}" STREQUAL "PCAP_LIBRARIES-NOTFOUND")
     message(WARNING "Pcap not found")
     return()
-else()
+else ()
     include_directories(${PCAP_INCLUDE_DIR})
-endif()
+endif ()
 
 [链接库]
 ${PCAP_LIBRARIES}
