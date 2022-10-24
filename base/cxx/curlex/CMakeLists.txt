@@ -12,7 +12,7 @@ find_package(CURL 7.76.1 REQUIRED)
 if(CURL_FOUND) # 注意: curl库区分ssl和非ssl
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         if(use_curl_staticlib)
-            add_definitions("-DCURL_STATICLIB") # 如果链接静态库则必须添加这个宏
+            add_definitions(-DCURL_STATICLIB) # 如果链接静态库则必须添加这个宏
         endif()
         set(CURL_INCLUDE_DIRS $ENV{CURL_HOME}/include) # 读取环境变量`CURL_HOME`的值
     endif()
