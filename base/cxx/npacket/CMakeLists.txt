@@ -11,9 +11,9 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     find_path(PCAP_INCLUDE_DIR NAMES pcap.h)
     find_library(PCAP_LIBRARIES NAMES wpcap HINTS ${PCAP_INCLUDE_DIR}/../Lib/x64) # 如果工程要生成32位的, 则不需要加x64
 else ()
-    if ("$ENV{PCAP_ROOT}" STREQUAL "") # 如果有手动配置PCAP环境变量PCAP_ROOT, 则从环境变量中获取
+    if ("$ENV{PCAP_ROOT}" STREQUAL "") # 自动查找
         find_path(PCAP_INCLUDE_DIR NAMES pcap.h)
-    else () # 自动查找
+    else () # 如果有手动配置PCAP环境变量PCAP_ROOT, 则从环境变量中获取
         set(PCAP_INCLUDE_DIR $ENV{PCAP_ROOT}/include)
     endif ()
     find_library(PCAP_LIBRARIES NAMES pcap HINTS ${PCAP_INCLUDE_DIR}/../lib)
