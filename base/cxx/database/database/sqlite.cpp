@@ -377,6 +377,16 @@ void Sqlite::disconnect()
     }
 }
 
+bool Sqlite::isConnected()
+{
+    std::lock_guard<std::recursive_mutex> locker(*m_mutex);
+    if (m_db)
+    {
+        return true;
+    }
+    return false;
+}
+
 std::shared_ptr<Sqlite::Stmt> Sqlite::createStmt(const std::string& sql)
 {
     if (sql.empty())

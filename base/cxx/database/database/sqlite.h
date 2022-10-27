@@ -186,6 +186,12 @@ public:
     void disconnect();
 
     /**
+     * @brief 是否已连接
+     * @return true-已连接, false-未连接
+     */
+    bool isConnected();
+
+    /**
      * @brief 创建预编译指令
      */
     std::shared_ptr<Stmt> createStmt(const std::string& sql);
