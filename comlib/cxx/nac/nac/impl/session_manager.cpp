@@ -68,7 +68,6 @@ public:
 
     void onResponse(const std::string& data)
     {
-        TRACE_LOG(m_logger, "收到响应数据, bizCode[{}], seqId[{}], dataLength[{}]", m_bizCode, m_seqId, data.size());
         stopTimer();
         if (m_responseCb)
         {
@@ -145,7 +144,7 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
         return -1;
     }
     /* 发送数据包 */
-    TRACE_LOG(m_logger, "准备发送数据, bizCode[{}], seqId[{}], dataLength[{}]", bizCode, seqId, data.size());
+    TRACE_LOG(m_logger, "准备发送数据, bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, pkt->size());
     const std::weak_ptr<SessionManager> wpSelf = shared_from_this();
     bool ret =
         adapter->sendPacket(pkt, [wpSelf, timeout, bizCode, seqId = pkt->seqId, callback](bool ok, size_t dataLength, size_t sentLength) {
@@ -156,20 +155,18 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
                 {
                     if (timeout > 0) /* 需要应答, 需等待服务器应答或超时再处理 */
                     {
-                        TRACE_LOG(self->m_logger, "数据发送成功(需要等待响应), bizCode[{}], seqId[{}], sentLength[{}]", bizCode, seqId,
-                                  sentLength);
+                        TRACE_LOG(self->m_logger, "数据发送成功(等待响应), bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, sentLength);
                         /* 这里不处理 */
                     }
                     else /* 不需要应答, 直接通知成功 */
                     {
-                        TRACE_LOG(self->m_logger, "数据发送成功(无需等待响应), bizCode[{}], seqId[{}], sentLength[{}]", bizCode, seqId,
-                                  sentLength);
+                        TRACE_LOG(self->m_logger, "数据发送成功(无需等待), bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, sentLength);
                         self->onResponseCallback(true, bizCode, seqId, false, callback);
                     }
                 }
                 else /* 发送失败 */
                 {
-                    WARN_LOG(self->m_logger, "数据发送失败, bizCode[{}], seqId[{}], sentLength[{}]", bizCode, seqId, sentLength);
+                    WARN_LOG(self->m_logger, "数据发送失败, bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, sentLength);
                     self->onResponseCallback(false, bizCode, seqId, timeout > 0, callback);
                 }
             }
@@ -217,11 +214,12 @@ void SessionManager::onProcessPacket(const std::shared_ptr<ProtocolAdapter::Pack
     /* 结果处理 */
     if (session) /* 请求响应 */
     {
+        TRACE_LOG(m_logger, "收到响应数据, bizCode[{}], seqId[{}], length[{}]", pkt->bizCode, pkt->seqId, pkt->size());
         session->onResponse(pkt->data);
     }
     else /* 主动通知 */
     {
-        TRACE_LOG(m_logger, "收到通知数据, bizCode[{}], seqId[{}], dataLength[{}]", pkt->bizCode, pkt->seqId, pkt->data.size());
+        TRACE_LOG(m_logger, "收到通知数据, bizCode[{}], seqId[{}], length[{}]", pkt->bizCode, pkt->seqId, pkt->size());
         if (m_msgReceiver)
         {
             m_msgReceiver(pkt->bizCode, pkt->seqId, pkt->data);

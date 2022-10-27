@@ -15,6 +15,14 @@ public:
      */
     struct Packet
     {
+        /**
+         * @brief 包大小=包头(业务数据长度内存空间 + 业务码长度内存空间 + 序列ID长度内存空间) + 包体(业务数据)
+         */
+        size_t size() const
+        {
+            return sizeof((int)data.size()) + sizeof(bizCode) + sizeof(seqId) + data.size();
+        }
+
         int32_t bizCode = 0; /* 业务码(4个字节) */
         int64_t seqId = 0; /* 序列ID(8个字节) */
         std::string data; /* 业务数据 */

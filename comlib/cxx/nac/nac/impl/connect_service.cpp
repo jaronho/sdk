@@ -230,7 +230,10 @@ void ConnectService::sendAuthMsg()
             auto ntp = std::chrono::steady_clock::now();
             authData = m_authDataGenerator();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
-            TRACE_LOG(m_logger, "生成鉴权数据耗时 {} 毫秒", elapsed.count());
+            if (elapsed.count() > 0)
+            {
+                TRACE_LOG(m_logger, "生成鉴权数据耗时 {} 毫秒", elapsed.count());
+            }
         }
         const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
         auto seqId = sessionManager->sendMsg(m_authBizCode, 0, authData, m_authTimeout,
@@ -373,7 +376,10 @@ void ConnectService::sendHeartbeatMsg()
                 auto ntp = std::chrono::steady_clock::now();
                 heartbeatData = m_heartbeatDataGenerator();
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
-                TRACE_LOG(m_logger, "生成心跳数据耗时 {} 毫秒", elapsed.count());
+                if (elapsed.count() > 0)
+                {
+                    TRACE_LOG(m_logger, "生成心跳数据耗时 {} 毫秒", elapsed.count());
+                }
             }
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
             sessionManager->sendMsg(m_heartbeatBizCode, 0, heartbeatData, 0,
