@@ -357,4 +357,29 @@ std::string StrTool::fillPlace(const std::string& str, char c, size_t length, bo
     }
     return (str + std::string(count, c));
 }
+
+char** StrTool::convertToArgv(const std::vector<std::string>& vec, int& argc)
+{
+    char** argv = NULL;
+    argc = vec.size();
+    if (argc > 0)
+    {
+        argv = (char**)malloc((argc + (size_t)1) * sizeof(char*)); /* 注意: 要多分配一个单元空间 */
+        if (argv)
+        {
+            for (int i = 0; i < argc; ++i)
+            {
+                const auto& str = vec[i];
+                argv[i] = (char*)malloc((str.size() + (size_t)1) * sizeof(char));
+                if (argv[i])
+                {
+                    memcpy(argv[i], str.c_str(), str.size());
+                    argv[i][str.size()] = '\0';
+                }
+            }
+            argv[argc] = NULL; /* 注意: 最后一个元素要设置为空指针 */
+        }
+    }
+    return argv;
+}
 } // namespace utility

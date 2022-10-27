@@ -61,13 +61,13 @@ void ByteArray::write16(std::vector<unsigned char>& v, int16_t n, bool bigEndium
 {
     if (bigEndium)
     {
-        v.emplace_back((n >> 8) & 0xFF);
-        v.emplace_back(n & 0xFF);
+        v.emplace_back((unsigned char)((n >> 8) & 0xFF));
+        v.emplace_back((unsigned char)(n & 0xFF));
     }
     else
     {
-        v.emplace_back(n & 0xFF);
-        v.emplace_back((n >> 8) & 0xFF);
+        v.emplace_back((unsigned char)(n & 0xFF));
+        v.emplace_back((unsigned char)((n >> 8) & 0xFF));
     }
 }
 
@@ -135,17 +135,17 @@ void ByteArray::write32(std::vector<unsigned char>& v, int32_t n, bool bigEndium
 {
     if (bigEndium)
     {
-        v.emplace_back((n >> 24) & 0xFF);
-        v.emplace_back((n >> 16) & 0xFF);
-        v.emplace_back((n >> 8) & 0xFF);
-        v.emplace_back(n & 0xFF);
+        v.emplace_back((unsigned char)((n >> 24) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 16) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 8) & 0xFF));
+        v.emplace_back((unsigned char)(n & 0xFF));
     }
     else
     {
-        v.emplace_back(n & 0xFF);
-        v.emplace_back((n >> 8) & 0xFF);
-        v.emplace_back((n >> 16) & 0xFF);
-        v.emplace_back((n >> 24) & 0xFF);
+        v.emplace_back((unsigned char)(n & 0xFF));
+        v.emplace_back((unsigned char)((n >> 8) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 16) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 24) & 0xFF));
     }
 }
 
@@ -229,25 +229,25 @@ void ByteArray::write64(std::vector<unsigned char>& v, int64_t n, bool bigEndium
 {
     if (bigEndium)
     {
-        v.emplace_back((n >> 56) & 0xFF);
-        v.emplace_back((n >> 48) & 0xFF);
-        v.emplace_back((n >> 40) & 0xFF);
-        v.emplace_back((n >> 32) & 0xFF);
-        v.emplace_back((n >> 24) & 0xFF);
-        v.emplace_back((n >> 16) & 0xFF);
-        v.emplace_back((n >> 8) & 0xFF);
-        v.emplace_back(n & 0xFF);
+        v.emplace_back((unsigned char)((n >> 56) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 48) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 40) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 32) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 24) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 16) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 8) & 0xFF));
+        v.emplace_back((unsigned char)(n & 0xFF));
     }
     else
     {
-        v.emplace_back(n & 0xFF);
-        v.emplace_back((n >> 8) & 0xFF);
-        v.emplace_back((n >> 16) & 0xFF);
-        v.emplace_back((n >> 24) & 0xFF);
-        v.emplace_back((n >> 32) & 0xFF);
-        v.emplace_back((n >> 40) & 0xFF);
-        v.emplace_back((n >> 48) & 0xFF);
-        v.emplace_back((n >> 56) & 0xFF);
+        v.emplace_back((unsigned char)(n & 0xFF));
+        v.emplace_back((unsigned char)((n >> 8) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 16) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 24) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 32) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 40) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 48) & 0xFF));
+        v.emplace_back((unsigned char)((n >> 56) & 0xFF));
     }
 }
 

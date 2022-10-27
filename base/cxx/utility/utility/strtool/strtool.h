@@ -166,5 +166,13 @@ public:
      * @param 补位后的字符串
      */
     static std::string fillPlace(const std::string& str, char c, size_t length, bool leftFlag = true);
+
+    /**
+     * @brief 把字符串数组转换为参数列表
+     * @param vec 字符串数组
+     * @param argc [输出]参数个数
+     * @return 参数列表(需要外部调用free释放内存)
+     */
+    static char** convertToArgv(const std::vector<std::string>& vec, int& argc);
 };
 } // namespace utility

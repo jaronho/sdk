@@ -243,25 +243,23 @@ bool System::checkFileLock(int fd)
 
 bool System::checkFileLock(const std::string& filename)
 {
+    bool ret = false;
 #ifdef _WIN32
     HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
-    if (!fd)
+    if (fd)
     {
-        return false;
+        ret = checkFileLock(fd);
+        CloseHandle(fd);
     }
-    bool ret = checkFileLock(fd);
-    CloseHandle(fd);
-    return ret;
 #else
     int fd = open(filename.c_str(), O_RDONLY);
-    if (fd <= 0) /* 文件不存在 */
+    if (fd > 0)
     {
-        return false;
+        ret = checkFileLock(fd);
+        close(fd);
     }
-    bool ret = checkFileLock(fd);
-    close(fd);
-    return ret;
 #endif
+    return ret;
 }
 
 void System::waitForTime(unsigned int maxMS, const std::function<bool()>& func, unsigned int loopGap)
