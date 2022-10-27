@@ -8,28 +8,56 @@ bool Config::m_writable = false;
 
 CfgValue::CfgValue(const std::string& value)
 {
-    m_ss << value;
+    m_value = value;
 }
 
-bool CfgValue::isValid()
+bool CfgValue::isValid() const
 {
-    return !m_ss.str().empty();
+    return !m_value.empty();
 }
 
-int CfgValue::toInt()
+int CfgValue::toInt() const
 {
     int value = 0;
-    m_ss >> value;
-    m_ss.clear();
+    try
+    {
+        value = std::atoi(m_value.c_str());
+    }
+    catch (...)
+    {
+    }
     return value;
 }
 
-std::string CfgValue::toString()
+long long CfgValue::toLongLong() const
 {
-    std::string value;
-    m_ss >> value;
-    m_ss.clear();
+    long long value = 0;
+    try
+    {
+        value = std::atoll(m_value.c_str());
+    }
+    catch (...)
+    {
+    }
     return value;
+}
+
+float CfgValue::toFloat() const
+{
+    float value = 0.0f;
+    try
+    {
+        value = std::atof(m_value.c_str());
+    }
+    catch (...)
+    {
+    }
+    return value;
+}
+
+std::string CfgValue::toString() const
+{
+    return m_value;
 }
 
 bool Config::init(const std::string& path, bool writable)

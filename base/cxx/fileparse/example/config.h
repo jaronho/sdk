@@ -23,22 +23,34 @@ public:
      * @brief 是否有效
      * @return true-有效, false-无效
      */
-    bool isValid();
+    bool isValid() const;
 
     /**
      * @brief 转为整型
      * @return 整型
      */
-    int toInt();
+    int toInt() const;
+
+    /**
+     * @brief 转为长整型
+     * @return 长整型
+     */
+    long long toLongLong() const;
+
+    /**
+     * @brief 转为浮点型
+     * @return 浮点型
+     */
+    float toFloat() const;
 
     /**
      * @brief 转为字符串
      * @return 字符串
      */
-    std::string toString();
+    std::string toString() const;
 
 private:
-    std::stringstream m_ss;
+    std::string m_value;
 };
 
 /**
