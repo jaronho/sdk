@@ -318,6 +318,19 @@ char* FileInfo::readAll(long long& fileSize, bool textFlag) const
     return fileData;
 }
 
+std::string FileInfo::readAll(bool textFlag) const
+{
+    std::string fileString;
+    long long fileSize;
+    char* fileData = readAll(fileSize, textFlag);
+    if (fileData)
+    {
+        fileString = fileData;
+        free(fileData);
+    }
+    return fileString;
+}
+
 char* FileInfo::read(size_t offset, size_t& count, bool textFlag) const
 {
     if (m_fullName.empty())
