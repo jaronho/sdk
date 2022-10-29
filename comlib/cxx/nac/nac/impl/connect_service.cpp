@@ -182,6 +182,8 @@ void ConnectService::onConnectStatusChanged(bool isConnected)
             if (ConnectState::connecting == m_connectState)
             {
                 updateConnectState(ConnectState::connected);
+                auto ntp = std::chrono::steady_clock::now();
+                m_lastRecvTime = m_lastSendTime = std::chrono::time_point_cast<std::chrono::seconds>(ntp).time_since_epoch().count();
                 startHeartbeatTimer();
                 startOfflineCheckTimer();
             }
@@ -267,6 +269,8 @@ void ConnectService::onAuthResult(bool ok, const std::string& data)
             {
                 INFO_LOG(m_logger, "鉴权成功.");
                 updateConnectState(ConnectState::connected);
+                auto ntp = std::chrono::steady_clock::now();
+                m_lastRecvTime = m_lastSendTime = std::chrono::time_point_cast<std::chrono::seconds>(ntp).time_since_epoch().count();
                 startHeartbeatTimer();
                 startOfflineCheckTimer();
                 return;
@@ -443,10 +447,16 @@ void ConnectService::onOfflineCheckTimer()
     auto tp = std::chrono::steady_clock::now();
     auto now = std::chrono::time_point_cast<std::chrono::seconds>(tp).time_since_epoch().count();
     bool isUnRecvServerData = false;
+    bool isUnSendServerData = false;
     /* 超过一定时间未收到服务端数据包(注意: 这里进行>判断, 不进行=判断), 表示掉线 */
     if ((now - m_lastRecvTime) > m_offlineTime)
     {
         isUnRecvServerData = true;
+        /* 超过一定时间向服务端发送数据包 */
+        if ((now - m_lastSendTime) > m_heartbeatFixedInterval)
+        {
+            isUnSendServerData = true;
+        }
     }
     bool isDataChannelClose = false;
     const auto dataChannel = m_wpDataChannel.lock();
@@ -475,8 +485,9 @@ void ConnectService::onOfflineCheckTimer()
                 lastSendHeartbeatDateTime = m_lastSendHeartbeatDateTime;
             }
             WARN_LOG(m_logger, "网络掉线(原因: {}, 最近发送心跳({}): {}, 最近接收包({}): {}, 最近发送包({}): {}, 掉线判定({}): {} 秒.",
-                     isDataChannelClose ? "通道被关闭)" : "长时间未收到包)", m_lastSendHeartbeatTime, lastSendHeartbeatDateTime,
-                     m_lastRecvTime, lastRecvDateTime, m_lastSendTime, lastSendDateTime, now, m_offlineTime);
+                     isDataChannelClose ? "通道被关闭)" : (isUnSendServerData ? "长时间未发送包" : "长时间未收到包)"),
+                     m_lastSendHeartbeatTime, lastSendHeartbeatDateTime, m_lastRecvTime, lastRecvDateTime, m_lastSendTime, lastSendDateTime,
+                     now, m_offlineTime);
             releaseConnection(DisconnectType::offline);
             updateConnectState(ConnectState::disconnected);
         }
