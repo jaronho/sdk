@@ -170,6 +170,8 @@ void ConnectService::onConnectStatusChanged(bool isConnected)
     stopTimeoutTimer();
     if (isConnected) /* 连接成功 */
     {
+        auto ntp = std::chrono::steady_clock::now();
+        m_lastRecvTime = m_lastSendTime = std::chrono::time_point_cast<std::chrono::seconds>(ntp).time_since_epoch().count();
         if (m_authBizCode > 0) /* 需要鉴权 */
         {
             if (ConnectState::connecting == m_connectState)
@@ -182,8 +184,6 @@ void ConnectService::onConnectStatusChanged(bool isConnected)
             if (ConnectState::connecting == m_connectState)
             {
                 updateConnectState(ConnectState::connected);
-                auto ntp = std::chrono::steady_clock::now();
-                m_lastRecvTime = m_lastSendTime = std::chrono::time_point_cast<std::chrono::seconds>(ntp).time_since_epoch().count();
                 startHeartbeatTimer();
                 startOfflineCheckTimer();
             }
@@ -269,8 +269,6 @@ void ConnectService::onAuthResult(bool ok, const std::string& data)
             {
                 INFO_LOG(m_logger, "鉴权成功.");
                 updateConnectState(ConnectState::connected);
-                auto ntp = std::chrono::steady_clock::now();
-                m_lastRecvTime = m_lastSendTime = std::chrono::time_point_cast<std::chrono::seconds>(ntp).time_since_epoch().count();
                 startHeartbeatTimer();
                 startOfflineCheckTimer();
                 return;
