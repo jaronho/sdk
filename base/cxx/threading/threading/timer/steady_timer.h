@@ -51,6 +51,28 @@ public:
      */
     void stop() override;
 
+    /**
+     * @brief 创建单次定时器
+     * @param name 名称(强烈建议设置唯一标识, 以方便后续诊断)
+     * @param interval 触发间隔(后续如果要改变间隔, 需要调用`setDelay`进行设置)
+     * @param func 回调
+     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`runOnce`接管
+     * @return 单次执行定时器
+     */
+    static std::shared_ptr<SteadyTimer> onceTimer(const std::string& name, const std::chrono::steady_clock::duration& interval,
+                                                  const std::function<void()>& func, const ExecutorPtr& executor = nullptr);
+
+    /**
+     * @brief 创建循环定时器
+     * @param name 名称(强烈建议设置唯一标识, 以方便后续诊断)
+     * @param interval 触发间隔(后续如果要改变间隔, 需要调用`setInterval`进行设置)
+     * @param func 回调
+     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`runOnce`接管
+     * @return 单次执行定时器
+     */
+    static std::shared_ptr<SteadyTimer> loopTimer(const std::string& name, const std::chrono::steady_clock::duration& interval,
+                                                  const std::function<void()>& func, const ExecutorPtr& executor = nullptr);
+
 private:
     /**
      * @brief 触发恢复

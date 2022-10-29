@@ -83,6 +83,18 @@ void SteadyTimer::stop()
     }
 }
 
+std::shared_ptr<SteadyTimer> SteadyTimer::onceTimer(const std::string& name, const std::chrono::steady_clock::duration& interval,
+                                                    const std::function<void()>& func, const ExecutorPtr& executor)
+{
+    return std::make_shared<threading::SteadyTimer>(name, interval, std::chrono::steady_clock::duration::zero(), func, executor);
+}
+
+std::shared_ptr<SteadyTimer> SteadyTimer::loopTimer(const std::string& name, const std::chrono::steady_clock::duration& interval,
+                                                    const std::function<void()>& func, const ExecutorPtr& executor)
+{
+    return std::make_shared<threading::SteadyTimer>(name, std::chrono::steady_clock::duration::zero(), interval, func, executor);
+}
+
 void SteadyTimer::onRecover()
 {
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
