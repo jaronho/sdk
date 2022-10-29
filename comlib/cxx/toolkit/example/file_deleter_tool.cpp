@@ -54,33 +54,26 @@ int main(int argc, char** argv)
     }
     else
     {
-        utility::FileInfo fi(fullFile);
-        long long fileSize;
-        char* fileData = fi.readAll(fileSize, true);
-        if (fileData)
+        auto arr = nlohmann::parse(utility::FileInfo(fullFile).readAll(true));
+        if (arr.is_array())
         {
-            auto arr = nlohmann::parse(fileData);
-            if (arr.is_array())
+            for (size_t i = 0; i < arr.size(); ++i)
             {
-                for (size_t i = 0; i < arr.size(); ++i)
+                auto folder = nlohmann::getter<std::string>(arr[i], "folder");
+                auto both = nlohmann::getter<int>(arr[i], "both");
+                auto expireTime = nlohmann::getter<int>(arr[i], "expire");
+                if (folder.empty() || !utility::PathInfo(folder).exist())
                 {
-                    auto folder = nlohmann::getter<std::string>(arr[i], "folder");
-                    auto both = nlohmann::getter<int>(arr[i], "both");
-                    auto expireTime = nlohmann::getter<int>(arr[i], "expire");
-                    if (folder.empty() || !utility::PathInfo(folder).exist())
-                    {
-                        printf("folder '%s' is not exist\n", folder.c_str());
-                        continue;
-                    }
-                    if (expireTime <= 0)
-                    {
-                        printf("expireTime '%d' must > 0\n", expireTime);
-                        continue;
-                    }
-                    cfgList.emplace_back(toolkit::FileDeleteConfig(folder, both > 0 ? true : false, expireTime));
+                    printf("folder '%s' is not exist\n", folder.c_str());
+                    continue;
                 }
+                if (expireTime <= 0)
+                {
+                    printf("expireTime '%d' must > 0\n", expireTime);
+                    continue;
+                }
+                cfgList.emplace_back(toolkit::FileDeleteConfig(folder, both > 0 ? true : false, expireTime));
             }
-            free(fileData);
         }
         if (cfgList.empty())
         {
