@@ -301,7 +301,7 @@ void ConnectService::startTimetoutTimer()
                         self->onTimetoutTimer();
                     }
                 },
-                dataChannel ? dataChannel->getPktExecutor().lock() : nullptr);
+                dataChannel ? dataChannel->getTimerExecutor().lock() : nullptr);
         }
         m_timeoutTimer->start();
     }
@@ -339,7 +339,7 @@ void ConnectService::startHeartbeatTimer()
                         self->onHeartbeatTimer();
                     }
                 },
-                dataChannel ? dataChannel->getPktExecutor().lock() : nullptr);
+                dataChannel ? dataChannel->getTimerExecutor().lock() : nullptr);
         }
         m_heartbeatTimer->start();
     }
@@ -434,7 +434,7 @@ void ConnectService::startOfflineCheckTimer()
                         self->onOfflineCheckTimer();
                     }
                 },
-                dataChannel ? dataChannel->getPktExecutor().lock() : nullptr);
+                dataChannel ? dataChannel->getTimerExecutor().lock() : nullptr);
         }
         m_offlineCheckTimer->start();
     }

@@ -24,9 +24,9 @@ public:
 
 public:
     /**
-     * @brief 获取报文处理线程
+     * @brief 获取定时器处理线程
      */
-    std::weak_ptr<threading::Executor> getPktExecutor();
+    std::weak_ptr<threading::Executor> getTimerExecutor();
 
     /**
      * @brief 连接(异步)
@@ -110,6 +110,7 @@ private:
 private:
     threading::ExecutorPtr m_tcpExecutor = threading::ThreadProxy::createAsioExecutor("nac::loop", 1); /* TCP报文收发线程 */
     threading::ExecutorPtr m_pktExecutor = threading::ThreadProxy::createAsioExecutor("nac::packet", 1); /* 报文处理线程 */
+    threading::ExecutorPtr m_timerExecutor = threading::ThreadProxy::createAsioExecutor("nac::timer", 1); /* 定时器处理线程 */
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* TCP客户端 */
     logger::Logger m_logger = logger::LoggerManager::getLogger("NAC");
 };

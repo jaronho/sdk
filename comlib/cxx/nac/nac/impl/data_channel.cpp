@@ -2,9 +2,9 @@
 
 namespace nac
 {
-std::weak_ptr<threading::Executor> DataChannel::getPktExecutor()
+std::weak_ptr<threading::Executor> DataChannel::getTimerExecutor()
 {
-    return m_pktExecutor;
+    return m_timerExecutor;
 }
 
 bool DataChannel::connect(const std::string& address, unsigned short port, bool filePEM, const std::string& certFile,

@@ -169,7 +169,7 @@ bool AccessCtrl::start(const AccessConfig& cfg)
         {
             m_retryTimer = threading::SteadyTimer::onceTimer(
                 "nac.connect.retry", std::chrono::seconds(cfg.retryInterval[0]), [&]() { onRetryTimer(); },
-                m_dataChannel->getPktExecutor().lock());
+                m_dataChannel->getTimerExecutor().lock());
         }
     }
     /* 首次连接 */

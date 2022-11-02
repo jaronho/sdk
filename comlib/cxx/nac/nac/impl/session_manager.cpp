@@ -131,7 +131,7 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
     /* 添加路由 */
     auto session = std::make_shared<Session>(bizCode, pkt->seqId, shared_from_this(), callback);
     const auto dataChannel = m_wpDataChannel.lock();
-    if (session->startTimer(timeout, dataChannel ? dataChannel->getPktExecutor().lock() : nullptr))
+    if (session->startTimer(timeout, dataChannel ? dataChannel->getTimerExecutor().lock() : nullptr))
     {
         std::lock_guard<std::mutex> locker(m_mutexSessionMap);
         m_sessionMap.emplace(pkt->seqId, session);
@@ -215,14 +215,26 @@ void SessionManager::onProcessPacket(const std::shared_ptr<ProtocolAdapter::Pack
     if (session) /* 请求响应 */
     {
         TRACE_LOG(m_logger, "收到响应数据, bizCode[{}], seqId[{}], length[{}]", pkt->bizCode, pkt->seqId, pkt->size());
+        auto ntp = std::chrono::steady_clock::now();
         session->onResponse(pkt->data);
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
+        if (elapsed.count() > 0)
+        {
+            TRACE_LOG(m_logger, "响应数据处理耗时 {} 毫秒", elapsed.count());
+        }
     }
     else /* 主动通知 */
     {
         TRACE_LOG(m_logger, "收到通知数据, bizCode[{}], seqId[{}], length[{}]", pkt->bizCode, pkt->seqId, pkt->size());
         if (m_msgReceiver)
         {
+            auto ntp = std::chrono::steady_clock::now();
             m_msgReceiver(pkt->bizCode, pkt->seqId, pkt->data);
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
+            if (elapsed.count() > 0)
+            {
+                TRACE_LOG(m_logger, "通知数据处理耗时 {} 毫秒", elapsed.count());
+            }
         }
     }
 }
