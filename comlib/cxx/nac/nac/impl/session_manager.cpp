@@ -144,7 +144,7 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
         return -1;
     }
     /* 发送数据包 */
-    TRACE_LOG(m_logger, "准备发送数据, bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, pkt->size());
+    TRACE_LOG(m_logger, "准备发送数据, bizCode[{}], seqId[{}], length[{}]", bizCode, pkt->seqId, pkt->size());
     const std::weak_ptr<SessionManager> wpSelf = shared_from_this();
     bool ret =
         adapter->sendPacket(pkt, [wpSelf, timeout, bizCode, seqId = pkt->seqId, callback](bool ok, size_t dataLength, size_t sentLength) {
@@ -220,7 +220,8 @@ void SessionManager::onProcessPacket(const std::shared_ptr<ProtocolAdapter::Pack
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
         if (elapsed.count() > 0)
         {
-            TRACE_LOG(m_logger, "响应数据处理耗时 {} 毫秒", elapsed.count());
+            WARN_LOG(m_logger, "响应数据, bizCode[{}], seqId[{}], length[{}], 处理耗时 {} 毫秒", pkt->bizCode, pkt->seqId, pkt->size(),
+                     elapsed.count());
         }
     }
     else /* 主动通知 */
@@ -233,7 +234,8 @@ void SessionManager::onProcessPacket(const std::shared_ptr<ProtocolAdapter::Pack
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
             if (elapsed.count() > 0)
             {
-                TRACE_LOG(m_logger, "通知数据处理耗时 {} 毫秒", elapsed.count());
+                WARN_LOG(m_logger, "通知数据, , bizCode[{}], seqId[{}], length[{}], 处理耗时 {} 毫秒", pkt->bizCode, pkt->seqId,
+                         pkt->size(), elapsed.count());
             }
         }
     }

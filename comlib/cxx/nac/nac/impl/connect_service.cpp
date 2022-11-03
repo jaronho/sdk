@@ -234,7 +234,7 @@ void ConnectService::sendAuthMsg()
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
             if (elapsed.count() > 0)
             {
-                TRACE_LOG(m_logger, "生成鉴权数据耗时 {} 毫秒", elapsed.count());
+                WARN_LOG(m_logger, "生成鉴权数据耗时 {} 毫秒", elapsed.count());
             }
         }
         const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
@@ -380,7 +380,7 @@ void ConnectService::sendHeartbeatMsg()
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
                 if (elapsed.count() > 0)
                 {
-                    TRACE_LOG(m_logger, "生成心跳数据耗时 {} 毫秒", elapsed.count());
+                    WARN_LOG(m_logger, "生成心跳数据耗时 {} 毫秒", elapsed.count());
                 }
             }
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
