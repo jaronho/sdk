@@ -30,9 +30,9 @@ void LoggerManager::start(const LogConfig& cfg, const std::string& defultTagName
 
 Logger LoggerManager::getLogger(const std::string& tagName, int level, const std::string& loggerName)
 {
+    std::lock_guard<std::mutex> locker(m_mutex);
     auto name = loggerName.empty() ? m_logCfg.name : loggerName;
     auto tag = tagName.empty() ? m_defaultTagName : tagName;
-    std::lock_guard<std::mutex> locker(m_mutex);
     auto iter = m_loggerMap.find(name);
     if (m_loggerMap.end() != iter)
     {
@@ -49,6 +49,39 @@ Logger LoggerManager::getLogger(const std::string& tagName, int level, const std
     InnerLoggerPtr innerLogger = createInnerLogger(cfg);
     m_loggerMap.insert(std::make_pair(name, innerLogger));
     return Logger(tag, innerLogger);
+}
+
+int LoggerManager::getLevel(const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    auto name = loggerName.empty() ? m_logCfg.name : loggerName;
+    auto iter = m_loggerMap.find(name);
+    if (m_loggerMap.end() == iter)
+    {
+        return m_logCfg.level;
+    }
+    return iter->second->getLevel();
+}
+
+void LoggerManager::setLevel(int level, const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    level = level < 0 ? m_logCfg.level : level;
+    if (loggerName.empty())
+    {
+        for (auto iter = m_loggerMap.begin(); m_loggerMap.end() != iter; ++iter)
+        {
+            iter->second->setLevel(level);
+        }
+    }
+    else
+    {
+        auto iter = m_loggerMap.find(loggerName);
+        if (m_loggerMap.end() != iter)
+        {
+            iter->second->setLevel(level);
+        }
+    }
 }
 
 InnerLoggerPtr LoggerManager::createInnerLogger(const LogConfig& cfg)

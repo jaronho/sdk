@@ -35,12 +35,16 @@
 #define ERROR_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, error, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
 #define FATAL_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, fatal, __FILE__, __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
 #elif (2 == ENABLE_LOGGER_DETAIL) /* 显示: [文件名 行号 函数名] 内容 */
-#define TRACE_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, trace, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define DEBUG_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, debug, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define TRACE_LOG(logger, f, ...) \
+    __LOGGER_LOG_IMPL__(logger, trace, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define DEBUG_LOG(logger, f, ...) \
+    __LOGGER_LOG_IMPL__(logger, debug, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
 #define INFO_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, info, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
 #define WARN_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, warn, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define ERROR_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, error, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
-#define FATAL_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, fatal, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define ERROR_LOG(logger, f, ...) \
+    __LOGGER_LOG_IMPL__(logger, error, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
+#define FATAL_LOG(logger, f, ...) \
+    __LOGGER_LOG_IMPL__(logger, fatal, __LOGGER_FILENAME__(__FILE__), __LINE__, __FUNCTION__, f, ##__VA_ARGS__)
 #elif (3 == ENABLE_LOGGER_DETAIL) /* 显示: [文件名(全路径) 行号] 内容 */
 #define TRACE_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, trace, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
 #define DEBUG_LOG(logger, f, ...) __LOGGER_LOG_IMPL__(logger, debug, __FILE__, __LINE__, "", f, ##__VA_ARGS__)
@@ -89,7 +93,7 @@ public:
     /**
      * @brief 启动日志
      * @param cfg 配置
-     * @param defultTagName 默认的日志标签
+     * @param defultTagName 默认的日志标签(选填)
      */
     static void start(const LogConfig& cfg, const std::string& defultTagName = std::string());
 
@@ -97,10 +101,24 @@ public:
      * @brief 获取日志记录器
      * @param tagName 日志标签
      * @param level 日志等级, -1表示使用配置中的等级
-     * @param loggerName 日志记录器名称
+     * @param loggerName 日志记录器名称(选填)
      * @return 日志记录器
      */
     static Logger getLogger(const std::string& tagName = std::string(), int level = -1, const std::string& loggerName = std::string());
+
+    /**
+     * @brief 获取日志等级
+     * @param loggerName 日志记录器名称(选填)
+     * @return 日志等级
+     */
+    static int getLevel(const std::string& loggerName = std::string());
+
+    /**
+     * @brief 设置日志等级
+     * @param level 日志等级
+     * @param loggerName 日志记录器名称(选填)
+     */
+    static void setLevel(int level, const std::string& loggerName = std::string());
 
 private:
     /**
