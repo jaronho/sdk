@@ -92,6 +92,11 @@ void AsyncTask::addToFinisherList(const std::shared_ptr<AsyncTask>& task)
     }
 }
 
+ExecutorPtr AsyncProxy::getExecutor()
+{
+    return s_workerThreads;
+}
+
 void AsyncProxy::start(size_t threadCount)
 {
     if (!s_workerThreads)

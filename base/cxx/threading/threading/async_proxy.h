@@ -38,6 +38,12 @@ class AsyncProxy final
 {
 public:
     /**
+     * @brief 获取线程池
+     * @return 线程池
+     */
+    static ExecutorPtr getExecutor();
+
+    /**
      * @brief 启动模块
      * @param threadCount 用于执行异步任务的线程个数         
      */
