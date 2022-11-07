@@ -18,7 +18,7 @@ public:
      * @brief 构造函数
      * @param name 名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param func 回调
-     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`runOnce`接管
+     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`tryOnce`或`waitOnce`接管
      */
     Timer(const std::string& name, const std::function<void()>& func, const ExecutorPtr& executor = nullptr);
 
@@ -53,10 +53,16 @@ public:
     virtual void stop() = 0;
 
     /**
-     * @brief 运行单次(用于监听触发回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
+     * @brief 尝试单次运行(用于监听触发回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
      *        注意: 如果定时器有指定任务触发回调的执行线程, 则其回调不受该接口接管
      */
-    static void runOnce();
+    static void tryOnce();
+
+    /**
+     * @brief 等待单次运行(阻塞, 用于监听触发回调), 建议在单独线程中调用
+     *        注意: 如果定时器有指定任务触发回调的执行线程, 则其回调不受该接口接管
+     */
+    static void waitOnce();
 
 protected:
     /**
@@ -69,6 +75,13 @@ protected:
      * @param timer 定时器
      */
     void addToTriggerList(const std::shared_ptr<Timer>& timer);
+
+private:
+    /**
+     * @brief 处理触发器
+     * @param tryFlag 是否尝试, true-尝试(非阻塞), false-等待(阻塞)
+     */
+    static void handleTrigger(bool tryFlag);
 
 protected:
     std::function<void()> m_func = nullptr; /* 触发执行函数 */

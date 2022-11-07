@@ -21,7 +21,7 @@ public:
      * @param delay 首次触发的延时, <=0表示马上触发
      * @param interval 触发间隔, <=0表示不重复触发
      * @param func 回调
-     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`runOnce`接管
+     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`tryOnce`或`waitOnce`接管
      */
     SteadyTimer(const std::string& name, const std::chrono::steady_clock::duration& delay,
                 const std::chrono::steady_clock::duration& interval, const std::function<void()>& func,
@@ -56,7 +56,7 @@ public:
      * @param name 名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param interval 触发间隔(后续如果要改变间隔, 需要调用`setDelay`进行设置)
      * @param func 回调
-     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`runOnce`接管
+     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`tryOnce`或`waitOnce`接管
      * @return 单次执行定时器
      */
     static std::shared_ptr<SteadyTimer> onceTimer(const std::string& name, const std::chrono::steady_clock::duration& interval,
@@ -67,7 +67,7 @@ public:
      * @param name 名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param interval 触发间隔(后续如果要改变间隔, 需要调用`setInterval`进行设置)
      * @param func 回调
-     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`runOnce`接管
+     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`tryOnce`或`waitOnce`接管
      * @return 单次执行定时器
      */
     static std::shared_ptr<SteadyTimer> loopTimer(const std::string& name, const std::chrono::steady_clock::duration& interval,

@@ -1,11 +1,11 @@
 #include "timer.h"
 
 #include <chrono>
-#include <list>
 #include <mutex>
 #include <thread>
 
 #include "../diagnose/diagnose.h"
+#include "../safe_queue.h"
 
 namespace threading
 {
@@ -69,8 +69,7 @@ static std::mutex s_mutex;
 static std::unique_ptr<boost::asio::io_context> s_context;
 static std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> s_work;
 static std::unique_ptr<std::thread> s_thread; /* 定时器线程 */
-static std::mutex s_mutexTriggerList;
-static std::list<std::shared_ptr<Trigger>> s_triggerList; /* 触发器列表 */
+static SafeQueue<std::shared_ptr<Trigger>> s_triggerQueue; /* 触发器队列 */
 
 Timer::Timer(const std::string& name, const std::function<void()>& func, const ExecutorPtr& executor)
     : m_name(name), m_func(func), m_executor(executor), m_started(false)
@@ -127,20 +126,83 @@ bool Timer::isStarted() const
     return m_started;
 }
 
-void Timer::runOnce()
+void Timer::tryOnce()
 {
-    /* 获取首个触发器 */
-    std::shared_ptr<Trigger> trigger = nullptr;
+    handleTrigger(true);
+}
+
+void Timer::waitOnce()
+{
+    handleTrigger(false);
+}
+
+boost::asio::io_context& Timer::getContext()
+{
+    return (*s_context);
+}
+
+void Timer::addToTriggerList(const std::shared_ptr<Timer>& timer)
+{
+    if (!timer)
     {
-        std::lock_guard<std::mutex> locker(s_mutexTriggerList);
-        if (s_triggerList.empty())
-        {
-            return;
-        }
-        trigger = *(s_triggerList.begin());
-        s_triggerList.pop_front();
+        return;
     }
-    /* 执行触发器 */
+    /* 查询当前触发器数量和最早的触发器ID */
+    int64_t oldestTriggerId = 0;
+    std::shared_ptr<Trigger> trigger = nullptr;
+    int triggerCount = s_triggerQueue.tryFront(trigger);
+    if (triggerCount > 0 && trigger)
+    {
+        oldestTriggerId = trigger->id;
+    }
+    /* 计算触发器ID */
+    static int64_t s_triggerTimestamp = 0;
+    static int s_triggerNum = 0;
+    auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
+    if (nt == s_triggerTimestamp)
+    {
+        ++s_triggerNum;
+    }
+    else
+    {
+        s_triggerNum = 0;
+        s_triggerTimestamp = nt;
+    }
+    int64_t triggerId = (s_triggerTimestamp << 12) + (s_triggerNum & 0xFFF);
+    /* 添加到触发器列表 */
+    auto discardType = Diagnose::onTriggerCreated(triggerCount, oldestTriggerId, triggerId, timer.get());
+    if (DiscardType::discard_newest == discardType) /* 丢弃最新 */
+    {
+        return;
+    }
+    trigger = std::make_shared<Trigger>();
+    trigger->id = triggerId;
+    trigger->wpTimer = timer;
+    if (DiscardType::discard_oldest == discardType) /* 丢弃最早 */
+    {
+        s_triggerQueue.push(trigger, 1);
+    }
+    else if (DiscardType::discard_all == discardType) /* 丢弃所有 */
+    {
+        s_triggerQueue.push(trigger, 2);
+    }
+    else
+    {
+        s_triggerQueue.push(trigger, 0);
+    }
+}
+
+void Timer::handleTrigger(bool tryFlag)
+{
+    std::shared_ptr<Trigger> trigger = nullptr;
+    if (tryFlag)
+    {
+        s_triggerQueue.tryPop(trigger);
+    }
+    else
+    {
+        trigger = s_triggerQueue.waitPop();
+    }
     if (trigger)
     {
         const auto timer = trigger->wpTimer.lock();
@@ -161,67 +223,6 @@ void Timer::runOnce()
                 Diagnose::onTriggerException(trigger->id, timer.get(), "unknown exception");
             }
         }
-    }
-}
-
-boost::asio::io_context& Timer::getContext()
-{
-    return (*s_context);
-}
-
-void Timer::addToTriggerList(const std::shared_ptr<Timer>& timer)
-{
-    if (!timer)
-    {
-        return;
-    }
-    /* 查询当前触发器数量和最早的触发器ID */
-    int triggerCount;
-    int64_t oldestTriggerId = 0;
-    std::function<DiscardType(int totalCount)> triggerDiscardFunc;
-    {
-        std::lock_guard<std::mutex> locker(s_mutexTriggerList);
-        triggerCount = s_triggerList.size();
-        if (triggerCount > 0)
-        {
-            oldestTriggerId = (*(s_triggerList.begin()))->id;
-        }
-    }
-    /* 计算触发器ID */
-    static int64_t s_triggerTimestamp = 0;
-    static int s_triggerNum = 0;
-    auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (nt == s_triggerTimestamp)
-    {
-        ++s_triggerNum;
-    }
-    else
-    {
-        s_triggerNum = 0;
-        s_triggerTimestamp = nt;
-    }
-    int64_t triggerId = (s_triggerTimestamp << 12) + (s_triggerNum & 0xFFF);
-    /* 添加到触发器列表 */
-    auto discardType = Diagnose::onTriggerCreated(triggerCount, oldestTriggerId, triggerId, timer.get());
-    {
-        std::lock_guard<std::mutex> locker(s_mutexTriggerList);
-        switch (discardType)
-        {
-        case DiscardType::discard_newest: /* 丢弃最新 */
-            return;
-        case DiscardType::discard_oldest: /* 丢弃最早 */
-            s_triggerList.pop_front();
-            break;
-        case DiscardType::discard_all: /* 丢弃所有 */
-            s_triggerList.clear();
-            break;
-        default: /* 不丢弃(可能会内存持续上涨) */
-            break;
-        }
-        auto trigger = std::make_shared<Trigger>();
-        trigger->id = triggerId;
-        trigger->wpTimer = timer;
-        s_triggerList.emplace_back(trigger);
     }
 }
 } // namespace threading

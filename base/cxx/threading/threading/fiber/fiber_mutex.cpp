@@ -2,20 +2,20 @@
 
 namespace threading
 {
-FiberMutex::FiberMutex() : m_lock(std::make_unique<boost::fibers::mutex>()) {}
+FiberMutex::FiberMutex() : m_locker(std::make_unique<boost::fibers::mutex>()) {}
 
 void FiberMutex::lock()
 {
-    m_lock->lock();
+    m_locker->lock();
 }
 
 void FiberMutex::unlock()
 {
-    m_lock->unlock();
+    m_locker->unlock();
 }
 
 bool FiberMutex::tryLock()
 {
-    return m_lock->try_lock();
+    return m_locker->try_lock();
 }
 } // namespace threading

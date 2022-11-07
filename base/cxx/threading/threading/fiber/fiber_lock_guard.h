@@ -12,11 +12,11 @@ class FiberLockGuard final
 public:
     /**
      * @brief 构造函数, 同时上锁
-     * @param lock 对应锁的对象
+     * @param locker 对应锁的对象
      */
-    FiberLockGuard(LockType& lock) : m_lock(lock)
+    FiberLockGuard(LockType& locker) : m_locker(locker)
     {
-        m_lock.Lock();
+        m_locker.Lock();
     }
 
     /**
@@ -24,10 +24,10 @@ public:
      */
     ~FiberLockGuard()
     {
-        m_lock.Unlock();
+        m_locker.Unlock();
     }
 
 private:
-    LockType& m_lock; /* 锁对象 */
+    LockType& m_locker; /* 锁对象 */
 };
 } // namespace threading

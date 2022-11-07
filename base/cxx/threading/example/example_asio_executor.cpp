@@ -94,8 +94,8 @@ int main()
             },
             [&]() { printf("----- [%d:%d] async func finished\n", mainPid, threading::Platform::getThreadId()); });
         /* 监听定时器回调 */
-        threading::AsyncProxy::runOnce();
-        threading::Timer::runOnce();
+        threading::AsyncProxy::tryOnce();
+        threading::Timer::tryOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }

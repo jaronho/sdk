@@ -32,6 +32,6 @@ public:
     bool tryLock();
 
 private:
-    std::unique_ptr<boost::fibers::mutex> m_lock; /* 内部使用boost的fiber锁实现 */
+    std::unique_ptr<boost::fibers::mutex> m_locker; /* 内部使用boost的fiber锁实现 */
 };
 } // namespace threading

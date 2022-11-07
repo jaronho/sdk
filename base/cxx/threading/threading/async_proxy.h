@@ -1,7 +1,5 @@
 #pragma once
 #include <chrono>
-#include <list>
-#include <mutex>
 
 #include "thread_proxy.hpp"
 
@@ -19,7 +17,7 @@ public:
 
     std::function<void()> func = nullptr; /* 执行函数(在worker线程调用) */
     std::function<void()> finishCb = nullptr; /* 结束回调(在主逻辑线程调用, 一般是在主线程) */
-    ExecutorPtr finishExecutor = nullptr; /* 指定结束回调的执行线程(选填), 若非空则其不受runOnce影响 */
+    ExecutorPtr finishExecutor = nullptr; /* 指定结束回调的执行线程(选填), 若非空则其不受`tryOnce`或`waitOnce`影响 */
 
 private:
     /**
@@ -55,10 +53,16 @@ public:
     static void stop();
 
     /**
-     * @brief 运行单次(用于监听结束回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
+     * @brief 尝试单次运行(用于监听结束回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
      *        注意: 如果调用execute时有指定任务结束回调的执行线程, 则其回调不受该接口接管
      */
-    static void runOnce();
+    static void tryOnce();
+
+    /**
+     * @brief 等待单次运行(阻塞, 用于监听结束回调), 建议在单独线程中调用
+     *        注意: 如果调用execute时有指定任务结束回调的执行线程, 则其回调不受该接口接管
+     */
+    static void waitOnce();
 
     /**
      * @brief 执行异步任务
@@ -71,9 +75,16 @@ public:
      * @param taskName 任务名(强烈建议设置唯一标识, 以方便后续诊断)
      * @param func 异步任务执行函数(在worker线程调用)
      * @param finishCb 结束回调(在主逻辑线程调用)
-     * @param finishExecutor 指定结束回调的执行线程(选填), 若非空则其回调不受runOnce接管
+     * @param finishExecutor 指定结束回调的执行线程(选填), 若非空则其回调不受`tryOnce`或`waitOnce`接管
      */
     static void execute(const std::string& taskName, const std::function<void()>& func, const std::function<void()>& finishCb = nullptr,
                         const ExecutorPtr& finishExecutor = nullptr);
+
+private:
+    /**
+     * @brief 处理结束器
+     * @param tryFlag 是否尝试, true-尝试(非阻塞), false-等待(阻塞)
+     */
+    static void handleFinisher(bool tryFlag);
 };
 } // namespace threading

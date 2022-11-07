@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "diagnose/diagnose.h"
+#include "safe_queue.h"
 
 namespace threading
 {
@@ -16,8 +17,7 @@ struct Finisher
 };
 
 static ExecutorPtr s_workerThreads = nullptr; /* 工作线程池 */
-static std::mutex s_mutexFinisherList;
-static std::list<std::shared_ptr<Finisher>> s_finisherList; /* 结束器列表 */
+static SafeQueue<std::shared_ptr<Finisher>> s_finisherQueue; /* 结束器队列 */
 
 AsyncTask::AsyncTask(const std::string& name) : Task(name) {}
 
@@ -43,16 +43,12 @@ void AsyncTask::run()
 void AsyncTask::addToFinisherList(const std::shared_ptr<AsyncTask>& task)
 {
     /* 查询当前结束器数量和最早的结束器ID */
-    int finisherCount;
     int64_t oldestFinisherId = 0;
-    std::function<DiscardType(int totalCount)> finisherDiscardFunc;
+    std::shared_ptr<Finisher> finisher = nullptr;
+    int finisherCount = s_finisherQueue.tryFront(finisher);
+    if (finisherCount > 0 && finisher)
     {
-        std::lock_guard<std::mutex> locker(s_mutexFinisherList);
-        finisherCount = s_finisherList.size();
-        if (finisherCount > 0)
-        {
-            oldestFinisherId = (*(s_finisherList.begin()))->id;
-        }
+        oldestFinisherId = finisher->id;
     }
     /* 计算触发器ID */
     static int64_t s_finisherTimestamp = 0;
@@ -70,25 +66,24 @@ void AsyncTask::addToFinisherList(const std::shared_ptr<AsyncTask>& task)
     int64_t finisherId = (s_finisherTimestamp << 12) + (s_finisherNum & 0xFFF);
     /* 添加到结束器列表 */
     auto discardType = Diagnose::onFinisherCreated(finisherCount, oldestFinisherId, finisherId, task.get());
+    if (DiscardType::discard_newest == discardType) /* 丢弃最新 */
     {
-        std::lock_guard<std::mutex> locker(s_mutexFinisherList);
-        switch (discardType)
-        {
-        case DiscardType::discard_newest: /* 丢弃最新 */
-            return;
-        case DiscardType::discard_oldest: /* 丢弃最早 */
-            s_finisherList.pop_front();
-            break;
-        case DiscardType::discard_all: /* 丢弃所有 */
-            s_finisherList.clear();
-            break;
-        default: /* 不丢弃(可能会内存持续上涨) */
-            break;
-        }
-        auto finisher = std::make_shared<Finisher>();
-        finisher->id = finisherId;
-        finisher->task = task;
-        s_finisherList.emplace_back(finisher);
+        return;
+    }
+    finisher = std::make_shared<Finisher>();
+    finisher->id = finisherId;
+    finisher->task = task;
+    if (DiscardType::discard_oldest == discardType) /* 丢弃最早 */
+    {
+        s_finisherQueue.push(finisher, 1);
+    }
+    else if (DiscardType::discard_all == discardType) /* 丢弃所有 */
+    {
+        s_finisherQueue.push(finisher, 2);
+    }
+    else
+    {
+        s_finisherQueue.push(finisher, 0);
     }
 }
 
@@ -111,44 +106,17 @@ void AsyncProxy::stop()
     {
         s_workerThreads.reset();
     }
-    std::lock_guard<std::mutex> locker(s_mutexFinisherList);
-    s_finisherList.clear();
+    s_finisherQueue.clear();
 }
 
-void AsyncProxy::runOnce()
+void AsyncProxy::tryOnce()
 {
-    /* 获取首个结束器 */
-    std::shared_ptr<Finisher> finisher = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(s_mutexFinisherList);
-        if (s_finisherList.empty())
-        {
-            return;
-        }
-        finisher = *(s_finisherList.begin());
-        s_finisherList.pop_front();
-    }
-    /* 执行结束器 */
-    if (finisher)
-    {
-        if (finisher->task && finisher->task->finishCb)
-        {
-            try
-            {
-                Diagnose::onFinisherRunning(finisher->id, finisher->task.get());
-                finisher->task->finishCb();
-                Diagnose::onFinisherFinished(finisher->id, finisher->task.get());
-            }
-            catch (const std::exception& e)
-            {
-                Diagnose::onFinisherException(finisher->id, finisher->task.get(), e.what());
-            }
-            catch (...)
-            {
-                Diagnose::onFinisherException(finisher->id, finisher->task.get(), "unknown exception");
-            }
-        }
-    }
+    handleFinisher(true);
+}
+
+void AsyncProxy::waitOnce()
+{
+    handleFinisher(false);
 }
 
 void AsyncProxy::execute(const std::shared_ptr<AsyncTask>& task)
@@ -176,6 +144,39 @@ void AsyncProxy::execute(const std::string& taskName, const std::function<void()
         task->finishCb = finishCb;
         task->finishExecutor = finishExecutor;
         execute(task);
+    }
+}
+
+void AsyncProxy::handleFinisher(bool tryFlag)
+{
+    std::shared_ptr<Finisher> finisher = nullptr;
+    if (tryFlag)
+    {
+        s_finisherQueue.tryPop(finisher);
+    }
+    else
+    {
+        finisher = s_finisherQueue.waitPop();
+    }
+    if (finisher)
+    {
+        if (finisher->task && finisher->task->finishCb)
+        {
+            try
+            {
+                Diagnose::onFinisherRunning(finisher->id, finisher->task.get());
+                finisher->task->finishCb();
+                Diagnose::onFinisherFinished(finisher->id, finisher->task.get());
+            }
+            catch (const std::exception& e)
+            {
+                Diagnose::onFinisherException(finisher->id, finisher->task.get(), e.what());
+            }
+            catch (...)
+            {
+                Diagnose::onFinisherException(finisher->id, finisher->task.get(), "unknown exception");
+            }
+        }
     }
 }
 } // namespace threading
