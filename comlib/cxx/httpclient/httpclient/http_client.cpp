@@ -1,10 +1,10 @@
 #include "http_client.h"
 
 #include <chrono>
-#include <list>
 #include <mutex>
 #include <stdexcept>
 
+#include "threading/safe_queue.h"
 #include "threading/thread_proxy.hpp"
 
 namespace http
@@ -19,8 +19,7 @@ struct RespParam
 };
 
 static threading::ExecutorPtr s_workers = nullptr; /* 网络线程池 */
-static std::mutex s_respMutex;
-static std::list<std::shared_ptr<RespParam>> s_respList; /* 响应列表 */
+static threading::SafeQueue<std::shared_ptr<RespParam>> s_respQueue; /* 响应队列 */
 static std::mutex s_stateCallbackMutex;
 static ResponseProcessNormalStateCallback s_finishedStateCallback = nullptr; /* 响应处理结束状态回调 */
 static ResponseProcessExceptionStateCallback s_exceptionStateCallback = nullptr; /* 响应处理异常状态回调 */
@@ -51,64 +50,17 @@ void HttpClient::stop()
     {
         s_workers.reset();
     }
-    std::lock_guard<std::mutex> locker(s_respMutex);
-    s_respList.clear();
+    s_respQueue.clear();
 }
 
-void HttpClient::runOnce()
+void HttpClient::tryOnce()
 {
-    std::shared_ptr<RespParam> param = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(s_respMutex);
-        if (s_respList.empty())
-        {
-            return;
-        }
-        param = *(s_respList.begin());
-        s_respList.pop_front();
-    }
-    if (param && param->respCb)
-    {
-        try
-        {
-            auto beg = std::chrono::steady_clock::now();
-            param->respCb(param->resp);
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-            ResponseProcessNormalStateCallback finishedStateCallback = nullptr;
-            {
-                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-                finishedStateCallback = s_finishedStateCallback;
-            }
-            if (finishedStateCallback)
-            {
-                finishedStateCallback(param->resp.url, elapsed);
-            }
-        }
-        catch (const std::exception& e)
-        {
-            ResponseProcessExceptionStateCallback exceptionStateCallback = nullptr;
-            {
-                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-                exceptionStateCallback = s_exceptionStateCallback;
-            }
-            if (exceptionStateCallback)
-            {
-                exceptionStateCallback(param->resp.url, e.what());
-            }
-        }
-        catch (...)
-        {
-            ResponseProcessExceptionStateCallback exceptionStateCallback = nullptr;
-            {
-                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-                exceptionStateCallback = s_exceptionStateCallback;
-            }
-            if (exceptionStateCallback)
-            {
-                exceptionStateCallback(param->resp.url, "unknown exception");
-            }
-        }
-    }
+    handleResp(true);
+}
+
+void HttpClient::waitOnce()
+{
+    handleResp(false);
 }
 
 curlex::SimpleRequestPtr HttpClient::makeSimpleRequest(const std::string& url)
@@ -239,7 +191,61 @@ void HttpClient::insertRespList(const curlex::Response& resp, const ResponseCall
     std::shared_ptr<RespParam> param = std::make_shared<RespParam>();
     param->resp = resp;
     param->respCb = respCb;
-    std::lock_guard<std::mutex> locker(s_respMutex);
-    s_respList.emplace_back(param);
+    s_respQueue.push(param);
+}
+
+void HttpClient::handleResp(bool tryFlag)
+{
+    std::shared_ptr<RespParam> param = nullptr;
+    if (tryFlag)
+    {
+        s_respQueue.tryFront(param);
+    }
+    else
+    {
+        param = s_respQueue.waitPop();
+    }
+    if (param && param->respCb)
+    {
+        try
+        {
+            auto beg = std::chrono::steady_clock::now();
+            param->respCb(param->resp);
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
+            ResponseProcessNormalStateCallback finishedStateCallback = nullptr;
+            {
+                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
+                finishedStateCallback = s_finishedStateCallback;
+            }
+            if (finishedStateCallback)
+            {
+                finishedStateCallback(param->resp.url, elapsed);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            ResponseProcessExceptionStateCallback exceptionStateCallback = nullptr;
+            {
+                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
+                exceptionStateCallback = s_exceptionStateCallback;
+            }
+            if (exceptionStateCallback)
+            {
+                exceptionStateCallback(param->resp.url, e.what());
+            }
+        }
+        catch (...)
+        {
+            ResponseProcessExceptionStateCallback exceptionStateCallback = nullptr;
+            {
+                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
+                exceptionStateCallback = s_exceptionStateCallback;
+            }
+            if (exceptionStateCallback)
+            {
+                exceptionStateCallback(param->resp.url, "unknown exception");
+            }
+        }
+    }
 }
 } // namespace http

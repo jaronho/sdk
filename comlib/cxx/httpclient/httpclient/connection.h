@@ -125,28 +125,28 @@ public:
     /**
      * @brief 执行DELETE请求
      * @param respCb 响应回调
-     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用start和runOnce接口)
+     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用`start`, `tryOnce`或`waitOnce`接口)
      */
     void doDelete(const ResponseCallback& respCb, bool asyncOp = true);
 
     /**
      * @brief 执行GET请求
      * @param respCb 响应回调
-     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用start和runOnce接口)
+     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用`start`, `tryOnce`或`waitOnce`接口)
      */
     void doGet(const ResponseCallback& respCb, bool asyncOp = true);
 
     /**
      * @brief 执行PUT请求
      * @param respCb 响应回调
-     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用start和runOnce接口)
+     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用`start`, `tryOnce`或`waitOnce`接口)
      */
     void doPut(const ResponseCallback& respCb, bool asyncOp = true);
 
     /**
      * @brief 执行POST请求
      * @param respCb 响应回调
-     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用start和runOnce接口)
+     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用`start`, `tryOnce`或`waitOnce`接口)
      */
     void doPost(const ResponseCallback& respCb, bool asyncOp = true);
 
@@ -155,7 +155,7 @@ public:
      * @param filename 本地要保存的文件名(全路径)
      * @param recover 若本地文件已存在是否强制覆盖, true-强制覆盖重写, false-支持断点续传
      * @param respCb 响应回调
-     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用start和runOnce接口)
+     * @param asyncOp 是否异步操作(选填), 默认异步操作(需要HttpClient调用`start`, `tryOnce`或`waitOnce`接口)
      */
     void doDownload(const std::string& filename, bool recover, const ResponseCallback& respCb, bool asyncOp = true);
 

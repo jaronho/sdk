@@ -57,9 +57,14 @@ public:
     static void stop();
 
     /**
-     * @brief 运行单次(用于监听响应回调, 在主逻辑线程中循环调用, 一般是在主线程)
+     * @brief 尝试单次运行(用于监听响应回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
      */
-    static void runOnce();
+    static void tryOnce();
+
+    /**
+     * @brief 等待单次运行(阻塞, 用于监听响应回调), 建议在单独线程中调用
+     */
+    static void waitOnce();
 
     /**
      * @brief 创建简单请求对象
@@ -169,5 +174,11 @@ private:
      * @param respCb 响应回调
      */
     static void insertRespList(const curlex::Response& resp, const ResponseCallback& respCb);
+
+    /**
+     * @brief 处理响应
+     * @param tryFlag 是否尝试, true-尝试(非阻塞), false-等待(阻塞)
+     */
+    static void handleResp(bool tryFlag);
 };
 } // namespace http
