@@ -6,17 +6,17 @@
 
 namespace algorithm
 {
-Snowflake::Snowflake(unsigned long long datacenterId, unsigned long long workerId)
+Snowflake::Snowflake(uint64_t datacenterId, uint64_t workerId)
     : m_flag(0), m_datacenterId(datacenterId), m_workerId(workerId), m_sequence(0)
 {
-    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    m_timestamp = (t.time_since_epoch().count() & 0x1FFFFFFFFFF);
+    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+    m_timestamp = (ntp.time_since_epoch().count() & 0x1FFFFFFFFFF);
 }
 
-unsigned long long Snowflake::generate(void)
+uint64_t Snowflake::generate(void)
 {
-    auto t = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    unsigned long long newTime = (t.time_since_epoch().count() & 0x1FFFFFFFFFF);
+    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+    uint64_t newTime = (ntp.time_since_epoch().count() & 0x1FFFFFFFFFF);
     if (newTime == m_timestamp)
     {
         ++m_sequence;
@@ -29,14 +29,14 @@ unsigned long long Snowflake::generate(void)
     return (m_timestamp << 22) + ((m_datacenterId & 0x1F) << 17) + ((m_workerId & 0x1F) << 12) + (m_sequence & 0xFFF);
 }
 
-unsigned long long Snowflake::easyGenerate(void)
+uint64_t Snowflake::easyGenerate(void)
 {
     static std::uniform_int_distribution<std::mt19937::result_type> s_dist(1, 99999);
     static std::mt19937 s_rng;
     s_rng.seed(std::random_device()());
     static Snowflake s_sf(s_dist(s_rng), s_dist(s_rng));
     static std::atomic_flag s_glock = ATOMIC_FLAG_INIT;
-    int64_t req;
+    uint64_t req = 0;
     while (s_glock.test_and_set()) /* 等待原子锁 */
         ;
     req = s_sf.generate();
