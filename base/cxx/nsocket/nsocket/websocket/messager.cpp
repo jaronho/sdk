@@ -36,7 +36,7 @@ void Messager_batch::onMessageEnd(const std::shared_ptr<Session>& session)
 
 void Messager_simple::onMessageBegin(const std::shared_ptr<Session>& session)
 {
-    int64_t id = session->getId();
+    uint64_t id = session->getId();
     std::lock_guard<std::mutex> locker(m_mutex);
     if (m_messageMap.end() == m_messageMap.find(id))
     {

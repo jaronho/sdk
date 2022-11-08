@@ -30,22 +30,22 @@ protected:
     /**
      * @brief 客户端请求方法不允许
      */
-    virtual void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req);
+    virtual void onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req);
 
     /**
      * @brief 收到客户端请求头
      */
-    virtual void onReqHead(int64_t cid, const REQUEST_PTR& req);
+    virtual void onReqHead(uint64_t cid, const REQUEST_PTR& req);
 
     /**
      * @brief 收到客户端请求内容
      */
-    virtual void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen);
+    virtual void onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen);
 
     /**
      * @brief 响应客户端
      */
-    virtual void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc);
+    virtual void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc);
 
 private:
     std::vector<Method> m_methods; /* 支持的方法, 例如: {Method::POST} */
@@ -57,16 +57,16 @@ private:
 class Router_batch : public Router
 {
 public:
-    std::function<void(int64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
-    std::function<void(int64_t cid, const REQUEST_PTR& req)> headCb;
-    std::function<void(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)> contentCb;
-    std::function<void(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req)> headCb;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)> contentCb;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
 
 protected:
-    void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;
-    void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
-    void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
+    void onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req) override;
+    void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
+    void onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
+    void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
 };
 
 /**
@@ -75,18 +75,18 @@ protected:
 class Router_simple : public Router
 {
 public:
-    std::function<void(int64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
-    std::function<void(int64_t cid, const REQUEST_PTR& req, const std::string& data, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& data, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
 
 protected:
-    void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;
-    void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
-    void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
+    void onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req) override;
+    void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
+    void onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
+    void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
 
 private:
     std::mutex m_mutex;
-    std::unordered_map<int64_t, std::shared_ptr<std::string>> m_contentMap;
+    std::unordered_map<uint64_t, std::shared_ptr<std::string>> m_contentMap;
 };
 
 /**
@@ -95,15 +95,15 @@ private:
 class Router_x_www_form_urlencoded : public Router
 {
 public:
-    std::function<void(int64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
-    std::function<void(int64_t cid, const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields, const SEND_RESPONSE_FUNC& sendRespFunc)>
+    std::function<void(uint64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields, const SEND_RESPONSE_FUNC& sendRespFunc)>
         respHandler;
 
 protected:
-    void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;
-    void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
-    void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
+    void onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req) override;
+    void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
+    void onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
+    void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
 
 private:
     struct Wrapper
@@ -115,7 +115,7 @@ private:
     };
 
     std::mutex m_mutex;
-    std::unordered_map<int64_t, std::shared_ptr<Wrapper>> m_wrapperMap;
+    std::unordered_map<uint64_t, std::shared_ptr<Wrapper>> m_wrapperMap;
 };
 
 /**
@@ -124,25 +124,25 @@ private:
 class Router_multipart_form_data : public Router
 {
 public:
-    std::function<void(int64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
-    std::function<void(int64_t cid, const REQUEST_PTR& req)> headCb;
-    std::function<void(int64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& contentType,
+    std::function<void(uint64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req)> headCb;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& contentType,
                        const std::string& text)>
         textCb;
-    std::function<void(int64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& filename,
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& filename,
                        const std::string& contentType, size_t offset, const unsigned char* data, int dataLen, bool finish)>
         fileCb;
-    std::function<void(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
 
 protected:
-    void onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) override;
-    void onReqHead(int64_t cid, const REQUEST_PTR& req) override;
-    void onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    void onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
+    void onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req) override;
+    void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
+    void onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
+    void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
 
 private:
     std::mutex m_mutex;
-    std::unordered_map<int64_t, std::shared_ptr<MultipartFormData>> m_formMap;
+    std::unordered_map<uint64_t, std::shared_ptr<MultipartFormData>> m_formMap;
 };
 } // namespace http
 } // namespace nsocket

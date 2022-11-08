@@ -16,7 +16,7 @@
 #include "../../nsocket/http/server.h"
 
 static const std::string UPLOAD_PATH = "upload";
-std::unordered_map<int64_t, std::shared_ptr<std::fstream>> g_fileHandlerMap;
+std::unordered_map<uint64_t, std::shared_ptr<std::fstream>> g_fileHandlerMap;
 
 int main(int argc, char* argv[])
 {
@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
     /* 添加路由表 */
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
-        r->methodNotAllowedCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
             printf("Support methods:");
@@ -184,7 +184,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
         };
-        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
+        r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
                              const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -229,7 +229,7 @@ int main(int argc, char* argv[])
     }
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
-        r->methodNotAllowedCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
             printf("Support methods:");
@@ -240,7 +240,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
         };
-        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
+        r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
                              const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -279,7 +279,7 @@ int main(int argc, char* argv[])
     }
     {
         auto r = std::make_shared<nsocket::http::Router_x_www_form_urlencoded>();
-        r->methodNotAllowedCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("-------------------------- Form Router --------------------------\n");
             printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
             printf("Support methods:");
@@ -290,7 +290,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
         };
-        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields,
+        r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields,
                              const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
             printf("--------------------------- Form Router ---------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -348,7 +348,7 @@ int main(int argc, char* argv[])
 #endif
 
         auto r = std::make_shared<nsocket::http::Router_multipart_form_data>();
-        r->methodNotAllowedCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("-------------------------- Multi Router --------------------------\n");
             printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
             printf("Support methods:");
@@ -359,7 +359,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
         };
-        r->headCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->headCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("--------------------------- Multi Router ---------------------------\n");
             printf("---     Cid: %lld, Client: %s:%d\n", cid, req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
@@ -383,13 +383,13 @@ int main(int argc, char* argv[])
             }
             printf("--------------------------------------------------------------------\n");
         };
-        r->textCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& name, const std::string& contentType,
+        r->textCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& name, const std::string& contentType,
                         const std::string& text) {
             printf("--------------------------- Multi Router ---------------------------\n");
             printf("--- cid: %lld, name: %s, content type: %s, text: %s\n", cid, name.c_str(), contentType.c_str(), text.c_str());
             printf("--------------------------------------------------------------------\n");
         };
-        r->fileCb = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& name, const std::string& filename,
+        r->fileCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& name, const std::string& filename,
                         const std::string& contentType, size_t offset, const unsigned char* data, int dataLen, bool finish) {
             printf("--------------------------- Multi Router ---------------------------\n");
             printf("--- cid: %lld, name: %s, filename: %s, content type: %s, offset: %zu, data len: %d, finish: %s\n", cid, name.c_str(),
@@ -426,7 +426,7 @@ int main(int argc, char* argv[])
                 }
             }
         };
-        r->respHandler = [&](int64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
+        r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
             /* 为了安全性起见, 在请求结束后, 再一次查找是否有未关闭的文件句柄, 有的话则关闭 */
             auto iter = g_fileHandlerMap.find(cid);
             if (g_fileHandlerMap.end() != iter)

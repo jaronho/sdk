@@ -21,7 +21,7 @@ public:
     /**
      * @brief 获取会话ID
      */
-    int64_t getId() const;
+    uint64_t getId() const;
 
     /**
      * @brief 获取客户端主机

@@ -4,20 +4,20 @@
 
 namespace nsocket
 {
-static std::atomic<int64_t> s_timestamp{0}; /* 注意: std::atomic_int64_t在某些平台下未定义 */
+static std::atomic<uint64_t> s_timestamp{0}; /* 注意: std::atomic_int64_t在某些平台下未定义 */
 static std::atomic_int s_count{0};
 
 TcpConnection::TcpConnection(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected, size_t bz) : m_socketTcpBase(socket)
 {
-    auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (nt == s_timestamp)
+    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
+    if (ntp == s_timestamp)
     {
         ++s_count;
     }
     else
     {
         s_count = 0;
-        s_timestamp = nt;
+        s_timestamp = ntp;
     }
     m_id = (s_timestamp << 12) + (s_count & 0xFFF);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -34,7 +34,7 @@ TcpConnection::~TcpConnection()
     close();
 }
 
-int64_t TcpConnection::getId() const
+uint64_t TcpConnection::getId() const
 {
     return m_id;
 }

@@ -42,7 +42,7 @@ using WS_PONG_CALLBACK = std::function<void(const std::weak_ptr<Session>& wpSess
  * @brief 连接关闭回调
  * @param cid 连接ID
  */
-using WS_CLOSE_CALLBACK = std::function<void(int64_t cid)>;
+using WS_CLOSE_CALLBACK = std::function<void(uint64_t cid)>;
 
 /**
  * @brief WebSocket服务器
@@ -126,7 +126,7 @@ public:
      * @brief 获取会话表
      * @return 会话表
      */
-    std::unordered_map<int64_t, std::weak_ptr<Session>> getSessionMap();
+    std::unordered_map<uint64_t, std::weak_ptr<Session>> getSessionMap();
 
 private:
     /**
@@ -142,7 +142,7 @@ private:
     /**
      * @brief 处理连接断开
      */
-    void handleConnectionClose(int64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code);
+    void handleConnectionClose(uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code);
 
     /**
      * @brief 处理请求
@@ -167,7 +167,7 @@ private:
 private:
     std::shared_ptr<TcpServer> m_tcpServer; /* TCP服务器 */
     std::mutex m_mutex;
-    std::unordered_map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
+    std::unordered_map<uint64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
     WS_CONNECTING_CALLBACK m_onConnectingCallback; /* 连接中回调 */
     WS_OPEN_CALLBACK m_onOpenCallback; /* 连接打开回调 */
     WS_PING_CALLBACK m_onPingCallback; /* ping回调 */

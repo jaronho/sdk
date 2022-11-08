@@ -188,7 +188,7 @@ int main(int argc, char* argv[])
         }
     };
     server.setMessager(msger);
-    server.setCloseCallback([&](int64_t cid) { printf("------------------------------ client [%lld] on closed\n", cid); });
+    server.setCloseCallback([&](uint64_t cid) { printf("------------------------------ client [%lld] on closed\n", cid); });
     try
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)

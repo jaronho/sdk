@@ -206,7 +206,7 @@ int main(int argc, char* argv[])
     });
     /* 设置连接关闭回调 */
     server->setConnectionCloseCallback(
-        [&](int64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+        [&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
             std::string clientHost = point.address().to_string().c_str();
             int clientPort = (int)point.port();
             if (code)

@@ -43,13 +43,13 @@ std::vector<Method> Router::getAllowMethods()
     return m_methods;
 }
 
-void Router::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req) {}
+void Router::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req) {}
 
-void Router::onReqHead(int64_t cid, const REQUEST_PTR& req) {}
+void Router::onReqHead(uint64_t cid, const REQUEST_PTR& req) {}
 
-void Router::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) {}
+void Router::onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) {}
 
-void Router::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
     if (sendRespFunc)
     {
@@ -57,7 +57,7 @@ void Router::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE
     }
 }
 
-void Router_batch::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
+void Router_batch::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req)
 {
     if (methodNotAllowedCb)
     {
@@ -65,7 +65,7 @@ void Router_batch::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
     }
 }
 
-void Router_batch::onReqHead(int64_t cid, const REQUEST_PTR& req)
+void Router_batch::onReqHead(uint64_t cid, const REQUEST_PTR& req)
 {
     if (headCb)
     {
@@ -73,7 +73,7 @@ void Router_batch::onReqHead(int64_t cid, const REQUEST_PTR& req)
     }
 }
 
-void Router_batch::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
+void Router_batch::onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
 {
     if (contentCb)
     {
@@ -81,7 +81,7 @@ void Router_batch::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offs
     }
 }
 
-void Router_batch::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router_batch::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
     if (sendRespFunc)
     {
@@ -96,7 +96,7 @@ void Router_batch::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RE
     }
 }
 
-void Router_simple::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
+void Router_simple::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req)
 {
     if (methodNotAllowedCb)
     {
@@ -104,7 +104,7 @@ void Router_simple::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
     }
 }
 
-void Router_simple::onReqHead(int64_t cid, const REQUEST_PTR& req)
+void Router_simple::onReqHead(uint64_t cid, const REQUEST_PTR& req)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     if (m_contentMap.end() == m_contentMap.find(cid))
@@ -113,7 +113,7 @@ void Router_simple::onReqHead(int64_t cid, const REQUEST_PTR& req)
     }
 }
 
-void Router_simple::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
+void Router_simple::onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
 {
     if (!data || dataLen <= 0)
     {
@@ -135,7 +135,7 @@ void Router_simple::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t off
     }
 }
 
-void Router_simple::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router_simple::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
     std::shared_ptr<std::string> content = nullptr;
     {
@@ -161,7 +161,7 @@ void Router_simple::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_R
     }
 }
 
-void Router_x_www_form_urlencoded::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
+void Router_x_www_form_urlencoded::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req)
 {
     if (methodNotAllowedCb)
     {
@@ -169,7 +169,7 @@ void Router_x_www_form_urlencoded::onMethodNotAllowed(int64_t cid, const REQUEST
     }
 }
 
-void Router_x_www_form_urlencoded::onReqHead(int64_t cid, const REQUEST_PTR& req)
+void Router_x_www_form_urlencoded::onReqHead(uint64_t cid, const REQUEST_PTR& req)
 {
     if (!case_insensitive_equal("application/x-www-form-urlencoded", req->getContentType()))
     {
@@ -182,7 +182,7 @@ void Router_x_www_form_urlencoded::onReqHead(int64_t cid, const REQUEST_PTR& req
     }
 }
 
-void Router_x_www_form_urlencoded::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
+void Router_x_www_form_urlencoded::onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
 {
     if (!data || dataLen <= 0)
     {
@@ -245,7 +245,7 @@ void Router_x_www_form_urlencoded::onReqContent(int64_t cid, const REQUEST_PTR& 
     }
 }
 
-void Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router_x_www_form_urlencoded::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
     std::shared_ptr<Wrapper> wrapper = nullptr;
     {
@@ -275,7 +275,7 @@ void Router_x_www_form_urlencoded::onResponse(int64_t cid, const REQUEST_PTR& re
     }
 }
 
-void Router_multipart_form_data::onMethodNotAllowed(int64_t cid, const REQUEST_PTR& req)
+void Router_multipart_form_data::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req)
 {
     if (methodNotAllowedCb)
     {
@@ -283,7 +283,7 @@ void Router_multipart_form_data::onMethodNotAllowed(int64_t cid, const REQUEST_P
     }
 }
 
-void Router_multipart_form_data::onReqHead(int64_t cid, const REQUEST_PTR& req)
+void Router_multipart_form_data::onReqHead(uint64_t cid, const REQUEST_PTR& req)
 {
     std::string boundary;
     if (!parseMultipartFormDataBoundary(req->getContentType(), boundary))
@@ -301,7 +301,7 @@ void Router_multipart_form_data::onReqHead(int64_t cid, const REQUEST_PTR& req)
     }
 }
 
-void Router_multipart_form_data::onReqContent(int64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
+void Router_multipart_form_data::onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)
 {
     if (!data || dataLen <= 0)
     {
@@ -347,7 +347,7 @@ void Router_multipart_form_data::onReqContent(int64_t cid, const REQUEST_PTR& re
     }
 }
 
-void Router_multipart_form_data::onResponse(int64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router_multipart_form_data::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
 {
     {
         /* 限定锁区间, 避免阻塞其他路由, 提高并发性 */

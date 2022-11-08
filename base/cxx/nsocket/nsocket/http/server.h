@@ -94,7 +94,7 @@ private:
     /**
      * @brief 处理连接断开
      */
-    void handleConnectionClose(int64_t cid);
+    void handleConnectionClose(uint64_t cid);
 
     /**
      * @brief 处理请求头
@@ -119,7 +119,7 @@ private:
 private:
     std::shared_ptr<TcpServer> m_tcpServer; /* TCP服务器 */
     std::mutex m_mutex;
-    std::unordered_map<int64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
+    std::unordered_map<uint64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
     std::function<void(const REQUEST_PTR& req)> m_routerNotFoundCb; /* 路由未找到回调 */
     std::unordered_map<std::string, std::shared_ptr<Router>> m_routerMap; /* 路由表 */
 };

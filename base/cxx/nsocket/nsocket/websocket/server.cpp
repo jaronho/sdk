@@ -11,7 +11,7 @@ Server::Server(const std::string& name, size_t threadCount, const std::string& h
     m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) { handleNewConnection(wpConn); });
     m_tcpServer->setConnectionDataCallback(
         [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
-    m_tcpServer->setConnectionCloseCallback([&](int64_t cid, const boost::asio::ip::tcp::endpoint& point,
+    m_tcpServer->setConnectionCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point,
                                                 const boost::system::error_code& code) { handleConnectionClose(cid, point, code); });
 }
 
@@ -80,9 +80,9 @@ bool Server::run()
     return false;
 }
 
-std::unordered_map<int64_t, std::weak_ptr<Session>> Server::getSessionMap()
+std::unordered_map<uint64_t, std::weak_ptr<Session>> Server::getSessionMap()
 {
-    std::unordered_map<int64_t, std::weak_ptr<Session>> sessionMap;
+    std::unordered_map<uint64_t, std::weak_ptr<Session>> sessionMap;
     std::lock_guard<std::mutex> locker(m_mutex);
     for (auto iter = m_sessionMap.begin(); m_sessionMap.end() != iter; ++iter)
     {
@@ -173,7 +173,7 @@ void Server::handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, co
     }
 }
 
-void Server::handleConnectionClose(int64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)
+void Server::handleConnectionClose(uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)
 {
 #if 1 == WS_DEBUG
     std::string clientHost = point.address().to_string().c_str();

@@ -29,7 +29,7 @@ using TCP_CONN_DATA_CALLBACK = std::function<void(const std::weak_ptr<TcpConnect
  * @param code 错误码
  */
 using TCP_CONN_CLOSE_CALLBACK =
-    std::function<void(int64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
+    std::function<void(uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
 
 /**
  * @brief 上下文线程池
@@ -185,7 +185,7 @@ private:
 #endif
     size_t m_bufferSize; /* 数据接收缓冲区大小 */
     std::mutex m_mutex;
-    std::unordered_map<int64_t, std::shared_ptr<TcpConnection>> m_connectionMap; /* 连接表 */
+    std::unordered_map<uint64_t, std::shared_ptr<TcpConnection>> m_connectionMap; /* 连接表 */
     TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
     TCP_CONN_DATA_CALLBACK m_onConnectionDataCallback; /* 连接数据回调 */
     TCP_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */

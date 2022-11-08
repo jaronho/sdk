@@ -4,7 +4,7 @@ namespace nsocket
 {
 namespace ws
 {
-int64_t Session::getId() const
+uint64_t Session::getId() const
 {
     const auto conn = m_wpConn.lock();
     if (conn)

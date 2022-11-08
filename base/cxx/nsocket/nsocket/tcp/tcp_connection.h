@@ -34,7 +34,7 @@ public:
      * @brief 获取连接ID
      * @return 连接ID
      */
-    int64_t getId() const;
+    uint64_t getId() const;
 
     /**
      * @brief 获取数据缓冲区大小
@@ -176,7 +176,7 @@ private:
     void closeImpl();
 
 private:
-    int64_t m_id; /* ID */
+    uint64_t m_id; /* ID */
     std::shared_ptr<SocketTcpBase> m_socketTcpBase; /* 套接字 */
     std::atomic_bool m_isEnableSSL = {false}; /* 是否启用SSL */
     std::atomic_bool m_isConnected = {false}; /* 是否已连接上 */

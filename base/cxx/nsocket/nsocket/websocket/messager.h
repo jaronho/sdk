@@ -87,7 +87,7 @@ protected:
 
 private:
     std::mutex m_mutex;
-    std::unordered_map<int64_t, std::shared_ptr<std::string>> m_messageMap;
+    std::unordered_map<uint64_t, std::shared_ptr<std::string>> m_messageMap;
 };
 } // namespace ws
 } // namespace nsocket
