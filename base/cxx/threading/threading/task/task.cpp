@@ -4,7 +4,7 @@
 
 namespace threading
 {
-static std::atomic<int64_t> s_taskTimestamp{0}; /* 注意: std::atomic_int64_t在某些平台下未定义 */
+static std::atomic<uint64_t> s_taskTimestamp{0}; /* 注意: std::atomic_uint64_t在某些平台下未定义 */
 static std::atomic_int s_taskNum{0};
 
 Task::Task(const std::string& name) : m_name(name)
@@ -22,7 +22,7 @@ Task::Task(const std::string& name) : m_name(name)
     m_id = (s_taskTimestamp << 12) + (s_taskNum & 0xFFF);
 }
 
-int64_t Task::getId() const
+uint64_t Task::getId() const
 {
     return m_id;
 }

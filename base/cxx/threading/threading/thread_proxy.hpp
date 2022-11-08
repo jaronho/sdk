@@ -53,7 +53,7 @@ public:
             auto waitResult = future.wait_for(timeout);
             if (std::future_status::timeout == waitResult) /* 超时判断 */
             {
-                int64_t millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
+                auto millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
                 Diagnose::onTaskException(0, std::string(), task.get(), "timeout [" + std::to_string(millisecond) + "]");
             }
         }
@@ -81,7 +81,7 @@ public:
             auto waitResult = future.wait_for(timeout);
             if (std::future_status::timeout == waitResult) /* 超时判断 */
             {
-                int64_t millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
+                auto millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
                 Diagnose::onTaskException(0, std::string(), task.get(), "timeout [" + std::to_string(millisecond) + "]");
             }
         }

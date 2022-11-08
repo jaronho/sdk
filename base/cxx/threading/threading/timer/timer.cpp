@@ -59,11 +59,11 @@ static void setThreadName(const std::string& name)
  */
 struct Trigger
 {
-    int64_t id = 0; /* ID */
+    uint64_t id = 0; /* ID */
     std::weak_ptr<Timer> wpTimer; /* 定时器 */
 };
 
-static std::atomic<int64_t> s_timerTimestamp{0}; /* 注意: std::atomic_int64_t在某些平台下未定义 */
+static std::atomic<uint64_t> s_timerTimestamp{0}; /* 注意: std::atomic_uint64_t在某些平台下未定义 */
 static std::atomic_int s_timerNum{0};
 static std::mutex s_mutex;
 static std::unique_ptr<boost::asio::io_context> s_context;
@@ -111,7 +111,7 @@ Timer::~Timer()
     Diagnose::onTimerDestroy(this);
 }
 
-int64_t Timer::getId() const
+uint64_t Timer::getId() const
 {
     return m_id;
 }
@@ -148,7 +148,7 @@ void Timer::addToTriggerList(const std::shared_ptr<Timer>& timer)
         return;
     }
     /* 查询当前触发器数量和最早的触发器ID */
-    int64_t oldestTriggerId = 0;
+    uint64_t oldestTriggerId = 0;
     std::shared_ptr<Trigger> trigger = nullptr;
     int triggerCount = s_triggerQueue.tryFront(trigger);
     if (triggerCount > 0 && trigger)
@@ -156,7 +156,7 @@ void Timer::addToTriggerList(const std::shared_ptr<Timer>& timer)
         oldestTriggerId = trigger->id;
     }
     /* 计算触发器ID */
-    static int64_t s_triggerTimestamp = 0;
+    static uint64_t s_triggerTimestamp = 0;
     static int s_triggerNum = 0;
     auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
     if (nt == s_triggerTimestamp)
@@ -168,7 +168,7 @@ void Timer::addToTriggerList(const std::shared_ptr<Timer>& timer)
         s_triggerNum = 0;
         s_triggerTimestamp = nt;
     }
-    int64_t triggerId = (s_triggerTimestamp << 12) + (s_triggerNum & 0xFFF);
+    uint64_t triggerId = (s_triggerTimestamp << 12) + (s_triggerNum & 0xFFF);
     /* 添加到触发器列表 */
     auto discardType = Diagnose::onTriggerCreated(triggerCount, oldestTriggerId, triggerId, timer.get());
     if (DiscardType::discard_newest == discardType) /* 丢弃最新 */

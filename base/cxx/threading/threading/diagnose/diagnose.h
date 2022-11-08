@@ -42,7 +42,7 @@ enum class DiagnoseState
  */
 struct TaskDiagnoseInfo
 {
-    int64_t taskId = 0; /* 任务ID */
+    uint64_t taskId = 0; /* 任务ID */
     std::string taskName; /* 任务名称 */
     int64_t threadId = 0; /* 任务所在线程ID */
     std::string threadName; /* 任务所在线程名称 */
@@ -66,7 +66,7 @@ struct ExecutorDiagnoseInfo
  */
 struct FinisherDiagnoseInfo
 {
-    int64_t taskId = 0; /* 任务ID */
+    uint64_t taskId = 0; /* 任务ID */
     std::string taskName; /* 任务名称 */
     DiagnoseState state = DiagnoseState::created; /* 状态 */
     std::chrono::steady_clock::duration queue; /* 排队耗时 */
@@ -79,7 +79,7 @@ struct FinisherDiagnoseInfo
  */
 struct TriggerDiagnoseInfo
 {
-    int64_t timerId = 0; /* 定时器ID */
+    uint64_t timerId = 0; /* 定时器ID */
     std::string timerName; /* 定时器名称 */
     DiagnoseState state = DiagnoseState::created; /* 状态 */
     std::chrono::steady_clock::duration queue; /* 排队耗时 */
@@ -95,7 +95,7 @@ struct TriggerDiagnoseInfo
  * @param taskName 任务名称
  */
 using TaskCreatedCallback =
-    std::function<void(const std::string& executorName, int taskCount, int64_t taskId, const std::string& taskName)>;
+    std::function<void(const std::string& executorName, int taskCount, uint64_t taskId, const std::string& taskName)>;
 
 /**
  * @brief 任务(正常)状态回调
@@ -107,7 +107,7 @@ using TaskCreatedCallback =
  * @param prevElapsed 前一个状态耗时
  */
 using TaskNormalStateCallback =
-    std::function<void(const std::string& executorName, int threadId, const std::string& threadName, int64_t taskId,
+    std::function<void(const std::string& executorName, int threadId, const std::string& threadName, uint64_t taskId,
                        const std::string& taskName, const std::chrono::steady_clock::duration& prevElapsed)>;
 
 /**
@@ -120,7 +120,7 @@ using TaskNormalStateCallback =
  * @param msg 异常消息
  */
 using TaskExceptionStateCallback = std::function<void(const std::string& executorName, int threadId, const std::string& threadName,
-                                                      int64_t taskId, const std::string& taskName, const std::string& msg)>;
+                                                      uint64_t taskId, const std::string& taskName, const std::string& msg)>;
 
 /**
  * @brief 结束器创建回调
@@ -129,7 +129,7 @@ using TaskExceptionStateCallback = std::function<void(const std::string& executo
  * @param taskName 任务名称
  * @return 丢弃类型
  */
-using FinisherCreateCallback = std::function<DiscardType(int finisherCount, int64_t taskId, const std::string& taskName)>;
+using FinisherCreateCallback = std::function<DiscardType(int finisherCount, uint64_t taskId, const std::string& taskName)>;
 
 /**
  * @brief 结束器(正常)状态回调
@@ -138,7 +138,7 @@ using FinisherCreateCallback = std::function<DiscardType(int finisherCount, int6
  * @param prevElapsed 前一个状态耗时
  */
 using FinisherNormalStateCallback =
-    std::function<void(int64_t taskId, const std::string& taskName, const std::chrono::steady_clock::duration& prevElapsed)>;
+    std::function<void(uint64_t taskId, const std::string& taskName, const std::chrono::steady_clock::duration& prevElapsed)>;
 
 /**
  * @brief 结束器(异常)状态回调
@@ -146,7 +146,7 @@ using FinisherNormalStateCallback =
  * @param taskName 任务名称
  * @param msg 异常消息
  */
-using FinisherExceptionStateCallback = std::function<void(int64_t taskId, const std::string& taskName, const std::string& msg)>;
+using FinisherExceptionStateCallback = std::function<void(uint64_t taskId, const std::string& taskName, const std::string& msg)>;
 
 /**
  * @brief 触发器创建回调
@@ -155,7 +155,7 @@ using FinisherExceptionStateCallback = std::function<void(int64_t taskId, const 
  * @param timerName 定时器名称
  * @return 丢弃类型
  */
-using TriggerCreateCallback = std::function<DiscardType(int triggerCount, int64_t timerId, const std::string& timerName)>;
+using TriggerCreateCallback = std::function<DiscardType(int triggerCount, uint64_t timerId, const std::string& timerName)>;
 
 /**
  * @brief 触发器(正常)状态回调
@@ -164,7 +164,7 @@ using TriggerCreateCallback = std::function<DiscardType(int triggerCount, int64_
  * @param prevElapsed 前一个状态耗时
  */
 using TriggerNormalStateCallback =
-    std::function<void(int64_t timerId, const std::string& timerName, const std::chrono::steady_clock::duration& prevElapsed)>;
+    std::function<void(uint64_t timerId, const std::string& timerName, const std::chrono::steady_clock::duration& prevElapsed)>;
 
 /**
  * @brief 触发器(异常)状态回调
@@ -172,7 +172,7 @@ using TriggerNormalStateCallback =
  * @param timerName 定时器名称
  * @param msg 异常消息
  */
-using TriggerExceptionStateCallback = std::function<void(int64_t timerId, const std::string& timerName, const std::string& msg)>;
+using TriggerExceptionStateCallback = std::function<void(uint64_t timerId, const std::string& timerName, const std::string& msg)>;
 
 /**
  * @brief 诊断信息收集模块
@@ -334,21 +334,21 @@ protected:
      * @param finisherId 结束器ID
      * @param task 任务
      */
-    static DiscardType onFinisherCreated(int finisherCount, int64_t oldestFinisherId, int64_t finisherId, const AsyncTask* task);
+    static DiscardType onFinisherCreated(int finisherCount, uint64_t oldestFinisherId, uint64_t finisherId, const AsyncTask* task);
 
     /**
      * @brief 结束结束器开始运行(模块内部接口)
      * @param finisherId 结束器ID
      * @param task 任务
      */
-    static void onFinisherRunning(int64_t finisherId, const AsyncTask* task);
+    static void onFinisherRunning(uint64_t finisherId, const AsyncTask* task);
 
     /**
      * @brief 响应结束器运行结束(模块内部接口)
      * @param finisherId 结束器ID
      * @param task 任务
      */
-    static void onFinisherFinished(int64_t finisherId, const AsyncTask* task);
+    static void onFinisherFinished(uint64_t finisherId, const AsyncTask* task);
 
     /**
      * @brief 响应结束器运行异常(模块内部接口)
@@ -356,7 +356,7 @@ protected:
      * @param task 任务
      * @param msg 异常消息
      */
-    static void onFinisherException(int64_t finisherId, const AsyncTask* task, const std::string& msg);
+    static void onFinisherException(uint64_t finisherId, const AsyncTask* task, const std::string& msg);
 
     /**
      * @brief 响应触发器创建(模块内部接口)
@@ -365,21 +365,21 @@ protected:
      * @param triggerId 触发器ID
      * @param timer 定时器
      */
-    static DiscardType onTriggerCreated(int triggerCount, int64_t oldestTriggerId, int64_t triggerId, const Timer* timer);
+    static DiscardType onTriggerCreated(int triggerCount, uint64_t oldestTriggerId, uint64_t triggerId, const Timer* timer);
 
     /**
      * @brief 响应触发器开始运行(模块内部接口)
      * @param triggerId 触发器ID
      * @param timer 定时器
      */
-    static void onTriggerRunning(int64_t triggerId, const Timer* timer);
+    static void onTriggerRunning(uint64_t triggerId, const Timer* timer);
 
     /**
      * @brief 响应触发器运行结束(模块内部接口)
      * @param triggerId 触发器ID
      * @param timer 定时器
      */
-    static void onTriggerFinished(int64_t triggerId, const Timer* timer);
+    static void onTriggerFinished(uint64_t triggerId, const Timer* timer);
 
     /**
      * @brief 响应触发器运行异常(模块内部接口)
@@ -387,7 +387,7 @@ protected:
      * @param timer 定时器
      * @param msg 异常消息
      */
-    static void onTriggerException(int64_t triggerId, const Timer* timer, const std::string& msg);
+    static void onTriggerException(uint64_t triggerId, const Timer* timer, const std::string& msg);
 
     /**
      * @brief 响应定时器销毁(模块内部接口)

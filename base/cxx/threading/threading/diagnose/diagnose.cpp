@@ -76,13 +76,13 @@ static TaskNormalStateCallback s_taskRunningStateCallback = nullptr; /* 任务�
 static TaskNormalStateCallback s_taskFinishedStateCallback = nullptr; /* 任务结束状态回调 */
 static TaskExceptionStateCallback s_taskExceptionStateCallback = nullptr; /* 任务异常状态回调 */
 static std::mutex s_mutexFinisher;
-static std::unordered_map<int64_t, std::shared_ptr<DiagFinisher>> s_finisherList; /* 结束器列表 */
+static std::unordered_map<uint64_t, std::shared_ptr<DiagFinisher>> s_finisherList; /* 结束器列表 */
 static FinisherCreateCallback s_finisherCreatedCallback = nullptr; /* 结束器创建回调 */
 static FinisherNormalStateCallback s_finisherRunningStateCallback = nullptr; /* 结束器运行状态回调 */
 static FinisherNormalStateCallback s_finisherFinishedStateCallback = nullptr; /* 结束器结束状态回调 */
 static FinisherExceptionStateCallback s_finisherExceptionStateCallback = nullptr; /* 结束器异常状态回调 */
 static std::mutex s_mutexTrigger;
-static std::unordered_map<int64_t, std::shared_ptr<DiagTrigger>> s_triggerList; /* 触发器列表 */
+static std::unordered_map<uint64_t, std::shared_ptr<DiagTrigger>> s_triggerList; /* 触发器列表 */
 static TriggerCreateCallback s_triggerCreatedCallback = nullptr; /* 触发器创建回调 */
 static TriggerNormalStateCallback s_triggerRunningStateCallback = nullptr; /* 触发器运行状态回调 */
 static TriggerNormalStateCallback s_triggerFinishedStateCallback = nullptr; /* 触发器结束状态回调 */
@@ -390,7 +390,7 @@ void Diagnose::onTaskCreated(const Executor* executor, const Task* task)
     TaskCreatedCallback createdCallback;
     std::string executorName;
     int taskCount = 0;
-    int64_t taskId = 0;
+    uint64_t taskId = 0;
     std::string taskName;
     {
         std::lock_guard<std::mutex> locker(s_mutexTask);
@@ -427,7 +427,7 @@ void Diagnose::onTaskRunning(int threadId, const std::string& threadName, const 
     }
     TaskNormalStateCallback runningCallback;
     std::string executorName;
-    int64_t taskId = 0;
+    uint64_t taskId = 0;
     std::string taskName;
     std::chrono::steady_clock::duration prevElapsed;
     {
@@ -460,7 +460,7 @@ void Diagnose::onTaskFinished(int threadId, const std::string& threadName, const
     }
     TaskNormalStateCallback finishedCallback;
     std::string executorName;
-    int64_t taskId = 0;
+    uint64_t taskId = 0;
     std::string taskName;
     std::chrono::steady_clock::duration prevElapsed;
     {
@@ -494,7 +494,7 @@ void Diagnose::onTaskException(int threadId, const std::string& threadName, cons
     }
     TaskExceptionStateCallback exceptionCallback;
     std::string executorName;
-    int64_t taskId = 0;
+    uint64_t taskId = 0;
     std::string taskName;
     {
         std::lock_guard<std::mutex> locker(s_mutexTask);
@@ -519,7 +519,7 @@ void Diagnose::onTaskException(int threadId, const std::string& threadName, cons
     }
 }
 
-DiscardType Diagnose::onFinisherCreated(int finisherCount, int64_t oldestFinisherId, int64_t finisherId, const AsyncTask* task)
+DiscardType Diagnose::onFinisherCreated(int finisherCount, uint64_t oldestFinisherId, uint64_t finisherId, const AsyncTask* task)
 {
     if (!s_enabled)
     {
@@ -560,7 +560,7 @@ DiscardType Diagnose::onFinisherCreated(int finisherCount, int64_t oldestFinishe
     return discardType;
 }
 
-void Diagnose::onFinisherRunning(int64_t finisherId, const AsyncTask* task)
+void Diagnose::onFinisherRunning(uint64_t finisherId, const AsyncTask* task)
 {
     if (!s_enabled)
     {
@@ -586,7 +586,7 @@ void Diagnose::onFinisherRunning(int64_t finisherId, const AsyncTask* task)
     }
 }
 
-void Diagnose::onFinisherFinished(int64_t finisherId, const AsyncTask* task)
+void Diagnose::onFinisherFinished(uint64_t finisherId, const AsyncTask* task)
 {
     if (!s_enabled)
     {
@@ -613,7 +613,7 @@ void Diagnose::onFinisherFinished(int64_t finisherId, const AsyncTask* task)
     }
 }
 
-void Diagnose::onFinisherException(int64_t finisherId, const AsyncTask* task, const std::string& msg)
+void Diagnose::onFinisherException(uint64_t finisherId, const AsyncTask* task, const std::string& msg)
 {
     if (!s_enabled)
     {
@@ -640,7 +640,7 @@ void Diagnose::onFinisherException(int64_t finisherId, const AsyncTask* task, co
     }
 }
 
-DiscardType Diagnose::onTriggerCreated(int triggerCount, int64_t oldestTriggerId, int64_t triggerId, const Timer* timer)
+DiscardType Diagnose::onTriggerCreated(int triggerCount, uint64_t oldestTriggerId, uint64_t triggerId, const Timer* timer)
 {
     if (!s_enabled)
     {
@@ -681,7 +681,7 @@ DiscardType Diagnose::onTriggerCreated(int triggerCount, int64_t oldestTriggerId
     return discardType;
 }
 
-void Diagnose::onTriggerRunning(int64_t triggerId, const Timer* timer)
+void Diagnose::onTriggerRunning(uint64_t triggerId, const Timer* timer)
 {
     if (!s_enabled)
     {
@@ -707,7 +707,7 @@ void Diagnose::onTriggerRunning(int64_t triggerId, const Timer* timer)
     }
 }
 
-void Diagnose::onTriggerFinished(int64_t triggerId, const Timer* timer)
+void Diagnose::onTriggerFinished(uint64_t triggerId, const Timer* timer)
 {
     if (!s_enabled)
     {
@@ -734,7 +734,7 @@ void Diagnose::onTriggerFinished(int64_t triggerId, const Timer* timer)
     }
 }
 
-void Diagnose::onTriggerException(int64_t triggerId, const Timer* timer, const std::string& msg)
+void Diagnose::onTriggerException(uint64_t triggerId, const Timer* timer, const std::string& msg)
 {
     if (!s_enabled)
     {

@@ -12,7 +12,7 @@ namespace threading
  */
 struct Finisher
 {
-    int64_t id = 0; /* ID */
+    uint64_t id = 0; /* ID */
     std::shared_ptr<AsyncTask> task; /* 异步任务 */
 };
 
@@ -43,7 +43,7 @@ void AsyncTask::run()
 void AsyncTask::addToFinisherList(const std::shared_ptr<AsyncTask>& task)
 {
     /* 查询当前结束器数量和最早的结束器ID */
-    int64_t oldestFinisherId = 0;
+    uint64_t oldestFinisherId = 0;
     std::shared_ptr<Finisher> finisher = nullptr;
     int finisherCount = s_finisherQueue.tryFront(finisher);
     if (finisherCount > 0 && finisher)
@@ -51,7 +51,7 @@ void AsyncTask::addToFinisherList(const std::shared_ptr<AsyncTask>& task)
         oldestFinisherId = finisher->id;
     }
     /* 计算触发器ID */
-    static int64_t s_finisherTimestamp = 0;
+    static uint64_t s_finisherTimestamp = 0;
     static int s_finisherNum = 0;
     auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
     if (nt == s_finisherTimestamp)
@@ -63,7 +63,7 @@ void AsyncTask::addToFinisherList(const std::shared_ptr<AsyncTask>& task)
         s_finisherNum = 0;
         s_finisherTimestamp = nt;
     }
-    int64_t finisherId = (s_finisherTimestamp << 12) + (s_finisherNum & 0xFFF);
+    uint64_t finisherId = (s_finisherTimestamp << 12) + (s_finisherNum & 0xFFF);
     /* 添加到结束器列表 */
     auto discardType = Diagnose::onFinisherCreated(finisherCount, oldestFinisherId, finisherId, task.get());
     if (DiscardType::discard_newest == discardType) /* 丢弃最新 */

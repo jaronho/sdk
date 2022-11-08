@@ -28,7 +28,7 @@ public:
      * @brief 获取ID
      * @return 定时器ID
      */
-    int64_t getId() const;
+    uint64_t getId() const;
 
     /**
 	 * @brief 获取名称
@@ -89,7 +89,7 @@ protected:
     std::atomic_bool m_started = {false}; /* 是否已启动 */
 
 private:
-    int64_t m_id = 0; /* ID */
+    uint64_t m_id = 0; /* ID */
     const std::string m_name; /* 定时器名称 */
 };
 
