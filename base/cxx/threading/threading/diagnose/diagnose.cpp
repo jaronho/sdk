@@ -519,45 +519,28 @@ void Diagnose::onTaskException(int threadId, const std::string& threadName, cons
     }
 }
 
-DiscardType Diagnose::onFinisherCreated(int finisherCount, uint64_t oldestFinisherId, uint64_t finisherId, const AsyncTask* task)
+void Diagnose::onFinisherCreated(int finisherCount, uint64_t finisherId, const AsyncTask* task)
 {
     if (!s_enabled)
     {
-        return DiscardType::none;
+        return;
     }
     FinisherCreateCallback createdCallback;
     {
         std::lock_guard<std::mutex> locker(s_mutexFinisher);
         createdCallback = s_finisherCreatedCallback;
     }
-    auto discardType = createdCallback ? createdCallback(finisherCount, task->getId(), task->getName()) : DiscardType::none;
+    if (createdCallback)
+    {
+        createdCallback(finisherCount, task->getId(), task->getName());
+    }
     {
         std::lock_guard<std::mutex> locker(s_mutexFinisher);
-        switch (discardType)
-        {
-        case DiscardType::discard_newest: /* 丢弃最新 */
-            return discardType;
-        case DiscardType::discard_oldest: /* 丢弃最早 */
-        {
-            auto iter = s_finisherList.find(oldestFinisherId);
-            if (s_finisherList.end() != iter)
-            {
-                s_finisherList.erase(iter);
-            }
-        }
-        break;
-        case DiscardType::discard_all: /* 丢弃所有 */
-            s_finisherList.clear();
-            break;
-        default: /* 不丢弃(可能会内存持续上涨) */
-            break;
-        }
         auto diagFinisher = std::make_shared<DiagFinisher>(task);
         diagFinisher->state = DiagnoseState::queuing;
         diagFinisher->queuing = std::chrono::steady_clock::now();
         s_finisherList.insert(std::make_pair(finisherId, diagFinisher));
     }
-    return discardType;
 }
 
 void Diagnose::onFinisherRunning(uint64_t finisherId, const AsyncTask* task)
@@ -640,45 +623,28 @@ void Diagnose::onFinisherException(uint64_t finisherId, const AsyncTask* task, c
     }
 }
 
-DiscardType Diagnose::onTriggerCreated(int triggerCount, uint64_t oldestTriggerId, uint64_t triggerId, const Timer* timer)
+void Diagnose::onTriggerCreated(int triggerCount, uint64_t triggerId, const Timer* timer)
 {
     if (!s_enabled)
     {
-        return DiscardType::none;
+        return;
     }
     TriggerCreateCallback createdCallback;
     {
         std::lock_guard<std::mutex> locker(s_mutexTrigger);
         createdCallback = s_triggerCreatedCallback;
     }
-    auto discardType = createdCallback ? createdCallback(triggerCount, timer->getId(), timer->getName()) : DiscardType::none;
+    if (createdCallback)
+    {
+        createdCallback(triggerCount, timer->getId(), timer->getName());
+    }
     {
         std::lock_guard<std::mutex> locker(s_mutexTrigger);
-        switch (discardType)
-        {
-        case DiscardType::discard_newest: /* 丢弃最新 */
-            return discardType;
-        case DiscardType::discard_oldest: /* 丢弃最早 */
-        {
-            auto iter = s_triggerList.find(oldestTriggerId);
-            if (s_triggerList.end() != iter)
-            {
-                s_triggerList.erase(iter);
-            }
-        }
-        break;
-        case DiscardType::discard_all: /* 丢弃所有 */
-            s_triggerList.clear();
-            break;
-        default: /* 不丢弃(可能会内存持续上涨) */
-            break;
-        }
         auto diagTrigger = std::make_shared<DiagTrigger>(timer);
         diagTrigger->state = DiagnoseState::queuing;
         diagTrigger->queuing = std::chrono::steady_clock::now();
         s_triggerList.insert(std::make_pair(triggerId, diagTrigger));
     }
-    return discardType;
 }
 
 void Diagnose::onTriggerRunning(uint64_t triggerId, const Timer* timer)

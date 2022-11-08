@@ -93,15 +93,15 @@ Timer::Timer(const std::string& name, const std::function<void()>& func, const E
         });
     }
     /* 计算定时器ID */
-    auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (nt == s_timerTimestamp)
+    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
+    if (ntp == s_timerTimestamp)
     {
         ++s_timerNum;
     }
     else
     {
         s_timerNum = 0;
-        s_timerTimestamp = nt;
+        s_timerTimestamp = ntp;
     }
     m_id = (s_timerTimestamp << 12) + (s_timerNum & 0xFFF);
 }
@@ -147,49 +147,26 @@ void Timer::addToTriggerList(const std::shared_ptr<Timer>& timer)
     {
         return;
     }
-    /* 查询当前触发器数量和最早的触发器ID */
-    uint64_t oldestTriggerId = 0;
-    std::shared_ptr<Trigger> trigger = nullptr;
-    int triggerCount = s_triggerQueue.tryFront(trigger);
-    if (triggerCount > 0 && trigger)
-    {
-        oldestTriggerId = trigger->id;
-    }
     /* 计算触发器ID */
-    static uint64_t s_triggerTimestamp = 0;
-    static int s_triggerNum = 0;
-    auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (nt == s_triggerTimestamp)
+    static std::atomic<uint64_t> s_triggerTimestamp{0};
+    static std::atomic_int s_triggerNum{0};
+    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
+    if (ntp == s_triggerTimestamp)
     {
         ++s_triggerNum;
     }
     else
     {
         s_triggerNum = 0;
-        s_triggerTimestamp = nt;
+        s_triggerTimestamp = ntp;
     }
     uint64_t triggerId = (s_triggerTimestamp << 12) + (s_triggerNum & 0xFFF);
     /* 添加到触发器列表 */
-    auto discardType = Diagnose::onTriggerCreated(triggerCount, oldestTriggerId, triggerId, timer.get());
-    if (DiscardType::discard_newest == discardType) /* 丢弃最新 */
-    {
-        return;
-    }
-    trigger = std::make_shared<Trigger>();
+    Diagnose::onTriggerCreated(s_triggerQueue.size(), triggerId, timer.get());
+    auto trigger = std::make_shared<Trigger>();
     trigger->id = triggerId;
     trigger->wpTimer = timer;
-    if (DiscardType::discard_oldest == discardType) /* 丢弃最早 */
-    {
-        s_triggerQueue.push(trigger, 1);
-    }
-    else if (DiscardType::discard_all == discardType) /* 丢弃所有 */
-    {
-        s_triggerQueue.push(trigger, 2);
-    }
-    else
-    {
-        s_triggerQueue.push(trigger, 0);
-    }
+    s_triggerQueue.push(trigger, 0);
 }
 
 void Timer::handleTrigger(bool tryFlag)

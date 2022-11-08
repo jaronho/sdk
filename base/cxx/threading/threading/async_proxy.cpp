@@ -1,5 +1,6 @@
 #include "async_proxy.h"
 
+#include <atomic>
 #include <stdexcept>
 
 #include "diagnose/diagnose.h"
@@ -42,49 +43,30 @@ void AsyncTask::run()
 
 void AsyncTask::addToFinisherList(const std::shared_ptr<AsyncTask>& task)
 {
-    /* 查询当前结束器数量和最早的结束器ID */
-    uint64_t oldestFinisherId = 0;
-    std::shared_ptr<Finisher> finisher = nullptr;
-    int finisherCount = s_finisherQueue.tryFront(finisher);
-    if (finisherCount > 0 && finisher)
+    if (!task)
     {
-        oldestFinisherId = finisher->id;
+        return;
     }
     /* 计算触发器ID */
-    static uint64_t s_finisherTimestamp = 0;
-    static int s_finisherNum = 0;
-    auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (nt == s_finisherTimestamp)
+    static std::atomic<uint64_t> s_finisherTimestamp{0};
+    static std::atomic_int s_finisherNum{0};
+    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
+    if (ntp == s_finisherTimestamp)
     {
         ++s_finisherNum;
     }
     else
     {
         s_finisherNum = 0;
-        s_finisherTimestamp = nt;
+        s_finisherTimestamp = ntp;
     }
     uint64_t finisherId = (s_finisherTimestamp << 12) + (s_finisherNum & 0xFFF);
     /* 添加到结束器列表 */
-    auto discardType = Diagnose::onFinisherCreated(finisherCount, oldestFinisherId, finisherId, task.get());
-    if (DiscardType::discard_newest == discardType) /* 丢弃最新 */
-    {
-        return;
-    }
-    finisher = std::make_shared<Finisher>();
+    Diagnose::onFinisherCreated(s_finisherQueue.size(), finisherId, task.get());
+    auto finisher = std::make_shared<Finisher>();
     finisher->id = finisherId;
     finisher->task = task;
-    if (DiscardType::discard_oldest == discardType) /* 丢弃最早 */
-    {
-        s_finisherQueue.push(finisher, 1);
-    }
-    else if (DiscardType::discard_all == discardType) /* 丢弃所有 */
-    {
-        s_finisherQueue.push(finisher, 2);
-    }
-    else
-    {
-        s_finisherQueue.push(finisher, 0);
-    }
+    s_finisherQueue.push(finisher, 0);
 }
 
 ExecutorPtr AsyncProxy::getExecutor()

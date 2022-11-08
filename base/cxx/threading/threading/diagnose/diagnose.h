@@ -16,17 +16,6 @@ class ThreadProxy;
 class Timer;
 
 /**
- * @brief 丢弃类型
- */
-enum class DiscardType
-{
-    none, /* 不丢弃 */
-    discard_newest, /* 丢弃最新 */
-    discard_oldest, /* 丢弃最早 */
-    discard_all /* 丢弃所有 */
-};
-
-/**
  * @brief 诊断状态
  */
 enum class DiagnoseState
@@ -127,9 +116,8 @@ using TaskExceptionStateCallback = std::function<void(const std::string& executo
  * @param finisherCount 当前触发器数量(不包含新创建的)
  * @param taskId 任务ID
  * @param taskName 任务名称
- * @return 丢弃类型
  */
-using FinisherCreateCallback = std::function<DiscardType(int finisherCount, uint64_t taskId, const std::string& taskName)>;
+using FinisherCreateCallback = std::function<void(int finisherCount, uint64_t taskId, const std::string& taskName)>;
 
 /**
  * @brief 结束器(正常)状态回调
@@ -153,9 +141,8 @@ using FinisherExceptionStateCallback = std::function<void(uint64_t taskId, const
  * @param triggerCount 当前触发器数量(不包含新创建的)
  * @param timerId 定时器ID
  * @param timerName 定时器名称
- * @return 丢弃类型
  */
-using TriggerCreateCallback = std::function<DiscardType(int triggerCount, uint64_t timerId, const std::string& timerName)>;
+using TriggerCreateCallback = std::function<void(int triggerCount, uint64_t timerId, const std::string& timerName)>;
 
 /**
  * @brief 触发器(正常)状态回调
@@ -330,11 +317,10 @@ protected:
     /**
      * @brief 响应结束器创建(模块内部接口)
      * @param finisherCount 当前已创建的结束器数量(不包含当前新创建的)
-     * @param oldestFinisherId 最早的触发ID
      * @param finisherId 结束器ID
      * @param task 任务
      */
-    static DiscardType onFinisherCreated(int finisherCount, uint64_t oldestFinisherId, uint64_t finisherId, const AsyncTask* task);
+    static void onFinisherCreated(int finisherCount, uint64_t finisherId, const AsyncTask* task);
 
     /**
      * @brief 结束结束器开始运行(模块内部接口)
@@ -361,11 +347,10 @@ protected:
     /**
      * @brief 响应触发器创建(模块内部接口)
      * @param triggerCount 当前已创建的触发器数量(不包含当前新创建的)
-     * @param oldestTriggerId 最早的触发器ID
      * @param triggerId 触发器ID
      * @param timer 定时器
      */
-    static DiscardType onTriggerCreated(int triggerCount, uint64_t oldestTriggerId, uint64_t triggerId, const Timer* timer);
+    static void onTriggerCreated(int triggerCount, uint64_t triggerId, const Timer* timer);
 
     /**
      * @brief 响应触发器开始运行(模块内部接口)
