@@ -246,7 +246,7 @@ public:
         timeout = ba.readInt32();
     }
 
-    long long seq_id = 0; /* 序列ID */
+    int64_t seq_id = 0; /* 序列ID */
     std::string caller; /* 调用者ID */
     std::string replyer; /* 应答者ID */
     int proc = 0; /* 调用程序ID */
@@ -300,7 +300,7 @@ public:
         code = (ErrorCode)ba.readInt32();
     };
 
-    long long seq_id = 0; /* 序列ID */
+    uint64_t seq_id = 0; /* 序列ID */
     std::string caller; /* 调用者ID */
     std::string replyer; /* 应答者ID */
     int proc = 0; /* 调用程序ID */

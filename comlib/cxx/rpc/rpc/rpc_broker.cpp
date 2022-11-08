@@ -86,8 +86,8 @@ public:
         {
             std::vector<unsigned char> buffer;
             pack(msg, buffer);
-            conn->send(buffer, [&, callback](const boost::system::error_code& code, std::size_t length) {
-                const auto conn = m_wpConn.lock();
+            conn->send(buffer, [wpConn = m_wpConn, callback](const boost::system::error_code& code, std::size_t length) {
+                const auto conn = wpConn.lock();
                 if (conn)
                 {
                     auto point = conn->getRemoteEndpoint();
@@ -284,7 +284,8 @@ bool Broker::run()
     try
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        return m_tcpServer->run(nsocket::TcpServer::getSsl2WayContext(m_certFile, m_privateKeyFile, m_privateKeyFilePwd, true));
+        return m_tcpServer->run(nsocket::TcpServer::getSsl2WayContext(boost::asio::ssl::context::file_format::pem, m_certFile,
+                                                                      m_privateKeyFile, m_privateKeyFilePwd, true));
 #else
         return m_tcpServer->run();
 #endif
