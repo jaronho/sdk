@@ -186,6 +186,32 @@ void HttpClient::easyDownload(const curlex::RequestPtr& req, const std::string& 
         s_workers);
 }
 
+void HttpClient::onResponseProcessFinishedState(const std::string& url, int prevElapsed)
+{
+    ResponseProcessNormalStateCallback finishedStateCallback = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
+        finishedStateCallback = s_finishedStateCallback;
+    }
+    if (finishedStateCallback)
+    {
+        finishedStateCallback(url, prevElapsed);
+    }
+}
+
+void HttpClient::onResponseProcessExceptionStateCallback(const std::string& url, const std::string& msg)
+{
+    ResponseProcessExceptionStateCallback exceptionStateCallback = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
+        exceptionStateCallback = s_exceptionStateCallback;
+    }
+    if (exceptionStateCallback)
+    {
+        exceptionStateCallback(url, msg);
+    }
+}
+
 void HttpClient::insertRespList(const curlex::Response& resp, const ResponseCallback& respCb)
 {
     std::shared_ptr<RespParam> param = std::make_shared<RespParam>();

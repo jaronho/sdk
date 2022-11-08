@@ -32,15 +32,17 @@ using ResponseProcessExceptionStateCallback = std::function<void(const std::stri
  */
 class HttpClient
 {
+    friend class Connection;
+
 public:
     /**
-     * @brief 设置响应处理结束状态回调
+     * @brief 设置响应处理结束状态回调(用于调试诊断)
      * @param stateCb 状态回调
      */
     static void setResponseProcessFinishedStateCallback(const ResponseProcessNormalStateCallback& stateCb);
 
     /**
-     * @brief 设置响应处理异常状态回调
+     * @brief 设置响应处理异常状态回调(用于调试诊断)
      * @param stateCb 状态回调
      */
     static void setResponseProcessExceptionStateCallback(const ResponseProcessExceptionStateCallback& stateCb);
@@ -166,6 +168,21 @@ public:
      */
     static void easyDownload(const curlex::RequestPtr& req, const std::string& filename, bool recover, const curlex::FuncSet& funcSet,
                              const ResponseCallback& respCb);
+
+protected:
+    /**
+     * @brief 响应处理(正常)状态回调
+     * @param url 请求URL
+     * @param prevElapsed 前一个状态耗时(毫秒)
+     */
+    static void onResponseProcessFinishedState(const std::string& url, int prevElapsed);
+
+    /**
+     * @brief 响应处理异常状态回调
+     * @param url 请求URL
+     * @param msg 异常消息
+     */
+    static void onResponseProcessExceptionStateCallback(const std::string& url, const std::string& msg);
 
 private:
     /**
