@@ -38,12 +38,10 @@ int ModuleManager::create()
     for (const auto& creatorIter : m_creators)
     {
         printLog("creating module [" + std::string(creatorIter.first.name()) + "]");
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        auto beg = std::chrono::steady_clock::now();
         get(creatorIter.first, true);
-        std::chrono::nanoseconds nanosecondsCost = std::chrono::steady_clock::now() - begin;
-        std::chrono::milliseconds millisecondsCost = std::chrono::duration_cast<std::chrono::milliseconds>(nanosecondsCost);
-        printLog("module [" + std::string(creatorIter.first.name()) + "] created, cost " + std::to_string(millisecondsCost.count())
-                 + " ms");
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg);
+        printLog("module [" + std::string(creatorIter.first.name()) + "] created, cost " + std::to_string(elapsed.count()) + " ms");
     }
     return static_cast<int>(m_modules.size());
 }
@@ -53,11 +51,10 @@ void ModuleManager::start()
     for (const auto& moduleIter : m_modules)
     {
         printLog("starting module [" + std::string(moduleIter.first.name()) + "]");
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        auto beg = std::chrono::steady_clock::now();
         moduleIter.second->onStart();
-        std::chrono::nanoseconds nanosecondsCost = std::chrono::steady_clock::now() - begin;
-        std::chrono::milliseconds millisecondsCost = std::chrono::duration_cast<std::chrono::milliseconds>(nanosecondsCost);
-        printLog("module [" + std::string(moduleIter.first.name()) + "] started, cost " + std::to_string(millisecondsCost.count()) + " ms");
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg);
+        printLog("module [" + std::string(moduleIter.first.name()) + "] started, cost " + std::to_string(elapsed.count()) + " ms");
     }
 }
 

@@ -220,7 +220,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     }
     /* 拷贝文件内容 */
     size_t nowSize = 0, readSize = 0, writeSize = 0;
-    auto nt = std::chrono::steady_clock::now();
+    auto tp = std::chrono::steady_clock::now();
     CopyResult result = CopyResult::ok;
     while (!feof(srcFile))
     {
@@ -233,7 +233,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         readSize = fread(block, 1, blockSize, srcFile);
         if (0 == readSize)
         {
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - nt).count() >= retryTime)
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
             {
                 result = CopyResult::src_read_failed;
                 break;
@@ -243,7 +243,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         writeSize = fwrite(block, 1, readSize, destFile);
         if (0 == writeSize)
         {
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - nt).count() >= retryTime)
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
             {
                 result = CopyResult::dest_write_failed;
                 break;
@@ -251,7 +251,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
             continue;
         }
         nowSize += writeSize;
-        nt = std::chrono::steady_clock::now();
+        tp = std::chrono::steady_clock::now();
         if (progressCb && !progressCb(nowSize, srcFileSize))
         {
             result = CopyResult::stop;

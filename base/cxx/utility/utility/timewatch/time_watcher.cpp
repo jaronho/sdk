@@ -18,9 +18,9 @@ TimeWatcher::~TimeWatcher()
 
 void TimeWatcher::watch(const std::string& subTag, const WatchFunc& watchFunc)
 {
-    std::chrono::steady_clock::time_point prevWatch = m_watch;
+    auto prevWatch = m_watch;
     m_watch = std::chrono::steady_clock::now();
-    std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(m_watch - prevWatch);
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(m_watch - prevWatch);
     if (watchFunc)
     {
         watchFunc(m_tag, subTag, elapsed.count());
@@ -33,11 +33,11 @@ void TimeWatcher::watch(const std::string& subTag, const WatchFunc& watchFunc)
 
 bool TimeWatcher::check(long long timeout)
 {
-    auto now = std::chrono::steady_clock::now();
-    std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_watch);
+    auto ntp = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_watch);
     if (elapsed.count() >= timeout)
     {
-        m_watch = now;
+        m_watch = ntp;
         return true;
     }
     return false;
