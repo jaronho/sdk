@@ -9,15 +9,15 @@ static std::atomic_int s_taskNum{0};
 
 Task::Task(const std::string& name) : m_name(name)
 {
-    auto nt = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (nt == s_taskTimestamp)
+    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
+    if (ntp == s_taskTimestamp)
     {
         ++s_taskNum;
     }
     else
     {
         s_taskNum = 0;
-        s_taskTimestamp = nt;
+        s_taskTimestamp = ntp;
     }
     m_id = (s_taskTimestamp << 12) + (s_taskNum & 0xFFF);
 }
