@@ -35,7 +35,8 @@ void FileDeleter::start(int interval, const std::vector<FileDeleteConfig>& cfgLi
     }
     else
     {
-        m_detectTimer = threading::SteadyTimer::onceTimer(THREADING_CALLER, detectInterval, [&]() { onDetectTimer(); });
+        m_detectTimer = threading::SteadyTimer::onceTimer(THREADING_CALLER, detectInterval,
+                                                          [&](const std::chrono::steady_clock::time_point& tp) { onDetectTimer(); });
     }
     m_detectTimer->start();
     if (std::chrono::steady_clock::duration::zero() != detectInterval)

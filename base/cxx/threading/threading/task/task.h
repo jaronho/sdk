@@ -46,12 +46,6 @@ public:
     virtual ~Task() = default;
 
     /**
-     * @brief 获取ID
-     * @return 任务ID
-     */
-    uint64_t getId() const;
-
-    /**
 	 * @brief 获取名称
 	 * @return 任务名称
 	 */
@@ -81,7 +75,7 @@ public:
     virtual void cancel();
 
     /**
-	 * @brief 等待正在执行的任务完成, 如果任务未在执行, 则立即返回
+	 * @brief 等待正在执行的任务完成, 如果任务未在执行则立即返回
 	 */
     void join();
 
@@ -91,7 +85,6 @@ public:
     virtual void run() = 0;
 
 private:
-    uint64_t m_id = 0; /* ID */
     const std::string m_name; /* 任务名称 */
     std::atomic<State> m_state = {State::created}; /* 任务状态 */
     std::atomic_bool m_cancelled = {false}; /* 是否已取消 */

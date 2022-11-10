@@ -1,31 +1,8 @@
 #include "task.h"
 
-#include <chrono>
-
 namespace threading
 {
-static std::atomic<uint64_t> s_taskTimestamp{0}; /* 注意: std::atomic_uint64_t在某些平台下未定义 */
-static std::atomic_int s_taskNum{0};
-
-Task::Task(const std::string& name) : m_name(name)
-{
-    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (ntp == s_taskTimestamp)
-    {
-        ++s_taskNum;
-    }
-    else
-    {
-        s_taskNum = 0;
-        s_taskTimestamp = ntp;
-    }
-    m_id = (s_taskTimestamp << 12) + (s_taskNum & 0xFFF);
-}
-
-uint64_t Task::getId() const
-{
-    return m_id;
-}
+Task::Task(const std::string& name) : m_name(name) {}
 
 std::string Task::getName() const
 {

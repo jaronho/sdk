@@ -1,47 +1,21 @@
 #include "http_client.h"
 
-#include <chrono>
-#include <mutex>
 #include <stdexcept>
-
-#include "threading/safe_queue.h"
-#include "threading/thread_proxy.hpp"
 
 namespace http
 {
-/**
- * @brief 响应参数, 用于跨线程传输
- */
-struct RespParam
-{
-    curlex::Response resp;
-    ResponseCallback respCb = nullptr;
-};
-
 static threading::ExecutorPtr s_workers = nullptr; /* 网络线程池 */
-static threading::SafeQueue<std::shared_ptr<RespParam>> s_respQueue; /* 响应队列 */
-static std::mutex s_stateCallbackMutex;
-static ResponseProcessNormalStateCallback s_finishedStateCallback = nullptr; /* 响应处理结束状态回调 */
-static ResponseProcessExceptionStateCallback s_exceptionStateCallback = nullptr; /* 响应处理异常状态回调 */
+static threading::ExecutorPtr s_respExecutor = nullptr; /* 响应回认执行器 */
+static ResponseExecutorHook s_respExecutorHook = nullptr; /* 响应回调执行器钩子 */
 
-void HttpClient::setResponseProcessFinishedStateCallback(const ResponseProcessNormalStateCallback& stateCb)
-{
-    std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-    s_finishedStateCallback = stateCb;
-}
-
-void HttpClient::setResponseProcessExceptionStateCallback(const ResponseProcessExceptionStateCallback& stateCb)
-{
-    std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-    s_exceptionStateCallback = stateCb;
-}
-
-void HttpClient::start(size_t threadCount)
+void HttpClient::start(size_t threadCount, const threading::ExecutorPtr& respExecutor, const ResponseExecutorHook& respExecutorHook)
 {
     if (!s_workers)
     {
         s_workers = threading::ThreadProxy::createAsioExecutor("http", std::max<size_t>(1U, threadCount));
     }
+    s_respExecutor = respExecutor;
+    s_respExecutorHook = respExecutorHook;
 }
 
 void HttpClient::stop()
@@ -50,17 +24,14 @@ void HttpClient::stop()
     {
         s_workers.reset();
     }
-    s_respQueue.clear();
-}
-
-void HttpClient::tryOnce()
-{
-    handleResp(true);
-}
-
-void HttpClient::waitOnce()
-{
-    handleResp(false);
+    if (s_respExecutor)
+    {
+        s_respExecutor.reset();
+    }
+    if (s_respExecutorHook)
+    {
+        s_respExecutorHook = nullptr;
+    }
 }
 
 curlex::SimpleRequestPtr HttpClient::makeSimpleRequest(const std::string& url)
@@ -107,12 +78,13 @@ void HttpClient::easyDelete(const curlex::RequestPtr& req, const curlex::FuncSet
         throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
                                + "] var 's_workers' is null");
     }
+    auto name = "http.easy_delete|" + req->getUrl();
     threading::ThreadProxy::async(
-        "http.easy_delete|" + req->getUrl(),
-        [req, funcSet, respCb]() {
+        name,
+        [name, req, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlDelete(req, funcSet, resp);
-            insertRespList(resp, respCb);
+            handleResp(name, resp, respCb);
         },
         s_workers);
 }
@@ -124,12 +96,13 @@ void HttpClient::easyGet(const curlex::RequestPtr& req, const curlex::FuncSet& f
         throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
                                + "] var 's_workers' is null");
     }
+    auto name = "http.easy_get|" + req->getUrl();
     threading::ThreadProxy::async(
-        "http.easy_get|" + req->getUrl(),
-        [req, funcSet, respCb]() {
+        name,
+        [name, req, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlGet(req, funcSet, resp);
-            insertRespList(resp, respCb);
+            handleResp(name, resp, respCb);
         },
         s_workers);
 }
@@ -141,12 +114,13 @@ void HttpClient::easyPut(const curlex::RequestPtr& req, const curlex::FuncSet& f
         throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
                                + "] var 's_workers' is null");
     }
+    auto name = "http.easy_put|" + req->getUrl();
     threading::ThreadProxy::async(
-        "http.easy_put|" + req->getUrl(),
-        [req, funcSet, respCb]() {
+        name,
+        [name, req, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlPut(req, funcSet, resp);
-            insertRespList(resp, respCb);
+            handleResp(name, resp, respCb);
         },
         s_workers);
 }
@@ -158,12 +132,13 @@ void HttpClient::easyPost(const curlex::RequestPtr& req, const curlex::FuncSet& 
         throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
                                + "] var 's_workers' is null");
     }
+    auto name = "http.easy_post|" + req->getUrl();
     threading::ThreadProxy::async(
-        "http.easy_post|" + req->getUrl(),
-        [req, funcSet, respCb]() {
+        name,
+        [name, req, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlPost(req, funcSet, resp);
-            insertRespList(resp, respCb);
+            handleResp(name, resp, respCb);
         },
         s_workers);
 }
@@ -176,102 +151,43 @@ void HttpClient::easyDownload(const curlex::RequestPtr& req, const std::string& 
         throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
                                + "] var 's_workers' is null");
     }
+    auto name = "http.easy_download|" + req->getUrl();
     threading::ThreadProxy::async(
-        "http.easy_download|" + req->getUrl(),
-        [req, filename, recover, funcSet, respCb]() {
+        name,
+        [name, req, filename, recover, funcSet, respCb]() {
             curlex::Response resp;
             curlex::curlDownload(req, filename, recover, funcSet, resp);
-            insertRespList(resp, respCb);
+            handleResp(name, resp, respCb);
         },
         s_workers);
 }
 
-void HttpClient::onResponseProcessFinishedState(const std::string& url, int prevElapsed)
+void HttpClient::handleResp(const std::string& name, const curlex::Response& resp, const ResponseCallback& respCb)
 {
-    ResponseProcessNormalStateCallback finishedStateCallback = nullptr;
+    if (!respCb)
     {
-        std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-        finishedStateCallback = s_finishedStateCallback;
+        return;
     }
-    if (finishedStateCallback)
+    if (s_respExecutor)
     {
-        finishedStateCallback(url, prevElapsed);
-    }
-}
-
-void HttpClient::onResponseProcessExceptionStateCallback(const std::string& url, const std::string& msg)
-{
-    ResponseProcessExceptionStateCallback exceptionStateCallback = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-        exceptionStateCallback = s_exceptionStateCallback;
-    }
-    if (exceptionStateCallback)
-    {
-        exceptionStateCallback(url, msg);
-    }
-}
-
-void HttpClient::insertRespList(const curlex::Response& resp, const ResponseCallback& respCb)
-{
-    std::shared_ptr<RespParam> param = std::make_shared<RespParam>();
-    param->resp = resp;
-    param->respCb = respCb;
-    s_respQueue.push(param);
-}
-
-void HttpClient::handleResp(bool tryFlag)
-{
-    std::shared_ptr<RespParam> param = nullptr;
-    if (tryFlag)
-    {
-        s_respQueue.tryFront(param);
-    }
-    else
-    {
-        param = s_respQueue.waitPop();
-    }
-    if (param && param->respCb)
-    {
-        try
-        {
-            auto beg = std::chrono::steady_clock::now();
-            param->respCb(param->resp);
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-            ResponseProcessNormalStateCallback finishedStateCallback = nullptr;
+        s_respExecutor->post(name, [name, resp, respCb]() {
+            if (respCb)
             {
-                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-                finishedStateCallback = s_finishedStateCallback;
+                if (s_respExecutorHook)
+                {
+                    s_respExecutorHook(name, [resp, respCb] {
+                        if (respCb)
+                        {
+                            respCb(resp);
+                        }
+                    });
+                }
+                else
+                {
+                    respCb(resp);
+                }
             }
-            if (finishedStateCallback)
-            {
-                finishedStateCallback(param->resp.url, elapsed);
-            }
-        }
-        catch (const std::exception& e)
-        {
-            ResponseProcessExceptionStateCallback exceptionStateCallback = nullptr;
-            {
-                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-                exceptionStateCallback = s_exceptionStateCallback;
-            }
-            if (exceptionStateCallback)
-            {
-                exceptionStateCallback(param->resp.url, e.what());
-            }
-        }
-        catch (...)
-        {
-            ResponseProcessExceptionStateCallback exceptionStateCallback = nullptr;
-            {
-                std::lock_guard<std::mutex> locker(s_stateCallbackMutex);
-                exceptionStateCallback = s_exceptionStateCallback;
-            }
-            if (exceptionStateCallback)
-            {
-                exceptionStateCallback(param->resp.url, "unknown exception");
-            }
-        }
+        });
     }
 }
 } // namespace http

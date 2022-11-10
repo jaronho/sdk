@@ -110,8 +110,6 @@ int main(int argc, char** argv)
     /* 主循环 */
     while (1)
     {
-        threading::AsyncProxy::tryOnce();
-        threading::Timer::tryOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     return 0;

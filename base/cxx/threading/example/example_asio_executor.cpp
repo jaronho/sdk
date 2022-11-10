@@ -2,6 +2,7 @@
 
 #include "threading/async_proxy.h"
 #include "threading/platform.h"
+#include "threading/safe_queue.h"
 #include "threading/signal/async_signal.h"
 #include "threading/signal/basic_signal.h"
 #include "threading/signal/scoped_signal_connection.h"
@@ -9,11 +10,40 @@
 #include "threading/timer/deadline_timer.h"
 #include "threading/timer/steady_timer.h"
 
+/**
+ * @brief 逻辑消息
+ */
+struct LogicMsg
+{
+    LogicMsg() = default;
+    LogicMsg(const std::string& name, const std::function<void()>& handler) : name(name), handler(handler) {}
+
+    std::string name;
+    std::function<void()> handler = nullptr;
+};
+
+threading::ExecutorPtr s_logicExecutor; /* 逻辑线程 */
+threading::SafeQueue<LogicMsg> s_logicMsgQueue; /* 逻辑消息队列 */
 threading::ExecutorPtr g_workers; /* 工作线程 */
 threading::BasicSignal<void()> g_sig1; /* 同步信号(不带参数无返回值) */
 threading::BasicSignal<void(const std::string& str)> g_sig2; /* 同步信号(带参数无返回值) */
 threading::BasicSignal<int(int a, int b)> g_sig3; /* 同步信号(带参数有返回值) */
 threading::AsyncSignal<void(int num)> g_sig4; /* 异步信号(带有参数) */
+
+/**
+ * @brief 尝试处理逻辑消息
+ */
+void tryHandleLogicMsg()
+{
+    LogicMsg msg;
+    while (s_logicMsgQueue.tryPop(msg))
+    {
+        if (msg.handler)
+        {
+            msg.handler();
+        }
+    }
+}
 
 /* 连接信号 */
 void connectSignal()
@@ -45,8 +75,13 @@ void connectSignal()
 int main()
 {
     int mainPid = threading::Platform::getThreadId();
+    s_logicExecutor = threading::ThreadProxy::createAsioExecutor("logic", 1);
+    threading::AsyncProxy::start(6, s_logicExecutor, [&](const std::string& name, const std::function<void()>& finishCb) {
+        s_logicMsgQueue.push(LogicMsg(name, finishCb));
+    }); /* 创建异步任务线程(6个线程) */
+    threading::Timer::setDefaultExecutor(
+        s_logicExecutor, [&](const std::string& name, const std::function<void()>& func) { s_logicMsgQueue.push(LogicMsg(name, func)); });
     g_workers = threading::ThreadProxy::createAsioExecutor("workers", 6); /* 创建工作线程(6个线程) */
-    threading::AsyncProxy::start(6); /* 创建异步任务线程(6个线程) */
     /* 定时器1 */
     int count1 = 0;
     auto tm1 = std::make_shared<threading::SteadyTimer>("", std::chrono::seconds(0), std::chrono::milliseconds(5000), [mainPid, &count1]() {
@@ -93,9 +128,8 @@ int main()
                 std::this_thread::sleep_for(std::chrono::milliseconds(2000));
             },
             [&]() { printf("----- [%d:%d] async func finished\n", mainPid, threading::Platform::getThreadId()); });
-        /* 监听定时器回调 */
-        threading::AsyncProxy::tryOnce();
-        threading::Timer::tryOnce();
+        /* 主线程处理逻辑消息 */
+        tryHandleLogicMsg();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }

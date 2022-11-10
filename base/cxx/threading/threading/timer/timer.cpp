@@ -1,11 +1,7 @@
 #include "timer.h"
 
-#include <chrono>
 #include <mutex>
 #include <thread>
-
-#include "../diagnose/diagnose.h"
-#include "../safe_queue.h"
 
 namespace threading
 {
@@ -54,24 +50,15 @@ static void setThreadName(const std::string& name)
 #endif
 }
 
-/**
- * @brief 触发器
- */
-struct Trigger
-{
-    uint64_t id = 0; /* ID */
-    std::weak_ptr<Timer> wpTimer; /* 定时器 */
-};
-
-static std::atomic<uint64_t> s_timerTimestamp{0}; /* 注意: std::atomic_uint64_t在某些平台下未定义 */
-static std::atomic_int s_timerNum{0};
 static std::mutex s_mutex;
 static std::unique_ptr<boost::asio::io_context> s_context;
 static std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> s_work;
 static std::unique_ptr<std::thread> s_thread; /* 定时器线程 */
-static SafeQueue<std::shared_ptr<Trigger>> s_triggerQueue; /* 触发器队列 */
+static std::mutex s_mutexDefaultExecutor;
+static ExecutorPtr s_defaultExecutor = nullptr; /* 触发函数默认执行器 */
+static TimerExecutorHook s_defaultExecutorHook = nullptr; /* 触发函数默认执行器钩子 */
 
-Timer::Timer(const std::string& name, const std::function<void()>& func, const ExecutorPtr& executor)
+Timer::Timer(const std::string& name, const TimerTriggerFunc& func, const ExecutorPtr& executor)
     : m_name(name), m_func(func), m_executor(executor), m_started(false)
 {
     /* 创建定时器线程 */
@@ -92,28 +79,6 @@ Timer::Timer(const std::string& name, const std::function<void()>& func, const E
             s_context->run();
         });
     }
-    /* 计算定时器ID */
-    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (ntp == s_timerTimestamp)
-    {
-        ++s_timerNum;
-    }
-    else
-    {
-        s_timerNum = 0;
-        s_timerTimestamp = ntp;
-    }
-    m_id = (s_timerTimestamp << 12) + (s_timerNum & 0xFFF);
-}
-
-Timer::~Timer()
-{
-    Diagnose::onTimerDestroy(this);
-}
-
-uint64_t Timer::getId() const
-{
-    return m_id;
 }
 
 std::string Timer::getName() const
@@ -126,14 +91,11 @@ bool Timer::isStarted() const
     return m_started;
 }
 
-void Timer::tryOnce()
+void Timer::setDefaultExecutor(const ExecutorPtr& executor, const TimerExecutorHook& hook)
 {
-    handleTrigger(true);
-}
-
-void Timer::waitOnce()
-{
-    handleTrigger(false);
+    std::lock_guard<std::mutex> locker(s_mutexDefaultExecutor);
+    s_defaultExecutor = executor;
+    s_defaultExecutorHook = hook;
 }
 
 boost::asio::io_context& Timer::getContext()
@@ -141,65 +103,45 @@ boost::asio::io_context& Timer::getContext()
     return (*s_context);
 }
 
-void Timer::addToTriggerList(const std::shared_ptr<Timer>& timer)
+void Timer::onTriggerFunc(const std::shared_ptr<Timer>& timer)
 {
-    if (!timer)
+    if (!m_func)
     {
         return;
     }
-    /* 计算触发器ID */
-    static std::atomic<uint64_t> s_triggerTimestamp{0};
-    static std::atomic_int s_triggerNum{0};
-    auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-    if (ntp == s_triggerTimestamp)
+    ExecutorPtr executor = m_executor;
+    TimerExecutorHook hook = nullptr;
+    if (!executor)
     {
-        ++s_triggerNum;
+        std::lock_guard<std::mutex> locker(s_mutexDefaultExecutor);
+        executor = s_defaultExecutor;
+        hook = s_defaultExecutorHook;
     }
-    else
+    if (!executor)
     {
-        s_triggerNum = 0;
-        s_triggerTimestamp = ntp;
+        return;
     }
-    uint64_t triggerId = (s_triggerTimestamp << 12) + (s_triggerNum & 0xFFF);
-    /* 添加到触发器列表 */
-    Diagnose::onTriggerCreated(s_triggerQueue.size(), triggerId, timer.get());
-    auto trigger = std::make_shared<Trigger>();
-    trigger->id = triggerId;
-    trigger->wpTimer = timer;
-    s_triggerQueue.push(trigger, 0);
-}
-
-void Timer::handleTrigger(bool tryFlag)
-{
-    std::shared_ptr<Trigger> trigger = nullptr;
-    if (tryFlag)
-    {
-        s_triggerQueue.tryPop(trigger);
-    }
-    else
-    {
-        trigger = s_triggerQueue.waitPop();
-    }
-    if (trigger)
-    {
-        const auto timer = trigger->wpTimer.lock();
-        if (timer && timer->m_func)
+    auto ntp = std::chrono::steady_clock::now();
+    const std::weak_ptr<Timer> wpTimer = timer;
+    executor->post(getName(), [wpTimer, func = m_func, hook, ntp]() {
+        const auto timer = wpTimer.lock();
+        if (timer && func)
         {
-            try
+            if (hook)
             {
-                Diagnose::onTriggerRunning(trigger->id, timer.get());
-                timer->m_func();
-                Diagnose::onTriggerFinished(trigger->id, timer.get());
+                hook(timer->getName(), [wpTimer, func, ntp] {
+                    const auto timer = wpTimer.lock();
+                    if (timer && func)
+                    {
+                        func(ntp);
+                    }
+                });
             }
-            catch (const std::exception& e)
+            else
             {
-                Diagnose::onTriggerException(trigger->id, timer.get(), e.what());
-            }
-            catch (...)
-            {
-                Diagnose::onTriggerException(trigger->id, timer.get(), "unknown exception");
+                func(ntp);
             }
         }
-    }
+    });
 }
 } // namespace threading

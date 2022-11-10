@@ -1,10 +1,15 @@
 #pragma once
-#include <chrono>
-
 #include "thread_proxy.hpp"
 
 namespace threading
 {
+/**
+ * @brief 异步任务结束回调执行器钩子
+ * @param name 任务名称
+ * @param finishCb 结束回调
+ */
+using AsyncTaskFinishExecutorHook = std::function<void(const std::string& name, const std::function<void()>& finishCb)>;
+
 /**
  * @brief 异步任务(主要用作基类)
  */
@@ -16,15 +21,14 @@ public:
     void run() override;
 
     std::function<void()> func = nullptr; /* 执行函数(在worker线程调用) */
-    std::function<void()> finishCb = nullptr; /* 结束回调(在主逻辑线程调用, 一般是在主线程) */
-    ExecutorPtr finishExecutor = nullptr; /* 指定结束回调的执行线程(选填), 若非空则其不受`tryOnce`或`waitOnce`影响 */
+    std::function<void()> finishCb = nullptr; /* 结束回调(在结束回调的执行线程调用) */
+    ExecutorPtr finishExecutor = nullptr; /* 指定结束回调的执行线程(选填), 当为空时将在默认执行器执行结束回调 */
 
 private:
     /**
-     * @brief 添加到结束器列表
-     * @param task 任务
+     * @brief 响应结束回调
      */
-    static void addToFinisherList(const std::shared_ptr<AsyncTask>& task);
+    void onFinishCb();
 };
 
 using AsyncTaskPtr = std::shared_ptr<AsyncTask>;
@@ -36,33 +40,18 @@ class AsyncProxy final
 {
 public:
     /**
-     * @brief 获取线程池
-     * @return 线程池
-     */
-    static ExecutorPtr getExecutor();
-
-    /**
      * @brief 启动模块
-     * @param threadCount 用于执行异步任务的线程个数         
+     * @param threadCount 用于执行异步任务的线程个数
+     * @param defaultFinishExecutor 默认结束回调执行器
+     * @param defaultFinishExecutorHook 默认结束回调执行构子(选填), 为空时直接执行结束回调
      */
-    static void start(size_t threadCount = 4);
+    static void start(size_t threadCount = 4, const ExecutorPtr& defaultFinishExecutor = nullptr,
+                      const AsyncTaskFinishExecutorHook& defaultFinishExecutorHook = nullptr);
 
     /**
      * @brief 停止模块
      */
     static void stop();
-
-    /**
-     * @brief 尝试单次运行(用于监听结束回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
-     *        注意: 如果调用execute时有指定任务结束回调的执行线程, 则其回调不受该接口接管
-     */
-    static void tryOnce();
-
-    /**
-     * @brief 等待单次运行(阻塞, 用于监听结束回调), 建议在单独线程中调用
-     *        注意: 如果调用execute时有指定任务结束回调的执行线程, 则其回调不受该接口接管
-     */
-    static void waitOnce();
 
     /**
      * @brief 执行异步任务
@@ -72,19 +61,12 @@ public:
 
     /**
      * @brief 执行异步任务
-     * @param taskName 任务名(强烈建议设置唯一标识, 以方便后续诊断)
+     * @param name 任务名(强烈建议设置唯一标识, 以方便后续诊断)
      * @param func 异步任务执行函数(在worker线程调用)
      * @param finishCb 结束回调(在主逻辑线程调用)
-     * @param finishExecutor 指定结束回调的执行线程(选填), 若非空则其回调不受`tryOnce`或`waitOnce`接管
+     * @param finishExecutor 指定结束回调的执行线程(选填), 当为空时将在默认执行器执行结束回调
      */
-    static void execute(const std::string& taskName, const std::function<void()>& func, const std::function<void()>& finishCb = nullptr,
+    static void execute(const std::string& name, const std::function<void()>& func, const std::function<void()>& finishCb = nullptr,
                         const ExecutorPtr& finishExecutor = nullptr);
-
-private:
-    /**
-     * @brief 处理结束器
-     * @param tryFlag 是否尝试, true-尝试(非阻塞), false-等待(阻塞)
-     */
-    static void handleFinisher(bool tryFlag);
 };
 } // namespace threading

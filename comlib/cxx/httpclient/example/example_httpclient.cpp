@@ -409,7 +409,6 @@ int main()
     http::HttpClient::start();
     while (1)
     {
-        http::HttpClient::tryOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
         if (!funcList.empty())
         {
@@ -418,6 +417,5 @@ int main()
             func();
         }
     }
-    http::HttpClient::stop();
     return 0;
 }

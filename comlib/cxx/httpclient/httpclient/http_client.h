@@ -1,9 +1,9 @@
 #pragma once
-
 #include <functional>
 #include <string>
 
 #include "curlex/curlex.h"
+#include "threading/thread_proxy.hpp"
 
 namespace http
 {
@@ -11,21 +11,14 @@ namespace http
  * @brief 响应回调
  * @param resp 响应数据
  */
-using ResponseCallback = std::function<void(curlex::Response& resp)>;
+using ResponseCallback = std::function<void(const curlex::Response& resp)>;
 
 /**
- * @brief 响应处理(正常)状态回调
- * @param url 请求URL
- * @param prevElapsed 前一个状态耗时(毫秒)
+ * @brief 响应回调执行器钩子
+ * @param name 任务名称
+ * @param respCb 响应回调
  */
-using ResponseProcessNormalStateCallback = std::function<void(const std::string& url, int prevElapsed)>;
-
-/**
- * @brief 响应处理异常状态回调
- * @param url 请求URL
- * @param msg 异常消息
- */
-using ResponseProcessExceptionStateCallback = std::function<void(const std::string& url, const std::string& msg)>;
+using ResponseExecutorHook = std::function<void(const std::string& name, const std::function<void()>& respCb)>;
 
 /**
  * @brief HTTP客户端模块
@@ -36,37 +29,18 @@ class HttpClient
 
 public:
     /**
-     * @brief 设置响应处理结束状态回调(用于调试诊断)
-     * @param stateCb 状态回调
-     */
-    static void setResponseProcessFinishedStateCallback(const ResponseProcessNormalStateCallback& stateCb);
-
-    /**
-     * @brief 设置响应处理异常状态回调(用于调试诊断)
-     * @param stateCb 状态回调
-     */
-    static void setResponseProcessExceptionStateCallback(const ResponseProcessExceptionStateCallback& stateCb);
-
-    /**
      * @brief 启动模块
      * @param threadCount 用于执行网络事件的线程个数
+     * @param respExecutor 响应回调执行器
+     * @param respExecutorHook 响应回调执行构子(选填), 为空时直接执行响应回调
      */
-    static void start(size_t threadCount = 4);
+    static void start(size_t threadCount = 4, const threading::ExecutorPtr& respExecutor = nullptr,
+                      const ResponseExecutorHook& respExecutorHook = nullptr);
 
     /**
      * @brief 停止模块
      */
     static void stop();
-
-    /**
-     * @brief 尝试单次运行(用于监听响应回调, 在主逻辑线程中循环调用, 一般是在主线程), 调用频率建议不超过1秒
-     */
-    static void tryOnce();
-
-    /**
-     * @brief 等待单次运行(阻塞, 用于监听响应回调), 建议在单独线程中调用
-     */
-    static void waitOnce();
 
     /**
      * @brief 创建简单请求对象
@@ -169,33 +143,13 @@ public:
     static void easyDownload(const curlex::RequestPtr& req, const std::string& filename, bool recover, const curlex::FuncSet& funcSet,
                              const ResponseCallback& respCb);
 
-protected:
-    /**
-     * @brief 响应处理(正常)状态回调
-     * @param url 请求URL
-     * @param prevElapsed 前一个状态耗时(毫秒)
-     */
-    static void onResponseProcessFinishedState(const std::string& url, int prevElapsed);
-
-    /**
-     * @brief 响应处理异常状态回调
-     * @param url 请求URL
-     * @param msg 异常消息
-     */
-    static void onResponseProcessExceptionStateCallback(const std::string& url, const std::string& msg);
-
 private:
     /**
-     * @brief 插入响应列表
+     * @brief 处理响应
+     * @param name 请求名称
      * @param resp 响应数据
      * @param respCb 响应回调
      */
-    static void insertRespList(const curlex::Response& resp, const ResponseCallback& respCb);
-
-    /**
-     * @brief 处理响应
-     * @param tryFlag 是否尝试, true-尝试(非阻塞), false-等待(阻塞)
-     */
-    static void handleResp(bool tryFlag);
+    static void handleResp(const std::string& name, const curlex::Response& resp, const ResponseCallback& respCb);
 };
 } // namespace http

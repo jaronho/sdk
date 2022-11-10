@@ -2,8 +2,8 @@
 
 namespace threading
 {
-DeadlineTimer::DeadlineTimer(const std::string& name, const std::chrono::system_clock::time_point& deadline,
-                             const std::function<void()>& func, const ExecutorPtr& executor)
+DeadlineTimer::DeadlineTimer(const std::string& name, const std::chrono::system_clock::time_point& deadline, const TimerTriggerFunc& func,
+                             const ExecutorPtr& executor)
     : Timer(name, func, executor), m_deadline(deadline)
 {
     m_timer = std::make_shared<boost::asio::system_timer>(getContext());
@@ -16,18 +16,20 @@ DeadlineTimer::~DeadlineTimer()
 
 void DeadlineTimer::setDeadline(const std::chrono::system_clock::time_point& deadline)
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     m_deadline = deadline;
 }
 
 void DeadlineTimer::start()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     bool preCancel = false; /* 预先取消状态 */
     if (m_started)
     {
         preCancel = true;
         m_timer->cancel();
+    }
+    else
+    {
+        m_started = true;
     }
     const std::weak_ptr<DeadlineTimer> wpSelf = shared_from_this();
     m_timer->expires_at(m_deadline);
@@ -48,15 +50,13 @@ void DeadlineTimer::start()
             {
                 self->onTrigger();
             }
-            self->onStop();
+            self->onStopped();
         }
     });
-    m_started = true;
 }
 
 void DeadlineTimer::stop()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started)
     {
         m_timer->cancel();
@@ -66,7 +66,6 @@ void DeadlineTimer::stop()
 
 void DeadlineTimer::onRecover()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started)
     {
         const std::weak_ptr<DeadlineTimer> wpSelf = shared_from_this();
@@ -78,7 +77,7 @@ void DeadlineTimer::onRecover()
                 {
                     self->onTrigger();
                 }
-                self->onStop();
+                self->onStopped();
             }
         });
     }
@@ -86,37 +85,15 @@ void DeadlineTimer::onRecover()
 
 void DeadlineTimer::onTrigger()
 {
+    if (m_started)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if (!m_started)
-        {
-            return;
-        }
-    }
-    if (m_func)
-    {
-        if (m_executor) /* 有执行者则把回调抛到执行线程 */
-        {
-            const std::weak_ptr<Timer> wpTimer = shared_from_this();
-            m_executor->post(getName(), [wpTimer, func = m_func]() {
-                const auto timer = wpTimer.lock();
-                if (timer && func)
-                {
-                    func();
-                }
-            });
-        }
-        else /* 把回调添加到触发器列表 */
-        {
-            addToTriggerList(shared_from_this());
-        }
+        onTriggerFunc(shared_from_this());
     }
 }
 
-void DeadlineTimer::onStop()
+void DeadlineTimer::onStopped()
 {
     /* 只做状态改变, 不调用实际取消接口 */
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     m_started = false;
 }
 } // namespace threading

@@ -152,21 +152,7 @@ void Connection::doDelete(const ResponseCallback& respCb, bool asyncOp)
         curlex::curlDelete(m_req, m_funcSet, resp);
         if (respCb)
         {
-            try
-            {
-                auto beg = std::chrono::steady_clock::now();
-                respCb(resp);
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-                HttpClient::onResponseProcessFinishedState(resp.url, elapsed);
-            }
-            catch (const std::exception& e)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, e.what());
-            }
-            catch (...)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, "unknown exception");
-            }
+            respCb(resp);
         }
     }
 }
@@ -184,21 +170,7 @@ void Connection::doGet(const ResponseCallback& respCb, bool asyncOp)
         curlex::curlGet(m_req, m_funcSet, resp);
         if (respCb)
         {
-            try
-            {
-                auto beg = std::chrono::steady_clock::now();
-                respCb(resp);
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-                HttpClient::onResponseProcessFinishedState(resp.url, elapsed);
-            }
-            catch (const std::exception& e)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, e.what());
-            }
-            catch (...)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, "unknown exception");
-            }
+            respCb(resp);
         }
     }
 }
@@ -216,21 +188,7 @@ void Connection::doPut(const ResponseCallback& respCb, bool asyncOp)
         curlex::curlPut(m_req, m_funcSet, resp);
         if (respCb)
         {
-            try
-            {
-                auto beg = std::chrono::steady_clock::now();
-                respCb(resp);
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-                HttpClient::onResponseProcessFinishedState(resp.url, elapsed);
-            }
-            catch (const std::exception& e)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, e.what());
-            }
-            catch (...)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, "unknown exception");
-            }
+            respCb(resp);
         }
     }
 }
@@ -248,21 +206,7 @@ void Connection::doPost(const ResponseCallback& respCb, bool asyncOp)
         curlex::curlPost(m_req, m_funcSet, resp);
         if (respCb)
         {
-            try
-            {
-                auto beg = std::chrono::steady_clock::now();
-                respCb(resp);
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-                HttpClient::onResponseProcessFinishedState(resp.url, elapsed);
-            }
-            catch (const std::exception& e)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, e.what());
-            }
-            catch (...)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, "unknown exception");
-            }
+            respCb(resp);
         }
     }
 }
@@ -280,21 +224,7 @@ void Connection::doDownload(const std::string& filename, bool recover, const Res
         curlex::curlDownload(m_req, filename, recover, m_funcSet, resp);
         if (respCb)
         {
-            try
-            {
-                auto beg = std::chrono::steady_clock::now();
-                respCb(resp);
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-                HttpClient::onResponseProcessFinishedState(resp.url, elapsed);
-            }
-            catch (const std::exception& e)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, e.what());
-            }
-            catch (...)
-            {
-                HttpClient::onResponseProcessExceptionStateCallback(resp.url, "unknown exception");
-            }
+            respCb(resp);
         }
     }
 }

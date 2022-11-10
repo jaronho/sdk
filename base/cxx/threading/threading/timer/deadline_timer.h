@@ -1,9 +1,5 @@
 #pragma once
 #include <boost/asio/system_timer.hpp>
-#include <chrono>
-#include <memory>
-#include <mutex>
-#include <string>
 
 #include "timer.h"
 
@@ -19,10 +15,10 @@ public:
      * @brief 构造函数
      * @param name 名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param deadline 触发时间
-     * @param func 回调
-     * @param executor 指定回调的执行器(选填), 当为空时, 回调会被`timer_proxy`的`tryOnce`或`waitOnce`接管
+     * @param func 触发函数
+     * @param executor 指定触发函数的执行器(选填), 当为空时将在默认执行器执行触发函数
      */
-    DeadlineTimer(const std::string& name, const std::chrono::system_clock::time_point& deadline, const std::function<void()>& func,
+    DeadlineTimer(const std::string& name, const std::chrono::system_clock::time_point& deadline, const TimerTriggerFunc& func,
                   const ExecutorPtr& executor = nullptr);
 
     virtual ~DeadlineTimer();
@@ -55,12 +51,11 @@ private:
     void onTrigger();
 
     /**
-     * @brief 触发停止
+     * @brief 停止状态
      */
-    void onStop();
+    void onStopped();
 
 private:
-    std::recursive_mutex m_mutex;
     std::atomic<std::chrono::system_clock::time_point> m_deadline; /* 触发时间点 */
     std::shared_ptr<boost::asio::system_timer> m_timer; /* boost截至时间定时器 */
 };
