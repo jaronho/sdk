@@ -81,6 +81,7 @@ void TcpClient::run(const std::string& host, unsigned int port, bool async)
             return;
         }
         m_ioContext.run();
+        stop();
     }
 }
 
