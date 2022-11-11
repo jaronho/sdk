@@ -83,7 +83,8 @@ void FileDeleter::handleConfig(const FileDeleteConfig& cfg,
     }
     auto nowTimestamp = (int64_t)utility::DateTime::getNowTimestamp();
     auto folderCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-        if (utility::StrTool::contains(name, "System Volume Information", false)) /* 文件系统目录(跳过) */
+        if (utility::StrTool::contains(name, "$RECYCLE.BIN", false)
+            || utility::StrTool::contains(name, "System Volume Information", false)) /* 文件系统目录(跳过) */
         {
             return false;
         }

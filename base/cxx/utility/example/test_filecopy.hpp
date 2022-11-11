@@ -37,7 +37,9 @@ void testFileCopy(int argc, char** argv)
             return true;
         }
 #endif
-        if (attr.isDir && utility::StrTool::contains(name, "System Volume Information", false)) /* 文件系统目录(跳过) */
+        if (attr.isDir
+            && (utility::StrTool::contains(name, "$RECYCLE.BIN", false)
+                || utility::StrTool::contains(name, "System Volume Information", false))) /* 文件系统目录(跳过) */
         {
             printf("[%d] source directory %s is system, skip\n", depth, name.c_str());
             return true;
