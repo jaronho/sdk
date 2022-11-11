@@ -2,9 +2,9 @@
 
 namespace nac
 {
-std::weak_ptr<threading::Executor> DataChannel::getTimerExecutor()
+std::weak_ptr<threading::Executor> DataChannel::getPktExecutor()
 {
-    return m_timerExecutor;
+    return m_pktExecutor;
 }
 
 bool DataChannel::connect(const std::string& address, unsigned short port, bool filePEM, const std::string& certFile,
@@ -47,12 +47,12 @@ bool DataChannel::connect(const std::string& address, unsigned short port, bool 
             const auto pktExecutor = wpPktExecutor.lock();
             if (pktExecutor)
             {
-                auto tp = std::chrono::steady_clock::now();
-                auto fn = [wpSelf, tp, data, logger]() {
+                auto ntp = std::chrono::steady_clock::now();
+                auto fn = [wpSelf, ntp, data, logger]() {
                     const auto& self = wpSelf.lock();
                     if (self)
                     {
-                        self->sigUpdateRecvTime(tp);
+                        self->sigUpdateRecvTime(ntp);
                         self->onRecvData(data);
                     }
                     else
@@ -93,6 +93,7 @@ bool DataChannel::connect(const std::string& address, unsigned short port, bool 
 #else
                     tcpClient->run(address, port);
 #endif
+                    INFO_LOG(logger, "运行结束.");
                 }
                 catch (const std::exception& e)
                 {
@@ -163,8 +164,8 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
                 const auto pktExecutor = wpPktExecutor.lock();
                 if (pktExecutor)
                 {
-                    auto tp = std::chrono::steady_clock::now();
-                    auto fn = [wpSelf, dataLength, callback, tp, code, length, logger]() {
+                    auto ntp = std::chrono::steady_clock::now();
+                    auto fn = [wpSelf, dataLength, callback, ntp, code, length, logger]() {
                         const auto self = wpSelf.lock();
                         if (code)
                         {
@@ -174,7 +175,7 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
                         {
                             if (self)
                             {
-                                self->sigUpdateSendTime(tp);
+                                self->sigUpdateSendTime(ntp);
                             }
                             else
                             {

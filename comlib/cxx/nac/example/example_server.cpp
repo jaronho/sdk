@@ -326,7 +326,7 @@ int main(int argc, char* argv[])
         }
         catch (...)
         {
-            ERROR_LOG(s_logger, "异常: 未知");
+            ERROR_LOG(s_logger, "异常: 未知.");
         }
     });
     th.detach();

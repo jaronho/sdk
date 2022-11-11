@@ -18,7 +18,7 @@ public:
      * @param seqId 序列ID
      * @param data 数据
      */
-    using MsgReceiver = std::function<void(unsigned int bizCode, int64_t seqId, const std::string& data)>;
+    using MsgReceiver = std::function<void(int32_t bizCode, int64_t seqId, const std::string& data)>;
 
     /**
      * @brief 响应回调
@@ -27,7 +27,7 @@ public:
      * @param seqId 序列ID
      * @param data 数据
      */
-    using ResponseCallback = std::function<void(bool sendOk, unsigned int bizCode, int64_t seqId, const std::string& data)>;
+    using ResponseCallback = std::function<void(bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data)>;
 
 public:
     /**
@@ -57,7 +57,7 @@ public:
      * @param callback 响应回调
      * @return 序列ID
      */
-    int64_t sendMsg(unsigned int bizCode, unsigned long long seqId, const std::string& data, int timeout, const ResponseCallback& callback);
+    int64_t sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, int timeout, const ResponseCallback& callback);
 
     /**
      * @brief 清除会话路由表
@@ -79,7 +79,7 @@ private:
      * @param waitResp 是否需要等待服务端响应数据
      * @param callback 响应回调
      */
-    void onResponseCallback(bool sendOk, unsigned int bizCode, int64_t seqId, bool waitResp, const ResponseCallback& callback);
+    void onResponseCallback(bool sendOk, int32_t bizCode, int64_t seqId, bool waitResp, const ResponseCallback& callback);
 
 private:
     class Session;

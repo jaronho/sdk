@@ -8,7 +8,7 @@ namespace nac
 class SessionManager::Session final : public std::enable_shared_from_this<SessionManager::Session>
 {
 public:
-    Session(unsigned int bizCode, int64_t seqId, const std::shared_ptr<SessionManager>& sessionManager, ResponseCallback responseCb)
+    Session(int32_t bizCode, int64_t seqId, const std::shared_ptr<SessionManager>& sessionManager, ResponseCallback responseCb)
         : m_bizCode(bizCode), m_seqId(seqId), m_wpSessionManager(sessionManager), m_responseCb(std::move(responseCb))
     {
     }
@@ -18,7 +18,7 @@ public:
         stopTimer();
     }
 
-    bool startTimer(int seconds, const std::weak_ptr<threading::Executor>& wpPktExecutor)
+    bool startTimer(int seconds, const threading::ExecutorPtr& timerExecutor)
     {
         if (seconds <= 0)
         {
@@ -30,14 +30,14 @@ public:
             const std::weak_ptr<SessionManager::Session> wpSelf = shared_from_this();
             m_timeoutTimer = threading::SteadyTimer::onceTimer(
                 "nac.session.timeout", std::chrono::seconds(seconds),
-                [wpSelf]() {
+                [wpSelf](const std::chrono::steady_clock::time_point& tp) {
                     const auto self = wpSelf.lock();
                     if (self)
                     {
                         self->onTimeout();
                     }
                 },
-                wpPktExecutor.lock());
+                timerExecutor);
         }
         m_timeoutTimer->start();
         return true;
@@ -87,7 +87,7 @@ public:
 private:
     unsigned int m_timeout = 0; /* 超时时间(秒) */
     threading::SteadyTimerPtr m_timeoutTimer = nullptr; /* 超时定时器 */
-    unsigned int m_bizCode; /* 会话业务码 */
+    int32_t m_bizCode; /* 会话业务码 */
     int64_t m_seqId; /* 序列ID */
     std::weak_ptr<SessionManager> m_wpSessionManager; /* 会话管理器 */
     ResponseCallback m_responseCb; /* 发送响应回调函数 */
@@ -121,8 +121,7 @@ void SessionManager::setMsgReceiver(const MsgReceiver& receiver)
     m_msgReceiver = receiver;
 }
 
-int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, const std::string& data, int timeout,
-                                const ResponseCallback& callback)
+int64_t SessionManager::sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, int timeout, const ResponseCallback& callback)
 {
     auto pkt = std::make_shared<ProtocolAdapter::Packet>();
     pkt->bizCode = bizCode;
@@ -131,7 +130,7 @@ int64_t SessionManager::sendMsg(unsigned int bizCode, unsigned long long seqId, 
     /* 添加路由 */
     auto session = std::make_shared<Session>(bizCode, pkt->seqId, shared_from_this(), callback);
     const auto dataChannel = m_wpDataChannel.lock();
-    if (session->startTimer(timeout, dataChannel ? dataChannel->getTimerExecutor().lock() : nullptr))
+    if (session->startTimer(timeout, dataChannel ? dataChannel->getPktExecutor().lock() : nullptr))
     {
         std::lock_guard<std::mutex> locker(m_mutexSessionMap);
         m_sessionMap.emplace(pkt->seqId, session);
@@ -215,13 +214,13 @@ void SessionManager::onProcessPacket(const std::shared_ptr<ProtocolAdapter::Pack
     if (session) /* 请求响应 */
     {
         TRACE_LOG(m_logger, "收到响应数据, bizCode[{}], seqId[{}], length[{}]", pkt->bizCode, pkt->seqId, pkt->size());
-        auto ntp = std::chrono::steady_clock::now();
+        auto beg = std::chrono::steady_clock::now();
         session->onResponse(pkt->data);
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg);
         if (elapsed.count() > 0)
         {
-            WARN_LOG(m_logger, "响应数据, bizCode[{}], seqId[{}], length[{}], 处理耗时 {} 毫秒", pkt->bizCode, pkt->seqId, pkt->size(),
-                     elapsed.count());
+            WARN_LOG(m_logger, "响应数据处理完毕, bizCode[{}], seqId[{}], length[{}], 耗时: {} 毫秒.", pkt->bizCode, pkt->seqId,
+                     pkt->size(), elapsed.count());
         }
     }
     else /* 主动通知 */
@@ -229,19 +228,19 @@ void SessionManager::onProcessPacket(const std::shared_ptr<ProtocolAdapter::Pack
         TRACE_LOG(m_logger, "收到通知数据, bizCode[{}], seqId[{}], length[{}]", pkt->bizCode, pkt->seqId, pkt->size());
         if (m_msgReceiver)
         {
-            auto ntp = std::chrono::steady_clock::now();
+            auto beg = std::chrono::steady_clock::now();
             m_msgReceiver(pkt->bizCode, pkt->seqId, pkt->data);
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - ntp);
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg);
             if (elapsed.count() > 0)
             {
-                WARN_LOG(m_logger, "通知数据, , bizCode[{}], seqId[{}], length[{}], 处理耗时 {} 毫秒", pkt->bizCode, pkt->seqId,
+                WARN_LOG(m_logger, "通知数据处理完毕, bizCode[{}], seqId[{}], length[{}], 耗时: {} 毫秒.", pkt->bizCode, pkt->seqId,
                          pkt->size(), elapsed.count());
             }
         }
     }
 }
 
-void SessionManager::onResponseCallback(bool sendOk, unsigned int bizCode, int64_t seqId, bool waitResp, const ResponseCallback& callback)
+void SessionManager::onResponseCallback(bool sendOk, int32_t bizCode, int64_t seqId, bool waitResp, const ResponseCallback& callback)
 {
     bool found = false;
     {
@@ -255,9 +254,17 @@ void SessionManager::onResponseCallback(bool sendOk, unsigned int bizCode, int64
     }
     if (!waitResp || found)
     {
+        TRACE_LOG(m_logger, "发送结果{}, bizCode[{}], seqId[{}]", sendOk ? "[成功]" : "[失败]", bizCode, seqId);
+        auto beg = std::chrono::steady_clock::now();
         if (callback)
         {
             callback(sendOk, bizCode, seqId, "");
+        }
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg);
+        if (elapsed.count() > 0)
+        {
+            WARN_LOG(m_logger, "发送结果{}处理完毕, bizCode[{}], seqId[{}], 耗时: {} 毫秒.", sendOk ? "[成功]" : "[失败]", bizCode, seqId,
+                     elapsed.count());
         }
     }
 }

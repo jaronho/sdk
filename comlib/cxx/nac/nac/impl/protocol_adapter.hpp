@@ -20,7 +20,7 @@ public:
          */
         size_t size() const
         {
-            return sizeof((int)data.size()) + sizeof(bizCode) + sizeof(seqId) + data.size();
+            return sizeof((int32_t)data.size()) + sizeof(bizCode) + sizeof(seqId) + data.size();
         }
 
         int32_t bizCode = 0; /* 业务码(4个字节) */

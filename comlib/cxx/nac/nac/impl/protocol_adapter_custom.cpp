@@ -68,7 +68,7 @@ bool ProtocolAdapterCustom::onRecvData(const std::vector<unsigned char>& data)
     m_payload->unpack(
         data,
         [&](const std::vector<unsigned char>& head) {
-            int offset = 0;
+            unsigned int offset = 0;
             s_pktHead.bodyLen = utility::ByteArray::read32(head.data() + offset, true); /* 包体长度 */
             if (m_payload->getHeadLen() + (size_t)s_pktHead.bodyLen >= MAX_BODY_SIZE) /* 限制数据包大小 */
             {

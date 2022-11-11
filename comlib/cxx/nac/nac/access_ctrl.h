@@ -1,7 +1,5 @@
 #pragma once
 #include <functional>
-#include <list>
-#include <map>
 
 #include "fileparse/nlohmann/helper.hpp"
 #include "impl/connect_service.h"
@@ -19,26 +17,18 @@ namespace nac
 enum class BizCode;
 
 /**
- * @brief 连接状态处理耗时回调(用于诊断)
- * @param state 连接状态
- * @param elapsed 处理耗时(毫秒)
- */
-using StateProcessElapsedCallback = std::function<void(const ConnectState& state, int elapsed)>;
-
-/**
- * @brief 业务处理耗时回调(用于诊断)
- * @param bizCode 业务码
- * @param seqId 序列ID
- * @param elapsed 处理耗时(毫秒)
- */
-using BizProcessElapsedCallback = std::function<void(const BizCode& bizCode, unsigned long long seqId, int elapsed)>;
-
-/**
  * @brief 响应回调
  * @param ok 是否成功
  * @param data 数据
  */
 using RespCallback = std::function<void(bool ok, const nlohmann::json& data)>;
+
+/**
+ * @brief 业务执行器钩子
+ * @param name 任务名称
+ * @param bizFunc 业务函数
+ */
+using BizExecutorHook = std::function<void(const std::string& name, const std::function<void()>& bizFunc)>;
 
 class StateHandler;
 class MsgHandler;
@@ -65,7 +55,7 @@ protected:
      * @param func 消息处理函数
      * @return true-订阅成功, false-订阅失败
      */
-    bool subscribeAccessMsg(const BizCode& bizCode, const std::function<void(unsigned long long seqId, const nlohmann::json& data)>& func);
+    bool subscribeAccessMsg(const BizCode& bizCode, const std::function<void(int64_t seqId, const nlohmann::json& data)>& func);
 
 private:
     std::shared_ptr<StateHandler> m_stateHandler = nullptr; /* 连接状态处理器 */
@@ -99,53 +89,43 @@ class AccessCtrl final
 {
     friend AccessObserver;
 
-private:
-    AccessCtrl();
-
 public:
-    static AccessCtrl& getInstance();
-
     /**
-     * @brief 设置连接状态处理耗时回调
-     * @param callback 耗时回调
+     * @brief 启动模块
+     * @param bizExecutor 业务处理线程
+     * @param bizExecutorHook 业务处理线程钩子(选填), 为空时直接执行处理函数
      */
-    void setStateProcessElapsedCallback(const StateProcessElapsedCallback& callback);
-
-    /**
-     * @brief 设置业务处理耗时回调
-     * @param callback 耗时回调
-     */
-    void setBizProcessElapsedCallback(const BizProcessElapsedCallback& callback);
+    static void start(const threading::ExecutorPtr& bizExecutor, const BizExecutorHook& bizExecutorHook = nullptr);
 
     /**
      * @brief 设置鉴权数据生成器
      * @param generator 生成器, 返回值: 鉴权数据
      */
-    void setAuthDataGenerator(const std::function<nlohmann::json()>& generator);
+    static void setAuthDataGenerator(const std::function<nlohmann::json()>& generator);
 
     /**
      * @brief 设置鉴权结果回调
      * @param callback 回调, 参数: 鉴权结果, 返回值: true-鉴权成功, false-鉴权失败
      */
-    void setAuthResultCallback(const std::function<bool(const nlohmann::json& data)>& callback);
+    static void setAuthResultCallback(const std::function<bool(const nlohmann::json& data)>& callback);
 
     /**
      * @brief 设置心跳数据生成器
      * @param generator 生成器, 返回值: 心跳数据(一般为空)
      */
-    void setHeartbeatDataGenerator(const std::function<nlohmann::json()>& generator);
+    static void setHeartbeatDataGenerator(const std::function<nlohmann::json()>& generator);
 
     /**
-     * @brief 启动(非阻塞)
+     * @brief 连接(非阻塞)
      * @param cfg 接入配置
      * @return true-启动中, false-启动失败
      */
-    bool start(const AccessConfig& cfg);
+    static bool connect(const AccessConfig& cfg);
 
     /**
-     * @brief 停止
+     * @brief 断开
      */
-    void stop();
+    static void disconnect();
 
     /**
      * @brief 发送消息
@@ -156,14 +136,14 @@ public:
      * @param timeout 响应超时(秒), 为0时表示不需要等待服务端响应数据
      * @return 消息序列ID, -1表示发送失败
      */
-    int64_t sendMsg(const BizCode& bizCode, unsigned long long seqId, const nlohmann::json& data, const RespCallback& callback,
-                    unsigned int timeout = 30);
+    static int64_t sendMsg(const BizCode& bizCode, int64_t seqId, const nlohmann::json& data, const RespCallback& callback,
+                           unsigned int timeout = 30);
 
     /**
      * @brief 获取本端端点
      * @return 本端端点
      */
-    boost::asio::ip::tcp::endpoint getLocalEndpoint() const;
+    static boost::asio::ip::tcp::endpoint getLocalEndpoint();
 
 private:
     /**
@@ -171,13 +151,13 @@ private:
      * @param handler 状态处理器
      * @return true-订阅成功, false-订阅失败
      */
-    bool subscribeState(const std::shared_ptr<StateHandler>& handler);
+    static bool subscribeState(const std::shared_ptr<StateHandler>& handler);
 
     /**
      * @brief 取消状态订阅, 在观察者析构中自动调用, 外部模块不直接调用
      * @param handler 状态处理器
      */
-    void unsubscribeState(const std::shared_ptr<StateHandler>& handler);
+    static void unsubscribeState(const std::shared_ptr<StateHandler>& handler);
 
     /**
      * @brief 订阅消息(服务端主动下发的消息), 在观察者中自动调用, 外部模块不直接调用
@@ -185,13 +165,13 @@ private:
      * @param handler 消息处理器
      * @return true-订阅成功, false-订阅失败
      */
-    bool subscribeMsg(const BizCode& bizCode, const std::shared_ptr<MsgHandler>& handler);
+    static bool subscribeMsg(int32_t bizCode, const std::shared_ptr<MsgHandler>& handler);
 
     /**
      * @brief 取消消息订阅, 在观察者析构中自动调用, 外部模块不直接调用
      * @param handler 消息处理器
      */
-    void unsubscribeMsg(const std::shared_ptr<MsgHandler>& handler);
+    static void unsubscribeMsg(const std::shared_ptr<MsgHandler>& handler);
 
     /**
      * @brief 响应接收消息
@@ -199,33 +179,17 @@ private:
      * @param seqId 消息序列ID
      * @param data 数据
      */
-    void onReceiveMsg(unsigned int bizCode, int64_t seqId, const std::string& data);
+    static void onReceiveMsg(int32_t bizCode, int64_t seqId, const std::string& data);
 
     /**
      * @brief 响应连接状态变化
      * @param state 连接状态
      */
-    void onConnectStateChanged(const ConnectState& state);
+    static void onConnectStateChanged(const ConnectState& state);
 
     /**
      * @brief 响应重试定时器
      */
-    void onRetryTimer();
-
-private:
-    threading::ExecutorPtr m_bizExecutor = threading::ThreadProxy::createAsioExecutor("nac::biz", 1); /* 业务处理线程 */
-    std::shared_ptr<DataChannel> m_dataChannel; /* 数据通道 */
-    std::shared_ptr<ProtocolAdapter> m_protocolAdapter; /* 协议适配器 */
-    std::shared_ptr<SessionManager> m_sessionManager; /* 会话管理器 */
-    std::shared_ptr<ConnectService> m_connectService; /* 连接服务 */
-    threading::SteadyTimerPtr m_retryTimer = nullptr; /* 重试(自动重连)定时器 */
-    std::mutex m_mutexStateHandlerList;
-    std::list<std::weak_ptr<StateHandler>> m_stateHandlerList; /* 状态处理器列表 */
-    std::mutex m_mutexMsgHandlerMap;
-    std::map<BizCode, std::list<std::weak_ptr<MsgHandler>>> m_msgHandlerMap; /* 消息处理器列表 */
-    AccessConfig m_cfg; /* 接入配置 */
-    std::mutex m_mutexProcessElpasedCallback;
-    StateProcessElapsedCallback m_stateProcessElapsedCallback = nullptr; /* 连接状态处理耗时回调 */
-    BizProcessElapsedCallback m_bizProcessElapsedCallback = nullptr; /* 业务处理耗时回调 */
+    static void onRetryTimer();
 };
 } // namespace nac

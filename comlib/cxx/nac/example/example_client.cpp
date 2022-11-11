@@ -10,6 +10,7 @@
 #include "utility/strtool/strtool.h"
 
 static logger::Logger s_logger;
+static threading::ExecutorPtr s_logicExecutor = nullptr; /* 逻辑线程 */
 
 class Login final : public nac::AccessObserver
 {
@@ -143,6 +144,8 @@ int main(int argc, char* argv[])
     /* 业务模块 */
     Login login;
     /* 启动网络接入模块 */
+    s_logicExecutor = threading::ThreadProxy::createAsioExecutor("logic", 1);
+    nac::AccessCtrl::start(s_logicExecutor);
     nac::AccessConfig acfg;
     acfg.address = serverHost;
     acfg.port = serverPort;
@@ -151,14 +154,13 @@ int main(int argc, char* argv[])
     acfg.privateKeyFilePwd = privateKeyFilePwd;
     acfg.connectTimeout = 3;
     acfg.retryInterval = {1};
-    while (!nac::AccessCtrl::getInstance().start(acfg))
+    while (!nac::AccessCtrl::connect(acfg))
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     std::thread th([&]() {
         while (1)
         {
-            threading::Timer::runOnce();
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
@@ -202,12 +204,11 @@ int main(int argc, char* argv[])
                     fileSize = 0;
                 }
             }
-            auto seqId =
-                nac::AccessCtrl::getInstance().sendMsg((nac::BizCode)bizCode, 0, data,
-                                                       [&, bizCode](bool ok, const nlohmann::json& data) {
-                                                           INFO_LOG(s_logger, "响应消息, bizCode: {} {}", bizCode, ok ? "成功." : "失败.");
-                                                       },
-                                                       10);
+            auto seqId = nac::AccessCtrl::sendMsg((nac::BizCode)bizCode, 0, data,
+                                                  [&, bizCode](bool ok, const nlohmann::json& data) {
+                                                      INFO_LOG(s_logger, "响应消息, bizCode: {} {}", bizCode, ok ? "成功." : "失败.");
+                                                  },
+                                                  10);
             INFO_LOG(s_logger, "发送消息, 包大小: {}, bizCode: {} {}", (size_t)16 + fileSize, bizCode,
                      seqId > 0 ? "成功, seqId: " + std::to_string(seqId) + "." : "失败.");
         }

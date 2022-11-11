@@ -1,5 +1,8 @@
 #include "access_ctrl.h"
 
+#include <list>
+#include <map>
+
 #include "impl/protocol_adapter_custom.h"
 
 namespace nac
@@ -30,9 +33,9 @@ private:
 class MsgHandler
 {
 public:
-    MsgHandler(const std::function<void(unsigned long long seqId, const nlohmann::json& data)>& func) : m_func(func) {}
+    MsgHandler(const std::function<void(int64_t seqId, const nlohmann::json& data)>& func) : m_func(func) {}
 
-    void operator()(unsigned long long seqId, const nlohmann::json& data)
+    void operator()(int64_t seqId, const nlohmann::json& data)
     {
         if (m_func)
         {
@@ -41,19 +44,19 @@ public:
     }
 
 private:
-    std::function<void(unsigned long long seqId, const nlohmann::json& data)> m_func = nullptr; /* 消息处理函数 */
+    std::function<void(int64_t seqId, const nlohmann::json& data)> m_func = nullptr; /* 消息处理函数 */
 };
 
 AccessObserver::~AccessObserver()
 {
     if (m_stateHandler)
     {
-        AccessCtrl::getInstance().unsubscribeState(m_stateHandler);
+        AccessCtrl::unsubscribeState(m_stateHandler);
         m_stateHandler.reset();
     }
     for (auto& handler : m_msgHandlerList)
     {
-        AccessCtrl::getInstance().unsubscribeMsg(handler);
+        AccessCtrl::unsubscribeMsg(handler);
         handler.reset();
     }
     m_msgHandlerList.clear();
@@ -64,7 +67,7 @@ bool AccessObserver::subscribeAccessState(const std::function<void(const Connect
     if (func)
     {
         auto handler = std::make_shared<StateHandler>(func);
-        if (AccessCtrl::getInstance().subscribeState(handler))
+        if (AccessCtrl::subscribeState(handler))
         {
             m_stateHandler = handler;
             return true;
@@ -73,13 +76,12 @@ bool AccessObserver::subscribeAccessState(const std::function<void(const Connect
     return false;
 }
 
-bool AccessObserver::subscribeAccessMsg(const BizCode& bizCode,
-                                        const std::function<void(unsigned long long seqId, const nlohmann::json& data)>& func)
+bool AccessObserver::subscribeAccessMsg(const BizCode& bizCode, const std::function<void(int64_t seqId, const nlohmann::json& data)>& func)
 {
     if (func)
     {
         auto handler = std::make_shared<MsgHandler>(func);
-        if (AccessCtrl::getInstance().subscribeMsg(bizCode, handler))
+        if (AccessCtrl::subscribeMsg((int32_t)bizCode, handler))
         {
             m_msgHandlerList.emplace_back(handler);
             return true;
@@ -88,43 +90,44 @@ bool AccessObserver::subscribeAccessMsg(const BizCode& bizCode,
     return false;
 }
 
-AccessCtrl::AccessCtrl()
-{
-    m_dataChannel = std::make_shared<DataChannel>();
-    m_protocolAdapter = std::make_shared<ProtocolAdapterCustom>();
-    m_protocolAdapter->setDataChannel(m_dataChannel);
-    m_sessionManager = std::make_shared<SessionManager>();
-    m_sessionManager->setDataChannel(m_dataChannel);
-    m_sessionManager->setProtocolAdapter(m_protocolAdapter);
-    m_sessionManager->setMsgReceiver(
-        [&](unsigned int bizCode, int64_t seqId, const std::string& data) { onReceiveMsg(bizCode, seqId, data); });
-    m_connectService = std::make_shared<ConnectService>();
-    m_connectService->setDataChannel(m_dataChannel);
-    m_connectService->setSessionManager(m_sessionManager);
-    m_connectService->setConnectCallback([&](const ConnectState& state) { onConnectStateChanged(state); });
-}
+static std::shared_ptr<DataChannel> s_dataChannel = nullptr; /* 数据通道 */
+static std::shared_ptr<ProtocolAdapter> s_protocolAdapter = nullptr; /* 协议适配器 */
+static std::shared_ptr<SessionManager> s_sessionManager = nullptr; /* 会话管理器 */
+static std::shared_ptr<ConnectService> s_connectService = nullptr; /* 连接服务 */
+static threading::ExecutorPtr s_bizExecutor = nullptr; /* 业务处理线程 */
+static BizExecutorHook s_bizExecutorHook = nullptr; /* 业务处理线程钩子 */
+static std::mutex s_mutexStateHandlerList;
+static std::list<std::weak_ptr<StateHandler>> s_stateHandlerList; /* 状态处理器列表 */
+static std::mutex s_mutexMsgHandlerMap;
+static std::map<int32_t, std::list<std::weak_ptr<MsgHandler>>> s_msgHandlerMap; /* 消息处理器列表 */
+static std::mutex s_mutexCfg;
+static AccessConfig s_cfg; /* 接入配置 */
+static threading::SteadyTimerPtr s_retryTimer = nullptr; /* 重试(自动重连)定时器 */
 
-AccessCtrl& AccessCtrl::getInstance()
+void AccessCtrl::start(const threading::ExecutorPtr& bizExecutor, const BizExecutorHook& bizExecutorHook)
 {
-    static AccessCtrl s_instance;
-    return s_instance;
-}
-
-void AccessCtrl::setStateProcessElapsedCallback(const StateProcessElapsedCallback& callback)
-{
-    std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
-    m_stateProcessElapsedCallback = callback;
-}
-
-void AccessCtrl::setBizProcessElapsedCallback(const BizProcessElapsedCallback& callback)
-{
-    std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
-    m_bizProcessElapsedCallback = callback;
+    s_dataChannel = std::make_shared<DataChannel>();
+    s_protocolAdapter = std::make_shared<ProtocolAdapterCustom>();
+    s_protocolAdapter->setDataChannel(s_dataChannel);
+    s_sessionManager = std::make_shared<SessionManager>();
+    s_sessionManager->setDataChannel(s_dataChannel);
+    s_sessionManager->setProtocolAdapter(s_protocolAdapter);
+    s_sessionManager->setMsgReceiver([&](int32_t bizCode, int64_t seqId, const std::string& data) { onReceiveMsg(bizCode, seqId, data); });
+    s_connectService = std::make_shared<ConnectService>();
+    s_connectService->setDataChannel(s_dataChannel);
+    s_connectService->setSessionManager(s_sessionManager);
+    s_connectService->setConnectCallback([&](const ConnectState& state) { onConnectStateChanged(state); });
+    s_bizExecutor = bizExecutor;
+    s_bizExecutorHook = bizExecutorHook;
 }
 
 void AccessCtrl::setAuthDataGenerator(const std::function<nlohmann::json()>& generator)
 {
-    m_connectService->setAuthDataGenerator([generator]() {
+    if (!s_connectService)
+    {
+        return;
+    }
+    s_connectService->setAuthDataGenerator([generator]() {
         if (generator)
         {
             return nlohmann::dump(generator());
@@ -135,7 +138,11 @@ void AccessCtrl::setAuthDataGenerator(const std::function<nlohmann::json()>& gen
 
 void AccessCtrl::setAuthResultCallback(const std::function<bool(const nlohmann::json& data)>& callback)
 {
-    m_connectService->setAuthResultCallback([callback](const std::string& data) {
+    if (!s_connectService)
+    {
+        return;
+    }
+    s_connectService->setAuthResultCallback([callback](const std::string& data) {
         if (callback)
         {
             return callback(nlohmann::parse(data));
@@ -146,7 +153,11 @@ void AccessCtrl::setAuthResultCallback(const std::function<bool(const nlohmann::
 
 void AccessCtrl::setHeartbeatDataGenerator(const std::function<nlohmann::json()>& generator)
 {
-    m_connectService->setHeartbeatDataGenerator([generator]() {
+    if (!s_connectService)
+    {
+        return;
+    }
+    s_connectService->setHeartbeatDataGenerator([generator]() {
         if (generator)
         {
             return nlohmann::dump(generator());
@@ -155,89 +166,111 @@ void AccessCtrl::setHeartbeatDataGenerator(const std::function<nlohmann::json()>
     });
 }
 
-bool AccessCtrl::start(const AccessConfig& cfg)
+bool AccessCtrl::connect(const AccessConfig& cfg)
 {
-    m_cfg = cfg;
+    if (!s_connectService)
+    {
+        return false;
+    }
+    {
+        std::lock_guard<std::mutex> locker(s_mutexCfg);
+        s_cfg = cfg;
+    }
     /* 创建重试定时器 */
     if (cfg.retryInterval.size() > 0)
     {
-        if (m_retryTimer)
+        if (s_retryTimer)
         {
-            m_retryTimer->setDelay(std::chrono::seconds(cfg.retryInterval[0]));
+            s_retryTimer->setDelay(std::chrono::seconds(cfg.retryInterval[0]));
         }
         else
         {
-            m_retryTimer = threading::SteadyTimer::onceTimer(
-                "nac.connect.retry", std::chrono::seconds(cfg.retryInterval[0]), [&]() { onRetryTimer(); },
-                m_dataChannel->getTimerExecutor().lock());
+            s_retryTimer = threading::SteadyTimer::onceTimer(
+                "nac.connect.retry", std::chrono::seconds(cfg.retryInterval[0]),
+                [&](const std::chrono::steady_clock::time_point& tp) { onRetryTimer(); }, s_dataChannel->getPktExecutor().lock());
         }
     }
     /* 首次连接 */
-    return m_connectService->connect(cfg.address, cfg.port, cfg.filePEM, cfg.certFile, cfg.privateKeyFile, cfg.privateKeyFilePwd,
-                                     cfg.connectTimeout, (unsigned int)cfg.authBizCode, cfg.authTimeout, (unsigned int)cfg.heartbeatBizCode,
+    return s_connectService->connect(cfg.address, cfg.port, cfg.filePEM, cfg.certFile, cfg.privateKeyFile, cfg.privateKeyFilePwd,
+                                     cfg.connectTimeout, (int32_t)cfg.authBizCode, cfg.authTimeout, (int32_t)cfg.heartbeatBizCode,
                                      cfg.heartbeatInterval, cfg.heartbeatFixedInterval);
 }
 
-void AccessCtrl::stop()
+void AccessCtrl::disconnect()
 {
-    if (m_retryTimer)
+    if (!s_connectService)
     {
-        m_retryTimer->stop();
+        return;
     }
-    m_connectService->disconnect();
+    if (s_retryTimer)
+    {
+        s_retryTimer->stop();
+    }
+    s_connectService->disconnect();
 }
 
-int64_t AccessCtrl::sendMsg(const BizCode& bizCode, unsigned long long seqId, const nlohmann::json& data, const RespCallback& callback,
+int64_t AccessCtrl::sendMsg(const BizCode& bizCode, int64_t seqId, const nlohmann::json& data, const RespCallback& callback,
                             unsigned int timeout)
 {
-    if (bizCode == m_cfg.authBizCode || bizCode == m_cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
+    if (!s_sessionManager)
     {
         return -1;
     }
-    const std::weak_ptr<threading::Executor> wpBizExecutor = m_bizExecutor;
-    return m_sessionManager->sendMsg(
-        (unsigned int)bizCode, seqId, nlohmann::dump(data), timeout,
-        [&, wpBizExecutor, callback](bool sendOk, unsigned int bizCode, int64_t seqId, const std::string& data) {
-            const auto bizExecutor = wpBizExecutor.lock();
-            if (bizExecutor)
-            {
-                bizExecutor->post("nac.api.resp", [&, sendOk, bizCode, seqId, data, callback]() {
-                    auto beg = std::chrono::steady_clock::now();
-                    if (callback)
-                    {
-                        callback(sendOk, nlohmann::parse(data));
-                    }
-                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-                    {
-                        std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
-                        if (m_bizProcessElapsedCallback)
-                        {
-                            m_bizProcessElapsedCallback((BizCode)bizCode, seqId, elapsed);
-                        }
-                    }
-                });
-            }
-        });
+    AccessConfig cfg;
+    {
+        std::lock_guard<std::mutex> locker(s_mutexCfg);
+        cfg = s_cfg;
+    }
+    if (bizCode == cfg.authBizCode || bizCode == cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
+    {
+        return -1;
+    }
+    return s_sessionManager->sendMsg((int32_t)bizCode, seqId, nlohmann::dump(data), timeout,
+                                     [&, callback](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
+                                         if (!s_bizExecutor)
+                                         {
+                                             return;
+                                         }
+                                         std::string name = "nac.api.resp";
+                                         s_bizExecutor->post(name, [&, name, sendOk, bizCode, seqId, data, callback]() {
+                                             if (callback)
+                                             {
+                                                 if (s_bizExecutorHook)
+                                                 {
+                                                     s_bizExecutorHook(
+                                                         name, [sendOk, data, callback]() { callback(sendOk, nlohmann::parse(data)); });
+                                                 }
+                                                 else
+                                                 {
+                                                     callback(sendOk, nlohmann::parse(data));
+                                                 }
+                                             }
+                                         });
+                                     });
 }
 
-boost::asio::ip::tcp::endpoint AccessCtrl::getLocalEndpoint() const
+boost::asio::ip::tcp::endpoint AccessCtrl::getLocalEndpoint()
 {
-    return m_dataChannel->getLocalEndpoint();
+    if (!s_dataChannel)
+    {
+        return boost::asio::ip::tcp::endpoint();
+    }
+    return s_dataChannel->getLocalEndpoint();
 }
 
 bool AccessCtrl::subscribeState(const std::shared_ptr<StateHandler>& handler)
 {
     if (handler)
     {
-        std::lock_guard<std::mutex> locker(m_mutexStateHandlerList);
-        for (const auto& wpHandler : m_stateHandlerList)
+        std::lock_guard<std::mutex> locker(s_mutexStateHandlerList);
+        for (const auto& wpHandler : s_stateHandlerList)
         {
             if (wpHandler.lock() == handler)
             {
                 return false;
             }
         }
-        m_stateHandlerList.emplace_back(handler);
+        s_stateHandlerList.emplace_back(handler);
         return true;
     }
     return false;
@@ -247,21 +280,26 @@ void AccessCtrl::unsubscribeState(const std::shared_ptr<StateHandler>& handler)
 {
     if (handler)
     {
-        std::lock_guard<std::mutex> locker(m_mutexMsgHandlerMap);
-        m_stateHandlerList.remove_if([handler](const std::weak_ptr<StateHandler>& wpHandler) { return (wpHandler.lock() == handler); });
+        std::lock_guard<std::mutex> locker(s_mutexMsgHandlerMap);
+        s_stateHandlerList.remove_if([handler](const std::weak_ptr<StateHandler>& wpHandler) { return (wpHandler.lock() == handler); });
     }
 }
 
-bool AccessCtrl::subscribeMsg(const BizCode& bizCode, const std::shared_ptr<MsgHandler>& handler)
+bool AccessCtrl::subscribeMsg(int32_t bizCode, const std::shared_ptr<MsgHandler>& handler)
 {
-    if (bizCode == m_cfg.authBizCode || bizCode == m_cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
+    AccessConfig cfg;
+    {
+        std::lock_guard<std::mutex> locker(s_mutexCfg);
+        cfg = s_cfg;
+    }
+    if (bizCode == (int32_t)cfg.authBizCode || bizCode == (int32_t)cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
     {
         return false;
     }
     if (handler)
     {
-        std::lock_guard<std::mutex> locker(m_mutexMsgHandlerMap);
-        auto& handlerList = m_msgHandlerMap[bizCode];
+        std::lock_guard<std::mutex> locker(s_mutexMsgHandlerMap);
+        auto& handlerList = s_msgHandlerMap[bizCode];
         for (const auto& wpHandler : handlerList)
         {
             if (wpHandler.lock() == handler)
@@ -269,7 +307,7 @@ bool AccessCtrl::subscribeMsg(const BizCode& bizCode, const std::shared_ptr<MsgH
                 return false;
             }
         }
-        m_msgHandlerMap[bizCode].emplace_back(handler);
+        s_msgHandlerMap[bizCode].emplace_back(handler);
         return true;
     }
     return false;
@@ -279,43 +317,60 @@ void AccessCtrl::unsubscribeMsg(const std::shared_ptr<MsgHandler>& handler)
 {
     if (handler)
     {
-        std::lock_guard<std::mutex> locker(m_mutexMsgHandlerMap);
-        for (auto iter = m_msgHandlerMap.begin(); m_msgHandlerMap.end() != iter; ++iter)
+        std::lock_guard<std::mutex> locker(s_mutexMsgHandlerMap);
+        for (auto iter = s_msgHandlerMap.begin(); s_msgHandlerMap.end() != iter; ++iter)
         {
             iter->second.remove_if([handler](const std::weak_ptr<MsgHandler>& wpHandler) { return (wpHandler.lock() == handler); });
         }
     }
 }
 
-void AccessCtrl::onReceiveMsg(unsigned int bizCode, int64_t seqId, const std::string& data)
+void AccessCtrl::onReceiveMsg(int32_t bizCode, int64_t seqId, const std::string& data)
 {
-    std::list<std::weak_ptr<MsgHandler>> handlerList;
+    if (!s_bizExecutor)
     {
-        std::lock_guard<std::mutex> locker(m_mutexMsgHandlerMap);
-        const auto& iter = m_msgHandlerMap.find((BizCode)bizCode);
-        if (m_msgHandlerMap.end() == iter)
+        return;
+    }
+    std::string name = "nac.api.notify";
+    s_bizExecutor->post(name, [&, name, bizCode, seqId, data]() {
+        std::list<std::weak_ptr<MsgHandler>> handlerList;
+        {
+            std::lock_guard<std::mutex> locker(s_mutexMsgHandlerMap);
+            const auto& iter = s_msgHandlerMap.find(bizCode);
+            if (s_msgHandlerMap.end() == iter)
+            {
+                return;
+            }
+            handlerList = iter->second;
+        }
+        if (handlerList.empty())
         {
             return;
         }
-        handlerList = iter->second;
-    }
-    m_bizExecutor->post("nac.api.notify", [&, handlerList, bizCode, seqId, data]() {
-        auto beg = std::chrono::steady_clock::now();
-        auto obj = nlohmann::parse(data);
-        for (const auto& wpHandler : handlerList)
+        if (s_bizExecutorHook)
         {
-            auto handler = wpHandler.lock();
-            if (handler)
-            {
-                (*handler)(seqId, obj);
-            }
+            s_bizExecutorHook(name, [seqId, data, handlerList]() {
+                auto obj = nlohmann::parse(data);
+                for (const auto& wpHandler : handlerList)
+                {
+                    auto handler = wpHandler.lock();
+                    if (handler)
+                    {
+                        (*handler)(seqId, obj);
+                    }
+                }
+            });
         }
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
+        else
         {
-            std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
-            if (m_bizProcessElapsedCallback)
+            auto obj = nlohmann::parse(data);
+            for (const auto& wpHandler : handlerList)
             {
-                m_bizProcessElapsedCallback((BizCode)bizCode, seqId, elapsed);
+                auto handler = wpHandler.lock();
+                if (handler)
+                {
+                    (*handler)(seqId, obj);
+                }
             }
         }
     });
@@ -323,48 +378,73 @@ void AccessCtrl::onReceiveMsg(unsigned int bizCode, int64_t seqId, const std::st
 
 void AccessCtrl::onConnectStateChanged(const ConnectState& state)
 {
-    std::list<std::weak_ptr<StateHandler>> handlerList;
+    if (!s_bizExecutor)
     {
-        std::lock_guard<std::mutex> locker(m_mutexStateHandlerList);
-        handlerList = m_stateHandlerList;
+        return;
     }
-    m_bizExecutor->post("nac.api.state", [&, handlerList, state]() {
-        auto beg = std::chrono::steady_clock::now();
-        for (const auto& wpHandler : handlerList)
+    std::string name = "nac.api.state";
+    s_bizExecutor->post(name, [&, name, state]() {
+        std::list<std::weak_ptr<StateHandler>> handlerList;
         {
-            auto handler = wpHandler.lock();
-            if (handler)
-            {
-                (*handler)(state);
-            }
+            std::lock_guard<std::mutex> locker(s_mutexStateHandlerList);
+            handlerList = s_stateHandlerList;
         }
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
+        if (handlerList.empty())
         {
-            std::lock_guard<std::mutex> locker(m_mutexProcessElpasedCallback);
-            if (m_stateProcessElapsedCallback)
+            return;
+        }
+        if (s_bizExecutorHook)
+        {
+            s_bizExecutorHook(name, [state, handlerList]() {
+                for (const auto& wpHandler : handlerList)
+                {
+                    auto handler = wpHandler.lock();
+                    if (handler)
+                    {
+                        (*handler)(state);
+                    }
+                }
+            });
+        }
+        else
+        {
+            for (const auto& wpHandler : handlerList)
             {
-                m_stateProcessElapsedCallback(state, elapsed);
+                auto handler = wpHandler.lock();
+                if (handler)
+                {
+                    (*handler)(state);
+                }
             }
         }
     });
     if (ConnectState::disconnected == state) /* 断开连接, 重连 */
     {
-        if (m_retryTimer)
+        if (s_retryTimer)
         {
-            m_retryTimer->start();
+            s_retryTimer->start();
         }
     }
 }
 
 void AccessCtrl::onRetryTimer()
 {
-    /* 设置下一次重试间隔 */
-    if (m_cfg.retryInterval.size() > 1)
+    if (!s_connectService)
     {
-        m_cfg.retryInterval.erase(m_cfg.retryInterval.begin());
+        return;
     }
-    m_retryTimer->setDelay(std::chrono::seconds(m_cfg.retryInterval[0]));
+    AccessConfig cfg;
+    {
+        std::lock_guard<std::mutex> locker(s_mutexCfg);
+        /* 设置下一次重试间隔 */
+        if (s_cfg.retryInterval.size() > 1)
+        {
+            s_cfg.retryInterval.erase(s_cfg.retryInterval.begin());
+        }
+        cfg = s_cfg;
+    }
+    s_retryTimer->setDelay(std::chrono::seconds(cfg.retryInterval[0]));
     /* 重试 */
-    m_connectService->reconnect();
+    s_connectService->reconnect();
 }
 } // namespace nac
