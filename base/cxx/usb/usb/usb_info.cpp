@@ -135,7 +135,9 @@ static std::map<std::string, std::string> queryUsbDevNodes(int busNum, int portN
 }
 #endif
 
-UsbInfo::UsbInfo(const Usb& src) : Usb(src) {}
+UsbInfo::UsbInfo(const Usb& other) : Usb(other) {}
+
+UsbInfo::UsbInfo(const UsbInfo& other, const std::vector<DevNode>& devNodes) : Usb(other), m_devNodes(devNodes) {}
 
 bool UsbInfo::operator==(const UsbInfo& other) const
 {
@@ -219,7 +221,7 @@ std::string UsbInfo::describe() const
     return desc;
 }
 
-std::vector<UsbInfo> UsbInfo::queryUsbInfos(const std::function<bool(const UsbInfo& info)>& filterFunc, bool mustHaveDevNode, bool mf)
+std::vector<UsbInfo> UsbInfo::queryUsbInfos(const std::function<bool(const UsbInfo& info)>& filterFunc, bool withDevNode, bool mf)
 {
     std::vector<UsbInfo> usbInfoList;
     auto usbList = Usb::getAllUsbs(true, true, mf);
@@ -228,23 +230,29 @@ std::vector<UsbInfo> UsbInfo::queryUsbInfos(const std::function<bool(const UsbIn
         UsbInfo info(usbList[i]);
         if (!filterFunc || filterFunc(info))
         {
-#ifndef _WIN32
-            if (mustHaveDevNode && (info.isHid() || info.isStorage())) /* 只需获取HID和存储类型的设备节点 */
+            if (withDevNode)
             {
-                auto devNodes = queryUsbDevNodes(info.getBusNum(), info.getPortNum(), info.getAddress());
-                if (devNodes.empty())
-                {
-                    continue;
-                }
-                for (auto iter = devNodes.begin(); devNodes.end() != iter; ++iter)
-                {
-                    info.m_devNodes.emplace_back(DevNode(iter->first, iter->second));
-                }
+                info.m_devNodes = queryDevNodes(info);
             }
-#endif
             usbInfoList.emplace_back(info);
         }
     }
     return usbInfoList;
+}
+
+std::vector<UsbInfo::DevNode> UsbInfo::queryDevNodes(const UsbInfo& info)
+{
+    std::vector<UsbInfo::DevNode> devNodes;
+#ifndef _WIN32
+    if (info.isHid() || info.isStorage()) /* 只需获取HID和存储类型的设备节点 */
+    {
+        auto usbDevNodes = queryUsbDevNodes(info.getBusNum(), info.getPortNum(), info.getAddress());
+        for (auto iter = usbDevNodes.begin(); usbDevNodes.end() != iter; ++iter)
+        {
+            devNodes.emplace_back(DevNode(iter->first, iter->second));
+        }
+    }
+#endif
+    return devNodes;
 }
 } // namespace usb
