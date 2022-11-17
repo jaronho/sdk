@@ -30,7 +30,7 @@ static std::string wstring2string(const std::wstring& wstr)
 }
 #endif
 
-int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std::string>* outVec)
+int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std::string>* outVec, bool ignoreBlankLine)
 {
     if (outStr)
     {
@@ -79,7 +79,11 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
                     {
                         break;
                     }
-                    (*outVec).emplace_back(line.substr(0, pos));
+                    auto outLine = line.substr(0, pos);
+                    if (!outLine.empty() || !ignoreBlankLine)
+                    {
+                        (*outVec).emplace_back(outLine);
+                    }
                     line = line.substr(pos + offset, line.size() - pos - offset);
                 }
             }
