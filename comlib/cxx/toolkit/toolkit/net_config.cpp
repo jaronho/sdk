@@ -293,10 +293,8 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
     {
         return false;
     }
-    /* 写配置文件 */
-    auto content = utility::StrTool::join(lineList, "\n");
-    utility::FileInfo fi("/etc/udev/rules.d/70-persistent-net.rules"); /* 注意: 该文件修改完需要重启系统或网络才能生效 */
-    fi.write(content.c_str(), content.size());
+    /* 写配置文件, 注意: 该文件修改完需要重启系统或网络才能生效 */
+    utility::FileInfo("/etc/udev/rules.d/70-persistent-net.rules").write(utility::StrTool::join(lineList, "\n"));
     /* 使用命令操作 */
     for (size_t i = 0; i < modifyList.size(); ++i)
     {
