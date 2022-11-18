@@ -379,7 +379,12 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
     return ret;
 }
 
-bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode)
+bool FileInfo::write(const std::string& data, bool isAppend, int* errCode) const
+{
+    return write(data.c_str(), data.size(), isAppend, errCode);
+}
+
+bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) const
 {
     if (errCode)
     {
@@ -420,6 +425,11 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode)
     }
     fclose(f);
     return ret;
+}
+
+bool FileInfo::write(size_t pos, const std::string& data, int* errCode) const
+{
+    return write(pos, data.c_str(), data.size(), errCode);
 }
 
 bool FileInfo::replace(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback) const
@@ -548,6 +558,11 @@ bool FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
         return true;
     }
     return false;
+}
+
+bool FileInfo::write(FILE* f, size_t offset, const std::string& data)
+{
+    return write(f, offset, data.c_str(), data.size());
 }
 
 bool FileInfo::replace(FILE* f, size_t offset, size_t count, const std::function<void(char* srcData, size_t count)>& callback)
