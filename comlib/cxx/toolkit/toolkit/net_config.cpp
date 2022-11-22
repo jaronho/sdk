@@ -107,7 +107,7 @@ bool NetConfig::isNetcardUp(const std::string& name)
 #else
     std::vector<std::string> outVec;
     auto command = "ethtool " + name + " | grep 'Link detected:'";
-    utility::System::runCmd(command, nullptr, &outVec);
+    utility::System::runCmd(command, nullptr, &outVec, true);
     if (1 == outVec.size() && utility::StrTool::contains(outVec[0], "yes", false))
     {
         return true;
@@ -122,7 +122,7 @@ std::vector<NetConfig::BridgeInfo> NetConfig::getBridgeInfos()
 #ifdef _WIN32
 #else
     std::vector<std::string> outVec;
-    utility::System::runCmd("brctl show", nullptr, &outVec);
+    utility::System::runCmd("brctl show", nullptr, &outVec, true);
     BridgeInfo bi;
     for (size_t i = 1, len = outVec.size(); i < len; ++i)
     {
@@ -414,21 +414,9 @@ bool NetConfig::checkPing(const std::string& src, const std::string& dest, int t
     command += " " + dest;
     /* 执行和解析 */
     std::vector<std::string> outVec; /* 这里需要读取输出, 否则Linux下会失败 */
-    if (0 != utility::System::runCmd(command, nullptr, &outVec))
+    if (0 != utility::System::runCmd(command, nullptr, &outVec, true))
     {
         return false;
-    }
-    /* 去除空行 */
-    for (auto iter = outVec.begin(); outVec.end() != iter;)
-    {
-        if (iter->empty())
-        {
-            outVec.erase(iter);
-        }
-        else
-        {
-            ++iter;
-        }
     }
 #ifdef _WIN32
     if (6 == outVec.size()) /* Windows平台下可通时, 返回6行 */
