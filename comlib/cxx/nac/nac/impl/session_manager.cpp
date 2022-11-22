@@ -5,6 +5,9 @@
 
 namespace nac
 {
+/**
+ * @brief 会话
+ */
 class SessionManager::Session final : public std::enable_shared_from_this<SessionManager::Session>
 {
 public:
@@ -128,12 +131,15 @@ int64_t SessionManager::sendMsg(int32_t bizCode, int64_t seqId, const std::strin
     pkt->seqId = seqId > 0 ? seqId : algorithm::Snowflake::easyGenerate();
     pkt->data = data;
     /* 添加路由 */
-    auto session = std::make_shared<Session>(bizCode, pkt->seqId, shared_from_this(), callback);
-    const auto dataChannel = m_wpDataChannel.lock();
-    if (session->startTimer(timeout, dataChannel ? dataChannel->getPktExecutor().lock() : nullptr))
+    if (timeout > 0)
     {
-        std::lock_guard<std::mutex> locker(m_mutexSessionMap);
-        m_sessionMap.emplace(pkt->seqId, session);
+        auto session = std::make_shared<Session>(bizCode, pkt->seqId, shared_from_this(), callback);
+        const auto dataChannel = m_wpDataChannel.lock();
+        if (session->startTimer(timeout, dataChannel ? dataChannel->getPktExecutor().lock() : nullptr))
+        {
+            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+            m_sessionMap.emplace(pkt->seqId, session);
+        }
     }
     /* 协议解析层适配器 */
     const auto adapter = m_wpProtocolAdapter.lock();
