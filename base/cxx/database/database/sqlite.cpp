@@ -34,7 +34,7 @@ bool Sqlite::Stmt::prepare(sqlite3* db, const std::string& sql)
     }
     if (db && !sql.empty())
     {
-        int ret = sqlite3_prepare_v2(db, sql.c_str(), -1, &m_stmt, nullptr);
+        auto ret = sqlite3_prepare_v2(db, sql.c_str(), -1, &m_stmt, nullptr);
         if (SQLITE_OK == ret)
         {
             return true;
@@ -48,7 +48,7 @@ bool Sqlite::Stmt::bind(int index, int val)
     if (m_stmt && index >= 0)
     {
         index += 1; /* 指定外部传入的index从0开始, 这里自动+1 */
-        int ret = sqlite3_bind_int(m_stmt, index, val);
+        auto ret = sqlite3_bind_int(m_stmt, index, val);
         if (SQLITE_OK == ret)
         {
             return true;
@@ -62,7 +62,7 @@ bool Sqlite::Stmt::bind(int index, int64_t val)
     if (m_stmt && index >= 0)
     {
         index += 1; /* 指定外部传入的index从0开始, 这里自动+1 */
-        int ret = sqlite3_bind_int64(m_stmt, index, val);
+        auto ret = sqlite3_bind_int64(m_stmt, index, val);
         if (SQLITE_OK == ret)
         {
             return true;
@@ -76,7 +76,7 @@ bool Sqlite::Stmt::bind(int index, double val)
     if (m_stmt && index >= 0)
     {
         index += 1; /* 指定外部传入的index从0开始, 这里自动+1 */
-        int ret = sqlite3_bind_double(m_stmt, index, val);
+        auto ret = sqlite3_bind_double(m_stmt, index, val);
         if (SQLITE_OK == ret)
         {
             return true;
@@ -90,7 +90,7 @@ bool Sqlite::Stmt::bind(int index, const std::string& val)
     if (m_stmt && index >= 0)
     {
         index += 1; /* 指定外部传入的index从0开始, 这里自动+1 */
-        int ret = sqlite3_bind_text(m_stmt, index, val.c_str(), -1, SQLITE_TRANSIENT);
+        auto ret = sqlite3_bind_text(m_stmt, index, val.c_str(), -1, SQLITE_TRANSIENT);
         if (SQLITE_OK == ret)
         {
             return true;
@@ -105,7 +105,7 @@ bool Sqlite::Stmt::step()
     {
         while (true)
         {
-            int ret = sqlite3_step(m_stmt);
+            auto ret = sqlite3_step(m_stmt);
             if (SQLITE_BUSY == ret) /* BUSY则重试 */
             {
                 continue;
@@ -174,7 +174,7 @@ bool Sqlite::Stmt::reset()
 {
     if (m_stmt)
     {
-        int ret = sqlite3_reset(m_stmt);
+        auto ret = sqlite3_reset(m_stmt);
         if (SQLITE_OK == ret)
         {
             return true;
@@ -346,7 +346,7 @@ bool Sqlite::connect(bool readOnly)
     {
         sqliteFlag = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX;
     }
-    int ret = sqlite3_open_v2(m_path.c_str(), &m_db, sqliteFlag, nullptr);
+    auto ret = sqlite3_open_v2(m_path.c_str(), &m_db, sqliteFlag, nullptr);
     if (SQLITE_OK != ret)
     {
         m_db = nullptr;
@@ -406,7 +406,7 @@ bool Sqlite::execSql(const std::string& sql,
                      std::string* errorMsg)
 {
     std::lock_guard<std::recursive_mutex> locker(*m_mutex);
-    if (0 == execImpl(m_db, sql, callback, errorMsg))
+    if (SQLITE_OK == execImpl(m_db, sql, callback, errorMsg))
     {
         return true;
     }
@@ -420,7 +420,7 @@ bool Sqlite::beginTransaction(std::string* errorMsg)
     {
         return false;
     }
-    if (0 == execImpl(m_db, "BEGIN TRANSACTION", nullptr, errorMsg))
+    if (SQLITE_OK == execImpl(m_db, "BEGIN TRANSACTION", nullptr, errorMsg))
     {
         m_inTransaction = true;
         return true;
@@ -435,7 +435,7 @@ bool Sqlite::commitTransaction(std::string* errorMsg)
     {
         return false;
     }
-    if (0 == execImpl(m_db, "COMMIT", nullptr, errorMsg))
+    if (SQLITE_OK == execImpl(m_db, "COMMIT", nullptr, errorMsg))
     {
         m_inTransaction = false;
         return true;
@@ -446,7 +446,7 @@ bool Sqlite::commitTransaction(std::string* errorMsg)
 bool Sqlite::rollbackTransaction(std::string* errorMsg)
 {
     std::lock_guard<std::recursive_mutex> locker(*m_mutex);
-    if (0 == execImpl(m_db, "ROLLBACK", nullptr, errorMsg))
+    if (SQLITE_OK == execImpl(m_db, "ROLLBACK", nullptr, errorMsg))
     {
         return true;
     }
@@ -485,9 +485,9 @@ bool Sqlite::setPragma(const std::string& key, const std::string& value, std::st
     }
     std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     char* szSql = sqlite3_mprintf("PRAGMA %q = '%q'", key.c_str(), value.c_str());
-    int ret = execImpl(m_db, szSql, nullptr, errorMsg);
+    auto ret = execImpl(m_db, szSql, nullptr, errorMsg);
     sqlite3_free(szSql);
-    return (0 == ret);
+    return (SQLITE_OK == ret);
 }
 
 int64_t Sqlite::getLastInsertRowId()
@@ -536,7 +536,7 @@ bool Sqlite::dropTable(const std::string& tableName, std::string* errorMsg)
         }
         return false;
     }
-    std::string sql = "DROP TABLE IF EXISTS " + tableName;
+    auto sql = "DROP TABLE IF EXISTS " + tableName;
     return execSql(sql, nullptr, errorMsg);
 }
 
@@ -550,7 +550,7 @@ bool Sqlite::renameTable(const std::string& tableName, const std::string& newTab
         }
         return false;
     }
-    std::string sql = "ALTER TABLE " + tableName + " RENAME TO " + newTableName;
+    auto sql = "ALTER TABLE " + tableName + " RENAME TO " + newTableName;
     return execSql(sql, nullptr, errorMsg);
 }
 
@@ -565,16 +565,22 @@ bool Sqlite::checkTableExist(const std::string& tableName, std::string* errorMsg
         return false;
     }
     bool foundFlag = false;
-    std::string sql = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='" + tableName + "'";
+    auto sql = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='" + tableName + "'";
     execSql(
         sql,
         [&](const std::unordered_map<std::string, std::string>& columns) {
             for (auto iter = columns.begin(); columns.end() != iter; ++iter)
             {
-                if (std::atoi(iter->second.c_str()) > 0) /* 找到表 */
+                try
                 {
-                    foundFlag = true;
-                    return false;
+                    if (std::atoi(iter->second.c_str()) > 0) /* 找到表 */
+                    {
+                        foundFlag = true;
+                        return false;
+                    }
+                }
+                catch (...)
+                {
                 }
             }
             return true;
@@ -594,7 +600,7 @@ bool Sqlite::checkColumnExist(const std::string& tableName, const std::string& c
         return false;
     }
     bool foundFlag = false;
-    std::string sql = "PRAGMA table_info(" + tableName + ")";
+    auto sql = "PRAGMA table_info(" + tableName + ")";
     execSql(
         sql,
         [&](const std::unordered_map<std::string, std::string>& columns) {
@@ -612,7 +618,7 @@ bool Sqlite::checkColumnExist(const std::string& tableName, const std::string& c
     return foundFlag;
 }
 
-bool Sqlite::checkDataExist(const std::string& tableName, const std::string& condition, std::string* errorMsg)
+long long Sqlite::queryDataCount(const std::string& tableName, const std::string& condition, std::string* errorMsg)
 {
     if (tableName.empty())
     {
@@ -620,25 +626,32 @@ bool Sqlite::checkDataExist(const std::string& tableName, const std::string& con
         {
             (*errorMsg) = "parameter error";
         }
-        return false;
+        return 0;
     }
-    bool foundFlag = false;
-    std::string sql = "SELECT count(*) FROM " + tableName + (condition.empty() ? "" : " WHERE " + condition);
+    long long dataCount = 0;
+    auto sql = "SELECT count(*) FROM " + tableName + (condition.empty() ? "" : " WHERE " + condition);
     execSql(
         sql,
         [&](const std::unordered_map<std::string, std::string>& columns) {
             for (auto iter = columns.begin(); columns.end() != iter; ++iter)
             {
-                if (std::atoi(iter->second.c_str()) > 0) /* 找到数据 */
+                try
                 {
-                    foundFlag = true;
-                    return false;
+                    auto value = std::atoll(iter->second.c_str());
+                    if (value > 0) /* 找到数据 */
+                    {
+                        dataCount = value;
+                        return false;
+                    }
+                }
+                catch (...)
+                {
                 }
             }
             return true;
         },
         errorMsg);
-    return foundFlag;
+    return dataCount;
 }
 
 bool Sqlite::insertInto(const std::string& tableName, const std::unordered_map<std::string, std::string>& values, bool replace,
@@ -652,8 +665,7 @@ bool Sqlite::insertInto(const std::string& tableName, const std::unordered_map<s
         }
         return false;
     }
-    std::string nameSql;
-    std::string valueSql;
+    std::string nameSql, valueSql;
     for (auto iter = values.begin(); values.end() != iter; ++iter)
     {
         if (iter->first.empty())
@@ -672,7 +684,7 @@ bool Sqlite::insertInto(const std::string& tableName, const std::unordered_map<s
         nameSql += iter->first;
         valueSql += "'" + iter->second + "'";
     }
-    std::string sql = std::string(replace ? "REPLACE" : "INSERT") + " INTO " + tableName + "(" + nameSql + ") VALUES(" + valueSql + ")";
+    auto sql = std::string(replace ? "REPLACE" : "INSERT") + " INTO " + tableName + "(" + nameSql + ") VALUES(" + valueSql + ")";
     return execSql(sql, nullptr, errorMsg);
 }
 
@@ -691,7 +703,7 @@ bool Sqlite::deleteFrom(const std::string& tableName, const std::string& conditi
         }
         return false;
     }
-    std::string sql = "DELETE FROM " + tableName + " WHERE " + condition;
+    auto sql = "DELETE FROM " + tableName + " WHERE " + condition;
     return execSql(sql, nullptr, errorMsg);
 }
 
@@ -723,7 +735,7 @@ bool Sqlite::updateSet(const std::string& tableName, const std::unordered_map<st
         }
         newValueSql += iter->first + "='" + iter->second + "'";
     }
-    std::string sql = "UPDATE " + tableName + " SET " + newValueSql + " WHERE " + condition;
+    auto sql = "UPDATE " + tableName + " SET " + newValueSql + " WHERE " + condition;
     return execSql(sql, nullptr, errorMsg);
 }
 
@@ -745,7 +757,7 @@ int Sqlite::execImpl(sqlite3* db, const std::string& sql,
         return -1;
     }
     char* szErrorMsg = nullptr;
-    int ret = sqlite3_exec(
+    auto ret = sqlite3_exec(
         m_db, sql.c_str(),
         [](void* data, int colCount, char** values, char** header) {
             if (!data)

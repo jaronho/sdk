@@ -299,13 +299,13 @@ public:
     bool checkColumnExist(const std::string& tableName, const std::string& columnName, std::string* errorMsg = nullptr);
 
     /**
-     * @brief 检测表中是否存在数据
+     * @brief 查询表中数据条数
      * @param tableName 表名
      * @param condition 条件(选填), 默认为空
      * @param errorMsg 错误消息(选填)
-     * @return true-存在, false-不存在
+     * @return 数据条数
      */
-    bool checkDataExist(const std::string& tableName, const std::string& condition, std::string* errorMsg = nullptr);
+    long long queryDataCount(const std::string& tableName, const std::string& condition, std::string* errorMsg = nullptr);
 
     /**
      * @brief 插入/替换表数据
