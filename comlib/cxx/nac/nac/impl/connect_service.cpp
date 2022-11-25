@@ -61,7 +61,7 @@ void ConnectService::setHeartbeatDataGenerator(const std::function<std::string()
 bool ConnectService::connect(const std::string& address, unsigned int port, bool filePEM, const std::string& certFile,
                              const std::string& privateKeyFile, const std::string& privateKeyFilePwd, unsigned int connectTimeout,
                              int32_t authBizCode, unsigned int authTimeout, int32_t heartbeatBizCode, unsigned int heartbeatInterval,
-                             unsigned int heartbeatFixedInterval)
+                             unsigned int offlineTime)
 {
     if (address.empty() || 0 == port)
     {
@@ -73,10 +73,18 @@ bool ConnectService::connect(const std::string& address, unsigned int port, bool
         ERROR_LOG(m_logger, "连接错误: 鉴权超时不能为0秒.");
         return false;
     }
-    if (heartbeatBizCode > 0 && 0 == heartbeatInterval)
+    if (heartbeatBizCode > 0)
     {
-        ERROR_LOG(m_logger, "连接错误: 心跳间隔不能为0秒.");
-        return false;
+        if (0 == heartbeatInterval)
+        {
+            ERROR_LOG(m_logger, "连接错误: 心跳间隔不能为0秒.");
+            return false;
+        }
+        if (offlineTime <= heartbeatInterval)
+        {
+            ERROR_LOG(m_logger, "连接错误: 掉线判定时间[{}秒]必须大于心跳间隔[{}秒].", offlineTime, heartbeatInterval);
+            return false;
+        }
     }
     if (ConnectState::idle != m_connectState && ConnectState::disconnected != m_connectState)
     {
@@ -84,8 +92,8 @@ bool ConnectService::connect(const std::string& address, unsigned int port, bool
         return false;
     }
     INFO_LOG(m_logger,
-             "连接配置: 服务器[{}:{}], 连接超时[{}秒], 鉴权(业务码[{}], 超时[{}秒]), 心跳(业务码[{}], 间隔[{}秒], 固定间隔[{}秒]).",
-             address, port, connectTimeout, authBizCode, authTimeout, heartbeatBizCode, heartbeatInterval, heartbeatFixedInterval);
+             "连接配置: 服务器[{}:{}], 连接超时[{}秒], 鉴权(业务码[{}], 超时[{}秒]), 心跳(业务码[{}], 间隔[{}秒], 掉线判定时间[{}秒]).",
+             address, port, connectTimeout, authBizCode, authTimeout, heartbeatBizCode, heartbeatInterval, offlineTime);
     m_disconnectType = DisconnectType::unknown;
     updateConnectState(ConnectState::connecting);
     m_address = address;
@@ -99,8 +107,7 @@ bool ConnectService::connect(const std::string& address, unsigned int port, bool
     m_authTimeout = authTimeout;
     m_heartbeatBizCode = heartbeatBizCode;
     m_heartbeatInterval = heartbeatInterval;
-    m_heartbeatFixedInterval = heartbeatFixedInterval;
-    m_offlineTime = std::max<unsigned int>(heartbeatInterval, heartbeatFixedInterval) + 1;
+    m_offlineTime = offlineTime;
     const auto dataChannel = m_wpDataChannel.lock();
     if (dataChannel)
     {
@@ -337,12 +344,10 @@ void ConnectService::startHeartbeatTimer()
 void ConnectService::onHeartbeatTimer()
 {
     auto ntp = std::chrono::steady_clock::now();
-    /* 超过一定时间未向服务发送数据, 或者超过一定时间未发送心跳包, 需要发送心跳包来维持连接 */
+    /* 超过一定时间未向服务发送数据, 需要发送心跳包来维持连接 */
     const int ELAPSED_DELTA = 500; /* 时间增量(毫秒), 这是由于定时器触发没办法精确到毫秒会有误差 */
     auto elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastSendTime.load()).count();
-    auto elapsedLastHeartbeat = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastHeartbeatTime.load()).count();
-    if ((elapsedLastSend + ELAPSED_DELTA) >= (m_heartbeatInterval * 1000)
-        || (elapsedLastHeartbeat + ELAPSED_DELTA) >= (m_heartbeatFixedInterval * 1000))
+    if ((elapsedLastSend + ELAPSED_DELTA) >= (m_heartbeatInterval * 1000))
     {
         if (ConnectState::connected == m_connectState)
         {
@@ -419,7 +424,7 @@ void ConnectService::onOfflineCheckTimer()
         unRecvMsg = "超过[" + std::to_string(elapsedLastRecv) + "]毫秒未收到包)";
         /* 超过一定时间向服务端发送数据包 */
         auto elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastSendTime.load()).count();
-        if (elapsedLastSend > (m_heartbeatFixedInterval * 1000))
+        if (elapsedLastSend > (m_heartbeatInterval * 1000))
         {
             isUnSendServerData = true;
             unSendMsg = "超过[" + std::to_string(elapsedLastSend) + "]毫秒未发送包)";

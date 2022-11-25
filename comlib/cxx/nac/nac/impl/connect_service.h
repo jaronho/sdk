@@ -72,13 +72,13 @@ public:
      * @param authTimeout 鉴权响应超时(秒, 选填), 必须大于0
      * @param heartbeatBizCode 心跳业务码(选填), 为0时表示不需要发送心跳
      * @param heartbeatInterval 心跳间隔(秒, 选填), 必须大于0
-     * @param heartbeatFixedInterval 心跳固定间隔(秒, 选填), 在该周期内至少发送一次心跳, <=心跳间隔则根据心跳间隔定时发送
+     * @param offlineTime 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线, 必须大于心跳间隔
      * @return true-连接请求中, false-连接失败
      */
     bool connect(const std::string& address, unsigned int port, bool filePEM = true, const std::string& certFile = "",
                  const std::string& privateKeyFile = "", const std::string& privateKeyFilePwd = "", unsigned int connectTimeout = 0,
                  int32_t authBizCode = 0, unsigned int authTimeout = 30, int32_t heartbeatBizCode = 0, unsigned int heartbeatInterval = 15,
-                 unsigned int heartbeatFixedInterval = 60);
+                 unsigned int offlineTime = 61);
 
     /**
      * @brief 重连, 注意: 主动断开连接再调重连则无效
@@ -213,8 +213,7 @@ private:
     unsigned int m_authTimeout = 30; /* 鉴权响应超时(秒), 必须大于0 */
     int32_t m_heartbeatBizCode = 0; /* 心跳业务码 */
     unsigned int m_heartbeatInterval = 15; /* 心跳间隔(秒), 必须大于0, 在该周期内未向服务端发送数据则发送心跳 */
-    unsigned int m_heartbeatFixedInterval = 60; /* 心跳固定间隔(秒), 在该周期内至少发送一次心跳, <=心跳间隔则根据心跳间隔定时发送 */
-    unsigned int m_offlineTime = 61; /* 掉线检测时间(秒), 超过该时间未收到服务端数据表示掉线, 动态计算: (心跳最大间隔 + 1) */
+    unsigned int m_offlineTime = 61; /* 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线 */
     std::shared_ptr<threading::SteadyTimer> m_timeoutTimer = nullptr; /* 连接超时定时器 */
     std::shared_ptr<threading::SteadyTimer> m_heartbeatTimer = nullptr; /* 心跳定时器 */
     std::shared_ptr<threading::SteadyTimer> m_offlineCheckTimer = nullptr; /* 掉线检查定时器 */

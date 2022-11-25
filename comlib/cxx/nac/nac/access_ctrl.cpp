@@ -193,7 +193,7 @@ bool AccessCtrl::connect(const AccessConfig& cfg)
     /* 首次连接 */
     return s_connectService->connect(cfg.address, cfg.port, cfg.filePEM, cfg.certFile, cfg.privateKeyFile, cfg.privateKeyFilePwd,
                                      cfg.connectTimeout, (int32_t)cfg.authBizCode, cfg.authTimeout, (int32_t)cfg.heartbeatBizCode,
-                                     cfg.heartbeatInterval, cfg.heartbeatFixedInterval);
+                                     cfg.heartbeatInterval, cfg.offlineTime);
 }
 
 void AccessCtrl::disconnect()
