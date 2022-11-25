@@ -176,9 +176,10 @@ public:
     /**
      * @brief 连接数据库
      * @param readOnly 是否只读
+     * @param errorMsg 错误消息(选填)
      * @return true-成功, false-失败 
      */
-    bool connect(bool readOnly = false);
+    bool connect(bool readOnly = false, std::string* errorMsg = nullptr);
 
     /**
      * @brief 断开数据库

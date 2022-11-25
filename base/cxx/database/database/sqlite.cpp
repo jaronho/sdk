@@ -330,11 +330,15 @@ std::string Sqlite::getPath()
     return m_path;
 }
 
-bool Sqlite::connect(bool readOnly)
+bool Sqlite::connect(bool readOnly, std::string* errorMsg)
 {
     std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (m_db)
     {
+        if (errorMsg)
+        {
+            (*errorMsg) = "connection is not disconnected";
+        }
         return true;
     }
     int sqliteFlag = 0;
@@ -350,17 +354,26 @@ bool Sqlite::connect(bool readOnly)
     if (SQLITE_OK != ret)
     {
         m_db = nullptr;
+        if (errorMsg)
+        {
+            (*errorMsg) = sqlite3_errstr(ret);
+        }
         return false;
     }
 #ifdef SQLITE_HAS_CODEC
     if (!m_password.empty()) /* 密码非空 */
     {
-        ret = sqlite3_key(m_db, m_password.c_str(), m_password.size()); /* 设置密钥 */
+        sqlite3_key(m_db, m_password.c_str(), m_password.size()); /* 设置密钥 */
+        ret = sqlite3_exec(m_db, "SELECT count(*) FROM sqlite_master", NULL, NULL, NULL); /* 如果返回非0表示解密失败 */
     }
     if (SQLITE_OK != ret)
     {
         sqlite3_close_v2(m_db);
         m_db = nullptr;
+        if (errorMsg)
+        {
+            (*errorMsg) = sqlite3_errstr(ret);
+        }
         return false;
     }
 #endif
@@ -418,6 +431,10 @@ bool Sqlite::beginTransaction(std::string* errorMsg)
     std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (m_inTransaction)
     {
+        if (errorMsg)
+        {
+            (*errorMsg) = "transaction has not been completed";
+        }
         return false;
     }
     if (SQLITE_OK == execImpl(m_db, "BEGIN TRANSACTION", nullptr, errorMsg))
@@ -433,6 +450,10 @@ bool Sqlite::commitTransaction(std::string* errorMsg)
     std::lock_guard<std::recursive_mutex> locker(*m_mutex);
     if (!m_inTransaction)
     {
+        if (errorMsg)
+        {
+            (*errorMsg) = "transaction has not been completed";
+        }
         return false;
     }
     if (SQLITE_OK == execImpl(m_db, "COMMIT", nullptr, errorMsg))
@@ -458,6 +479,10 @@ std::string Sqlite::getPragma(const std::string& key, std::string* errorMsg)
     std::string value;
     if (key.empty())
     {
+        if (errorMsg)
+        {
+            (*errorMsg) = "key empty";
+        }
         return value;
     }
     std::lock_guard<std::recursive_mutex> locker(*m_mutex);
@@ -481,6 +506,10 @@ bool Sqlite::setPragma(const std::string& key, const std::string& value, std::st
 {
     if (key.empty())
     {
+        if (errorMsg)
+        {
+            (*errorMsg) = "key empty";
+        }
         return false;
     }
     std::lock_guard<std::recursive_mutex> locker(*m_mutex);
