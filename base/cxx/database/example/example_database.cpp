@@ -118,7 +118,7 @@ void testDb1()
             auto st = db.createStmt(sql);
             if (st)
             {
-                while (st->step())
+                while (st->step() > 0)
                 {
                     printf("    ----------------------------------------\n");
                     auto id = st->getColumnString(0);

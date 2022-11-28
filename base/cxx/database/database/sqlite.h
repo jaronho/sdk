@@ -70,9 +70,9 @@ public:
 
         /**
          * @brief 执行一次预编译指令
-         * @return true-成功, false-失败
+         * @return -1-异常, 0-结束, 1-有行数据
          */
-        bool step();
+        int step();
 
         /**
          * @brief 获取执行后返回的列数(字段数)

@@ -99,7 +99,7 @@ bool Sqlite::Stmt::bind(int index, const std::string& val)
     return false;
 }
 
-bool Sqlite::Stmt::step()
+int Sqlite::Stmt::step()
 {
     if (m_stmt)
     {
@@ -110,15 +110,19 @@ bool Sqlite::Stmt::step()
             {
                 continue;
             }
-            else if (SQLITE_ROW == ret || SQLITE_DONE == ret) /* 正常返回 */
+            else if (SQLITE_ROW == ret) /* 继续 */
             {
-                return true;
+                return 1;
+            }
+            else if (SQLITE_DONE == ret) /* 结束 */
+            {
+                return 0;
             }
             /* 其余情况都是异常 */
             break;
         }
     }
-    return false;
+    return -1;
 }
 
 int Sqlite::Stmt::columnCount()
