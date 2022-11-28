@@ -110,7 +110,7 @@ bool Sqlite::Stmt::step()
             {
                 continue;
             }
-            else if (SQLITE_ROW == ret) /* 正常返回 */
+            else if (SQLITE_ROW == ret || SQLITE_DONE == ret) /* 正常返回 */
             {
                 return true;
             }
