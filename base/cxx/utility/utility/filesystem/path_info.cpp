@@ -201,13 +201,16 @@ bool PathInfo::clear(bool continueIfRoot) const
     return false;
 }
 
-bool PathInfo::empty() const
+bool PathInfo::empty(bool ignoreFolder) const
 {
     size_t childCount = 0;
     traverseDFS(
         m_path, 0,
         [&](const std::string& name, const FileAttribute& attr, int depth) {
-            ++childCount;
+            if (!ignoreFolder)
+            {
+                ++childCount;
+            }
             return true;
         },
         [&](const std::string& name, const FileAttribute& attr, int depth) { ++childCount; },

@@ -82,9 +82,10 @@ public:
 
     /**
      * @brief 判断是否为空文件夹
+     * @param ignoreFolder 是否忽略子文件夹(选填), 默认不忽悠
      * @return true-空, false-非空
      */
-    bool empty() const;
+    bool empty(bool ignoreFolder = false) const;
 
     /**
      * @brief 遍历文件夹和文件
