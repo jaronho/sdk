@@ -70,20 +70,19 @@ public:
     void setFileDeletedCallback(const FileDeletedCallback& callback);
 
     /**
-     * @brief 开始(周期循环检测)
+     * @brief 开始, 周期循环检测
      * @param interval 检测周期(秒)
-     * @param occupyCfg 占满配置
      * @param expireCfgList 过期配置列表
      */
-    void start(int interval, const OccupyConfig& occupyCfg, const std::vector<ExpireConfig>& expireCfgList);
+    void start(int interval, const std::vector<ExpireConfig>& expireCfgList);
 
     /**
-     * @brief 开始(指定每天小时分钟检测)
-     * @param hour 检测周期(秒)
-     * @param occupyCfg 占满配置
+     * @brief 开始, 在指定的时刻(小时分钟)进行检测
+     * @param hour 小时, 值: [0, 23]
+     * @param minute 分钟, 值: [0, 59]
      * @param expireCfgList 过期配置列表
      */
-    void start(int hour, int minute, const OccupyConfig& occupyCfg, const std::vector<ExpireConfig>& expireCfgList);
+    void start(int hour, int minute, const std::vector<ExpireConfig>& expireCfgList);
 
     /**
      * @brief 删除占满的文件
@@ -112,7 +111,6 @@ private:
 private:
     threading::SteadyTimerPtr m_detectTimer = nullptr; /* 检测定时器 */
     std::mutex m_mutexCfg;
-    OccupyConfig m_occupyCfg; /* 占满配置 */
     std::vector<ExpireConfig> m_expireCfgList; /* 过期配置列表 */
     FolderDeletedCallback m_folderDeletedCb = nullptr; /* 目录被删除回调 */
     FileDeletedCallback m_fileDeletedCb = nullptr; /* 文件被删除回调 */

@@ -26,7 +26,7 @@ void FileDeleter::setFileDeletedCallback(const FileDeletedCallback& callback)
     m_fileDeletedCb = callback;
 }
 
-void FileDeleter::start(int interval, const OccupyConfig& occupyCfg, const std::vector<ExpireConfig>& expireCfgList)
+void FileDeleter::start(int interval, const std::vector<ExpireConfig>& expireCfgList)
 {
     if (interval <= 0)
     {
@@ -39,7 +39,6 @@ void FileDeleter::start(int interval, const OccupyConfig& occupyCfg, const std::
     }
     {
         std::lock_guard<std::mutex> locker(m_mutexCfg);
-        m_occupyCfg = occupyCfg;
         m_expireCfgList = expireCfgList;
     }
     m_detectTimer = threading::SteadyTimer::onceTimer(THREADING_CALLER, detectInterval,
@@ -48,7 +47,7 @@ void FileDeleter::start(int interval, const OccupyConfig& occupyCfg, const std::
     onDetectTimer();
 }
 
-void FileDeleter::start(int hour, int minute, const OccupyConfig& occupyCfg, const std::vector<ExpireConfig>& expireCfgList)
+void FileDeleter::start(int hour, int minute, const std::vector<ExpireConfig>& expireCfgList)
 {
     if (hour < 0 || hour > 23)
     {
@@ -64,7 +63,6 @@ void FileDeleter::start(int hour, int minute, const OccupyConfig& occupyCfg, con
     }
     {
         std::lock_guard<std::mutex> locker(m_mutexCfg);
-        m_occupyCfg = occupyCfg;
         m_expireCfgList = expireCfgList;
     }
     m_detectTimer = threading::SteadyTimer::onceTimer(THREADING_CALLER, std::chrono::minutes(1),
@@ -207,27 +205,24 @@ void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const 
 
 void FileDeleter::onDetectTimer()
 {
-    OccupyConfig occupyCfg;
     std::vector<ExpireConfig> expireCfgList;
     {
         std::lock_guard<std::mutex> locker(m_mutexCfg);
-        occupyCfg = m_occupyCfg;
         expireCfgList = m_expireCfgList;
     }
-    if (!occupyCfg.folder.empty() || !expireCfgList.empty())
+    if (!expireCfgList.empty())
     {
         /* 由于文件删除会进行I/O耗时操作, 这里异步执行 */
         const std::weak_ptr<threading::SteadyTimer> wpDetectTimer = m_detectTimer;
-        threading::AsyncProxy::execute(THREADING_CALLER, [&, wpDetectTimer, occupyCfg, expireCfgList, folderDeletedCb = m_folderDeletedCb,
-                                                          fileDeletedCb = m_fileDeletedCb]() {
-            const auto detectTimer = wpDetectTimer.lock();
-            if (detectTimer)
-            {
-                deleteOccupy(occupyCfg, folderDeletedCb, fileDeletedCb);
-                deleteExpired(expireCfgList, folderDeletedCb, fileDeletedCb);
-                detectTimer->start();
-            }
-        });
+        threading::AsyncProxy::execute(
+            THREADING_CALLER, [&, wpDetectTimer, expireCfgList, folderDeletedCb = m_folderDeletedCb, fileDeletedCb = m_fileDeletedCb]() {
+                const auto detectTimer = wpDetectTimer.lock();
+                if (detectTimer)
+                {
+                    deleteExpired(expireCfgList, folderDeletedCb, fileDeletedCb);
+                    detectTimer->start();
+                }
+            });
     }
 }
 } // namespace toolkit

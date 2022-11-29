@@ -101,7 +101,7 @@ int main(int argc, char** argv)
     deleter.setFileDeletedCallback([&](const std::string& name, const utility::FileAttribute& attr, int depth, bool ok) {
         printf("[%s] delete file: %s, %s\n", dtString().c_str(), name.c_str(), ok ? "success" : "fail");
     });
-    deleter.start(interval, toolkit::FileDeleter::OccupyConfig{}, expireCfgList);
+    deleter.start(interval, expireCfgList);
     /* 主循环 */
     while (1)
     {
