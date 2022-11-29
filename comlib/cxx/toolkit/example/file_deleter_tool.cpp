@@ -19,16 +19,13 @@ int main(int argc, char** argv)
 {
     cmdline::parser parser;
     parser.add<std::string>("folder", 'd', "folder which to detect, e.g. \"/home/test/log\"", false, "");
-    parser.add<int>("both", 'a', "whether detect both folder and file, if 0 only detect file", false, 1);
     parser.add<int>("expire", 't', "expired time (seconds), default 30 days", false, 2592000);
-    parser.add<std::string>("file", 'f',
-                            "config file, file content e.g. [{\"folder\":\"/home/test/log\",\"both\":true,\"expire\":2592000}]", false, "");
+    parser.add<std::string>("file", 'f', "config file, file content e.g. [{\"folder\":\"/home/test/log\",\"expire\":2592000}]", false, "");
     parser.add<int>("interval", 'i', "detect interval (seconds), default 30 second", false, 30);
     printf("%s\n", parser.usage().c_str());
     parser.parse_check(argc, argv);
     /* 解析参数 */
     auto folder = parser.get<std::string>("folder");
-    auto both = parser.get<int>("both");
     auto expireTime = parser.get<int>("expire");
     auto fullFile = parser.get<std::string>("file");
     auto interval = parser.get<int>("interval");
@@ -37,7 +34,7 @@ int main(int argc, char** argv)
         printf("interval '%d' must > 0\n", interval);
         return 0;
     }
-    std::vector<toolkit::FileDeleteConfig> cfgList;
+    std::vector<toolkit::FileDeleter::ExpireConfig> expireCfgList;
     if (fullFile.empty())
     {
         if (folder.empty() || !utility::PathInfo(folder).exist())
@@ -50,7 +47,7 @@ int main(int argc, char** argv)
             printf("expireTime '%d' must > 0\n", expireTime);
             return 0;
         }
-        cfgList.emplace_back(toolkit::FileDeleteConfig(folder, both > 0 ? true : false, expireTime));
+        expireCfgList.emplace_back(toolkit::FileDeleter::ExpireConfig(folder, expireTime));
     }
     else
     {
@@ -60,7 +57,6 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < arr.size(); ++i)
             {
                 auto folder = nlohmann::getter<std::string>(arr[i], "folder");
-                auto both = nlohmann::getter<int>(arr[i], "both");
                 auto expireTime = nlohmann::getter<int>(arr[i], "expire");
                 if (folder.empty() || !utility::PathInfo(folder).exist())
                 {
@@ -72,41 +68,40 @@ int main(int argc, char** argv)
                     printf("expireTime '%d' must > 0\n", expireTime);
                     continue;
                 }
-                cfgList.emplace_back(toolkit::FileDeleteConfig(folder, both > 0 ? true : false, expireTime));
+                expireCfgList.emplace_back(toolkit::FileDeleter::ExpireConfig(folder, expireTime));
             }
         }
-        if (cfgList.empty())
+        if (expireCfgList.empty())
         {
             printf("file '%s' invalid\n", fullFile.c_str());
             return 0;
         }
         if (!folder.empty() && utility::PathInfo(folder).exist() && expireTime > 0)
         {
-            cfgList.emplace_back(toolkit::FileDeleteConfig(folder, both > 0 ? true : false, expireTime));
+            expireCfgList.emplace_back(toolkit::FileDeleter::ExpireConfig(folder, expireTime));
         }
     }
 
     printf("========================= Start File Deleter =========================\n");
     printf("[%s] Detect Interval: %d(s)\n", dtString().c_str(), interval);
-    for (size_t i = 0; i < cfgList.size(); ++i)
+    for (size_t i = 0; i < expireCfgList.size(); ++i)
     {
         printf("[%s] ---------- [%d] ----------\n", dtString().c_str(), (int)i + 1);
-        printf("[%s]        Folder: %s\n", dtString().c_str(), cfgList[i].folder.c_str());
-        printf("[%s] Detect Target: %s\n", dtString().c_str(), cfgList[i].both ? "both folder and file" : "only file");
-        printf("[%s]  Expired Time: %d(s)\n", dtString().c_str(), (int)cfgList[i].expireSecond);
+        printf("[%s]        Folder: %s\n", dtString().c_str(), expireCfgList[i].folder.c_str());
+        printf("[%s]  Expired Time: %d(s)\n", dtString().c_str(), (int)expireCfgList[i].expireTime);
     }
     printf("======================================================================\n");
     /* 启动异步任务模块 */
     threading::AsyncProxy::start(1);
     /* 启动删除器 */
     toolkit::FileDeleter deleter;
-    deleter.setFolderDeletedCallback([&](const std::string& fullName, bool ok) {
-        printf("[%s] delete folder: %s, %s\n", dtString().c_str(), fullName.c_str(), ok ? "success" : "fail");
+    deleter.setFolderDeletedCallback([&](const std::string& name, const utility::FileAttribute& attr, int depth, bool ok) {
+        printf("[%s] delete folder: %s, %s\n", dtString().c_str(), name.c_str(), ok ? "success" : "fail");
     });
-    deleter.setFileDeletedCallback([&](const std::string& fullName, bool ok) {
-        printf("[%s] delete file: %s, %s\n", dtString().c_str(), fullName.c_str(), ok ? "success" : "fail");
+    deleter.setFileDeletedCallback([&](const std::string& name, const utility::FileAttribute& attr, int depth, bool ok) {
+        printf("[%s] delete file: %s, %s\n", dtString().c_str(), name.c_str(), ok ? "success" : "fail");
     });
-    deleter.start(interval, cfgList);
+    deleter.start(interval, toolkit::FileDeleter::OccupyConfig{}, expireCfgList);
     /* 主循环 */
     while (1)
     {

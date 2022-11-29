@@ -8,71 +8,93 @@
 
 namespace toolkit
 {
-void FileDeleter::setFolderDeletedCallback(const std::function<void(const std::string& fullName, bool ok)>& callback)
+struct InfoInner
+{
+    InfoInner(const std::string& name, const utility::FileAttribute& attr, int depth) : name(name), attr(attr), depth(depth) {}
+    std::string name;
+    utility::FileAttribute attr;
+    int depth;
+};
+
+void FileDeleter::setFolderDeletedCallback(const FolderDeletedCallback& callback)
 {
     m_folderDeletedCb = callback;
 }
 
-void FileDeleter::setFileDeletedCallback(const std::function<void(const std::string& fullName, bool ok)>& callback)
+void FileDeleter::setFileDeletedCallback(const FileDeletedCallback& callback)
 {
     m_fileDeletedCb = callback;
 }
 
-void FileDeleter::start(int interval, const std::vector<FileDeleteConfig>& cfgList)
+void FileDeleter::start(int interval, const OccupyConfig& occupyCfg, const std::vector<ExpireConfig>& expireCfgList)
 {
     if (interval <= 0)
     {
         interval = 60;
     }
     auto detectInterval = std::chrono::seconds(interval);
+    if (m_detectTimer)
     {
-        std::lock_guard<std::mutex> locker(m_mutexCfgList);
-        m_cfgList = cfgList;
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> locker(m_mutexCfg);
+        m_occupyCfg = occupyCfg;
+        m_expireCfgList = expireCfgList;
+    }
+    m_detectTimer = threading::SteadyTimer::onceTimer(THREADING_CALLER, detectInterval,
+                                                      [&](const std::chrono::steady_clock::time_point& tp) { onDetectTimer(); });
+    m_detectTimer->start();
+    onDetectTimer();
+}
+
+void FileDeleter::start(int hour, int minute, const OccupyConfig& occupyCfg, const std::vector<ExpireConfig>& expireCfgList)
+{
+    if (hour < 0 || hour > 23)
+    {
+        hour = 0;
+    }
+    if (minute < 0 || minute > 59)
+    {
+        minute = 0;
     }
     if (m_detectTimer)
     {
-        m_detectTimer->setDelay(detectInterval);
+        return;
     }
-    else
     {
-        m_detectTimer = threading::SteadyTimer::onceTimer(THREADING_CALLER, detectInterval,
-                                                          [&](const std::chrono::steady_clock::time_point& tp) { onDetectTimer(); });
+        std::lock_guard<std::mutex> locker(m_mutexCfg);
+        m_occupyCfg = occupyCfg;
+        m_expireCfgList = expireCfgList;
     }
+    m_detectTimer = threading::SteadyTimer::onceTimer(THREADING_CALLER, std::chrono::minutes(1),
+                                                      [&, hour, minute](const std::chrono::steady_clock::time_point& tp) {
+                                                          static int s_hour = -1;
+                                                          static int s_minute = -1;
+                                                          auto dt = utility::DateTime::getNow();
+                                                          if (hour == dt.hour && minute == dt.minute)
+                                                          {
+                                                              if (hour != s_hour && minute != s_minute)
+                                                              {
+                                                                  s_hour = hour;
+                                                                  s_minute = minute;
+                                                                  onDetectTimer();
+                                                              }
+                                                          }
+                                                          else
+                                                          {
+                                                              s_hour = -1;
+                                                              s_minute = -1;
+                                                          }
+                                                      });
     m_detectTimer->start();
-    if (std::chrono::steady_clock::duration::zero() != detectInterval)
-    {
-        onDetectTimer();
-    }
+    onDetectTimer();
 }
 
-void FileDeleter::onDetectTimer()
+void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const FolderDeletedCallback& folderDeletedCb,
+                               const FileDeletedCallback& fileDeletedCb)
 {
-    std::vector<FileDeleteConfig> cfgList;
-    {
-        std::lock_guard<std::mutex> locker(m_mutexCfgList);
-        cfgList = m_cfgList;
-    }
-    /* 由于文件删除会进行I/O耗时操作, 这里异步执行 */
-    const std::weak_ptr<threading::SteadyTimer> wpDetectTimer = m_detectTimer;
-    threading::AsyncProxy::execute(THREADING_CALLER,
-                                   [&, wpDetectTimer, cfgList, folderDeletedCb = m_folderDeletedCb, fileDeletedCb = m_fileDeletedCb]() {
-                                       const auto detectTimer = wpDetectTimer.lock();
-                                       if (detectTimer)
-                                       {
-                                           for (auto cfg : cfgList)
-                                           {
-                                               handleConfig(cfg, folderDeletedCb, fileDeletedCb);
-                                           }
-                                           detectTimer->start();
-                                       }
-                                   });
-}
-
-void FileDeleter::handleConfig(const FileDeleteConfig& cfg,
-                               const std::function<void(const std::string& fullName, bool ok)>& folderDeletedCb,
-                               const std::function<void(const std::string& fullName, bool ok)>& fileDeletedCb)
-{
-    if (cfg.expireSecond <= 0) /* 过期时间无效 */
+    if (cfg.clearSize <= 0) /* 不需要清除 */
     {
         return;
     }
@@ -81,42 +103,131 @@ void FileDeleter::handleConfig(const FileDeleteConfig& cfg,
     {
         return;
     }
-    auto nowTimestamp = (int64_t)utility::DateTime::getNowTimestamp();
+    std::vector<InfoInner> folderList;
+    std::vector<InfoInner> fileList;
     auto folderCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
         if (utility::StrTool::contains(name, "$RECYCLE.BIN", false)
             || utility::StrTool::contains(name, "System Volume Information", false)) /* 文件系统目录(跳过) */
         {
             return false;
         }
-        auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
-        if (nowTimestamp - modifyTimestamp >= cfg.expireSecond) /* 过期, 需要删除 */
-        {
-            auto ok = utility::PathInfo(name).remove();
-            if (folderDeletedCb)
-            {
-                folderDeletedCb(name, ok);
-            }
-        }
-        return false;
+        folderList.emplace_back(InfoInner(name, attr, depth));
+        return true;
     };
     auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-        auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
-        if (nowTimestamp - modifyTimestamp >= cfg.expireSecond) /* 过期, 需要删除 */
+        fileList.emplace_back(InfoInner(name, attr, depth));
+    };
+    pi.traverse(folderCb, fileCb, nullptr, true);
+    /* 删除最早的文件 */
+    std::sort(fileList.begin(), fileList.end(), [](InfoInner a, InfoInner b) { return a.attr.modifyTime < b.attr.modifyTime; });
+    size_t deletedSize = 0;
+    for (auto file : fileList)
+    {
+        if (deletedSize >= cfg.clearSize)
         {
-            auto ok = utility::FileInfo(name).remove();
-            if (fileDeletedCb)
+            break;
+        }
+        auto ok = utility::FileInfo(file.name).remove();
+        if (fileDeletedCb)
+        {
+            fileDeletedCb(file.name, file.attr, file.depth, ok);
+        }
+        if (ok)
+        {
+            deletedSize += file.attr.size;
+        }
+    }
+    /* 删除空目录 */
+    for (auto folder : folderList)
+    {
+        auto pi = utility::PathInfo(folder.name);
+        if (pi.empty(true))
+        {
+            auto ok = pi.remove();
+            if (folderDeletedCb)
             {
-                fileDeletedCb(name, ok);
+                folderDeletedCb(folder.name, folder.attr, folder.depth, ok);
             }
         }
-    };
-    if (cfg.both)
-    {
-        pi.traverse(folderCb, fileCb, nullptr, false);
     }
-    else
+}
+
+void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const FolderDeletedCallback& folderDeletedCb,
+                                const FileDeletedCallback& fileDeletedCb)
+{
+    for (auto cfg : cfgList)
     {
-        pi.traverse(nullptr, fileCb, nullptr, false);
+        if (cfg.expireTime <= 0) /* 过期时间无效 */
+        {
+            continue;
+        }
+        utility::PathInfo pi(cfg.folder);
+        if (!pi.exist()) /* 目录不存在 */
+        {
+            continue;
+        }
+        auto nowTimestamp = (int64_t)utility::DateTime::getNowTimestamp();
+        std::vector<InfoInner> folderList;
+        auto folderCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (utility::StrTool::contains(name, "$RECYCLE.BIN", false)
+                || utility::StrTool::contains(name, "System Volume Information", false)) /* 文件系统目录(跳过) */
+            {
+                return false;
+            }
+            folderList.emplace_back(InfoInner(name, attr, depth));
+            return true;
+        };
+        auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
+            if (nowTimestamp - modifyTimestamp >= cfg.expireTime) /* 过期, 需要删除 */
+            {
+                auto ok = utility::FileInfo(name).remove();
+                if (fileDeletedCb)
+                {
+                    fileDeletedCb(name, attr, depth, ok);
+                }
+            }
+        };
+        pi.traverse(folderCb, fileCb, nullptr, true);
+        /* 删除空目录 */
+        for (auto folder : folderList)
+        {
+            auto pi = utility::PathInfo(folder.name);
+            if (pi.empty(true))
+            {
+                auto ok = pi.remove();
+                if (folderDeletedCb)
+                {
+                    folderDeletedCb(folder.name, folder.attr, folder.depth, ok);
+                }
+            }
+        }
+    }
+}
+
+void FileDeleter::onDetectTimer()
+{
+    OccupyConfig occupyCfg;
+    std::vector<ExpireConfig> expireCfgList;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexCfg);
+        occupyCfg = m_occupyCfg;
+        expireCfgList = m_expireCfgList;
+    }
+    if (!occupyCfg.folder.empty() || !expireCfgList.empty())
+    {
+        /* 由于文件删除会进行I/O耗时操作, 这里异步执行 */
+        const std::weak_ptr<threading::SteadyTimer> wpDetectTimer = m_detectTimer;
+        threading::AsyncProxy::execute(THREADING_CALLER, [&, wpDetectTimer, occupyCfg, expireCfgList, folderDeletedCb = m_folderDeletedCb,
+                                                          fileDeletedCb = m_fileDeletedCb]() {
+            const auto detectTimer = wpDetectTimer.lock();
+            if (detectTimer)
+            {
+                deleteOccupy(occupyCfg, folderDeletedCb, fileDeletedCb);
+                deleteExpired(expireCfgList, folderDeletedCb, fileDeletedCb);
+                detectTimer->start();
+            }
+        });
     }
 }
 } // namespace toolkit
