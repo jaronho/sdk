@@ -5,6 +5,7 @@
 #ifdef _WIN32
 #include <Shlobj.h>
 #include <atlstr.h>
+#include <shellapi.h>
 #endif
 
 namespace utility
