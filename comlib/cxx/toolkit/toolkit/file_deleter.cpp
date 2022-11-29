@@ -146,7 +146,7 @@ void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const FolderDeletedCallb
     for (auto folder : folderList)
     {
         auto pi = utility::PathInfo(folder.name);
-        if (pi.empty(true))
+        if (pi.exist() && pi.empty(true))
         {
             auto ok = pi.remove();
             if (folderDeletedCb)
@@ -205,7 +205,7 @@ void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const 
         for (auto folder : folderList)
         {
             auto pi = utility::PathInfo(folder.name);
-            if (pi.empty(true))
+            if (pi.exist() && pi.empty(true))
             {
                 auto ok = pi.remove();
                 if (folderDeletedCb)
