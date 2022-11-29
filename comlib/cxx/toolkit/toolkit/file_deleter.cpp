@@ -113,6 +113,13 @@ void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const FolderDeletedCallb
         return true;
     };
     auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+        for (auto ignoreFile : cfg.ignoreFileList)
+        {
+            if (name == ignoreFile) /* 忽略 */
+            {
+                return;
+            }
+        }
         fileList.emplace_back(InfoInner(name, attr, depth));
     };
     pi.traverse(folderCb, fileCb, nullptr, true);
@@ -176,6 +183,13 @@ void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const 
             return true;
         };
         auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            for (auto ignoreFile : cfg.ignoreFileList)
+            {
+                if (name == ignoreFile) /* 忽略 */
+                {
+                    return;
+                }
+            }
             auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
             if (nowTimestamp - modifyTimestamp >= cfg.expireTime) /* 过期, 需要删除 */
             {

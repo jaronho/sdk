@@ -24,6 +24,7 @@ public:
 
         std::string folder; /* 目录 */
         size_t clearSize = 0; /* 要删除的文件总大小(字节) */
+        std::vector<std::string> ignoreFileList; /* 忽略文件列表(此列表中的文件不删除) */
     };
 
     /**
@@ -36,6 +37,7 @@ public:
 
         std::string folder; /* 目录 */
         size_t expireTime = (3600 * 24 * 30); /* 过期时间(秒), 文件最后修改时间过期则删除, 默认30天 */
+        std::vector<std::string> ignoreFileList; /* 忽略文件列表(此列表中的文件不删除) */
     };
 
     /**
