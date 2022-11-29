@@ -20,7 +20,10 @@ public:
     struct OccupyConfig
     {
         OccupyConfig() = default;
-        OccupyConfig(const std::string& folder, size_t clearSize) : folder(folder), clearSize(clearSize) {}
+        OccupyConfig(const std::string& folder, size_t clearSize, const std::vector<std::string>& ignoreFileList = {})
+            : folder(folder), clearSize(clearSize), ignoreFileList(ignoreFileList)
+        {
+        }
 
         std::string folder; /* 目录 */
         size_t clearSize = 0; /* 要删除的文件总大小(字节) */
@@ -33,7 +36,10 @@ public:
     struct ExpireConfig
     {
         ExpireConfig() = default;
-        ExpireConfig(const std::string& folder, size_t expireTime) : folder(folder), expireTime(expireTime) {}
+        ExpireConfig(const std::string& folder, size_t expireTime, const std::vector<std::string>& ignoreFileList = {})
+            : folder(folder), expireTime(expireTime), ignoreFileList(ignoreFileList)
+        {
+        }
 
         std::string folder; /* 目录 */
         size_t expireTime = (3600 * 24 * 30); /* 过期时间(秒), 文件最后修改时间过期则删除, 默认30天 */
