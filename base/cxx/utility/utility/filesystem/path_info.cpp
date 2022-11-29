@@ -1,5 +1,6 @@
 #include "path_info.h"
 
+#include <queue>
 #include <stdexcept>
 #include <string.h>
 #include <sys/stat.h>
@@ -203,7 +204,7 @@ bool PathInfo::clear(bool continueIfRoot) const
 bool PathInfo::empty() const
 {
     size_t childCount = 0;
-    traverseImpl(
+    traverseDFS(
         m_path, 0,
         [&](const std::string& name, const FileAttribute& attr, int depth) {
             ++childCount;
@@ -223,9 +224,78 @@ bool PathInfo::empty() const
 
 void PathInfo::traverse(const std::function<bool(const std::string& name, const FileAttribute& attr, int depth)>& folderCb,
                         const std::function<void(const std::string& name, const FileAttribute& attr, int depth)>& fileCb,
-                        const std::function<bool()>& stopCb, bool recursive) const
+                        const std::function<bool()>& stopCb, bool recursive, bool bfs) const
 {
-    traverseImpl(m_path, 0, folderCb, fileCb, stopCb, recursive);
+    if (bfs)
+    {
+        traverseBFS(m_path, 0, folderCb, fileCb, stopCb, recursive);
+    }
+    else
+    {
+        traverseDFS(m_path, 0, folderCb, fileCb, stopCb, recursive);
+    }
+}
+
+std::string PathInfo::revise(const std::string& path)
+{
+    if (path.empty())
+    {
+        return path;
+    }
+    std::string newPath;
+    bool isPreSlash = false;
+    for (size_t i = 0; i < path.size(); ++i)
+    {
+        const char& ch = path[i];
+        if ('/' == ch || '\\' == ch)
+        {
+            if (!isPreSlash)
+            {
+#ifdef _WIN32
+                newPath.push_back('\\');
+#else
+                newPath.push_back('/');
+#endif
+            }
+            isPreSlash = true;
+        }
+        else
+        {
+            newPath.push_back(ch);
+            isPreSlash = false;
+        }
+    }
+    newPath.erase(0, newPath.find_first_not_of(' '));
+    newPath.erase(newPath.find_last_not_of(' ') + 1);
+    return newPath;
+}
+
+std::string PathInfo::getcwd(bool autoEndWithSlash)
+{
+#ifdef _WIN32
+    char* buffer = ::_getcwd(NULL, 0);
+#else
+    char* buffer = ::getcwd(NULL, 0);
+#endif
+    std::string currDir;
+    if (buffer)
+    {
+        currDir = buffer;
+        free(buffer);
+        if (!currDir.empty() && autoEndWithSlash)
+        {
+            const char& lastPathChar = currDir[currDir.size() - 1];
+            if ('/' != lastPathChar && '\\' != lastPathChar)
+            {
+#ifdef _WIN32
+                currDir.push_back('\\');
+#else
+                currDir.push_back('/');
+#endif
+            }
+        }
+    }
+    return currDir;
 }
 
 bool PathInfo::clearImpl(std::string path, bool rmSelf)
@@ -315,10 +385,152 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
     return true;
 }
 
-void PathInfo::traverseImpl(std::string path, int depth,
-                            const std::function<bool(const std::string& name, const FileAttribute& attr, int depth)>& folderCb,
-                            const std::function<void(const std::string& name, const FileAttribute& attr, int depth)>& fileCb,
-                            const std::function<bool()>& stopCb, bool recursive)
+void PathInfo::traverseBFS(const std::string& path, int depth,
+                           const std::function<bool(const std::string& name, const FileAttribute& attr, int depth)>& folderCb,
+                           const std::function<void(const std::string& name, const FileAttribute& attr, int depth)>& fileCb,
+                           const std::function<bool()>& stopCb, bool recursive)
+{
+    if (path.empty())
+    {
+        return;
+    }
+    if (stopCb && stopCb())
+    {
+        return;
+    }
+    struct InfoInner
+    {
+        InfoInner(const std::string& path, int depth) : path(path), depth(depth) {}
+        std::string path;
+        int depth = 0;
+    };
+    std::queue<InfoInner> infoQueue;
+    infoQueue.push(InfoInner(path, depth + 1));
+    while (!infoQueue.empty())
+    {
+        if (stopCb && stopCb())
+        {
+            break;
+        }
+        auto info = infoQueue.front();
+        infoQueue.pop();
+        const char& lastPathChar = info.path[info.path.size() - 1];
+        if ('/' != lastPathChar && '\\' != lastPathChar)
+        {
+#ifdef _WIN32
+            info.path.push_back('\\');
+#else
+            info.path.push_back('/');
+#endif
+        }
+#ifdef _WIN32
+#ifdef _WIN64
+        _finddatai64_t fileData;
+        __int64 handle = _findfirsti64((info.path + "*.*").c_str(), &fileData);
+#else
+        _finddata_t fileData;
+        int handle = _findfirst((info.path + "*.*").c_str(), &fileData);
+#endif
+        if (-1 == handle)
+        {
+            continue;
+        }
+        if (_A_SUBDIR & fileData.attrib)
+        {
+#ifdef _WIN64
+            while (0 == _findnexti64(handle, &fileData))
+#else
+            while (0 == _findnext(handle, &fileData))
+#endif
+            {
+                if (stopCb && stopCb())
+                {
+                    break;
+                }
+                if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
+                {
+                    continue;
+                }
+                std::string subName = info.path + fileData.name;
+                int subDepth = info.depth + 1;
+                FileAttribute attr;
+                if (getFileAttribute(subName, attr))
+                {
+                    if (attr.isDir) /* 目录 */
+                    {
+                        bool allowEnterSub = true;
+                        if (folderCb)
+                        {
+                            allowEnterSub = folderCb(subName, attr, subDepth);
+                        }
+                        if (recursive && allowEnterSub)
+                        {
+                            infoQueue.push(InfoInner(subName, subDepth));
+                        }
+                    }
+                    else if (attr.isFile) /* 文件 */
+                    {
+                        if (fileCb)
+                        {
+                            fileCb(subName, attr, subDepth);
+                        }
+                    }
+                }
+            }
+        }
+        _findclose(handle);
+#else
+        DIR* dir = opendir(info.path.c_str());
+        if (!dir)
+        {
+            continue;
+        }
+        struct dirent* dirp = NULL;
+        while ((dirp = readdir(dir)))
+        {
+            if (stopCb && stopCb())
+            {
+                break;
+            }
+            if (0 == strcmp(".", dirp->d_name) || 0 == strcmp("..", dirp->d_name))
+            {
+                continue;
+            }
+            std::string subName = info.path + dirp->d_name;
+            int subDepth = info.depth + 1;
+            FileAttribute attr;
+            if (getFileAttribute(subName, attr))
+            {
+                if (attr.isDir) /* 目录*/
+                {
+                    bool allowEnterSub = true;
+                    if (folderCb)
+                    {
+                        allowEnterSub = folderCb(subName, attr, subDepth);
+                    }
+                    if (recursive && allowEnterSub)
+                    {
+                        infoQueue.push(InfoInner(subName, subDepth));
+                    }
+                }
+                else if (attr.isFile) /* 文件 */
+                {
+                    if (fileCb)
+                    {
+                        fileCb(subName, attr, subDepth);
+                    }
+                }
+            }
+        }
+        closedir(dir);
+#endif
+    };
+}
+
+void PathInfo::traverseDFS(std::string path, int depth,
+                           const std::function<bool(const std::string& name, const FileAttribute& attr, int depth)>& folderCb,
+                           const std::function<void(const std::string& name, const FileAttribute& attr, int depth)>& fileCb,
+                           const std::function<bool()>& stopCb, bool recursive)
 {
     if (path.empty())
     {
@@ -379,7 +591,7 @@ void PathInfo::traverseImpl(std::string path, int depth,
                     }
                     if (recursive && allowEnterSub)
                     {
-                        traverseImpl(subName, depth, folderCb, fileCb, stopCb, true);
+                        traverseDFS(subName, depth, folderCb, fileCb, stopCb, true);
                     }
                 }
                 else if (attr.isFile) /* 文件 */
@@ -423,7 +635,7 @@ void PathInfo::traverseImpl(std::string path, int depth,
                 }
                 if (recursive && allowEnterSub)
                 {
-                    traverseImpl(subName, depth, folderCb, fileCb, stopCb, true);
+                    traverseDFS(subName, depth, folderCb, fileCb, stopCb, true);
                 }
             }
             else if (attr.isFile) /* 文件 */
@@ -437,67 +649,5 @@ void PathInfo::traverseImpl(std::string path, int depth,
     }
     closedir(dir);
 #endif
-}
-
-std::string PathInfo::revise(const std::string& path)
-{
-    if (path.empty())
-    {
-        return path;
-    }
-    std::string newPath;
-    bool isPreSlash = false;
-    for (size_t i = 0; i < path.size(); ++i)
-    {
-        const char& ch = path[i];
-        if ('/' == ch || '\\' == ch)
-        {
-            if (!isPreSlash)
-            {
-#ifdef _WIN32
-                newPath.push_back('\\');
-#else
-                newPath.push_back('/');
-#endif
-            }
-            isPreSlash = true;
-        }
-        else
-        {
-            newPath.push_back(ch);
-            isPreSlash = false;
-        }
-    }
-    newPath.erase(0, newPath.find_first_not_of(' '));
-    newPath.erase(newPath.find_last_not_of(' ') + 1);
-    return newPath;
-}
-
-std::string PathInfo::getcwd(bool autoEndWithSlash)
-{
-#ifdef _WIN32
-    char* buffer = ::_getcwd(NULL, 0);
-#else
-    char* buffer = ::getcwd(NULL, 0);
-#endif
-    std::string currDir;
-    if (buffer)
-    {
-        currDir = buffer;
-        free(buffer);
-        if (!currDir.empty() && autoEndWithSlash)
-        {
-            const char& lastPathChar = currDir[currDir.size() - 1];
-            if ('/' != lastPathChar && '\\' != lastPathChar)
-            {
-#ifdef _WIN32
-                currDir.push_back('\\');
-#else
-                currDir.push_back('/');
-#endif
-            }
-        }
-    }
-    return currDir;
 }
 } // namespace utility

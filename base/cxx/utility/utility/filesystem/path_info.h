@@ -92,10 +92,11 @@ public:
      * @param fileCb 文件回调, 参数: name-名称, attr-属性, depth-深度(从1开始)
      * @param stopCb 停止回调, 返回值: true-停止, false-不停止
      * @param recursive 是否递归查找(选填), 默认递归
+     * @param bfs 是否广度优先遍历(选填), true-是(广度优先遍历), false-否(深度优先遍历), 默认深度优先
      */
     void traverse(const std::function<bool(const std::string& name, const FileAttribute& attr, int depth)>& folderCb,
                   const std::function<void(const std::string& name, const FileAttribute& attr, int depth)>& fileCb,
-                  const std::function<bool()>& stopCb, bool recursive = true) const;
+                  const std::function<bool()>& stopCb, bool recursive = true, bool bfs = false) const;
 
     /**
      * @brief 校正路径(去除多余的斜杠, 反斜杠, 左右空格)
@@ -120,7 +121,7 @@ private:
     static bool clearImpl(std::string path, bool rmSelf);
 
     /**
-     * @brief 遍历文件夹和文件内部实现
+     * @brief 广度优先遍历文件夹和文件内部实现
      * @param path 路径
      * @param depth 深度(首次调用传入0)
      * @param folderCb 文件夹回调, 参数: name-名称, attr-属性, depth-深度(从1开始), 返回值: true-允许遍历子目录, false-不允许
@@ -128,10 +129,24 @@ private:
      * @param stopCb 停止回调, 返回值: true-停止, false-不停止
      * @param recursive 是否递归查找
      */
-    static void traverseImpl(std::string path, int depth,
-                             const std::function<bool(const std::string& name, const FileAttribute& attr, int depth)>& folderCb,
-                             const std::function<void(const std::string& name, const FileAttribute& attr, int depth)>& fileCb,
-                             const std::function<bool()>& stopCb, bool recursive);
+    static void traverseBFS(const std::string& path, int depth,
+                            const std::function<bool(const std::string& name, const FileAttribute& attr, int depth)>& folderCb,
+                            const std::function<void(const std::string& name, const FileAttribute& attr, int depth)>& fileCb,
+                            const std::function<bool()>& stopCb, bool recursive);
+
+    /**
+     * @brief 深度优先遍历文件夹和文件内部实现
+     * @param path 路径
+     * @param depth 深度(首次调用传入0)
+     * @param folderCb 文件夹回调, 参数: name-名称, attr-属性, depth-深度(从1开始), 返回值: true-允许遍历子目录, false-不允许
+     * @param fileCb 文件回调, 参数: name-名称, attr-属性, depth-深度(从1开始)
+     * @param stopCb 停止回调, 返回值: true-停止, false-不停止
+     * @param recursive 是否递归查找
+     */
+    static void traverseDFS(std::string path, int depth,
+                            const std::function<bool(const std::string& name, const FileAttribute& attr, int depth)>& folderCb,
+                            const std::function<void(const std::string& name, const FileAttribute& attr, int depth)>& fileCb,
+                            const std::function<bool()>& stopCb, bool recursive);
 
 private:
     std::string m_path; /* 路径 */
