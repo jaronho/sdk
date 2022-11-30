@@ -14,6 +14,21 @@
 namespace utility
 {
 #ifdef _WIN32
+static std::wstring string2wstring(const std::string& str)
+{
+    if (str.empty())
+    {
+        return std::wstring();
+    }
+    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
+    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
+    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
+    buf[len] = '\0';
+    std::wstring wstr(buf);
+    free(buf);
+    return wstr;
+}
+
 static std::string wstring2string(const std::wstring& wstr)
 {
     if (wstr.empty())
@@ -157,7 +172,11 @@ bool System::tryLockFile(const std::string& filename, bool block)
     }
     /* 打开要加锁的文件(注意: 这里文件句柄不做关闭处理) */
 #ifdef _WIN32
+#ifdef UNICODE
+    HANDLE fd = CreateFile(string2wstring(filename).c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+#else
     HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+#endif
     if (!fd)
     {
         return false;
@@ -182,7 +201,11 @@ bool System::tryLockFileTemporary(const std::string& filename, const std::functi
     std::string fileLockName = filename + (suffix.empty() ? ".lock" : ('.' == suffix[0] ? suffix : ("." + suffix)));
     /* 打开要加锁的文件 */
 #ifdef _WIN32
+#ifdef UNICODE
+    HANDLE fd = CreateFile(string2wstring(filename).c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+#else
     HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+#endif
     if (!fd)
     {
         return false;
@@ -249,7 +272,11 @@ bool System::checkFileLock(const std::string& filename)
 {
     bool ret = false;
 #ifdef _WIN32
+#ifdef UNICODE
+    HANDLE fd = CreateFile(string2wstring(filename).c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+#else
     HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
+#endif
     if (fd)
     {
         ret = checkFileLock(fd);

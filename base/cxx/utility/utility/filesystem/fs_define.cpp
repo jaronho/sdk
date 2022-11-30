@@ -46,7 +46,11 @@ bool getFileAttribute(std::string name, FileAttribute& attr)
     }
 #ifdef _WIN32
     struct _stat64 st;
+#ifdef UNICODE
+    int ret = _wstat64(string2wstring(name).c_str(), &st);
+#else
     int ret = _stat64(name.c_str(), &st);
+#endif
 #else
     struct stat64 st;
     int ret = stat64(name.c_str(), &st);
