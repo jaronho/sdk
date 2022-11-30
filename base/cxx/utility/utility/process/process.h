@@ -52,7 +52,7 @@ public:
      * @brief 启动进程
      * @param exeFile 程序文件名(可包含全路径), 注意: 需要外部保证程序文件存在
      * @param args 进程参数(选填), 注意: 需要外部保证参数有效性
-     * @param flag 标记, WIN32: 0-不使用新控制台, 1-使用新控制台; Unix: 0-默认子进程标准输出, 1-关闭子进程标准输出
+     * @param flag 标记, WIN32: 0-不使用控制台, 1-使用新控制台, 2-使用父控制台; Unix: 0-关闭子进程标准输出, 1-默认子进程标准输出
      * @return 进程ID
      */
     static int runProcess(const std::string& exeFile, const std::string& args = "", int flag = 1);

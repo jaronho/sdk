@@ -400,9 +400,11 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
     {
         return -1;
     }
-    if (!CreateProcess(NULL, (WCHAR*)cmdlineW.c_str(), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
+    if (!CreateProcess(NULL, (WCHAR*)cmdlineW.c_str(), NULL, NULL, FALSE,
+                       (0 == flag ? CREATE_NO_WINDOW : (1 == flag ? CREATE_NEW_CONSOLE : 0)), NULL, NULL, &si, &pi))
 #else
-    if (!CreateProcess(NULL, (CHAR*)(cmdline.c_str()), NULL, NULL, FALSE, (0 == flag ? 0 : CREATE_NEW_CONSOLE), NULL, NULL, &si, &pi))
+    if (!CreateProcess(NULL, (CHAR*)(cmdline.c_str()), NULL, NULL, FALSE,
+                       (0 == flag ? CREATE_NO_WINDOW : (1 == flag ? CREATE_NEW_CONSOLE : 0)), NULL, NULL, &si, &pi))
 #endif
     {
         return -1;
@@ -420,7 +422,7 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
     else if (0 == pid) /* 创建成功, 进入子进程空间 */
     {
         setpgid(0, 0);
-        if (1 == flag)
+        if (0 == flag)
         {
             fcntl(1, F_SETFD, FD_CLOEXEC); /* 1-关闭标准输出, 子进程的输出将无法显示 */
         }
