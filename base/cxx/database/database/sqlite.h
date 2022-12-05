@@ -266,6 +266,14 @@ public:
     std::string getLastErrorMsg();
 
     /**
+     * @brief 清空表数据
+     * @param tableName 表名
+     * @param errorMsg 错误消息(选填)
+     * @return true-成功, false-失败
+     */
+    bool clearTable(const std::string& tableName, std::string* errorMsg = nullptr);
+
+    /**
      * @brief 删除表
      * @param tableName 表名
      * @param errorMsg 错误消息(选填)

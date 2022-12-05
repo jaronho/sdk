@@ -559,6 +559,20 @@ std::string Sqlite::getLastErrorMsg()
     return msg;
 }
 
+bool Sqlite::clearTable(const std::string& tableName, std::string* errorMsg)
+{
+    if (tableName.empty())
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "parameter error";
+        }
+        return false;
+    }
+    auto sql = "DELETE FROM " + tableName;
+    return execSql(sql, nullptr, errorMsg);
+}
+
 bool Sqlite::dropTable(const std::string& tableName, std::string* errorMsg)
 {
     if (tableName.empty())
