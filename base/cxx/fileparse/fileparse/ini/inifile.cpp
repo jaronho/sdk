@@ -471,9 +471,9 @@ bool IniFile::setComment(const std::string& sectionName, const std::string& key,
     return true;
 }
 
-bool IniFile::getExtra(const std::string& sectionName, const std::string& key, std::string& extra) const
+bool IniFile::getExtra(const std::string& sectionName, const std::string& key, const std::string& extraName, std::string& extraValue) const
 {
-    extra.clear();
+    extraValue.clear();
     auto sectionIter = m_sections.find(sectionName);
     if (m_sections.end() != sectionIter)
     {
@@ -481,7 +481,12 @@ bool IniFile::getExtra(const std::string& sectionName, const std::string& key, s
         {
             if (key == itemIter->key)
             {
-                extra = itemIter->extra;
+                auto extraTter = itemIter->extraMap.find(extraName);
+                if (itemIter->extraMap.end() == extraTter)
+                {
+                    break;
+                }
+                extraValue = extraTter->second;
                 return true;
             }
         }
@@ -489,7 +494,7 @@ bool IniFile::getExtra(const std::string& sectionName, const std::string& key, s
     return false;
 }
 
-bool IniFile::setExtra(const std::string& sectionName, const std::string& key, const std::string& extra)
+bool IniFile::setExtra(const std::string& sectionName, const std::string& key, const std::string& extraName, const std::string& extraValue)
 {
     if (key.empty())
     {
@@ -504,7 +509,7 @@ bool IniFile::setExtra(const std::string& sectionName, const std::string& key, c
     {
         if (key == itemIter->key)
         {
-            itemIter->extra = extra;
+            itemIter->extraMap[extraName] = extraValue;
             return true;
         }
     }

@@ -13,7 +13,7 @@ struct IniItem
     std::string key; /* 键 */
     std::string value; /* 值 */
     std::string comment; /* 注释 */
-    std::string extra; /* 额外参数(不显示和持久化, 只存在内存中) */
+    std::map<std::string, std::string> extraMap; /* 额外参数(不显示和持久化, 只存在内存中) */
 };
 
 /**
@@ -161,19 +161,21 @@ public:
      * @brief 获取额外参数
      * @param sectionName 节名称
      * @param key 键
-     * @param extra [输出]额外参数
+     * @param extraName 额外参数名
+     * @param extraValue [输出]额外参数值
      * @return true-成功, flalse-失败(不存在)
      */
-    bool getExtra(const std::string& sectionName, const std::string& key, std::string& extra) const;
+    bool getExtra(const std::string& sectionName, const std::string& key, const std::string& extraName, std::string& extraValue) const;
 
     /**
      * @brief 设置额外参数
      * @param sectionName 节名称
      * @param key 键
-     * @param extra 额外参数
+     * @param extraName 额外参数名
+     * @param extraValue 额外参数值
      * @return true-成功, false-失败(不存在)
      */
-    bool setExtra(const std::string& sectionName, const std::string& key, const std::string& extra);
+    bool setExtra(const std::string& sectionName, const std::string& key, const std::string& extraName, const std::string& extraValue);
 
     /**
      * @brief 是否允许创建节/项

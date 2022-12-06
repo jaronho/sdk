@@ -6,9 +6,8 @@
 
 namespace ini
 {
-using INI_MAP_TYPE = std::map<std::string, std::map<std::string, IniSection>>;
-std::mutex* g_mutex = nullptr; /* 互斥锁 */
-INI_MAP_TYPE* g_iniMap = nullptr; /* 全局ini映射表 */
+static std::mutex s_mutex; /* 互斥锁 */
+static std::map<std::string, std::map<std::string, IniSection>> s_iniMap; /* 全局ini映射表 */
 
 void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& key)
 {
@@ -46,19 +45,11 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     std::string sectionName, key;
     splitSectionKey(sectionKey, sectionName, key);
     /* 查找ini映射表 */
-    if (!g_mutex)
+    std::lock_guard<std::mutex> locker(s_mutex);
+    auto iniIter = s_iniMap.find(id);
+    if (s_iniMap.end() == iniIter) /* 没有ini配置则创建 */
     {
-        g_mutex = new std::mutex();
-    }
-    std::lock_guard<std::mutex> locker(*g_mutex);
-    if (!g_iniMap)
-    {
-        g_iniMap = new INI_MAP_TYPE();
-    }
-    auto iniIter = g_iniMap->find(id);
-    if (g_iniMap->end() == iniIter) /* 没有ini配置则创建 */
-    {
-        iniIter = g_iniMap->insert(std::make_pair(id, std::map<std::string, IniSection>())).first;
+        iniIter = s_iniMap.insert(std::make_pair(id, std::map<std::string, IniSection>())).first;
     }
     auto sectionIter = iniIter->second.find(sectionName);
     if (iniIter->second.end() == sectionIter) /* 没有节则创建 */
@@ -102,7 +93,7 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
             item.comment = "# " + comment;
         }
     }
-    item.extra = readOnly ? "1" : "0"; /* 这里额外参数用作只读属性 */
+    item.extraMap["readOnly"] = readOnly ? "1" : "0";
     section.items.emplace_back(item);
     return sectionKey;
 }
@@ -110,17 +101,9 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
 std::map<std::string, IniSection> getIni(const std::string& id)
 {
     /* 查找ini映射表 */
-    if (!g_mutex)
-    {
-        g_mutex = new std::mutex();
-    }
-    std::lock_guard<std::mutex> locker(*g_mutex);
-    if (!g_iniMap)
-    {
-        return std::map<std::string, IniSection>();
-    }
-    auto iniIter = g_iniMap->find(id);
-    if (g_iniMap->end() == iniIter) /* 没有ini配置则返回 */
+    std::lock_guard<std::mutex> locker(s_mutex);
+    auto iniIter = s_iniMap.find(id);
+    if (s_iniMap.end() == iniIter) /* 没有ini配置则返回 */
     {
         return std::map<std::string, IniSection>();
     }
@@ -134,22 +117,15 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
         return 1;
     }
     /* 查找ini映射表 */
-    if (!g_mutex)
-    {
-        g_mutex = new std::mutex();
-    }
-    std::lock_guard<std::mutex> locker(*g_mutex);
-    if (!g_iniMap)
+    std::lock_guard<std::mutex> locker(s_mutex);
+    auto iniIter = s_iniMap.find(id);
+    if (s_iniMap.end() == iniIter) /* 没有ini配置则返回 */
     {
         return 2;
     }
-    auto iniIter = g_iniMap->find(id);
-    if (g_iniMap->end() == iniIter) /* 没有ini配置则返回 */
-    {
-        return 2;
-    }
-    /* 进行配置恢复 */
-    writer->clear(); /* 先清空 */
+    /* 清空当前配置 */
+    writer->clear();
+    /* 恢复初始配置 */
     const auto& sectionMap = iniIter->second;
     for (auto sectionIter = sectionMap.begin(); sectionMap.end() != sectionIter; ++sectionIter)
     {
@@ -182,29 +158,21 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
         return 1;
     }
     /* 查找ini映射表 */
-    if (!g_mutex)
-    {
-        g_mutex = new std::mutex();
-    }
-    std::lock_guard<std::mutex> locker(*g_mutex);
-    if (!g_iniMap)
-    {
-        return 2;
-    }
-    auto iniIter = g_iniMap->find(id);
-    if (g_iniMap->end() == iniIter) /* 没有ini配置则返回 */
+    std::lock_guard<std::mutex> locker(s_mutex);
+    auto iniIter = s_iniMap.find(id);
+    if (s_iniMap.end() == iniIter) /* 没有ini配置则返回 */
     {
         return 2;
     }
     bool changed = false; /* 是否有修改 */
     const auto& newSectionMap = iniIter->second;
-    /* 删除废弃数据 */
+    /* 删除无用配置 */
     auto oldSectionMap = writer->getSections();
     for (auto oldSectionIter = oldSectionMap.begin(); oldSectionMap.end() != oldSectionIter; ++oldSectionIter)
     {
         const auto& oldSection = oldSectionIter->second;
         auto newSectionIter = newSectionMap.find(oldSection.name);
-        if (newSectionMap.end() == newSectionIter) /* 旧的节数据在新配置中不存在, 则表示可以删除 */
+        if (newSectionMap.end() == newSectionIter) /* 旧的节数据在新配置中不存在, 则删除 */
         {
             if (oldSection.name.empty() && oldSection.items.empty()) /* 全局节且无数据则忽略 */
             {
@@ -234,7 +202,8 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
                     if (newItem.key == oldItem.key) /* 旧的键值在新配置中存在 */
                     {
                         needRemove = false;
-                        if (0 == newItem.extra.compare("1")) /* 只读则使用新的键值 */
+                        auto extraTter = newItem.extraMap.find("readOnly");
+                        if (newItem.extraMap.end() != extraTter && "1" == extraTter->second) /* 只读则使用新的键值 */
                         {
                             writer->setValue(oldSection.name, oldItem.key, newItem.value);
                             changed = true;
@@ -249,7 +218,7 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
                         break;
                     }
                 }
-                if (needRemove) /* 旧的键值在新配置中不存在, 则表示删除 */
+                if (needRemove) /* 旧的键值在新配置中不存在, 则删除 */
                 {
                     writer->removeKey(oldSection.name, oldItem.key);
                     changed = true;
@@ -257,7 +226,7 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
             }
         }
     }
-    /* 增加新数据 */
+    /* 增加新配置 */
     for (auto newSectionIter = newSectionMap.begin(); newSectionMap.end() != newSectionIter; ++newSectionIter)
     {
         const auto& newSection = newSectionIter->second;
