@@ -1,6 +1,7 @@
 #include "file_deleter.h"
 
-#include "threading/async_proxy.h"
+#include <algorithm>
+
 #include "utility/datetime/datetime.h"
 #include "utility/filesystem/file_info.h"
 #include "utility/filesystem/path_info.h"
@@ -15,79 +16,6 @@ struct InfoInner
     utility::FileAttribute attr;
     int depth;
 };
-
-void FileDeleter::setFolderDeletedCallback(const FolderDeletedCallback& callback)
-{
-    m_folderDeletedCb = callback;
-}
-
-void FileDeleter::setFileDeletedCallback(const FileDeletedCallback& callback)
-{
-    m_fileDeletedCb = callback;
-}
-
-void FileDeleter::start(int interval, const std::vector<ExpireConfig>& expireCfgList)
-{
-    if (interval <= 0)
-    {
-        interval = 60;
-    }
-    auto detectInterval = std::chrono::seconds(interval);
-    if (m_detectTimer)
-    {
-        return;
-    }
-    {
-        std::lock_guard<std::mutex> locker(m_mutexCfg);
-        m_expireCfgList = expireCfgList;
-    }
-    m_detectTimer = threading::SteadyTimer::onceTimer(THREADING_CALLER, detectInterval,
-                                                      [&](const std::chrono::steady_clock::time_point& tp) { onDetectTimer(); });
-    m_detectTimer->start();
-    onDetectTimer();
-}
-
-void FileDeleter::start(int hour, int minute, const std::vector<ExpireConfig>& expireCfgList)
-{
-    if (hour < 0 || hour > 23)
-    {
-        hour = 0;
-    }
-    if (minute < 0 || minute > 59)
-    {
-        minute = 0;
-    }
-    if (m_detectTimer)
-    {
-        return;
-    }
-    {
-        std::lock_guard<std::mutex> locker(m_mutexCfg);
-        m_expireCfgList = expireCfgList;
-    }
-    m_detectTimer = threading::SteadyTimer::onceTimer(THREADING_CALLER, std::chrono::minutes(1),
-                                                      [&, hour, minute](const std::chrono::steady_clock::time_point& tp) {
-                                                          static int s_hour = -1;
-                                                          static int s_minute = -1;
-                                                          auto dt = utility::DateTime::getNow();
-                                                          if (hour == dt.hour && minute == dt.minute)
-                                                          {
-                                                              if (hour != s_hour && minute != s_minute)
-                                                              {
-                                                                  s_hour = hour;
-                                                                  s_minute = minute;
-                                                                  onDetectTimer();
-                                                              }
-                                                          }
-                                                          else
-                                                          {
-                                                              s_hour = -1;
-                                                              s_minute = -1;
-                                                          }
-                                                      });
-    m_detectTimer->start();
-    onDetectTimer();
-}
 
 void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const FolderDeletedCallback& folderDeletedCb,
                                const FileDeletedCallback& fileDeletedCb)
@@ -214,29 +142,6 @@ void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const 
                 }
             }
         }
-    }
-}
-
-void FileDeleter::onDetectTimer()
-{
-    std::vector<ExpireConfig> expireCfgList;
-    {
-        std::lock_guard<std::mutex> locker(m_mutexCfg);
-        expireCfgList = m_expireCfgList;
-    }
-    if (!expireCfgList.empty())
-    {
-        /* 由于文件删除会进行I/O耗时操作, 这里异步执行 */
-        const std::weak_ptr<threading::SteadyTimer> wpDetectTimer = m_detectTimer;
-        threading::AsyncProxy::execute(
-            THREADING_CALLER, [&, wpDetectTimer, expireCfgList, folderDeletedCb = m_folderDeletedCb, fileDeletedCb = m_fileDeletedCb]() {
-                const auto detectTimer = wpDetectTimer.lock();
-                if (detectTimer)
-                {
-                    deleteExpired(expireCfgList, folderDeletedCb, fileDeletedCb);
-                    detectTimer->start();
-                }
-            });
     }
 }
 } // namespace toolkit
