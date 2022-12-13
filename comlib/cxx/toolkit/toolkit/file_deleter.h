@@ -45,40 +45,45 @@ public:
     };
 
     /**
-     * @brief 目录被删除回调
-     * @param name 目录名(全路径)
+     * @brief 删除目录/文件前检测函数
+     * @param name 目录名/文件名(全路径)
      * @param attr 属性
      * @param depth 深度
-     * @param ok 是否删除成功
+     * @return true-删除, false-不删除
      */
-    using FolderDeletedCallback = std::function<void(const std::string& name, const utility::FileAttribute& attr, int depth, bool ok)>;
+    using DeleteCheckFunc = std::function<bool(const std::string& name, const utility::FileAttribute& attr, int depth)>;
 
     /**
-     * @brief 文件被删除回调
-     * @param name 文件名(全路径)
+     * @brief 目录/文件被删除回调
+     * @param name 目录名/文件名(全路径)
      * @param attr 属性
      * @param depth 深度
      * @param ok 是否删除成功
      */
-    using FileDeletedCallback = std::function<void(const std::string& name, const utility::FileAttribute& attr, int depth, bool ok)>;
+    using DeletedCallback = std::function<void(const std::string& name, const utility::FileAttribute& attr, int depth, bool ok)>;
 
 public:
     /**
      * @brief 删除占满的文件
      * @param cfg 配置
+     * @param folderCheckFunc 目录检测函数
      * @param folderDeletedCb 目录被删除回调
+     * @param fileCheckFunc 文件检测函数
      * @param fileDeletedCb 文件被删除回调
      */
-    static void deleteOccupy(const OccupyConfig& cfg, const FolderDeletedCallback& folderDeletedCb,
-                             const FileDeletedCallback& fileDeletedCb);
+    static void deleteOccupy(const OccupyConfig& cfg, const DeleteCheckFunc& folderCheckFunc, const DeletedCallback& folderDeletedCb,
+                             const DeleteCheckFunc& fileCheckFunc, const DeletedCallback& fileDeletedCb);
 
     /**
      * @brief 删除过期的文件
      * @param cfgList 配置列表
+     * @param folderCheckFunc 目录检测函数
      * @param folderDeletedCb 目录被删除回调
+     * @param fileCheckFunc 文件检测函数
      * @param fileDeletedCb 文件被删除回调
      */
-    static void deleteExpired(const std::vector<ExpireConfig>& cfgList, const FolderDeletedCallback& folderDeletedCb,
-                              const FileDeletedCallback& fileDeletedCb);
+    static void deleteExpired(const std::vector<ExpireConfig>& cfgList, const DeleteCheckFunc& folderCheckFunc,
+                              const DeletedCallback& folderDeletedCb, const DeleteCheckFunc& fileCheckFunc,
+                              const DeletedCallback& fileDeletedCb);
 };
 } // namespace toolkit

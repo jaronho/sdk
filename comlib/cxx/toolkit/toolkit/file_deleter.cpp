@@ -17,8 +17,8 @@ struct InfoInner
     int depth;
 };
 
-void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const FolderDeletedCallback& folderDeletedCb,
-                               const FileDeletedCallback& fileDeletedCb)
+void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const DeleteCheckFunc& folderCheckFunc, const DeletedCallback& folderDeletedCb,
+                               const DeleteCheckFunc& fileCheckFunc, const DeletedCallback& fileDeletedCb)
 {
     if (cfg.clearSize <= 0) /* 不需要清除 */
     {
@@ -37,7 +37,10 @@ void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const FolderDeletedCallb
         {
             return false;
         }
-        folderList.emplace_back(InfoInner(name, attr, depth));
+        if (!folderCheckFunc || folderCheckFunc(name, attr, depth))
+        {
+            folderList.emplace_back(InfoInner(name, attr, depth));
+        }
         return true;
     };
     auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
@@ -47,6 +50,10 @@ void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const FolderDeletedCallb
             {
                 return;
             }
+        }
+        if (fileCheckFunc && !fileCheckFunc(name, attr, depth))
+        {
+            return;
         }
         fileList.emplace_back(InfoInner(name, attr, depth));
     };
@@ -85,8 +92,9 @@ void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const FolderDeletedCallb
     }
 }
 
-void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const FolderDeletedCallback& folderDeletedCb,
-                                const FileDeletedCallback& fileDeletedCb)
+void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const DeleteCheckFunc& folderCheckFunc,
+                                const DeletedCallback& folderDeletedCb, const DeleteCheckFunc& fileCheckFunc,
+                                const DeletedCallback& fileDeletedCb)
 {
     for (auto cfg : cfgList)
     {
@@ -107,7 +115,10 @@ void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const 
             {
                 return false;
             }
-            folderList.emplace_back(InfoInner(name, attr, depth));
+            if (!folderCheckFunc || folderCheckFunc(name, attr, depth))
+            {
+                folderList.emplace_back(InfoInner(name, attr, depth));
+            }
             return true;
         };
         auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
@@ -117,6 +128,10 @@ void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const 
                 {
                     return;
                 }
+            }
+            if (fileCheckFunc && !fileCheckFunc(name, attr, depth))
+            {
+                return;
             }
             auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
             if (nowTimestamp - modifyTimestamp >= cfg.expireTime) /* 过期, 需要删除 */

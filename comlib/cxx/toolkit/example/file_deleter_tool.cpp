@@ -32,10 +32,11 @@ static void fileDeleterWatch()
                 lastWatchTimepoint = ntp;
                 firstFlag = false;
                 toolkit::FileDeleter::deleteExpired(
-                    s_expireConfigList,
+                    s_expireConfigList, nullptr,
                     [&](const std::string& name, const utility::FileAttribute& attr, int depth, bool ok) {
                         printf("[%s] delete folder: %s, %s\n", dtString().c_str(), name.c_str(), ok ? "success" : "fail");
                     },
+                    nullptr,
                     [&](const std::string& name, const utility::FileAttribute& attr, int depth, bool ok) {
                         printf("[%s] delete file: %s, %s\n", dtString().c_str(), name.c_str(), ok ? "success" : "fail");
                     });
