@@ -63,7 +63,8 @@ bool AppSingleton::create(const std::string& pidFilePath, const std::string& pid
     /* 写进程ID到文件 */
     std::string pid = std::to_string(utility::Process::getProcessId());
 #ifdef _WIN32
-    if (!WriteFile(fd, pid.c_str(), pid.size(), (DWORD)0, (DWORD)0))
+    DWORD len;
+    if (!WriteFile(fd, pid.c_str(), pid.size(), &len, NULL))
     {
         return false;
     }
