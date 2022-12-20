@@ -357,30 +357,30 @@ bool Sqlite::connect(bool readOnly, std::string* errorMsg)
     auto ret = sqlite3_open_v2(m_path.c_str(), &m_db, sqliteFlag, nullptr);
     if (SQLITE_OK != ret)
     {
-        m_db = nullptr;
         if (errorMsg)
         {
             (*errorMsg) = sqlite3_errstr(ret);
         }
+        m_db = nullptr;
         return false;
     }
-#ifdef SQLITE_HAS_CODEC
     if (!m_password.empty()) /* 密码非空 */
     {
+#ifdef SQLITE_HAS_CODEC
         sqlite3_key(m_db, m_password.c_str(), m_password.size()); /* 设置密钥 */
         ret = sqlite3_exec(m_db, "SELECT count(*) FROM sqlite_master", NULL, NULL, NULL); /* 如果返回非0表示解密失败 */
-    }
-    if (SQLITE_OK != ret)
-    {
-        sqlite3_close_v2(m_db);
-        m_db = nullptr;
-        if (errorMsg)
+        if (SQLITE_OK != ret)
         {
-            (*errorMsg) = sqlite3_errstr(ret);
+            if (errorMsg)
+            {
+                (*errorMsg) = sqlite3_errstr(ret);
+            }
+            sqlite3_close_v2(m_db);
+            m_db = nullptr;
+            return false;
         }
-        return false;
-    }
 #endif
+    }
     return true;
 }
 
