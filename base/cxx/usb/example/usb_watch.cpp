@@ -57,41 +57,43 @@ int main(int argc, char** argv)
             std::string line;
             line += "{";
             {
+                line += "\n    ";
                 line += "\"busNum\":" + std::to_string(info.getBusNum());
-                line += ",";
+                line += ", ";
                 line += "\"portNum\":" + std::to_string(info.getPortNum());
-                line += ",";
+                line += ", ";
                 line += "\"address\":" + std::to_string(info.getAddress());
-                line += ",";
-                line += "\"class\":" + std::to_string(info.getClassCode());
-                line += ",";
+                line += ", ";
+                char buf[4] = {0};
+                sprintf(buf, "%02Xh", info.getClassCode());
+                line += "\"classCode\":\"" + std::string(buf) + "\"";
+                line += ", ";
                 line += "\"classDesc\":\"" + info.getClassDesc() + "\"";
-                line += ",";
-                line += "\"subClass\":" + std::to_string(info.getSubClassCode());
-                line += ",";
-                line += "\"protocol\":" + std::to_string(info.getProtocolCode());
-                line += ",";
+                line += ", ";
+                line += "\"protocolCode\":" + std::to_string(info.getProtocolCode());
+                line += ", ";
                 line += "\"speedLevel\":" + std::to_string(info.getSpeedLevel());
-                line += ",";
+                line += ", ";
                 line += "\"speedDesc\":\"" + info.getSpeedDesc() + "\"";
                 line += ",";
+                line += "\n    ";
                 line += "\"vid\":\"" + info.getVid() + "\"";
-                line += ",";
+                line += ", ";
                 line += "\"pid\":\"" + info.getPid() + "\"";
-                line += ",";
+                line += ", ";
                 line += "\"serial\":\"" + info.getSerial() + "\"";
-                line += ",";
+                line += ", ";
                 line += "\"product\":\"" + info.getProduct() + "\"";
-                line += ",";
+                line += ", ";
                 line += "\"manufacturer\":\"" + info.getManufacturer() + "\"";
 #ifdef _WIN32
-                line += ",";
+                line += ", ";
                 line += "\"deviceName\":\"" + info.getDeviceName() + "\"";
-                line += ",";
+                line += ", ";
                 line += "\"deviceDesc\":\"" + info.getDeviceDesc() + "\"";
 #endif
 #ifndef _WIN32
-                line += ",";
+                line += ", ";
                 {
                     auto devNodes = info.getDevNodes();
                     line += "\"devNodes\":";
@@ -113,6 +115,7 @@ int main(int argc, char** argv)
                 }
 #endif
             }
+            line += "\n";
             line += "}";
             if (firstLine)
             {
