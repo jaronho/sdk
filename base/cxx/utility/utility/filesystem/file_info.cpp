@@ -46,7 +46,7 @@ static size_t calcCopyBlockSize(size_t fileSize, std::vector<FileInfo::CopyBlock
 
 FileInfo::FileInfo(const std::string& fullName) : m_fullName(fullName)
 {
-    size_t pos = fullName.find_last_of("/\\");
+    auto pos = fullName.find_last_of("/\\");
     if (pos < fullName.size())
     {
         m_path = fullName.substr(0, pos + 1);
@@ -73,8 +73,17 @@ std::string FileInfo::name() const
     return m_fullName;
 }
 
-std::string FileInfo::path() const
+std::string FileInfo::path(bool endWithSlash) const
 {
+    if (endWithSlash)
+    {
+        return m_path;
+    }
+    auto pos = m_path.find_last_of("/\\");
+    if (pos < m_path.size())
+    {
+        return m_path.substr(0, pos);
+    }
     return m_path;
 }
 

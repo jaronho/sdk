@@ -86,10 +86,11 @@ public:
     std::string name() const;
 
     /**
-     * @brief 获取文件路径, 例如: /home/test/
-     * @return 文件路径(斜杠结尾)
+     * @brief 获取文件路径, 例如: /home/test 或 /home/test/
+     * @param endWithSlash 是否斜杠结尾(选填), 默认斜杠结尾
+     * @return 文件路径
      */
-    std::string path() const;
+    std::string path(bool endWithSlash = true) const;
 
     /**
      * @brief 获取文件名, 例如: 111.txt
