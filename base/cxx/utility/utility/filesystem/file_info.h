@@ -223,13 +223,20 @@ public:
     bool write(size_t pos, const std::string& data, int* errCode = nullptr) const;
 
     /**
-     * @brief 替换文件中的数据
+     * @brief 编辑文件中的数据
      * @param offset 指定的偏移值, 为0时表示从头开始
      * @param count 指定字节数
-     * @param callback 替换函数(对buffer进行替换, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
+     * @param func 编辑函数(对buffer进行编辑, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
      * @return true-成功, false-失败
      */
-    bool replace(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback) const;
+    bool edit(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& func) const;
+
+    /**
+     * @brief 编辑文本文件中的行数据
+     * @param func 编辑函数, 参数: lineNum-行号, line-行数据, 返回值: true-保留该行, false-删除该行
+     * @return true-成功, false-失败
+     */
+    bool editLine(const std::function<bool(size_t num, std::string& line)>& func) const;
 
     /**
      * @brief 判断是否为文本文件
@@ -250,9 +257,11 @@ public:
     /**
      * @brief 从文本文件中读取一行
      * @param f 文件指针
+     * @param bomFlag [输出]BOM标识(3个字节), 如果文件为UTF-8带BOM编码则第1行有此标识
+     * @param endFlag [输出]行结束标识, 一般为 \r\n 或 \n
      * @return 行数据
      */
-    static std::string readLine(FILE* f);
+    static std::string readLine(FILE* f, std::string& bomFlag, std::string& endFlag);
 
     /**
      * @brief 向文件中写入数据
@@ -274,14 +283,14 @@ public:
     static bool write(FILE* f, size_t offset, const std::string& data);
 
     /**
-     * @brief 替换文件中的数据
+     * @brief 编辑文件中的数据
      * @param f 文件指针
      * @param offset 指定的偏移值, 为0时表示从头开始
      * @param count 指定字节数
-     * @param callback 替换函数(对buffer进行替换, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
+     * @param func 编辑函数(对buffer进行编辑, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
      * @return true-成功, false-失败
      */
-    static bool replace(FILE* f, size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback);
+    static bool edit(FILE* f, size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& func);
 
     /**
      * @brief 判断文件是否为文本数据

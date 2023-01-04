@@ -441,7 +441,7 @@ bool FileInfo::write(size_t pos, const std::string& data, int* errCode) const
     return write(pos, data.c_str(), data.size(), errCode);
 }
 
-bool FileInfo::replace(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& callback) const
+bool FileInfo::edit(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& func) const
 {
     if (m_fullName.empty())
     {
@@ -452,10 +452,67 @@ bool FileInfo::replace(size_t offset, size_t count, const std::function<void(cha
     {
         return false;
     }
-    auto ret = replace(f, offset, count, callback);
+    auto ret = edit(f, offset, count, func);
     if (ret)
     {
         fflush(f);
+    }
+    fclose(f);
+    return ret;
+}
+
+bool FileInfo::editLine(const std::function<bool(size_t num, std::string& line)>& func) const
+{
+    if (m_fullName.empty())
+    {
+        return false;
+    }
+    auto f = fopen(m_fullName.c_str(), "rb+");
+    if (!f)
+    {
+        return false;
+    }
+    std::string buffer;
+    size_t num = 0;
+    bool changed = false;
+    while (!feof(f))
+    {
+        ++num;
+        std::string bomFlag, endFlag;
+        auto line = readLine(f, bomFlag, endFlag);
+        if (!bomFlag.empty())
+        {
+            buffer.append(bomFlag);
+        }
+        std::string temp = line;
+        bool keepLine = true;
+        if (func)
+        {
+            keepLine = func(num, temp);
+        }
+        if (keepLine)
+        {
+            buffer.append(temp).append(endFlag);
+        }
+        if (!keepLine || line != temp)
+        {
+            changed = true;
+        }
+    }
+    bool ret = true;
+    if (changed)
+    {
+        fclose(f);
+        f = fopen(m_fullName.c_str(), "wb+");
+        if (!f)
+        {
+            return false;
+        }
+        ret = write(f, 0, buffer);
+        if (ret)
+        {
+            fflush(f);
+        }
     }
     fclose(f);
     return ret;
@@ -526,25 +583,36 @@ char* FileInfo::read(FILE* f, size_t offset, size_t& count, bool textFlag)
     return buffer;
 }
 
-std::string FileInfo::readLine(FILE* f)
+std::string FileInfo::readLine(FILE* f, std::string& bomFlag, std::string& endFlag)
 {
+    bomFlag.clear();
+    endFlag.clear();
     std::string line;
     if (f)
     {
-        char ch;
+        char ch = 0;
         while (!feof(f) && '\n' != (ch = fgetc(f)))
         {
             line.push_back(ch);
         }
+        if ('\n' == ch)
+        {
+            endFlag.push_back(ch);
+        }
         /* BOM字符检测 */
         if (line.size() >= 3 && (0xEF == (unsigned char)line[0] && 0xBB == (unsigned char)line[1] && 0xBF == (unsigned char)line[2]))
         {
+            bomFlag = line.substr(0, 3);
             line = line.substr(3);
         }
         /* 非显示字符检测 */
         long long lastIndex = line.size() - 1;
         if (lastIndex >= 0 && ('\r' == line[lastIndex] || 0xFF == (unsigned char)line[lastIndex]))
         {
+            if ('\r' == line[lastIndex])
+            {
+                endFlag.insert(0, 1, '\r');
+            }
             line.erase(lastIndex);
         }
     }
@@ -574,9 +642,9 @@ bool FileInfo::write(FILE* f, size_t offset, const std::string& data)
     return write(f, offset, data.c_str(), data.size());
 }
 
-bool FileInfo::replace(FILE* f, size_t offset, size_t count, const std::function<void(char* srcData, size_t count)>& callback)
+bool FileInfo::edit(FILE* f, size_t offset, size_t count, const std::function<void(char* srcData, size_t count)>& func)
 {
-    if (!f || !callback)
+    if (!f || !func)
     {
         return false;
     }
@@ -604,7 +672,7 @@ bool FileInfo::replace(FILE* f, size_t offset, size_t count, const std::function
             fseeko64(f, offset, SEEK_SET);
 #endif
             count = fread(buffer, 1, count, f);
-            callback(buffer, count);
+            func(buffer, count);
             if (buffer)
             {
 #ifdef _WIN32
