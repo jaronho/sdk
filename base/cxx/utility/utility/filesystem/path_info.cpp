@@ -504,7 +504,7 @@ void PathInfo::traverseBFS(const std::string& path, int depth,
             FileAttribute attr;
             if (getFileAttribute(subName, attr))
             {
-                if (attr.isDir) /* 目录*/
+                if (attr.isDir) /* 目录 */
                 {
                     bool allowEnterSub = true;
                     if (folderCb)
@@ -629,7 +629,7 @@ void PathInfo::traverseDFS(std::string path, int depth,
         FileAttribute attr;
         if (getFileAttribute(subName, attr))
         {
-            if (attr.isDir) /* 目录*/
+            if (attr.isDir) /* 目录 */
             {
                 bool allowEnterSub = true;
                 if (folderCb)
