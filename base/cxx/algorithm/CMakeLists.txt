@@ -13,6 +13,9 @@ ${base_algorithm_dir}
 ${base_algorithm_files}
 
 [源文件]
+${base_algorithm_atomic_files}
+
+[源文件]
 ${base_algorithm_base64_files}
 
 [源文件]
@@ -40,6 +43,9 @@ ${base_algorithm_tvalue_files}
 ##################################### 添加algorithm库 ####################################
 set(base_algorithm_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 
+get_cxx_files(algorithm/atomic src_list)
+set(base_algorithm_atomic_files ${src_list} CACHE INTERNAL "")
+
 get_cxx_files(algorithm/base64 src_list)
 set(base_algorithm_base64_files ${src_list} CACHE INTERNAL "")
 
@@ -66,6 +72,7 @@ set(base_algorithm_tvalue_files ${src_list} CACHE INTERNAL "")
 
 # 组装文件列表
 set(base_algorithm_files
+    ${base_algorithm_atomic_files}
     ${base_algorithm_base64_files}
     ${base_algorithm_md5_files}
     ${base_algorithm_rc4_files}
