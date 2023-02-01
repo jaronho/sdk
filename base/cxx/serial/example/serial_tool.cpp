@@ -109,8 +109,8 @@ void showAllPorts(const std::vector<serial::PortInfo> portList)
  * @brief 打开串口 
  */
 void openSerial(const std::string& port, unsigned long baudrate, const serial::Databits& databits, const serial::ParityType& parity,
-                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, bool sendHex, bool showHex, bool autoLine,
-                bool hideRecv)
+                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, int crlf, bool sendHex, bool showHex,
+                bool autoLine, bool hideRecv)
 {
     /* 串口设置及打开 */
     g_com.setPort(port);
@@ -178,6 +178,26 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         printf("流  控: Hardware\n");
         break;
     }
+    if (1 == crlf)
+    {
+        printf("结束符: CR(0x0D 回车)\n");
+    }
+    else if (2 == crlf)
+    {
+        printf("结束符: LF(0x0A 换行)\n");
+    }
+    else if (3 == crlf)
+    {
+        printf("结束符: CRLF(0x0D 0x0A 回车换行)\n");
+    }
+    else
+    {
+        printf("结束符: 无\n");
+    }
+    printf("发送格式: %s\n", sendHex ? "Hex(十六进制)" : "ASCII字符");
+    printf("接收格式: %s\n", showHex ? "Hex(十六进制)" : "ASCII字符");
+    printf("接收换行: %s\n", autoLine ? "自动换行" : "不自动换行");
+    printf("接收显示: %s\n", hideRecv ? "隐藏" : "显示");
     printf("\n");
     auto ret = g_com.open();
     if (0 != ret)
@@ -218,7 +238,23 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     }
     printf("串口打开成功.\n");
     /* 开线程用于发送 */
-    std::thread th([&]() {
+    std::thread th([&, crlf]() {
+        std::string endFlag, endFlagHex;
+        if (1 == crlf)
+        {
+            endFlag = "\r";
+            endFlagHex = "0D";
+        }
+        else if (2 == crlf)
+        {
+            endFlag = "\n";
+            endFlagHex = "0A";
+        }
+        else if (3 == crlf)
+        {
+            endFlag = "\r\n";
+            endFlagHex = "0D0A";
+        }
         while (g_com.isOpened())
         {
             char input[1024] = {0};
@@ -226,7 +262,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
             if (sendHex)
             {
                 char* bytes;
-                int len = hexStrToBytes(input, &bytes);
+                int len = hexStrToBytes(std::string(input) + endFlagHex, &bytes);
                 if (bytes)
                 {
                     g_com.write(bytes, len);
@@ -235,7 +271,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
             }
             else
             {
-                g_com.write(input, strlen(input));
+                g_com.write(std::string(input) + endFlag);
             }
         }
     });
@@ -308,6 +344,7 @@ int main(int argc, char** argv)
     printf("** [-parity 校验位]    校验位(选填), 值: [None: N|n, Even: E|e, Odd: O|o, Mark: M|m, Space: S|s], 默认: N. **\n");
     printf("** [-stop 停止位]      停止位(选填), 值: [1, 1.5, 2], 默认: 1.                                             **\n");
     printf("** [-flow 流控]        流控(选填), 值: [None: N|n, Software: S|s, Hardware: H|h], 默认: N.                 **\n");
+    printf("** [-crlf 结束符]      发送结束符(选填), 值: [0: 无, 1: CR(回车), 2: LF(换行), 3: CRLF(回车换行)], 默认: 0.**\n");
     printf("** [--txhex]           使用十六进制格式发送数据(选填), 默认: ASCII.                                        **\n");
     printf("** [--rxhex]           使用十六进制格式显示接收数据(选填), 默认: ASCII.                                    **\n");
     printf("** [--rxline]          自动换行接收数据(选填), 默认: 不自动换行.                                           **\n");
@@ -330,6 +367,7 @@ int main(int argc, char** argv)
     int flagParity = 2;
     int flagStopbits = 2;
     int flagFlowcontrol = 2;
+    int flagCRLF = 2;
     int flagTxHex = 0;
     int flagRxHex = 0;
     int flagRxAutoLine = 0;
@@ -346,6 +384,7 @@ int main(int argc, char** argv)
     serial::ParityType pariry = serial::ParityType::none;
     serial::Stopbits stopbits = serial::Stopbits::one;
     serial::FlowcontrolType flowcontrol = serial::FlowcontrolType::none;
+    int crlf = 0;
     /* 解析参数 */
     for (int i = 1; i < argc;)
     {
@@ -491,6 +530,11 @@ int main(int argc, char** argv)
                 valFlowcontrol = val;
             }
         }
+        else if (0 == key.compare("-crlf")) /* 数据结束符 */
+        {
+            flagCRLF = 2;
+            crlf = stoul(val);
+        }
         i += 2;
     }
     /* 判断是否显示 */
@@ -591,7 +635,7 @@ int main(int argc, char** argv)
         return 0;
     }
     /* 打开串口 */
-    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, 2 == flagTxHex, 2 == flagRxHex, 2 == flagRxAutoLine,
+    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, crlf, 2 == flagTxHex, 2 == flagRxHex, 2 == flagRxAutoLine,
                2 == flagRxHide);
     return 0;
 }
