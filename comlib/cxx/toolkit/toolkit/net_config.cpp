@@ -413,22 +413,15 @@ bool NetConfig::checkPing(const std::string& src, const std::string& dest, int t
     /* 设置目标地址 */
     command += " " + dest;
     /* 执行和解析 */
-    std::vector<std::string> outVec; /* 这里需要读取输出, 否则Linux下会失败 */
-    if (0 != utility::System::runCmd(command, nullptr, &outVec, true))
+    std::string outStr; /* 这里需要读取输出, 否则Linux下会失败 */
+    if (0 != utility::System::runCmd(command, &outStr))
     {
         return false;
     }
-#ifdef _WIN32
-    if (6 == outVec.size()) /* Windows平台下可通时, 返回6行 */
+    if (std::string::npos != outStr.rfind("100%") || std::string::npos == outStr.rfind("0%")) /* 数据包丢失 */
     {
-        return true;
+        return false;
     }
-#else
-    if (5 == outVec.size()) /* Linux平台下可通时, 返回5行 */
-    {
-        return true;
-    }
-#endif
-    return false;
+    return true;
 }
 } // namespace toolkit
