@@ -26,49 +26,32 @@ void SteadyTimer::setInterval(const std::chrono::steady_clock::duration& interva
 
 void SteadyTimer::start()
 {
-    bool preCancel = false; /* 预先取消状态 */
-    if (m_started)
-    {
-        preCancel = true;
-        m_timer->cancel();
-    }
-    else
+    if (!m_started)
     {
         m_started = true;
-    }
-    if (std::chrono::steady_clock::duration::zero() == m_delay.load())
-    {
-        if (preCancel)
-        {
-            onRecover();
-        }
-        else
+        if (std::chrono::steady_clock::duration::zero() == m_delay.load())
         {
             onTrigger();
         }
-    }
-    else
-    {
-        const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
-        m_timer->expires_from_now(m_delay);
-        m_timer->async_wait([wpSelf, preCancel](const boost::system::error_code& code) {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                if (code)
+        else
+        {
+            const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
+            m_timer->expires_from_now(m_delay);
+            m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
+                const auto self = wpSelf.lock();
+                if (self)
                 {
-                    /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
-                    if (preCancel) /* 预先取消导致停止, 所以需要恢复 */
+                    if (code) /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
                     {
                         self->onRecover();
                     }
+                    else
+                    {
+                        self->onTrigger();
+                    }
                 }
-                else
-                {
-                    self->onTrigger();
-                }
-            }
-        });
+            });
+        }
     }
 }
 
@@ -112,9 +95,9 @@ void SteadyTimer::onTrigger()
 {
     if (m_started)
     {
+        m_started = (m_interval.load() > std::chrono::steady_clock::duration::zero());
         onTriggerFunc(shared_from_this());
-        /* 继续 */
-        if (m_interval.load() > std::chrono::steady_clock::duration::zero())
+        if (m_started) /* 继续 */
         {
             const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
             m_timer->expires_from_now(m_interval);
@@ -125,10 +108,6 @@ void SteadyTimer::onTrigger()
                     self->onTrigger();
                 }
             });
-        }
-        else
-        {
-            m_started = false;
         }
     }
 }

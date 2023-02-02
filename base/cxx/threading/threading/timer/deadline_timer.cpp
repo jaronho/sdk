@@ -21,38 +21,28 @@ void DeadlineTimer::setDeadline(const std::chrono::system_clock::time_point& dea
 
 void DeadlineTimer::start()
 {
-    bool preCancel = false; /* 预先取消状态 */
-    if (m_started)
-    {
-        preCancel = true;
-        m_timer->cancel();
-    }
-    else
+    if (!m_started)
     {
         m_started = true;
-    }
-    const std::weak_ptr<DeadlineTimer> wpSelf = shared_from_this();
-    m_timer->expires_at(m_deadline);
-    m_timer->async_wait([wpSelf, preCancel](const boost::system::error_code& code) {
-        const auto self = wpSelf.lock();
-        if (self)
-        {
-            if (code)
+        const std::weak_ptr<DeadlineTimer> wpSelf = shared_from_this();
+        m_timer->expires_at(m_deadline);
+        m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
+            const auto self = wpSelf.lock();
+            if (self)
             {
-                /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
-                if (preCancel) /* 预先取消导致停止, 所以需要恢复 */
+                if (code) /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
                 {
                     self->onRecover();
                     return;
                 }
+                else
+                {
+                    self->onTrigger();
+                }
+                self->onStopped();
             }
-            else
-            {
-                self->onTrigger();
-            }
-            self->onStopped();
-        }
-    });
+        });
+    }
 }
 
 void DeadlineTimer::stop()
