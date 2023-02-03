@@ -95,12 +95,14 @@ void SteadyTimer::onTrigger()
 {
     if (m_started)
     {
-        m_started = (m_interval.load() > std::chrono::steady_clock::duration::zero());
+        auto interval = m_interval.load();
+        auto nextStep = (std::chrono::steady_clock::duration::zero() != interval);
+        m_started = nextStep;
         onTriggerFunc(shared_from_this());
-        if (m_started) /* 继续 */
+        if (nextStep) /* 继续 */
         {
             const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
-            m_timer->expires_from_now(m_interval);
+            m_timer->expires_from_now(interval);
             m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
                 const auto self = wpSelf.lock();
                 if (self && !code)
