@@ -1,6 +1,5 @@
 #include "timer.h"
 
-#include <mutex>
 #include <thread>
 
 namespace threading
@@ -54,7 +53,7 @@ static std::mutex s_mutex;
 static std::unique_ptr<boost::asio::io_context> s_context;
 static std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> s_work;
 static std::unique_ptr<std::thread> s_thread; /* 定时器线程 */
-static std::mutex s_mutexDefaultExecutor;
+static std::mutex s_mutexDefault;
 static ExecutorPtr s_defaultExecutor = nullptr; /* 触发函数默认执行器 */
 static TimerExecutorHook s_defaultExecutorHook = nullptr; /* 触发函数默认执行器钩子 */
 
@@ -86,14 +85,15 @@ std::string Timer::getName() const
     return m_name;
 }
 
-bool Timer::isStarted() const
+bool Timer::isStarted()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     return m_started;
 }
 
 void Timer::setDefaultExecutor(const ExecutorPtr& executor, const TimerExecutorHook& hook)
 {
-    std::lock_guard<std::mutex> locker(s_mutexDefaultExecutor);
+    std::lock_guard<std::mutex> locker(s_mutexDefault);
     s_defaultExecutor = executor;
     s_defaultExecutorHook = hook;
 }
@@ -113,7 +113,7 @@ void Timer::onTriggerFunc(const std::shared_ptr<Timer>& timer)
     TimerExecutorHook hook = nullptr;
     if (!executor)
     {
-        std::lock_guard<std::mutex> locker(s_mutexDefaultExecutor);
+        std::lock_guard<std::mutex> locker(s_mutexDefault);
         executor = s_defaultExecutor;
         hook = s_defaultExecutorHook;
     }

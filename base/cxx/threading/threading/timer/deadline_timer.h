@@ -56,7 +56,7 @@ private:
     void onStopped();
 
 private:
-    std::atomic<std::chrono::system_clock::time_point> m_deadline; /* 触发时间点 */
+    std::chrono::system_clock::time_point m_deadline; /* 触发时间点 */
     std::shared_ptr<boost::asio::system_timer> m_timer; /* boost截至时间定时器 */
 };
 

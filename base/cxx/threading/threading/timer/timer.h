@@ -1,9 +1,9 @@
 #pragma once
-#include <atomic>
 #include <boost/asio.hpp>
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "../task/executor.h"
@@ -49,7 +49,7 @@ public:
      * @brief 是否已启动
      * @return true-已启动, false-未启动
      */
-    bool isStarted() const;
+    bool isStarted();
 
     /**
      * @brief 启动
@@ -81,12 +81,13 @@ protected:
     void onTriggerFunc(const std::shared_ptr<Timer>& timer);
 
 protected:
-    std::atomic_bool m_started = {false}; /* 是否已启动 */
+    std::recursive_mutex m_mutex;
+    bool m_started = false; /* 是否已启动 */
 
 private:
     const std::string m_name; /* 定时器名称 */
-    TimerTriggerFunc m_func = nullptr; /* 触发函数 */
-    ExecutorPtr m_executor = nullptr; /* 指定线程(执行者) */
+    const TimerTriggerFunc m_func; /* 触发函数 */
+    const ExecutorPtr m_executor; /* 指定线程(执行者) */
 };
 
 using TimerPtr = std::shared_ptr<Timer>;

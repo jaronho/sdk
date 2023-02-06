@@ -16,20 +16,23 @@ SteadyTimer::~SteadyTimer()
 
 void SteadyTimer::setDelay(const std::chrono::steady_clock::duration& delay)
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     m_delay = delay;
 }
 
 void SteadyTimer::setInterval(const std::chrono::steady_clock::duration& interval)
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     m_interval = interval;
 }
 
 void SteadyTimer::start()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (!m_started)
     {
         m_started = true;
-        if (std::chrono::steady_clock::duration::zero() == m_delay.load())
+        if (std::chrono::steady_clock::duration::zero() == m_delay)
         {
             onTrigger();
         }
@@ -57,6 +60,7 @@ void SteadyTimer::start()
 
 void SteadyTimer::stop()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started)
     {
         m_timer->cancel();
@@ -78,6 +82,7 @@ std::shared_ptr<SteadyTimer> SteadyTimer::loopTimer(const std::string& name, con
 
 void SteadyTimer::onRecover()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started)
     {
         const std::weak_ptr<SteadyTimer> wpSelf = shared_from_this();
@@ -93,24 +98,30 @@ void SteadyTimer::onRecover()
 
 void SteadyTimer::onTrigger()
 {
-    if (m_started)
+    bool triggered = false;
     {
-        auto interval = m_interval.load();
-        auto nextStep = (std::chrono::steady_clock::duration::zero() != interval);
-        m_started = nextStep;
-        onTriggerFunc(shared_from_this());
-        if (nextStep) /* 继续 */
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        if (m_started)
         {
-            const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
-            m_timer->expires_from_now(interval);
-            m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
-                const auto self = wpSelf.lock();
-                if (self && !code)
-                {
-                    self->onTrigger();
-                }
-            });
+            m_started = (std::chrono::steady_clock::duration::zero() != m_interval);
+            if (m_started) /* 继续 */
+            {
+                const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
+                m_timer->expires_from_now(m_interval);
+                m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
+                    const auto self = wpSelf.lock();
+                    if (self && !code)
+                    {
+                        self->onTrigger();
+                    }
+                });
+            }
+            triggered = true;
         }
+    }
+    if (triggered)
+    {
+        onTriggerFunc(shared_from_this());
     }
 }
 } // namespace threading

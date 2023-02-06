@@ -80,8 +80,8 @@ private:
     void onTrigger();
 
 private:
-    std::atomic<std::chrono::steady_clock::duration> m_delay; /* 首次触发延迟时间 */
-    std::atomic<std::chrono::steady_clock::duration> m_interval; /* 定时器间隔 */
+    std::chrono::steady_clock::duration m_delay; /* 首次触发延迟时间 */
+    std::chrono::steady_clock::duration m_interval; /* 定时器间隔 */
     std::shared_ptr<boost::asio::steady_timer> m_timer; /* boost稳定定时器 */
 };
 
