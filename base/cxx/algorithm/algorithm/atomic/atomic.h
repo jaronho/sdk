@@ -27,7 +27,7 @@ public:
      */
     void setCmpFunc(const STYPE_CMP_FUNC& cmpFunc)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        std::lock_guard<std::mutex> locker(m_mutex);
         m_cmpFunc = cmpFunc;
     }
 
@@ -37,7 +37,7 @@ public:
      */
     T get()
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        std::lock_guard<std::mutex> locker(m_mutex);
         return m_value;
     }
 
@@ -47,7 +47,7 @@ public:
      */
     void set(const T& value)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        std::lock_guard<std::mutex> locker(m_mutex);
         m_value = value;
     }
 
@@ -59,66 +59,102 @@ public:
 
     bool operator==(const T& value)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if (m_cmpFunc)
+        T tmpValue = T{};
+        STYPE_CMP_FUNC compFunc = nullptr;
         {
-            return (0 == m_cmpFunc(m_value, value));
+            std::lock_guard<std::mutex> locker(m_mutex);
+            tmpValue = m_value;
+            compFunc = m_cmpFunc;
         }
-        return (value == m_value);
+        if (compFunc)
+        {
+            return (0 == compFunc(tmpValue, value));
+        }
+        return (value == tmpValue);
     }
 
     bool operator!=(const T& value)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if (m_cmpFunc)
+        T tmpValue = T{};
+        STYPE_CMP_FUNC compFunc = nullptr;
         {
-            return (0 != m_cmpFunc(m_value, value));
+            std::lock_guard<std::mutex> locker(m_mutex);
+            tmpValue = m_value;
+            compFunc = m_cmpFunc;
         }
-        return (value != m_value);
+        if (compFunc)
+        {
+            return (0 != compFunc(tmpValue, value));
+        }
+        return (value != tmpValue);
     }
 
     bool operator>(const T& value)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if (m_cmpFunc)
+        T tmpValue = T{};
+        STYPE_CMP_FUNC compFunc = nullptr;
         {
-            return (m_cmpFunc(m_value, value) > 0);
+            std::lock_guard<std::mutex> locker(m_mutex);
+            tmpValue = m_value;
+            compFunc = m_cmpFunc;
         }
-        return (m_value > value);
+        if (compFunc)
+        {
+            return (compFunc(tmpValue, value) > 0);
+        }
+        return (tmpValue > value);
     }
 
     bool operator<(const T& value)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if (m_cmpFunc)
+        T tmpValue = T{};
+        STYPE_CMP_FUNC compFunc = nullptr;
         {
-            return (m_cmpFunc(m_value, value) < 0);
+            std::lock_guard<std::mutex> locker(m_mutex);
+            tmpValue = m_value;
+            compFunc = m_cmpFunc;
         }
-        return (m_value < value);
+        if (compFunc)
+        {
+            return (compFunc(tmpValue, value) < 0);
+        }
+        return (tmpValue < value);
     }
 
     bool operator>=(const T& value)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if (m_cmpFunc)
+        T tmpValue = T{};
+        STYPE_CMP_FUNC compFunc = nullptr;
         {
-            return (m_cmpFunc(m_value, value) >= 0);
+            std::lock_guard<std::mutex> locker(m_mutex);
+            tmpValue = m_value;
+            compFunc = m_cmpFunc;
         }
-        return (m_value >= value);
+        if (compFunc)
+        {
+            return (compFunc(tmpValue, value) >= 0);
+        }
+        return (tmpValue >= value);
     }
 
     bool operator<=(const T& value)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if (m_cmpFunc)
+        T tmpValue = T{};
+        STYPE_CMP_FUNC compFunc = nullptr;
         {
-            return (m_cmpFunc(m_value, value) <= 0);
+            std::lock_guard<std::mutex> locker(m_mutex);
+            tmpValue = m_value;
+            compFunc = m_cmpFunc;
         }
-        return (m_value <= value);
+        if (compFunc)
+        {
+            return (compFunc(tmpValue, value) <= 0);
+        }
+        return (tmpValue <= value);
     }
 
 private:
-    std::recursive_mutex m_mutex;
+    std::mutex m_mutex;
     T m_value = T{}; /* 值 */
     STYPE_CMP_FUNC m_cmpFunc = nullptr; /* 值比较函数 */
 };
