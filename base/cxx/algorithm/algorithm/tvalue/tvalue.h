@@ -13,17 +13,46 @@ class TValue
 {
 public:
     /**
-     * @brief 初始化
+     * @brief 构造函数
      * @param value 初始值
      * @param okNeedCount 成功所需次数(选填), 当相同的值连续重复设置了该次数时, 才认为设置成功, 默认为0表示每次都设置成功
      * @param equalFunc 值相等比较函数(选填)
      */
-    void init(const T& value, int okNeedCount = 0, const TVALUE_EQUAL_FUNC& equalFunc = nullptr)
+    TValue(const T& value = T{}, int okNeedCount = 0, const TVALUE_EQUAL_FUNC& equalFunc = nullptr)
+    {
+        m_realValue = value;
+        m_tempValue = value;
+        m_okNeedCount = okNeedCount > 0 ? okNeedCount : 0;
+        m_repeatCount = 0;
+        m_equalFunc = equalFunc;
+    }
+
+    /**
+     * @brief 拷贝构造函数
+     * @param other 源对象
+     */
+    TValue(const TValue& other)
+    {
+        m_realValue = other.m_realValue;
+        m_tempValue = other.m_tempValue;
+        m_okNeedCount = other.m_okNeedCount;
+        m_repeatCount = other.m_repeatCount;
+        m_equalFunc = other.m_equalFunc;
+    }
+
+    /**
+     * @brief 重新初始化
+     * @param value 初始值
+     * @param okNeedCount 成功所需次数(选填), 当相同的值连续重复设置了该次数时, 才认为设置成功, 默认为0表示每次都设置成功
+     * @param equalFunc 值相等比较函数(选填)
+     */
+    void reinit(const T& value, int okNeedCount = 0, const TVALUE_EQUAL_FUNC& equalFunc = nullptr)
     {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         m_realValue = value;
         m_tempValue = value;
         m_okNeedCount = okNeedCount > 0 ? okNeedCount : 0;
+        m_repeatCount = 0;
         m_equalFunc = equalFunc;
     }
 
