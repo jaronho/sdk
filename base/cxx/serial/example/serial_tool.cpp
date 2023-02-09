@@ -216,19 +216,16 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
             printf("串口打开失败, 错误码: %d, 错误描述: %s\n", dw, (char*)lpMsgBuf);
             LocalFree(lpMsgBuf);
 #else
-            if (0 == errno)
-            {
-                printf("串口打开失败, 该串口被其他进程使用中\n");
-            }
-            else
-            {
-                printf("串口打开失败, 错误码: %d, 错误描述: %s\n", errno, strerror(errno));
-            }
+            printf("串口打开失败, 错误码: %d, 错误描述: %s\n", errno, strerror(errno));
 #endif
         }
         else if (3 == ret)
         {
             printf("串口打开失败, 配置失败\n");
+        }
+        else if (4 == ret) /* Linux平台 */
+        {
+            printf("串口打开失败, 该串口已被其他进程打开\n");
         }
         else
         {

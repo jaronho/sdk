@@ -186,7 +186,7 @@ int SerialImpl::open()
     }
     if (portAlreadyOpened)
     {
-        return 2;
+        return 4;
     }
     m_fd = ::open(m_port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK); /* 非阻塞 */
     if (INVALID_HANDLE_VALUE == m_fd)
