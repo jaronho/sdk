@@ -362,7 +362,11 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
     {
         *errCode = 0;
     }
-    if (!data || length <= 0)
+    if (!data)
+    {
+        return false;
+    }
+    if (length <= 0 && isAppend)
     {
         return false;
     }
@@ -399,7 +403,7 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
     {
         *errCode = 0;
     }
-    if (!data || length <= 0)
+    if (!data)
     {
         return false;
     }
@@ -621,7 +625,7 @@ std::string FileInfo::readLine(FILE* f, std::string& bomFlag, std::string& endFl
 
 bool FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
 {
-    if (!f || !data || 0 == count)
+    if (!f || !data)
     {
         return false;
     }
