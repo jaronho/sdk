@@ -67,6 +67,9 @@ void testFileCopy(int argc, char** argv)
     auto singleProgressCb = [&](const std::string& srcFile, size_t fileSize, size_t copiedSize) {
         printf("---------- file progress: %zu/%zu\n", copiedSize, fileSize);
     };
+    auto singleOkCb = [&](const std::string& srcFile, size_t fileSize, const std::string& destFile) {
+        printf("copy '%s' to '%s' ok", srcFile.c_str(), destFile.c_str());
+    };
     std::string failSrcFile;
     std::string failDestFile;
     int failCode;
@@ -75,7 +78,7 @@ void testFileCopy(int argc, char** argv)
     std::chrono::steady_clock::time_point tm1 = std::chrono::steady_clock::now();
     utility::FileCopy fc(srcPath, srcFilelist, destPath, clearDest, coverDest, filterFunc, nullptr, ".tmp",
                          std::vector<utility::FileInfo::CopyBlock>{}, 3000);
-    fc.setCallback(beginCb, totalProgressCb, singleProgressCb);
+    fc.setCallback(beginCb, totalProgressCb, singleProgressCb, singleOkCb);
     auto result = fc.start(nullptr, &failSrcFile, &failDestFile, &failCode);
     switch (result)
     {

@@ -30,11 +30,12 @@ FileCopy::FileCopy(const std::string& srcPath, const std::vector<std::string>& s
 }
 
 void FileCopy::setCallback(const FileCopyBeginCallback& beginCb, const FileCopyTotalProgressCallback& totalProgressCb,
-                           const FileCopySingleProgressCallback& singleProgressCb)
+                           const FileCopySingleProgressCallback& singleProgressCb, const FileCopySingleOkCallback& singleOkCb)
 {
     m_beginCallback = beginCb;
     m_totalProgressCallback = totalProgressCb;
     m_singleProgressCallback = singleProgressCb;
+    m_singleOkCallback = singleOkCb;
 }
 
 FileInfo::CopyResult FileCopy::start(std::vector<std::string>* destFilelist, std::string* failSrcFile, std::string* failDestFile,
@@ -192,6 +193,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
         {
             destFileTmp = destFile + m_tmpSuffix;
         }
+        auto fileSize = srcFileInfo.size();
         auto result = srcFileInfo.copy(
             destFileTmp, &errCode,
             [&](size_t now, size_t total) {
@@ -218,6 +220,10 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
                     m_errCode = errno;
                     return FileInfo::CopyResult::dest_open_failed;
                 }
+            }
+            if (m_singleOkCallback)
+            {
+                m_singleOkCallback(srcFileInfo.name(), fileSize, destFileNew);
             }
             if (destFilelist)
             {

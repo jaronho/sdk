@@ -45,6 +45,14 @@ using FileCopyTotalProgressCallback = std::function<void(int totalCount, int ind
  */
 using FileCopySingleProgressCallback = std::function<void(const std::string& srcFile, size_t fileSize, size_t copiedSize)>;
 
+/**
+ * @brief 文件拷贝单个成功回调
+ * @param srcFile 当前拷贝的源文件
+ * @param fileSize 当前拷贝的文件大小
+ * @param destFile 当前拷贝的目标文件
+ */
+using FileCopySingleOkCallback = std::function<void(const std::string& srcFile, size_t fileSize, const std::string& destFile)>;
+
 class FileCopy
 {
 public:
@@ -72,9 +80,10 @@ public:
      * @param beginCb 开始回调
      * @param totalProgressCb 总进度回调
      * @param singleProgressCb 单个进度回调
+     * @param singleOkCb 单个成功回调
      */
     void setCallback(const FileCopyBeginCallback& beginCb, const FileCopyTotalProgressCallback& totalProgressCb,
-                     const FileCopySingleProgressCallback& singleProgressCb);
+                     const FileCopySingleProgressCallback& singleProgressCb, const FileCopySingleOkCallback& singleOkCb);
 
     /**
      * @brief 开始
@@ -134,6 +143,7 @@ private:
     FileCopyBeginCallback m_beginCallback; /* 开始回调 */
     FileCopyTotalProgressCallback m_totalProgressCallback; /* 总进度回调 */
     FileCopySingleProgressCallback m_singleProgressCallback; /* 单个进度回调 */
+    FileCopySingleOkCallback m_singleOkCallback; /* 单个成功回调 */
     std::string m_failSrcFile; /* 失败时的源文件 */
     std::string m_failDestFile; /* 失败时的目标文件 */
     int m_errCode; /* 失败时的错误码 */
