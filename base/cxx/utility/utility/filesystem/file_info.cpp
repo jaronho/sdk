@@ -261,7 +261,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         }
         nowSize += writeSize;
         tp = std::chrono::steady_clock::now();
-        if (nowSize < srcFileSize && progressCb && !progressCb(nowSize, srcFileSize))
+        if (progressCb && !progressCb(nowSize, srcFileSize))
         {
             result = CopyResult::stop;
             break;
@@ -282,11 +282,6 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         }
     }
     fclose(destFile);
-    /* 回调百分百进度 */
-    if (nowSize == srcFileSize && progressCb)
-    {
-        progressCb(nowSize, srcFileSize);
-    }
     return result;
 }
 
