@@ -67,7 +67,7 @@ void testFileCopy(int argc, char** argv)
     auto singleProgressCb = [&](const std::string& srcFile, size_t fileSize, size_t copiedSize) {
         printf("---------- file progress: %zu/%zu\n", copiedSize, fileSize);
     };
-    auto singleOkCb = [&](const std::string& srcFile, size_t fileSize, const std::string& destFile) {
+    auto singleOkCb = [&](const std::string& srcFile, const utility::FileAttribute& srcAttr, const std::string& destFile) {
         printf("copy '%s' to '%s' ok", srcFile.c_str(), destFile.c_str());
     };
     std::string failSrcFile;

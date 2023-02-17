@@ -48,10 +48,10 @@ using FileCopySingleProgressCallback = std::function<void(const std::string& src
 /**
  * @brief 文件拷贝单个成功回调
  * @param srcFile 当前拷贝的源文件
- * @param fileSize 当前拷贝的文件大小
- * @param destFile 当前拷贝的目标文件
+ * @param srcAttr 当前拷贝的源文件属性
+ * @param destFile 目标文件
  */
-using FileCopySingleOkCallback = std::function<void(const std::string& srcFile, size_t fileSize, const std::string& destFile)>;
+using FileCopySingleOkCallback = std::function<void(const std::string& srcFile, const FileAttribute& srcAttr, const std::string& destFile)>;
 
 class FileCopy
 {

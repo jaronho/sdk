@@ -193,7 +193,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
         {
             destFileTmp = destFile + m_tmpSuffix;
         }
-        auto fileSize = srcFileInfo.size();
+        auto srcAttr = srcFileInfo.attribute();
         auto result = srcFileInfo.copy(
             destFileTmp, &errCode,
             [&](size_t now, size_t total) {
@@ -223,7 +223,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
             }
             if (m_singleOkCallback)
             {
-                m_singleOkCallback(srcFileInfo.name(), fileSize, destFileNew);
+                m_singleOkCallback(srcFileInfo.name(), srcAttr, destFileNew);
             }
             if (destFilelist)
             {
