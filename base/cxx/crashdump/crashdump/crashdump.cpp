@@ -276,7 +276,7 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     }
     else
     {
-        shellCmd(command + " &");
+        shellCmd(command);
     }
 #endif
     return succeeded;
