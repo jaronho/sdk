@@ -23,7 +23,7 @@ uint32_t Helper::ntoh32(const uint8_t n[4])
 std::shared_ptr<EthernetIIHeader> Helper::loadEthernetIIHeader(const RawEthernetIIHeader& r)
 {
     auto p = std::make_shared<EthernetIIHeader>();
-    p->header_len = 14;
+    p->header_len = EthernetIIHeader::getMinSize();
     char buf[3] = {0};
     for (int i = 0; i < 6; ++i)
     {
@@ -66,7 +66,7 @@ std::shared_ptr<Ipv4Header> Helper::loadIpv4Header(const RawIpv4Header& r)
 std::shared_ptr<ArpHeader> Helper::loadArpHeader(const RawArpHeader& r)
 {
     auto p = std::make_shared<ArpHeader>();
-    p->header_len = 28;
+    p->header_len = ArpHeader::getMinSize();
     p->hardware_type = ntoh16(r.hardware_type);
     p->protocol_type = ntoh16(r.protocol_type);
     p->hardware_size = r.hardware_size;
@@ -96,7 +96,7 @@ std::shared_ptr<Ipv6Header> Helper::loadIpv6Header(const RawIpv6Header& r)
     auto p = std::make_shared<Ipv6Header>();
     auto ver_flow = ntoh32(r.ver_flow);
     p->version = ver_flow >> 28;
-    p->header_len = 40;
+    p->header_len = Ipv6Header::getMinSize();
     p->traffic_class = (ver_flow >> 20) & 0xFF;
     p->flow_label = ver_flow & 0xFFFFF;
     p->payload_len = ntoh16(r.payload_len);
@@ -146,7 +146,7 @@ std::shared_ptr<TcpHeader> Helper::loadTcpHeader(const RawTcpHeader& r)
 std::shared_ptr<UdpHeader> Helper::loadUdpHeader(const RawUdpHeader& r)
 {
     auto p = std::make_shared<UdpHeader>();
-    p->header_len = 8;
+    p->header_len = UdpHeader::getMinSize();
     p->src_port = ntoh16(r.src_port);
     p->dst_port = ntoh16(r.dst_port);
     p->total_len = ntoh16(r.total_len);

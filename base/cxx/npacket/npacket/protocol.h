@@ -35,6 +35,15 @@ class EthernetIIHeader final : public ProtocolHeader
 {
 public:
     /**
+     * @brief 获取头部最小长度
+     * @return 头部最小长度
+     */
+    static uint32_t getMinSize()
+    {
+        return 14;
+    }
+
+    /**
      * @brief 获取协议在TCP/IP四层模型的第几层
      * @return 物理层
      */
@@ -64,6 +73,15 @@ public:
 class Ipv4Header final : public ProtocolHeader
 {
 public:
+    /**
+     * @brief 获取头部最小长度
+     * @return 头部最小长度
+     */
+    static uint32_t getMinSize()
+    {
+        return 20;
+    }
+
     /**
      * @brief 获取协议在TCP/IP四层模型的第几层
      * @return 网络层
@@ -105,6 +123,15 @@ class ArpHeader final : public ProtocolHeader
 {
 public:
     /**
+     * @brief 获取头部最小长度
+     * @return 头部最小长度
+     */
+    static uint32_t getMinSize()
+    {
+        return 28;
+    }
+
+    /**
      * @brief 获取协议在TCP/IP四层模型的第几层
      * @return 网络层
      */
@@ -141,6 +168,15 @@ class Ipv6Header final : public ProtocolHeader
 {
 public:
     /**
+     * @brief 获取头部最小长度
+     * @return 头部最小长度
+     */
+    static uint32_t getMinSize()
+    {
+        return 40;
+    }
+
+    /**
      * @brief 获取协议在TCP/IP四层模型的第几层
      * @return 网络层
      */
@@ -175,6 +211,15 @@ public:
 class TcpHeader final : public ProtocolHeader
 {
 public:
+    /**
+     * @brief 获取头部最小长度
+     * @return 头部最小长度
+     */
+    static uint32_t getMinSize()
+    {
+        return 20;
+    }
+
     /**
      * @brief 获取协议在TCP/IP四层模型的第几层
      * @return 传输层
@@ -219,6 +264,15 @@ public:
 class UdpHeader final : public ProtocolHeader
 {
 public:
+    /**
+     * @brief 获取头部最小长度
+     * @return 头部最小长度
+     */
+    static uint32_t getMinSize()
+    {
+        return 8;
+    }
+
     /**
      * @brief 获取协议在TCP/IP四层模型的第几层
      * @return 传输层
