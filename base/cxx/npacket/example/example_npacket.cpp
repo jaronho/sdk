@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
                 printf("ttl: %d\n", h->ttl);
                 printf("protocol: %d\n", h->nextProtocol);
                 printf("checksum: 0x%04x\n", h->checksum);
-                printf("src addr: %s, dst addr: %s\n", h->srcAddr.c_str(), h->dstAddr.c_str());
+                printf("src addr: %s, dst addr: %s\n", h->srcAddrStr().c_str(), h->dstAddrStr().c_str());
             }
             break;
             case npacket::NetworkProtocol::ARP: {
@@ -72,8 +72,8 @@ int main(int argc, char* argv[])
                 printf("hardware type: 0x%04x, hardware size: %d\n", h->hardwareType, h->hardwareSize);
                 printf("protocol type: 0x%04x, protocol size: %d\n", h->protocolType, h->protocolSize);
                 printf("opcode: %d\n", h->opcode);
-                printf("sender mac: %s, sender ip: %s\n", h->senderMacStr().c_str(), h->senderIp.c_str());
-                printf("target mac: %s, target ip: %s\n", h->targetMacStr().c_str(), h->targetIp.c_str());
+                printf("sender mac: %s, sender ip: %s\n", h->senderMacStr().c_str(), h->senderIpStr().c_str());
+                printf("target mac: %s, target ip: %s\n", h->targetMacStr().c_str(), h->targetIpStr().c_str());
             }
             break;
             case npacket::NetworkProtocol::IPv6: {

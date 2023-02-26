@@ -49,12 +49,11 @@ std::shared_ptr<Ipv4Header> Helper::loadIpv4Header(const RawIpv4Header& r)
     p->ttl = r.ttl;
     p->nextProtocol = r.protocol;
     p->checksum = ntoh16(r.checksum);
-    char buf[16] = {0};
-    sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", r.srcAddr[0], r.srcAddr[1], r.srcAddr[2], r.srcAddr[3]);
-    p->srcAddr = buf;
-    memset(buf, 0, sizeof(buf));
-    sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", r.dstAddr[0], r.dstAddr[1], r.dstAddr[2], r.dstAddr[3]);
-    p->dstAddr = buf;
+    for (int i = 0; i < 4; ++i)
+    {
+        p->srcAddr[i] = r.srcAddr[i];
+        p->dstAddr[i] = r.dstAddr[i];
+    }
     return p;
 }
 
@@ -72,12 +71,11 @@ std::shared_ptr<ArpHeader> Helper::loadArpHeader(const RawArpHeader& r)
         p->senderMac[i] = r.senderMac[i];
         p->targetMac[i] = r.targetMac[i];
     }
-    char buf[16] = {0};
-    sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", r.senderIp[0], r.senderIp[1], r.senderIp[2], r.senderIp[3]);
-    p->senderIp = buf;
-    memset(buf, 0, sizeof(buf));
-    sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", r.targetIp[0], r.targetIp[1], r.targetIp[2], r.targetIp[3]);
-    p->targetIp = buf;
+    for (int i = 0; i < 4; ++i)
+    {
+        p->senderIp[i] = r.senderIp[i];
+        p->targetIp[i] = r.targetIp[i];
+    }
     return p;
 }
 

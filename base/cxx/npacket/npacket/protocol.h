@@ -95,6 +95,26 @@ public:
         return NetworkProtocol::IPv4;
     }
 
+    /**
+     * @brief 源IP地址字符串
+     */
+    std::string srcAddrStr()
+    {
+        char buf[16] = {0};
+        sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3]);
+        return buf;
+    }
+
+    /**
+     * @brief 目的IP地址字符串
+     */
+    std::string dstAddrStr()
+    {
+        char buf[16] = {0};
+        sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3]);
+        return buf;
+    }
+
     uint8_t version = 0; /* 版本 */
     uint8_t headerLen = 0; /* 头部长度 */
     uint8_t tos = 0; /* 服务类型 */
@@ -107,8 +127,8 @@ public:
     uint8_t ttl = 0; /* 报文生存时间 */
     uint8_t nextProtocol = 0; /* 下一层协议类型 */
     uint16_t checksum = 0; /* 头部校验和 */
-    std::string srcAddr; /* 源IP地址 */
-    std::string dstAddr; /* 目的IP地址 */
+    uint8_t srcAddr[4]; /* 源IP地址 */
+    uint8_t dstAddr[4]; /* 目的IP地址 */
 };
 
 /**
@@ -147,6 +167,16 @@ public:
     }
 
     /**
+     * @brief 源IP地址字符串
+     */
+    std::string senderIpStr()
+    {
+        char buf[16] = {0};
+        sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", senderIp[0], senderIp[1], senderIp[2], senderIp[3]);
+        return buf;
+    }
+
+    /**
      * @brief 目标MAC地址字符串
      */
     std::string targetMacStr()
@@ -157,6 +187,16 @@ public:
         return buf;
     }
 
+    /**
+     * @brief 目的IP地址字符串
+     */
+    std::string targetIpStr()
+    {
+        char buf[16] = {0};
+        sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", targetIp[0], targetIp[1], targetIp[2], targetIp[3]);
+        return buf;
+    }
+
     uint8_t headerLen = 0; /* 头部长度 */
     uint16_t hardwareType = 0; /* 硬件地址类型(表示物理网络类型, 即数据链路层使用的协议, 其中0x0001为以太网) */
     uint16_t protocolType = 0; /* 协议地址类型(网络层使用的协议) */
@@ -164,9 +204,9 @@ public:
     uint8_t protocolSize = 0; /* 协议地址长度(源和目的的协议地址的长度, 单位字节) */
     uint16_t opcode = 0; /* 操作(记录该报文的类型, 其中1表示ARP请求报文, 2表示ARP响应报文) */
     uint8_t senderMac[6]; /* 源MAC地址 */
-    std::string senderIp; /* 源IP地址(IPv4) */
+    uint8_t senderIp[4]; /* 源IP地址(IPv4) */
     uint8_t targetMac[6]; /* 目的MAC地址 */
-    std::string targetIp; /* 目的IP地址(IPv4) */
+    uint8_t targetIp[4]; /* 目的IP地址(IPv4) */
 };
 
 /**
