@@ -14,16 +14,10 @@ class ProtocolHeader
 {
 public:
     /**
-     * @brief 获取协议在TCP/IP四层模型的第几层
-     * @return 层类型
+     * @brief 获取(网络层/传输层)协议
+     * @return 协议类型(NetworkProtocol/TransportProtocol)
      */
-    virtual LayerType getLayerType() const = 0;
-
-    /**
-     * @brief 获取(网络层/传输层)协议类型
-     * @return 协议类型(NetworkProtocolType/TransportProtocolType)
-     */
-    virtual uint32_t getProtocolType() const = 0;
+    virtual uint32_t getProtocol() const = 0;
 
     std::shared_ptr<ProtocolHeader> parent = nullptr; /* 父层头部 */
 };
@@ -38,25 +32,16 @@ public:
      * @brief 获取头部最小长度
      * @return 头部最小长度
      */
-    static uint32_t getMinSize()
+    static uint32_t getMinLen()
     {
         return 14;
-    }
-
-    /**
-     * @brief 获取协议在TCP/IP四层模型的第几层
-     * @return 物理层
-     */
-    LayerType getLayerType() const override
-    {
-        return LayerType::physical;
     }
 
     /**
      * @brief 获取协议类型
      * @return 物理层返回值恒为0
      */
-    uint32_t getProtocolType() const override
+    uint32_t getProtocol() const override
     {
         return 0;
     }
@@ -77,27 +62,18 @@ public:
      * @brief 获取头部最小长度
      * @return 头部最小长度
      */
-    static uint32_t getMinSize()
+    static uint32_t getMinLen()
     {
         return 20;
     }
 
     /**
-     * @brief 获取协议在TCP/IP四层模型的第几层
-     * @return 网络层
-     */
-    LayerType getLayerType() const override
-    {
-        return LayerType::network;
-    }
-
-    /**
      * @brief 获取协议类型
-     * @return 网络层IPv4协议类型(NetworkProtocolType)
+     * @return 网络层IPv4协议类型(NetworkProtocol)
      */
-    uint32_t getProtocolType() const override
+    uint32_t getProtocol() const override
     {
-        return NetworkProtocolType::IPv4;
+        return NetworkProtocol::IPv4;
     }
 
     uint8_t version = 0; /* 版本 */
@@ -126,27 +102,18 @@ public:
      * @brief 获取头部最小长度
      * @return 头部最小长度
      */
-    static uint32_t getMinSize()
+    static uint32_t getMinLen()
     {
         return 28;
     }
 
     /**
-     * @brief 获取协议在TCP/IP四层模型的第几层
-     * @return 网络层
-     */
-    LayerType getLayerType() const override
-    {
-        return LayerType::network;
-    }
-
-    /**
      * @brief 获取协议类型
-     * @return 网络层ARP协议类型(NetworkProtocolType)
+     * @return 网络层ARP协议类型(NetworkProtocol)
      */
-    uint32_t getProtocolType() const override
+    uint32_t getProtocol() const override
     {
-        return NetworkProtocolType::ARP;
+        return NetworkProtocol::ARP;
     }
 
     uint8_t header_len = 0; /* 头部长度 */
@@ -156,9 +123,9 @@ public:
     uint8_t protocol_size = 0; /* 协议地址长度(源和目的的协议地址的长度, 单位字节) */
     uint16_t opcode = 0; /* 操作(记录该报文的类型, 其中1表示ARP请求报文, 2表示ARP响应报文) */
     std::vector<std::string> sender_mac; /* 源MAC地址 */
-    std::string sender_ip; /* 源IP地址 */
+    std::string sender_ip; /* 源IP地址(IPv4) */
     std::vector<std::string> target_mac; /* 目的MAC地址 */
-    std::string target_ip; /* 目的IP地址 */
+    std::string target_ip; /* 目的IP地址(IPv4) */
 };
 
 /**
@@ -171,27 +138,18 @@ public:
      * @brief 获取头部最小长度
      * @return 头部最小长度
      */
-    static uint32_t getMinSize()
+    static uint32_t getMinLen()
     {
         return 40;
     }
 
     /**
-     * @brief 获取协议在TCP/IP四层模型的第几层
-     * @return 网络层
-     */
-    LayerType getLayerType() const override
-    {
-        return LayerType::network;
-    }
-
-    /**
      * @brief 获取协议类型
-     * @return 网络层IPv6协议类型(NetworkProtocolType)
+     * @return 网络层IPv6协议类型(NetworkProtocol)
      */
-    uint32_t getProtocolType() const override
+    uint32_t getProtocol() const override
     {
-        return NetworkProtocolType::IPv6;
+        return NetworkProtocol::IPv6;
     }
 
     uint8_t version = 0; /* 版本 */
@@ -215,27 +173,18 @@ public:
      * @brief 获取头部最小长度
      * @return 头部最小长度
      */
-    static uint32_t getMinSize()
+    static uint32_t getMinLen()
     {
         return 20;
     }
 
     /**
-     * @brief 获取协议在TCP/IP四层模型的第几层
-     * @return 传输层
-     */
-    LayerType getLayerType() const override
-    {
-        return LayerType::transport;
-    }
-
-    /**
      * @brief 获取协议类型
-     * @return 传输层TCP协议类型(TransportProtocolType)
+     * @return 传输层TCP协议类型(TransportProtocol)
      */
-    uint32_t getProtocolType() const override
+    uint32_t getProtocol() const override
     {
-        return TransportProtocolType::TCP;
+        return TransportProtocol::TCP;
     }
 
     uint16_t src_port = 0; /* 源端口 */
@@ -268,27 +217,18 @@ public:
      * @brief 获取头部最小长度
      * @return 头部最小长度
      */
-    static uint32_t getMinSize()
+    static uint32_t getMinLen()
     {
         return 8;
     }
 
     /**
-     * @brief 获取协议在TCP/IP四层模型的第几层
-     * @return 传输层
-     */
-    LayerType getLayerType() const override
-    {
-        return LayerType::transport;
-    }
-
-    /**
      * @brief 获取协议类型
-     * @return 传输层UDP协议类型(TransportProtocolType)
+     * @return 传输层UDP协议类型(TransportProtocol)
      */
-    uint32_t getProtocolType() const override
+    uint32_t getProtocol() const override
     {
-        return TransportProtocolType::UDP;
+        return TransportProtocol::UDP;
     }
 
     uint8_t header_len = 0; /* 头部长度 */

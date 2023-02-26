@@ -8,31 +8,19 @@ namespace npacket
  */
 
 /**
- * @brief TCP/IP四层模型
+ * @brief 网络层协议
  */
-enum LayerType
-{
-    physical = 1, /* 物理层 */
-    network = 2, /* 网络层 */
-    transport = 3, /* 传输层 */
-    application = 4 /* 应用层 */
-};
-
-/**
- * @brief 网络层协议类型
- */
-enum NetworkProtocolType
+enum NetworkProtocol
 {
     IPv4 = 0x0800,
     ARP = 0x0806,
-    RARP = 0x8035,
     IPv6 = 0x86dd,
 };
 
 /**
- * @brief 传输层协议类型
+ * @brief 传输层协议
  */
-enum TransportProtocolType
+enum TransportProtocol
 {
     TCP = 0x06,
     UDP = 0x11,
@@ -61,8 +49,8 @@ struct RawIpv4Header
     uint8_t ttl; /* 报文生存时间 */
     uint8_t protocol; /* 下一层协议类型 */
     uint8_t checksum[2]; /* 头部校验和 */
-    uint8_t src_addr[4]; /* 源IP地址 */
-    uint8_t dst_addr[4]; /* 目的IP地址 */
+    uint8_t src_addr[4]; /* 源IP地址(IPv4) */
+    uint8_t dst_addr[4]; /* 目的IP地址(IPv4) */
 };
 
 /**

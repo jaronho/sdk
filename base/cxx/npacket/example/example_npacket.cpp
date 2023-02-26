@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
     s_pktAnalyzer.setLayerCallback(
         [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen) {
             auto h = std::dynamic_pointer_cast<npacket::EthernetIIHeader>(header);
-            printf("===== EthernetII\n");
+            printf("=============== EthernetII ===============\n");
             printf("src mac: %s:%s:%s:%s:%s:%s, dst mac: %s:%s:%s:%s:%s:%s\n", h->src_mac[0].c_str(), h->src_mac[1].c_str(),
                    h->src_mac[2].c_str(), h->src_mac[3].c_str(), h->src_mac[4].c_str(), h->src_mac[5].c_str(), h->dst_mac[0].c_str(),
                    h->dst_mac[1].c_str(), h->dst_mac[2].c_str(), h->dst_mac[3].c_str(), h->dst_mac[4].c_str(), h->dst_mac[5].c_str());
@@ -52,43 +52,43 @@ int main(int argc, char* argv[])
             return true;
         },
         [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen) {
-            switch ((npacket::NetworkProtocolType)header->getProtocolType())
+            switch ((npacket::NetworkProtocol)header->getProtocol())
             {
-            case npacket::NetworkProtocolType::IPv4: {
+            case npacket::NetworkProtocol::IPv4: {
                 auto h = std::dynamic_pointer_cast<npacket::Ipv4Header>(header);
-                printf("--- IPv4\n");
-                printf("version: %d\n", h->version);
-                printf("header_len: %d\n", h->header_len);
-                printf("tos: %d\n", h->tos);
-                printf("total_len: %d\n", h->total_len);
+                printf("---------- IPv4 ----------\n");
+                printf("version: %d, header len: %d, tos: %d, total len: %d\n", h->version, h->header_len, h->tos, h->total_len);
                 printf("identification: 0x%04x (%d)\n", h->identification, h->identification);
-                printf("flag_reserved: %d\n", h->flag_reserved);
-                printf("flag_dont: %d\n", h->flag_dont);
-                printf("flag_more: %d\n", h->flag_more);
-                printf("frag_offset: %d\n", h->frag_offset);
+                printf("reserved: %d, dont: %d, more: %d\n", h->flag_reserved, h->flag_dont, h->flag_more);
+                printf("frag offset: %d\n", h->frag_offset);
                 printf("ttl: %d\n", h->ttl);
                 printf("protocol: %d\n", h->next_protocol);
                 printf("checksum: 0x%04x\n", h->checksum);
-                printf("src_addr: %s\n", h->src_addr.c_str());
-                printf("dst_addr: %s\n", h->dst_addr.c_str());
+                printf("src addr: %s, dst addr: %s\n", h->src_addr.c_str(), h->dst_addr.c_str());
             }
             break;
-            case npacket::NetworkProtocolType::ARP: {
+            case npacket::NetworkProtocol::ARP: {
                 auto h = std::dynamic_pointer_cast<npacket::ArpHeader>(header);
+                printf("---------- ARP ----------\n");
+                printf("header len: %d\n", h->header_len);
+                printf("hardware type: 0x%04x, hardware size: %d\n", h->hardware_type, h->hardware_size);
+                printf("protocol type: 0x%04x, protocol size: %d\n", h->protocol_type, h->protocol_size);
+                printf("opcode: %d\n", h->opcode);
+                printf("sender mac: %s:%s:%s:%s:%s:%s, sender ip: %s\n", h->sender_mac[0].c_str(), h->sender_mac[1].c_str(),
+                       h->sender_mac[2].c_str(), h->sender_mac[3].c_str(), h->sender_mac[4].c_str(), h->sender_mac[5].c_str(),
+                       h->sender_ip.c_str());
+                printf("target mac: %s:%s:%s:%s:%s:%s, target ip: %s\n", h->target_mac[0].c_str(), h->target_mac[1].c_str(),
+                       h->target_mac[2].c_str(), h->target_mac[3].c_str(), h->target_mac[4].c_str(), h->target_mac[5].c_str(),
+                       h->target_ip.c_str());
             }
             break;
-            case npacket::NetworkProtocolType::RARP: {
-            }
-            break;
-            case npacket::NetworkProtocolType::IPv6: {
+            case npacket::NetworkProtocol::IPv6: {
                 auto h = std::dynamic_pointer_cast<npacket::Ipv6Header>(header);
-                printf("--- IPv6\n");
-                printf("version: %d\n", h->version);
-                printf("traffic_class: %d\n", h->traffic_class);
-                printf("flow_label: %u\n", h->flow_label);
-                printf("payload_len: %d\n", h->payload_len);
+                printf("---------- IPv6 ----------\n");
+                printf("version: %d, traffic class: %d, flow label: %u, payload len: %d\n", h->version, h->traffic_class, h->flow_label,
+                       h->flow_label);
                 printf("protocol: %d\n", h->next_protocol);
-                printf("hop_limit: %d\n", h->hop_limit);
+                printf("hop limit: %d\n", h->hop_limit);
                 //printf("src_addr: %s\n", h->src_addr.c_str());
                 //printf("dst_addr: %s\n", h->dst_addr.c_str());
                 if (0 == h->next_protocol) /* 扩展包头: Hop-by-Hop */
@@ -100,37 +100,27 @@ int main(int argc, char* argv[])
             return true;
         },
         [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen) {
-            switch ((npacket::TransportProtocolType)header->getProtocolType())
+            switch ((npacket::TransportProtocol)header->getProtocol())
             {
-            case npacket::TransportProtocolType::TCP: {
+            case npacket::TransportProtocol::TCP: {
                 auto h = std::dynamic_pointer_cast<npacket::TcpHeader>(header);
-                printf("--- TCP\n");
-                printf("src_port: %d\n", h->src_port);
-                printf("dst_port: %d\n", h->dst_port);
-                printf("seq: %u\n", h->seq);
-                printf("ack: %u\n", h->ack);
-                printf("header_len: %d\n", h->header_len);
-                printf("flag_reserved: %d\n", h->flag_reserved);
-                printf("flag_nonce: %d\n", h->flag_nonce);
-                printf("flag_cwr: %d\n", h->flag_cwr);
-                printf("flag_ecn_echo: %d\n", h->flag_ecn_echo);
-                printf("flag_urgent: %d\n", h->flag_urgent);
-                printf("flag_ack: %d\n", h->flag_ack);
-                printf("flag_push: %d\n", h->flag_push);
-                printf("flag_reset: %d\n", h->flag_reset);
-                printf("flag_syn: %d\n", h->flag_syn);
-                printf("flag_fin: %d\n", h->flag_fin);
+                printf("----- TCP -----\n");
+                printf("src port: %d, dst port: %d\n", h->src_port, h->dst_port);
+                printf("seq: %u, ack: %u\n", h->seq, h->ack);
+                printf("header len: %d\n", h->header_len);
+                printf("reserved: %d, nonce: %d, cwr: %d, ecn_echo: %d, urgent: %d, ack: %d, push: %d, reset: %d, syn: %d, fin: %d\n",
+                       h->flag_reserved, h->flag_nonce, h->flag_cwr, h->flag_ecn_echo, h->flag_urgent, h->flag_ack, h->flag_push,
+                       h->flag_reset, h->flag_syn, h->flag_fin);
                 printf("window: %d\n", h->window);
                 printf("checksum: 0x%04x\n", h->checksum);
                 printf("urgptr: %d\n", h->urgptr);
             }
             break;
-            case npacket::TransportProtocolType::UDP: {
+            case npacket::TransportProtocol::UDP: {
                 auto h = std::dynamic_pointer_cast<npacket::UdpHeader>(header);
-                printf("--- UDP\n");
-                printf("src_port: %d\n", h->src_port);
-                printf("dst_port: %d\n", h->dst_port);
-                printf("total_len: %d\n", h->total_len);
+                printf("----- UDP -----\n");
+                printf("src port: %d, dst port: %d\n", h->src_port, h->dst_port);
+                printf("total len: %d\n", h->total_len);
                 printf("checksum: 0x%04x\n", h->checksum);
             }
             break;

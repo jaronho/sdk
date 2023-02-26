@@ -4,10 +4,10 @@
 
 namespace npacket
 {
-void PacketAnalyzer::setLayerCallback(const LAYER_CALLBACK& physicalLayerCb, const LAYER_CALLBACK& networkLayerCb,
+void PacketAnalyzer::setLayerCallback(const LAYER_CALLBACK& ethernetLayerCb, const LAYER_CALLBACK& networkLayerCb,
                                       const LAYER_CALLBACK& transportLayerCb)
 {
-    m_physicalLayerCb = physicalLayerCb;
+    m_ethernetLayerCb = ethernetLayerCb;
     m_networkLayerCb = networkLayerCb;
     m_transportLayerCb = transportLayerCb;
 }
@@ -19,17 +19,17 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
         return -1;
     }
     uint32_t remainLen = dataLen, offset = 0, headerLen = 0, networkProtocol = 0, transportProtocol = 0;
-    /* 解析物理层 */
-    auto ethernetHeader = handlePhysicalLayer(data + offset, remainLen, headerLen, networkProtocol);
+    /* 解析以太网层 */
+    auto ethernetHeader = handleEthernetLayer(data + offset, remainLen, headerLen, networkProtocol);
     if (!ethernetHeader)
     {
         return 1;
     }
     remainLen -= headerLen;
     offset += headerLen;
-    if (m_physicalLayerCb)
+    if (m_ethernetLayerCb)
     {
-        if (!m_physicalLayerCb(dataLen, ethernetHeader, data + offset, remainLen))
+        if (!m_ethernetLayerCb(dataLen, ethernetHeader, data + offset, remainLen))
         {
             return 0;
         }
@@ -72,10 +72,10 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
     return 0;
 }
 
-std::shared_ptr<ProtocolHeader> PacketAnalyzer::handlePhysicalLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
+std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
                                                                     uint32_t& networkProtocol)
 {
-    if (data && dataLen >= EthernetIIHeader::getMinSize())
+    if (data && dataLen >= EthernetIIHeader::getMinLen())
     {
         npacket::RawEthernetIIHeader* r = (npacket::RawEthernetIIHeader*)(data);
         if (r)
@@ -94,10 +94,10 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
 {
     if (data)
     {
-        switch ((NetworkProtocolType)networkProtocol)
+        switch ((NetworkProtocol)networkProtocol)
         {
-        case NetworkProtocolType::IPv4:
-            if (dataLen >= Ipv4Header::getMinSize())
+        case NetworkProtocol::IPv4:
+            if (dataLen >= Ipv4Header::getMinLen())
             {
                 npacket::RawIpv4Header* r = (npacket::RawIpv4Header*)(data);
                 if (r)
@@ -109,8 +109,8 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
                 }
             }
             break;
-        case NetworkProtocolType::ARP:
-            if (dataLen >= ArpHeader::getMinSize())
+        case NetworkProtocol::ARP:
+            if (dataLen >= ArpHeader::getMinLen())
             {
                 npacket::RawArpHeader* r = (npacket::RawArpHeader*)(data);
                 if (r)
@@ -121,10 +121,8 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
                 }
             }
             break;
-        case NetworkProtocolType::RARP:
-            break;
-        case NetworkProtocolType::IPv6:
-            if (dataLen >= Ipv6Header::getMinSize())
+        case NetworkProtocol::IPv6:
+            if (dataLen >= Ipv6Header::getMinLen())
             {
                 npacket::RawIpv6Header* r = (npacket::RawIpv6Header*)(data);
                 if (r)
@@ -147,10 +145,10 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleTransportLayer(const uint3
 {
     if (data)
     {
-        switch ((TransportProtocolType)transportProtocol)
+        switch ((TransportProtocol)transportProtocol)
         {
-        case TransportProtocolType::TCP:
-            if (dataLen >= TcpHeader::getMinSize())
+        case TransportProtocol::TCP:
+            if (dataLen >= TcpHeader::getMinLen())
             {
                 npacket::RawTcpHeader* r = (npacket::RawTcpHeader*)(data);
                 if (r)
@@ -161,8 +159,8 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleTransportLayer(const uint3
                 }
             }
             break;
-        case TransportProtocolType::UDP:
-            if (dataLen >= UdpHeader::getMinSize())
+        case TransportProtocol::UDP:
+            if (dataLen >= UdpHeader::getMinLen())
             {
                 npacket::RawUdpHeader* r = (npacket::RawUdpHeader*)(data);
                 if (r)
