@@ -1,7 +1,6 @@
 #pragma once
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "protocol_raw.h"
 
@@ -46,10 +45,30 @@ public:
         return 0;
     }
 
-    uint8_t header_len = 0; /* 头部长度 */
-    std::vector<std::string> dst_mac; /* 目标MAC地址 */
-    std::vector<std::string> src_mac; /* 源MAC地址 */
-    uint32_t next_protocol = 0; /* 下一层协议类型 */
+    /**
+     * @brief 目标MAC地址字符串
+     */
+    std::string dstMacStr()
+    {
+        char buf[18] = {0};
+        sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", dstMac[0], dstMac[1], dstMac[2], dstMac[3], dstMac[4], dstMac[5]);
+        return buf;
+    }
+
+    /**
+     * @brief 源MAC地址字符串
+     */
+    std::string srcMacStr()
+    {
+        char buf[18] = {0};
+        sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", srcMac[0], srcMac[1], srcMac[2], srcMac[3], srcMac[4], srcMac[5]);
+        return buf;
+    }
+
+    uint8_t headerLen = 0; /* 头部长度 */
+    uint8_t dstMac[6]; /* 目标MAC地址 */
+    uint8_t srcMac[6]; /* 源MAC地址 */
+    uint32_t nextProtocol = 0; /* 下一层协议类型 */
 };
 
 /**
@@ -77,19 +96,19 @@ public:
     }
 
     uint8_t version = 0; /* 版本 */
-    uint8_t header_len = 0; /* 头部长度 */
+    uint8_t headerLen = 0; /* 头部长度 */
     uint8_t tos = 0; /* 服务类型 */
-    uint16_t total_len = 0; /* 报文总长度 */
+    uint16_t totalLen = 0; /* 报文总长度 */
     uint16_t identification = 0; /* 标识 */
-    uint8_t flag_reserved = 0; /* 分段标志: 保留位 */
-    uint8_t flag_dont = 0; /* 分段标志: 没有分段 */
-    uint8_t flag_more = 0; /* 分段标志: 更多分段 */
-    uint8_t frag_offset = 0; /* 分段偏移数 */
+    uint8_t flagRsrvd = 0; /* 标志: 保留位 */
+    uint8_t flagDont = 0; /* 标志: 没有分段 */
+    uint8_t flagMore = 0; /* 标志: 更多分段 */
+    uint8_t fragOffset = 0; /* 分段偏移数 */
     uint8_t ttl = 0; /* 报文生存时间 */
-    uint8_t next_protocol = 0; /* 下一层协议类型 */
+    uint8_t nextProtocol = 0; /* 下一层协议类型 */
     uint16_t checksum = 0; /* 头部校验和 */
-    std::string src_addr; /* 源IP地址 */
-    std::string dst_addr; /* 目的IP地址 */
+    std::string srcAddr; /* 源IP地址 */
+    std::string dstAddr; /* 目的IP地址 */
 };
 
 /**
@@ -116,16 +135,38 @@ public:
         return NetworkProtocol::ARP;
     }
 
-    uint8_t header_len = 0; /* 头部长度 */
-    uint16_t hardware_type = 0; /* 硬件地址类型(表示物理网络类型, 即数据链路层使用的协议, 其中0x0001为以太网) */
-    uint16_t protocol_type = 0; /* 协议地址类型(网络层使用的协议) */
-    uint8_t hardware_size = 0; /* 硬件地址长度(源和目的物理地址的长度, 单位字节) */
-    uint8_t protocol_size = 0; /* 协议地址长度(源和目的的协议地址的长度, 单位字节) */
+    /**
+     * @brief 源MAC地址字符串
+     */
+    std::string senderMacStr()
+    {
+        char buf[18] = {0};
+        sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", senderMac[0], senderMac[1], senderMac[2], senderMac[3], senderMac[4],
+                  senderMac[5]);
+        return buf;
+    }
+
+    /**
+     * @brief 目标MAC地址字符串
+     */
+    std::string targetMacStr()
+    {
+        char buf[18] = {0};
+        sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", targetMac[0], targetMac[1], targetMac[2], targetMac[3], targetMac[4],
+                  targetMac[5]);
+        return buf;
+    }
+
+    uint8_t headerLen = 0; /* 头部长度 */
+    uint16_t hardwareType = 0; /* 硬件地址类型(表示物理网络类型, 即数据链路层使用的协议, 其中0x0001为以太网) */
+    uint16_t protocolType = 0; /* 协议地址类型(网络层使用的协议) */
+    uint8_t hardwareSize = 0; /* 硬件地址长度(源和目的物理地址的长度, 单位字节) */
+    uint8_t protocolSize = 0; /* 协议地址长度(源和目的的协议地址的长度, 单位字节) */
     uint16_t opcode = 0; /* 操作(记录该报文的类型, 其中1表示ARP请求报文, 2表示ARP响应报文) */
-    std::vector<std::string> sender_mac; /* 源MAC地址 */
-    std::string sender_ip; /* 源IP地址(IPv4) */
-    std::vector<std::string> target_mac; /* 目的MAC地址 */
-    std::string target_ip; /* 目的IP地址(IPv4) */
+    uint8_t senderMac[6]; /* 源MAC地址 */
+    std::string senderIp; /* 源IP地址(IPv4) */
+    uint8_t targetMac[6]; /* 目的MAC地址 */
+    std::string targetIp; /* 目的IP地址(IPv4) */
 };
 
 /**
@@ -152,15 +193,37 @@ public:
         return NetworkProtocol::IPv6;
     }
 
+    /**
+     * @brief 源IP地址字符串
+     */
+    std::string srcAddrStr()
+    {
+        char buf[40] = {0};
+        sprintf_s(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3], srcAddr[4], srcAddr[5],
+                  srcAddr[6], srcAddr[7]);
+        return buf;
+    }
+
+    /**
+     * @brief 目的IP地址字符串
+     */
+    std::string dstAddrStr()
+    {
+        char buf[40] = {0};
+        sprintf_s(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3], dstAddr[4], dstAddr[5],
+                  dstAddr[6], dstAddr[7]);
+        return buf;
+    }
+
     uint8_t version = 0; /* 版本 */
-    uint8_t header_len = 0; /* 头部长度 */
-    uint8_t traffic_class = 0; /* 通信类别 */
-    uint32_t flow_label = 0; /* 流标记 */
-    uint16_t payload_len = 0; /* 负载长度 */
-    uint8_t next_protocol = 0; /* 下一层协议类型 */
-    uint8_t hop_limit = 0; /* 跳跃限制 */
-    std::vector<std::string> src_addr; /* 源IP地址 */
-    std::vector<std::string> dst_addr; /* 目的IP地址 */
+    uint8_t headerLen = 0; /* 头部长度 */
+    uint8_t trafficClass = 0; /* 通信类别 */
+    uint32_t flowLabel = 0; /* 流标记 */
+    uint16_t payloadLen = 0; /* 负载长度 */
+    uint8_t nextProtocol = 0; /* 下一层协议类型 */
+    uint8_t hopLimit = 0; /* 跳跃限制 */
+    uint16_t srcAddr[8]; /* 源IP地址 */
+    uint16_t dstAddr[8]; /* 目的IP地址 */
 };
 
 /**
@@ -187,21 +250,21 @@ public:
         return TransportProtocol::TCP;
     }
 
-    uint16_t src_port = 0; /* 源端口 */
-    uint16_t dst_port = 0; /* 目的端口 */
+    uint16_t srcPort = 0; /* 源端口 */
+    uint16_t dstPort = 0; /* 目的端口 */
     uint32_t seq = 0; /* 序号 */
     uint32_t ack = 0; /* 确认序号 */
-    uint8_t header_len = 0; /* 头部长度 */
-    uint8_t flag_reserved = 0; /* 标志: 保留位 */
-    uint8_t flag_nonce = 0; /* 标志: 保留位 */
-    uint8_t flag_cwr = 0; /* 标志: 保留位 */
-    uint8_t flag_ecn_echo = 0; /* 标志: 保留位 */
-    uint8_t flag_urgent = 0; /* 标志: 紧急 */
-    uint8_t flag_ack = 0; /* 标志: 确认 */
-    uint8_t flag_push = 0; /* 标志: 推送 */
-    uint8_t flag_reset = 0; /* 标志: 复位 */
-    uint8_t flag_syn = 0; /* 标志: 同步 */
-    uint8_t flag_fin = 0; /* 标志: 终止 */
+    uint8_t headerLen = 0; /* 头部长度 */
+    uint8_t flagRsrvd = 0; /* 标志: 保留位 */
+    uint8_t flagNonce = 0; /* 标志: 保留位 */
+    uint8_t flagCwr = 0; /* 标志: 保留位 */
+    uint8_t flagEce = 0; /* 标志: 保留位 */
+    uint8_t flagUrg = 0; /* 标志: 紧急 */
+    uint8_t flagAck = 0; /* 标志: 确认 */
+    uint8_t flagPsh = 0; /* 标志: 推送 */
+    uint8_t flagRst = 0; /* 标志: 复位 */
+    uint8_t flagSyn = 0; /* 标志: 同步 */
+    uint8_t flagFin = 0; /* 标志: 终止 */
     uint16_t window = 0; /* 窗口大小 */
     uint16_t checksum = 0; /* 检验和 */
     uint16_t urgptr = 0; /* 紧急指针 */
@@ -231,10 +294,10 @@ public:
         return TransportProtocol::UDP;
     }
 
-    uint8_t header_len = 0; /* 头部长度 */
-    uint16_t src_port = 0; /* 源端口 */
-    uint16_t dst_port = 0; /* 目的端口 */
-    uint16_t total_len = 0; /* 报文总长度 */
+    uint8_t headerLen = 0; /* 头部长度 */
+    uint16_t srcPort = 0; /* 源端口 */
+    uint16_t dstPort = 0; /* 目的端口 */
+    uint16_t totalLen = 0; /* 报文总长度 */
     uint16_t checksum = 0; /* 检验和 */
 };
 } // namespace npacket

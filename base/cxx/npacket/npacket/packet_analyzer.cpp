@@ -65,7 +65,14 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
             offset += headerLen;
             if (m_transportLayerCb)
             {
-                m_transportLayerCb(dataLen, transportHeader, data + offset, remainLen);
+                if (!m_transportLayerCb(dataLen, transportHeader, data + offset, remainLen))
+                {
+                    return 0;
+                }
+            }
+            /* 解析应用层 */
+            if (remainLen > 0)
+            {
             }
         }
     }
@@ -81,8 +88,8 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleEthernetLayer(const uint8_
         if (r)
         {
             auto header = Helper::loadEthernetIIHeader(*r);
-            headerLen = header->header_len;
-            networkProtocol = header->next_protocol;
+            headerLen = header->headerLen;
+            networkProtocol = header->nextProtocol;
             return header;
         }
     }
@@ -103,8 +110,8 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
                 if (r)
                 {
                     auto header = Helper::loadIpv4Header(*r);
-                    headerLen = header->header_len;
-                    transportProtocol = header->next_protocol;
+                    headerLen = header->headerLen;
+                    transportProtocol = header->nextProtocol;
                     return header;
                 }
             }
@@ -116,7 +123,7 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
                 if (r)
                 {
                     auto header = Helper::loadArpHeader(*r);
-                    headerLen = header->header_len;
+                    headerLen = header->headerLen;
                     return header;
                 }
             }
@@ -128,8 +135,8 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
                 if (r)
                 {
                     auto header = Helper::loadIpv6Header(*r);
-                    headerLen = header->header_len;
-                    transportProtocol = header->next_protocol;
+                    headerLen = header->headerLen;
+                    transportProtocol = header->nextProtocol;
                     // TODO: 扩展包头处理
                     return header;
                 }
@@ -154,7 +161,7 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleTransportLayer(const uint3
                 if (r)
                 {
                     auto header = Helper::loadTcpHeader(*r);
-                    headerLen = header->header_len;
+                    headerLen = header->headerLen;
                     return header;
                 }
             }
@@ -166,7 +173,7 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleTransportLayer(const uint3
                 if (r)
                 {
                     auto header = Helper::loadUdpHeader(*r);
-                    headerLen = header->header_len;
+                    headerLen = header->headerLen;
                     return header;
                 }
             }
