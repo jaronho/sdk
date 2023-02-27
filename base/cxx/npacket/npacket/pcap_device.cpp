@@ -24,9 +24,14 @@ void PcapDevice::onPacketArrived(uint8_t* user, const struct pcap_pkthdr* pkthdr
     {
         return;
     }
-    if (dev->m_onDataCallback)
+    std::function<void(const unsigned char* data, unsigned int dataLen)> onDataCallback = nullptr;
     {
-        dev->m_onDataCallback(packet, pkthdr->caplen);
+        std::lock_guard<std::mutex> locker(dev->m_mutexOnDataCallback);
+        onDataCallback = dev->m_onDataCallback;
+    }
+    if (onDataCallback)
+    {
+        onDataCallback(packet, pkthdr->caplen);
     }
 }
 
@@ -55,8 +60,9 @@ bool PcapDevice::isLoopback() const
     return m_isLoopback;
 }
 
-bool PcapDevice::open(int snapLen, int promisc, int timeout, int bufferSize)
+bool PcapDevice::open(int direction, int snapLen, int promisc, int timeout, int bufferSize)
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_pcap)
     {
         return true;
@@ -80,16 +86,20 @@ bool PcapDevice::open(int snapLen, int promisc, int timeout, int bufferSize)
         m_pcap = nullptr;
         return false;
     }
+    direction = (direction < 0 || direction > 2) ? 0 : direction;
+    pcap_setdirection(m_pcap, (pcap_direction_t)direction); /* 设置方向接口必须得打开后调用才会生效 */
     return true;
 }
 
-void PcapDevice::setDataCallback(const std::function<void(const unsigned char* data, int dataLen)>& cb)
+void PcapDevice::setDataCallback(const std::function<void(const unsigned char* data, unsigned int dataLen)>& cb)
 {
+    std::lock_guard<std::mutex> locker(m_mutexOnDataCallback);
     m_onDataCallback = cb;
 }
 
 bool PcapDevice::captureOnce()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (!m_pcap)
     {
         return false;
@@ -104,6 +114,7 @@ bool PcapDevice::captureOnce()
 
 bool PcapDevice::startCapture()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (!m_pcap)
     {
         return false;
@@ -114,12 +125,14 @@ bool PcapDevice::startCapture()
 
 void PcapDevice::stopCapture()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     m_captureStarted = false;
 }
 
 void PcapDevice::close()
 {
     stopCapture();
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_pcap)
     {
         pcap_close(m_pcap);

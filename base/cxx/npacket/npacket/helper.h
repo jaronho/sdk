@@ -4,78 +4,78 @@
 namespace npacket
 {
 /**
- * @brief ¸¨ÖúÀà
+ * @brief è¾…åŠ©ç±»
  */
 class Helper final
 {
 public:
     /**
-     * @brief 16Î»ÍøÂç×Ö½ÚĞò×ªÖ÷»ú×Ö½ÚĞò
-     * @param 16Î»ÍøÂç×Ö½ÚĞò
-     * @return 16Î»Ö÷»ú×Ö½ÚĞò
+     * @brief 16ä½ç½‘ç»œå­—èŠ‚åºè½¬ä¸»æœºå­—èŠ‚åº
+     * @param 16ä½ç½‘ç»œå­—èŠ‚åº
+     * @return 16ä½ä¸»æœºå­—èŠ‚åº
      */
     static uint16_t ntoh16(const uint8_t n[2]);
 
     /**
-     * @brief 32Î»ÍøÂç×Ö½ÚĞò×ªÖ÷»ú×Ö½ÚĞò
-     * @param 32Î»ÍøÂç×Ö½ÚĞò
-     * @return 32Î»Ö÷»ú×Ö½ÚĞò
+     * @brief 32ä½ç½‘ç»œå­—èŠ‚åºè½¬ä¸»æœºå­—èŠ‚åº
+     * @param 32ä½ç½‘ç»œå­—èŠ‚åº
+     * @return 32ä½ä¸»æœºå­—èŠ‚åº
      */
     static uint32_t ntoh32(const uint8_t n[4]);
 
     /**
-     * @brief ¼ÓÔØEthernetIIÍ·²¿
-     * @param r Ô­Ê¼Í·²¿
-     * @return Í·²¿
+     * @brief åŠ è½½EthernetIIå¤´éƒ¨
+     * @param r åŸå§‹å¤´éƒ¨
+     * @return å¤´éƒ¨
      */
     static std::shared_ptr<EthernetIIHeader> loadEthernetIIHeader(const RawEthernetIIHeader& r);
 
     /**
-     * @brief ¼ÓÔØIPv4Í·²¿
-     * @param r Ô­Ê¼Í·²¿
-     * @return Í·²¿
+     * @brief åŠ è½½IPv4å¤´éƒ¨
+     * @param r åŸå§‹å¤´éƒ¨
+     * @return å¤´éƒ¨
      */
     static std::shared_ptr<Ipv4Header> loadIpv4Header(const RawIpv4Header& r);
 
     /**
-     * @brief ¼ÓÔØARPÍ·²¿
-     * @param r Ô­Ê¼Í·²¿
-     * @return Í·²¿
+     * @brief åŠ è½½ARPå¤´éƒ¨
+     * @param r åŸå§‹å¤´éƒ¨
+     * @return å¤´éƒ¨
      */
     static std::shared_ptr<ArpHeader> loadArpHeader(const RawArpHeader& r);
 
     /**
-     * @brief ¼ÓÔØIPv6Í·²¿
-     * @param r Ô­Ê¼Í·²¿
-     * @return Í·²¿
+     * @brief åŠ è½½IPv6å¤´éƒ¨
+     * @param r åŸå§‹å¤´éƒ¨
+     * @return å¤´éƒ¨
      */
     static std::shared_ptr<Ipv6Header> loadIpv6Header(const RawIpv6Header& r);
 
     /**
-     * @brief ¼ÓÔØTCPÍ·²¿
-     * @param r Ô­Ê¼Í·²¿
-     * @return Í·²¿
+     * @brief åŠ è½½TCPå¤´éƒ¨
+     * @param r åŸå§‹å¤´éƒ¨
+     * @return å¤´éƒ¨
      */
     static std::shared_ptr<TcpHeader> loadTcpHeader(const RawTcpHeader& r);
 
     /**
-     * @brief ¼ÓÔØUDPÍ·²¿
-     * @param r Ô­Ê¼Í·²¿
-     * @return Í·²¿
+     * @brief åŠ è½½UDPå¤´éƒ¨
+     * @param r åŸå§‹å¤´éƒ¨
+     * @return å¤´éƒ¨
      */
     static std::shared_ptr<UdpHeader> loadUdpHeader(const RawUdpHeader& r);
 
     /**
-     * @brief ¼ÓÔØICMPÍ·²¿
-     * @param r Ô­Ê¼Í·²¿
-     * @return Í·²¿
+     * @brief åŠ è½½ICMPå¤´éƒ¨
+     * @param r åŸå§‹å¤´éƒ¨
+     * @return å¤´éƒ¨
      */
     static std::shared_ptr<IcmpHeader> loadIcmpHeader(const RawIcmpHeader& r);
 
     /**
-     * @brief ¼ÓÔØICMPv6Í·²¿
-     * @param r Ô­Ê¼Í·²¿
-     * @return Í·²¿
+     * @brief åŠ è½½ICMPv6å¤´éƒ¨
+     * @param r åŸå§‹å¤´éƒ¨
+     * @return å¤´éƒ¨
      */
     static std::shared_ptr<Icmpv6Header> loadIcmpv6Header(const RawIcmpv6Header& r);
 };

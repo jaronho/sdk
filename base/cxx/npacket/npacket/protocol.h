@@ -51,7 +51,7 @@ public:
     std::string dstMacStr() const
     {
         char buf[18] = {0};
-        sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", dstMac[0], dstMac[1], dstMac[2], dstMac[3], dstMac[4], dstMac[5]);
+        sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", dstMac[0], dstMac[1], dstMac[2], dstMac[3], dstMac[4], dstMac[5]);
         return buf;
     }
 
@@ -61,7 +61,7 @@ public:
     std::string srcMacStr() const
     {
         char buf[18] = {0};
-        sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", srcMac[0], srcMac[1], srcMac[2], srcMac[3], srcMac[4], srcMac[5]);
+        sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", srcMac[0], srcMac[1], srcMac[2], srcMac[3], srcMac[4], srcMac[5]);
         return buf;
     }
 
@@ -101,7 +101,7 @@ public:
     std::string srcAddrStr() const
     {
         char buf[16] = {0};
-        sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3]);
+        sprintf(buf, "%d.%d.%d.%d", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3]);
         return buf;
     }
 
@@ -111,7 +111,7 @@ public:
     std::string dstAddrStr() const
     {
         char buf[16] = {0};
-        sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3]);
+        sprintf(buf, "%d.%d.%d.%d", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3]);
         return buf;
     }
 
@@ -161,8 +161,7 @@ public:
     std::string senderMacStr() const
     {
         char buf[18] = {0};
-        sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", senderMac[0], senderMac[1], senderMac[2], senderMac[3], senderMac[4],
-                  senderMac[5]);
+        sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", senderMac[0], senderMac[1], senderMac[2], senderMac[3], senderMac[4], senderMac[5]);
         return buf;
     }
 
@@ -172,7 +171,7 @@ public:
     std::string senderIpStr()
     {
         char buf[16] = {0};
-        sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", senderIp[0], senderIp[1], senderIp[2], senderIp[3]);
+        sprintf(buf, "%d.%d.%d.%d", senderIp[0], senderIp[1], senderIp[2], senderIp[3]);
         return buf;
     }
 
@@ -182,8 +181,7 @@ public:
     std::string targetMacStr() const
     {
         char buf[18] = {0};
-        sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", targetMac[0], targetMac[1], targetMac[2], targetMac[3], targetMac[4],
-                  targetMac[5]);
+        sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", targetMac[0], targetMac[1], targetMac[2], targetMac[3], targetMac[4], targetMac[5]);
         return buf;
     }
 
@@ -193,7 +191,7 @@ public:
     std::string targetIpStr() const
     {
         char buf[16] = {0};
-        sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", targetIp[0], targetIp[1], targetIp[2], targetIp[3]);
+        sprintf(buf, "%d.%d.%d.%d", targetIp[0], targetIp[1], targetIp[2], targetIp[3]);
         return buf;
     }
 
@@ -239,8 +237,8 @@ public:
     std::string srcAddrStr() const
     {
         char buf[40] = {0};
-        sprintf_s(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3], srcAddr[4], srcAddr[5],
-                  srcAddr[6], srcAddr[7]);
+        sprintf(buf, "%x:%x:%x:%x:%x:%x:%x:%x", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3], srcAddr[4], srcAddr[5], srcAddr[6],
+                srcAddr[7]);
         return buf;
     }
 
@@ -250,8 +248,8 @@ public:
     std::string dstAddrStr() const
     {
         char buf[40] = {0};
-        sprintf_s(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3], dstAddr[4], dstAddr[5],
-                  dstAddr[6], dstAddr[7]);
+        sprintf(buf, "%x:%x:%x:%x:%x:%x:%x:%x", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3], dstAddr[4], dstAddr[5], dstAddr[6],
+                dstAddr[7]);
         return buf;
     }
 

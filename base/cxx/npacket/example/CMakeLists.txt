@@ -41,18 +41,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/npacket)
 include_directories(${base_npacket_dir})
 source_group(TREE ${base_npacket_dir} PREFIX 3rdparty/base FILES ${base_npacket_files})
 
-# 添加客户端示例文件
-set(example_files)
-get_cxx_files(. src_list)
-list(APPEND example_files ${src_list})
-
-print_info(BODY "example files:")
-foreach(filename ${example_files})
-    message("    " ${filename})
-endforeach()
-
 # 构建可执行程序
-add_executable(example_npacket ${base_npacket_files} ${example_files})
+add_executable(npacket_tool ${base_npacket_files} npacket_tool.cpp)
 
 # 链接依赖库
-target_link_libraries(example_npacket Threads::Threads ${PCAP_LIBRARIES})
+target_link_libraries(npacket_tool Threads::Threads ${PCAP_LIBRARIES})

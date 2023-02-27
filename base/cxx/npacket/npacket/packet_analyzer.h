@@ -9,87 +9,93 @@
 namespace npacket
 {
 /**
- * @brief ²ãÊı¾İ»Øµ÷
- * @param totalLen Êı¾İ°ü×Ü³¤¶È
- * @param header ²ãÍ·²¿
- * @param payload ²ã¸ºÔØ
- * @param payloadLen ²ã¸ºÔØ³¤¶È
- * @return true-¼ÌĞø´¦ÀíÏÂÒ»²ã, false-Í£Ö¹ºóĞø´¦Àí
+ * @brief å±‚æ•°æ®å›è°ƒ
+ * @param totalLen æ•°æ®åŒ…æ€»é•¿åº¦
+ * @param header å±‚å¤´éƒ¨
+ * @param payload å±‚è´Ÿè½½
+ * @param payloadLen å±‚è´Ÿè½½é•¿åº¦
+ * @return true-ç»§ç»­å¤„ç†ä¸‹ä¸€å±‚, false-åœæ­¢åç»­å¤„ç†
  */
 using LAYER_CALLBACK =
     std::function<bool(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)>;
 
 /**
- * @brief °ü·ÖÎöÆ÷
+ * @brief åŒ…åˆ†æå™¨
  */
 class PacketAnalyzer
 {
 public:
     /**
-     * @brief ÉèÖÃ²ãÊı¾İ»Øµ÷
-     * @param ethernetLayerCb ÒÔÌ«Íø²ãÊı¾İ»Øµ÷
-     * @param networkLayerCb ÍøÂç²ãÊı¾İ»Øµ÷
-     * @param transportLayerCb ´«Êä²ãÊı¾İ»Øµ÷
+     * @brief è®¾ç½®å±‚æ•°æ®å›è°ƒ
+     * @param ethernetLayerCb ä»¥å¤ªç½‘å±‚æ•°æ®å›è°ƒ
+     * @param networkLayerCb ç½‘ç»œå±‚æ•°æ®å›è°ƒ
+     * @param transportLayerCb ä¼ è¾“å±‚æ•°æ®å›è°ƒ
      */
     void setLayerCallback(const LAYER_CALLBACK& ethernetLayerCb, const LAYER_CALLBACK& networkLayerCb,
                           const LAYER_CALLBACK& transportLayerCb);
 
     /**
-     * @brief Ìí¼ÓÓ¦ÓÃ²ã½âÎö½âÎöÆ÷
-     * @param parser Ó¦ÓÃ²ãĞ­Òé½âÎöÆ÷
-     * @return true-Ìí¼Ó³É¹¦, false-Ìí¼ÓÊ§°Ü
+     * @brief æ·»åŠ åº”ç”¨å±‚è§£æå™¨
+     * @param parser åº”ç”¨å±‚åè®®è§£æå™¨
+     * @return true-æ·»åŠ æˆåŠŸ, false-æ·»åŠ å¤±è´¥
      */
     bool addProtocolParser(const std::shared_ptr<ProtocolParser>& parser);
 
     /**
-     * @brief ·ÖÎöÊı¾İ
-     * @param data Êı¾İ
-     * @param dataLen Êı¾İ³¤¶È
-     * @return -1-Êı¾İÎª¿Õ, 0-³É¹¦, 1-½âÎöÒÔÌ«Íø²ãÊ§°Ü, 2-½âÎöÍøÂç²ãÊ§°Ü, 3-½âÎö´«Êä²ãÊ§°Ü
+     * @brief åˆ é™¤åº”ç”¨å±‚è§£æå™¨
+     * @param protocol åº”ç”¨å±‚åè®®
+     */
+    void removeProtocolParser(uint32_t protocol);
+
+    /**
+     * @brief åˆ†ææ•°æ®
+     * @param data æ•°æ®
+     * @param dataLen æ•°æ®é•¿åº¦
+     * @return -1-æ•°æ®ä¸ºç©º, 0-æˆåŠŸ, 1-è§£æä»¥å¤ªç½‘å±‚å¤±è´¥, 2-è§£æç½‘ç»œå±‚å¤±è´¥, 3-è§£æä¼ è¾“å±‚å¤±è´¥
      */
     int parse(const uint8_t* data, uint32_t dataLen);
 
 private:
     /**
-     * @brief ´¦ÀíÒÔÌ«Íø²ãÊı¾İ
-     * @param data ²ãÊı¾İ
-     * @param dataLen ²ãÊı¾İ³¤¶È
-     * @param headerLen [Êä³ö]Ğ­ÒéÍ·²¿³¤¶È
-     * @param networkProtocol [Êä³ö]ÍøÂç²ãĞ­ÒéÀàĞÍ
-     * @return Ğ­ÒéÍ·²¿
+     * @brief å¤„ç†ä»¥å¤ªç½‘å±‚æ•°æ®
+     * @param data å±‚æ•°æ®
+     * @param dataLen å±‚æ•°æ®é•¿åº¦
+     * @param headerLen [è¾“å‡º]åè®®å¤´éƒ¨é•¿åº¦
+     * @param networkProtocol [è¾“å‡º]ç½‘ç»œå±‚åè®®ç±»å‹
+     * @return åè®®å¤´éƒ¨
      */
     std::shared_ptr<ProtocolHeader> handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
                                                         uint32_t& networkProtocol);
 
     /**
-     * @brief ´¦ÀíÍøÂç²ãÊı¾İ
-     * @param networkProtocol ÍøÂç²ãĞ­ÒéÀàĞÍ
-     * @param data ²ãÊı¾İ
-     * @param dataLen ²ãÊı¾İ³¤¶È
-     * @param headerLen [Êä³ö]Ğ­ÒéÍ·²¿³¤¶È
-     * @param networkProtocol [Êä³ö]´«Êä²ãĞ­ÒéÀàĞÍ
-     * @return Ğ­ÒéÍ·²¿
+     * @brief å¤„ç†ç½‘ç»œå±‚æ•°æ®
+     * @param networkProtocol ç½‘ç»œå±‚åè®®ç±»å‹
+     * @param data å±‚æ•°æ®
+     * @param dataLen å±‚æ•°æ®é•¿åº¦
+     * @param headerLen [è¾“å‡º]åè®®å¤´éƒ¨é•¿åº¦
+     * @param networkProtocol [è¾“å‡º]ä¼ è¾“å±‚åè®®ç±»å‹
+     * @return åè®®å¤´éƒ¨
      */
     std::shared_ptr<ProtocolHeader> handleNetworkLayer(const uint32_t& networkProtocol, const uint8_t* data, uint32_t dataLen,
                                                        uint32_t& headerLen, uint32_t& transportProtocol);
 
     /**
-     * @brief ´¦Àí´«Êä²ãÊı¾İ
-     * @param transportProtocol ´«Êä²ãĞ­ÒéÀàĞÍ
-     * @param data ²ãÊı¾İ
-     * @param dataLen ²ãÊı¾İ³¤¶È
-     * @param headerLen [Êä³ö]Ğ­ÒéÍ·²¿³¤¶È
-     * @return Ğ­ÒéÍ·²¿
+     * @brief å¤„ç†ä¼ è¾“å±‚æ•°æ®
+     * @param transportProtocol ä¼ è¾“å±‚åè®®ç±»å‹
+     * @param data å±‚æ•°æ®
+     * @param dataLen å±‚æ•°æ®é•¿åº¦
+     * @param headerLen [è¾“å‡º]åè®®å¤´éƒ¨é•¿åº¦
+     * @return åè®®å¤´éƒ¨
      */
     std::shared_ptr<ProtocolHeader> handleTransportLayer(const uint32_t& transportProtocol, const uint8_t* data, uint32_t dataLen,
                                                          uint32_t& headerLen);
 
 private:
     std::mutex m_mutexLayerCb;
-    LAYER_CALLBACK m_ethernetLayerCb = nullptr; /* ÒÔÌ«Íø²ãÊı¾İ»Øµ÷ */
-    LAYER_CALLBACK m_networkLayerCb = nullptr; /* ÍøÂç²ãÊı¾İ»Øµ÷ */
-    LAYER_CALLBACK m_transportLayerCb = nullptr; /* ´«Êä²ãÊı¾İ»Øµ÷ */
+    LAYER_CALLBACK m_ethernetLayerCb = nullptr; /* ä»¥å¤ªç½‘å±‚æ•°æ®å›è°ƒ */
+    LAYER_CALLBACK m_networkLayerCb = nullptr; /* ç½‘ç»œå±‚æ•°æ®å›è°ƒ */
+    LAYER_CALLBACK m_transportLayerCb = nullptr; /* ä¼ è¾“å±‚æ•°æ®å›è°ƒ */
     std::mutex m_mutexParserList;
-    std::vector<std::shared_ptr<ProtocolParser>> m_applicationParserList; /* Ó¦ÓÃ²ã½âÎöÆ÷ÁĞ±í */
+    std::vector<std::shared_ptr<ProtocolParser>> m_applicationParserList; /* åº”ç”¨å±‚è§£æå™¨åˆ—è¡¨ */
 };
 } // namespace npacket

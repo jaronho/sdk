@@ -26,8 +26,22 @@ bool PacketAnalyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& pa
             }
         }
         m_applicationParserList.emplace_back(parser);
+        return true;
     }
     return false;
+}
+
+void PacketAnalyzer::removeProtocolParser(uint32_t protocol)
+{
+    std::lock_guard<std::mutex> locker(m_mutexParserList);
+    for (auto iter = m_applicationParserList.begin(); m_applicationParserList.end() != iter; ++iter)
+    {
+        if (*iter && (*iter)->getProtocol() == protocol)
+        {
+            m_applicationParserList.erase(iter);
+            break;
+        }
+    }
 }
 
 int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
@@ -43,7 +57,7 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
         networkLayerCb = m_networkLayerCb;
         transportLayerCb = m_transportLayerCb;
     }
-    /* ½âÎöÒÔÌ«Íø²ã */
+    /* è§£æžä»¥å¤ªç½‘å±‚ */
     auto ethernetHeader = handleEthernetLayer(data + offset, remainLen, headerLen, networkProtocol);
     if (!ethernetHeader)
     {
@@ -58,7 +72,7 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
             return 0;
         }
     }
-    /* ½âÎöÍøÂç²ã */
+    /* è§£æžç½‘ç»œå±‚ */
     if (remainLen > 0)
     {
         auto networkHeader = handleNetworkLayer(networkProtocol, data + offset, remainLen, headerLen, transportProtocol);
@@ -76,7 +90,7 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
                 return 0;
             }
         }
-        /* ½âÎö´«Êä²ã */
+        /* è§£æžä¼ è¾“å±‚ */
         if (remainLen > 0)
         {
             auto transportHeader = handleTransportLayer(transportProtocol, data + offset, remainLen, headerLen);
@@ -94,7 +108,7 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
                     return 0;
                 }
             }
-            /* ½âÎöÓ¦ÓÃ²ã */
+            /* è§£æžåº”ç”¨å±‚ */
             if (remainLen > 0)
             {
                 std::vector<std::shared_ptr<ProtocolParser>> applicationParserList;
@@ -174,13 +188,13 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
                     headerLen = header->headerLen;
                     switch (header->nextHeader)
                     {
-                    case 0: /* ÖðÌøÑ¡ÏîÍ·²¿ */
+                    case 0: /* é€è·³é€‰é¡¹å¤´éƒ¨ */
                         header->hopByHopHeader.options = data + headerLen + 2;
                         header->hopByHopHeader.optionLen = 6 + header->hopByHopHeader.length;
                         headerLen += 8 + header->hopByHopHeader.length;
                         transportProtocol = header->hopByHopHeader.nextHeader;
                         break;
-                    default: // TODO: ÆäËûÀ©Õ¹Í·²¿´¦Àí
+                    default: // TODO: å…¶ä»–æ‰©å±•å¤´éƒ¨å¤„ç†
                         transportProtocol = header->nextHeader;
                         break;
                     }
