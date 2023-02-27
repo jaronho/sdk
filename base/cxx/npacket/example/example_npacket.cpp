@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "../npacket/packet_analyzer.h"
+#include "../npacket/proto/ftp.h"
 #include "pcap_device.h"
 
 static npacket::PacketAnalyzer s_pktAnalyzer;
@@ -143,6 +144,7 @@ int main(int argc, char* argv[])
             }
             return true;
         });
+    s_pktAnalyzer.addProtocolParser(std::make_shared<npacket::FtpParser>());
     std::shared_ptr<PcapDevice> dev;
     auto devList = PcapDevice::getAllDevices();
     for (size_t i = 0; i < devList.size(); ++i)
