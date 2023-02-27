@@ -47,9 +47,9 @@ ${base_npacket_files}
 ###################################### 添加npacket库 #####################################
 set(base_npacket_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 
-set(base_npacket_impl_src_list)
-get_cxx_files(npacket/impl src_list)
-list(APPEND base_npacket_impl_src_list ${src_list})
+set(base_npacket_proto_src_list)
+get_cxx_files(npacket/proto src_list)
+list(APPEND base_npacket_proto_src_list ${src_list})
 
 set(base_npacket_src_list)
 get_cxx_files(npacket src_list)
@@ -57,7 +57,7 @@ list(APPEND base_npacket_src_list ${src_list})
 
 # 组装文件列表
 set(base_npacket_files
-    ${base_npacket_impl_src_list}
+    ${base_npacket_proto_src_list}
     ${base_npacket_src_list}
     CACHE INTERNAL "")
 

@@ -7,7 +7,7 @@
 namespace npacket
 {
 /**
- * @brief 协议头部
+ * @brief 协议头部(接口类)
  */
 class ProtocolHeader
 {

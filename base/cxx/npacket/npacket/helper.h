@@ -1,5 +1,5 @@
 #pragma once
-#include "../protocol.h"
+#include "protocol.h"
 
 namespace npacket
 {

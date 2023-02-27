@@ -1,15 +1,33 @@
 #include "packet_analyzer.h"
 
-#include "impl/helper.h"
+#include "helper.h"
 
 namespace npacket
 {
 void PacketAnalyzer::setLayerCallback(const LAYER_CALLBACK& ethernetLayerCb, const LAYER_CALLBACK& networkLayerCb,
                                       const LAYER_CALLBACK& transportLayerCb)
 {
+    std::lock_guard<std::mutex> locker(m_mutexLayerCb);
     m_ethernetLayerCb = ethernetLayerCb;
     m_networkLayerCb = networkLayerCb;
     m_transportLayerCb = transportLayerCb;
+}
+
+bool PacketAnalyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
+{
+    if (parser)
+    {
+        std::lock_guard<std::mutex> locker(m_mutexParserList);
+        for (auto item : m_applicationParserList)
+        {
+            if (item && item->getProtocol() == parser->getProtocol())
+            {
+                return false;
+            }
+        }
+        m_applicationParserList.emplace_back(parser);
+    }
+    return false;
 }
 
 int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
@@ -19,6 +37,12 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
         return -1;
     }
     uint32_t remainLen = dataLen, offset = 0, headerLen = 0, networkProtocol = 0, transportProtocol = 0;
+    LAYER_CALLBACK ehternetLayerCb = nullptr, networkLayerCb = nullptr, transportLayerCb = nullptr;
+    {
+        ehternetLayerCb = m_ethernetLayerCb;
+        networkLayerCb = m_networkLayerCb;
+        transportLayerCb = m_transportLayerCb;
+    }
     /* 解析以太网层 */
     auto ethernetHeader = handleEthernetLayer(data + offset, remainLen, headerLen, networkProtocol);
     if (!ethernetHeader)
@@ -27,9 +51,9 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
     }
     remainLen -= headerLen;
     offset += headerLen;
-    if (m_ethernetLayerCb)
+    if (ehternetLayerCb)
     {
-        if (!m_ethernetLayerCb(dataLen, ethernetHeader, data + offset, remainLen))
+        if (!ehternetLayerCb(dataLen, ethernetHeader, data + offset, remainLen))
         {
             return 0;
         }
@@ -45,9 +69,9 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
         networkHeader->parent = ethernetHeader;
         remainLen -= headerLen;
         offset += headerLen;
-        if (m_networkLayerCb)
+        if (networkLayerCb)
         {
-            if (!m_networkLayerCb(dataLen, networkHeader, data + offset, remainLen))
+            if (!networkLayerCb(dataLen, networkHeader, data + offset, remainLen))
             {
                 return 0;
             }
@@ -63,9 +87,9 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
             transportHeader->parent = networkHeader;
             remainLen -= headerLen;
             offset += headerLen;
-            if (m_transportLayerCb)
+            if (transportLayerCb)
             {
-                if (!m_transportLayerCb(dataLen, transportHeader, data + offset, remainLen))
+                if (!transportLayerCb(dataLen, transportHeader, data + offset, remainLen))
                 {
                     return 0;
                 }
@@ -73,6 +97,18 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
             /* 解析应用层 */
             if (remainLen > 0)
             {
+                std::vector<std::shared_ptr<ProtocolParser>> applicationParserList;
+                {
+                    std::lock_guard<std::mutex> locker(m_mutexParserList);
+                    applicationParserList = m_applicationParserList;
+                }
+                for (auto parser : applicationParserList)
+                {
+                    if (parser && parser->parse(dataLen, transportHeader, data + offset, remainLen))
+                    {
+                        break;
+                    }
+                }
             }
         }
     }
