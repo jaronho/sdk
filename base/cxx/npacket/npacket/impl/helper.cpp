@@ -138,4 +138,24 @@ std::shared_ptr<UdpHeader> Helper::loadUdpHeader(const RawUdpHeader& r)
     p->checksum = ntoh16(r.checksum);
     return p;
 }
+
+std::shared_ptr<IcmpHeader> Helper::loadIcmpHeader(const RawIcmpHeader& r)
+{
+    auto p = std::make_shared<IcmpHeader>();
+    p->headerLen = IcmpHeader::getMinLen();
+    p->type = r.type;
+    p->code = r.code;
+    p->checksum = ntoh16(r.checksum);
+    return p;
+}
+
+std::shared_ptr<Icmpv6Header> Helper::loadIcmpv6Header(const RawIcmpv6Header& r)
+{
+    auto p = std::make_shared<Icmpv6Header>();
+    p->headerLen = Icmpv6Header::getMinLen();
+    p->type = r.type;
+    p->code = r.code;
+    p->checksum = ntoh16(r.checksum);
+    return p;
+}
 } // namespace npacket

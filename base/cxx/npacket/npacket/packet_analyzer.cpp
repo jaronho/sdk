@@ -84,7 +84,7 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleEthernetLayer(const uint8_
 {
     if (data && dataLen >= EthernetIIHeader::getMinLen())
     {
-        npacket::RawEthernetIIHeader* r = (npacket::RawEthernetIIHeader*)(data);
+        auto* r = (npacket::RawEthernetIIHeader*)(data);
         if (r)
         {
             auto header = Helper::loadEthernetIIHeader(*r);
@@ -106,7 +106,7 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
         case NetworkProtocol::IPv4:
             if (dataLen >= Ipv4Header::getMinLen())
             {
-                npacket::RawIpv4Header* r = (npacket::RawIpv4Header*)(data);
+                auto* r = (npacket::RawIpv4Header*)(data);
                 if (r)
                 {
                     auto header = Helper::loadIpv4Header(*r);
@@ -119,7 +119,7 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
         case NetworkProtocol::ARP:
             if (dataLen >= ArpHeader::getMinLen())
             {
-                npacket::RawArpHeader* r = (npacket::RawArpHeader*)(data);
+                auto* r = (npacket::RawArpHeader*)(data);
                 if (r)
                 {
                     auto header = Helper::loadArpHeader(*r);
@@ -131,7 +131,7 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
         case NetworkProtocol::IPv6:
             if (dataLen >= Ipv6Header::getMinLen())
             {
-                npacket::RawIpv6Header* r = (npacket::RawIpv6Header*)(data);
+                auto* r = (npacket::RawIpv6Header*)(data);
                 if (r)
                 {
                     auto header = Helper::loadIpv6Header(*r);
@@ -144,7 +144,7 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
                         headerLen += 8 + header->hopByHopHeader.length;
                         transportProtocol = header->hopByHopHeader.nextHeader;
                         break;
-                    default: // TODO: 扩展包头处理
+                    default: // TODO: 其他扩展头部处理
                         transportProtocol = header->nextHeader;
                         break;
                     }
@@ -167,7 +167,7 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleTransportLayer(const uint3
         case TransportProtocol::TCP:
             if (dataLen >= TcpHeader::getMinLen())
             {
-                npacket::RawTcpHeader* r = (npacket::RawTcpHeader*)(data);
+                auto* r = (npacket::RawTcpHeader*)(data);
                 if (r)
                 {
                     auto header = Helper::loadTcpHeader(*r);
@@ -179,10 +179,34 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleTransportLayer(const uint3
         case TransportProtocol::UDP:
             if (dataLen >= UdpHeader::getMinLen())
             {
-                npacket::RawUdpHeader* r = (npacket::RawUdpHeader*)(data);
+                auto* r = (npacket::RawUdpHeader*)(data);
                 if (r)
                 {
                     auto header = Helper::loadUdpHeader(*r);
+                    headerLen = header->headerLen;
+                    return header;
+                }
+            }
+            break;
+        case TransportProtocol::ICMP:
+            if (dataLen >= IcmpHeader::getMinLen())
+            {
+                auto* r = (npacket::RawIcmpHeader*)(data);
+                if (r)
+                {
+                    auto header = Helper::loadIcmpHeader(*r);
+                    headerLen = header->headerLen;
+                    return header;
+                }
+            }
+            break;
+        case TransportProtocol::ICMPv6:
+            if (dataLen >= Icmpv6Header::getMinLen())
+            {
+                auto* r = (npacket::RawIcmpv6Header*)(data);
+                if (r)
+                {
+                    auto header = Helper::loadIcmpv6Header(*r);
                     headerLen = header->headerLen;
                     return header;
                 }

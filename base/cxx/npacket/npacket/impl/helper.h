@@ -64,5 +64,19 @@ public:
      * @return 头部
      */
     static std::shared_ptr<UdpHeader> loadUdpHeader(const RawUdpHeader& r);
+
+    /**
+     * @brief 加载ICMP头部
+     * @param r 原始头部
+     * @return 头部
+     */
+    static std::shared_ptr<IcmpHeader> loadIcmpHeader(const RawIcmpHeader& r);
+
+    /**
+     * @brief 加载ICMPv6头部
+     * @param r 原始头部
+     * @return 头部
+     */
+    static std::shared_ptr<Icmpv6Header> loadIcmpv6Header(const RawIcmpv6Header& r);
 };
 } // namespace npacket

@@ -22,10 +22,9 @@ enum NetworkProtocol
  */
 enum TransportProtocol
 {
-    ICMP = 0x01, /* 标准上归属于网络层协议 */
-    IGMPv2 = 0x02, /* 标准上归属于网络层协议 */
     TCP = 0x06,
     UDP = 0x11,
+    ICMP = 0x01, /* 标准上归属于网络层协议 */
     ICMPv6 = 0x3a, /* 标准上归属于网络层协议 */
 };
 
@@ -115,5 +114,25 @@ struct RawUdpHeader
     uint8_t dstPort[2]; /* 目的端口 */
     uint8_t length[2]; /* 报文总长度 */
     uint8_t checksum[2]; /* 检验和 */
+};
+
+/**
+ * @brief ICMP协议头部(https://www.rfc-editor.org/rfc/rfc792.html)
+ */
+struct RawIcmpHeader
+{
+    uint8_t type; /* 类型 */
+    uint8_t code; /* 代码 */
+    uint8_t checksum[2]; /* 校验和 */
+};
+
+/**
+ * @brief ICMPv6协议头部(https://www.rfc-editor.org/rfc/rfc2463.html)
+ */
+struct RawIcmpv6Header
+{
+    uint8_t type; /* 类型 */
+    uint8_t code; /* 代码 */
+    uint8_t checksum[2]; /* 校验和 */
 };
 } // namespace npacket

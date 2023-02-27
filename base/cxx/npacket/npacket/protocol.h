@@ -347,4 +347,64 @@ public:
     uint16_t totalLen = 0; /* 报文总长度 */
     uint16_t checksum = 0; /* 检验和 */
 };
+
+/**
+ * @brief ICMP协议头部
+ */
+class IcmpHeader final : public ProtocolHeader
+{
+public:
+    /**
+     * @brief 获取头部最小长度
+     * @return 头部最小长度
+     */
+    static uint32_t getMinLen()
+    {
+        return 3;
+    }
+
+    /**
+     * @brief 获取协议类型
+     * @return 传输层ICMP协议类型(TransportProtocol)
+     */
+    uint32_t getProtocol() const override
+    {
+        return TransportProtocol::ICMP;
+    }
+
+    uint8_t headerLen = 0; /* 头部长度 */
+    uint8_t type = 0; /* 类型 */
+    uint8_t code = 0; /* 代码 */
+    uint16_t checksum = 0; /* 检验和 */
+};
+
+/**
+ * @brief ICMPv6协议头部
+ */
+class Icmpv6Header final : public ProtocolHeader
+{
+public:
+    /**
+     * @brief 获取头部最小长度
+     * @return 头部最小长度
+     */
+    static uint32_t getMinLen()
+    {
+        return 3;
+    }
+
+    /**
+     * @brief 获取协议类型
+     * @return 传输层ICMPv6协议类型(TransportProtocol)
+     */
+    uint32_t getProtocol() const override
+    {
+        return TransportProtocol::ICMPv6;
+    }
+
+    uint8_t headerLen = 0; /* 头部长度 */
+    uint8_t type = 0; /* 类型 */
+    uint8_t code = 0; /* 代码 */
+    uint16_t checksum = 0; /* 检验和 */
+};
 } // namespace npacket
