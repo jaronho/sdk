@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+namespace npacket
+{
 /**
  * @brief pcap设备(对网络适配器的抽象)
  */
@@ -19,28 +21,29 @@ public:
      * @brief 获取名字
      * @return 名字
      */
-    std::string getName() const;
+    std::string getName();
 
     /**
      * @brief 获取描述
      * @return 描述
      */
-    std::string getDescribe() const;
+    std::string getDescribe();
 
     /**
      * @brief 获取IPv4地址
      * @return IPv4地址
      */
-    std::string getIpv4Address() const;
+    std::string getIpv4Address();
 
     /**
      * @brief 是否回环
      * @return true-是, false-否
      */
-    bool isLoopback() const;
+    bool isLoopback();
 
     /**
      * @brief 打开
+     * @param name 设备名, 例如: enp1s0
      * @param direction 要捕获的数据流向, 0-所有, 1-接收, 2-发送
      * @param snapLen 快照长度, 要捕获的数据包长度, 正常设置为65536能够满足所有网络
      * @param promisc 混杂模式, 该模式下适配器将接受所有数据包，即便那不是发到该适配器的, 0-普通模式, 1-混杂模式
@@ -48,7 +51,7 @@ public:
      * @param bufferSize 缓冲大小
      * @return true-成功, false-失败
      */
-    bool open(int direction = 0, int snapLen = 0, int promisc = 1, int timeout = 0, int bufferSize = 0);
+    bool open(const std::string& name, int direction = 0, int snapLen = 0, int promisc = 1, int timeout = 0, int bufferSize = 0);
 
     /**
      * @brief 设置数据回调
@@ -103,3 +106,4 @@ private:
     std::mutex m_mutexOnDataCallback;
     std::function<void(const unsigned char* data, unsigned int dataLen)> m_onDataCallback = nullptr; /* 数据回调 */
 };
+} // namespace npacket

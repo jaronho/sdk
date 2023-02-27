@@ -190,7 +190,7 @@ int main(int argc, char* argv[])
             }
         }
     }
-    auto devList = PcapDevice::getAllDevices();
+    auto devList = npacket::PcapDevice::getAllDevices();
     if (showList)
     {
         printf("==================== 当前识别到的所有网卡设备 ====================\n");
@@ -231,7 +231,7 @@ int main(int argc, char* argv[])
                                    [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
                                        uint32_t payloadLen) { return handleTransportLayer(totalLen, header, payload, payloadLen); });
     s_pktAnalyzer.addProtocolParser(std::make_shared<npacket::FtpParser>());
-    std::shared_ptr<PcapDevice> dev;
+    std::shared_ptr<npacket::PcapDevice> dev;
     for (size_t i = 0; i < devList.size(); ++i)
     {
         if ((!name.empty() && devList[i]->getName() == name) || (!ip.empty() && devList[i]->getIpv4Address() == ip))
@@ -240,7 +240,7 @@ int main(int argc, char* argv[])
             break;
         }
     }
-    if (!dev || !dev->open(direction, 0, 0 == direction ? 1 : 0))
+    if (!dev || !dev->open(dev->getName(), direction, 0, 0 == direction ? 1 : 0))
     {
         printf("未找到可用设备\n");
         return 0;

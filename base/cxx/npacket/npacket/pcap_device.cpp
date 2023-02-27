@@ -17,6 +17,8 @@
 #define LIBPCAP_OPEN_LIVE_TIMEOUT -1
 #endif
 
+namespace npacket
+{
 void PcapDevice::onPacketArrived(uint8_t* user, const struct pcap_pkthdr* pkthdr, const uint8_t* packet)
 {
     PcapDevice* dev = (PcapDevice*)user;
@@ -40,35 +42,43 @@ PcapDevice::~PcapDevice()
     close();
 }
 
-std::string PcapDevice::getName() const
+std::string PcapDevice::getName()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     return m_name;
 }
 
-std::string PcapDevice::getDescribe() const
+std::string PcapDevice::getDescribe()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     return m_describe;
 }
 
-std::string PcapDevice::getIpv4Address() const
+std::string PcapDevice::getIpv4Address()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     return m_ipv4Address;
 }
 
-bool PcapDevice::isLoopback() const
+bool PcapDevice::isLoopback()
 {
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
     return m_isLoopback;
 }
 
-bool PcapDevice::open(int direction, int snapLen, int promisc, int timeout, int bufferSize)
+bool PcapDevice::open(const std::string& name, int direction, int snapLen, int promisc, int timeout, int bufferSize)
 {
+    if (name.empty())
+    {
+        return false;
+    }
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_pcap)
     {
         return true;
     }
     char errbuf[PCAP_ERRBUF_SIZE] = {};
-    m_pcap = pcap_create(m_name.c_str(), errbuf);
+    m_pcap = pcap_create(name.c_str(), errbuf);
     if (!m_pcap)
     {
         return false;
@@ -88,6 +98,7 @@ bool PcapDevice::open(int direction, int snapLen, int promisc, int timeout, int 
     }
     direction = (direction < 0 || direction > 2) ? 0 : direction;
     pcap_setdirection(m_pcap, (pcap_direction_t)direction); /* 设置方向接口必须得打开后调用才会生效 */
+    m_name = name;
     return true;
 }
 
@@ -204,3 +215,4 @@ std::vector<std::shared_ptr<PcapDevice>> PcapDevice::getAllDevices(std::string* 
     pcap_freealldevs(allDevs);
     return devList;
 }
+} // namespace npacket
