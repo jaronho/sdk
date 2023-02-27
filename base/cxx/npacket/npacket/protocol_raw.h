@@ -18,12 +18,15 @@ enum NetworkProtocol
 };
 
 /**
- * @brief 传输层协议
+ * @brief 传输层协议(注意: 为了方便把第2次解析得出的协议类型归属到这里, 而并不仅包括标准的传输层协议)
  */
 enum TransportProtocol
 {
+    ICMP = 0x01, /* 标准上归属于网络层协议 */
+    IGMPv2 = 0x02, /* 标准上归属于网络层协议 */
     TCP = 0x06,
     UDP = 0x11,
+    ICMPv6 = 0x3a, /* 标准上归属于网络层协议 */
 };
 
 /**
@@ -76,10 +79,15 @@ struct RawIpv6Header
 {
     uint8_t ver_class_label[4]; /* 版本(4位)+通信类别(8位)+流标记(20位) */
     uint8_t payloadLen[2]; /* 负载长度 */
-    uint8_t nextHeader; /* 下一层协议类型 */
+    uint8_t nextHeader; /* 下一个头的协议类型 */
     uint8_t hopLimit; /* 跳跃限制 */
     uint8_t srcAddr[16]; /* 源IP地址 */
     uint8_t dstAddr[16]; /* 目的IP地址 */
+    struct HopByHopHeader /* 逐跳选项头部(属于强制性的扩展头部), 长度为8的整数倍 */
+    {
+        uint8_t nextHeader; /* 下一个头的协议类型 */
+        uint8_t length; /* 选项头长度(不包括前8个字节) */
+    } hopByHopHeader;
 };
 
 /**

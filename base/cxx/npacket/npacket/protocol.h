@@ -48,7 +48,7 @@ public:
     /**
      * @brief 目标MAC地址字符串
      */
-    std::string dstMacStr()
+    std::string dstMacStr() const
     {
         char buf[18] = {0};
         sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", dstMac[0], dstMac[1], dstMac[2], dstMac[3], dstMac[4], dstMac[5]);
@@ -58,7 +58,7 @@ public:
     /**
      * @brief 源MAC地址字符串
      */
-    std::string srcMacStr()
+    std::string srcMacStr() const
     {
         char buf[18] = {0};
         sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", srcMac[0], srcMac[1], srcMac[2], srcMac[3], srcMac[4], srcMac[5]);
@@ -98,7 +98,7 @@ public:
     /**
      * @brief 源IP地址字符串
      */
-    std::string srcAddrStr()
+    std::string srcAddrStr() const
     {
         char buf[16] = {0};
         sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3]);
@@ -108,7 +108,7 @@ public:
     /**
      * @brief 目的IP地址字符串
      */
-    std::string dstAddrStr()
+    std::string dstAddrStr() const
     {
         char buf[16] = {0};
         sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3]);
@@ -158,7 +158,7 @@ public:
     /**
      * @brief 源MAC地址字符串
      */
-    std::string senderMacStr()
+    std::string senderMacStr() const
     {
         char buf[18] = {0};
         sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", senderMac[0], senderMac[1], senderMac[2], senderMac[3], senderMac[4],
@@ -179,7 +179,7 @@ public:
     /**
      * @brief 目标MAC地址字符串
      */
-    std::string targetMacStr()
+    std::string targetMacStr() const
     {
         char buf[18] = {0};
         sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", targetMac[0], targetMac[1], targetMac[2], targetMac[3], targetMac[4],
@@ -190,7 +190,7 @@ public:
     /**
      * @brief 目的IP地址字符串
      */
-    std::string targetIpStr()
+    std::string targetIpStr() const
     {
         char buf[16] = {0};
         sprintf_s(buf, sizeof(buf), "%d.%d.%d.%d", targetIp[0], targetIp[1], targetIp[2], targetIp[3]);
@@ -236,7 +236,7 @@ public:
     /**
      * @brief 源IP地址字符串
      */
-    std::string srcAddrStr()
+    std::string srcAddrStr() const
     {
         char buf[40] = {0};
         sprintf_s(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3], srcAddr[4], srcAddr[5],
@@ -247,7 +247,7 @@ public:
     /**
      * @brief 目的IP地址字符串
      */
-    std::string dstAddrStr()
+    std::string dstAddrStr() const
     {
         char buf[40] = {0};
         sprintf_s(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3], dstAddr[4], dstAddr[5],
@@ -260,10 +260,17 @@ public:
     uint8_t trafficClass = 0; /* 通信类别 */
     uint32_t flowLabel = 0; /* 流标记 */
     uint16_t payloadLen = 0; /* 负载长度 */
-    uint8_t nextProtocol = 0; /* 下一层协议类型 */
+    uint8_t nextHeader = 0; /* 下一个头的协议类型 */
     uint8_t hopLimit = 0; /* 跳跃限制 */
     uint16_t srcAddr[8]; /* 源IP地址 */
     uint16_t dstAddr[8]; /* 目的IP地址 */
+    struct HopByHopHeader /* 逐跳选项头部(属于强制性的扩展头部), 长度为8的整数倍 */
+    {
+        uint8_t nextHeader = 0; /* 下一个头的协议类型 */
+        uint8_t length = 0; /* 选项头长度(不包括前8个字节) */
+        const uint8_t* options = nullptr; /* 选项(至少6个字节) */
+        uint8_t optionLen = 6; /* 选项长度 */
+    } hopByHopHeader;
 };
 
 /**

@@ -136,8 +136,18 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
                 {
                     auto header = Helper::loadIpv6Header(*r);
                     headerLen = header->headerLen;
-                    transportProtocol = header->nextProtocol;
-                    // TODO: 扩展包头处理
+                    switch (header->nextHeader)
+                    {
+                    case 0: /* 逐跳选项头部 */
+                        header->hopByHopHeader.options = data + headerLen + 2;
+                        header->hopByHopHeader.optionLen = 6 + header->hopByHopHeader.length;
+                        headerLen += 8 + header->hopByHopHeader.length;
+                        transportProtocol = header->hopByHopHeader.nextHeader;
+                        break;
+                    default: // TODO: 扩展包头处理
+                        transportProtocol = header->nextHeader;
+                        break;
+                    }
                     return header;
                 }
             }

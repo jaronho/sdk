@@ -42,9 +42,9 @@ std::shared_ptr<Ipv4Header> Helper::loadIpv4Header(const RawIpv4Header& r)
     p->totalLen = ntoh16(r.totalLen);
     p->identification = ntoh16(r.identification);
     auto flags_fragoffset = ntoh16(r.flags_offset);
-    p->flagRsrvd = flags_fragoffset & 0x8000;
-    p->flagDont = flags_fragoffset & 0x4000;
-    p->flagMore = flags_fragoffset & 0x2000;
+    p->flagRsrvd = flags_fragoffset >> 15;
+    p->flagDont = (flags_fragoffset >> 14) & 0x1;
+    p->flagMore = (flags_fragoffset >> 13) & 0x1;
     p->fragOffset = flags_fragoffset & 0x1FFF;
     p->ttl = r.ttl;
     p->nextProtocol = r.protocol;
@@ -88,12 +88,17 @@ std::shared_ptr<Ipv6Header> Helper::loadIpv6Header(const RawIpv6Header& r)
     p->trafficClass = (ver_class_label >> 20) & 0xFF;
     p->flowLabel = ver_class_label & 0xFFFFF;
     p->payloadLen = ntoh16(r.payloadLen);
-    p->nextProtocol = r.nextHeader;
+    p->nextHeader = r.nextHeader;
     p->hopLimit = r.hopLimit;
     for (int i = 0; i < 16; i += 2)
     {
         p->srcAddr[i / 2] = r.srcAddr[i] * 256 + r.srcAddr[i + 1];
         p->dstAddr[i / 2] = r.dstAddr[i] * 256 + r.dstAddr[i + 1];
+    }
+    if (0 == r.nextHeader)
+    {
+        p->hopByHopHeader.nextHeader = r.hopByHopHeader.nextHeader;
+        p->hopByHopHeader.length = r.hopByHopHeader.length;
     }
     return p;
 }
