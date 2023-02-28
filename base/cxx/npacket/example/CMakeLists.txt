@@ -42,7 +42,9 @@ include_directories(${base_npacket_dir})
 source_group(TREE ${base_npacket_dir} PREFIX 3rdparty/base FILES ${base_npacket_files})
 
 # 构建可执行程序
+add_executable(netstat_tool ${base_npacket_files} netstat_tool.cpp)
 add_executable(npacket_tool ${base_npacket_files} npacket_tool.cpp)
 
 # 链接依赖库
+target_link_libraries(netstat_tool Threads::Threads ${PCAP_LIBRARIES})
 target_link_libraries(npacket_tool Threads::Threads ${PCAP_LIBRARIES})
