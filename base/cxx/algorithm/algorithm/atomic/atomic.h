@@ -18,13 +18,13 @@ public:
     /**
      * @brief 构造函数
      * @param value 值
-     * @param cmpFunc 比较函数, 参数: a-当前值, b-比较值, 返回: 负数-小于, 0-等于, 正数-大于
+     * @param cmpFunc 值比较函数, 参数: a-当前值, b-比较值, 返回: 负数-小于, 0-等于, 正数-大于
      */
     Atomic(const T& value, const ATOMIC_CMP_FUNC& cmpFunc = nullptr) : m_value(value), m_cmpFunc(cmpFunc) {}
 
     /**
      * @brief 设置值比较函数
-     * @param cmpFunc 比较函数, 参数: a-当前值, b-比较值, 返回: 负数-小于, 0-等于, 正数-大于
+     * @param cmpFunc 值比较函数, 参数: a-当前值, b-比较值, 返回: 负数-小于, 0-等于, 正数-大于
      */
     void setCmpFunc(const ATOMIC_CMP_FUNC& cmpFunc)
     {

@@ -9,7 +9,7 @@ namespace algorithm
  *        T如果是类/结构体对象类型则需要实现运算符重载: bool operator==(const T& other) const;
  */
 template<typename T>
-#define TVALUE_EQUAL_FUNC std::function<bool(const T& a, const T& b)> /* 值相等比较函数, 返回值: true-相等, false-不相等 */
+#define TVALUE_CMP_FUNC std::function<int(const T& a, const T& b)> /* 值比较函数, 返回值: 负数-小于, 0-等于, 正数-大于 */
 class TValue
 {
 public:
@@ -17,15 +17,15 @@ public:
      * @brief 构造函数
      * @param value 初始值
      * @param okNeedCount 成功所需次数(选填), 当相同的值连续重复设置了该次数时, 才认为设置成功, 默认为0表示每次都设置成功
-     * @param equalFunc 值相等比较函数(选填)
+     * @param cmpFunc 值比较函数(选填)
      */
-    TValue(const T& value = T{}, int okNeedCount = 0, const TVALUE_EQUAL_FUNC& equalFunc = nullptr)
+    TValue(const T& value = T{}, int okNeedCount = 0, const TVALUE_CMP_FUNC& cmpFunc = nullptr)
     {
         m_realValue = value;
         m_tempValue = value;
         m_okNeedCount = okNeedCount > 0 ? okNeedCount : 0;
         m_repeatCount = 0;
-        m_equalFunc = equalFunc;
+        m_cmpFunc = cmpFunc;
     }
 
     /**
@@ -38,33 +38,33 @@ public:
         m_tempValue = other.m_tempValue;
         m_okNeedCount = other.m_okNeedCount;
         m_repeatCount = other.m_repeatCount;
-        m_equalFunc = other.m_equalFunc;
+        m_cmpFunc = other.m_cmpFunc;
     }
 
     /**
      * @brief 重新初始化
      * @param value 初始值
      * @param okNeedCount 成功所需次数(选填), 当相同的值连续重复设置了该次数时, 才认为设置成功, 默认为0表示每次都设置成功
-     * @param equalFunc 值相等比较函数(选填)
+     * @param cmpFunc 值相等比较函数(选填)
      */
-    void reinit(const T& value, int okNeedCount = 0, const TVALUE_EQUAL_FUNC& equalFunc = nullptr)
+    void reinit(const T& value, int okNeedCount = 0, const TVALUE_CMP_FUNC& cmpFunc = nullptr)
     {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         m_realValue = value;
         m_tempValue = value;
         m_okNeedCount = okNeedCount > 0 ? okNeedCount : 0;
         m_repeatCount = 0;
-        m_equalFunc = equalFunc;
+        m_cmpFunc = cmpFunc;
     }
 
     /**
-     * @brief 设置值相等比较函数
-     * @param equalFunc 比较函数
+     * @brief 设置值比较函数
+     * @param cmpFunc 值比较函数
      */
-    void setEqualCompareFunc(const TVALUE_EQUAL_FUNC& equalFunc)
+    void setCmpFunc(const TVALUE_CMP_FUNC& cmpFunc)
     {
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        m_equalFunc = equalFunc;
+        m_cmpFunc = cmpFunc;
     }
 
     /**
@@ -77,9 +77,9 @@ public:
         std::lock_guard<std::recursive_mutex> locker(m_mutex);
         /* step1: 比较缓存的值和当前值是否相等 */
         bool isTempEqualNow = false;
-        if (m_equalFunc)
+        if (m_cmpFunc)
         {
-            isTempEqualNow = m_equalFunc(m_tempValue, nowValue);
+            isTempEqualNow = (0 == m_cmpFunc(m_tempValue, nowValue));
         }
         else
         {
@@ -101,9 +101,9 @@ public:
         {
             /* 比较真实的值和当前值是否相等 */
             bool isRealEqualNow = false;
-            if (m_equalFunc)
+            if (m_cmpFunc)
             {
-                isRealEqualNow = m_equalFunc(m_realValue, nowValue);
+                isRealEqualNow = (0 == m_cmpFunc(m_realValue, nowValue));
             }
             else
             {
@@ -145,22 +145,34 @@ public:
 
     bool operator==(const T& value)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if (m_equalFunc)
+        T tmpValue = T{};
+        TVALUE_CMP_FUNC compFunc = nullptr;
         {
-            return m_equalFunc(m_realValue, value);
+            std::lock_guard<std::recursive_mutex> locker(m_mutex);
+            tmpValue = m_realValue;
+            compFunc = m_cmpFunc;
         }
-        return (value == m_realValue);
+        if (compFunc)
+        {
+            return (0 == compFunc(tmpValue, value));
+        }
+        return (value == tmpValue);
     }
 
     bool operator!=(const T& value)
     {
-        std::lock_guard<std::recursive_mutex> locker(m_mutex);
-        if (m_equalFunc)
+        T tmpValue = T{};
+        TVALUE_CMP_FUNC compFunc = nullptr;
         {
-            return !m_equalFunc(m_realValue, value);
+            std::lock_guard<std::recursive_mutex> locker(m_mutex);
+            tmpValue = m_realValue;
+            compFunc = m_cmpFunc;
         }
-        return !(value == m_realValue);
+        if (compFunc)
+        {
+            return (0 != compFunc(tmpValue, value));
+        }
+        return !(value == tmpValue);
     }
 
 private:
@@ -169,6 +181,6 @@ private:
     T m_tempValue = T{}; /* 缓存的值 */
     int m_okNeedCount = 0; /* 成功所需要的次数 */
     int m_repeatCount = 0; /* 连续重复次数 */
-    TVALUE_EQUAL_FUNC m_equalFunc = nullptr; /* 值相等比较函数 */
+    TVALUE_CMP_FUNC m_cmpFunc = nullptr; /* 值比较函数 */
 };
 } // namespace algorithm
