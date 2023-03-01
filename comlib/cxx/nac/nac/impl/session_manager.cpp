@@ -28,26 +28,30 @@ public:
             return false;
         }
         m_timeout = seconds;
-        if (!m_timeoutTimer)
         {
-            const std::weak_ptr<SessionManager::Session> wpSelf = shared_from_this();
-            m_timeoutTimer = threading::SteadyTimer::onceTimer(
-                "nac.session.timeout", std::chrono::seconds(seconds),
-                [wpSelf](const std::chrono::steady_clock::time_point& tp) {
-                    const auto self = wpSelf.lock();
-                    if (self)
-                    {
-                        self->onTimeout();
-                    }
-                },
-                timerExecutor);
+            std::lock_guard<std::mutex> locker(m_mutexTimeoutTimer);
+            if (!m_timeoutTimer)
+            {
+                const std::weak_ptr<SessionManager::Session> wpSelf = shared_from_this();
+                m_timeoutTimer = threading::SteadyTimer::onceTimer(
+                    "nac.session.timeout", std::chrono::seconds(seconds),
+                    [wpSelf](const std::chrono::steady_clock::time_point& tp) {
+                        const auto self = wpSelf.lock();
+                        if (self)
+                        {
+                            self->onTimeout();
+                        }
+                    },
+                    timerExecutor);
+            }
+            m_timeoutTimer->start();
         }
-        m_timeoutTimer->start();
         return true;
     }
 
     void stopTimer()
     {
+        std::lock_guard<std::mutex> locker(m_mutexTimeoutTimer);
         if (m_timeoutTimer)
         {
             m_timeoutTimer->stop();
@@ -57,9 +61,12 @@ public:
 
     void onTimeout()
     {
-        if (m_timeoutTimer)
         {
-            m_timeoutTimer.reset();
+            std::lock_guard<std::mutex> locker(m_mutexTimeoutTimer);
+            if (m_timeoutTimer)
+            {
+                m_timeoutTimer.reset();
+            }
         }
         WARN_LOG(m_logger, "会话超时({}秒): 未收到响应数据, bizCode[{}], seqId[{}].", m_timeout, m_bizCode, m_seqId);
         const auto sessionManager = m_wpSessionManager.lock();
@@ -89,6 +96,7 @@ public:
 
 private:
     unsigned int m_timeout = 0; /* 超时时间(秒) */
+    std::mutex m_mutexTimeoutTimer;
     threading::SteadyTimerPtr m_timeoutTimer = nullptr; /* 超时定时器 */
     int32_t m_bizCode; /* 会话业务码 */
     int64_t m_seqId; /* 序列ID */

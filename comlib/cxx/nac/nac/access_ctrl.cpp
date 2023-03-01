@@ -225,28 +225,28 @@ int64_t AccessCtrl::sendMsg(const BizCode& bizCode, int64_t seqId, const nlohman
     {
         return -1;
     }
-    return s_sessionManager->sendMsg((int32_t)bizCode, seqId, nlohmann::dump(data), timeout,
-                                     [&, callback](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
-                                         if (!s_bizExecutor)
-                                         {
-                                             return;
-                                         }
-                                         std::string name = "nac.api.resp";
-                                         s_bizExecutor->post(name, [&, name, sendOk, bizCode, seqId, data, callback]() {
-                                             if (callback)
-                                             {
-                                                 if (s_bizExecutorHook)
-                                                 {
-                                                     s_bizExecutorHook(
-                                                         name, [sendOk, data, callback]() { callback(sendOk, nlohmann::parse(data)); });
-                                                 }
-                                                 else
-                                                 {
-                                                     callback(sendOk, nlohmann::parse(data));
-                                                 }
-                                             }
-                                         });
-                                     });
+    return s_sessionManager->sendMsg(
+        (int32_t)bizCode, seqId, nlohmann::dump(data), timeout,
+        [&, callback](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
+            if (!s_bizExecutor)
+            {
+                return;
+            }
+            auto name = "nac.api.resp|" + std::to_string(sendOk) + "|" + std::to_string(bizCode) + "|" + std::to_string(seqId);
+            s_bizExecutor->post(name, [&, name, sendOk, bizCode, seqId, data, callback]() {
+                if (callback)
+                {
+                    if (s_bizExecutorHook)
+                    {
+                        s_bizExecutorHook(name, [sendOk, data, callback]() { callback(sendOk, nlohmann::parse(data)); });
+                    }
+                    else
+                    {
+                        callback(sendOk, nlohmann::parse(data));
+                    }
+                }
+            });
+        });
 }
 
 boost::asio::ip::tcp::endpoint AccessCtrl::getLocalEndpoint()
@@ -331,7 +331,7 @@ void AccessCtrl::onReceiveMsg(int32_t bizCode, int64_t seqId, const std::string&
     {
         return;
     }
-    std::string name = "nac.api.notify";
+    auto name = "nac.api.notify|" + std::to_string(bizCode) + "|" + std::to_string(seqId);
     s_bizExecutor->post(name, [&, name, bizCode, seqId, data]() {
         std::list<std::weak_ptr<MsgHandler>> handlerList;
         {
@@ -382,7 +382,7 @@ void AccessCtrl::onConnectStateChanged(const ConnectState& state)
     {
         return;
     }
-    std::string name = "nac.api.state";
+    auto name = "nac.api.state|" + std::to_string((int)state);
     s_bizExecutor->post(name, [&, name, state]() {
         std::list<std::weak_ptr<StateHandler>> handlerList;
         {
