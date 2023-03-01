@@ -23,7 +23,7 @@ struct LogicMsg
 };
 
 threading::ExecutorPtr s_logicExecutor; /* 逻辑线程 */
-threading::SafeQueue<LogicMsg> s_logicMsgQueue; /* 逻辑消息队列 */
+threading::SafeQueue<std::shared_ptr<LogicMsg>> s_logicMsgQueue; /* 逻辑消息队列 */
 threading::ExecutorPtr g_workers; /* 工作线程 */
 threading::BasicSignal<void()> g_sig1; /* 同步信号(不带参数无返回值) */
 threading::BasicSignal<void(const std::string& str)> g_sig2; /* 同步信号(带参数无返回值) */
@@ -35,12 +35,12 @@ threading::AsyncSignal<void(int num)> g_sig4; /* 异步信号(带有参数) */
  */
 void tryHandleLogicMsg()
 {
-    LogicMsg msg;
+    std::shared_ptr<LogicMsg> msg;
     while (s_logicMsgQueue.tryPop(msg))
     {
-        if (msg.handler)
+        if (msg && msg->handler)
         {
-            msg.handler();
+            msg->handler();
         }
     }
 }
@@ -77,21 +77,24 @@ int main()
     int mainPid = threading::Platform::getThreadId();
     s_logicExecutor = threading::ThreadProxy::createAsioExecutor("logic", 1);
     threading::AsyncProxy::start(6, s_logicExecutor, [&](const std::string& name, const std::function<void()>& finishCb) {
-        s_logicMsgQueue.push(LogicMsg(name, finishCb));
+        s_logicMsgQueue.push(std::make_shared<LogicMsg>(name, finishCb));
     }); /* 创建异步任务线程(6个线程) */
-    threading::Timer::setDefaultExecutor(
-        s_logicExecutor, [&](const std::string& name, const std::function<void()>& func) { s_logicMsgQueue.push(LogicMsg(name, func)); });
+    threading::Timer::setDefaultExecutor(s_logicExecutor, [&](const std::string& name, const std::function<void()>& func) {
+        s_logicMsgQueue.push(std::make_shared<LogicMsg>(name, func));
+    });
     g_workers = threading::ThreadProxy::createAsioExecutor("workers", 6); /* 创建工作线程(6个线程) */
     /* 定时器1 */
     int count1 = 0;
-    auto tm1 = std::make_shared<threading::SteadyTimer>("", std::chrono::seconds(0), std::chrono::milliseconds(5000), [mainPid, &count1]() {
-        ++count1;
-        printf("===== [%d:%d] SteadyTimer === %d\n", mainPid, threading::Platform::getThreadId(), count1);
-    });
+    auto tm1 = std::make_shared<threading::SteadyTimer>(
+        "", std::chrono::seconds(0), std::chrono::milliseconds(5000), [mainPid, &count1](const std::chrono::steady_clock::time_point& tp) {
+            ++count1;
+            printf("===== [%d:%d] SteadyTimer === %d\n", mainPid, threading::Platform::getThreadId(), count1);
+        });
     tm1->start();
     /* 定时器2 */
-    auto tm2 = std::make_shared<threading::DeadlineTimer>("", std::chrono::system_clock::now() + std::chrono::seconds(10),
-                                                          [&]() { printf("========== DeadlineTimer over\n"); });
+    auto tm2 = std::make_shared<threading::DeadlineTimer>(
+        "", std::chrono::system_clock::now() + std::chrono::seconds(10),
+        [&](const std::chrono::steady_clock::time_point& tp) { printf("========== DeadlineTimer over\n"); });
     tm2->start();
     /* 信号 */
     connectSignal();

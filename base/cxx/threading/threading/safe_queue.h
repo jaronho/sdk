@@ -1,5 +1,6 @@
 #pragma once
 #include <condition_variable>
+#include <functional>
 #include <initializer_list>
 #include <list>
 #include <mutex>
@@ -7,7 +8,7 @@
 namespace threading
 {
 /**
- * @brief 线程安全队列
+ * @brief 线程安全队列, 注意: T如果是类/结构体对象, 则需要实现运算符重载: bool operator==(const T& other) const
  */
 template<typename T>
 class SafeQueue
@@ -38,9 +39,19 @@ public:
     SafeQueue(std::initializer_list<std::list<T>> list) : SafeQueue(list.begin, list.end) {}
 
     /**
+     * @brief 设置比较函数
+     * @param cmpFunc 比较函数, 参数: a-当前值, b-比较值, 返回: 负数-小于, 0-等于, 正数-大于
+     */
+    void setCmpFunc(const std::function<int(const T& a, const T& b)>& cmpFunc)
+    {
+        std::unique_lock<std::mutex> locker(m_mutex);
+        m_cmpFunc = cmpFunc;
+    }
+
+    /**
       * @brief 入队列
       * @param value 值
-      * @param prevMode 入队列前操作模式(选填): 0.无, 1.删除首个元素, 2.清空所有元素
+      * @param prevMode 入队列前操作模式(选填): 0.无, 1.删除首个元素, 2.清空所有元素, 3.删除相同的旧元素
       */
     void push(const T& value, int prevMode = 0)
     {
@@ -54,6 +65,32 @@ public:
             else if (2 == prevMode)
             {
                 m_list.clear();
+            }
+            else if (3 == prevMode)
+            {
+                for (auto iter = m_list.begin(); m_list.end() != iter;)
+                {
+                    bool equalFlag = false;
+                    if (m_cmpFunc)
+                    {
+                        if (0 == m_cmpFunc(value, *iter))
+                        {
+                            equalFlag = true;
+                        }
+                    }
+                    else
+                    {
+                        equalFlag = (value == *iter);
+                    }
+                    if (equalFlag)
+                    {
+                        m_list.erase(iter++);
+                    }
+                    else
+                    {
+                        iter++;
+                    }
+                }
             }
         }
         m_list.emplace_back(std::move(value));
@@ -139,5 +176,6 @@ private:
     std::mutex m_mutex;
     std::list<T> m_list; /* 数据列表 */
     std::condition_variable m_cv; /* 条件变量 */
+    std::function<int(const T& a, const T& b)> m_cmpFunc = nullptr; /* 值比较函数 */
 };
 } // namespace threading
