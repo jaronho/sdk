@@ -8,7 +8,7 @@
 namespace threading
 {
 /**
- * @brief 线程安全队列, 注意: T如果是类/结构体对象, 则需要实现运算符重载: bool operator==(const T& other) const
+ * @brief 线程安全队列, T如果是类/结构体对象类型则需要实现运算符重载: bool operator==(const T& other) const;
  */
 template<typename T>
 class SafeQueue

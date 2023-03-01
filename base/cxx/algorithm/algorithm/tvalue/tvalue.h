@@ -5,7 +5,8 @@
 namespace algorithm
 {
 /**
- * @brief 值过滤, 用于指定相同的值需要连续重复设置多少次才成功, 过滤掉中间的一些脏数据值, 线程安全
+ * @brief 值过滤, 用于指定相同的值需要连续重复设置多少次才成功, 过滤掉中间的一些脏数据值, 线程安全,
+ *        T如果是类/结构体对象类型则需要实现运算符重载: bool operator==(const T& other) const;
  */
 template<typename T>
 #define TVALUE_EQUAL_FUNC std::function<bool(const T& a, const T& b)> /* 值相等比较函数, 返回值: true-相等, false-不相等 */
@@ -159,7 +160,7 @@ public:
         {
             return !m_equalFunc(m_realValue, value);
         }
-        return (value != m_realValue);
+        return !(value == m_realValue);
     }
 
 private:

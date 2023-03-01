@@ -5,7 +5,8 @@
 namespace algorithm
 {
 /**
- * @brief 原子类型(线程安全)
+ * @brief 原子类型(线程安全), T如果是类/结构体对象类型则需要实现运算符重载: 
+ *        bool operator==(const T& other) const; bool operator>(const T& other) const; bool operator<(const T& other) const;
  */
 template<typename T>
 #define ATOMIC_CMP_FUNC std::function<int(const T& a, const T& b)> /* 值比较函数, 返回值: 负数-小于, 0-等于, 正数-大于 */
@@ -86,7 +87,7 @@ public:
         {
             return (0 != compFunc(tmpValue, value));
         }
-        return (value != tmpValue);
+        return !(value == tmpValue);
     }
 
     bool operator>(const T& value)
@@ -134,7 +135,7 @@ public:
         {
             return (compFunc(tmpValue, value) >= 0);
         }
-        return (tmpValue >= value);
+        return !(tmpValue < value);
     }
 
     bool operator<=(const T& value)
@@ -150,7 +151,7 @@ public:
         {
             return (compFunc(tmpValue, value) <= 0);
         }
-        return (tmpValue <= value);
+        return !(tmpValue > value);
     }
 
 private:
