@@ -2,7 +2,7 @@
 #include <map>
 
 #include "logger/logger_manager.h"
-#include "protocol_adapter.hpp"
+#include "protocol_adapter.h"
 
 namespace nac
 {
@@ -67,9 +67,9 @@ public:
 private:
     /**
      * @brief 响应数据包
-     * @param packet 数据包
+     * @param pkt 数据包
      */
-    void onProcessPacket(const std::shared_ptr<ProtocolAdapter::Packet>& packet);
+    void onProcessPacket(const std::shared_ptr<Packet>& pkt);
 
     /**
      * @brief 响应发送数据回调

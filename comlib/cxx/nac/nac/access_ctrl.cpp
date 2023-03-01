@@ -3,7 +3,7 @@
 #include <list>
 #include <map>
 
-#include "impl/protocol_adapter_custom.h"
+#include "protocol_adapter_custom.h"
 
 namespace nac
 {

@@ -4,7 +4,7 @@
 #include "fileparse/nlohmann/helper.hpp"
 #include "impl/connect_service.h"
 #include "impl/data_channel.h"
-#include "impl/protocol_adapter.hpp"
+#include "impl/protocol_adapter.h"
 #include "impl/session_manager.h"
 #include "threading/timer/steady_timer.h"
 

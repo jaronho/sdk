@@ -116,7 +116,7 @@ void SessionManager::setProtocolAdapter(const std::shared_ptr<ProtocolAdapter>& 
     if (adapter)
     {
         const std::weak_ptr<SessionManager> wpSelf = shared_from_this();
-        m_connections.emplace_back(adapter->sigRecvPacket.connect([wpSelf](const std::shared_ptr<ProtocolAdapter::Packet>& pkt) -> void {
+        m_connections.emplace_back(adapter->sigRecvPacket.connect([wpSelf](const std::shared_ptr<Packet>& pkt) -> void {
             const auto self = wpSelf.lock();
             if (self)
             {
@@ -134,21 +134,7 @@ void SessionManager::setMsgReceiver(const MsgReceiver& receiver)
 
 int64_t SessionManager::sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, int timeout, const ResponseCallback& callback)
 {
-    auto pkt = std::make_shared<ProtocolAdapter::Packet>();
-    pkt->bizCode = bizCode;
-    pkt->seqId = seqId > 0 ? seqId : algorithm::Snowflake::easyGenerate();
-    pkt->data = data;
-    /* 添加路由 */
-    if (timeout > 0)
-    {
-        auto session = std::make_shared<Session>(bizCode, pkt->seqId, shared_from_this(), callback);
-        const auto dataChannel = m_wpDataChannel.lock();
-        if (session->startTimer(timeout, dataChannel ? dataChannel->getPktExecutor().lock() : nullptr))
-        {
-            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
-            m_sessionMap.emplace(pkt->seqId, session);
-        }
-    }
+    seqId = seqId > 0 ? seqId : algorithm::Snowflake::easyGenerate();
     /* 协议解析层适配器 */
     const auto adapter = m_wpProtocolAdapter.lock();
     if (!adapter)
@@ -156,37 +142,48 @@ int64_t SessionManager::sendMsg(int32_t bizCode, int64_t seqId, const std::strin
         ERROR_LOG(m_logger, "消息发送错误: 协议适配器为空.");
         return -1;
     }
+    auto pkt = adapter->createPacket(bizCode, seqId, data);
+    /* 添加路由 */
+    if (timeout > 0)
+    {
+        auto session = std::make_shared<Session>(bizCode, seqId, shared_from_this(), callback);
+        const auto dataChannel = m_wpDataChannel.lock();
+        if (session->startTimer(timeout, dataChannel ? dataChannel->getPktExecutor().lock() : nullptr))
+        {
+            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
+            m_sessionMap.emplace(seqId, session);
+        }
+    }
     /* 发送数据包 */
-    TRACE_LOG(m_logger, "准备发送数据, bizCode[{}], seqId[{}], length[{}]", bizCode, pkt->seqId, pkt->size());
+    TRACE_LOG(m_logger, "准备发送数据, bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, pkt->size());
     const std::weak_ptr<SessionManager> wpSelf = shared_from_this();
-    bool ret =
-        adapter->sendPacket(pkt, [wpSelf, timeout, bizCode, seqId = pkt->seqId, callback](bool ok, size_t dataLength, size_t sentLength) {
-            const auto self = wpSelf.lock();
-            if (self)
+    bool ret = adapter->sendPacket(pkt, [wpSelf, timeout, bizCode, seqId, callback](bool ok, size_t dataLength, size_t sentLength) {
+        const auto self = wpSelf.lock();
+        if (self)
+        {
+            if (ok) /* 发送成功 */
             {
-                if (ok) /* 发送成功 */
+                if (timeout > 0) /* 需要应答, 需等待服务器应答或超时再处理 */
                 {
-                    if (timeout > 0) /* 需要应答, 需等待服务器应答或超时再处理 */
-                    {
-                        TRACE_LOG(self->m_logger, "数据发送成功(等待响应), bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, sentLength);
-                        /* 这里不处理 */
-                    }
-                    else /* 不需要应答, 直接通知成功 */
-                    {
-                        TRACE_LOG(self->m_logger, "数据发送成功(无需等待), bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, sentLength);
-                        self->onResponseCallback(true, bizCode, seqId, false, callback);
-                    }
+                    TRACE_LOG(self->m_logger, "数据发送成功(等待响应), bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, sentLength);
+                    /* 这里不处理 */
                 }
-                else /* 发送失败 */
+                else /* 不需要应答, 直接通知成功 */
                 {
-                    WARN_LOG(self->m_logger, "数据发送失败, bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, sentLength);
-                    self->onResponseCallback(false, bizCode, seqId, timeout > 0, callback);
+                    TRACE_LOG(self->m_logger, "数据发送成功(无需等待), bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, sentLength);
+                    self->onResponseCallback(true, bizCode, seqId, false, callback);
                 }
             }
-        });
+            else /* 发送失败 */
+            {
+                WARN_LOG(self->m_logger, "数据发送失败, bizCode[{}], seqId[{}], length[{}]", bizCode, seqId, sentLength);
+                self->onResponseCallback(false, bizCode, seqId, timeout > 0, callback);
+            }
+        }
+    });
     if (ret) /* 发送成功, 返回seqId */
     {
-        return pkt->seqId;
+        return seqId;
     }
     /* 发送失败 */
     return -1;
@@ -211,7 +208,7 @@ void SessionManager::clearSessionMap()
     sessionMap.clear();
 }
 
-void SessionManager::onProcessPacket(const std::shared_ptr<ProtocolAdapter::Packet>& pkt)
+void SessionManager::onProcessPacket(const std::shared_ptr<Packet>& pkt)
 {
     std::shared_ptr<Session> session;
     /* 路由判断 */
