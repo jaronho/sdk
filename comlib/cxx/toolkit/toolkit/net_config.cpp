@@ -19,13 +19,12 @@ void NetConfig::BridgeInfo::reset()
     ports.clear();
 }
 
-bool NetConfig::BridgeInfo::checkSamePorts(const std::vector<std::string>& portList) const
+bool NetConfig::BridgeInfo::diffPorts(const std::vector<std::string>& portList, std::vector<std::string>* newList,
+                                      std::vector<std::string>* notList) const
 {
-    if (portList.size() != ports.size())
-    {
-        return false;
-    }
-    /* 判断网络接口是否一致(不需要按顺序) */
+    std::vector<std::string> newPortList;
+    std::vector<std::string> notPortList;
+    /* 获取新增加的接口 */
     for (size_t i = 0; i < portList.size(); ++i)
     {
         bool existFlag = false;
@@ -39,9 +38,10 @@ bool NetConfig::BridgeInfo::checkSamePorts(const std::vector<std::string>& portL
         }
         if (!existFlag)
         {
-            return false;
+            newPortList.emplace_back(portList[i]);
         }
     }
+    /* 获取不存在的接口 */
     for (size_t i = 0; i < ports.size(); ++i)
     {
         bool existFlag = false;
@@ -55,15 +55,28 @@ bool NetConfig::BridgeInfo::checkSamePorts(const std::vector<std::string>& portL
         }
         if (!existFlag)
         {
-            return false;
+            notPortList.emplace_back(ports[i]);
         }
+    }
+    /* 差异判断 */
+    if (newList)
+    {
+        *newList = newPortList;
+    }
+    if (notList)
+    {
+        *notList = notPortList;
+    }
+    if (newPortList.empty() && notPortList.empty()) /* 无差异 */
+    {
+        return false;
     }
     return true;
 }
 
 bool NetConfig::BridgeInfo::operator==(const NetConfig::BridgeInfo& other) const
 {
-    if (other.name == name && checkSamePorts(other.ports))
+    if (other.name == name && !diffPorts(other.ports))
     {
         return true;
     }
@@ -72,7 +85,7 @@ bool NetConfig::BridgeInfo::operator==(const NetConfig::BridgeInfo& other) const
 
 bool NetConfig::BridgeInfo::operator!=(const NetConfig::BridgeInfo& other) const
 {
-    if (other.name != name || !checkSamePorts(other.ports))
+    if (other.name != name || diffPorts(other.ports))
     {
         return true;
     }
@@ -336,6 +349,7 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
     return false;
 #else
     bool existBridge = false;
+    std::vector<std::string> addList;
     /* step1: 判断当前网桥 */
     auto bridgeList = getBridgeInfos();
     for (size_t i = 0; i < bridgeList.size(); ++i)
@@ -343,15 +357,16 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
         const auto& bridgeInfo = bridgeList[i];
         if (0 == name.compare(bridgeInfo.name)) /* 存在网桥 */
         {
-            if (bridgeInfo.checkSamePorts(ports)) /* 网桥端口无变化 */
+            existBridge = true;
+            std::vector<std::string> delList;
+            if (!bridgeInfo.diffPorts(ports, &addList, &delList)) /* 网桥端口无差异 */
             {
                 return false;
             }
-            existBridge = true;
             /* 删除网络接口 */
-            for (size_t j = 0; j < bridgeInfo.ports.size(); ++j)
+            for (size_t j = 0; j < delList.size(); ++j)
             {
-                utility::System::runCmd("brctl delif " + bridgeInfo.name + " " + bridgeInfo.ports[j]);
+                utility::System::runCmd("brctl delif " + bridgeInfo.name + " " + delList[j]);
             }
         }
         else /* 其他网桥 */
@@ -373,10 +388,11 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
     if (!existBridge)
     {
         utility::System::runCmd("brctl addbr " + name);
+        addList = ports;
     }
-    for (size_t i = 0; i < ports.size(); ++i)
+    for (size_t i = 0; i < addList.size(); ++i)
     {
-        utility::System::runCmd("brctl addif " + name + " " + ports[i]);
+        utility::System::runCmd("brctl addif " + name + " " + addList[i]);
     }
     return true;
 #endif

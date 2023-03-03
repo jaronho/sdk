@@ -29,11 +29,14 @@ public:
         void reset();
 
         /**
-         * @brief 判断网络接口是否一致(顺序无关)
+         * @brief 判断网络接口是否有差异(顺序无关)
          * @param portList 网络接口列表
-         * @return true-一致, false-不一致
+         * @param newList [输出]网络接口列表中新增加的接口
+         * @param notList [输出]网络接口列表中不存在的接口
+         * @return true-有差异, false-无差异
          */
-        bool checkSamePorts(const std::vector<std::string>& portList) const;
+        bool diffPorts(const std::vector<std::string>& portList, std::vector<std::string>* newList = nullptr,
+                       std::vector<std::string>* notList = nullptr) const;
 
         bool operator==(const BridgeInfo& other) const;
 
