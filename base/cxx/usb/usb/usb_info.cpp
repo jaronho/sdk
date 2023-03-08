@@ -102,19 +102,23 @@ static std::map<std::string, std::string> queryUsbDevNodes(int busNum, int portN
                         auto outStr = runCommand(std::string("blkid ") + devNode);
                         std::transform(outStr.begin(), outStr.end(), outStr.begin(), toupper);
                         /* 例如: /dev/sdb /dev/sdb1 几乎只有 /dev/sdb1 可挂载 */
-                        static const std::string UUID_FLAG = " UUID=\"";
+                        static const std::string UUID_FLAG = " UUID=\""; /* 文件系统UUID */
+                        static const std::string PARTUUID_FLAG = " PARTUUID=\""; /* 分区UUID */
                         static const std::string TYPE_FLAG = " TYPE=\"";
-                        auto typePos = outStr.find(TYPE_FLAG);
-                        if (std::string::npos != outStr.find(UUID_FLAG) && std::string::npos != typePos)
+                        if (std::string::npos != outStr.find(UUID_FLAG) || std::string::npos != outStr.find(PARTUUID_FLAG))
                         {
                             std::string fstype;
-                            for (size_t i = typePos + TYPE_FLAG.size(); i < outStr.size(); ++i)
+                            auto typePos = outStr.find(TYPE_FLAG);
+                            if (std::string::npos != typePos)
                             {
-                                if ('"' == outStr[i])
+                                for (size_t i = typePos + TYPE_FLAG.size(); i < outStr.size(); ++i)
                                 {
-                                    break;
+                                    if ('"' == outStr[i])
+                                    {
+                                        break;
+                                    }
+                                    fstype.push_back(outStr[i]);
                                 }
-                                fstype.push_back(outStr[i]);
                             }
                             std::transform(fstype.begin(), fstype.end(), fstype.begin(), tolower);
                             devNodes.insert(std::make_pair(devNode, fstype));
