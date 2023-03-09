@@ -5,7 +5,17 @@
 namespace utility
 {
 /**
- * @brief 文件属性 
+ * @brief 磁盘属性
+ */
+typedef struct
+{
+    size_t blockSize = 0; /* 块大小(单位: 字节), Windows下称为簇, 簇大小=每簇扇区数*每扇区字节数 */
+    size_t totalBlock = 0; /* 磁盘总块数, 磁盘总大小=总块数*块大小 */
+    size_t freeBlock = 0; /* 磁盘空闲块数, 磁盘空闲大小=空闲块数*块大小 */
+} DiskAttribute;
+
+/**
+ * @brief 文件(目录)属性
  */
 typedef struct
 {
@@ -46,8 +56,16 @@ typedef struct
 } FileAttribute;
 
 /**
+ * @brief 获取磁盘属性
+ * @param name 磁盘目录名(挂载点), Linux平台如: "/mnt/udisk", Windows平台如: "D:\\"
+ * @param attr [输出]属性
+ * @return true-成功, false-失败
+ */
+bool getDiskAttribute(std::string name, DiskAttribute& attr);
+
+/**
  * @brief 获取文件(目录)属性
- * @param name 文件名
+ * @param name 文件(目录)名
  * @param attr [输出]属性
  * @return true-成功, false-失败
  */

@@ -6,6 +6,8 @@
 #include <Shlobj.h>
 #include <atlstr.h>
 #include <shellapi.h>
+#else
+#include <sys/statfs.h>
 #endif
 
 namespace utility
@@ -39,7 +41,7 @@ bool getFileAttribute(std::string name, FileAttribute& attr)
     {
         name.pop_back();
     }
-    std::string subName = name.substr(name.find_last_of("/\\") + 1, name.size());
+    auto subName = name.substr(name.find_last_of("/\\") + 1, name.size());
     if ("." == subName || ".." == subName)
     {
         return false;
@@ -85,6 +87,49 @@ bool getFileAttribute(std::string name, FileAttribute& attr)
     attr.isWritable = S_IWUSR & st.st_mode;
 #endif
     attr.isExecutable = S_IEXEC & st.st_mode;
+    return true;
+}
+
+bool getDiskAttribute(std::string name, DiskAttribute& attr)
+{
+    memset(&attr, 0, sizeof(DiskAttribute));
+    if (name.empty() || "." == name || ".." == name)
+    {
+        return false;
+    }
+    const char& lastChar = name[name.size() - 1];
+    if (name.size() > 1 && ('/' == lastChar || '\\' == lastChar))
+    {
+        name.pop_back();
+    }
+    auto subName = name.substr(name.find_last_of("/\\") + 1, name.size());
+    if ("." == subName || ".." == subName)
+    {
+        return false;
+    }
+#ifdef _WIN32
+    DWORD dwSectPerClust = 0, dwbytesPerSect = 0, dwFreeClusters = 0, dwTotalClusters = 0;
+    BOOL result = FALSE;
+#ifdef UNICODE
+    result = GetDiskFreeSpaceW(string2wstring(name).c_str(), &dwSectPerClust, &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
+#else
+    result = GetDiskFreeSpaceA(name.c_str(), &dwSectPerClust, &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
+#endif
+    if (result)
+    {
+        attr.blockSize = ((size_t)dwSectPerClust * dwbytesPerSect); /* 簇大小 = 每簇扇区数 * 每扇区字节数 */
+        attr.totalBlock = dwTotalClusters;
+        attr.freeBlock = dwFreeClusters;
+    }
+#else
+    struct statfs st;
+    if (statfs(name.c_str(), &st) >= 0)
+    {
+        attr.blockSize = st.f_bsize;
+        attr.totalBlock = st.f_blocks;
+        attr.freeBlock = st.f_bfree;
+    }
+#endif
     return true;
 }
 } // namespace utility
