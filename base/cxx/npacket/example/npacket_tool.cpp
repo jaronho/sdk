@@ -10,6 +10,7 @@
 #include "../npacket/proto/ftp.h"
 
 static npacket::Analyzer s_pktAnalyzer;
+static std::string s_proto;
 
 void printEthernet(const std::shared_ptr<npacket::EthernetIIHeader>& h)
 {
@@ -103,7 +104,10 @@ bool handleEthernetLayer(uint32_t totalLen, const std::shared_ptr<npacket::Proto
                          uint32_t payloadLen)
 {
     auto h = std::dynamic_pointer_cast<npacket::EthernetIIHeader>(header);
-    printEthernet(h);
+    if (s_proto.empty() || "ehternet" == s_proto)
+    {
+        printEthernet(h);
+    }
     return true;
 }
 
@@ -114,17 +118,38 @@ bool handleNetworkLayer(uint32_t totalLen, const std::shared_ptr<npacket::Protoc
     {
     case npacket::NetworkProtocol::IPv4: {
         auto h = std::dynamic_pointer_cast<npacket::Ipv4Header>(header);
-        printIPv4(h);
+        if (s_proto.empty() || "ipv4" == s_proto)
+        {
+            if (!s_proto.empty())
+            {
+                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent));
+            }
+            printIPv4(h);
+        }
     }
     break;
     case npacket::NetworkProtocol::ARP: {
         auto h = std::dynamic_pointer_cast<npacket::ArpHeader>(header);
-        printARP(h);
+        if (s_proto.empty() || "arp" == s_proto)
+        {
+            if (!s_proto.empty())
+            {
+                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent));
+            }
+            printARP(h);
+        }
     }
     break;
     case npacket::NetworkProtocol::IPv6: {
         auto h = std::dynamic_pointer_cast<npacket::Ipv6Header>(header);
-        printIPv6(h);
+        if (s_proto.empty() || "ipv4" == s_proto)
+        {
+            if (!s_proto.empty())
+            {
+                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent));
+            }
+            printIPv6(h);
+        }
     }
     break;
     }
@@ -138,22 +163,76 @@ bool handleTransportLayer(uint32_t totalLen, const std::shared_ptr<npacket::Prot
     {
     case npacket::TransportProtocol::TCP: {
         auto h = std::dynamic_pointer_cast<npacket::TcpHeader>(header);
-        printTCP(h);
+        if (s_proto.empty() || "tcp" == s_proto)
+        {
+            if (!s_proto.empty())
+            {
+                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+                switch (h->parent->getProtocol())
+                {
+                case npacket::NetworkProtocol::IPv4:
+                    printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(h->parent));
+                    break;
+                case npacket::NetworkProtocol::IPv6:
+                    printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(h->parent));
+                    break;
+                }
+            }
+            printTCP(h);
+        }
     }
     break;
     case npacket::TransportProtocol::UDP: {
         auto h = std::dynamic_pointer_cast<npacket::UdpHeader>(header);
-        printUDP(h);
+        if (s_proto.empty() || "udp" == s_proto)
+        {
+            if (!s_proto.empty())
+            {
+                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+                switch (h->parent->getProtocol())
+                {
+                case npacket::NetworkProtocol::IPv4:
+                    printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(h->parent));
+                    break;
+                case npacket::NetworkProtocol::IPv6:
+                    printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(h->parent));
+                    break;
+                }
+            }
+            printUDP(h);
+        }
     }
     break;
     case npacket::TransportProtocol::ICMP: {
         auto h = std::dynamic_pointer_cast<npacket::IcmpHeader>(header);
-        printICMP(h);
+        if (s_proto.empty() || "icmp" == s_proto)
+        {
+            if (!s_proto.empty())
+            {
+                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+                if (npacket::NetworkProtocol::IPv4 == h->parent->getProtocol())
+                {
+                    printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(h->parent));
+                }
+            }
+            printICMP(h);
+        }
     }
     break;
     case npacket::TransportProtocol::ICMPv6: {
         auto h = std::dynamic_pointer_cast<npacket::Icmpv6Header>(header);
-        printICMPv6(h);
+        if (s_proto.empty() || "icmpv6" == s_proto)
+        {
+            if (!s_proto.empty())
+            {
+                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+                if (npacket::NetworkProtocol::IPv6 == h->parent->getProtocol())
+                {
+                    printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(h->parent));
+                }
+            }
+            printICMPv6(h);
+        }
     }
     break;
     }
@@ -177,6 +256,7 @@ int main(int argc, char* argv[])
 #ifndef _WIN32
     printf("** [-Q 流向]           抓包流向, 值范围: [inout-所有(默认), in-接收, out-发送]                             **\n");
 #endif
+    printf("** [-p 协议]           指定只显示的协议, 例如: ehternet, ipv4, arp, ipv6, tcp, udp, icmp, icmpv6等         **\n");
     printf("**                                                                                                         **\n");
     printf("** 示例:                                                                                                   **\n");
     printf("**       npacket_tool.exe -i enp2s0 -Q out                                                                 **\n");
@@ -233,6 +313,16 @@ int main(int argc, char* argv[])
             }
         }
 #endif
+        else if (0 == key.compare("-p")) /* 协议 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                s_proto = argv[i];
+                std::transform(s_proto.begin(), s_proto.end(), s_proto.begin(), tolower);
+                ++i;
+            }
+        }
     }
     auto devList = npacket::PcapDevice::getAllDevices();
     if (showList)
