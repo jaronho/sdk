@@ -7,6 +7,27 @@
 namespace npacket
 {
 /**
+ * @brief 网络层协议
+ */
+enum NetworkProtocol
+{
+    IPv4 = 0x0800,
+    ARP = 0x0806,
+    IPv6 = 0x86dd,
+};
+
+/**
+ * @brief 传输层协议(注意: 为了方便把第2次解析得出的协议类型归属到这里, 而并不仅包括标准的传输层协议)
+ */
+enum TransportProtocol
+{
+    TCP = 0x06,
+    UDP = 0x11,
+    ICMP = 0x01, /* 标准上归属于网络层协议 */
+    ICMPv6 = 0x3a, /* 标准上归属于网络层协议 */
+};
+
+/**
  * @brief 协议头部(接口类)
  */
 class ProtocolHeader

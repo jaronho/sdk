@@ -102,6 +102,25 @@ bool PcapDevice::open(const std::string& name, int direction, int snapLen, int p
     return true;
 }
 
+bool PcapDevice::setFilter(const std::string& bpf, int optimize, int netmask)
+{
+    std::lock_guard<std::recursive_mutex> locker(m_mutex);
+    if (m_pcap)
+    {
+        return false;
+    }
+    struct bpf_program filter;
+    if (0 != pcap_compile(m_pcap, &filter, bpf.c_str(), optimize, netmask))
+    {
+        return false;
+    }
+    if (0 != pcap_setfilter(m_pcap, &filter))
+    {
+        return false;
+    }
+    return true;
+}
+
 void PcapDevice::setDataCallback(const std::function<void(const unsigned char* data, unsigned int dataLen)>& cb)
 {
     std::lock_guard<std::mutex> locker(m_mutexOnDataCallback);

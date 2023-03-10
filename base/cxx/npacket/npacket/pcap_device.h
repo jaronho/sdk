@@ -44,7 +44,7 @@ public:
     /**
      * @brief 打开
      * @param name 设备名, 例如: enp1s0
-     * @param direction 要捕获的数据流向, 0-所有, 1-接收, 2-发送
+     * @param direction 要捕获的数据流向, 0-所有, 1-接收, 2-发送, 注意: 不支持Windows平台
      * @param snapLen 快照长度, 要捕获的数据包长度, 正常设置为65536能够满足所有网络
      * @param promisc 混杂模式, 该模式下适配器将接受所有数据包，即便那不是发到该适配器的, 0-普通模式, 1-混杂模式
      * @param timeout 超时读取, <=0表示永不超时
@@ -52,6 +52,15 @@ public:
      * @return true-成功, false-失败
      */
     bool open(const std::string& name, int direction = 0, int snapLen = 0, int promisc = 1, int timeout = 0, int bufferSize = 0);
+
+    /**
+     * @brief 设置BPF过滤
+     * @param bpf 过滤表达式, 例如: "dst port 80"
+     * @param optimize 是否需要优化过滤表达式, 值: 0-不优化, 1-优化
+     * @param netmask 指定本地网络的网络掩码
+     * @return true-成功, false-失败
+     */
+    bool setFilter(const std::string& bpf, int optimize = 1, int netmask = 0);
 
     /**
      * @brief 设置数据回调

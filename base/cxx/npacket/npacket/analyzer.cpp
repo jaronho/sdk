@@ -1,11 +1,11 @@
-#include "packet_analyzer.h"
+#include "analyzer.h"
 
 #include "helper.h"
 
 namespace npacket
 {
-void PacketAnalyzer::setLayerCallback(const LAYER_CALLBACK& ethernetLayerCb, const LAYER_CALLBACK& networkLayerCb,
-                                      const LAYER_CALLBACK& transportLayerCb)
+void Analyzer::setLayerCallback(const LAYER_CALLBACK& ethernetLayerCb, const LAYER_CALLBACK& networkLayerCb,
+                                const LAYER_CALLBACK& transportLayerCb)
 {
     std::lock_guard<std::mutex> locker(m_mutexLayerCb);
     m_ethernetLayerCb = ethernetLayerCb;
@@ -13,7 +13,7 @@ void PacketAnalyzer::setLayerCallback(const LAYER_CALLBACK& ethernetLayerCb, con
     m_transportLayerCb = transportLayerCb;
 }
 
-bool PacketAnalyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
+bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
 {
     if (parser)
     {
@@ -31,7 +31,7 @@ bool PacketAnalyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& pa
     return false;
 }
 
-void PacketAnalyzer::removeProtocolParser(uint32_t protocol)
+void Analyzer::removeProtocolParser(uint32_t protocol)
 {
     std::lock_guard<std::mutex> locker(m_mutexParserList);
     for (auto iter = m_applicationParserList.begin(); m_applicationParserList.end() != iter; ++iter)
@@ -44,7 +44,7 @@ void PacketAnalyzer::removeProtocolParser(uint32_t protocol)
     }
 }
 
-int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
+int Analyzer::parse(const uint8_t* data, uint32_t dataLen)
 {
     if (!data || 0 == dataLen)
     {
@@ -129,8 +129,8 @@ int PacketAnalyzer::parse(const uint8_t* data, uint32_t dataLen)
     return 0;
 }
 
-std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
-                                                                    uint32_t& networkProtocol)
+std::shared_ptr<ProtocolHeader> Analyzer::handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
+                                                              uint32_t& networkProtocol)
 {
     if (data && dataLen >= EthernetIIHeader::getMinLen())
     {
@@ -146,8 +146,8 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleEthernetLayer(const uint8_
     return nullptr;
 }
 
-std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_t& networkProtocol, const uint8_t* data, uint32_t dataLen,
-                                                                   uint32_t& headerLen, uint32_t& transportProtocol)
+std::shared_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(const uint32_t& networkProtocol, const uint8_t* data, uint32_t dataLen,
+                                                             uint32_t& headerLen, uint32_t& transportProtocol)
 {
     if (data)
     {
@@ -207,8 +207,8 @@ std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleNetworkLayer(const uint32_
     return nullptr;
 }
 
-std::shared_ptr<ProtocolHeader> PacketAnalyzer::handleTransportLayer(const uint32_t& transportProtocol, const uint8_t* data,
-                                                                     uint32_t dataLen, uint32_t& headerLen)
+std::shared_ptr<ProtocolHeader> Analyzer::handleTransportLayer(const uint32_t& transportProtocol, const uint8_t* data, uint32_t dataLen,
+                                                               uint32_t& headerLen)
 {
     if (data)
     {

@@ -4,10 +4,10 @@
 #include <sys/timeb.h>
 #include <thread>
 
-#include "../npacket/packet_analyzer.h"
+#include "../npacket/analyzer.h"
 #include "../npacket/pcap_device.h"
 
-static npacket::PacketAnalyzer s_inPktAnalyzer; /* 接收包分析器 */
+static npacket::Analyzer s_inPktAnalyzer; /* 接收包分析器 */
 static npacket::PcapDevice s_inPacpDevice; /* 接收抓包设备 */
 static std::atomic<uint64_t> s_inPkt{0}; /* 接收包总数 */
 static std::atomic<uint64_t> s_inByte{0}; /* 接收字节总数 */
@@ -16,7 +16,7 @@ static std::atomic<uint64_t> s_inTcpByte{0}; /* 接收TCP字节总数 */
 static std::atomic<uint64_t> s_inUdpPkt{0}; /* 接收UDP包总数 */
 static std::atomic<uint64_t> s_inUdpByte{0}; /* 接收UDP字节总数 */
 
-static npacket::PacketAnalyzer s_outPktAnalyzer; /* 发送包分析器 */
+static npacket::Analyzer s_outPktAnalyzer; /* 发送包分析器 */
 static npacket::PcapDevice s_outPacpDevice; /* 发送抓包设备 */
 static std::atomic<uint64_t> s_outPkt{0}; /* 发送包总数 */
 static std::atomic<uint64_t> s_outByte{0}; /* 发送字节总数 */
@@ -241,11 +241,16 @@ int main(int argc, char* argv[])
                                          uint32_t payloadLen) { return handleInTransportLayer(totalLen, header, payload, payloadLen); });
     if (!s_inPacpDevice.open(name, 1, 0, 0))
     {
+#ifdef _WIN32
+        printf("设备打开失败\n");
+#else
         printf("接收包设备打开失败\n");
+#endif
         return 0;
     }
     s_inPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) { s_inPktAnalyzer.parse(data, dataLen); });
     s_inPacpDevice.startCapture();
+#ifndef _WIN32
     /* 发送包 */
     s_outPktAnalyzer.setLayerCallback([&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
                                           uint32_t payloadLen) { return handleOutEthernetLayer(totalLen, header, payload, payloadLen); },
@@ -259,9 +264,12 @@ int main(int argc, char* argv[])
     }
     s_outPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) { s_outPktAnalyzer.parse(data, dataLen); });
     s_outPacpDevice.startCapture();
+#endif
     /* 创建抓包线程 */
     std::thread([&] { onInThread(); }).detach();
+#ifndef _WIN32
     std::thread([&] { onOutThread(); }).detach();
+#endif
     /* 主循环 */
     printf("\n");
     std::chrono::steady_clock::time_point lastSecondTimePoint{}; /* 上一秒时间点 */
@@ -280,6 +288,12 @@ int main(int argc, char* argv[])
             lastOutByte += deltaOutByte;
             /* 打印网络流量状态 */
             printf("[%s]\n", getDateTime().c_str());
+#ifdef _WIN32
+            printf("    速率: %zu B/s, 包总数: %zu, 字节总数: %zu, TCP包总数: %zu, TCP字节总数: %zu, UDP包总数: %zu, "
+                   "UDP字节总数: %zu\n",
+                   deltaInByte, s_inPkt.load(), s_inByte.load(), s_inTcpPkt.load(), s_inTcpByte.load(), s_inUdpPkt.load(),
+                   s_inUdpByte.load());
+#else
             printf("    接收 ↓ 速率: %zu B/s, 包总数: %zu, 字节总数: %zu, TCP包总数: %zu, TCP字节总数: %zu, UDP包总数: %zu, "
                    "UDP字节总数: %zu\n",
                    deltaInByte, s_inPkt.load(), s_inByte.load(), s_inTcpPkt.load(), s_inTcpByte.load(), s_inUdpPkt.load(),
@@ -288,6 +302,7 @@ int main(int argc, char* argv[])
                    "UDP字节总数: %zu\n",
                    deltaOutByte, s_outPkt.load(), s_outByte.load(), s_outTcpPkt.load(), s_outTcpByte.load(), s_outUdpPkt.load(),
                    s_outUdpByte.load());
+#endif
         }
     }
     return 0;

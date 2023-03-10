@@ -3,8 +3,8 @@
 #include <mutex>
 #include <vector>
 
-#include "parser.h"
 #include "protocol.h"
+#include "protocol_parser.h"
 
 namespace npacket
 {
@@ -20,9 +20,9 @@ using LAYER_CALLBACK =
     std::function<bool(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)>;
 
 /**
- * @brief 包分析器
+ * @brief 分析器
  */
-class PacketAnalyzer
+class Analyzer
 {
 public:
     /**
@@ -48,7 +48,7 @@ public:
     void removeProtocolParser(uint32_t protocol);
 
     /**
-     * @brief 分析数据
+     * @brief 解析数据
      * @param data 数据
      * @param dataLen 数据长度
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败

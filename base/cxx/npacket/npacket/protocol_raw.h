@@ -3,30 +3,7 @@
 
 namespace npacket
 {
-/**
- * 注意: 网络协议头部中的数据根据网络字节序以大端存储, 因此在使用时都需要转为主机字节序
- */
-
-/**
- * @brief 网络层协议
- */
-enum NetworkProtocol
-{
-    IPv4 = 0x0800,
-    ARP = 0x0806,
-    IPv6 = 0x86dd,
-};
-
-/**
- * @brief 传输层协议(注意: 为了方便把第2次解析得出的协议类型归属到这里, 而并不仅包括标准的传输层协议)
- */
-enum TransportProtocol
-{
-    TCP = 0x06,
-    UDP = 0x11,
-    ICMP = 0x01, /* 标准上归属于网络层协议 */
-    ICMPv6 = 0x3a, /* 标准上归属于网络层协议 */
-};
+/* 注意: 网络协议头部中的数据根据网络字节序以大端存储, 因此在使用时都需要转为主机字节序 */
 
 /**
  * @brief 以太网II协议头部
@@ -35,7 +12,7 @@ struct RawEthernetIIHeader
 {
     uint8_t dstMac[6]; /* 目标MAC地址 */
     uint8_t srcMac[6]; /* 源MAC地址 */
-    uint8_t type[2]; /* 下一层协议类型 */
+    uint8_t type[2]; /* 下一层协议类型: 0x0800(IPv4), 0x0806(ARP), 0x86dd(IPv6) */
 };
 
 /**
@@ -49,7 +26,7 @@ struct RawIpv4Header
     uint8_t identification[2]; /* 标识 */
     uint8_t flags_offset[2]; /* 标志(3位)+分段偏移数(13位) */
     uint8_t ttl; /* 报文生存时间 */
-    uint8_t protocol; /* 下一层协议类型 */
+    uint8_t protocol; /* 下一层协议类型: 0x01(ICMP), 0x06(TCP), 0x11(UDP), 0x3a(ICMPv6) */
     uint8_t checksum[2]; /* 头部校验和 */
     uint8_t srcAddr[4]; /* 源IP地址 */
     uint8_t dstAddr[4]; /* 目的IP地址 */
