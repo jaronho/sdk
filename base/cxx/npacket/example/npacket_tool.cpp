@@ -239,6 +239,33 @@ bool handleTransportLayer(uint32_t totalLen, const std::shared_ptr<npacket::Prot
     return true;
 }
 
+void handleApplicationFtp(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& transportHeader, const std::string& cmd,
+                          const std::string& param)
+{
+    if (s_proto.empty() || "ftp" == s_proto)
+    {
+        if (!s_proto.empty())
+        {
+            printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(transportHeader->parent->parent));
+            if (npacket::NetworkProtocol::IPv4 == transportHeader->parent->getProtocol())
+            {
+                printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(transportHeader->parent));
+            }
+            else if (npacket::NetworkProtocol::IPv6 == transportHeader->parent->getProtocol())
+            {
+                printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(transportHeader->parent));
+            }
+            printTCP(std::dynamic_pointer_cast<npacket::TcpHeader>(transportHeader));
+        }
+        printf("            ----- FTP -----\n");
+        printf("            cmd: %s\n", cmd.c_str());
+        if (!param.empty())
+        {
+            printf("            param: %s\n", param.c_str());
+        }
+    }
+}
+
 int main(int argc, char* argv[])
 {
     printf("*************************************************************************************************************\n");
@@ -364,7 +391,9 @@ int main(int argc, char* argv[])
                                        uint32_t payloadLen) { return handleNetworkLayer(totalLen, header, payload, payloadLen); },
                                    [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
                                        uint32_t payloadLen) { return handleTransportLayer(totalLen, header, payload, payloadLen); });
-    s_pktAnalyzer.addProtocolParser(std::make_shared<npacket::FtpParser>());
+    auto ftpParser = std::make_shared<npacket::FtpParser>();
+    ftpParser->setRequestCallback(handleApplicationFtp);
+    s_pktAnalyzer.addProtocolParser(ftpParser);
     std::shared_ptr<npacket::PcapDevice> dev;
     for (size_t i = 0; i < devList.size(); ++i)
     {
