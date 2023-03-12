@@ -48,13 +48,12 @@ public:
     /**
      * @brief 解析
      * @param totalLen 数据包总长度
-     * @param transportHeader 传输层头部
+     * @param header 传输层头部
      * @param payload 层负载
      * @param payloadLen 层负载长度
      * @return true-成功, false-失败
      */
-    virtual bool parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& transportHeader, const uint8_t* payload,
-                       uint32_t payloadLen) = 0;
+    virtual bool parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen) = 0;
 
 private:
     std::mutex m_mutexChildren;

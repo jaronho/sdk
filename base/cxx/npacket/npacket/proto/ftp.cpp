@@ -5,31 +5,39 @@
 namespace npacket
 {
 /**
- * @brief 命令列表, key-命令, value-是否需要参数(暂时不用)
+ * @brief 命令列表(https://www.rfc-editor.org/rfc/rfc5797), key-命令, value-是否需要参数(暂时不用)
  */
 const std::unordered_map<std::string, int> CMD_MAP = {
     {"ABOR", 0}, /* 放弃 */
     {"ACCT", 1}, /* 账户 */
     {"ADAT", 1}, /* 认证/安全数据 */
-    {"ALGS", 1}, /* FTP64 ALG状态 */
     {"ALLO", 1}, /* 分配 */
-    {"APPE", 1}, /* 追加 */
+    {"APPE", 1}, /* 追加(创建) */
     {"AUTH", 1}, /* 认证/安全机制 */
     {"AUTH+", 1}, /* 认证/安全机制 */
+    {"CCC", 1}, /* 清除命令通道 */
     {"CDUP", 0}, /* 回到上层目录 */
     {"CONF", 1}, /* 受保护的机密命令 */
-    {"CWD", 1}, /* 进入目录 */
+    {"CWD", 1}, /* 改变工作目录 */
     {"DELE", 1}, /* 删除文件 */
     {"ENC", 1}, /* 受保护的私有命令 */
+    {"EPRT", 1}, /* 扩展端口 */
+    {"EPSV", 1}, /* 扩展被动模式 */
     {"FEAT", 0}, /* 功能协商 */
     {"HELP", 1}, /* 帮助 */
+    {"LANG", 1}, /* 语言(适用于服务器消息) */
     {"LIST", 1}, /* 列表 */
+    {"LPRT", 1}, /* 数据端口{FOOBAR} */
+    {"LPSV", 1}, /* 被动模式{FOOBAR} */
     {"MDTM", 1}, /* 文件修改时间 */
     {"MIC", 1}, /* 完全受保护的命令 */
     {"MKD", 1}, /* 创建目录 */
+    {"MLSD", 0}, /* 列出目录(用于机器) */
+    {"MLST", 0}, /* 列表单个对象 */
     {"MODE", 1}, /* 传输模式 */
     {"NLST", 1}, /* 名字列表 */
     {"NOOP", 0}, /* 空操作 */
+    {"OPTS", 1}, /* 选项 */
     {"PASS", 1}, /* 密码 */
     {"PASV", 0}, /* 被动模式 */
     {"PBSZ", 1}, /* 保护缓冲区大小 */
@@ -55,23 +63,68 @@ const std::unordered_map<std::string, int> CMD_MAP = {
     {"STRU", 1}, /* 文件结构 */
     {"SYST", 0}, /* 系统 */
     {"TYPE", 1}, /* 表示类型 */
-    {"USER", 1} /* 账户 */
+    {"USER", 1}, /* 用户名 */
+    {"XCUP", 0}, /* 回到上层目录 */
+    {"XCWD", 1}, /* 改变工作目录 */
+    {"XMKD", 1}, /* 创建目录 */
+    {"XPWD", 1}, /* 打印工作目录 */
+    {"XRMD", 1}, /* 删除目录 */
+    {"-N/A-", 0} /* 虚拟文件存储 */
 };
 
 /**
  * @brief 代码列表, key-代码, value-参数(暂时不用)
  */
-const std::unordered_map<std::string, int> CODE_MAP = {};
+const std::unordered_map<std::string, int> CODE_MAP = {
+    {"110", 0}, /* 重新启动标记回复, 格式必须是"MARK yyyy = mmmm", yyyy是用户进程数据流标记, mmmm是服务器的等效标记(注意"="前后空格) */
+    {"120", 0}, /* 服务在N分钟内准备就绪 */
+    {"125", 0}, /* 数据连接已打开, 开始传送数据 */
+    {"150", 0}, /* 文件状态正常, 正在打开数据连接 */
+    {"200", 0}, /* 命令执行成功 */
+    {"202", 0}, /* 命令未执行, 本站点多余 */
+    {"211", 0}, /* 系统状态或系统帮助回复 */
+    {"212", 0}, /* 目录状态 */
+    {"213", 0}, /* 文件状态 */
+    {"214", 0}, /* 帮助信息, 关于如何使用服务器或特定非标准命令的含义, 此回复仅对人类用户有用 */
+    {"215", 0}, /* NAME系统类型, 其中NAME是Assigned Numbers文档中列表中的正式系统名称 */
+    {"220", 0}, /* 为新用户准备好服务 */
+    {"221", 0}, /* 服务关闭控制连接, 注销(如果合适的话) */
+    {"225", 0}, /* 数据连接打开, 没有正在进行的传输 */
+    {"226", 0}, /* 正在关闭数据连接, 请求的文件操作成功(例如: 文件传输或文件中止) */
+    {"227", 0}, /* 进入被动模式(IP地址, IP端口) */
+    {"230", 0}, /* 用户已登录, 继续 */
+    {"250", 0}, /* 请求文件操作完毕 */
+    {"257", 0}, /* 创建"PATHNAME"路径名 */
+    {"331", 0}, /* 用户名正确，需要密码 */
+    {"332", 0}, /* 需要帐号登录 */
+    {"350", 0}, /* 请求的文件操作等待进一步信息 */
+    {"421", 0}, /* 服务不可用, 关闭控制连接, 如果服务知道它必须关闭, 这可能是对任何命令的应答 */
+    {"425", 0}, /* 无法打开数据连接 */
+    {"426", 0}, /* 连接关闭, 传输中止 */
+    {"450", 0}, /* 请求的文件操作未执行, 文件不可用(例如: 文件忙) */
+    {"451", 0}, /* 请求的操作中止: 处理中发生本地错误 */
+    {"452", 0}, /* 请求的操作未被执行: 系统中存储空间不足 */
+    {"500", 0}, /* 语法错误, 命令无法识别, 这可能包括命令行过长等错误 */
+    {"501", 0}, /* 参数或参数中的语法错误 */
+    {"502", 0}, /* 命令未执行 */
+    {"503", 0}, /* 命令顺序错误 */
+    {"504", 0}, /* 无效命令参数, 此参数下的命令未实现  */
+    {"530", 0}, /* 未登录: 账号或密码错误 */
+    {"532", 0}, /* 存储文件需要帐号 */
+    {"550", 0}, /* 请求的操作未被执行, 文件不可用(例如: 找不到文件, 无法访问) */
+    {"551", 0}, /* 请求的操作中止: 页类型未知 */
+    {"552", 0}, /* 请求的文件操作中止, 超出存储分配(用于当前目录或数据集) */
+    {"553", 0} /* 请求的操作未被执行, 文件名不合法 */
+};
 
 uint32_t FtpParser::getProtocol() const
 {
     return ApplicationProtocol::FTP;
 }
 
-bool FtpParser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& transportHeader, const uint8_t* payload,
-                      uint32_t payloadLen)
+bool FtpParser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
-    if (TransportProtocol::TCP != transportHeader->getProtocol())
+    if (TransportProtocol::TCP != header->getProtocol())
     {
         return false;
     }
@@ -83,29 +136,33 @@ bool FtpParser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& 
     {
         return false;
     }
-    if (parseRequest(totalLen, transportHeader, payload, payloadLen))
+    if (parseRequest(totalLen, header, payload, payloadLen))
     {
         return true;
     }
-    else if (parseResponse(totalLen, transportHeader, payload, payloadLen))
+    else if (parseResponse(totalLen, header, payload, payloadLen))
     {
         return true;
     }
     return false;
 }
 
-void FtpParser::setRequestCallback(const REQUEST_CALLBACK& callback)
+void FtpParser::setRequestCallback(const PKT_CALLBACK& reqCb)
 {
-    m_requestCb = callback;
+    m_requestCb = reqCb;
 }
 
-bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& transportHeader, const uint8_t* payload,
-                             uint32_t payloadLen)
+void FtpParser::setResponseCallback(const PKT_CALLBACK& respCb)
+{
+    m_responseCb = respCb;
+}
+
+bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     auto ch0 = payload[0], ch1 = payload[1], ch2 = payload[2];
     if ((ch0 >= 'A' && ch0 <= 'Z') && (ch1 >= 'A' && ch1 <= 'Z') && (ch2 >= 'A' && ch2 <= 'Z')) /* 疑似请求包 */
     {
-        std::string cmd, param;
+        std::string cmd, arg;
         bool cmdFlag = true;
         /* 解析命令和参数 */
         for (uint32_t i = 0; i < payloadLen - 2; ++i)
@@ -123,7 +180,7 @@ bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHe
                 }
                 else
                 {
-                    param.push_back(ch);
+                    arg.push_back(ch);
                 }
             }
             else
@@ -134,7 +191,7 @@ bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHe
                 }
                 else
                 {
-                    param.push_back(ch);
+                    arg.push_back(ch);
                 }
             }
         }
@@ -144,15 +201,14 @@ bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHe
         }
         if (m_requestCb)
         {
-            m_requestCb(totalLen, transportHeader, cmd, param);
+            m_requestCb(totalLen, header, cmd, arg);
         }
         return true;
     }
     return false;
 }
 
-bool FtpParser::parseResponse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& transportHeader, const uint8_t* payload,
-                              uint32_t payloadLen)
+bool FtpParser::parseResponse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     if (payloadLen < 7)
     {
@@ -162,6 +218,48 @@ bool FtpParser::parseResponse(uint32_t totalLen, const std::shared_ptr<ProtocolH
     if ((ch0 >= '1' && ch0 <= '5') && (ch1 >= '0' && ch1 <= '5') && (ch2 >= '0' && ch2 <= '7')
         && (' ' == ch3 || '-' == ch3)) /* 疑似应答包 */
     {
+        std::string code, arg;
+        bool codeFlag = true;
+        /* 解析代码和参数 */
+        for (uint32_t i = 0; i < payloadLen - 2; ++i)
+        {
+            auto ch = payload[i];
+            if (('\r' == ch && '\n' != payload[i + 1]) || ('\n' == ch))
+            {
+                return false;
+            }
+            if (' ' == ch || '-' == ch)
+            {
+                if (codeFlag)
+                {
+                    codeFlag = false;
+                }
+                else
+                {
+                    arg.push_back(ch);
+                }
+            }
+            else
+            {
+                if (codeFlag)
+                {
+                    code.push_back(ch);
+                }
+                else
+                {
+                    arg.push_back(ch);
+                }
+            }
+        }
+        if (CODE_MAP.end() == CODE_MAP.find(code)) /* 未匹配到代码 */
+        {
+            return false;
+        }
+        if (m_responseCb)
+        {
+            m_responseCb(totalLen, header, code, arg);
+        }
+        return true;
     }
     return false;
 }
