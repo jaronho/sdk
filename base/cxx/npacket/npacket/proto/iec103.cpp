@@ -74,7 +74,6 @@ bool Iec103Parser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader
         return true;
     }
     return false;
-    return false;
 }
 
 bool Iec103Parser::parseFixedFrame(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload,
