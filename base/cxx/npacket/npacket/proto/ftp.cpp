@@ -124,7 +124,7 @@ uint32_t FtpParser::getProtocol() const
 
 bool FtpParser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
-    if (TransportProtocol::TCP != header->getProtocol())
+    if (header && TransportProtocol::TCP != header->getProtocol())
     {
         return false;
     }

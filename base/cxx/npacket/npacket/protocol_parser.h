@@ -12,6 +12,7 @@ namespace npacket
 enum ApplicationProtocol
 {
     FTP,
+    IEC103,
 };
 
 /**
