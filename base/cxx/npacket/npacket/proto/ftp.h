@@ -21,6 +21,7 @@ public:
     using PKT_CALLBACK = std::function<void(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const std::string& flag,
                                             const std::string& arg)>;
 
+public:
     /**
      * @brief 获取应用层协议
      * @return 协议类型(ApplicationProtocol)
@@ -39,15 +40,15 @@ public:
 
     /**
      * @brief 设置请求包回调
-     * @param reqCb 回调
+     * @param callback 回调
      */
-    void setRequestCallback(const PKT_CALLBACK& reqCb);
+    void setRequestCallback(const PKT_CALLBACK& callback);
 
     /**
      * @brief 设置响应包回调
-     * @param respCb 回调
+     * @param callback 回调
      */
-    void setResponseCallback(const PKT_CALLBACK& respCb);
+    void setResponseCallback(const PKT_CALLBACK& callback);
 
 private:
     /**

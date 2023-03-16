@@ -147,14 +147,14 @@ bool FtpParser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& 
     return false;
 }
 
-void FtpParser::setRequestCallback(const PKT_CALLBACK& reqCb)
+void FtpParser::setRequestCallback(const PKT_CALLBACK& callback)
 {
-    m_requestCb = reqCb;
+    m_requestCb = callback;
 }
 
-void FtpParser::setResponseCallback(const PKT_CALLBACK& respCb)
+void FtpParser::setResponseCallback(const PKT_CALLBACK& callback)
 {
-    m_responseCb = respCb;
+    m_responseCb = callback;
 }
 
 bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
