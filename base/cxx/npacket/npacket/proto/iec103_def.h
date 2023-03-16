@@ -558,8 +558,8 @@ class Asdu26 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用1 */
-    uint8_t __ = 0; /* 未用2 */
+    uint8_t _ = 0; /* 未用 */
+    uint8_t __ = 0; /* 未用 */
     TOV tov = 0; /* 扰动值的类型 */
     FAN fan = 0; /* 故障序号 */
     NOF nof = 0; /* 电网故障序号 */
@@ -573,8 +573,8 @@ class Asdu27 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用1 */
-    uint8_t __ = 0; /* 未用2 */
+    uint8_t _ = 0; /* 未用 */
+    uint8_t __ = 0; /* 未用 */
     TOV tov = 0; /* 扰动值的类型 */
     FAN fan = 0; /* 故障序号 */
     ACC acc = 0; /* 实际通道 */
@@ -587,9 +587,9 @@ class Asdu28 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用1 */
-    uint8_t __ = 0; /* 未用2 */
-    uint8_t ___ = 0; /* 未用3 */
+    uint8_t _ = 0; /* 未用 */
+    uint8_t __ = 0; /* 未用 */
+    uint8_t ___ = 0; /* 未用 */
     FAN fan = 0; /* 故障序号 */
 };
 
@@ -615,8 +615,8 @@ class Asdu30 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用1 */
-    uint8_t __ = 0; /* 未用2 */
+    uint8_t _ = 0; /* 未用 */
+    uint8_t __ = 0; /* 未用 */
     TOV tov = 0; /* 扰动值类型 */
     FAN fan = 0; /* 故障序号 */
     ACC acc = 0; /* 实际通道 */
