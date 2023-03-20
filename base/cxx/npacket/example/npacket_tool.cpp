@@ -239,8 +239,8 @@ bool handleTransportLayer(uint32_t totalLen, const std::shared_ptr<npacket::Prot
     return true;
 }
 
-void handleApplicationFtp(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const std::string& flag,
-                          const std::string& param)
+void handleApplicationFtpCtrl(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const std::string& flag,
+                              const std::string& param)
 {
     if (s_proto.empty() || "ftp" == s_proto)
     {
@@ -262,6 +262,40 @@ void handleApplicationFtp(uint32_t totalLen, const std::shared_ptr<npacket::Prot
         if (!param.empty())
         {
             printf("            param: %s\n", param.c_str());
+        }
+    }
+}
+
+void handleApplicationFtpData(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, uint32_t mode, uint32_t flag,
+                              const uint8_t* data, uint32_t dataLen)
+{
+    if (s_proto.empty() || "ftp-data" == s_proto)
+    {
+        if (!s_proto.empty())
+        {
+            printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(header->parent->parent));
+            if (npacket::NetworkProtocol::IPv4 == header->parent->getProtocol())
+            {
+                printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(header->parent));
+            }
+            else if (npacket::NetworkProtocol::IPv6 == header->parent->getProtocol())
+            {
+                printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(header->parent));
+            }
+            printTCP(std::dynamic_pointer_cast<npacket::TcpHeader>(header));
+        }
+        if (1 == flag)
+        {
+            printf("            ----- FTP-DATA [%s][start] -----\n", 1 == mode ? "PORT" : "PASV");
+        }
+        else if (2 == flag)
+        {
+            printf("            ----- FTP-DATA [%s][%d] -----\n", 1 == mode ? "PORT" : "PASV", dataLen);
+            printf("%s\n", std::string(data, data + dataLen).c_str());
+        }
+        else if (3 == flag)
+        {
+            printf("            ----- FTP-DATA [%s][finish] -----\n", 1 == mode ? "PORT" : "PASV");
         }
     }
 }
@@ -392,8 +426,9 @@ int main(int argc, char* argv[])
                                    [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
                                        uint32_t payloadLen) { return handleTransportLayer(totalLen, header, payload, payloadLen); });
     auto ftpParser = std::make_shared<npacket::FtpParser>();
-    ftpParser->setRequestCallback(handleApplicationFtp);
-    ftpParser->setResponseCallback(handleApplicationFtp);
+    ftpParser->setRequestCallback(handleApplicationFtpCtrl);
+    ftpParser->setResponseCallback(handleApplicationFtpCtrl);
+    ftpParser->setDataCallback(handleApplicationFtpData);
     s_pktAnalyzer.addProtocolParser(ftpParser);
     std::shared_ptr<npacket::PcapDevice> dev;
     for (size_t i = 0; i < devList.size(); ++i)

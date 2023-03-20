@@ -109,19 +109,16 @@ int Analyzer::parse(const uint8_t* data, uint32_t dataLen)
                 }
             }
             /* 解析应用层 */
-            if (remainLen > 0)
+            std::vector<std::shared_ptr<ProtocolParser>> applicationParserList;
             {
-                std::vector<std::shared_ptr<ProtocolParser>> applicationParserList;
+                std::lock_guard<std::mutex> locker(m_mutexParserList);
+                applicationParserList = m_applicationParserList;
+            }
+            for (auto parser : applicationParserList)
+            {
+                if (parser && parser->parse(dataLen, transportHeader, data + offset, remainLen))
                 {
-                    std::lock_guard<std::mutex> locker(m_mutexParserList);
-                    applicationParserList = m_applicationParserList;
-                }
-                for (auto parser : applicationParserList)
-                {
-                    if (parser && parser->parse(dataLen, transportHeader, data + offset, remainLen))
-                    {
-                        break;
-                    }
+                    break;
                 }
             }
         }

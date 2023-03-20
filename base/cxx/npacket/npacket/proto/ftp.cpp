@@ -117,6 +117,11 @@ const std::unordered_map<std::string, int> CODE_MAP = {
     {"553", 0} /* 请求的操作未被执行, 文件名不合法 */
 };
 
+FtpParser::FtpParser(uint32_t dcTimeout)
+{
+    m_dataChannelTimeout = dcTimeout > 0 ? dcTimeout : m_dataChannelTimeout;
+}
+
 uint32_t FtpParser::getProtocol() const
 {
     return ApplicationProtocol::FTP;
@@ -124,37 +129,42 @@ uint32_t FtpParser::getProtocol() const
 
 bool FtpParser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
+    recyleDataChannel();
     if (header && TransportProtocol::TCP != header->getProtocol())
     {
         return false;
     }
-    if (payloadLen < 5) /* FTP包最小5个字节 */
-    {
-        return false;
-    }
-    if ('\r' != payload[payloadLen - 2] || '\n' != payload[payloadLen - 1]) /* FTP包都以'\r\n'结尾 */
-    {
-        return false;
-    }
-    if (parseRequest(totalLen, header, payload, payloadLen))
+    if (parseData(totalLen, header, payload, payloadLen))
     {
         return true;
     }
-    else if (parseResponse(totalLen, header, payload, payloadLen))
+    if (payloadLen >= 5 && '\r' == payload[payloadLen - 2] && '\n' == payload[payloadLen - 1]) /* FTP控制包最小5个字节且都以'\r\n'结尾 */
     {
-        return true;
+        if (parseRequest(totalLen, header, payload, payloadLen))
+        {
+            return true;
+        }
+        else if (parseResponse(totalLen, header, payload, payloadLen))
+        {
+            return true;
+        }
     }
     return false;
 }
 
-void FtpParser::setRequestCallback(const PKT_CALLBACK& callback)
+void FtpParser::setRequestCallback(const CTRL_PKT_CALLBACK& callback)
 {
     m_requestCb = callback;
 }
 
-void FtpParser::setResponseCallback(const PKT_CALLBACK& callback)
+void FtpParser::setResponseCallback(const CTRL_PKT_CALLBACK& callback)
 {
     m_responseCb = callback;
+}
+
+void FtpParser::setDataCallback(const DATA_PKT_CALLBACK& callback)
+{
+    m_dataCb = callback;
 }
 
 bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
@@ -202,6 +212,10 @@ bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHe
         if (m_requestCb)
         {
             m_requestCb(totalLen, header, cmd, arg);
+        }
+        if ("PORT" == cmd) /* 被主动模式, 解析客户端数据端口(服务端数据端口=服务端控制端口-1) */
+        {
+            return parseDataPort(1, arg);
         }
         return true;
     }
@@ -259,8 +273,132 @@ bool FtpParser::parseResponse(uint32_t totalLen, const std::shared_ptr<ProtocolH
         {
             m_responseCb(totalLen, header, code, arg);
         }
+        if ("227" == code) /* 被动模式, 解析服务端数据端口 */
+        {
+            auto bp = arg.find("(");
+            auto ep = arg.rfind(")");
+            if (std::string::npos != bp && std::string::npos != ep && bp < ep)
+            {
+                return parseDataPort(2, arg.substr(bp + 1, ep - 1 - bp));
+            }
+        }
         return true;
     }
     return false;
+}
+
+bool FtpParser::parseDataPort(int mode, const std::string& ip_port)
+{
+    std::string ip;
+    uint32_t port = 0;
+    std::string value;
+    int index = 0;
+    for (size_t i = 0; i < ip_port.size(); ++i)
+    {
+        const auto& ch = ip_port[i];
+        if ((ch >= '0' && ch <= '9') || (',' == ch && i > 0 && i < ip_port.size() - 1))
+        {
+            if (',' != ch)
+            {
+                value.push_back(ch);
+                if (i < ip_port.size() - 1)
+                {
+                    continue;
+                }
+            }
+            if (value.size() > 0)
+            {
+                auto num = std::atoi(value.c_str());
+                if (num >= 0 && num <= 255)
+                {
+                    ++index;
+                    if (index <= 4)
+                    {
+                        ip += ((1 == index) ? value : ("." + value));
+                    }
+                    else if (index <= 6)
+                    {
+                        port += ((5 == index) ? (num * 256) : num);
+                    }
+                    value.clear();
+                    continue;
+                }
+            }
+        }
+        return false;
+    }
+    if (6 != index)
+    {
+        return false;
+    }
+    /* 暂存数据通道信息 */
+    auto key = ip + ":" + std::to_string(port);
+    if (m_dataChannelList.end() == m_dataChannelList.find(key))
+    {
+        auto dci = std::make_shared<DataChannelInfo>();
+        dci->mode = mode;
+        dci->ip = ip;
+        dci->port = port;
+        dci->tp = std::chrono::steady_clock::now();
+        dci->status = 0;
+        m_dataChannelList.insert(std::make_pair(key, dci));
+    }
+    return true;
+}
+
+void FtpParser::recyleDataChannel()
+{
+    auto ntp = std::chrono::steady_clock::now();
+    for (auto iter = m_dataChannelList.begin(); m_dataChannelList.end() != iter;)
+    {
+        if (std::chrono::duration_cast<std::chrono::seconds>(ntp - iter->second->tp).count() >= m_dataChannelTimeout) /* 超时则回收 */
+        {
+            m_dataChannelList.erase(iter++);
+        }
+        else
+        {
+            iter++;
+        }
+    }
+}
+
+bool FtpParser::parseData(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+{
+    auto ipv4Header = std::dynamic_pointer_cast<Ipv4Header>(header->parent);
+    auto tcpHeader = std::dynamic_pointer_cast<TcpHeader>(header);
+    auto srcKey = ipv4Header->srcAddrStr() + ":" + std::to_string(tcpHeader->srcPort);
+    auto iter = m_dataChannelList.find(srcKey);
+    if (m_dataChannelList.end() == iter)
+    {
+        auto dstKey = ipv4Header->dstAddrStr() + ":" + std::to_string(tcpHeader->dstPort);
+        iter = m_dataChannelList.find(dstKey);
+        if (m_dataChannelList.end() == iter)
+        {
+            return false;
+        }
+    }
+    auto mode = iter->second->mode;
+    if (0 == payloadLen)
+    {
+        if (1 == tcpHeader->flagAck && 0 == iter->second->status) /* 数据通道建立连接 */
+        {
+            iter->second->tp = std::chrono::steady_clock::now();
+            iter->second->status = 1;
+            m_dataCb(totalLen, header, mode, 1, payload, payloadLen);
+        }
+        else if (1 == tcpHeader->flagFin && 1 == iter->second->status) /* 数据通道断开连接 */
+        {
+            m_dataChannelList.erase(iter);
+            m_dataCb(totalLen, header, mode, 3, payload, payloadLen);
+        }
+    }
+    else if (1 == iter->second->status) /* 数据通道已连接 */
+    {
+        iter->second->tp = std::chrono::steady_clock::now();
+        if (m_dataCb)
+        {
+            m_dataCb(totalLen, header, mode, 2, payload, payloadLen);
+        }
+    }
 }
 } // namespace npacket
