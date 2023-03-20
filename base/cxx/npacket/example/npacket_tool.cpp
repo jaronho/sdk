@@ -297,6 +297,10 @@ void handleApplicationFtpData(uint32_t totalLen, const std::shared_ptr<npacket::
         {
             printf("            ----- FTP-DATA [%s][finish] -----\n", 1 == mode ? "PORT" : "PASV");
         }
+        else if (4 == flag)
+        {
+            printf("            ----- FTP-DATA [%s][timeout] -----\n", 1 == mode ? "PORT" : "PASV");
+        }
     }
 }
 

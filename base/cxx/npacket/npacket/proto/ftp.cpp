@@ -353,7 +353,12 @@ void FtpParser::recyleDataChannel()
     {
         if (std::chrono::duration_cast<std::chrono::seconds>(ntp - iter->second->tp).count() >= m_dataChannelTimeout) /* 超时则回收 */
         {
+            auto mode = iter->second->mode;
             m_dataChannelList.erase(iter++);
+            if (m_dataCb)
+            {
+                m_dataCb(0, nullptr, mode, 4, nullptr, 0);
+            }
         }
         else
         {
@@ -384,12 +389,18 @@ bool FtpParser::parseData(uint32_t totalLen, const std::shared_ptr<ProtocolHeade
         {
             iter->second->tp = std::chrono::steady_clock::now();
             iter->second->status = 1;
-            m_dataCb(totalLen, header, mode, 1, payload, payloadLen);
+            if (m_dataCb)
+            {
+                m_dataCb(totalLen, header, mode, 1, nullptr, 0);
+            }
         }
         else if (1 == tcpHeader->flagFin && 1 == iter->second->status) /* 数据通道断开连接 */
         {
             m_dataChannelList.erase(iter);
-            m_dataCb(totalLen, header, mode, 3, payload, payloadLen);
+            if (m_dataCb)
+            {
+                m_dataCb(totalLen, header, mode, 3, nullptr, 0);
+            }
         }
     }
     else if (1 == iter->second->status) /* 数据通道已连接 */

@@ -28,7 +28,7 @@ public:
      * @param totalLen 数据包总长度
      * @param header 传输层头部
      * @param mode 端口模式, 1-主动模式, 2-被动模式
-     * @param flag 包标识, 1-准备传输数据(此时无数据), 2-数据包, 3-数据传输结束(此时无数据)
+     * @param flag 包标识, 1-准备传输数据(此时无数据), 2-数据包, 3-数据传输结束(此时无数据), 4-异常(超时)结束(此时无头部且无数据)
      * @param data 数据内容
      * @param dataLen 数据长度
      */
