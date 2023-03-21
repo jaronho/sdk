@@ -362,19 +362,19 @@ void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp,
         auto dci = std::make_shared<DataConnectInfo>();
         if (DataMode::active == mode) /* 主动模式 */
         {
-            dci->ctrlInfo.clientIp = ipv4Header->srcAddrStr();
-            dci->ctrlInfo.clientPort = tcpHeader->srcPort;
-            dci->ctrlInfo.serverIp = ipv4Header->dstAddrStr();
-            dci->ctrlInfo.serverPort = tcpHeader->dstPort;
+            dci->ctrl.clientIp = ipv4Header->srcAddrStr();
+            dci->ctrl.clientPort = tcpHeader->srcPort;
+            dci->ctrl.serverIp = ipv4Header->dstAddrStr();
+            dci->ctrl.serverPort = tcpHeader->dstPort;
         }
         else /* 被动模式 */
         {
-            dci->ctrlInfo.clientIp = ipv4Header->dstAddrStr();
-            dci->ctrlInfo.clientPort = tcpHeader->dstPort;
-            dci->ctrlInfo.serverIp = ipv4Header->srcAddrStr();
-            dci->ctrlInfo.serverPort = tcpHeader->srcPort;
+            dci->ctrl.clientIp = ipv4Header->dstAddrStr();
+            dci->ctrl.clientPort = tcpHeader->dstPort;
+            dci->ctrl.serverIp = ipv4Header->srcAddrStr();
+            dci->ctrl.serverPort = tcpHeader->srcPort;
         }
-        dci->mode = mode;
+        dci->ctrl.mode = mode;
         dci->ip = ip;
         dci->port = port;
         dci->status = DataConnectStatus::ready;
@@ -389,12 +389,11 @@ void FtpParser::recyleDataConnect(const std::chrono::steady_clock::time_point& n
     {
         if (std::chrono::duration_cast<std::chrono::seconds>(ntp - iter->second->tp).count() >= m_dataConnectTimeout) /* 超时则回收 */
         {
-            auto ctrlInfo = iter->second->ctrlInfo;
-            auto mode = iter->second->mode;
+            auto ctrl = iter->second->ctrl;
             m_dataConnectList.erase(iter++);
             if (m_dataCb)
             {
-                m_dataCb(ntp, 0, nullptr, ctrlInfo, mode, DataFlag::abnormal, nullptr, 0);
+                m_dataCb(ntp, 0, nullptr, ctrl, DataFlag::abnormal, nullptr, 0);
             }
         }
         else
@@ -420,8 +419,7 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
             return false;
         }
     }
-    auto ctrlInfo = iter->second->ctrlInfo;
-    auto mode = iter->second->mode;
+    auto ctrl = iter->second->ctrl;
     if (0 == payloadLen)
     {
         if (1 == tcpHeader->flagAck && DataConnectStatus::ready == iter->second->status) /* 数据连接建立 */
@@ -430,7 +428,7 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
             iter->second->status = DataConnectStatus::created;
             if (m_dataCb)
             {
-                m_dataCb(ntp, totalLen, header, ctrlInfo, mode, DataFlag::ready, nullptr, 0);
+                m_dataCb(ntp, totalLen, header, ctrl, DataFlag::ready, nullptr, 0);
             }
         }
         else if (1 == tcpHeader->flagFin && DataConnectStatus::created == iter->second->status) /* 数据连接断开 */
@@ -438,7 +436,7 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
             m_dataConnectList.erase(iter);
             if (m_dataCb)
             {
-                m_dataCb(ntp, totalLen, header, ctrlInfo, mode, DataFlag::finish, nullptr, 0);
+                m_dataCb(ntp, totalLen, header, ctrl, DataFlag::finish, nullptr, 0);
             }
         }
     }
@@ -447,7 +445,7 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
         iter->second->tp = std::chrono::steady_clock::now();
         if (m_dataCb)
         {
-            m_dataCb(ntp, totalLen, header, ctrlInfo, mode, DataFlag::body, payload, payloadLen);
+            m_dataCb(ntp, totalLen, header, ctrl, DataFlag::body, payload, payloadLen);
         }
     }
 }

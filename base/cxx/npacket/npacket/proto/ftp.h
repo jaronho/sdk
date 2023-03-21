@@ -13,6 +13,15 @@ class FtpParser : public ProtocolParser
 {
 public:
     /**
+     * @brief 数据连接模式
+     */
+    enum class DataMode
+    {
+        active = 0, /* 主动模式 */
+        passive /* 被动模式 */
+    };
+
+    /**
      * @brief 控制连接信息
      */
     struct CtrlInfo
@@ -21,15 +30,7 @@ public:
         uint32_t clientPort = 0; /* 客户端控制端口 */
         std::string serverIp; /* 服务端IP */
         uint32_t serverPort = 0; /* 服务端控制端口 */
-    };
-
-    /**
-     * @brief 数据连接模式
-     */
-    enum class DataMode
-    {
-        active = 0, /* 主动模式 */
-        passive /* 被动模式 */
+        DataMode mode = DataMode::active; /* 数据连接模式 */
     };
 
     /**
@@ -60,15 +61,14 @@ public:
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
-     * @param ctrlInfo 控制连接信息
-     * @param mode 数据连接模式
+     * @param ctrl 控制连接信息
      * @param flag 数据包标识
      * @param data 数据内容
      * @param dataLen 数据长度
      */
     using DATA_PKT_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                                 const std::shared_ptr<ProtocolHeader>& header, const CtrlInfo& ctrlInfo,
-                                                 const DataMode& mode, const DataFlag& flag, const uint8_t* data, uint32_t dataLen)>;
+                                                 const std::shared_ptr<ProtocolHeader>& header, const CtrlInfo& ctrl,
+                                                 const DataFlag& flag, const uint8_t* data, uint32_t dataLen)>;
 
 public:
     /**
@@ -166,8 +166,7 @@ private:
      */
     struct DataConnectInfo
     {
-        CtrlInfo ctrlInfo; /* 控制连接信息 */
-        DataMode mode = DataMode::active; /* 数据连接模式 */
+        CtrlInfo ctrl; /* 控制连接信息 */
         std::string ip; /* 主动模式下: 客户端的IP, 被动模式下: 服务端的IP */
         uint32_t port = 0; /* 主动模式下: 客户端的端口, 被动模式下: 服务端的端口 */
         DataConnectStatus status = DataConnectStatus::ready; /* 连接状态 */
