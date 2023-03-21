@@ -50,6 +50,7 @@ int Analyzer::parse(const uint8_t* data, uint32_t dataLen)
     {
         return -1;
     }
+    auto ntp = std::chrono::steady_clock::now();
     uint32_t remainLen = dataLen, offset = 0, headerLen = 0, networkProtocol = 0, transportProtocol = 0;
     LAYER_CALLBACK ehternetLayerCb = nullptr, networkLayerCb = nullptr, transportLayerCb = nullptr;
     {
@@ -67,7 +68,7 @@ int Analyzer::parse(const uint8_t* data, uint32_t dataLen)
     offset += headerLen;
     if (ehternetLayerCb)
     {
-        if (!ehternetLayerCb(dataLen, ethernetHeader, data + offset, remainLen))
+        if (!ehternetLayerCb(ntp, dataLen, ethernetHeader, data + offset, remainLen))
         {
             return 0;
         }
@@ -85,7 +86,7 @@ int Analyzer::parse(const uint8_t* data, uint32_t dataLen)
         offset += headerLen;
         if (networkLayerCb)
         {
-            if (!networkLayerCb(dataLen, networkHeader, data + offset, remainLen))
+            if (!networkLayerCb(ntp, dataLen, networkHeader, data + offset, remainLen))
             {
                 return 0;
             }
@@ -103,7 +104,7 @@ int Analyzer::parse(const uint8_t* data, uint32_t dataLen)
             offset += headerLen;
             if (transportLayerCb)
             {
-                if (!transportLayerCb(dataLen, transportHeader, data + offset, remainLen))
+                if (!transportLayerCb(ntp, dataLen, transportHeader, data + offset, remainLen))
                 {
                     return 0;
                 }
@@ -116,7 +117,7 @@ int Analyzer::parse(const uint8_t* data, uint32_t dataLen)
             }
             for (auto parser : applicationParserList)
             {
-                if (parser && parser->parse(dataLen, transportHeader, data + offset, remainLen))
+                if (parser && parser->parse(ntp, dataLen, transportHeader, data + offset, remainLen))
                 {
                     break;
                 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <mutex>
 #include <vector>
 
@@ -48,13 +49,15 @@ public:
 
     /**
      * @brief 解析
+     * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
      * @param payload 层负载
      * @param payloadLen 层负载长度
      * @return true-成功, false-失败
      */
-    virtual bool parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen) = 0;
+    virtual bool parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+                       const uint8_t* payload, uint32_t payloadLen) = 0;
 
 private:
     std::mutex m_mutexChildren;

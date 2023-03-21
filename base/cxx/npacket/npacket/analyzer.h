@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <functional>
 #include <mutex>
 #include <vector>
@@ -10,14 +11,15 @@ namespace npacket
 {
 /**
  * @brief 层数据回调
+ * @param ntp 数据包接收时间点
  * @param totalLen 数据包总长度
  * @param header 层头部
  * @param payload 层负载
  * @param payloadLen 层负载长度
  * @return true-继续处理下一层, false-停止后续处理
  */
-using LAYER_CALLBACK =
-    std::function<bool(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)>;
+using LAYER_CALLBACK = std::function<bool(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                          const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)>;
 
 /**
  * @brief 分析器

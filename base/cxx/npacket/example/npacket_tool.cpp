@@ -100,8 +100,8 @@ void printICMPv6(const std::shared_ptr<npacket::Icmpv6Header>& h)
     printf("        type: %d, code: %d, checksum: 0x%04x\n", h->type, h->code, h->checksum);
 }
 
-bool handleEthernetLayer(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                         uint32_t payloadLen)
+bool handleEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                         const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     auto h = std::dynamic_pointer_cast<npacket::EthernetIIHeader>(header);
     if (s_proto.empty() || "ehternet" == s_proto)
@@ -111,8 +111,8 @@ bool handleEthernetLayer(uint32_t totalLen, const std::shared_ptr<npacket::Proto
     return true;
 }
 
-bool handleNetworkLayer(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                        uint32_t payloadLen)
+bool handleNetworkLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                        const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::NetworkProtocol)header->getProtocol())
     {
@@ -156,8 +156,8 @@ bool handleNetworkLayer(uint32_t totalLen, const std::shared_ptr<npacket::Protoc
     return true;
 }
 
-bool handleTransportLayer(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                          uint32_t payloadLen)
+bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                          const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
     {
@@ -239,8 +239,8 @@ bool handleTransportLayer(uint32_t totalLen, const std::shared_ptr<npacket::Prot
     return true;
 }
 
-void handleApplicationFtpCtrl(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const std::string& flag,
-                              const std::string& param)
+void handleApplicationFtpCtrl(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                              const std::shared_ptr<npacket::ProtocolHeader>& header, const std::string& flag, const std::string& param)
 {
     if (s_proto.empty() || "ftp" == s_proto)
     {
@@ -266,8 +266,10 @@ void handleApplicationFtpCtrl(uint32_t totalLen, const std::shared_ptr<npacket::
     }
 }
 
-void handleApplicationFtpData(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, uint32_t mode, uint32_t flag,
-                              const uint8_t* data, uint32_t dataLen)
+void handleApplicationFtpData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                              const std::shared_ptr<npacket::ProtocolHeader>& header, const npacket::FtpParser::CtrlInfo& ctrlInfo,
+                              const npacket::FtpParser::DataMode& mode, const npacket::FtpParser::DataFlag& flag, const uint8_t* data,
+                              uint32_t dataLen)
 {
     if (s_proto.empty() || "ftp-data" == s_proto)
     {
@@ -284,22 +286,27 @@ void handleApplicationFtpData(uint32_t totalLen, const std::shared_ptr<npacket::
             }
             printTCP(std::dynamic_pointer_cast<npacket::TcpHeader>(header));
         }
-        if (1 == flag)
+        std::string modeDesc = npacket::FtpParser::DataMode::active == mode ? "PORT" : "PASV";
+        if (npacket::FtpParser::DataFlag::ready == flag)
         {
-            printf("            ----- FTP-DATA [%s][start] -----\n", 1 == mode ? "PORT" : "PASV");
+            printf("            ----- FTP-DATA [%s][start][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(),
+                   ctrlInfo.clientIp.c_str(), ctrlInfo.clientPort, ctrlInfo.serverIp.c_str(), ctrlInfo.serverPort);
         }
-        else if (2 == flag)
+        else if (npacket::FtpParser::DataFlag::body == flag)
         {
-            printf("            ----- FTP-DATA [%s][%d] -----\n", 1 == mode ? "PORT" : "PASV", dataLen);
+            printf("            ----- FTP-DATA [%s][%d][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(), dataLen,
+                   ctrlInfo.clientIp.c_str(), ctrlInfo.clientPort, ctrlInfo.serverIp.c_str(), ctrlInfo.serverPort);
             printf("%s\n", std::string(data, data + dataLen).c_str());
         }
-        else if (3 == flag)
+        else if (npacket::FtpParser::DataFlag::finish == flag)
         {
-            printf("            ----- FTP-DATA [%s][finish] -----\n", 1 == mode ? "PORT" : "PASV");
+            printf("            ----- FTP-DATA [%s][finish][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(),
+                   ctrlInfo.clientIp.c_str(), ctrlInfo.clientPort, ctrlInfo.serverIp.c_str(), ctrlInfo.serverPort);
         }
-        else if (4 == flag)
+        else if (npacket::FtpParser::DataFlag::abnormal == flag)
         {
-            printf("            ----- FTP-DATA [%s][timeout] -----\n", 1 == mode ? "PORT" : "PASV");
+            printf("            ----- FTP-DATA [%s][timeout][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(),
+                   ctrlInfo.clientIp.c_str(), ctrlInfo.clientPort, ctrlInfo.serverIp.c_str(), ctrlInfo.serverPort);
         }
     }
 }
@@ -423,12 +430,7 @@ int main(int argc, char* argv[])
         printf("  IPv4: %s\n", ip.c_str());
     }
     printf("包流向: %s\n", 1 == direction ? "in(接收)" : (2 == direction ? "out(发送)" : "inout(所有)"));
-    s_pktAnalyzer.setLayerCallback([&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                                       uint32_t payloadLen) { return handleEthernetLayer(totalLen, header, payload, payloadLen); },
-                                   [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                                       uint32_t payloadLen) { return handleNetworkLayer(totalLen, header, payload, payloadLen); },
-                                   [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                                       uint32_t payloadLen) { return handleTransportLayer(totalLen, header, payload, payloadLen); });
+    s_pktAnalyzer.setLayerCallback(handleEthernetLayer, handleNetworkLayer, handleTransportLayer);
     auto ftpParser = std::make_shared<npacket::FtpParser>();
     ftpParser->setRequestCallback(handleApplicationFtpCtrl);
     ftpParser->setResponseCallback(handleApplicationFtpCtrl);

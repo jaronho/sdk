@@ -1,5 +1,4 @@
 #pragma once
-#include <chrono>
 #include <functional>
 #include <unordered_map>
 
@@ -14,31 +13,67 @@ class FtpParser : public ProtocolParser
 {
 public:
     /**
+     * @brief 控制连接信息
+     */
+    struct CtrlInfo
+    {
+        std::string clientIp; /* 客户端IP */
+        uint32_t clientPort = 0; /* 客户端控制端口 */
+        std::string serverIp; /* 服务端IP */
+        uint32_t serverPort = 0; /* 服务端控制端口 */
+    };
+
+    /**
+     * @brief 数据连接模式
+     */
+    enum class DataMode
+    {
+        active = 0, /* 主动模式 */
+        passive /* 被动模式 */
+    };
+
+    /**
+     * @brief 数据包标识
+     */
+    enum class DataFlag
+    {
+        ready = 0, /* 准备传输数据(此时无数据 */
+        body, /* 数据包内容 */
+        finish, /* 数据传输结束(此时无数据) */
+        abnormal /* 异常(超时)结束(此时无头部且无数据) */
+    };
+
+    /**
      * @brief 控制包回调
+     * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
      * @param flag 命令/代码
      * @param arg 参数
      */
-    using CTRL_PKT_CALLBACK = std::function<void(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const std::string& flag,
-                                                 const std::string& arg)>;
+    using CTRL_PKT_CALLBACK =
+        std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                           const std::shared_ptr<ProtocolHeader>& header, const std::string& flag, const std::string& arg)>;
 
     /**
      * @brief 数据包回调
+     * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
-     * @param mode 端口模式, 1-主动模式, 2-被动模式
-     * @param flag 包标识, 1-准备传输数据(此时无数据), 2-数据包, 3-数据传输结束(此时无数据), 4-异常(超时)结束(此时无头部且无数据)
+     * @param ctrlInfo 控制连接信息
+     * @param mode 数据连接模式
+     * @param flag 数据包标识
      * @param data 数据内容
      * @param dataLen 数据长度
      */
-    using DATA_PKT_CALLBACK = std::function<void(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, uint32_t mode,
-                                                 uint32_t flag, const uint8_t* data, uint32_t dataLen)>;
+    using DATA_PKT_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                                 const std::shared_ptr<ProtocolHeader>& header, const CtrlInfo& ctrlInfo,
+                                                 const DataMode& mode, const DataFlag& flag, const uint8_t* data, uint32_t dataLen)>;
 
 public:
     /**
      * @brief 构造函数
-     * @param dcTimeout 数据通道超时时间(单位: 秒)
+     * @param dcTimeout 数据连接超时时间(单位: 秒)
      */
     FtpParser(uint32_t dcTimeout = 15);
 
@@ -50,13 +85,15 @@ public:
 
     /**
      * @brief 解析
+     * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
      * @param payload 层负载
      * @param payloadLen 层负载长度
      * @return true-成功, false-失败
      */
-    bool parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen) override;
+    bool parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+               const uint8_t* payload, uint32_t payloadLen) override;
 
     /**
      * @brief 设置请求包回调
@@ -80,48 +117,68 @@ private:
     /**
      * @brief 解析请求包
      */
-    bool parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen);
+    bool parseRequest(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+                      const uint8_t* payload, uint32_t payloadLen);
 
     /**
      * @brief 解析响应包
      */
-    bool parseResponse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen);
+    bool parseResponse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+                       const uint8_t* payload, uint32_t payloadLen);
 
     /**
      * @brief 解析数据端口
-     * @param mode 模式, 1-主动模式, 2-被动模式
      * @param ip_port 格式如: "192,168,31,82,195,80" 得出IP为: 192.168.31.82, 端口=195*256 + 80 = 50000
+     * @param ip [输出]IP
+     * @param port [输出]端口
      */
-    bool parseDataPort(int mode, const std::string& ip_port);
+    bool parseDataPort(const std::string& ip_port, std::string& ip, uint32_t& port);
 
     /**
-     * @brief 回收数据通道
+     * @brief 处理数据端口
      */
-    void recyleDataChannel();
+    void handleDataPort(const std::chrono::steady_clock::time_point& ntp, const std::shared_ptr<ProtocolHeader>& header,
+                        const DataMode& mode, const std::string& ip, uint32_t port);
+
+    /**
+     * @brief 回收数据连接
+     */
+    void recyleDataConnect(const std::chrono::steady_clock::time_point& ntp);
 
     /**
      * @brief 解析数据包
      */
-    bool parseData(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen);
+    bool parseData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+                   const uint8_t* payload, uint32_t payloadLen);
 
 private:
     /**
-     * @brief 数据通道信息
+     * @brief 数据连接状态
      */
-    struct DataChannelInfo
+    enum class DataConnectStatus
     {
-        uint32_t mode = 1; /* 端口模式: 1-主动模式, 2-被动模式 */
+        ready = 0, /* 就绪(协商完毕, 等待建立) */
+        created /* 已建立 */
+    };
+
+    /**
+     * @brief 数据连接信息
+     */
+    struct DataConnectInfo
+    {
+        CtrlInfo ctrlInfo; /* 控制连接信息 */
+        DataMode mode = DataMode::active; /* 数据连接模式 */
         std::string ip; /* 主动模式下: 客户端的IP, 被动模式下: 服务端的IP */
         uint32_t port = 0; /* 主动模式下: 客户端的端口, 被动模式下: 服务端的端口 */
-        std::chrono::steady_clock::time_point tp{}; /* 数据通道更新时间点 */
-        uint32_t status = 0; /* 0-协商完毕(等待建立), 1-通道建立 */
+        DataConnectStatus status = DataConnectStatus::ready; /* 连接状态 */
+        std::chrono::steady_clock::time_point tp{}; /* 更新时间点 */
     };
 
 private:
     CTRL_PKT_CALLBACK m_requestCb = nullptr; /* 请求包回调 */
     CTRL_PKT_CALLBACK m_responseCb = nullptr; /* 响应包回调 */
     DATA_PKT_CALLBACK m_dataCb = nullptr; /* 数据包回调 */
-    std::unordered_map<std::string, std::shared_ptr<DataChannelInfo>> m_dataChannelList; /* 数据通道信息列表, key: IP+:+端口 */
-    uint32_t m_dataChannelTimeout = 15; /* 数据通道超时时间(单位: 秒) */
+    std::unordered_map<std::string, std::shared_ptr<DataConnectInfo>> m_dataConnectList; /* 数据连接列表, key: IP+:+端口 */
+    uint32_t m_dataConnectTimeout = 15; /* 数据连接超时时间(单位: 秒) */
 };
 } // namespace npacket

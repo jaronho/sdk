@@ -119,7 +119,7 @@ const std::unordered_map<std::string, int> CODE_MAP = {
 
 FtpParser::FtpParser(uint32_t dcTimeout)
 {
-    m_dataChannelTimeout = dcTimeout > 0 ? dcTimeout : m_dataChannelTimeout;
+    m_dataConnectTimeout = dcTimeout > 0 ? dcTimeout : m_dataConnectTimeout;
 }
 
 uint32_t FtpParser::getProtocol() const
@@ -127,24 +127,25 @@ uint32_t FtpParser::getProtocol() const
     return ApplicationProtocol::FTP;
 }
 
-bool FtpParser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool FtpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+                      const uint8_t* payload, uint32_t payloadLen)
 {
-    recyleDataChannel();
+    recyleDataConnect(ntp);
     if (header && TransportProtocol::TCP != header->getProtocol())
     {
         return false;
     }
-    if (parseData(totalLen, header, payload, payloadLen))
+    if (parseData(ntp, totalLen, header, payload, payloadLen))
     {
         return true;
     }
     if (payloadLen >= 5 && '\r' == payload[payloadLen - 2] && '\n' == payload[payloadLen - 1]) /* FTP控制包最小5个字节且都以'\r\n'结尾 */
     {
-        if (parseRequest(totalLen, header, payload, payloadLen))
+        if (parseRequest(ntp, totalLen, header, payload, payloadLen))
         {
             return true;
         }
-        else if (parseResponse(totalLen, header, payload, payloadLen))
+        else if (parseResponse(ntp, totalLen, header, payload, payloadLen))
         {
             return true;
         }
@@ -167,7 +168,8 @@ void FtpParser::setDataCallback(const DATA_PKT_CALLBACK& callback)
     m_dataCb = callback;
 }
 
-bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool FtpParser::parseRequest(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                             const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     auto ch0 = payload[0], ch1 = payload[1], ch2 = payload[2];
     if ((ch0 >= 'A' && ch0 <= 'Z') && (ch1 >= 'A' && ch1 <= 'Z') && (ch2 >= 'A' && ch2 <= 'Z')) /* 疑似请求包 */
@@ -211,18 +213,26 @@ bool FtpParser::parseRequest(uint32_t totalLen, const std::shared_ptr<ProtocolHe
         }
         if (m_requestCb)
         {
-            m_requestCb(totalLen, header, cmd, arg);
+            m_requestCb(ntp, totalLen, header, cmd, arg);
         }
-        if ("PORT" == cmd) /* 被主动模式, 解析客户端数据端口(服务端数据端口=服务端控制端口-1) */
+        if ("PORT" == cmd) /* 主动模式, 解析客户端数据端口(服务端数据端口=服务端控制端口-1) */
         {
-            return parseDataPort(1, arg);
+            std::string ip;
+            uint32_t port;
+            if (parseDataPort(arg, ip, port))
+            {
+                handleDataPort(ntp, header, DataMode::active, ip, port);
+                return true;
+            }
+            return false;
         }
         return true;
     }
     return false;
 }
 
-bool FtpParser::parseResponse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool FtpParser::parseResponse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                              const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     if (payloadLen < 7)
     {
@@ -271,7 +281,7 @@ bool FtpParser::parseResponse(uint32_t totalLen, const std::shared_ptr<ProtocolH
         }
         if (m_responseCb)
         {
-            m_responseCb(totalLen, header, code, arg);
+            m_responseCb(ntp, totalLen, header, code, arg);
         }
         if ("227" == code) /* 被动模式, 解析服务端数据端口 */
         {
@@ -279,18 +289,25 @@ bool FtpParser::parseResponse(uint32_t totalLen, const std::shared_ptr<ProtocolH
             auto ep = arg.rfind(")");
             if (std::string::npos != bp && std::string::npos != ep && bp < ep)
             {
-                return parseDataPort(2, arg.substr(bp + 1, ep - 1 - bp));
+                std::string ip;
+                uint32_t port;
+                if (parseDataPort(arg.substr(bp + 1, ep - 1 - bp), ip, port))
+                {
+                    handleDataPort(ntp, header, DataMode::passive, ip, port);
+                    return true;
+                }
             }
+            return false;
         }
         return true;
     }
     return false;
 }
 
-bool FtpParser::parseDataPort(int mode, const std::string& ip_port)
+bool FtpParser::parseDataPort(const std::string& ip_port, std::string& ip, uint32_t& port)
 {
-    std::string ip;
-    uint32_t port = 0;
+    ip.clear();
+    port = 0;
     std::string value;
     int index = 0;
     for (size_t i = 0; i < ip_port.size(); ++i)
@@ -331,33 +348,53 @@ bool FtpParser::parseDataPort(int mode, const std::string& ip_port)
     {
         return false;
     }
-    /* 暂存数据通道信息 */
-    auto key = ip + ":" + std::to_string(port);
-    if (m_dataChannelList.end() == m_dataChannelList.find(key))
-    {
-        auto dci = std::make_shared<DataChannelInfo>();
-        dci->mode = mode;
-        dci->ip = ip;
-        dci->port = port;
-        dci->tp = std::chrono::steady_clock::now();
-        dci->status = 0;
-        m_dataChannelList.insert(std::make_pair(key, dci));
-    }
     return true;
 }
 
-void FtpParser::recyleDataChannel()
+void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp, const std::shared_ptr<ProtocolHeader>& header,
+                               const DataMode& mode, const std::string& ip, uint32_t port)
 {
-    auto ntp = std::chrono::steady_clock::now();
-    for (auto iter = m_dataChannelList.begin(); m_dataChannelList.end() != iter;)
+    auto key = ip + ":" + std::to_string(port);
+    if (m_dataConnectList.end() == m_dataConnectList.find(key))
     {
-        if (std::chrono::duration_cast<std::chrono::seconds>(ntp - iter->second->tp).count() >= m_dataChannelTimeout) /* 超时则回收 */
+        auto ipv4Header = std::dynamic_pointer_cast<Ipv4Header>(header->parent);
+        auto tcpHeader = std::dynamic_pointer_cast<TcpHeader>(header);
+        auto dci = std::make_shared<DataConnectInfo>();
+        if (DataMode::active == mode) /* 主动模式 */
         {
+            dci->ctrlInfo.clientIp = ipv4Header->srcAddrStr();
+            dci->ctrlInfo.clientPort = tcpHeader->srcPort;
+            dci->ctrlInfo.serverIp = ipv4Header->dstAddrStr();
+            dci->ctrlInfo.serverPort = tcpHeader->dstPort;
+        }
+        else /* 被动模式 */
+        {
+            dci->ctrlInfo.clientIp = ipv4Header->dstAddrStr();
+            dci->ctrlInfo.clientPort = tcpHeader->dstPort;
+            dci->ctrlInfo.serverIp = ipv4Header->srcAddrStr();
+            dci->ctrlInfo.serverPort = tcpHeader->srcPort;
+        }
+        dci->mode = mode;
+        dci->ip = ip;
+        dci->port = port;
+        dci->status = DataConnectStatus::ready;
+        dci->tp = ntp;
+        m_dataConnectList.insert(std::make_pair(key, dci));
+    }
+}
+
+void FtpParser::recyleDataConnect(const std::chrono::steady_clock::time_point& ntp)
+{
+    for (auto iter = m_dataConnectList.begin(); m_dataConnectList.end() != iter;)
+    {
+        if (std::chrono::duration_cast<std::chrono::seconds>(ntp - iter->second->tp).count() >= m_dataConnectTimeout) /* 超时则回收 */
+        {
+            auto ctrlInfo = iter->second->ctrlInfo;
             auto mode = iter->second->mode;
-            m_dataChannelList.erase(iter++);
+            m_dataConnectList.erase(iter++);
             if (m_dataCb)
             {
-                m_dataCb(0, nullptr, mode, 4, nullptr, 0);
+                m_dataCb(ntp, 0, nullptr, ctrlInfo, mode, DataFlag::abnormal, nullptr, 0);
             }
         }
         else
@@ -367,48 +404,50 @@ void FtpParser::recyleDataChannel()
     }
 }
 
-bool FtpParser::parseData(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                          const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     auto ipv4Header = std::dynamic_pointer_cast<Ipv4Header>(header->parent);
     auto tcpHeader = std::dynamic_pointer_cast<TcpHeader>(header);
     auto srcKey = ipv4Header->srcAddrStr() + ":" + std::to_string(tcpHeader->srcPort);
-    auto iter = m_dataChannelList.find(srcKey);
-    if (m_dataChannelList.end() == iter)
+    auto iter = m_dataConnectList.find(srcKey);
+    if (m_dataConnectList.end() == iter)
     {
         auto dstKey = ipv4Header->dstAddrStr() + ":" + std::to_string(tcpHeader->dstPort);
-        iter = m_dataChannelList.find(dstKey);
-        if (m_dataChannelList.end() == iter)
+        iter = m_dataConnectList.find(dstKey);
+        if (m_dataConnectList.end() == iter)
         {
             return false;
         }
     }
+    auto ctrlInfo = iter->second->ctrlInfo;
     auto mode = iter->second->mode;
     if (0 == payloadLen)
     {
-        if (1 == tcpHeader->flagAck && 0 == iter->second->status) /* 数据通道建立连接 */
+        if (1 == tcpHeader->flagAck && DataConnectStatus::ready == iter->second->status) /* 数据连接建立 */
         {
             iter->second->tp = std::chrono::steady_clock::now();
-            iter->second->status = 1;
+            iter->second->status = DataConnectStatus::created;
             if (m_dataCb)
             {
-                m_dataCb(totalLen, header, mode, 1, nullptr, 0);
+                m_dataCb(ntp, totalLen, header, ctrlInfo, mode, DataFlag::ready, nullptr, 0);
             }
         }
-        else if (1 == tcpHeader->flagFin && 1 == iter->second->status) /* 数据通道断开连接 */
+        else if (1 == tcpHeader->flagFin && DataConnectStatus::created == iter->second->status) /* 数据连接断开 */
         {
-            m_dataChannelList.erase(iter);
+            m_dataConnectList.erase(iter);
             if (m_dataCb)
             {
-                m_dataCb(totalLen, header, mode, 3, nullptr, 0);
+                m_dataCb(ntp, totalLen, header, ctrlInfo, mode, DataFlag::finish, nullptr, 0);
             }
         }
     }
-    else if (1 == iter->second->status) /* 数据通道已连接 */
+    else if (DataConnectStatus::created == iter->second->status) /* 数据连接已连接 */
     {
         iter->second->tp = std::chrono::steady_clock::now();
         if (m_dataCb)
         {
-            m_dataCb(totalLen, header, mode, 2, payload, payloadLen);
+            m_dataCb(ntp, totalLen, header, ctrlInfo, mode, DataFlag::body, payload, payloadLen);
         }
     }
 }

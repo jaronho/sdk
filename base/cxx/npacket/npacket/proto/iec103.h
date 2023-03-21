@@ -64,21 +64,25 @@ class Iec103Parser : public ProtocolParser
 public:
     /**
      * @brief 固定帧回调
+     * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
      * @param frame 固定帧数据
      */
-    using FIXED_FRAME_CALLBACK = std::function<void(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
-                                                    const std::shared_ptr<iec103::FixedFrame>& frame)>;
+    using FIXED_FRAME_CALLBACK =
+        std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                           const std::shared_ptr<ProtocolHeader>& header, const std::shared_ptr<iec103::FixedFrame>& frame)>;
 
     /**
      * @brief 可变帧回调
+     * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
      * @param frame 可变帧数据
      */
-    using VARIABLE_FRAME_CALLBACK = std::function<void(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
-                                                       const std::shared_ptr<iec103::VariableFrame>& frame)>;
+    using VARIABLE_FRAME_CALLBACK =
+        std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                           const std::shared_ptr<ProtocolHeader>& header, const std::shared_ptr<iec103::VariableFrame>& frame)>;
 
 public:
     /**
@@ -89,13 +93,15 @@ public:
 
     /**
      * @brief 解析
+     * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
      * @param payload 层负载
      * @param payloadLen 层负载长度
      * @return true-成功, false-失败
      */
-    bool parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen) override;
+    bool parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+               const uint8_t* payload, uint32_t payloadLen) override;
 
     /**
      * @brief 设置固定帧回调
@@ -113,26 +119,28 @@ private:
     /**
      * @brief 解析固定帧
      */
-    bool parseFixedFrame(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen);
+    bool parseFixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+                         const uint8_t* payload, uint32_t payloadLen);
 
     /**
      * @brief 解析可变帧
      */
-    bool parseVariableFrame(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen);
+    bool parseVariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                            const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen);
 
     /**
-      * @brief 解析应用服务数据单元
-      */
+     * @brief 解析应用服务数据单元
+     */
     std::shared_ptr<iec103::Asdu> parseAsdu(const uint8_t* data, uint32_t dataLen);
 
     /**
-      * @brief 解析数据单元标识
-      */
+     * @brief 解析数据单元标识
+     */
     void parseDataUnitIdentify(const uint8_t ch[4], iec103::DataUnitIdentify& identify);
 
     /**
-      * @brief 解析信息元素集
-      */
+     * @brief 解析信息元素集
+     */
     std::shared_ptr<iec103::Asdu> parseInfoSet(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
 
 private:

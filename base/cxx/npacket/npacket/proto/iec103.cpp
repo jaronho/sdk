@@ -63,7 +63,8 @@ uint32_t Iec103Parser::getProtocol() const
     return ApplicationProtocol::IEC103;
 }
 
-bool Iec103Parser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool Iec103Parser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+                         const uint8_t* payload, uint32_t payloadLen)
 {
     if (header && TransportProtocol::TCP != header->getProtocol() && TransportProtocol::UDP != header->getProtocol())
     {
@@ -73,11 +74,11 @@ bool Iec103Parser::parse(uint32_t totalLen, const std::shared_ptr<ProtocolHeader
     {
         return false;
     }
-    if (parseFixedFrame(totalLen, header, payload, payloadLen))
+    if (parseFixedFrame(ntp, totalLen, header, payload, payloadLen))
     {
         return true;
     }
-    else if (parseVariableFrame(totalLen, header, payload, payloadLen))
+    else if (parseVariableFrame(ntp, totalLen, header, payload, payloadLen))
     {
         return true;
     }
@@ -94,8 +95,8 @@ void Iec103Parser::setVariableFrameCallback(const VARIABLE_FRAME_CALLBACK& callb
     m_variableFrameCb = callback;
 }
 
-bool Iec103Parser::parseFixedFrame(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload,
-                                   uint32_t payloadLen)
+bool Iec103Parser::parseFixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     /**
      * 固定帧:
@@ -128,15 +129,15 @@ bool Iec103Parser::parseFixedFrame(uint32_t totalLen, const std::shared_ptr<Prot
         frame->addr = addr;
         if (m_fixedFrameCb)
         {
-            m_fixedFrameCb(totalLen, header, frame);
+            m_fixedFrameCb(ntp, totalLen, header, frame);
         }
         return true;
     }
     return false;
 }
 
-bool Iec103Parser::parseVariableFrame(uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload,
-                                      uint32_t payloadLen)
+bool Iec103Parser::parseVariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                      const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     /**
      * 可变帧:
@@ -200,7 +201,7 @@ bool Iec103Parser::parseVariableFrame(uint32_t totalLen, const std::shared_ptr<P
                 frame->asdu = parseAsdu(data, length - 2);
                 if (m_variableFrameCb)
                 {
-                    m_variableFrameCb(totalLen, header, frame);
+                    m_variableFrameCb(ntp, totalLen, header, frame);
                 }
                 return true;
             }

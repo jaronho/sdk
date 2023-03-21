@@ -51,8 +51,8 @@ std::string getDateTime()
 /**
  * @brief 处理接收以太网层
  */
-bool handleInEthernetLayer(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                           uint32_t payloadLen)
+bool handleInEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                           const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     ++s_inPkt;
     s_inByte += totalLen;
@@ -62,8 +62,8 @@ bool handleInEthernetLayer(uint32_t totalLen, const std::shared_ptr<npacket::Pro
 /**
  * @brief 处理接收传输层
  */
-bool handleInTransportLayer(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                            uint32_t payloadLen)
+bool handleInTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                            const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
     {
@@ -84,8 +84,8 @@ bool handleInTransportLayer(uint32_t totalLen, const std::shared_ptr<npacket::Pr
 /**
  * @brief 处理发送以太网层
  */
-bool handleOutEthernetLayer(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                            uint32_t payloadLen)
+bool handleOutEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                            const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     ++s_outPkt;
     s_outByte += totalLen;
@@ -95,8 +95,8 @@ bool handleOutEthernetLayer(uint32_t totalLen, const std::shared_ptr<npacket::Pr
 /**
  * @brief 处理发送传输层
  */
-bool handleOutTransportLayer(uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                             uint32_t payloadLen)
+bool handleOutTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                             const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
     {
@@ -234,11 +234,7 @@ int main(int argc, char* argv[])
     }
     printf("设备名: %s\n", name.c_str());
     /* 接收包 */
-    s_inPktAnalyzer.setLayerCallback([&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                                         uint32_t payloadLen) { return handleInEthernetLayer(totalLen, header, payload, payloadLen); },
-                                     nullptr,
-                                     [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                                         uint32_t payloadLen) { return handleInTransportLayer(totalLen, header, payload, payloadLen); });
+    s_inPktAnalyzer.setLayerCallback(handleInEthernetLayer, nullptr, handleInTransportLayer);
     if (!s_inPacpDevice.open(name, 1, 0, 0))
     {
 #ifdef _WIN32
@@ -252,11 +248,7 @@ int main(int argc, char* argv[])
     s_inPacpDevice.startCapture();
 #ifndef _WIN32
     /* 发送包 */
-    s_outPktAnalyzer.setLayerCallback([&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                                          uint32_t payloadLen) { return handleOutEthernetLayer(totalLen, header, payload, payloadLen); },
-                                      nullptr,
-                                      [&](uint32_t totalLen, const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload,
-                                          uint32_t payloadLen) { return handleOutTransportLayer(totalLen, header, payload, payloadLen); });
+    s_outPktAnalyzer.setLayerCallback(handleOutEthernetLayer, nullptr, handleOutTransportLayer);
     if (!s_outPacpDevice.open(name, 2, 0, 0))
     {
         printf("发送包设备打开失败\n");

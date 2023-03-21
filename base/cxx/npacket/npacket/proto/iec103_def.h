@@ -308,8 +308,8 @@ struct NDE
 typedef uint8_t GRC;
 
 /**
-      * @brief 通用分类标识数目(Number Of Generic Identification), 值[0,255]
-      */
+ * @brief 通用分类标识数目(Number Of Generic Identification), 值[0,255]
+ */
 typedef uint8_t NOG;
 
 /**
