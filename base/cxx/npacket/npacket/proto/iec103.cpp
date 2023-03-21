@@ -110,28 +110,27 @@ bool Iec103Parser::parseFixedFrame(const std::chrono::steady_clock::time_point& 
      */
     if (5 == payloadLen && 0x10 == payload[0] && 0x16 == payload[4])
     {
-        return false;
-    }
-    uint8_t ctrl = payload[1];
-    uint8_t addr = payload[2];
-    uint8_t checksum = payload[3];
-    if ((ctrl + addr) % 256 == checksum) /* 校验成功 */
-    {
-        uint8_t prm = (ctrl & 0x40) >> 6;
-        uint8_t fcb_acd = (ctrl & 0x20) >> 5;
-        uint8_t fcv_dfc = (ctrl & 0x10) >> 4;
-        uint8_t func = (ctrl & 0xF);
-        auto frame = std::make_shared<iec103::FixedFrame>();
-        frame->prm = prm;
-        frame->fcb_acd = fcb_acd;
-        frame->fcv_dfc = fcv_dfc;
-        frame->func = func;
-        frame->addr = addr;
-        if (m_fixedFrameCb)
+        uint8_t ctrl = payload[1];
+        uint8_t addr = payload[2];
+        uint8_t checksum = payload[3];
+        if ((ctrl + addr) % 256 == checksum) /* 校验成功 */
         {
-            m_fixedFrameCb(ntp, totalLen, header, frame);
+            uint8_t prm = (ctrl & 0x40) >> 6;
+            uint8_t fcb_acd = (ctrl & 0x20) >> 5;
+            uint8_t fcv_dfc = (ctrl & 0x10) >> 4;
+            uint8_t func = (ctrl & 0xF);
+            auto frame = std::make_shared<iec103::FixedFrame>();
+            frame->prm = prm;
+            frame->fcb_acd = fcb_acd;
+            frame->fcv_dfc = fcv_dfc;
+            frame->func = func;
+            frame->addr = addr;
+            if (m_fixedFrameCb)
+            {
+                m_fixedFrameCb(ntp, totalLen, header, frame);
+            }
+            return true;
         }
-        return true;
     }
     return false;
 }
