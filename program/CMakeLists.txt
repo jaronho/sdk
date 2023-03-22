@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 14)
 include(cmake/tools.cmake)
 
 # 工程名
-project(widgets)
+project(program)
 
 ####################################### 添加线程库 #######################################
 find_package(Threads REQUIRED)
