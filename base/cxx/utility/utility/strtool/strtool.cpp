@@ -180,7 +180,7 @@ size_t StrTool::indexOf(std::string str, std::string pattern, size_t offset, boo
     return str.find(pattern, offset);
 }
 
-bool StrTool::contains(std::string str, std::string pattern, bool caseSensitive)
+bool StrTool::contains(std::string str, std::string pattern, bool caseSensitive, bool wholeWord)
 {
     if (pattern.empty())
     {
@@ -195,9 +195,32 @@ bool StrTool::contains(std::string str, std::string pattern, bool caseSensitive)
         std::transform(str.begin(), str.end(), str.begin(), tolower);
         std::transform(pattern.begin(), pattern.end(), pattern.begin(), tolower);
     }
-    if (std::string::npos == str.find(pattern))
+    auto bpos = str.find(pattern);
+    if (std::string::npos == bpos)
     {
         return false;
+    }
+    if (wholeWord)
+    {
+        /* 判断前面字符是否字母 */
+        if (bpos > 0)
+        {
+            auto pch = str[bpos - 1];
+            if ((pch >= 'A' && pch <= 'Z') || (pch >= 'a' && pch <= 'z'))
+            {
+                return false;
+            }
+        }
+        /* 判断后面字符是否字母 */
+        auto epos = bpos + pattern.size() - 1;
+        if (epos < str.size() - 1)
+        {
+            auto nch = str[epos + 1];
+            if ((nch >= 'A' && nch <= 'Z') || (nch >= 'a' && nch <= 'z'))
+            {
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -246,7 +269,7 @@ bool StrTool::isEndWith(std::string str, std::string end, bool caseSensitive)
     return false;
 }
 
-size_t StrTool::findCount(std::string str, std::string pattern, bool caseSensitive, bool overlap)
+size_t StrTool::findCount(std::string str, std::string pattern, bool caseSensitive, bool wholeWord)
 {
     if (!caseSensitive)
     {
@@ -256,7 +279,7 @@ size_t StrTool::findCount(std::string str, std::string pattern, bool caseSensiti
     size_t count = 0;
     for (size_t i = 0; std::string::npos != (i = str.find(pattern, i));)
     {
-        i += (overlap ? 1 : pattern.size());
+        i += (wholeWord ? pattern.size() : 1);
         ++count;
     }
     return count;
