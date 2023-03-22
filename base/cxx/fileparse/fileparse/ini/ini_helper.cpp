@@ -203,7 +203,8 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
                     {
                         needRemove = false;
                         auto extraTter = newItem.extraMap.find("readOnly");
-                        if (newItem.extraMap.end() != extraTter && "1" == extraTter->second) /* 只读则使用新的键值 */
+                        if (newItem.extraMap.end() != extraTter && 0 != oldItem.value.compare(newItem.value)
+                            && "1" == extraTter->second) /* 新旧键值不相等且为只读, 则使用新的键值 */
                         {
                             writer->setValue(oldSection.name, oldItem.key, newItem.value);
                             changed = true;
