@@ -320,7 +320,7 @@ char* FileInfo::readAll(long long& fileSize, bool textFlag) const
         fileSize = -1;
         return NULL;
     }
-    size_t count;
+    size_t count = 0;
     auto fileData = read(f, 0, count, textFlag);
     fileSize = count;
     fclose(f);
