@@ -43,8 +43,6 @@ std::vector<Method> Router::getAllowMethods()
     return m_methods;
 }
 
-void Router::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req) {}
-
 void Router::onReqHead(uint64_t cid, const REQUEST_PTR& req) {}
 
 void Router::onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) {}
@@ -54,14 +52,6 @@ void Router::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONS
     if (sendRespFunc)
     {
         sendRespFunc(nullptr);
-    }
-}
-
-void Router_batch::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req)
-{
-    if (methodNotAllowedCb)
-    {
-        methodNotAllowedCb(cid, req);
     }
 }
 
@@ -93,14 +83,6 @@ void Router_batch::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_R
         {
             sendRespFunc(nullptr);
         }
-    }
-}
-
-void Router_simple::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req)
-{
-    if (methodNotAllowedCb)
-    {
-        methodNotAllowedCb(cid, req);
     }
 }
 
@@ -158,14 +140,6 @@ void Router_simple::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_
         {
             sendRespFunc(nullptr);
         }
-    }
-}
-
-void Router_x_www_form_urlencoded::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req)
-{
-    if (methodNotAllowedCb)
-    {
-        methodNotAllowedCb(cid, req);
     }
 }
 
@@ -272,14 +246,6 @@ void Router_x_www_form_urlencoded::onResponse(uint64_t cid, const REQUEST_PTR& r
         {
             sendRespFunc(nullptr);
         }
-    }
-}
-
-void Router_multipart_form_data::onMethodNotAllowed(uint64_t cid, const REQUEST_PTR& req)
-{
-    if (methodNotAllowedCb)
-    {
-        methodNotAllowedCb(cid, req);
     }
 }
 

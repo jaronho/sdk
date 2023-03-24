@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
         printf("server invalid, please check host or port\n");
         return 0;
     }
-    server.setRouterNotFoundCallback([&](const nsocket::http::REQUEST_PTR& req) {
+    server.setRouterNotFoundCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
         printf("************************* Not Found URI Router *************************\n");
         printf("***  Method: %s\n", req->method.c_str());
         printf("***     Uri: %s\n", req->uri.c_str());
@@ -169,6 +169,9 @@ int main(int argc, char* argv[])
             }
         }
         printf("************************************************************************\n");
+        auto resp = std::make_shared<nsocket::http::Response>();
+        resp->statusCode = nsocket::http::StatusCode::client_error_not_found;
+        return resp;
     });
     /* 添加路由表 */
     {
@@ -183,6 +186,9 @@ int main(int argc, char* argv[])
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
+            auto resp = std::make_shared<nsocket::http::Response>();
+            resp->statusCode = nsocket::http::StatusCode::client_error_method_not_allowed;
+            return resp;
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
                              const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
@@ -239,6 +245,9 @@ int main(int argc, char* argv[])
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
+            auto resp = std::make_shared<nsocket::http::Response>();
+            resp->statusCode = nsocket::http::StatusCode::client_error_method_not_allowed;
+            return resp;
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
                              const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
@@ -289,6 +298,9 @@ int main(int argc, char* argv[])
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
+            auto resp = std::make_shared<nsocket::http::Response>();
+            resp->statusCode = nsocket::http::StatusCode::client_error_method_not_allowed;
+            return resp;
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields,
                              const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
@@ -346,7 +358,6 @@ int main(int argc, char* argv[])
             mkdir(UPLOAD_PATH.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
         }
 #endif
-
         auto r = std::make_shared<nsocket::http::Router_multipart_form_data>();
         r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("-------------------------- Multi Router --------------------------\n");
@@ -358,6 +369,9 @@ int main(int argc, char* argv[])
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
+            auto resp = std::make_shared<nsocket::http::Response>();
+            resp->statusCode = nsocket::http::StatusCode::client_error_method_not_allowed;
+            return resp;
         };
         r->headCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("--------------------------- Multi Router ---------------------------\n");

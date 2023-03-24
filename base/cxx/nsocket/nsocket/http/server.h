@@ -47,7 +47,7 @@ public:
      * @brief 设置路由未找到回调
      * @param cb 回调
      */
-    void setRouterNotFoundCallback(const std::function<void(const REQUEST_PTR& req)>& cb);
+    void setRouterNotFoundCallback(const std::function<RESPONSE_PTR(uint64_t cid, const REQUEST_PTR& req)>& cb);
 
     /**
      * @brief 添加路由
@@ -117,10 +117,10 @@ private:
     void sendResponse(const std::weak_ptr<TcpConnection>& wpConn, std::shared_ptr<Response> resp);
 
 private:
-    std::shared_ptr<TcpServer> m_tcpServer; /* TCP服务器 */
+    std::shared_ptr<TcpServer> m_tcpServer = nullptr; /* TCP服务器 */
     std::mutex m_mutex;
     std::unordered_map<uint64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
-    std::function<void(const REQUEST_PTR& req)> m_routerNotFoundCb; /* 路由未找到回调 */
+    std::function<RESPONSE_PTR(uint64_t cid, const REQUEST_PTR& req)> m_routerNotFoundCb = nullptr; /* 路由未找到回调 */
     std::unordered_map<std::string, std::shared_ptr<Router>> m_routerMap; /* 路由表 */
 };
 } // namespace http

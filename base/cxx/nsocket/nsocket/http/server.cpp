@@ -32,7 +32,7 @@ bool Server::isRunning() const
     return false;
 }
 
-void Server::setRouterNotFoundCallback(const std::function<void(const REQUEST_PTR& req)>& cb)
+void Server::setRouterNotFoundCallback(const std::function<RESPONSE_PTR(uint64_t cid, const REQUEST_PTR& req)>& cb)
 {
     m_routerNotFoundCb = cb;
 }
@@ -168,14 +168,7 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
     {
         /* 路由 */
         auto iter = m_routerMap.find(req->uri);
-        if (m_routerMap.end() == iter) /* 未找到 */
-        {
-            if (m_routerNotFoundCb)
-            {
-                m_routerNotFoundCb(req);
-            }
-        }
-        else /* 找到 */
+        if (m_routerMap.end() != iter) /* 找到 */
         {
             /* 扩展数据接收缓冲区 */
             int bufferSize = req->getContentLength();
@@ -209,10 +202,6 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
             {
                 iter->second->onReqHead(conn->getId(), req);
             }
-            else /* 方法不允许 */
-            {
-                iter->second->onMethodNotAllowed(conn->getId(), req);
-            }
         }
     }
 }
@@ -240,27 +229,38 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
     if (conn)
     {
         std::shared_ptr<Response> resp = nullptr;
-        if (session->req->isMethodAllowed) /* 允许方法 */
+        auto iter = m_routerMap.find(session->req->uri);
+        if (m_routerMap.end() == iter) /* 找不到路由 */
         {
-            /* 路由 */
-            auto iter = m_routerMap.find(session->req->uri);
-            if (m_routerMap.end() == iter) /* 找不到路由 */
+            if (m_routerNotFoundCb)
+            {
+                resp = m_routerNotFoundCb(conn->getId(), session->req);
+            }
+            if (!resp)
             {
                 resp = std::make_shared<Response>();
                 resp->statusCode = StatusCode::client_error_not_found;
             }
-            else
+        }
+        else /* 找到路由 */
+        {
+            if (session->req->isMethodAllowed) /* 允许方法 */
             {
                 iter->second->onResponse(conn->getId(), session->req, [&, wpConn = session->wpConn](const std::shared_ptr<Response>& resp) {
                     sendResponse(wpConn, resp);
                 });
                 return;
             }
-        }
-        else /* 方法不允许 */
-        {
-            resp = std::make_shared<Response>();
-            resp->statusCode = StatusCode::client_error_method_not_allowed;
+            /* 方法不允许 */
+            if (iter->second->methodNotAllowedCb)
+            {
+                resp = iter->second->methodNotAllowedCb(conn->getId(), session->req);
+            }
+            if (!resp)
+            {
+                resp = std::make_shared<Response>();
+                resp->statusCode = StatusCode::client_error_method_not_allowed;
+            }
         }
         /* 发送响应数据 */
         sendResponse(session->wpConn, resp);
