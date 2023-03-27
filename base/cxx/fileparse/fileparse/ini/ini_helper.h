@@ -1,7 +1,7 @@
 #pragma once
-#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "ini_writer.h"
 
@@ -42,7 +42,7 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
  * @param id 键值对所在模块id(一般传入文件名, 能够标识唯一即可)
  * @return 返回初始配置
  */
-std::map<std::string, IniSection> getIni(const std::string& id);
+std::unordered_map<std::string, IniSection> getIni(const std::string& id);
 
 /**
  * @brief 恢复指定模块的配置

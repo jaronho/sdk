@@ -283,7 +283,7 @@ void IniFile::clear()
     m_changed = true;
 }
 
-std::map<std::string, IniSection> IniFile::getSections() const
+std::unordered_map<std::string, IniSection> IniFile::getSections() const
 {
     return m_sections;
 }

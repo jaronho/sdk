@@ -12,7 +12,7 @@ public:
 
     int reload(std::string& errorDesc);
 
-    std::map<std::string, IniSection> getSections() const;
+    std::unordered_map<std::string, IniSection> getSections() const;
 
     std::vector<std::string> getCommentFlags() const;
 

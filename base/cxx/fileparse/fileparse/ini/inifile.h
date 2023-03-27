@@ -1,6 +1,6 @@
 #pragma once
-#include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace ini
@@ -13,7 +13,7 @@ struct IniItem
     std::string key; /* 键 */
     std::string value; /* 值 */
     std::string comment; /* 注释 */
-    std::map<std::string, std::string> extraMap; /* 额外参数(不显示和持久化, 只存在内存中) */
+    std::unordered_map<std::string, std::string> extraMap; /* 额外参数(不显示和持久化, 只存在内存中) */
 };
 
 /**
@@ -60,7 +60,7 @@ public:
      * @brief 获取节列表
      * @return 节列表
      */
-    std::map<std::string, IniSection> getSections() const;
+    std::unordered_map<std::string, IniSection> getSections() const;
 
     /**
      * @brief 获取注释标识符列表
@@ -193,7 +193,7 @@ private:
 
 private:
     std::string m_filename; /* 文件名称 */
-    std::map<std::string, IniSection> m_sections; /* 节列表 */
+    std::unordered_map<std::string, IniSection> m_sections; /* 节列表 */
     std::vector<std::string> m_commentFlags; /* 注释标识列表 */
     bool m_changed = false; /* 是否被改变 */
 };

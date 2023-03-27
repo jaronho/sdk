@@ -7,7 +7,7 @@
 namespace ini
 {
 static std::mutex s_mutex; /* 互斥锁 */
-static std::map<std::string, std::map<std::string, ini::IniSection>> s_iniMap; /* 全局ini映射表 */
+static std::unordered_map<std::string, std::unordered_map<std::string, ini::IniSection>> s_iniMap; /* 全局ini映射表 */
 
 void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& keyName)
 {
@@ -48,7 +48,7 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     auto iniIter = s_iniMap.find(id);
     if (s_iniMap.end() == iniIter) /* 没有ini配置则创建 */
     {
-        iniIter = s_iniMap.insert(std::make_pair(id, std::map<std::string, IniSection>())).first;
+        iniIter = s_iniMap.insert(std::make_pair(id, std::unordered_map<std::string, IniSection>())).first;
     }
     /* 查找节 */
     auto sectionIter = iniIter->second.find(sectionName);
@@ -84,14 +84,14 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     return sectionKey;
 }
 
-std::map<std::string, IniSection> getIni(const std::string& id)
+std::unordered_map<std::string, IniSection> getIni(const std::string& id)
 {
     /* 查找ini映射表 */
     std::lock_guard<std::mutex> locker(s_mutex);
     auto iniIter = s_iniMap.find(id);
     if (s_iniMap.end() == iniIter) /* 没有ini配置则返回 */
     {
-        return std::map<std::string, IniSection>();
+        return std::unordered_map<std::string, IniSection>();
     }
     return iniIter->second;
 }

@@ -26,7 +26,7 @@ int IniReader::reload(std::string& errorDesc)
     return IniFile::open(m_filename, false, errorDesc);
 }
 
-std::map<std::string, IniSection> IniReader::getSections() const
+std::unordered_map<std::string, IniSection> IniReader::getSections() const
 {
     return IniFile::getSections();
 }
