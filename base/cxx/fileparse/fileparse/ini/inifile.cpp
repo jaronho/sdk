@@ -226,16 +226,16 @@ int IniFile::open(const std::string& filename, bool allowTailComment, std::strin
     return 0;
 }
 
-bool IniFile::save()
+int IniFile::save()
 {
     if (!m_changed)
     {
-        return true;
+        return 1;
     }
     auto f = fopen(m_filename.c_str(), "wb+");
     if (!f)
     {
-        return false;
+        return 2;
     }
     std::string data;
     for (auto sectionIter = m_sections.begin(); m_sections.end() != sectionIter; ++sectionIter)
@@ -274,7 +274,7 @@ bool IniFile::save()
         ret = false;
     }
     m_changed = false;
-    return ret;
+    return (ret ? 0 : 3);
 }
 
 void IniFile::clear()

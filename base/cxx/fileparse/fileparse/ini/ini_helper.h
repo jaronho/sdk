@@ -49,7 +49,7 @@ std::unordered_map<std::string, IniSection> getIni(const std::string& id);
  * @param writer 写入器
  * @param id 键值对所在模块id(一般传入文件名, 能够标识唯一即可)
  * @param autoSave 恢复后是否自动保存(非必填), 默认自动保存
- * @return 0-成功, 1-写入器为空或不允许写入新字段, 2-找不到模块id, 3-保存失败
+ * @return 0-成功, 1-写入器为空或不允许写入新字段, 2-找不到模块id, 3-不需要修改, 4-保存失败
  */
 int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave = true);
 
@@ -58,7 +58,7 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
  * @param writer 写入器
  * @param id 键值对所在模块id(一般传入文件名, 能够标识唯一即可)
  * @param autoSave 同步后是否自动保存(非必填), 默认自动保存
- * @return 0-成功, 1-写入器为空或不允许写入新字段, 2-找不到模块id, 3-保存失败
+ * @return 0-成功, 1-写入器为空或不允许写入新字段, 2-找不到模块id, 3-不需要修改, 4-保存失败
  */
 int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave = true);
 } // namespace ini

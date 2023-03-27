@@ -12,7 +12,7 @@ public:
 
     void setAllowAutoCreate();
 
-    bool save();
+    int save();
 
     void clear();
 

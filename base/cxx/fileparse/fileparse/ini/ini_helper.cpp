@@ -129,9 +129,13 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
             writer->setValue(section.name, item.key, item.value);
         }
     }
-    if (autoSave && !writer->save())
+    if (autoSave)
     {
-        return 3;
+        auto ret = writer->save();
+        if (0 != ret)
+        {
+            return (1 == ret) ? 3 : 4;
+        }
     }
     return 0;
 }
@@ -149,7 +153,6 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
     {
         return 2;
     }
-    bool changed = false; /* 是否有修改 */
     const auto& sectionMap = iniIter->second;
     /* 删除/修改配置 */
     auto localSectionMap = writer->getSections();
@@ -160,7 +163,6 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
         if (sectionMap.end() == sectionIter) /* 本地节数据在配置中不存在, 则删除 */
         {
             writer->removeSection(localSection.name);
-            changed = true;
         }
         else /* 本地节数据在配置中存在 */
         {
@@ -169,10 +171,7 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
             writer->getSectionComment(localSection.name, localSectionComment);
             if (section.comment != localSectionComment)
             {
-                if (0 == writer->setSectionComment(localSection.name, section.comment))
-                {
-                    changed = true;
-                }
+                writer->setSectionComment(localSection.name, section.comment);
             }
             /* 删除无用的键值数据 */
             for (const auto& localItem : localSection.items)
@@ -182,7 +181,6 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
                 if (section.items.end() == itemIter) /* 本地键值在配置中不存在, 则删除 */
                 {
                     writer->removeKey(localSection.name, localItem.key);
-                    changed = true;
                 }
                 else /* 本地键值在配置中存在 */
                 {
@@ -190,20 +188,14 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
                     writer->getComment(localSection.name, localItem.key, localComment);
                     if (itemIter->comment != localComment)
                     {
-                        if (0 == writer->setComment(localSection.name, localItem.key, itemIter->comment))
-                        {
-                            changed = true;
-                        }
+                        writer->setComment(localSection.name, localItem.key, itemIter->comment);
                     }
                     if (itemIter->value != localItem.value) /* 键值不相等 */
                     {
                         auto extraIter = itemIter->extraMap.find("readOnly");
                         if (itemIter->extraMap.end() != extraIter && "1" == extraIter->second) /* 只读则使用新键值 */
                         {
-                            if (0 == writer->setValue(localSection.name, localItem.key, itemIter->value))
-                            {
-                                changed = true;
-                            }
+                            writer->setValue(localSection.name, localItem.key, itemIter->value);
                         }
                     }
                 }
@@ -218,30 +210,25 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
         writer->getSectionComment(section.name, localSectionComment);
         if (section.comment != localSectionComment)
         {
-            if (0 == writer->setSectionComment(section.name, section.comment))
-            {
-                changed = true;
-            }
+            writer->setSectionComment(section.name, section.comment);
         }
         for (const auto& item : section.items)
         {
             if (!writer->hasKey(section.name, item.key)) /* 新键值 */
             {
-                if (0 == writer->setComment(section.name, item.key, item.comment))
-                {
-                    changed = true;
-                }
-                if (0 == writer->setValue(section.name, item.key, item.value))
-                {
-                    changed = true;
-                }
+                writer->setComment(section.name, item.key, item.comment);
+                writer->setValue(section.name, item.key, item.value);
             }
         }
     }
     /* 自动保存 */
-    if (changed && autoSave && !writer->save())
+    if (autoSave)
     {
-        return 3;
+        auto ret = writer->save();
+        if (0 != ret)
+        {
+            return (1 == ret) ? 3 : 4;
+        }
     }
     return 0;
 }

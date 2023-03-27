@@ -243,7 +243,7 @@ void testIniWrite1()
             std::cout << "can't find key [describe]" << std::endl;
         }
 
-        if (iw.save())
+        if (0 == iw.save())
         {
             std::cout << "save file num.ini ok" << std::endl;
         }
@@ -310,7 +310,7 @@ void testIniWrite2()
         iw.setComment(section, key, "#工资");
         iw.setValue(section, key, 654321.987654321);
 
-        if (iw.save())
+        if (0 == iw.save())
         {
             std::cout << "save file test.ini ok" << std::endl;
         }

@@ -47,9 +47,9 @@ public:
 
     /**
      * @brief 保存文件(对象在析构时会自动调用该接口)
-     * @return true-成功, false-失败
+     * @return 0-成功, 1-配置未修改, 2-文件打开失败, 3-写文件失败
      */
-    bool save();
+    int save();
 
     /**
      * @brief 清除

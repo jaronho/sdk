@@ -19,7 +19,7 @@ void IniWriter::setAllowAutoCreate()
     m_allowAutoCreate = true;
 }
 
-bool IniWriter::save()
+int IniWriter::save()
 {
     return IniFile::save();
 }
