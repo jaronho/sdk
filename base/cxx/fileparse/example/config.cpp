@@ -71,7 +71,8 @@ bool Config::init(const std::string& path, bool writable)
     {
         if (writable)
         {
-            if (0 == ini::syncIni(m_iniWriter, CONFIG_FILENAME)) /* 主要用于升级时同步配置文件的修改 */
+            auto ret = ini::syncIni(m_iniWriter, CONFIG_FILENAME);
+            if (0 == ret || 3 == ret) /* 主要用于升级时同步配置文件的修改 */
             {
                 return true;
             }
@@ -98,7 +99,8 @@ bool Config::restoreFactory()
     std::lock_guard<std::mutex> locker(m_mutex);
     if (m_writable)
     {
-        if (0 == ini::restoreIni(m_iniWriter, CONFIG_FILENAME))
+        auto ret = ini::restoreIni(m_iniWriter, CONFIG_FILENAME);
+        if (0 == ret || 3 == ret)
         {
             return true;
         }
