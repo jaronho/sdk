@@ -106,7 +106,7 @@ int IniFile::open(const std::string& filename, bool allowTailComment, std::strin
     }
     m_filename = filename;
     m_sections.clear();
-    auto sectionIter = m_sections.insert(std::make_pair(std::string(), IniSection())).first;
+    auto sectionIter = m_sections.begin();
     std::string comment;
     size_t lineNumber = 0;
     while (!feof(f))
@@ -189,6 +189,23 @@ int IniFile::open(const std::string& filename, bool allowTailComment, std::strin
                 std::string key, value;
                 if (getKeyAndValue(line, key, value, '='))
                 {
+                    if (m_sections.end() == sectionIter)
+                    {
+                        sectionIter = m_sections.insert(std::make_pair(std::string(), IniSection())).first;
+                    }
+                    else
+                    {
+                        for (const auto& item : sectionIter->second.items)
+                        {
+                            if (key == item.key) /* 键名称已经存在, 说明格式不对 */
+                            {
+                                fclose(f);
+                                errorDesc = "key name [" + key + "] in section [" + sectionIter->second.name + "] is duplicated, line["
+                                            + std::to_string(lineNumber) + "]: " + line;
+                                return 6;
+                            }
+                        }
+                    }
                     IniItem item;
                     item.key = key;
                     item.value = value;
@@ -244,11 +261,20 @@ bool IniFile::save()
             data.append(itemIter->key).append("=").append(itemIter->value).append("\n"); /* 写项内容 */
         }
     }
-    fwrite(data.c_str(), 1, data.size(), f);
-    fflush(f);
-    fclose(f);
+    bool ret = false;
+    if (data.size() == fwrite(data.c_str(), 1, data.size(), f))
+    {
+        if (0 == fflush(f))
+        {
+            ret = true;
+        }
+    }
+    if (0 != fclose(f))
+    {
+        ret = false;
+    }
     m_changed = false;
-    return true;
+    return ret;
 }
 
 void IniFile::clear()
@@ -262,7 +288,7 @@ std::map<std::string, IniSection> IniFile::getSections() const
     return m_sections;
 }
 
-std::vector<std::string> IniFile::getCommentFlags(void) const
+std::vector<std::string> IniFile::getCommentFlags() const
 {
     return m_commentFlags;
 }
@@ -274,7 +300,6 @@ bool IniFile::setCommentFlags(const std::vector<std::string>& flags)
         return false;
     }
     m_commentFlags = flags;
-    m_changed = true;
     return true;
 }
 
@@ -307,26 +332,34 @@ bool IniFile::getSectionComment(const std::string& sectionName, std::string& com
     return true;
 }
 
-bool IniFile::setSectionComment(const std::string& sectionName, const std::string& comment)
+int IniFile::setSectionComment(const std::string& sectionName, const std::string& comment)
 {
     if (sectionName.empty() || !isComment(comment))
     {
-        return false;
+        return 1;
     }
     auto sectionIter = m_sections.find(sectionName);
     if (m_sections.end() == sectionIter)
     {
         if (!isAllowAutoCreate())
         {
-            return false;
+            return 2;
+        }
+        if (comment.empty())
+        {
+            return 3;
         }
         IniSection section;
         section.name = sectionName;
         sectionIter = m_sections.insert(std::make_pair(sectionName, section)).first;
     }
+    else if (comment == sectionIter->second.comment)
+    {
+        return 3;
+    }
     sectionIter->second.comment = comment;
     m_changed = true;
-    return true;
+    return 0;
 }
 
 bool IniFile::hasKey(const std::string& sectionName, const std::string& key) const
@@ -381,18 +414,18 @@ bool IniFile::getValue(const std::string& sectionName, const std::string& key, s
     return false;
 }
 
-bool IniFile::setValue(const std::string& sectionName, const std::string& key, const std::string& value)
+int IniFile::setValue(const std::string& sectionName, const std::string& key, const std::string& value)
 {
     if (key.empty())
     {
-        return false;
+        return 1;
     }
     auto sectionIter = m_sections.find(sectionName);
     if (m_sections.end() == sectionIter)
     {
         if (!isAllowAutoCreate())
         {
-            return false;
+            return 2;
         }
         IniSection section;
         section.name = sectionName;
@@ -402,9 +435,13 @@ bool IniFile::setValue(const std::string& sectionName, const std::string& key, c
     {
         if (key == itemIter->key)
         {
+            if (value == itemIter->value)
+            {
+                return 3;
+            }
             itemIter->value = value;
             m_changed = true;
-            return true;
+            return 0;
         }
     }
     if (isAllowAutoCreate())
@@ -414,9 +451,9 @@ bool IniFile::setValue(const std::string& sectionName, const std::string& key, c
         item.value = value;
         sectionIter->second.items.emplace_back(item);
         m_changed = true;
-        return true;
+        return 0;
     }
-    return false;
+    return 2;
 }
 
 bool IniFile::getComment(const std::string& sectionName, const std::string& key, std::string& comment) const
@@ -437,18 +474,22 @@ bool IniFile::getComment(const std::string& sectionName, const std::string& key,
     return false;
 }
 
-bool IniFile::setComment(const std::string& sectionName, const std::string& key, const std::string& comment)
+int IniFile::setComment(const std::string& sectionName, const std::string& key, const std::string& comment)
 {
     if (key.empty() || !isComment(comment))
     {
-        return false;
+        return 1;
     }
     auto sectionIter = m_sections.find(sectionName);
     if (m_sections.end() == sectionIter)
     {
         if (!isAllowAutoCreate())
         {
-            return false;
+            return 2;
+        }
+        if (comment.empty())
+        {
+            return 3;
         }
         IniSection section;
         section.name = sectionName;
@@ -458,17 +499,25 @@ bool IniFile::setComment(const std::string& sectionName, const std::string& key,
     {
         if (key == itemIter->key)
         {
+            if (comment == itemIter->comment)
+            {
+                return 3;
+            }
             itemIter->comment = comment;
             m_changed = true;
-            return true;
+            return 0;
         }
     }
-    IniItem item;
-    item.key = key;
-    item.comment = comment;
-    sectionIter->second.items.emplace_back(item);
-    m_changed = true;
-    return true;
+    if (isAllowAutoCreate())
+    {
+        IniItem item;
+        item.key = key;
+        item.comment = comment;
+        sectionIter->second.items.emplace_back(item);
+        m_changed = true;
+        return 0;
+    }
+    return 2;
 }
 
 bool IniFile::getExtra(const std::string& sectionName, const std::string& key, const std::string& extraName, std::string& extraValue) const
@@ -518,22 +567,13 @@ bool IniFile::setExtra(const std::string& sectionName, const std::string& key, c
 
 bool IniFile::isComment(const std::string& str) const
 {
-    for (size_t i = 0; i < m_commentFlags.size(); ++i)
+    if (str.empty()) /* 空注释 */
     {
-        const auto& commentFlag = m_commentFlags[i];
-        if (str.size() < commentFlag.size())
-        {
-            continue;
-        }
-        size_t index = 0;
-        for (index = 0; index < commentFlag.size(); ++index)
-        {
-            if (str[index] != commentFlag[index])
-            {
-                break;
-            }
-        }
-        if (index == commentFlag.size())
+        return true;
+    }
+    for (const auto& commentFlag : m_commentFlags)
+    {
+        if (0 == str.find(commentFlag)) /* 找到注释标识头 */
         {
             return true;
         }

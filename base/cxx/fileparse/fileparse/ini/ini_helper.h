@@ -19,9 +19,9 @@ namespace ini
  * @brief 分割section和key
  * @param sectionKey section和key的字符串组合, 格式为: "/section/key" 或 "/key"
  * @param sectionName [输出]section名称
- * @param key [输出]key名称
+ * @param keyName [输出]key名称
  */
-void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& key);
+void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& keyName);
 
 /**
  * @brief 创建键值对
@@ -29,12 +29,12 @@ void splitSectionKey(const std::string& sectionKey, std::string& sectionName, st
  * @param sectionKey section和key的字符串组合, 格式为: "/section/key" 或 "/key"
  * @param value 值
  * @param sectionComment 节注释(选填), 默认为空
- * @param comment 值注释(选填), 默认为空
+ * @param keyComment 值注释(选填), 默认为空
  * @param readOnly 是否只读
  * @return 返回sectionKey
  */
 std::string makeKeyValue(const std::string& id, const std::string& sectionKey, const std::string& value,
-                         const std::string& sectionComment = std::string(), const std::string& comment = std::string(),
+                         const std::string& sectionComment = std::string(), const std::string& keyComment = std::string(),
                          bool readOnly = false);
 
 /**

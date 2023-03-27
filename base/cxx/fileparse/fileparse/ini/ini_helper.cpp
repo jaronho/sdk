@@ -7,40 +7,39 @@
 namespace ini
 {
 static std::mutex s_mutex; /* 互斥锁 */
-static std::map<std::string, std::map<std::string, IniSection>> s_iniMap; /* 全局ini映射表 */
+static std::map<std::string, std::map<std::string, ini::IniSection>> s_iniMap; /* 全局ini映射表 */
 
-void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& key)
+void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& keyName)
 {
+    sectionName.clear();
+    keyName.clear();
     if (sectionKey.size() < 2) /* 键值长度需要小于2 */
     {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'sectionKey' '"
-                               + sectionKey + "' size < 2");
+        throw std::logic_error("arg 'sectionKey' '" + sectionKey + "' size < 2");
     }
     if ('/' != sectionKey[0] || '/' == sectionKey[sectionKey.size() - 1]) /* 首个字符不为/或最后一个字符为/ */
     {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'sectionKey' '"
-                               + sectionKey + "' format error");
+        throw std::logic_error("arg 'sectionKey' '" + sectionKey + "' format error");
     }
     auto count = std::count(sectionKey.begin(), sectionKey.end(), '/');
     if (count > 2) /* 超过两级 */
     {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'sectionKey' '"
-                               + sectionKey + "' layer > 2");
+        throw std::logic_error("arg 'sectionKey' '" + sectionKey + "' layer > 2");
     }
     auto pos = sectionKey.find_last_of('/');
     if (0 == pos) /* 全局键值 */
     {
-        key = sectionKey.substr(1, sectionKey.size() - 1);
+        keyName = sectionKey.substr(1, sectionKey.size() - 1);
     }
     else /* 二级键值 */
     {
         sectionName = sectionKey.substr(1, pos - 1);
-        key = sectionKey.substr(pos + 1, sectionKey.size() - pos);
+        keyName = sectionKey.substr(pos + 1, sectionKey.size() - pos);
     }
 }
 
 std::string makeKeyValue(const std::string& id, const std::string& sectionKey, const std::string& value, const std::string& sectionComment,
-                         const std::string& comment, bool readOnly)
+                         const std::string& keyComment, bool readOnly)
 {
     std::string sectionName, key;
     splitSectionKey(sectionKey, sectionName, key);
@@ -51,47 +50,34 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     {
         iniIter = s_iniMap.insert(std::make_pair(id, std::map<std::string, IniSection>())).first;
     }
+    /* 查找节 */
     auto sectionIter = iniIter->second.find(sectionName);
     if (iniIter->second.end() == sectionIter) /* 没有节则创建 */
     {
-        IniSection section;
+        ini::IniSection section;
         section.name = sectionName;
         sectionIter = iniIter->second.insert(std::make_pair(sectionName, section)).first;
     }
     auto& section = sectionIter->second;
     /* 添加键值 */
-    if (!sectionComment.empty())
+    for (const auto& item : section.items)
     {
-        if ('#' == sectionComment[0])
-        {
-            section.comment = sectionComment;
-        }
-        else
-        {
-            section.comment = "# " + sectionComment;
-        }
-    }
-    for (size_t i = 0; i < section.items.size(); ++i)
-    {
-        if (0 == key.compare(section.items[i].key)) /* 键值已存在则返回 */
+        if (key == item.key) /* 键值已存在则返回 */
         {
             return sectionKey;
         }
+    }
+    if (!sectionComment.empty())
+    {
+        section.comment = ('#' == sectionComment[0]) ? sectionComment : ("# " + sectionComment);
     }
     /* 插入新键值 */
     IniItem item;
     item.key = key;
     item.value = value;
-    if (!comment.empty())
+    if (!keyComment.empty())
     {
-        if ('#' == comment[0])
-        {
-            item.comment = comment;
-        }
-        else
-        {
-            item.comment = "# " + comment;
-        }
+        item.comment = ('#' == keyComment[0]) ? keyComment : ("# " + keyComment);
     }
     item.extraMap["readOnly"] = readOnly ? "1" : "0";
     section.items.emplace_back(item);
@@ -134,14 +120,13 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
         {
             writer->setSectionComment(section.name, section.comment);
         }
-        for (size_t i = 0; i < section.items.size(); ++i)
+        for (const auto& item : section.items)
         {
-            const auto& item = section.items[i];
-            writer->setValue(section.name, item.key, item.value);
             if (!item.comment.empty())
             {
                 writer->setComment(section.name, item.key, item.comment);
             }
+            writer->setValue(section.name, item.key, item.value);
         }
     }
     if (autoSave && !writer->save())
@@ -165,93 +150,91 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
         return 2;
     }
     bool changed = false; /* 是否有修改 */
-    const auto& newSectionMap = iniIter->second;
-    /* 删除无用配置 */
-    auto oldSectionMap = writer->getSections();
-    for (auto oldSectionIter = oldSectionMap.begin(); oldSectionMap.end() != oldSectionIter; ++oldSectionIter)
+    const auto& sectionMap = iniIter->second;
+    /* 删除/修改配置 */
+    auto localSectionMap = writer->getSections();
+    for (auto localSectionIter = localSectionMap.begin(); localSectionMap.end() != localSectionIter; ++localSectionIter)
     {
-        const auto& oldSection = oldSectionIter->second;
-        auto newSectionIter = newSectionMap.find(oldSection.name);
-        if (newSectionMap.end() == newSectionIter) /* 旧的节数据在新配置中不存在, 则删除 */
+        const auto& localSection = localSectionIter->second;
+        auto sectionIter = sectionMap.find(localSection.name);
+        if (sectionMap.end() == sectionIter) /* 本地节数据在配置中不存在, 则删除 */
         {
-            if (oldSection.name.empty() && oldSection.items.empty()) /* 全局节且无数据则忽略 */
-            {
-                continue;
-            }
-            writer->removeSection(oldSection.name);
+            writer->removeSection(localSection.name);
             changed = true;
         }
-        else /* 旧的节数据在新配置中存在 */
+        else /* 本地节数据在配置中存在 */
         {
-            const auto& newSection = newSectionIter->second;
-            std::string oldSectionComment;
-            writer->getSectionComment(oldSection.name, oldSectionComment);
-            if (0 != oldSectionComment.compare(newSection.comment))
+            const auto& section = sectionIter->second;
+            std::string localSectionComment;
+            writer->getSectionComment(localSection.name, localSectionComment);
+            if (section.comment != localSectionComment)
             {
-                writer->setSectionComment(oldSection.name, newSection.comment);
-                changed = true;
+                if (0 == writer->setSectionComment(localSection.name, section.comment))
+                {
+                    changed = true;
+                }
             }
             /* 删除无用的键值数据 */
-            for (size_t i = 0; i < oldSection.items.size(); ++i)
+            for (const auto& localItem : localSection.items)
             {
-                const auto& oldItem = oldSection.items[i];
-                bool needRemove = true; /* 键值是否删除 */
-                for (size_t j = 0; j < newSection.items.size(); ++j)
+                const auto& itemIter = std::find_if(section.items.begin(), section.items.end(),
+                                                    [&](const ini::IniItem& item) { return (item.key == localItem.key); });
+                if (section.items.end() == itemIter) /* 本地键值在配置中不存在, 则删除 */
                 {
-                    const auto& newItem = newSection.items[j];
-                    if (newItem.key == oldItem.key) /* 旧的键值在新配置中存在 */
-                    {
-                        needRemove = false;
-                        auto extraTter = newItem.extraMap.find("readOnly");
-                        if (newItem.extraMap.end() != extraTter && 0 != oldItem.value.compare(newItem.value)
-                            && "1" == extraTter->second) /* 新旧键值不相等且为只读, 则使用新的键值 */
-                        {
-                            writer->setValue(oldSection.name, oldItem.key, newItem.value);
-                            changed = true;
-                        }
-                        std::string oldComment;
-                        writer->getComment(oldSection.name, oldItem.key, oldComment);
-                        if (0 != oldComment.compare(newItem.comment))
-                        {
-                            writer->setComment(oldSection.name, oldItem.key, newItem.comment);
-                            changed = true;
-                        }
-                        break;
-                    }
-                }
-                if (needRemove) /* 旧的键值在新配置中不存在, 则删除 */
-                {
-                    writer->removeKey(oldSection.name, oldItem.key);
+                    writer->removeKey(localSection.name, localItem.key);
                     changed = true;
+                }
+                else /* 本地键值在配置中存在 */
+                {
+                    std::string localComment;
+                    writer->getComment(localSection.name, localItem.key, localComment);
+                    if (itemIter->comment != localComment)
+                    {
+                        if (0 == writer->setComment(localSection.name, localItem.key, itemIter->comment))
+                        {
+                            changed = true;
+                        }
+                    }
+                    if (itemIter->value != localItem.value) /* 键值不相等 */
+                    {
+                        auto extraIter = itemIter->extraMap.find("readOnly");
+                        if (itemIter->extraMap.end() != extraIter && "1" == extraIter->second) /* 只读则使用新键值 */
+                        {
+                            if (0 == writer->setValue(localSection.name, localItem.key, itemIter->value))
+                            {
+                                changed = true;
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-    /* 增加新配置 */
-    for (auto newSectionIter = newSectionMap.begin(); newSectionMap.end() != newSectionIter; ++newSectionIter)
+    /* 增加配置 */
+    for (auto sectionIter = sectionMap.begin(); sectionMap.end() != sectionIter; ++sectionIter)
     {
-        const auto& newSection = newSectionIter->second;
-        std::string oldSectionComment;
-        writer->getSectionComment(newSection.name, oldSectionComment);
-        if (0 != oldSectionComment.compare(newSection.comment))
+        const auto& section = sectionIter->second;
+        std::string localSectionComment;
+        writer->getSectionComment(section.name, localSectionComment);
+        if (section.comment != localSectionComment)
         {
-            writer->setSectionComment(newSection.name, newSection.comment);
-            changed = true;
-        }
-        for (size_t i = 0; i < newSection.items.size(); ++i)
-        {
-            const auto& newItem = newSection.items[i];
-            if (!writer->hasKey(newSection.name, newItem.key)) /* 新键值 */
+            if (0 == writer->setSectionComment(section.name, section.comment))
             {
-                writer->setValue(newSection.name, newItem.key, newItem.value);
                 changed = true;
             }
-            std::string oldComment;
-            writer->getComment(newSection.name, newItem.key, oldComment);
-            if (0 != oldComment.compare(newItem.comment))
+        }
+        for (const auto& item : section.items)
+        {
+            if (!writer->hasKey(section.name, item.key)) /* 新键值 */
             {
-                writer->setComment(newSection.name, newItem.key, newItem.comment);
-                changed = true;
+                if (0 == writer->setComment(section.name, item.key, item.comment))
+                {
+                    changed = true;
+                }
+                if (0 == writer->setValue(section.name, item.key, item.value))
+                {
+                    changed = true;
+                }
             }
         }
     }

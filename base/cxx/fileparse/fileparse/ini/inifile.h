@@ -41,7 +41,7 @@ public:
      * @param filename 文件名, 例如: "test.ini", "../test.ini", "temp\\test.ini"
      * @param allowTailComment 是否允许在行后面添加注释, 一般设置为: false
      * @param errorDesc [输出]错误信息
-     * @return 0-成功, 1-文件无法打开, 2-不匹配']', 3-节名称为空, 4-节名称重复, 5-项解析出错
+     * @return 0-成功, 1-文件无法打开, 2-不匹配']', 3-节名称为空, 4-节名称重复, 5-项解析出错, 6-键名称重复
      */
     int open(const std::string& filename, bool allowTailComment, std::string& errorDesc);
 
@@ -101,9 +101,9 @@ public:
      * @brief 设置节注释
      * @param sectionName 节名称
      * @param comment 注释
-     * @return true-成功, flalse-失败(不存在)
+     * @return 0-成功, 1-参数错误, 2-不允许自动创建, 3-注释未变化
      */
-    bool setSectionComment(const std::string& sectionName, const std::string& comment);
+    int setSectionComment(const std::string& sectionName, const std::string& comment);
 
     /**
      * @brief 是否存在键
@@ -135,9 +135,9 @@ public:
      * @param sectionName 节名称
      * @param key 键
      * @param value 值
-     * @return true-成功, false-失败(不存在)
+     * @return 0-成功, 1-参数错误, 2-不允许自动创建, 3-值未变化
      */
-    bool setValue(const std::string& sectionName, const std::string& key, const std::string& value);
+    int setValue(const std::string& sectionName, const std::string& key, const std::string& value);
 
     /**
      * @brief 获取注释
@@ -153,9 +153,9 @@ public:
      * @param sectionName 节名称
      * @param key 键
      * @param comment 注释
-     * @return true-成功, false-失败(不存在)
+     * @return 0-成功, 1-参数错误, 2-不允许自动创建, 3-注释未变化
      */
-    bool setComment(const std::string& sectionName, const std::string& key, const std::string& comment);
+    int setComment(const std::string& sectionName, const std::string& key, const std::string& comment);
 
     /**
      * @brief 获取额外参数
@@ -168,7 +168,7 @@ public:
     bool getExtra(const std::string& sectionName, const std::string& key, const std::string& extraName, std::string& extraValue) const;
 
     /**
-     * @brief 设置额外参数
+     * @brief 设置额外参数(额外参数不会保存到文件中, 只存在于内存)
      * @param sectionName 节名称
      * @param key 键
      * @param extraName 额外参数名
