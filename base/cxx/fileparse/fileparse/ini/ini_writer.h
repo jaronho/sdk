@@ -4,7 +4,7 @@
 namespace ini
 {
 /**
- * @brief INIÎÄ¼ş¶ÁĞ´Æ÷
+ * @brief INIæ–‡ä»¶è¯»å†™å™¨
  */
 class IniWriter final : public IniReader
 {
@@ -12,166 +12,166 @@ public:
     virtual ~IniWriter() = default;
 
     /**
-     * @brief ´ò¿ªÎÄ¼ş
-     * @param filename ÎÄ¼şÃû, ÀıÈç: "test.ini", "../test.ini", "temp\\test.ini"
-     * @param errorDesc [Êä³ö]´íÎóĞÅÏ¢
-     * @return 0-³É¹¦, 1-ÎÄ¼şÎŞ·¨´ò¿ª, 2-²»Æ¥Åä']', 3-½ÚÃû³ÆÎª¿Õ, 4-½ÚÃû³ÆÖØ¸´, 5-Ïî½âÎö³ö´í, 6-¼üÃû³ÆÖØ¸´
+     * @brief æ‰“å¼€æ–‡ä»¶
+     * @param filename æ–‡ä»¶å, ä¾‹å¦‚: "test.ini", "../test.ini", "temp\\test.ini"
+     * @param errorDesc [è¾“å‡º]é”™è¯¯ä¿¡æ¯
+     * @return 0-æˆåŠŸ, 1-æ–‡ä»¶æ— æ³•æ‰“å¼€, 2-ä¸åŒ¹é…']', 3-èŠ‚åç§°ä¸ºç©º, 4-èŠ‚åç§°é‡å¤, 5-é¡¹è§£æå‡ºé”™, 6-é”®åç§°é‡å¤
      */
     int open(const std::string& filename, std::string& errorDesc);
 
     /**
-     * @brief ÉèÖÃÔÊĞí×Ô¶¯´´½¨½Ú/Ïî
+     * @brief è®¾ç½®å…è®¸è‡ªåŠ¨åˆ›å»ºèŠ‚/é¡¹
      */
     void setAllowAutoCreate();
 
     /**
-     * @brief ±£´æÎÄ¼ş
-     * @param sortType ÅÅĞòÀàĞÍ: 0-Ä¬ÈÏ, 1-ÉıĞò, 2-½µĞò
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-ÎÄ¼ş´ò¿ªÊ§°Ü, 3-Ğ´ÎÄ¼şÊ§°Ü
+     * @brief ä¿å­˜æ–‡ä»¶
+     * @param sortType æ’åºç±»å‹: 0-é»˜è®¤, 1-å‡åº, 2-é™åº
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-æ–‡ä»¶æ‰“å¼€å¤±è´¥, 3-å†™æ–‡ä»¶å¤±è´¥
      */
     int save(int sortType = 0);
 
     /**
-     * @brief Çå³ı
+     * @brief æ¸…é™¤
      */
     void clear();
 
     /**
-     * @brief ÉèÖÃ×¢ÊÍ±êÊ¶·ûÁĞ±í
-     * @param flags ±êÊ¶·ûÁĞ±í
-     * @return true-³É¹¦, flalse-Ê§°Ü
+     * @brief è®¾ç½®æ³¨é‡Šæ ‡è¯†ç¬¦åˆ—è¡¨
+     * @param flags æ ‡è¯†ç¬¦åˆ—è¡¨
+     * @return true-æˆåŠŸ, flalse-å¤±è´¥
      */
     bool setCommentFlags(const std::vector<std::string>& flags);
 
     /**
-     * @brief É¾³ı½Ú
-     * @param nameName ½ÚÃû³Æ
-     * @return true-³É¹¦, flalse-Ê§°Ü(²»´æÔÚ)
+     * @brief åˆ é™¤èŠ‚
+     * @param nameName èŠ‚åç§°
+     * @return true-æˆåŠŸ, flalse-å¤±è´¥(ä¸å­˜åœ¨)
      */
     bool removeSection(const std::string& name);
 
     /**
-     * @brief ÉèÖÃ½Ú×¢ÊÍ
-     * @param name ½ÚÃû³Æ
-     * @param comment ×¢ÊÍ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®èŠ‚æ³¨é‡Š
+     * @param name èŠ‚åç§°
+     * @param comment æ³¨é‡Š
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setSectionComment(const std::string& name, const std::string& comment);
 
     /**
-     * @brief É¾³ıÏî
-     * @param nameName ½ÚÃû³Æ
-     * @param key ¼ü
-     * @return true-³É¹¦, flalse-Ê§°Ü(²»´æÔÚ)
+     * @brief åˆ é™¤é¡¹
+     * @param nameName èŠ‚åç§°
+     * @param key é”®
+     * @return true-æˆåŠŸ, flalse-å¤±è´¥(ä¸å­˜åœ¨)
      */
     bool removeItem(const std::string& name, const std::string& key);
 
     /**
-     * @brief ÉèÖÃÏî×¢ÊÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param comment ×¢ÊÍ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®é¡¹æ³¨é‡Š
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param comment æ³¨é‡Š
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setComment(const std::string& name, const std::string& key, const std::string& comment);
 
     /**
-     * @brief ÉèÖÃ²¼¶ûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®å¸ƒå°”å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, bool value);
 
     /**
-     * @brief ÉèÖÃÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, int value);
 
     /**
-     * @brief ÉèÖÃÎŞ·ûºÅÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®æ— ç¬¦å·æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, unsigned int value);
 
     /**
-     * @brief ÉèÖÃ³¤ÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®é•¿æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, long value);
 
     /**
-     * @brief ÉèÖÃÎŞ·ûºÅ³¤ÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®æ— ç¬¦å·é•¿æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, unsigned long value);
 
     /**
-     * @brief ÉèÖÃ64Î»³¤ÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®64ä½é•¿æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, long long value);
 
     /**
-     * @brief ÉèÖÃÎŞ·ûºÅ64Î»³¤ÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®æ— ç¬¦å·64ä½é•¿æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, unsigned long long value);
 
     /**
-     * @brief ÉèÖÃµ¥¾«¶È¸¡µãĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®å•ç²¾åº¦æµ®ç‚¹å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, float value);
 
     /**
-     * @brief ÉèÖÃË«¾«¶È¸¡µãĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®åŒç²¾åº¦æµ®ç‚¹å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, double value);
 
     /**
-     * @brief ÉèÖÃ×Ö·û´®
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param value Öµ
-     * @return 0-³É¹¦, 1-Î´±ä¸ü, 2-²ÎÊı´íÎó, 3-²»ÔÊĞí×Ô¶¯´´½¨
+     * @brief è®¾ç½®å­—ç¬¦ä¸²
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param value å€¼
+     * @return 0-æˆåŠŸ, 1-æœªå˜æ›´, 2-å‚æ•°é”™è¯¯, 3-ä¸å…è®¸è‡ªåŠ¨åˆ›å»º
      */
     int setValue(const std::string& name, const std::string& key, std::string value);
 
     /**
-     * @brief ÊÇ·ñÔÊĞí´´½¨½Ú/Ïî
-     * @return true-ÔÊĞí, false-²»ÔÊĞí
+     * @brief æ˜¯å¦å…è®¸åˆ›å»ºèŠ‚/é¡¹
+     * @return true-å…è®¸, false-ä¸å…è®¸
      */
     bool isAllowAutoCreate() const override;
 
 private:
-    bool m_allowAutoCreate = false; /* ÊÇ·ñÔÊĞí×Ô¶¯´´½¨½Ú/Ïî */
+    bool m_allowAutoCreate = false; /* æ˜¯å¦å…è®¸è‡ªåŠ¨åˆ›å»ºèŠ‚/é¡¹ */
 };
 } // namespace ini

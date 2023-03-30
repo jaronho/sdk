@@ -4,7 +4,7 @@
 namespace ini
 {
 /**
- * @brief INIÎÄ¼ş²é¿´Æ÷
+ * @brief INIæ–‡ä»¶æŸ¥çœ‹å™¨
  */
 class IniReader : protected IniFile
 {
@@ -12,161 +12,161 @@ public:
     virtual ~IniReader() = default;
 
     /**
-     * @brief ´ò¿ªÎÄ¼ş
-     * @param filename ÎÄ¼şÃû, ÀıÈç: "test.ini", "../test.ini", "temp\\test.ini"
-     * @param errorDesc [Êä³ö]´íÎóĞÅÏ¢
-     * @return 0-³É¹¦, 1-ÎÄ¼şÎŞ·¨´ò¿ª, 2-²»Æ¥Åä']', 3-½ÚÃû³ÆÎª¿Õ, 4-½ÚÃû³ÆÖØ¸´, 5-Ïî½âÎö³ö´í, 6-¼üÃû³ÆÖØ¸´
+     * @brief æ‰“å¼€æ–‡ä»¶
+     * @param filename æ–‡ä»¶å, ä¾‹å¦‚: "test.ini", "../test.ini", "temp\\test.ini"
+     * @param errorDesc [è¾“å‡º]é”™è¯¯ä¿¡æ¯
+     * @return 0-æˆåŠŸ, 1-æ–‡ä»¶æ— æ³•æ‰“å¼€, 2-ä¸åŒ¹é…']', 3-èŠ‚åç§°ä¸ºç©º, 4-èŠ‚åç§°é‡å¤, 5-é¡¹è§£æå‡ºé”™, 6-é”®åç§°é‡å¤
      */
     int open(const std::string& filename, std::string& errorDesc);
 
     /**
-     * @brief ÖØÔØÎÄ¼ş
-     * @param errorDesc [Êä³ö]´íÎóĞÅÏ¢
-     * @return 0-³É¹¦, 1-ÎÄ¼şÎŞ·¨´ò¿ª, 2-²»Æ¥Åä']', 3-½ÚÃû³ÆÎª¿Õ, 4-½ÚÃû³ÆÖØ¸´, 5-Ïî½âÎö³ö´í, 6-¼üÃû³ÆÖØ¸´
+     * @brief é‡è½½æ–‡ä»¶
+     * @param errorDesc [è¾“å‡º]é”™è¯¯ä¿¡æ¯
+     * @return 0-æˆåŠŸ, 1-æ–‡ä»¶æ— æ³•æ‰“å¼€, 2-ä¸åŒ¹é…']', 3-èŠ‚åç§°ä¸ºç©º, 4-èŠ‚åç§°é‡å¤, 5-é¡¹è§£æå‡ºé”™, 6-é”®åç§°é‡å¤
      */
     int reload(std::string& errorDesc);
 
     /**
-     * @brief »ñÈ¡½ÚÁĞ±í
-     * @return ½ÚÁĞ±í
+     * @brief è·å–èŠ‚åˆ—è¡¨
+     * @return èŠ‚åˆ—è¡¨
      */
     std::vector<IniSection> getSections() const;
 
     /**
-     * @brief »ñÈ¡×¢ÊÍ±êÊ¶·ûÁĞ±í
-     * @return ±êÊ¶·ûÁĞ±í
+     * @brief è·å–æ³¨é‡Šæ ‡è¯†ç¬¦åˆ—è¡¨
+     * @return æ ‡è¯†ç¬¦åˆ—è¡¨
      */
     std::vector<std::string> getCommentFlags() const;
 
     /**
-     * @brief ÊÇ·ñ´æÔÚ½Ú
-     * @param name ½ÚÃû³Æ
-     * @return true-´æÔÚ, false-²»´æÔÚ
+     * @brief æ˜¯å¦å­˜åœ¨èŠ‚
+     * @param name èŠ‚åç§°
+     * @return true-å­˜åœ¨, false-ä¸å­˜åœ¨
      */
     bool hasSection(const std::string& name) const;
 
     /**
-     * @brief »ñÈ¡½Ú×¢ÊÍ
-     * @param name ½ÚÃû³Æ
-     * @param comment [Êä³ö]×¢ÊÍ
-     * @return true-³É¹¦, flalse-Ê§°Ü(²»´æÔÚ)
+     * @brief è·å–èŠ‚æ³¨é‡Š
+     * @param name èŠ‚åç§°
+     * @param comment [è¾“å‡º]æ³¨é‡Š
+     * @return true-æˆåŠŸ, flalse-å¤±è´¥(ä¸å­˜åœ¨)
      */
     bool getSectionComment(const std::string& name, std::string& comment) const;
 
     /**
-     * @brief ÊÇ·ñ´æÔÚÏî
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @return true-´æÔÚ, false-²»´æÔÚ
+     * @brief æ˜¯å¦å­˜åœ¨é¡¹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @return true-å­˜åœ¨, false-ä¸å­˜åœ¨
      */
     bool hasItem(const std::string& name, const std::string& key) const;
 
     /**
-     * @brief »ñÈ¡Ïî×¢ÊÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param comment [Êä³ö]×¢ÊÍ
-     * @return true-³É¹¦, flalse-Ê§°Ü(²»´æÔÚ)
+     * @brief è·å–é¡¹æ³¨é‡Š
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param comment [è¾“å‡º]æ³¨é‡Š
+     * @return true-æˆåŠŸ, flalse-å¤±è´¥(ä¸å­˜åœ¨)
      */
     bool getComment(const std::string& name, const std::string& key, std::string& comment) const;
 
     /**
-     * @brief »ñÈ¡²¼¶ûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–å¸ƒå°”å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     bool getBool(const std::string& name, const std::string& key, bool defaultValue = false) const;
 
     /**
-     * @brief »ñÈ¡ÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     int getInt(const std::string& name, const std::string& key, int defaultValue = 0) const;
 
     /**
-     * @brief »ñÈ¡ÎŞ·ûºÅÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–æ— ç¬¦å·æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     unsigned int getUInt(const std::string& name, const std::string& key, unsigned int defaultValue = 0) const;
 
     /**
-     * @brief »ñÈ¡³¤ÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–é•¿æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     long getLong(const std::string& name, const std::string& key, long defaultValue = 0) const;
 
     /**
-     * @brief »ñÈ¡ÎŞ·ûºÅ³¤ÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–æ— ç¬¦å·é•¿æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     unsigned long getULong(const std::string& name, const std::string& key, unsigned long defaultValue = 0) const;
 
     /**
-     * @brief »ñÈ¡64Î»³¤ÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–64ä½é•¿æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     long long getLongLong(const std::string& name, const std::string& key, long long defaultValue = 0) const;
 
     /**
-     * @brief »ñÈ¡ÎŞ·ûºÅ64Î»³¤ÕûĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–æ— ç¬¦å·64ä½é•¿æ•´å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     unsigned long long getULongLong(const std::string& name, const std::string& key, unsigned long long defaultValue = 0) const;
 
     /**
-     * @brief »ñÈ¡µ¥¾«¶È¸¡µãĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–å•ç²¾åº¦æµ®ç‚¹å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     float getFloat(const std::string& name, const std::string& key, float defaultValue = 0.0f) const;
 
     /**
-     * @brief »ñÈ¡Ë«¾«¶È¸¡µãĞÍ
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–åŒç²¾åº¦æµ®ç‚¹å‹
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     double getDouble(const std::string& name, const std::string& key, double defaultValue = 0.0) const;
 
     /**
-     * @brief »ñÈ¡×Ö·û´®
-     * @param name ½ÚÃû³Æ
-     * @param key ¼ü
-     * @param defaultValue Ä¬ÈÏÖµ
-     * @return Öµ
+     * @brief è·å–å­—ç¬¦ä¸²
+     * @param name èŠ‚åç§°
+     * @param key é”®
+     * @param defaultValue é»˜è®¤å€¼
+     * @return å€¼
      */
     std::string getString(const std::string& name, const std::string& key, std::string defaultValue = std::string()) const;
 
     /**
-     * @brief ÊÇ·ñÔÊĞí´´½¨½Ú/Ïî
-     * @return false-²»ÔÊĞí
+     * @brief æ˜¯å¦å…è®¸åˆ›å»ºèŠ‚/é¡¹
+     * @return false-ä¸å…è®¸
      */
     bool isAllowAutoCreate() const override;
 
 private:
-    std::string m_filename; /* ÅäÖÃÎÄ¼şÃû */
+    std::string m_filename; /* é…ç½®æ–‡ä»¶å */
 };
 } // namespace ini
