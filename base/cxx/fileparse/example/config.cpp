@@ -95,52 +95,12 @@ bool Config::reload()
     return false;
 }
 
-bool Config::restoreFactory(const std::vector<std::string>& ignoreSectionList, const std::vector<std::string>& ignoreKeyList)
+bool Config::restoreFactory(const std::vector<std::string>& ignoreSections, const std::vector<std::string>& ignoreItems)
 {
     std::lock_guard<std::mutex> locker(s_mutex);
     if (s_writable)
     {
-        /* 恢复到出厂配置 */
-        auto sectionList = ini::getIni(CONFIG_FILENAME);
-        for (const auto& section : sectionList)
-        {
-            bool ingoreSectionFlag = false;
-            for (const auto& ignoreName : ignoreSectionList)
-            {
-                if (ignoreName == section.name)
-                {
-                    ingoreSectionFlag = true;
-                    break;
-                }
-            }
-            if (ingoreSectionFlag)
-            {
-                continue;
-            }
-            for (const auto& item : section.items)
-            {
-                bool ignoreKeyFlag = false;
-                for (auto ignoreKey : ignoreKeyList)
-                {
-                    std::string name, key;
-                    ini::splitSectionKey(ignoreKey, name, key);
-                    if (name == section.name && key == item.key)
-                    {
-                        ignoreKeyFlag = true;
-                        break;
-                    }
-                }
-                if (ignoreKeyFlag)
-                {
-                    continue;
-                }
-                if (s_iniWriter->setValue(section.name, item.key, item.value) >= 2)
-                {
-                    return false;
-                }
-            }
-        }
-        if (0 == s_iniWriter->save())
+        if (ini::restoreIni(s_iniWriter, CONFIG_FILENAME, ignoreSections, ignoreItems) < 2)
         {
             return true;
         }

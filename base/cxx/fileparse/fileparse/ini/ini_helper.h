@@ -48,19 +48,22 @@ std::vector<IniSection> getIni(const std::string& id);
  * @brief 恢复指定模块的配置
  * @param writer 读写器
  * @param id 键值对所在模块id(一般传入文件名, 能够标识唯一即可)
- * @param autoSave 恢复后是否自动保存(非必填), 默认自动保存
- * @param sortType 排序类型(非必填): 0-默认, 1-升序, 2-降序
+ * @param ignoreSections 要忽略的节数据(选填), 默认为空
+ * @param ignoreItems 要忽略的项数据(选填), 默认为空
+ * @param autoSave 恢复后是否自动保存(选填), 默认自动保存
+ * @param sortType 排序类型(选填): 0-默认, 1-升序, 2-降序
  * @return 0-成功, 1-未变更, 2-读写器为空, 3-找不到模块id, 4-恢复失败,5-保存失败
  */
-int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave = true, int sortType = 0);
+int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, const std::vector<std::string>& ignoreSections = {},
+               const std::vector<std::string>& ignoreItems = {}, bool autoSave = true, int sortType = 0);
 
 /**
  * @brief 同步指定模块的配置(将对读写器进行删除和增加键值, 不修改共有的键值)
  * @param writer 读写器
  * @param id 键值对所在模块id(一般传入文件名, 能够标识唯一即可)
- * @param rmFlag 是否删除丢弃的节/项(非必填), 默认删除
- * @param autoSave 同步后是否自动保存(非必填), 默认自动保存
- * @param sortType 排序类型(非必填): 0-默认, 1-升序, 2-降序
+ * @param rmFlag 是否删除丢弃的节/项(选填), 默认删除
+ * @param autoSave 同步后是否自动保存(选填), 默认自动保存
+ * @param sortType 排序类型(选填): 0-默认, 1-升序, 2-降序
  * @return 0-成功, 1-未变更, 2-读写器为空, 3-找不到模块id, 4-同步失败, 5-保存失败
  */
 int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool rmFlag = true, bool autoSave = true, int sortType = 0);

@@ -103,7 +103,8 @@ std::vector<IniSection> getIni(const std::string& id)
     return iniIter->second;
 }
 
-int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave, int sortType)
+int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, const std::vector<std::string>& ignoreSections,
+               const std::vector<std::string>& ignoreItems, bool autoSave, int sortType)
 {
     if (!writer)
     {
@@ -116,12 +117,99 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
     {
         return 3;
     }
+    /* 判断节数据是否要忽略 */
+    auto isSectionIgnored = [&](const std::string& name) {
+        for (const auto& ignoreSection : ignoreSections)
+        {
+            if (name == ignoreSection)
+            {
+                return 0; /* 完全忽略 */
+            }
+        }
+        for (const auto& ignoreItem : ignoreItems)
+        {
+            std::string sn, ik;
+            splitSectionKey(ignoreItem, sn, ik);
+            if (name == sn)
+            {
+                return 1; /* 不完全忽略 */
+            }
+        }
+        return 2; /* 不忽略 */
+    };
+    /* 判断项数据是否要忽略 */
+    auto isItemIgnored = [&](const std::string& name, const std::string& key) {
+        for (const auto& ignoreItem : ignoreItems)
+        {
+            std::string sn, ik;
+            splitSectionKey(ignoreItem, sn, ik);
+            if (name == sn && key == ik)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
     /* 清空当前配置 */
-    writer->clear();
+    auto sections = writer->getSections();
+    for (const auto& section : sections)
+    {
+        auto sectionIter = iniIter->second.begin();
+        for (; iniIter->second.end() != sectionIter; ++sectionIter)
+        {
+            if (section.name == sectionIter->name)
+            {
+                break;
+            }
+        }
+        if (iniIter->second.end() == sectionIter) /* 节数据不存在 */
+        {
+            auto ret = isSectionIgnored(section.name);
+            if (1 == ret) /* 不完全忽略节(只忽略部分项) */
+            {
+                for (const auto& item : section.items)
+                {
+                    if (!isItemIgnored(section.name, item.key)) /* 不忽略, 则丢弃 */
+                    {
+                        writer->removeItem(section.name, item.key);
+                    }
+                }
+            }
+            else if (2 == ret) /* 不忽略, 则丢弃 */
+            {
+                writer->removeSection(section.name);
+            }
+        }
+        else /* 节数据存在 */
+        {
+            for (const auto& item : section.items)
+            {
+                auto itemIter = sectionIter->items.begin();
+                for (; sectionIter->items.end() != itemIter; ++itemIter)
+                {
+                    if (item.key == itemIter->key)
+                    {
+                        break;
+                    }
+                }
+                if (sectionIter->items.end() == itemIter) /* 项数据不存在 */
+                {
+                    if (!isItemIgnored(section.name, item.key)) /* 不忽略, 则丢弃 */
+                    {
+                        writer->removeItem(section.name, item.key);
+                    }
+                }
+            }
+        }
+    }
     /* 恢复初始配置 */
     for (const auto& section : iniIter->second)
     {
-        if (!section.comment.empty())
+        if (0 == isSectionIgnored(section.name))
+        {
+            continue;
+        }
+        if (!section.name.empty())
         {
             if (writer->setSectionComment(section.name, section.comment) >= 2)
             {
@@ -130,12 +218,13 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
         }
         for (const auto& item : section.items)
         {
-            if (!item.comment.empty())
+            if (isItemIgnored(section.name, item.key))
             {
-                if (writer->setComment(section.name, item.key, item.comment) >= 2)
-                {
-                    return 4;
-                }
+                continue;
+            }
+            if (writer->setComment(section.name, item.key, item.comment) >= 2)
+            {
+                return 4;
             }
             if (writer->setValue(section.name, item.key, item.value) >= 2)
             {
