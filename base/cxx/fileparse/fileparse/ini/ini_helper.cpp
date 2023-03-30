@@ -3,11 +3,12 @@
 #include <algorithm>
 #include <mutex>
 #include <stdexcept>
+#include <vector>
 
 namespace ini
 {
 static std::mutex s_mutex; /* 互斥锁 */
-static std::map<std::string, std::map<std::string, ini::IniSection>> s_iniMap; /* 全局ini映射表 */
+static std::map<std::string, std::vector<ini::IniSection>> s_iniMap; /* 全局ini映射表 */
 
 void splitSectionKey(const std::string& sectionKey, std::string& name, std::string& key)
 {
@@ -48,30 +49,36 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     auto iniIter = s_iniMap.find(id);
     if (s_iniMap.end() == iniIter) /* 没有ini配置则创建 */
     {
-        iniIter = s_iniMap.insert(std::make_pair(id, std::map<std::string, IniSection>())).first;
+        iniIter = s_iniMap.insert(std::make_pair(id, std::vector<IniSection>())).first;
     }
     /* 查找节 */
-    auto sectionIter = iniIter->second.find(name);
+    auto sectionIter = iniIter->second.begin();
+    for (; iniIter->second.end() != sectionIter; ++sectionIter)
+    {
+        if (name == sectionIter->name)
+        {
+            break;
+        }
+    }
     if (iniIter->second.end() == sectionIter) /* 没有节则创建 */
     {
         ini::IniSection section;
         section.name = name;
-        sectionIter = iniIter->second.insert(std::make_pair(name, section)).first;
+        sectionIter = iniIter->second.insert(iniIter->second.end(), section);
     }
-    auto& section = sectionIter->second;
-    /* 添加键值 */
-    for (const auto& item : section.items)
+    /* 添加项 */
+    for (const auto& item : sectionIter->items)
     {
-        if (key == item.key) /* 键值已存在则返回 */
+        if (key == item.key) /* 项已存在则返回 */
         {
             return sectionKey;
         }
     }
     if (!sectionComment.empty())
     {
-        section.comment = ('#' == sectionComment[0]) ? sectionComment : ("# " + sectionComment);
+        sectionIter->comment = ('#' == sectionComment[0]) ? sectionComment : ("# " + sectionComment);
     }
-    /* 插入新键值 */
+    /* 插入新项 */
     IniItem item;
     item.key = key;
     item.value = value;
@@ -80,23 +87,23 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
         item.comment = ('#' == keyComment[0]) ? keyComment : ("# " + keyComment);
     }
     item.extraMap["readOnly"] = readOnly ? "1" : "0";
-    section.items.emplace_back(item);
+    sectionIter->items.emplace_back(item);
     return sectionKey;
 }
 
-std::map<std::string, IniSection> getIni(const std::string& id)
+std::vector<IniSection> getIni(const std::string& id)
 {
     /* 查找ini映射表 */
     std::lock_guard<std::mutex> locker(s_mutex);
     auto iniIter = s_iniMap.find(id);
     if (s_iniMap.end() == iniIter) /* 没有ini配置则返回 */
     {
-        return std::map<std::string, IniSection>();
+        return std::vector<IniSection>();
     }
     return iniIter->second;
 }
 
-int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave)
+int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave, int sortType)
 {
     if (!writer || !writer->isAllowAutoCreate())
     {
@@ -112,10 +119,8 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
     /* 清空当前配置 */
     writer->clear();
     /* 恢复初始配置 */
-    const auto& sectionMap = iniIter->second;
-    for (auto sectionIter = sectionMap.begin(); sectionMap.end() != sectionIter; ++sectionIter)
+    for (const auto& section : iniIter->second)
     {
-        const auto& section = sectionIter->second;
         if (!section.comment.empty())
         {
             writer->setSectionComment(section.name, section.comment);
@@ -131,7 +136,7 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
     }
     if (autoSave)
     {
-        auto ret = writer->save();
+        auto ret = writer->save(sortType);
         if (0 != ret)
         {
             return (1 == ret) ? 3 : 4;
@@ -140,7 +145,7 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
     return 0;
 }
 
-int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave)
+int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave, int sortType)
 {
     if (!writer || !writer->isAllowAutoCreate())
     {
@@ -153,49 +158,58 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
     {
         return 2;
     }
-    const auto& sectionMap = iniIter->second;
     /* 删除/修改配置 */
-    auto localSectionMap = writer->getSections();
-    for (auto localSectionIter = localSectionMap.begin(); localSectionMap.end() != localSectionIter; ++localSectionIter)
+    auto sections = writer->getSections();
+    for (const auto& section : sections)
     {
-        const auto& localSection = localSectionIter->second;
-        auto sectionIter = sectionMap.find(localSection.name);
-        if (sectionMap.end() == sectionIter) /* 本地节数据在配置中不存在, 则删除 */
+        auto sectionIter = iniIter->second.begin();
+        for (; iniIter->second.end() != sectionIter; ++sectionIter)
         {
-            writer->removeSection(localSection.name);
-        }
-        else /* 本地节数据在配置中存在 */
-        {
-            const auto& section = sectionIter->second;
-            std::string localSectionComment;
-            writer->getSectionComment(localSection.name, localSectionComment);
-            if (section.comment != localSectionComment)
+            if (section.name == sectionIter->name)
             {
-                writer->setSectionComment(localSection.name, section.comment);
+                break;
             }
-            /* 删除无用的键值数据 */
-            for (const auto& localItem : localSection.items)
+        }
+        if (iniIter->second.end() == sectionIter) /* 节数据不存在, 则丢弃 */
+        {
+            writer->removeSection(section.name);
+        }
+        else /* 节数据存在 */
+        {
+            std::string sectionComment;
+            writer->getSectionComment(section.name, sectionComment);
+            if (sectionComment != sectionIter->comment)
             {
-                const auto& itemIter = std::find_if(section.items.begin(), section.items.end(),
-                                                    [&](const ini::IniItem& item) { return (item.key == localItem.key); });
-                if (section.items.end() == itemIter) /* 本地键值在配置中不存在, 则删除 */
+                writer->setSectionComment(section.name, sectionIter->comment);
+            }
+            for (const auto& item : section.items)
+            {
+                auto itemIter = sectionIter->items.begin();
+                for (; sectionIter->items.end() != itemIter; ++itemIter)
                 {
-                    writer->removeKey(localSection.name, localItem.key);
-                }
-                else /* 本地键值在配置中存在 */
-                {
-                    std::string localComment;
-                    writer->getComment(localSection.name, localItem.key, localComment);
-                    if (itemIter->comment != localComment)
+                    if (item.key == itemIter->key)
                     {
-                        writer->setComment(localSection.name, localItem.key, itemIter->comment);
+                        break;
                     }
-                    if (itemIter->value != localItem.value) /* 键值不相等 */
+                }
+                if (sectionIter->items.end() == itemIter) /* 项数据不存在, 则丢弃 */
+                {
+                    writer->removeKey(section.name, item.key);
+                }
+                else /* 项数据存在 */
+                {
+                    std::string comment;
+                    writer->getComment(section.name, item.key, comment);
+                    if (comment != itemIter->comment)
+                    {
+                        writer->setComment(section.name, item.key, itemIter->comment);
+                    }
+                    if (item.value != itemIter->value) /* 值不相等 */
                     {
                         auto extraIter = itemIter->extraMap.find("readOnly");
-                        if (itemIter->extraMap.end() != extraIter && "1" == extraIter->second) /* 只读则使用新键值 */
+                        if (itemIter->extraMap.end() != extraIter && "1" == extraIter->second) /* 只读则使用新项 */
                         {
-                            writer->setValue(localSection.name, localItem.key, itemIter->value);
+                            writer->setValue(section.name, item.key, itemIter->value);
                         }
                     }
                 }
@@ -203,18 +217,17 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
         }
     }
     /* 增加配置 */
-    for (auto sectionIter = sectionMap.begin(); sectionMap.end() != sectionIter; ++sectionIter)
+    for (const auto& section : iniIter->second)
     {
-        const auto& section = sectionIter->second;
-        std::string localSectionComment;
-        writer->getSectionComment(section.name, localSectionComment);
-        if (section.comment != localSectionComment)
+        std::string sectionComment;
+        writer->getSectionComment(section.name, sectionComment);
+        if (sectionComment != section.comment)
         {
             writer->setSectionComment(section.name, section.comment);
         }
         for (const auto& item : section.items)
         {
-            if (!writer->hasKey(section.name, item.key)) /* 新键值 */
+            if (!writer->hasKey(section.name, item.key)) /* 新项 */
             {
                 writer->setComment(section.name, item.key, item.comment);
                 writer->setValue(section.name, item.key, item.value);
@@ -224,7 +237,7 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
     /* 自动保存 */
     if (autoSave)
     {
-        auto ret = writer->save();
+        auto ret = writer->save(sortType);
         if (0 != ret)
         {
             return (1 == ret) ? 3 : 4;

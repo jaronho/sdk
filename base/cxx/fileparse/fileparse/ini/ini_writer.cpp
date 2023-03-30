@@ -19,9 +19,9 @@ void IniWriter::setAllowAutoCreate()
     m_allowAutoCreate = true;
 }
 
-int IniWriter::save()
+int IniWriter::save(int sortType)
 {
-    return IniFile::save();
+    return IniFile::save(sortType);
 }
 
 void IniWriter::clear()

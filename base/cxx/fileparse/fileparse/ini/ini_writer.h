@@ -12,7 +12,7 @@ public:
 
     void setAllowAutoCreate();
 
-    int save();
+    int save(int sortType = 0);
 
     void clear();
 

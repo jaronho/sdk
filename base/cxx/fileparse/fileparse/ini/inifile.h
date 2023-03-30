@@ -47,9 +47,10 @@ public:
 
     /**
      * @brief 保存文件(对象在析构时会自动调用该接口)
+     * @param sortType 排序类型: 0-默认, 1-升序, 2-降序
      * @return 0-成功, 1-配置未修改, 2-文件打开失败, 3-写文件失败
      */
-    int save();
+    int save(int sortType = 0);
 
     /**
      * @brief 清除
@@ -60,7 +61,7 @@ public:
      * @brief 获取节列表
      * @return 节列表
      */
-    std::map<std::string, IniSection> getSections() const;
+    std::vector<IniSection> getSections() const;
 
     /**
      * @brief 获取注释标识符列表
@@ -193,7 +194,7 @@ private:
 
 private:
     std::string m_filename; /* 文件名称 */
-    std::map<std::string, IniSection> m_sections; /* 节列表 */
+    std::vector<IniSection> m_sections; /* 节列表 */
     std::vector<std::string> m_commentFlags; /* 注释标识列表 */
     bool m_changed = false; /* 是否被改变 */
 };
