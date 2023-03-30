@@ -1,27 +1,27 @@
 #pragma once
+#include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 #include "ini_writer.h"
 
 #define INI_KEY_VAR(var) var
 /* 创建字符串键值对 */
-#define MAKE_INI_KV_STRING(id, keyVar, keyName, value, sectionComment, comment, readOnly) \
-    std::string INI_KEY_VAR(keyVar) = ini::makeKeyValue(id, keyName, value, sectionComment, comment, readOnly)
+#define MAKE_INI_KV_STRING(id, var, key, value, sectionComment, comment, readOnly) \
+    auto INI_KEY_VAR(var) = ini::makeKeyValue(id, key, value, sectionComment, comment, readOnly)
 /* 创建数值键值对 */
-#define MAKE_INI_KV_NUMBER(id, keyVar, keyName, value, sectionComment, comment, readOnly) \
-    std::string INI_KEY_VAR(keyVar) = ini::makeKeyValue(id, keyName, std::to_string(value), sectionComment, comment, readOnly)
+#define MAKE_INI_KV_NUMBER(id, var, key, value, sectionComment, comment, readOnly) \
+    auto INI_KEY_VAR(var) = ini::makeKeyValue(id, key, std::to_string(value), sectionComment, comment, readOnly)
 
 namespace ini
 {
 /**
  * @brief 分割section和key
  * @param sectionKey section和key的字符串组合, 格式为: "/section/key" 或 "/key"
- * @param sectionName [输出]section名称
- * @param keyName [输出]key名称
+ * @param name [输出]section名称
+ * @param key [输出]key名称
  */
-void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& keyName);
+void splitSectionKey(const std::string& sectionKey, std::string& name, std::string& key);
 
 /**
  * @brief 创建键值对
@@ -42,7 +42,7 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
  * @param id 键值对所在模块id(一般传入文件名, 能够标识唯一即可)
  * @return 返回初始配置
  */
-std::unordered_map<std::string, IniSection> getIni(const std::string& id);
+std::map<std::string, IniSection> getIni(const std::string& id);
 
 /**
  * @brief 恢复指定模块的配置

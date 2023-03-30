@@ -1,6 +1,6 @@
 #pragma once
+#include <map>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace ini
@@ -13,7 +13,7 @@ struct IniItem
     std::string key; /* 键 */
     std::string value; /* 值 */
     std::string comment; /* 注释 */
-    std::unordered_map<std::string, std::string> extraMap; /* 额外参数(不显示和持久化, 只存在内存中) */
+    std::map<std::string, std::string> extraMap; /* 额外参数(不显示和持久化, 只存在内存中) */
 };
 
 /**
@@ -60,7 +60,7 @@ public:
      * @brief 获取节列表
      * @return 节列表
      */
-    std::unordered_map<std::string, IniSection> getSections() const;
+    std::map<std::string, IniSection> getSections() const;
 
     /**
      * @brief 获取注释标识符列表
@@ -77,41 +77,41 @@ public:
 
     /**
      * @brief 是否存在节
-     * @param sectionName 节名称
+     * @param name 节名称
      * @return true-存在, false-不存在
      */
-    bool hasSection(const std::string& sectionName) const;
+    bool hasSection(const std::string& name) const;
 
     /**
      * @brief 删除节
      * @param nameName 节名称
      * @return true-成功, flalse-失败(不存在)
      */
-    bool removeSection(const std::string& sectionName);
+    bool removeSection(const std::string& name);
 
     /**
      * @brief 获取节注释
-     * @param sectionName 节名称
+     * @param name 节名称
      * @param comment [输出]注释
      * @return true-成功, flalse-失败(不存在)
      */
-    bool getSectionComment(const std::string& sectionName, std::string& comment) const;
+    bool getSectionComment(const std::string& name, std::string& comment) const;
 
     /**
      * @brief 设置节注释
-     * @param sectionName 节名称
+     * @param name 节名称
      * @param comment 注释
      * @return 0-成功, 1-参数错误, 2-不允许自动创建, 3-注释未变化
      */
-    int setSectionComment(const std::string& sectionName, const std::string& comment);
+    int setSectionComment(const std::string& name, const std::string& comment);
 
     /**
      * @brief 是否存在键
-     * @param sectionName 节名称
+     * @param name 节名称
      * @param key 键
      * @return true-存在, false-不存在
      */
-    bool hasKey(const std::string& sectionName, const std::string& key) const;
+    bool hasKey(const std::string& name, const std::string& key) const;
 
     /**
      * @brief 删除键
@@ -119,63 +119,63 @@ public:
      * @param key 键
      * @return true-成功, flalse-失败(不存在)
      */
-    bool removeKey(const std::string& sectionName, const std::string& key);
+    bool removeKey(const std::string& name, const std::string& key);
 
     /**
      * @brief 获取值
-     * @param sectionName 节名称
+     * @param name 节名称
      * @param key 键
      * @param value [输出]值
      * @return true-成功, flalse-失败(不存在)
      */
-    bool getValue(const std::string& sectionName, const std::string& key, std::string& value) const;
+    bool getValue(const std::string& name, const std::string& key, std::string& value) const;
 
     /**
      * @brief 设置值
-     * @param sectionName 节名称
+     * @param name 节名称
      * @param key 键
      * @param value 值
      * @return 0-成功, 1-参数错误, 2-不允许自动创建, 3-值未变化
      */
-    int setValue(const std::string& sectionName, const std::string& key, const std::string& value);
+    int setValue(const std::string& name, const std::string& key, const std::string& value);
 
     /**
      * @brief 获取注释
-     * @param sectionName 节名称
+     * @param name 节名称
      * @param key 键
      * @param comment [输出]注释
      * @return true-成功, flalse-失败(不存在)
      */
-    bool getComment(const std::string& sectionName, const std::string& key, std::string& comment) const;
+    bool getComment(const std::string& name, const std::string& key, std::string& comment) const;
 
     /**
      * @brief 设置注释
-     * @param sectionName 节名称
+     * @param name 节名称
      * @param key 键
      * @param comment 注释
      * @return 0-成功, 1-参数错误, 2-不允许自动创建, 3-注释未变化
      */
-    int setComment(const std::string& sectionName, const std::string& key, const std::string& comment);
+    int setComment(const std::string& name, const std::string& key, const std::string& comment);
 
     /**
      * @brief 获取额外参数
-     * @param sectionName 节名称
+     * @param name 节名称
      * @param key 键
      * @param extraName 额外参数名
      * @param extraValue [输出]额外参数值
      * @return true-成功, flalse-失败(不存在)
      */
-    bool getExtra(const std::string& sectionName, const std::string& key, const std::string& extraName, std::string& extraValue) const;
+    bool getExtra(const std::string& name, const std::string& key, const std::string& extraName, std::string& extraValue) const;
 
     /**
      * @brief 设置额外参数(额外参数不会保存到文件中, 只存在于内存)
-     * @param sectionName 节名称
+     * @param name 节名称
      * @param key 键
      * @param extraName 额外参数名
      * @param extraValue 额外参数值
      * @return true-成功, false-失败(不存在)
      */
-    bool setExtra(const std::string& sectionName, const std::string& key, const std::string& extraName, const std::string& extraValue);
+    bool setExtra(const std::string& name, const std::string& key, const std::string& extraName, const std::string& extraValue);
 
     /**
      * @brief 是否允许创建节/项
@@ -193,7 +193,7 @@ private:
 
 private:
     std::string m_filename; /* 文件名称 */
-    std::unordered_map<std::string, IniSection> m_sections; /* 节列表 */
+    std::map<std::string, IniSection> m_sections; /* 节列表 */
     std::vector<std::string> m_commentFlags; /* 注释标识列表 */
     bool m_changed = false; /* 是否被改变 */
 };

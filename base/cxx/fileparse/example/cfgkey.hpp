@@ -5,13 +5,13 @@
 
 #define CONFIG_FILENAME "config.ini"
 /* 整型键值对(只读) */
-#define CONFIG_KV_IR(keyVar, name, value, comment) const MAKE_INI_KV_NUMBER(CONFIG_FILENAME, keyVar, name, value, "", comment, true)
+#define CONFIG_KV_IR(var, name, value, comment) const MAKE_INI_KV_NUMBER(CONFIG_FILENAME, var, name, value, "", comment, true)
 /* 整型键值对(读写) */
-#define CONFIG_KV_IW(keyVar, name, value, comment) const MAKE_INI_KV_NUMBER(CONFIG_FILENAME, keyVar, name, value, "", comment, false)
+#define CONFIG_KV_IW(var, name, value, comment) const MAKE_INI_KV_NUMBER(CONFIG_FILENAME, var, name, value, "", comment, false)
 /* 字符串键值对(只读) */
-#define CONFIG_KV_SR(keyVar, name, value, comment) const MAKE_INI_KV_STRING(CONFIG_FILENAME, keyVar, name, value, "", comment, true)
+#define CONFIG_KV_SR(var, name, value, comment) const MAKE_INI_KV_STRING(CONFIG_FILENAME, var, name, value, "", comment, true)
 /* 字符串键值对(读写) */
-#define CONFIG_KV_SW(keyVar, name, value, comment) const MAKE_INI_KV_STRING(CONFIG_FILENAME, keyVar, name, value, "", comment, false)
+#define CONFIG_KV_SW(var, name, value, comment) const MAKE_INI_KV_STRING(CONFIG_FILENAME, var, name, value, "", comment, false)
 
 namespace cfgkey
 {

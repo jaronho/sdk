@@ -7,12 +7,12 @@
 namespace ini
 {
 static std::mutex s_mutex; /* 互斥锁 */
-static std::unordered_map<std::string, std::unordered_map<std::string, ini::IniSection>> s_iniMap; /* 全局ini映射表 */
+static std::map<std::string, std::map<std::string, ini::IniSection>> s_iniMap; /* 全局ini映射表 */
 
-void splitSectionKey(const std::string& sectionKey, std::string& sectionName, std::string& keyName)
+void splitSectionKey(const std::string& sectionKey, std::string& name, std::string& key)
 {
-    sectionName.clear();
-    keyName.clear();
+    name.clear();
+    key.clear();
     if (sectionKey.size() < 2) /* 键值长度需要小于2 */
     {
         throw std::logic_error("arg 'sectionKey' '" + sectionKey + "' size < 2");
@@ -29,34 +29,34 @@ void splitSectionKey(const std::string& sectionKey, std::string& sectionName, st
     auto pos = sectionKey.find_last_of('/');
     if (0 == pos) /* 全局键值 */
     {
-        keyName = sectionKey.substr(1, sectionKey.size() - 1);
+        key = sectionKey.substr(1, sectionKey.size() - 1);
     }
     else /* 二级键值 */
     {
-        sectionName = sectionKey.substr(1, pos - 1);
-        keyName = sectionKey.substr(pos + 1, sectionKey.size() - pos);
+        name = sectionKey.substr(1, pos - 1);
+        key = sectionKey.substr(pos + 1, sectionKey.size() - pos);
     }
 }
 
 std::string makeKeyValue(const std::string& id, const std::string& sectionKey, const std::string& value, const std::string& sectionComment,
                          const std::string& keyComment, bool readOnly)
 {
-    std::string sectionName, key;
-    splitSectionKey(sectionKey, sectionName, key);
+    std::string name, key;
+    splitSectionKey(sectionKey, name, key);
     /* 查找ini映射表 */
     std::lock_guard<std::mutex> locker(s_mutex);
     auto iniIter = s_iniMap.find(id);
     if (s_iniMap.end() == iniIter) /* 没有ini配置则创建 */
     {
-        iniIter = s_iniMap.insert(std::make_pair(id, std::unordered_map<std::string, IniSection>())).first;
+        iniIter = s_iniMap.insert(std::make_pair(id, std::map<std::string, IniSection>())).first;
     }
     /* 查找节 */
-    auto sectionIter = iniIter->second.find(sectionName);
+    auto sectionIter = iniIter->second.find(name);
     if (iniIter->second.end() == sectionIter) /* 没有节则创建 */
     {
         ini::IniSection section;
-        section.name = sectionName;
-        sectionIter = iniIter->second.insert(std::make_pair(sectionName, section)).first;
+        section.name = name;
+        sectionIter = iniIter->second.insert(std::make_pair(name, section)).first;
     }
     auto& section = sectionIter->second;
     /* 添加键值 */
@@ -84,14 +84,14 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     return sectionKey;
 }
 
-std::unordered_map<std::string, IniSection> getIni(const std::string& id)
+std::map<std::string, IniSection> getIni(const std::string& id)
 {
     /* 查找ini映射表 */
     std::lock_guard<std::mutex> locker(s_mutex);
     auto iniIter = s_iniMap.find(id);
     if (s_iniMap.end() == iniIter) /* 没有ini配置则返回 */
     {
-        return std::unordered_map<std::string, IniSection>();
+        return std::map<std::string, IniSection>();
     }
     return iniIter->second;
 }
