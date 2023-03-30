@@ -40,7 +40,7 @@ void splitSectionKey(const std::string& sectionKey, std::string& name, std::stri
 }
 
 std::string makeKeyValue(const std::string& id, const std::string& sectionKey, const std::string& value, const std::string& sectionComment,
-                         const std::string& keyComment, bool readOnly)
+                         const std::string& comment, bool readOnly)
 {
     std::string name, key;
     splitSectionKey(sectionKey, name, key);
@@ -82,9 +82,9 @@ std::string makeKeyValue(const std::string& id, const std::string& sectionKey, c
     IniItem item;
     item.key = key;
     item.value = value;
-    if (!keyComment.empty())
+    if (!comment.empty())
     {
-        item.comment = ('#' == keyComment[0]) ? keyComment : ("# " + keyComment);
+        item.comment = ('#' == comment[0]) ? comment : ("# " + comment);
     }
     item.extraMap["readOnly"] = readOnly ? "1" : "0";
     sectionIter->items.emplace_back(item);
@@ -105,16 +105,16 @@ std::vector<IniSection> getIni(const std::string& id)
 
 int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave, int sortType)
 {
-    if (!writer || !writer->isAllowAutoCreate())
+    if (!writer)
     {
-        return 1;
+        return 2;
     }
     /* 查找ini映射表 */
     std::lock_guard<std::mutex> locker(s_mutex);
     auto iniIter = s_iniMap.find(id);
     if (s_iniMap.end() == iniIter) /* 没有ini配置则返回 */
     {
-        return 2;
+        return 3;
     }
     /* 清空当前配置 */
     writer->clear();
@@ -123,15 +123,24 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
     {
         if (!section.comment.empty())
         {
-            writer->setSectionComment(section.name, section.comment);
+            if (writer->setSectionComment(section.name, section.comment) >= 2)
+            {
+                return 4;
+            }
         }
         for (const auto& item : section.items)
         {
             if (!item.comment.empty())
             {
-                writer->setComment(section.name, item.key, item.comment);
+                if (writer->setComment(section.name, item.key, item.comment) >= 2)
+                {
+                    return 4;
+                }
             }
-            writer->setValue(section.name, item.key, item.value);
+            if (writer->setValue(section.name, item.key, item.value) >= 2)
+            {
+                return 4;
+            }
         }
     }
     if (autoSave)
@@ -139,24 +148,24 @@ int restoreIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool au
         auto ret = writer->save(sortType);
         if (0 != ret)
         {
-            return (1 == ret) ? 3 : 4;
+            return (1 == ret) ? 1 : 5;
         }
     }
     return 0;
 }
 
-int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoSave, int sortType)
+int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool rmFlag, bool autoSave, int sortType)
 {
-    if (!writer || !writer->isAllowAutoCreate())
+    if (!writer)
     {
-        return 1;
+        return 2;
     }
     /* 查找ini映射表 */
     std::lock_guard<std::mutex> locker(s_mutex);
     auto iniIter = s_iniMap.find(id);
     if (s_iniMap.end() == iniIter) /* 没有ini配置则返回 */
     {
-        return 2;
+        return 3;
     }
     /* 删除/修改配置 */
     auto sections = writer->getSections();
@@ -172,7 +181,10 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
         }
         if (iniIter->second.end() == sectionIter) /* 节数据不存在, 则丢弃 */
         {
-            writer->removeSection(section.name);
+            if (rmFlag)
+            {
+                writer->removeSection(section.name);
+            }
         }
         else /* 节数据存在 */
         {
@@ -180,7 +192,10 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
             writer->getSectionComment(section.name, sectionComment);
             if (sectionComment != sectionIter->comment)
             {
-                writer->setSectionComment(section.name, sectionIter->comment);
+                if (writer->setSectionComment(section.name, sectionIter->comment) >= 2)
+                {
+                    return 4;
+                }
             }
             for (const auto& item : section.items)
             {
@@ -194,7 +209,10 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
                 }
                 if (sectionIter->items.end() == itemIter) /* 项数据不存在, 则丢弃 */
                 {
-                    writer->removeKey(section.name, item.key);
+                    if (rmFlag)
+                    {
+                        writer->removeItem(section.name, item.key);
+                    }
                 }
                 else /* 项数据存在 */
                 {
@@ -202,14 +220,20 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
                     writer->getComment(section.name, item.key, comment);
                     if (comment != itemIter->comment)
                     {
-                        writer->setComment(section.name, item.key, itemIter->comment);
+                        if (writer->setComment(section.name, item.key, itemIter->comment) >= 2)
+                        {
+                            return 4;
+                        }
                     }
                     if (item.value != itemIter->value) /* 值不相等 */
                     {
                         auto extraIter = itemIter->extraMap.find("readOnly");
                         if (itemIter->extraMap.end() != extraIter && "1" == extraIter->second) /* 只读则使用新项 */
                         {
-                            writer->setValue(section.name, item.key, itemIter->value);
+                            if (writer->setValue(section.name, item.key, itemIter->value) >= 2)
+                            {
+                                return 4;
+                            }
                         }
                     }
                 }
@@ -223,14 +247,23 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
         writer->getSectionComment(section.name, sectionComment);
         if (sectionComment != section.comment)
         {
-            writer->setSectionComment(section.name, section.comment);
+            if (writer->setSectionComment(section.name, section.comment) >= 2)
+            {
+                return 4;
+            }
         }
         for (const auto& item : section.items)
         {
-            if (!writer->hasKey(section.name, item.key)) /* 新项 */
+            if (!writer->hasItem(section.name, item.key)) /* 新项 */
             {
-                writer->setComment(section.name, item.key, item.comment);
-                writer->setValue(section.name, item.key, item.value);
+                if (writer->setComment(section.name, item.key, item.comment) >= 2)
+                {
+                    return 4;
+                }
+                if (writer->setValue(section.name, item.key, item.value) >= 2)
+                {
+                    return 4;
+                }
             }
         }
     }
@@ -240,7 +273,7 @@ int syncIni(std::shared_ptr<IniWriter> writer, const std::string& id, bool autoS
         auto ret = writer->save(sortType);
         if (0 != ret)
         {
-            return (1 == ret) ? 3 : 4;
+            return (1 == ret) ? 1 : 5;
         }
     }
     return 0;

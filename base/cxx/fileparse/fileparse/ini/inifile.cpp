@@ -368,7 +368,7 @@ int IniFile::setSectionComment(const std::string& name, const std::string& comme
 {
     if (name.empty() || !isComment(comment))
     {
-        return 1;
+        return 2;
     }
     auto iter = m_sections.begin();
     for (; m_sections.end() != iter; ++iter)
@@ -382,11 +382,11 @@ int IniFile::setSectionComment(const std::string& name, const std::string& comme
     {
         if (!isAllowAutoCreate())
         {
-            return 2;
+            return 3;
         }
         if (comment.empty())
         {
-            return 3;
+            return 1;
         }
         IniSection section;
         section.name = name;
@@ -394,14 +394,14 @@ int IniFile::setSectionComment(const std::string& name, const std::string& comme
     }
     else if (comment == iter->comment)
     {
-        return 3;
+        return 1;
     }
     iter->comment = comment;
     m_changed = true;
     return 0;
 }
 
-bool IniFile::hasKey(const std::string& name, const std::string& key) const
+bool IniFile::hasItem(const std::string& name, const std::string& key) const
 {
     for (const auto& section : m_sections)
     {
@@ -420,7 +420,7 @@ bool IniFile::hasKey(const std::string& name, const std::string& key) const
     return false;
 }
 
-bool IniFile::removeKey(const std::string& name, const std::string& key)
+bool IniFile::removeItem(const std::string& name, const std::string& key)
 {
     for (auto& section : m_sections)
     {
@@ -466,7 +466,7 @@ int IniFile::setValue(const std::string& name, const std::string& key, const std
 {
     if (key.empty())
     {
-        return 1;
+        return 2;
     }
     auto sectionIter = m_sections.begin();
     for (; m_sections.end() != sectionIter; ++sectionIter)
@@ -480,7 +480,7 @@ int IniFile::setValue(const std::string& name, const std::string& key, const std
     {
         if (!isAllowAutoCreate())
         {
-            return 2;
+            return 3;
         }
         IniSection section;
         section.name = name;
@@ -493,7 +493,7 @@ int IniFile::setValue(const std::string& name, const std::string& key, const std
         {
             if (value == itemIter->value)
             {
-                return 3;
+                return 1;
             }
             itemIter->value = value;
             m_changed = true;
@@ -502,7 +502,7 @@ int IniFile::setValue(const std::string& name, const std::string& key, const std
     }
     if (!isAllowAutoCreate())
     {
-        return 2;
+        return 3;
     }
     IniItem item;
     item.key = key;
@@ -537,7 +537,7 @@ int IniFile::setComment(const std::string& name, const std::string& key, const s
 {
     if (key.empty() || !isComment(comment))
     {
-        return 1;
+        return 2;
     }
     auto sectionIter = m_sections.begin();
     for (; m_sections.end() != sectionIter; ++sectionIter)
@@ -551,11 +551,11 @@ int IniFile::setComment(const std::string& name, const std::string& key, const s
     {
         if (!isAllowAutoCreate())
         {
-            return 2;
+            return 3;
         }
         if (comment.empty())
         {
-            return 3;
+            return 1;
         }
         IniSection section;
         section.name = name;
@@ -568,7 +568,7 @@ int IniFile::setComment(const std::string& name, const std::string& key, const s
         {
             if (comment == itemIter->comment)
             {
-                return 3;
+                return 1;
             }
             itemIter->comment = comment;
             m_changed = true;
@@ -577,7 +577,7 @@ int IniFile::setComment(const std::string& name, const std::string& key, const s
     }
     if (!isAllowAutoCreate())
     {
-        return 2;
+        return 3;
     }
     IniItem item;
     item.key = key;

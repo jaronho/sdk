@@ -36,30 +36,30 @@ std::vector<std::string> IniReader::getCommentFlags() const
     return IniFile::getCommentFlags();
 }
 
-bool IniReader::hasSection(const std::string& section) const
+bool IniReader::hasSection(const std::string& name) const
 {
-    return IniFile::hasSection(section);
+    return IniFile::hasSection(name);
 }
 
-bool IniReader::getSectionComment(const std::string& section, std::string& comment) const
+bool IniReader::getSectionComment(const std::string& name, std::string& comment) const
 {
-    return IniFile::getSectionComment(section, comment);
+    return IniFile::getSectionComment(name, comment);
 }
 
-bool IniReader::hasKey(const std::string& section, const std::string& key) const
+bool IniReader::hasItem(const std::string& name, const std::string& key) const
 {
-    return IniFile::hasKey(section, key);
+    return IniFile::hasItem(name, key);
 }
 
-bool IniReader::getComment(const std::string& section, const std::string& key, std::string& comment) const
+bool IniReader::getComment(const std::string& name, const std::string& key, std::string& comment) const
 {
-    return IniFile::getComment(section, key, comment);
+    return IniFile::getComment(name, key, comment);
 }
 
-bool IniReader::getBool(const std::string& section, const std::string& key, bool defaultValue) const
+bool IniReader::getBool(const std::string& name, const std::string& key, bool defaultValue) const
 {
     std::string value;
-    if (getValue(section, key, value))
+    if (getValue(name, key, value))
     {
         std::transform(value.begin(), value.end(), value.begin(), tolower);
         return 0 == value.compare("true");
@@ -67,90 +67,90 @@ bool IniReader::getBool(const std::string& section, const std::string& key, bool
     return defaultValue;
 }
 
-int IniReader::getInt(const std::string& section, const std::string& key, int defaultValue) const
+int IniReader::getInt(const std::string& name, const std::string& key, int defaultValue) const
 {
     std::string value;
-    if (getValue(section, key, value))
+    if (getValue(name, key, value))
     {
         return convert<std::string, int>(value);
     }
     return defaultValue;
 }
 
-unsigned int IniReader::getUInt(const std::string& section, const std::string& key, unsigned int defaultValue) const
+unsigned int IniReader::getUInt(const std::string& name, const std::string& key, unsigned int defaultValue) const
 {
     std::string value;
-    if (getValue(section, key, value))
+    if (getValue(name, key, value))
     {
         return convert<std::string, unsigned int>(value);
     }
     return defaultValue;
 }
 
-long IniReader::getLong(const std::string& section, const std::string& key, long defaultValue) const
+long IniReader::getLong(const std::string& name, const std::string& key, long defaultValue) const
 {
     std::string value;
-    if (getValue(section, key, value))
+    if (getValue(name, key, value))
     {
         return convert<std::string, long>(value);
     }
     return defaultValue;
 }
 
-unsigned long IniReader::getULong(const std::string& section, const std::string& key, unsigned long defaultValue) const
+unsigned long IniReader::getULong(const std::string& name, const std::string& key, unsigned long defaultValue) const
 {
     std::string value;
-    if (getValue(section, key, value))
+    if (getValue(name, key, value))
     {
         return convert<std::string, unsigned long>(value);
     }
     return defaultValue;
 }
 
-long long IniReader::getLongLong(const std::string& section, const std::string& key, long long defaultValue) const
+long long IniReader::getLongLong(const std::string& name, const std::string& key, long long defaultValue) const
 {
     std::string value;
-    if (getValue(section, key, value))
+    if (getValue(name, key, value))
     {
         return convert<std::string, long long>(value);
     }
     return defaultValue;
 }
 
-unsigned long long IniReader::getULongLong(const std::string& section, const std::string& key, unsigned long long defaultValue) const
+unsigned long long IniReader::getULongLong(const std::string& name, const std::string& key, unsigned long long defaultValue) const
 {
     std::string value;
-    if (getValue(section, key, value))
+    if (getValue(name, key, value))
     {
         return convert<std::string, unsigned long long>(value);
     }
     return defaultValue;
 }
 
-float IniReader::getFloat(const std::string& section, const std::string& key, float defaultValue) const
+float IniReader::getFloat(const std::string& name, const std::string& key, float defaultValue) const
 {
     std::string value;
-    if (getValue(section, key, value))
+    if (getValue(name, key, value))
     {
         return convert<std::string, float>(value);
     }
     return defaultValue;
 }
 
-double IniReader::getDouble(const std::string& section, const std::string& key, double defaultValue) const
+double IniReader::getDouble(const std::string& name, const std::string& key, double defaultValue) const
 {
     std::string value;
-    if (getValue(section, key, value))
+    if (getValue(name, key, value))
     {
         return convert<std::string, double>(value);
     }
     return defaultValue;
 }
 
-std::string IniReader::getString(const std::string& section, const std::string& key, std::string defaultValue) const
+std::string IniReader::getString(const std::string& name, const std::string& key, std::string defaultValue) const
 {
     std::string value;
-    if (IniFile::getValue(section, key, value))
+    if (IniFile::getValue(name, key, value))
     {
         return value;
     }

@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <mutex>
-#include <sstream>
 
 #include "cfgkey.hpp"
 #include "fileparse/ini/ini_writer.h"
@@ -75,9 +74,11 @@ public:
 
     /**
      * @brief 恢复出厂设置(内部自动保存)
+     * @param ignoreSections 要忽略的节
+     * @param ignoreKeys 要忽略的项
      * @return true-成功, false-失败
      */
-    static bool restoreFactory();
+    static bool restoreFactory(const std::vector<std::string>& ignoreSections = {}, const std::vector<std::string>& ignoreKeys = {});
 
     /**
      * @brief 获取值
@@ -90,24 +91,22 @@ public:
      * @brief 设置值
      * @param key 名称
      * @param value 整型
+     * @return true-成功, false-失败
      */
-    static void setValue(const std::string& key, int value);
+    static bool setValue(const std::string& key, int value);
 
     /**
      * @brief 设置值
      * @param key 名称
      * @param value 字符串
+     * @return true-成功, false-失败
      */
-    static void setValue(const std::string& key, const std::string& value);
+    static bool setValue(const std::string& key, const std::string& value);
 
     /**
      * @brief 保存到本地文件
      * @return true-成功, false-失败
+     * @return true-成功, false-失败
      */
-    static void save();
-
-private:
-    static std::mutex m_mutex;
-    static std::shared_ptr<ini::IniWriter> m_iniWriter; /* 配置文件写入器 */
-    static bool m_writable; /* 配置文件是否可写 */
+    static bool save();
 };

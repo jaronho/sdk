@@ -2,9 +2,9 @@
 
 #include <algorithm>
 
-std::mutex Config::m_mutex;
-std::shared_ptr<ini::IniWriter> Config::m_iniWriter = nullptr;
-bool Config::m_writable = false;
+static std::mutex s_mutex;
+static std::shared_ptr<ini::IniWriter> s_iniWriter = nullptr; /* 配置文件读写器 */
+static bool s_writable = false; /* 配置文件是否可写 */
 
 CfgValue::CfgValue(const std::string& value)
 {
@@ -62,45 +62,85 @@ std::string CfgValue::toString() const
 
 bool Config::init(const std::string& path, bool writable)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
-    m_iniWriter = std::make_shared<ini::IniWriter>();
-    m_iniWriter->setAllowAutoCreate();
-    m_writable = writable;
+    std::lock_guard<std::mutex> locker(s_mutex);
+    s_iniWriter = std::make_shared<ini::IniWriter>();
+    s_iniWriter->setAllowAutoCreate();
+    s_writable = writable;
     std::string errorDesc;
-    if (0 == m_iniWriter->open(path + "/" + CONFIG_FILENAME, errorDesc))
+    if (0 == s_iniWriter->open(path + "/" + CONFIG_FILENAME, errorDesc))
     {
-        if (writable)
+        if (ini::syncIni(s_iniWriter, CONFIG_FILENAME) < 2) /* 主要用于升级时同步配置文件的修改 */
         {
-            auto ret = ini::syncIni(m_iniWriter, CONFIG_FILENAME);
-            if (0 == ret || 3 == ret) /* 主要用于升级时同步配置文件的修改 */
-            {
-                return true;
-            }
-            return false;
+            return true;
         }
-        return true;
+    }
+    else
+    {
+        if (ini::restoreIni(s_iniWriter, CONFIG_FILENAME) < 2)
+        {
+            return true;
+        }
     }
     return false;
 }
 
 bool Config::reload()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(s_mutex);
     std::string errorDesc;
-    if (0 == m_iniWriter->reload(errorDesc))
+    if (0 == s_iniWriter->reload(errorDesc))
     {
         return true;
     }
     return false;
 }
 
-bool Config::restoreFactory()
+bool Config::restoreFactory(const std::vector<std::string>& ignoreSectionList, const std::vector<std::string>& ignoreKeyList)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
-    if (m_writable)
+    std::lock_guard<std::mutex> locker(s_mutex);
+    if (s_writable)
     {
-        auto ret = ini::restoreIni(m_iniWriter, CONFIG_FILENAME);
-        if (0 == ret || 3 == ret)
+        /* 恢复到出厂配置 */
+        auto sectionList = ini::getIni(CONFIG_FILENAME);
+        for (const auto& section : sectionList)
+        {
+            bool ingoreSectionFlag = false;
+            for (const auto& ignoreName : ignoreSectionList)
+            {
+                if (ignoreName == section.name)
+                {
+                    ingoreSectionFlag = true;
+                    break;
+                }
+            }
+            if (ingoreSectionFlag)
+            {
+                continue;
+            }
+            for (const auto& item : section.items)
+            {
+                bool ignoreKeyFlag = false;
+                for (auto ignoreKey : ignoreKeyList)
+                {
+                    std::string name, key;
+                    ini::splitSectionKey(ignoreKey, name, key);
+                    if (name == section.name && key == item.key)
+                    {
+                        ignoreKeyFlag = true;
+                        break;
+                    }
+                }
+                if (ignoreKeyFlag)
+                {
+                    continue;
+                }
+                if (s_iniWriter->setValue(section.name, item.key, item.value) >= 2)
+                {
+                    return false;
+                }
+            }
+        }
+        if (0 == s_iniWriter->save())
         {
             return true;
         }
@@ -110,39 +150,51 @@ bool Config::restoreFactory()
 
 CfgValue Config::getValue(const std::string& key)
 {
-    std::string s, k;
-    ini::splitSectionKey(key, s, k);
-    std::lock_guard<std::mutex> locker(m_mutex);
-    return CfgValue(m_iniWriter->getString(s, k));
+    std::string name, k;
+    ini::splitSectionKey(key, name, k);
+    std::lock_guard<std::mutex> locker(s_mutex);
+    return CfgValue(s_iniWriter->getString(name, k));
 }
 
-void Config::setValue(const std::string& key, int value)
+bool Config::setValue(const std::string& key, int value)
 {
-    std::string s, k;
-    ini::splitSectionKey(key, s, k);
-    std::lock_guard<std::mutex> locker(m_mutex);
-    if (m_writable)
+    std::string name, k;
+    ini::splitSectionKey(key, name, k);
+    std::lock_guard<std::mutex> locker(s_mutex);
+    if (s_writable)
     {
-        m_iniWriter->setValue(s, k, value);
+        if (0 == s_iniWriter->setValue(name, k, value))
+        {
+            return true;
+        }
     }
+    return false;
 }
 
-void Config::setValue(const std::string& key, const std::string& value)
+bool Config::setValue(const std::string& key, const std::string& value)
 {
-    std::string s, k;
-    ini::splitSectionKey(key, s, k);
-    std::lock_guard<std::mutex> locker(m_mutex);
-    if (m_writable)
+    std::string name, k;
+    ini::splitSectionKey(key, name, k);
+    std::lock_guard<std::mutex> locker(s_mutex);
+    if (s_writable)
     {
-        m_iniWriter->setValue(s, k, value);
+        if (0 == s_iniWriter->setValue(name, k, value))
+        {
+            return true;
+        }
     }
+    return false;
 }
 
-void Config::save()
+bool Config::save()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
-    if (m_writable)
+    std::lock_guard<std::mutex> locker(s_mutex);
+    if (s_writable)
     {
-        m_iniWriter->save();
+        if (0 == s_iniWriter->save())
+        {
+            return true;
+        }
     }
+    return false;
 }

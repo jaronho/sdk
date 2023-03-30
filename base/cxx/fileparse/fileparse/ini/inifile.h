@@ -48,7 +48,7 @@ public:
     /**
      * @brief 保存文件(对象在析构时会自动调用该接口)
      * @param sortType 排序类型: 0-默认, 1-升序, 2-降序
-     * @return 0-成功, 1-配置未修改, 2-文件打开失败, 3-写文件失败
+     * @return 0-成功, 1-未变更, 2-文件打开失败, 3-写文件失败
      */
     int save(int sortType = 0);
 
@@ -102,25 +102,25 @@ public:
      * @brief 设置节注释
      * @param name 节名称
      * @param comment 注释
-     * @return 0-成功, 1-参数错误, 2-不允许自动创建, 3-注释未变化
+     * @return 0-成功, 1-未变更, 2-参数错误, 3-不允许自动创建
      */
     int setSectionComment(const std::string& name, const std::string& comment);
 
     /**
-     * @brief 是否存在键
+     * @brief 是否存在项
      * @param name 节名称
      * @param key 键
      * @return true-存在, false-不存在
      */
-    bool hasKey(const std::string& name, const std::string& key) const;
+    bool hasItem(const std::string& name, const std::string& key) const;
 
     /**
-     * @brief 删除键
+     * @brief 删除项
      * @param nameName 节名称
      * @param key 键
      * @return true-成功, flalse-失败(不存在)
      */
-    bool removeKey(const std::string& name, const std::string& key);
+    bool removeItem(const std::string& name, const std::string& key);
 
     /**
      * @brief 获取值
@@ -136,12 +136,12 @@ public:
      * @param name 节名称
      * @param key 键
      * @param value 值
-     * @return 0-成功, 1-参数错误, 2-不允许自动创建, 3-值未变化
+     * @return 0-成功, 1-未变更, 2-参数错误, 3-不允许自动创建
      */
     int setValue(const std::string& name, const std::string& key, const std::string& value);
 
     /**
-     * @brief 获取注释
+     * @brief 获取项注释
      * @param name 节名称
      * @param key 键
      * @param comment [输出]注释
@@ -150,16 +150,16 @@ public:
     bool getComment(const std::string& name, const std::string& key, std::string& comment) const;
 
     /**
-     * @brief 设置注释
+     * @brief 设置项注释
      * @param name 节名称
      * @param key 键
      * @param comment 注释
-     * @return 0-成功, 1-参数错误, 2-不允许自动创建, 3-注释未变化
+     * @return 0-成功, 1-未变更, 2-参数错误, 3-不允许自动创建
      */
     int setComment(const std::string& name, const std::string& key, const std::string& comment);
 
     /**
-     * @brief 获取额外参数
+     * @brief 获取项额外参数
      * @param name 节名称
      * @param key 键
      * @param extraName 额外参数名

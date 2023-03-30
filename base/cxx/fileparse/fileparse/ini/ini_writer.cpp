@@ -34,74 +34,74 @@ bool IniWriter::setCommentFlags(const std::vector<std::string>& flags)
     return IniFile::setCommentFlags(flags);
 }
 
-bool IniWriter::removeSection(const std::string& section)
+bool IniWriter::removeSection(const std::string& name)
 {
-    return IniFile::removeSection(section);
+    return IniFile::removeSection(name);
 }
 
-int IniWriter::setSectionComment(const std::string& section, const std::string& comment)
+int IniWriter::setSectionComment(const std::string& name, const std::string& comment)
 {
-    return IniFile::setSectionComment(section, comment);
+    return IniFile::setSectionComment(name, comment);
 }
 
-bool IniWriter::removeKey(const std::string& section, const std::string& key)
+bool IniWriter::removeItem(const std::string& name, const std::string& key)
 {
-    return IniFile::removeKey(section, key);
+    return IniFile::removeItem(name, key);
 }
 
-int IniWriter::setComment(const std::string& section, const std::string& key, const std::string& comment)
+int IniWriter::setComment(const std::string& name, const std::string& key, const std::string& comment)
 {
-    return IniFile::setComment(section, key, comment);
+    return IniFile::setComment(name, key, comment);
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, bool value)
+int IniWriter::setValue(const std::string& name, const std::string& key, bool value)
 {
-    return IniFile::setValue(section, key, value ? std::string("true") : std::string("false"));
+    return IniFile::setValue(name, key, value ? std::string("true") : std::string("false"));
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, int value)
+int IniWriter::setValue(const std::string& name, const std::string& key, int value)
 {
-    return IniFile::setValue(section, key, std::to_string(value));
+    return IniFile::setValue(name, key, std::to_string(value));
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, unsigned int value)
+int IniWriter::setValue(const std::string& name, const std::string& key, unsigned int value)
 {
-    return IniFile::setValue(section, key, std::to_string(value));
+    return IniFile::setValue(name, key, std::to_string(value));
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, long value)
+int IniWriter::setValue(const std::string& name, const std::string& key, long value)
 {
-    return IniFile::setValue(section, key, std::to_string(value));
+    return IniFile::setValue(name, key, std::to_string(value));
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, unsigned long value)
+int IniWriter::setValue(const std::string& name, const std::string& key, unsigned long value)
 {
-    return IniFile::setValue(section, key, std::to_string(value));
+    return IniFile::setValue(name, key, std::to_string(value));
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, long long value)
+int IniWriter::setValue(const std::string& name, const std::string& key, long long value)
 {
-    return IniFile::setValue(section, key, std::to_string(value));
+    return IniFile::setValue(name, key, std::to_string(value));
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, unsigned long long value)
+int IniWriter::setValue(const std::string& name, const std::string& key, unsigned long long value)
 {
-    return IniFile::setValue(section, key, std::to_string(value));
+    return IniFile::setValue(name, key, std::to_string(value));
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, float value)
+int IniWriter::setValue(const std::string& name, const std::string& key, float value)
 {
-    return IniFile::setValue(section, key, std::to_string(value));
+    return IniFile::setValue(name, key, std::to_string(value));
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, double value)
+int IniWriter::setValue(const std::string& name, const std::string& key, double value)
 {
-    return IniFile::setValue(section, key, std::to_string(value));
+    return IniFile::setValue(name, key, std::to_string(value));
 }
 
-int IniWriter::setValue(const std::string& section, const std::string& key, std::string value)
+int IniWriter::setValue(const std::string& name, const std::string& key, std::string value)
 {
-    return IniFile::setValue(section, key, value);
+    return IniFile::setValue(name, key, value);
 }
 
 bool IniWriter::isAllowAutoCreate() const

@@ -38,7 +38,7 @@ bool copyFile(const std::string& srcFilePath, const std::string& destFilePath)
 
 void printBool(ini::IniReader ir, const std::string& section, const std::string& key)
 {
-    if (ir.hasKey(section, key))
+    if (ir.hasItem(section, key))
     {
         std::string comment;
         ir.getComment(section, key, comment);
@@ -56,7 +56,7 @@ void printBool(ini::IniReader ir, const std::string& section, const std::string&
 
 void printInt(ini::IniReader ir, const std::string& section, const std::string& key)
 {
-    if (ir.hasKey(section, key))
+    if (ir.hasItem(section, key))
     {
         std::string comment;
         ir.getComment(section, key, comment);
@@ -74,7 +74,7 @@ void printInt(ini::IniReader ir, const std::string& section, const std::string& 
 
 void printFloat(ini::IniReader ir, const std::string& section, const std::string& key)
 {
-    if (ir.hasKey(section, key))
+    if (ir.hasItem(section, key))
     {
         std::string comment;
         ir.getComment(section, key, comment);
@@ -92,7 +92,7 @@ void printFloat(ini::IniReader ir, const std::string& section, const std::string
 
 void printDouble(ini::IniReader ir, const std::string& section, const std::string& key)
 {
-    if (ir.hasKey(section, key))
+    if (ir.hasItem(section, key))
     {
         std::string comment;
         ir.getComment(section, key, comment);
@@ -110,7 +110,7 @@ void printDouble(ini::IniReader ir, const std::string& section, const std::strin
 
 void printULongLong(ini::IniReader ir, const std::string& section, const std::string& key)
 {
-    if (ir.hasKey(section, key))
+    if (ir.hasItem(section, key))
     {
         std::string comment;
         ir.getComment(section, key, comment);
@@ -128,7 +128,7 @@ void printULongLong(ini::IniReader ir, const std::string& section, const std::st
 
 void printString(ini::IniReader ir, const std::string& section, const std::string& key)
 {
-    if (ir.hasKey(section, key))
+    if (ir.hasItem(section, key))
     {
         std::string comment;
         ir.getComment(section, key, comment);
