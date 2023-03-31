@@ -78,6 +78,7 @@ int main(int argc, char* argv[])
     parser.add<std::string>("key_pwd", 's', "私钥文件密码, 例如: 123456", false, "");
     parser.add<int>("ssl_way", 'w', "SSL验证, 值: 1-单向验证, 2-双向验证, 默认1", false, 1);
 #endif
+    parser.parse_check(argc, argv);
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
     auto address = parser.get<std::string>("address");

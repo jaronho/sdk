@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
     parser.add<int>("ssl_way", 'w', "SSL验证, 值: 1-单向验证, 2-双向验证, 默认1", false, 1);
 #endif
     parser.add<int>("reply", 'r', "应答方式, 值: 0-不应答, 1-原数据返回, 默认0", false, 0);
+    parser.parse_check(argc, argv);
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
     auto address = parser.get<std::string>("address");
