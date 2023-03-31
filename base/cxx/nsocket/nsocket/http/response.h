@@ -37,5 +37,20 @@ using RESPONSE_PTR = std::shared_ptr<Response>;
  * @param resp 响应数据
  */
 using SEND_RESPONSE_FUNC = std::function<void(const RESPONSE_PTR& resp)>;
+
+/**
+ * @brief 创建200响应 
+ */
+RESPONSE_PTR makeResponse200();
+
+/**
+ * @brief 创建404响应
+ */
+RESPONSE_PTR makeResponse404();
+
+/**
+ * @brief 创建405响应
+ */
+RESPONSE_PTR makeResponse405();
 } // namespace http
 } // namespace nsocket

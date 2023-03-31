@@ -32,5 +32,26 @@ void Response::pack(Response resp, std::vector<unsigned char>& data)
     data.insert(data.end(), CRLF.begin(), CRLF.end());
     data.insert(data.end(), resp.body.begin(), resp.body.end());
 }
+
+RESPONSE_PTR makeResponse200()
+{
+    auto resp = std::make_shared<nsocket::http::Response>();
+    resp->statusCode = StatusCode::success_ok;
+    return resp;
+}
+
+RESPONSE_PTR makeResponse404()
+{
+    auto resp = std::make_shared<nsocket::http::Response>();
+    resp->statusCode = StatusCode::client_error_not_found;
+    return resp;
+}
+
+RESPONSE_PTR makeResponse405()
+{
+    auto resp = std::make_shared<nsocket::http::Response>();
+    resp->statusCode = StatusCode::client_error_method_not_allowed;
+    return resp;
+}
 } // namespace http
 } // namespace nsocket

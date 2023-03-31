@@ -18,6 +18,52 @@
 static const std::string UPLOAD_PATH = "upload";
 std::unordered_map<uint64_t, std::shared_ptr<std::fstream>> g_fileHandlerMap;
 
+std::string htmlString(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& title)
+{
+    std::string str;
+    str.append("<html>");
+    str.append("<h1>" + title + "</h1>");
+    str.append("<b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cid:&nbsp;</b>" + std::to_string(cid));
+    str.append("</br>");
+    str.append("</br>");
+    str.append("<b>&nbsp;&nbsp;&nbsp;Client:&nbsp;</b>" + req->host + ":" + std::to_string(req->port));
+    str.append("</br>");
+    str.append("</br>");
+    str.append("<b>&nbsp;Version:&nbsp;</b>" + req->version);
+    str.append("</br>");
+    str.append("</br>");
+    str.append("<b>Method:&nbsp;</b>" + req->method + "&nbsp;&nbsp;&nbsp;&nbsp;<b>Uri:&nbsp;</b>" + req->uri);
+    if (!req->queries.empty())
+    {
+        str.append("</br>");
+        str.append("</br>");
+        str.append("<b>Queries:</b>");
+        str.append("<ul>");
+        for (auto iter = req->queries.begin(); req->queries.end() != iter; ++iter)
+        {
+            str.append("<li>" + iter->first + ": " + iter->second + "</li>");
+        }
+        str.append("</ul>");
+    }
+    if (!req->headers.empty())
+    {
+        if (req->queries.empty())
+        {
+            str.append("</br>");
+            str.append("</br>");
+        }
+        str.append("<b>Headers:</b>");
+        str.append("<ul>");
+        for (auto iter = req->headers.begin(); req->headers.end() != iter; ++iter)
+        {
+            str.append("<li>" + iter->first + ": " + iter->second + "</li>");
+        }
+        str.append("</ul>");
+    }
+    str.append("</html>");
+    return str;
+}
+
 int main(int argc, char* argv[])
 {
     printf("***********************************************************************************************************\n");
@@ -149,6 +195,9 @@ int main(int argc, char* argv[])
     }
     server.setRouterNotFoundCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
         printf("************************* Not Found URI Router *************************\n");
+        printf("***     Cid: %zu\n", cid);
+        printf("***  Client: %s:%d\n", req->host.c_str(), req->port);
+        printf("*** Version: %s\n", req->version.c_str());
         printf("***  Method: %s\n", req->method.c_str());
         printf("***     Uri: %s\n", req->uri.c_str());
         if (!req->queries.empty())
@@ -159,7 +208,6 @@ int main(int argc, char* argv[])
                 printf("             %s: %s\n", iter->first.c_str(), iter->second.c_str());
             }
         }
-        printf("*** Version: %s\n", req->version.c_str());
         if (!req->headers.empty())
         {
             printf("*** Headers:\n");
@@ -169,8 +217,9 @@ int main(int argc, char* argv[])
             }
         }
         printf("************************************************************************\n");
-        auto resp = std::make_shared<nsocket::http::Response>();
-        resp->statusCode = nsocket::http::StatusCode::client_error_not_found;
+        auto str = htmlString(cid, req, "404 Not Found");
+        auto resp = nsocket::http::makeResponse404();
+        resp->body.insert(resp->body.end(), str.begin(), str.end());
         return resp;
     });
     /* 添加路由表 */
@@ -186,8 +235,7 @@ int main(int argc, char* argv[])
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
-            auto resp = std::make_shared<nsocket::http::Response>();
-            resp->statusCode = nsocket::http::StatusCode::client_error_method_not_allowed;
+            auto resp = nsocket::http::makeResponse405();
             return resp;
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
@@ -213,19 +261,12 @@ int main(int argc, char* argv[])
                     printf("             %s: %s\n", iter->first.c_str(), iter->second.c_str());
                 }
             }
-            printf("--- Content(%u):\n", req->getContentLength());
+            printf("--- Content(%zu):\n", req->getContentLength());
             printf("%s\n", data.c_str());
             printf("-------------------------------------------------------------------\n");
-            std::string result;
-            result.append("<html>");
-            result.append("<h1>Home</h1>");
-            result.append("<b>&nbsp;&nbsp;&nbsp;&nbsp;Cid:&nbsp;</b>" + std::to_string(cid));
-            result.append("</br>");
-            result.append("</br>");
-            result.append("<b>Client:&nbsp;</b>" + req->host + ":" + std::to_string(req->port));
-            result.append("</html>");
-            auto resp = std::make_shared<nsocket::http::Response>();
-            resp->body.insert(resp->body.end(), result.begin(), result.end());
+            auto str = htmlString(cid, req, "Welcome To Home");
+            auto resp = nsocket::http::makeResponse200();
+            resp->body.insert(resp->body.end(), str.begin(), str.end());
             if (sendRespFunc)
             {
                 sendRespFunc(resp);
@@ -245,8 +286,7 @@ int main(int argc, char* argv[])
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
-            auto resp = std::make_shared<nsocket::http::Response>();
-            resp->statusCode = nsocket::http::StatusCode::client_error_method_not_allowed;
+            auto resp = nsocket::http::makeResponse405();
             return resp;
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
@@ -272,12 +312,12 @@ int main(int argc, char* argv[])
                     printf("             %s: %s\n", iter->first.c_str(), iter->second.c_str());
                 }
             }
-            printf("--- Content(%u):\n", req->getContentLength());
+            printf("--- Content(%zu):\n", req->getContentLength());
             printf("%s\n", data.c_str());
             printf("-------------------------------------------------------------------\n");
             std::string result = "{\"code\":0,\"msg\":\"ok\",\"data\":{\"cid\":\"" + std::to_string(cid) + "\",\"host\":\"" + req->host
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
-            auto resp = std::make_shared<nsocket::http::Response>();
+            auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
             if (sendRespFunc)
             {
@@ -298,8 +338,7 @@ int main(int argc, char* argv[])
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
-            auto resp = std::make_shared<nsocket::http::Response>();
-            resp->statusCode = nsocket::http::StatusCode::client_error_method_not_allowed;
+            auto resp = nsocket::http::makeResponse405();
             return resp;
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields,
@@ -336,7 +375,7 @@ int main(int argc, char* argv[])
             printf("-------------------------------------------------------------------\n");
             std::string result = "{\"code\":0,\"msg\":\"ok\",\"data\":{\"cid\":\"" + std::to_string(cid) + "\",\"host\":\"" + req->host
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
-            auto resp = std::make_shared<nsocket::http::Response>();
+            auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
             if (sendRespFunc)
             {
@@ -369,8 +408,7 @@ int main(int argc, char* argv[])
             }
             printf("\n");
             printf("--------------------------------------------------------------------\n");
-            auto resp = std::make_shared<nsocket::http::Response>();
-            resp->statusCode = nsocket::http::StatusCode::client_error_method_not_allowed;
+            auto resp = nsocket::http::makeResponse405();
             return resp;
         };
         r->headCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
@@ -451,7 +489,7 @@ int main(int argc, char* argv[])
             }
             std::string result = "{\"code\":0,\"msg\":\"ok\",\"data\":{\"cid\":\"" + std::to_string(cid) + "\",\"host\":\"" + req->host
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
-            auto resp = std::make_shared<nsocket::http::Response>();
+            auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
             if (sendRespFunc)
             {

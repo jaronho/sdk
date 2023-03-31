@@ -22,11 +22,11 @@ get_cxx_files(. src_list)
 list(APPEND proc_files ${src_list})
 
 # 构建可执行文件
-add_executable(httperver
+add_executable(httpserver
                ${base_nsocket_http_files}
                ${base_utility_files}
                ${proc_files})
 
 # 链接依赖库文件
-target_link_libraries(httperver
+target_link_libraries(httpserver
                       ${OPENSSL_LIBRARIES})
