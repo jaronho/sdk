@@ -8,10 +8,12 @@
 #include "../npacket/analyzer.h"
 #include "../npacket/pcap_device.h"
 #include "../npacket/proto/ftp.h"
+#include "../npacket/proto/iec103.h"
 
 static npacket::Analyzer s_pktAnalyzer;
 static std::string s_proto;
 
+/* 打印以太网 */
 void printEthernet(const std::shared_ptr<npacket::EthernetIIHeader>& h)
 {
     printf("=============== EthernetII ===============\n");
@@ -19,6 +21,7 @@ void printEthernet(const std::shared_ptr<npacket::EthernetIIHeader>& h)
     printf("type: 0x%04x\n", h->nextProtocol);
 }
 
+/* 打印IPv4 */
 void printIPv4(const std::shared_ptr<npacket::Ipv4Header>& h)
 {
     printf("    ----- IPv4 -----\n");
@@ -32,6 +35,7 @@ void printIPv4(const std::shared_ptr<npacket::Ipv4Header>& h)
     printf("    src addr: %s, dst addr: %s\n", h->srcAddrStr().c_str(), h->dstAddrStr().c_str());
 }
 
+/* 打印ARP */
 void printARP(const std::shared_ptr<npacket::ArpHeader>& h)
 {
     printf("    ----- ARP -----\n");
@@ -43,6 +47,7 @@ void printARP(const std::shared_ptr<npacket::ArpHeader>& h)
     printf("    target mac: %s, target ip: %s\n", h->targetMacStr().c_str(), h->targetIpStr().c_str());
 }
 
+/* 打印IPv6 */
 void printIPv6(const std::shared_ptr<npacket::Ipv6Header>& h)
 {
     printf("    ----- IPv6 -----\n");
@@ -67,6 +72,7 @@ void printIPv6(const std::shared_ptr<npacket::Ipv6Header>& h)
     }
 }
 
+/* 打印TCP */
 void printTCP(const std::shared_ptr<npacket::TcpHeader>& h)
 {
     printf("        ----- TCP -----\n");
@@ -80,6 +86,7 @@ void printTCP(const std::shared_ptr<npacket::TcpHeader>& h)
     printf("        urgptr: %d\n", h->urgptr);
 }
 
+/* 打印UDP */
 void printUDP(const std::shared_ptr<npacket::UdpHeader>& h)
 {
     printf("        ----- UDP -----\n");
@@ -88,18 +95,39 @@ void printUDP(const std::shared_ptr<npacket::UdpHeader>& h)
     printf("        checksum: 0x%04x\n", h->checksum);
 }
 
+/* 打印ICMP */
 void printICMP(const std::shared_ptr<npacket::IcmpHeader>& h)
 {
     printf("        ----- ICMP -----\n");
     printf("        type: %d, code: %d, checksum: 0x%04x\n", h->type, h->code, h->checksum);
 }
 
+/* 打印ICMPv6 */
 void printICMPv6(const std::shared_ptr<npacket::Icmpv6Header>& h)
 {
     printf("        ----- ICMPv6 -----\n");
     printf("        type: %d, code: %d, checksum: 0x%04x\n", h->type, h->code, h->checksum);
 }
 
+/* 打印传输层(TCP)头部 */
+void printTransportHeaderTcp(const std::shared_ptr<npacket::ProtocolHeader>& h)
+{
+    if (!s_proto.empty())
+    {
+        printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+        if (npacket::NetworkProtocol::IPv4 == h->parent->getProtocol())
+        {
+            printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(h->parent));
+        }
+        else if (npacket::NetworkProtocol::IPv6 == h->parent->getProtocol())
+        {
+            printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(h->parent));
+        }
+        printTCP(std::dynamic_pointer_cast<npacket::TcpHeader>(h));
+    }
+}
+
+/* 处理以太网层 */
 bool handleEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                          const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
@@ -111,6 +139,7 @@ bool handleEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint3
     return true;
 }
 
+/* 处理网络层 */
 bool handleNetworkLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                         const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
@@ -156,6 +185,7 @@ bool handleNetworkLayer(const std::chrono::steady_clock::time_point& ntp, uint32
     return true;
 }
 
+/* 处理传输层 */
 bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                           const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
@@ -239,25 +269,14 @@ bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint
     return true;
 }
 
-void handleApplicationFtpCtrl(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                              const std::shared_ptr<npacket::ProtocolHeader>& header, const std::string& flag, const std::string& param)
+/* 处理应用层FTP控制请求 */
+void handleApplicationFtpCtrlReq(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                 const std::shared_ptr<npacket::ProtocolHeader>& header, const std::string& flag, const std::string& param)
 {
     if (s_proto.empty() || "ftp" == s_proto)
     {
-        if (!s_proto.empty())
-        {
-            printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(header->parent->parent));
-            if (npacket::NetworkProtocol::IPv4 == header->parent->getProtocol())
-            {
-                printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(header->parent));
-            }
-            else if (npacket::NetworkProtocol::IPv6 == header->parent->getProtocol())
-            {
-                printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(header->parent));
-            }
-            printTCP(std::dynamic_pointer_cast<npacket::TcpHeader>(header));
-        }
-        printf("            ----- FTP -----\n");
+        printTransportHeaderTcp(header);
+        printf("            ----- FTP [request] -----\n");
         printf("            %s: %s\n", (flag[0] >= 'A' && flag[0] <= 'Z') ? "cmd" : "code", flag.c_str());
         if (!param.empty())
         {
@@ -266,30 +285,35 @@ void handleApplicationFtpCtrl(const std::chrono::steady_clock::time_point& ntp, 
     }
 }
 
+/* 处理应用层FTP控制应答 */
+void handleApplicationFtpCtrlResp(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                  const std::shared_ptr<npacket::ProtocolHeader>& header, const std::string& flag, const std::string& param)
+{
+    if (s_proto.empty() || "ftp" == s_proto)
+    {
+        printTransportHeaderTcp(header);
+        printf("            ----- FTP [response] -----\n");
+        printf("            %s: %s\n", (flag[0] >= 'A' && flag[0] <= 'Z') ? "cmd" : "code", flag.c_str());
+        if (!param.empty())
+        {
+            printf("            param: %s\n", param.c_str());
+        }
+    }
+}
+
+/* 处理应用层FTP数据 */
 void handleApplicationFtpData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                               const std::shared_ptr<npacket::ProtocolHeader>& header, const npacket::FtpParser::CtrlInfo& ctrl,
                               const npacket::FtpParser::DataFlag& flag, const uint8_t* data, uint32_t dataLen)
 {
     if (s_proto.empty() || "ftp-data" == s_proto)
     {
-        if (!s_proto.empty())
-        {
-            printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(header->parent->parent));
-            if (npacket::NetworkProtocol::IPv4 == header->parent->getProtocol())
-            {
-                printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(header->parent));
-            }
-            else if (npacket::NetworkProtocol::IPv6 == header->parent->getProtocol())
-            {
-                printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(header->parent));
-            }
-            printTCP(std::dynamic_pointer_cast<npacket::TcpHeader>(header));
-        }
+        printTransportHeaderTcp(header);
         std::string modeDesc = npacket::FtpParser::DataMode::active == ctrl.mode ? "PORT" : "PASV";
         if (npacket::FtpParser::DataFlag::ready == flag)
         {
-            printf("            ----- FTP-DATA [%s][start][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(),
-                   ctrl.clientIp.c_str(), ctrl.clientPort, ctrl.serverIp.c_str(), ctrl.serverPort);
+            printf("            ----- FTP-DATA [%s][start][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(), ctrl.clientIp.c_str(),
+                   ctrl.clientPort, ctrl.serverIp.c_str(), ctrl.serverPort);
         }
         else if (npacket::FtpParser::DataFlag::body == flag)
         {
@@ -299,13 +323,55 @@ void handleApplicationFtpData(const std::chrono::steady_clock::time_point& ntp, 
         }
         else if (npacket::FtpParser::DataFlag::finish == flag)
         {
-            printf("            ----- FTP-DATA [%s][finish][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(),
-                   ctrl.clientIp.c_str(), ctrl.clientPort, ctrl.serverIp.c_str(), ctrl.serverPort);
+            printf("            ----- FTP-DATA [%s][finish][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(), ctrl.clientIp.c_str(),
+                   ctrl.clientPort, ctrl.serverIp.c_str(), ctrl.serverPort);
         }
         else if (npacket::FtpParser::DataFlag::abnormal == flag)
         {
             printf("            ----- FTP-DATA [%s][timeout][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(),
                    ctrl.clientIp.c_str(), ctrl.clientPort, ctrl.serverIp.c_str(), ctrl.serverPort);
+        }
+    }
+}
+
+/* 处理应用层IEC103固定帧 */
+void handleApplicationIec103FixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                       const std::shared_ptr<npacket::ProtocolHeader>& header,
+                                       const std::shared_ptr<npacket::iec103::FixedFrame>& frame)
+{
+    if (s_proto.empty() || "iec103" == s_proto)
+    {
+        printTransportHeaderTcp(header);
+        printf("            ----- IEC103 [fixed frame] -----\n");
+        printf("            PRM: %d(%s)\n", frame->prm, 1 == frame->prm ? "mater to slave" : "slave to master");
+        printf("            %s: %d\n", 1 == frame->prm ? "FCB" : "ACD", frame->fcb_acd);
+        printf("            %s: %d\n", 1 == frame->prm ? "FCV" : "DFC", frame->fcv_dfc);
+        printf("            FUNC: %d\n", frame->func);
+        printf("            ADDR: %d\n", frame->addr);
+    }
+}
+
+/* 处理应用层IEC103可变帧 */
+void handleApplicationIec103VariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                          const std::shared_ptr<npacket::ProtocolHeader>& header,
+                                          const std::shared_ptr<npacket::iec103::VariableFrame>& frame)
+{
+    if (s_proto.empty() || "iec103" == s_proto)
+    {
+        printTransportHeaderTcp(header);
+        printf("            ----- IEC103 [variable frame] -----\n");
+        printf("            PRM: %d(%s)\n", frame->prm, 1 == frame->prm ? "mater to slave" : "slave to master");
+        printf("            %s: %d\n", 1 == frame->prm ? "FCB" : "ACD", frame->fcb_acd);
+        printf("            %s: %d\n", 1 == frame->prm ? "FCV" : "DFC", frame->fcv_dfc);
+        printf("            FUNC: %d\n", frame->func);
+        printf("            ADDR: %d\n", frame->addr);
+        if (frame->asdu)
+        {
+            printf("            ASDU:\n");
+            printf("                  type: %d\n", frame->asdu->identify.type);
+            printf("                  vsq: continuous[%d], num[%d]\n", frame->asdu->identify.vsq.continuous, frame->asdu->identify.vsq.num);
+            printf("                  cot: %d\n", frame->asdu->identify.cot);
+            printf("                  commonAddr: %d\n", frame->asdu->identify.commonAddr);
         }
     }
 }
@@ -327,10 +393,11 @@ int main(int argc, char* argv[])
 #ifndef _WIN32
     printf("** [-Q 流向]           抓包流向, 值范围: [inout-所有(默认), in-接收, out-发送]                             **\n");
 #endif
-    printf("** [-p 协议]           指定只显示的协议, 例如: ehternet, ipv4, arp, ipv6, tcp, udp, icmp, icmpv6等         **\n");
+    printf("** [-p 协议]           指定只显示的协议, 例如: ehternet, ipv4, arp, ipv6, tcp, udp, icmp, icmpv6,          **\n");
+    printf("**                     ftp, ftp-data, iec103等                                                             **\n");
     printf("**                                                                                                         **\n");
     printf("** 示例:                                                                                                   **\n");
-    printf("**       npacket_tool.exe -i enp2s0 -Q out                                                                 **\n");
+    printf("**       npacket_tool.exe -i enp2s0 -Q out -p ftp                                                          **\n");
     printf("**                                                                                                         **\n");
     printf("*************************************************************************************************************\n");
     printf("\n");
@@ -430,11 +497,19 @@ int main(int argc, char* argv[])
     }
     printf("包流向: %s\n", 1 == direction ? "in(接收)" : (2 == direction ? "out(发送)" : "inout(所有)"));
     s_pktAnalyzer.setLayerCallback(handleEthernetLayer, handleNetworkLayer, handleTransportLayer);
-    auto ftpParser = std::make_shared<npacket::FtpParser>();
-    ftpParser->setRequestCallback(handleApplicationFtpCtrl);
-    ftpParser->setResponseCallback(handleApplicationFtpCtrl);
-    ftpParser->setDataCallback(handleApplicationFtpData);
-    s_pktAnalyzer.addProtocolParser(ftpParser);
+    {
+        auto ftpParser = std::make_shared<npacket::FtpParser>();
+        ftpParser->setRequestCallback(handleApplicationFtpCtrlReq);
+        ftpParser->setResponseCallback(handleApplicationFtpCtrlResp);
+        ftpParser->setDataCallback(handleApplicationFtpData);
+        s_pktAnalyzer.addProtocolParser(ftpParser);
+    }
+    {
+        auto iec103Parser = std::make_shared<npacket::Iec103Parser>();
+        iec103Parser->setFixedFrameCallback(handleApplicationIec103FixedFrame);
+        iec103Parser->setVariableFrameCallback(handleApplicationIec103VariableFrame);
+        s_pktAnalyzer.addProtocolParser(iec103Parser);
+    }
     std::shared_ptr<npacket::PcapDevice> dev;
     for (size_t i = 0; i < devList.size(); ++i)
     {
