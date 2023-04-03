@@ -1,17 +1,6 @@
 ﻿#include <chrono>
-#include <fstream>
-#include <iostream>
 #include <mutex>
 #include <thread>
-#ifdef _WIN32
-#include <direct.h>
-#include <io.h>
-#pragma warning(disable : 6031)
-#else
-#include <dirent.h>
-#include <fcntl.h>
-#include <unistd.h>
-#endif
 
 #include "nsocket/http/server.h"
 #include "utility/cmdline/cmdline.h"
@@ -214,7 +203,7 @@ int main(int argc, char* argv[])
         else
         {
             std::shared_ptr<boost::asio::ssl::context> sslContext;
-            if (1 == way) /* 单向SSL */
+            if (1 == way || privateKeyFile.empty()) /* 单向SSL */
             {
                 sslContext = nsocket::TcpServer::getSsl1WayContext(certFormat ? boost::asio::ssl::context::file_format::pem
                                                                               : boost::asio::ssl::context::file_format::asn1,

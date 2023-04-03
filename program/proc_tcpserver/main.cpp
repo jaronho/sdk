@@ -1,5 +1,4 @@
 ﻿#include <chrono>
-#include <iostream>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -89,7 +88,7 @@ int main(int argc, char* argv[])
                 auto point = conn->getRemoteEndpoint();
                 std::string clientHost = point.address().to_string().c_str();
                 int clientPort = (int)point.port();
-                printf("++++++++++ 收到 [%lld][%s:%d] 数据, 长度: %d\n", conn->getId(), clientHost.c_str(), clientPort, (int)data.size());
+                printf("++++++++++ 收到 [%lld][%s:%d] 数据, 长度: %zu\n", conn->getId(), clientHost.c_str(), clientPort, data.size());
                 /* 以十六进制格式打印数据 */
                 printf("+++++ [十六进制]\n");
                 for (size_t i = 0; i < data.size(); ++i)
@@ -118,8 +117,8 @@ int main(int argc, char* argv[])
                             }
                             else
                             {
-                                printf("---------- 回复 [%lld][%s:%d] 成功, 长度: %d\n", conn->getId(), clientHost.c_str(), clientPort,
-                                       (int)length);
+                                printf("---------- 回复 [%lld][%s:%d] 成功, 长度: %zu\n", conn->getId(), clientHost.c_str(), clientPort,
+                                       length);
                             }
                         }
                     });
@@ -160,7 +159,7 @@ int main(int argc, char* argv[])
             else
             {
                 std::shared_ptr<boost::asio::ssl::context> sslContext;
-                if (1 == way) /* 单向SSL */
+                if (1 == way || privateKeyFile.empty()) /* 单向SSL */
                 {
                     sslContext = nsocket::TcpServer::getSsl1WayContext(certFormat ? boost::asio::ssl::context::file_format::pem
                                                                                   : boost::asio::ssl::context::file_format::asn1,

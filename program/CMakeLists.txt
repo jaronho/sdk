@@ -113,4 +113,5 @@ endif ()
 
 # 添加应用目录
 add_subdirectory(proc_httpserver)
+add_subdirectory(proc_tcpclient)
 add_subdirectory(proc_tcpserver)
