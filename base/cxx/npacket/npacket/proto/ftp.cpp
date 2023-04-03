@@ -131,7 +131,8 @@ bool FtpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t
                       const uint8_t* payload, uint32_t payloadLen)
 {
     recyleDataConnect(ntp);
-    if (header && TransportProtocol::TCP != header->getProtocol())
+    if (!header || TransportProtocol::TCP != header->getProtocol() || !header->parent
+        || NetworkProtocol::IPv4 != header->parent->getProtocol())
     {
         return false;
     }
