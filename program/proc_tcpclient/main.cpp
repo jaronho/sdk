@@ -40,44 +40,39 @@ int main(int argc, char* argv[])
 {
     /* 命令参数 */
     cmdline::parser parser;
-    parser.set_program_name("TCP客户端");
-    parser.add<std::string>("address", 'a', "服务器地址", false, "127.0.0.1");
-    parser.add<int>("port", 'p', "服务器端口", false, 4444);
+    parser.header("TCP客户端");
+    parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "127.0.0.1");
+    parser.add<int>("port", 'p', "服务器端口, 默认:", false, 4444, cmdline::range(1, 65535));
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    parser.add<int>("cert_format", 'f', "证书文件格式, 值: 0-DER, 1-PEM, 默认1", false, 1);
-    parser.add<std::string>("cert_file", 'c', "证书文件名, 例如: server.crt", false, "");
-    parser.add<std::string>("key_file", 'k', "私钥文件名, 例如: server.key", false, "");
-    parser.add<std::string>("key_pwd", 's', "私钥文件密码, 例如: 123456", false, "");
-    parser.add<int>("ssl_way", 'w', "SSL验证, 值: 1-单向验证, 2-双向验证, 默认1", false, 1);
+    parser.add<int>("cert-format", 'f', "证书文件格式, 值: 0-DER, 1-PEM, 默认:", false, 1, cmdline::oneof<int>(0, 1));
+    parser.add<std::string>("cert-file", 'c', "证书文件名, 例如: server.crt, 默认:", false, "");
+    parser.add<std::string>("key-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
+    parser.add<std::string>("key-pwd", 'P', "私钥文件密码, 例如: 123456, 默认:", false, "");
+    parser.add<int>("ssl-way", 'w', "SSL验证, 值: 1-单向验证, 2-双向验证, 默认:", false, 1, cmdline::oneof<int>(1, 2));
 #endif
-    parser.add<int>("data_type", 'd',
-                    "数据类型, 值: 1-发送输入(原始数据), 2-发送输入(十六进制), 3-发送文件(原始数据, 全部), 4-发送文件(原始数据, 单行), "
-                    "5-发送文件(十六进制, 单行), 默认1",
-                    false, 1);
-    parser.add<int>("line_interval", 'i', "按单行发送文件数据时, 每行的发送间隔(毫秒), 默认0", false, 0);
-    parser.parse_check(argc, argv);
+    parser.add<int>("data-type", 'd',
+                    "数据类型, 值: 1-输入(原始), 2-输入(十六进制), 3-文件(原始, 全部), 4-文件(原始, 单行), 5-文件(十六进制, 单行), 默认:",
+                    false, 1, cmdline::oneof<int>(1, 2, 3, 4, 5));
+    parser.add<int>("interval", 'i', "按行发送文件数据时, 每行的发送间隔(毫秒), 默认:", false, 500);
+    parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
-    auto address = parser.get<std::string>("address");
+    auto server = parser.get<std::string>("server");
     auto port = parser.get<int>("port");
-    port = (port > 0 && port < 65536) ? port : 4444;
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    auto certFormat = parser.get<int>("cert_format");
-    certFormat = certFormat < 0 ? 0 : (certFormat > 1 ? 1 : certFormat);
-    auto certFile = parser.get<std::string>("cert_file");
-    auto privateKeyFile = parser.get<std::string>("key_file");
-    auto privateKeyFilePwd = parser.get<std::string>("key_pwd");
-    auto way = parser.get<int>("ssl_way");
-    way = way < 1 ? 1 : (way > 2 ? 2 : way);
+    auto certFormat = parser.get<int>("cert-format");
+    auto certFile = parser.get<std::string>("cert-file");
+    auto privateKeyFile = parser.get<std::string>("key-file");
+    auto privateKeyFilePwd = parser.get<std::string>("key-pwd");
+    auto way = parser.get<int>("ssl-way");
 #endif
-    auto dataType = parser.get<int>("data_type");
-    dataType = dataType < 1 ? 1 : (dataType > 5 ? 1 : dataType);
-    auto lineInterval = parser.get<int>("line_interval");
-    lineInterval = lineInterval < 0 ? 0 : lineInterval;
+    auto dataType = parser.get<int>("data-type");
+    auto interval = parser.get<int>("interval");
+    interval = interval < 0 ? 0 : interval;
     std::string dataTypeDesc, lineIntervalDesc;
     if (1 == dataType)
     {
-        dataTypeDesc = "发送输入(原始数据)";
+        dataTypeDesc = "发送输入(原始)";
     }
     else if (2 == dataType)
     {
@@ -85,23 +80,23 @@ int main(int argc, char* argv[])
     }
     else if (3 == dataType)
     {
-        dataTypeDesc = "发送文件(原始数据, 全部)";
+        dataTypeDesc = "发送文件(原始, 全部)";
     }
     else if (4 == dataType)
     {
-        dataTypeDesc = "发送文件(原始数据, 单行)";
-        lineIntervalDesc = ", 行发送间隔: " + std::to_string(lineInterval) + "(毫秒)";
+        dataTypeDesc = "发送文件(原始, 单行)";
+        lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
     }
     else if (5 == dataType)
     {
         dataTypeDesc = "发送文件(十六进制, 单行)";
-        lineIntervalDesc = ", 行发送间隔: " + std::to_string(lineInterval) + "(毫秒)";
+        lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
     }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    printf("服务器: %s:%d, SSL验证: %s, 数据类型: %s%s\n", address.c_str(), port, 1 == way ? "单向验证" : "双向验证", dataTypeDesc.c_str(),
+    printf("服务器: %s:%d, SSL验证: %s, 数据类型: %s%s\n", server.c_str(), port, 1 == way ? "单向验证" : "双向验证", dataTypeDesc.c_str(),
            lineIntervalDesc.c_str());
 #else
-    printf("服务器: %s:%d, 数据类型: %s%s\n", address.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
+    printf("服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
 #endif
     g_client = std::make_shared<nsocket::TcpClient>();
     /* 设置连接回调 */
@@ -158,7 +153,7 @@ int main(int argc, char* argv[])
 #if (1 == ENABLE_NSOCKET_OPENSSL)
             if (certFile.empty())
             {
-                g_client->run(address, port);
+                g_client->run(server, port);
             }
             else
             {
@@ -174,10 +169,10 @@ int main(int argc, char* argv[])
                                                                                   : boost::asio::ssl::context::file_format::asn1,
                                                                        certFile, privateKeyFile, privateKeyFilePwd);
                 }
-                g_client->run(address, port, sslContext);
+                g_client->run(server, port, sslContext);
             }
 #else
-            g_client->run(address, port);
+            g_client->run(server, port);
 #endif
         }
         catch (const std::exception& e)
@@ -238,7 +233,7 @@ int main(int argc, char* argv[])
                 printf("-------------------- 发送失败: 文件 %s 不存在\n", input);
                 continue;
             }
-            if (3 == dataType) /* 发送文件(原始数据), 全部 */
+            if (3 == dataType) /* 发送文件(原始), 全部 */
             {
                 auto fileSize = utility::FileInfo(input).size();
                 size_t offset = 0;
@@ -256,7 +251,7 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-            else if (4 == dataType) /* 发送文件(原始数据), 单行 */
+            else if (4 == dataType) /* 发送文件(原始), 单行 */
             {
                 while (!feof(f))
                 {
@@ -276,9 +271,9 @@ int main(int argc, char* argv[])
                         data.insert(data.end(), buf.begin(), buf.end());
                         sendData(data);
                     }
-                    if (lineInterval > 0)
+                    if (interval > 0)
                     {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(lineInterval));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(interval));
                     }
                 }
             }
@@ -317,9 +312,9 @@ int main(int argc, char* argv[])
                         data.insert(data.end(), bytes.begin(), bytes.end());
                         sendData(data);
                     }
-                    if (lineInterval > 0)
+                    if (interval > 0)
                     {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(lineInterval));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(interval));
                     }
                 }
             }
