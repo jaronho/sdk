@@ -51,6 +51,16 @@ typedef uint8_t DCO;
 typedef uint8_t DPI;
 
 /**
+ * @brief 单点信息(Single Point Information)
+ */
+typedef uint8_t SPI;
+
+/**
+ * @brief 带瞬变和差错的双点信息
+ */
+typedef uint8_t TEDPI;
+
+/**
  * @brief 故障序号(Fault Number), 值[0,65535], 用以识别合继电保护功能有关的一个事件, 例如:
  * 一次继电保护设备(或间隔单元)的启动/检出, 故障序号加1, 这意味着一次不成功的重合闸,
  * 将被记录成两次单独的故障序号, 故障序号不用复位或预置

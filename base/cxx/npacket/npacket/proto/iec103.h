@@ -143,6 +143,60 @@ private:
      */
     std::shared_ptr<iec103::Asdu> parseInfoSet(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
 
+    std::shared_ptr<iec103::Asdu1> parseAsud1(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+
+    int getAcc(const uint8_t* data, uint32_t dataLen, iec103::ACC& val);
+    int getAsc(const uint8_t* data, uint32_t dataLen, iec103::ASC& val);
+    int getCol(const uint8_t* data, uint32_t dataLen, iec103::COL& val);
+    int getDco(const uint8_t* data, uint32_t dataLen, iec103::DCO& val);
+    int getDpi(const uint8_t* data, uint32_t dataLen, iec103::DPI& val);
+    int getSpi(const uint8_t* data, uint32_t dataLen, iec103::SPI& val);
+    int getTedpi(const uint8_t* data, uint32_t dataLen, iec103::TEDPI& val);
+    int getFan(const uint8_t* data, uint32_t dataLen, iec103::FAN& val);
+    int getInt(const uint8_t* data, uint32_t dataLen, iec103::INT& val);
+    int getMea(const uint8_t* data, uint32_t dataLen, iec103::MEA& val);
+    int getNfe(const uint8_t* data, uint32_t dataLen, iec103::NFE& val);
+    int getNoc(const uint8_t* data, uint32_t dataLen, iec103::NOC& val);
+    int getNoe(const uint8_t* data, uint32_t dataLen, iec103::NOE& val);
+    int getNof(const uint8_t* data, uint32_t dataLen, iec103::NOF& val);
+    int getNot(const uint8_t* data, uint32_t dataLen, iec103::NOT& val);
+    int getNdv(const uint8_t* data, uint32_t dataLen, iec103::NDV& val);
+    int getRet(const uint8_t* data, uint32_t dataLen, iec103::RET& val);
+    int getRfa(const uint8_t* data, uint32_t dataLen, iec103::RFA& val);
+    int getRpv(const uint8_t* data, uint32_t dataLen, iec103::RPV& val);
+    int getRsv(const uint8_t* data, uint32_t dataLen, iec103::RSV& val);
+    int getRii(const uint8_t* data, uint32_t dataLen, iec103::RII& val);
+    int getScl(const uint8_t* data, uint32_t dataLen, iec103::SCL& val);
+    int getScn(const uint8_t* data, uint32_t dataLen, iec103::SCN& val);
+    int getSdv(const uint8_t* data, uint32_t dataLen, iec103::SDV& val);
+    int getSin(const uint8_t* data, uint32_t dataLen, iec103::SIN& val);
+    int getSof(const uint8_t* data, uint32_t dataLen, iec103::SOF& val);
+    int getTap(const uint8_t* data, uint32_t dataLen, iec103::TAP& val);
+    int getToo(const uint8_t* data, uint32_t dataLen, iec103::TOO& val);
+    int getTov(const uint8_t* data, uint32_t dataLen, iec103::TOV& val);
+    int getCP32Time2a(const uint8_t* data, uint32_t dataLen, iec103::CP32Time2a& val);
+    int getCP56Time2a(const uint8_t* data, uint32_t dataLen, iec103::CP56Time2a& val);
+    int getNGD(const uint8_t* data, uint32_t dataLen, iec103::NGD& val);
+    int getGin(const uint8_t* data, uint32_t dataLen, iec103::GIN& val);
+    int getGdd(const uint8_t* data, uint32_t dataLen, iec103::GDD& val);
+    int getKod(const uint8_t* data, uint32_t dataLen, iec103::KOD& val);
+    int getNde(const uint8_t* data, uint32_t dataLen, iec103::NDE& val);
+    int getGrc(const uint8_t* data, uint32_t dataLen, iec103::GRC& val);
+    int getNog(const uint8_t* data, uint32_t dataLen, iec103::NOG& val);
+    int getDPIWithTime(const uint8_t* data, uint32_t dataLen, iec103::DPIWithTime& val);
+    int getDPIWithRet(const uint8_t* data, uint32_t dataLen, iec103::DPIWithRet& val);
+    int getValWithRet(const uint8_t* data, uint32_t dataLen, iec103::ValWithRet& val);
+    int getBsi(const const uint8_t* data, uint32_t dataLen, uint8_t val[4]);
+    int getUint32(const const uint8_t* data, uint32_t dataLen, uint8_t valSize, uint32_t& val);
+    int getInt32(const const uint8_t* data, uint32_t dataLen, uint8_t valSize, int32_t& val);
+    int getUfloat(const const uint8_t* data, uint32_t dataLen, uint8_t valSize, double& val);
+    int getFloat(const const uint8_t* data, uint32_t dataLen, uint8_t valSize, float& val);
+    int getIEEE754R32(const const uint8_t* data, uint32_t dataLen, float& val);
+    int getIEEE754R64(const const uint8_t* data, uint32_t dataLen, double& val);
+    int getGid(const uint8_t* data, uint32_t dataLen, const iec103::GDD& gdd, iec103::GID& val);
+    int getVti(const uint8_t* data, uint32_t dataLen, iec103::VTI& val);
+    int getQds(const uint8_t* data, uint32_t dataLen, iec103::QDS& val);
+
 private:
     FIXED_FRAME_CALLBACK m_fixedFrameCb = nullptr; /* 固定帧回调 */
     VARIABLE_FRAME_CALLBACK m_variableFrameCb = nullptr; /* 可变帧回调 */
