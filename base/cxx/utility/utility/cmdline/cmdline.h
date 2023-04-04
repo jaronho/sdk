@@ -783,9 +783,8 @@ private:
   protected:
     std::string full_description(const std::string &desc){
       return
-        desc+" ("+detail::readable_typename<T>()+
-        (need?"":" [="+detail::default_value<T>(def)+"]")
-        +")";
+        desc+" ("+detail::readable_typename<T>()+")"+
+        (need?"":"["+detail::default_value<T>(def)+"]");
     }
 
     virtual T read(const std::string &s)=0;
