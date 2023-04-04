@@ -353,13 +353,14 @@ public:
     options[name]=new option_with_value_with_reader<T, F>(name, short_name, need, def, desc, reader);
     ordered.push_back(options[name]);
   }
+  
+  void header(const std::string &h){
+    hdr=h;
+  }
+  
 
   void footer(const std::string &f){
     ftr=f;
-  }
-
-  void set_program_name(const std::string &name){
-    prog_name=name;
   }
 
   bool exist(const std::string &name) const {
@@ -439,8 +440,11 @@ public:
       errors.push_back("argument number must be longer than 0");
       return false;
     }
-    if (prog_name=="")
-      prog_name=argv[0];
+    prog_name=argv[0];
+    auto pos=prog_name.find_last_of('/\\');
+    if (std::string::npos!=pos){
+      prog_name=prog_name.substr(pos + 1);
+    }
 
     std::map<char, std::string> lookup;
     for (std::map<std::string, option_base*>::iterator p=options.begin();
@@ -532,21 +536,27 @@ public:
     return errors.size()==0;
   }
 
-  void parse_check(const std::string &arg){
+  void parse_check(const std::string &arg, const std::string &usageTitle="", const std::string &optionTitle="", const std::string &helpDesc=""){
+    usage_title=usageTitle;
+    option_title=optionTitle;
     if (!options.count("help"))
-      add("help", '?', "print this message");
+      add("help", '?', helpDesc.empty()?"display this help and exit":helpDesc);
     check(0, parse(arg));
   }
 
-  void parse_check(const std::vector<std::string> &args){
+  void parse_check(const std::vector<std::string> &args, const std::string &usageTitle="", const std::string &optionTitle="", const std::string &helpDesc=""){
+    usage_title=usageTitle;
+    option_title=optionTitle;
     if (!options.count("help"))
-      add("help", '?', "print this message");
+      add("help", '?', helpDesc.empty()?"display this help and exit":helpDesc);
     check(args.size(), parse(args));
   }
 
-  void parse_check(int argc, char *argv[]){
+  void parse_check(int argc, char *argv[], const std::string &usageTitle="", const std::string &optionTitle="", const std::string &helpDesc=""){
+    usage_title=usageTitle;
+    option_title=optionTitle;
     if (!options.count("help"))
-      add("help", '?', "print this message");
+      add("help", '?', helpDesc.empty()?"display this help and exit":helpDesc);
     check(argc, parse(argc, argv));
   }
 
@@ -563,14 +573,17 @@ public:
 
   std::string usage() const {
     std::ostringstream oss;
-    oss<<"usage: "<<prog_name<<" ";
+    if (!hdr.empty()){
+        oss<<hdr<<std::endl<<std::endl;
+    }
+    oss<<(usage_title.empty()?"usage: ":usage_title+": ")<<prog_name<<" ";
     for (size_t i=0; i<ordered.size(); i++){
       if (ordered[i]->must())
         oss<<ordered[i]->short_description()<<" ";
     }
     
-    oss<<"[options] ... "<<ftr<<std::endl;
-    oss<<"options:"<<std::endl;
+    oss<<(option_title.empty()?"[options] ... ":"["+option_title+"] ... ")<<std::endl<<std::endl;
+    oss<<(option_title.empty()?"options:":option_title+":")<<std::endl;
 
     size_t max_width=0;
     for (size_t i=0; i<ordered.size(); i++){
@@ -588,6 +601,9 @@ public:
       for (size_t j=ordered[i]->name().length(); j<max_width+4; j++)
         oss<<' ';
       oss<<ordered[i]->description()<<std::endl;
+    }
+    if (!ftr.empty()){
+      oss<<std::endl<<ftr<<std::endl;
     }
     return oss.str();
   }
@@ -804,6 +820,9 @@ private:
     F reader;
   };
 
+  std::string hdr;
+  std::string usage_title;
+  std::string option_title;
   std::map<std::string, option_base*> options;
   std::vector<option_base*> ordered;
   std::string ftr;
