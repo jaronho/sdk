@@ -153,9 +153,9 @@ typedef double SCL;
 typedef uint8_t SCN;
 
 /**
- * @brief 单个扰动值(Single Disturbance Value), 值[-1,15]
+ * @brief 单个扰动值(Single Disturbance Value)
  */
-typedef int16_t SDV;
+typedef float SDV;
 
 /**
  * @brief 附加信息(Supplementary Information), 值[0,255], 使用如下:
@@ -441,6 +441,25 @@ public:
     SIN sin = 0; /* 附加信息 */
 };
 
+class Asdu3 final : public Asdu
+{
+public:
+    uint8_t func = 0; /* 功能类型 */
+    uint8_t inf = 0; /* 信号序列 */
+    std::vector<MEA> meaList; /* 带品质描述值的被测值, 从0开始依次为: B相电流, AB线电压, 有功功率, 无功功率 */
+};
+
+class Asdu4 final : public Asdu
+{
+public:
+    uint8_t func = 0; /* 功能类型 */
+    uint8_t inf = 0; /* 信号序列 */
+    SCL scl = 0.0; /* 短路位置 */
+    RET ret = 0; /* 相对时间 */
+    FAN fan = 0; /* 故障序号 */
+    CP32Time2a tm; /* 时间 */
+};
+
 class Asdu5 final : public Asdu
 {
 public:
@@ -482,6 +501,16 @@ class Asdu8 final : public Asdu
 public:
     uint8_t func = 0; /* 功能类型 */
     uint8_t inf = 0; /* 信号序列 */
+    SCN scn = 0; /* 扫描序号 */
+};
+
+class Asdu9 final : public Asdu
+{
+public:
+    uint8_t func = 0; /* 功能类型 */
+    uint8_t inf = 0; /* 信号序列 */
+    /* 带品质描述值的被测值, 从0开始依次为: A相电流, B相电流, C相电流, A相电压, B相电压, C相电压, 三相有功功率, 三相无功功率, (频率, 偏移50Hz的差值范围-2.000~2.000Hz) */
+    std::vector<MEA> meaList;
 };
 
 struct DataSet10
@@ -500,6 +529,24 @@ public:
     RII rii = 0; /* 返回信息标识符 */
     NGD ngd; /* 通用分类数据集数目 */
     std::vector<DataSet10> dataSet; /* 数据集 */
+};
+
+struct DataSet11
+{
+    KOD kod = 0; /* 描述类别 */
+    GDD gdd; /* 通用分类数据描述 */
+    std::vector<GID> gidList; /* 通用分类标识数据集 */
+};
+
+class Asdu11 final : public Asdu
+{
+public:
+    uint8_t func = 0; /* 功能类型 */
+    uint8_t inf = 0; /* 信号序列 */
+    RII rii = 0; /* 返回信息标识符 */
+    GIN gin; /* 通用分类标识序号 */
+    NDE nde; /* 描述元素的数目 */
+    std::vector<DataSet11> dataSet; /* 数据集 */
 };
 
 class Asdu20 final : public Asdu
@@ -538,7 +585,7 @@ class Asdu23 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用 */
+    uint8_t _ = 0; /* 未用(固定为0) */
     std::vector<DataSet23> dataSet; /* 数据集 */
 };
 
@@ -546,7 +593,7 @@ class Asdu24 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用 */
+    uint8_t _ = 0; /* 未用(固定为0) */
     TOO too = 0; /* 命令类型 */
     TOV tov = 0; /* 扰动值的类型 */
     FAN fan = 0; /* 故障序号 */
@@ -557,7 +604,7 @@ class Asdu25 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用 */
+    uint8_t _ = 0; /* 未用(固定为0) */
     TOO too = 0; /* 命令类型 */
     TOV tov = 0; /* 扰动值的类型 */
     FAN fan = 0; /* 故障序号 */
@@ -568,8 +615,8 @@ class Asdu26 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用 */
-    uint8_t __ = 0; /* 未用 */
+    uint8_t _ = 0; /* 未用(固定为0) */
+    uint8_t __ = 0; /* 未用(固定为0) */
     TOV tov = 0; /* 扰动值的类型 */
     FAN fan = 0; /* 故障序号 */
     NOF nof = 0; /* 电网故障序号 */
@@ -583,8 +630,8 @@ class Asdu27 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用 */
-    uint8_t __ = 0; /* 未用 */
+    uint8_t _ = 0; /* 未用(固定为0) */
+    uint8_t __ = 0; /* 未用(固定为0) */
     TOV tov = 0; /* 扰动值的类型 */
     FAN fan = 0; /* 故障序号 */
     ACC acc = 0; /* 实际通道 */
@@ -597,9 +644,9 @@ class Asdu28 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用 */
-    uint8_t __ = 0; /* 未用 */
-    uint8_t ___ = 0; /* 未用 */
+    uint8_t _ = 0; /* 未用(固定为0) */
+    uint8_t __ = 0; /* 未用(固定为0) */
+    uint8_t ___ = 0; /* 未用(固定为0) */
     FAN fan = 0; /* 故障序号 */
 };
 
@@ -614,7 +661,7 @@ class Asdu29 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用 */
+    uint8_t _ = 0; /* 未用(固定为0) */
     FAN fan = 0; /* 故障序号 */
     NOT not = 0; /* 带标志的状态变位数目 */
     TAP tap = 0; /* 带标志的状态变位的位置 */
@@ -625,12 +672,13 @@ class Asdu30 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用 */
-    uint8_t __ = 0; /* 未用 */
+    uint8_t _ = 0; /* 未用(固定为0) */
+    uint8_t __ = 0; /* 未用(固定为0) */
     TOV tov = 0; /* 扰动值类型 */
     FAN fan = 0; /* 故障序号 */
     ACC acc = 0; /* 实际通道 */
     NDV ndv = 0; /* 扰动值数目 */
+    NFE nfe = 0; /* 应用服务数据单元的第一个信息元素的序号 */
     std::vector<SDV> sdvList; /* 扰动值列表 */
 };
 
@@ -638,7 +686,7 @@ class Asdu31 final : public Asdu
 {
 public:
     uint8_t func = 0; /* 功能类型 */
-    uint8_t _ = 0; /* 未用 */
+    uint8_t _ = 0; /* 未用(固定为0) */
     TOO too = 0; /* 命令类型 */
     TOV tov = 0; /* 扰动值类型 */
     FAN fan = 0; /* 故障序号 */

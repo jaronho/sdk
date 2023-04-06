@@ -66,7 +66,7 @@ public:
      * @brief 固定帧回调
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
-     * @param header 传输层头部
+     * @param header 传输层头部(当数据走的是非网络时, 为空)
      * @param frame 固定帧数据
      */
     using FIXED_FRAME_CALLBACK =
@@ -77,7 +77,7 @@ public:
      * @brief 可变帧回调
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
-     * @param header 传输层头部
+     * @param header 传输层头部(当数据走的是非网络时, 为空)
      * @param frame 可变帧数据
      */
     using VARIABLE_FRAME_CALLBACK =
@@ -94,8 +94,8 @@ public:
     /**
      * @brief 解析
      * @param ntp 数据包接收时间点
-     * @param totalLen 数据包总长度
-     * @param header 传输层头部
+     * @param totalLen 数据包总长度(当数据走的是非网络时, 与payloadLen相等)
+     * @param header 传输层头部(当数据走的是非网络时, 为空)
      * @param payload 层负载
      * @param payloadLen 层负载长度
      * @return true-成功, false-失败
@@ -144,6 +144,29 @@ private:
     std::shared_ptr<iec103::Asdu> parseInfoSet(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
 
     std::shared_ptr<iec103::Asdu1> parseAsud1(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu2> parseAsud2(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu3> parseAsud3(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu4> parseAsud4(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu5> parseAsud5(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu6> parseAsud6(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu7> parseAsud7(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu8> parseAsud8(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu9> parseAsud9(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu10> parseAsud10(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu11> parseAsud11(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu20> parseAsud20(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu21> parseAsud21(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu23> parseAsud23(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu24> parseAsud24(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu25> parseAsud25(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu26> parseAsud26(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu27> parseAsud27(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu28> parseAsud28(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu29> parseAsud29(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu30> parseAsud30(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu31> parseAsud31(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu38> parseAsud38(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
+    std::shared_ptr<iec103::Asdu42> parseAsud42(const iec103::DataUnitIdentify& identify, const uint8_t* elements, uint32_t elementLen);
 
     int getAcc(const uint8_t* data, uint32_t dataLen, iec103::ACC& val);
     int getAsc(const uint8_t* data, uint32_t dataLen, iec103::ASC& val);
@@ -176,7 +199,7 @@ private:
     int getTov(const uint8_t* data, uint32_t dataLen, iec103::TOV& val);
     int getCP32Time2a(const uint8_t* data, uint32_t dataLen, iec103::CP32Time2a& val);
     int getCP56Time2a(const uint8_t* data, uint32_t dataLen, iec103::CP56Time2a& val);
-    int getNGD(const uint8_t* data, uint32_t dataLen, iec103::NGD& val);
+    int getNgd(const uint8_t* data, uint32_t dataLen, iec103::NGD& val);
     int getGin(const uint8_t* data, uint32_t dataLen, iec103::GIN& val);
     int getGdd(const uint8_t* data, uint32_t dataLen, iec103::GDD& val);
     int getKod(const uint8_t* data, uint32_t dataLen, iec103::KOD& val);
@@ -186,13 +209,13 @@ private:
     int getDPIWithTime(const uint8_t* data, uint32_t dataLen, iec103::DPIWithTime& val);
     int getDPIWithRet(const uint8_t* data, uint32_t dataLen, iec103::DPIWithRet& val);
     int getValWithRet(const uint8_t* data, uint32_t dataLen, iec103::ValWithRet& val);
-    int getBsi(const const uint8_t* data, uint32_t dataLen, uint8_t val[4]);
-    int getUint32(const const uint8_t* data, uint32_t dataLen, uint8_t valSize, uint32_t& val);
-    int getInt32(const const uint8_t* data, uint32_t dataLen, uint8_t valSize, int32_t& val);
-    int getUfloat(const const uint8_t* data, uint32_t dataLen, uint8_t valSize, double& val);
-    int getFloat(const const uint8_t* data, uint32_t dataLen, uint8_t valSize, float& val);
-    int getIEEE754R32(const const uint8_t* data, uint32_t dataLen, float& val);
-    int getIEEE754R64(const const uint8_t* data, uint32_t dataLen, double& val);
+    int getBsi(const uint8_t* data, uint32_t dataLen, uint8_t val[4]);
+    int getUint32(const uint8_t* data, uint32_t dataLen, uint8_t valSize, uint32_t& val);
+    int getInt32(const uint8_t* data, uint32_t dataLen, uint8_t valSize, int32_t& val);
+    int getUfloat(const uint8_t* data, uint32_t dataLen, uint8_t valSize, double& val);
+    int getFloat(const uint8_t* data, uint32_t dataLen, uint8_t valSize, float& val);
+    int getIEEE754R32(const uint8_t* data, uint32_t dataLen, float& val);
+    int getIEEE754R64(const uint8_t* data, uint32_t dataLen, double& val);
     int getGid(const uint8_t* data, uint32_t dataLen, const iec103::GDD& gdd, iec103::GID& val);
     int getVti(const uint8_t* data, uint32_t dataLen, iec103::VTI& val);
     int getQds(const uint8_t* data, uint32_t dataLen, iec103::QDS& val);
