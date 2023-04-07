@@ -14,7 +14,7 @@ std::atomic_bool g_connected = {false}; /* 是否已连接上 */
 /**
  * @brief 发送数据
  */
-void sendData(const std::vector<unsigned char>& data)
+bool sendData(const std::vector<unsigned char>& data)
 {
     if (g_client)
     {
@@ -28,12 +28,14 @@ void sendData(const std::vector<unsigned char>& data)
         else
         {
             printf("++++++++++++++++++++ 发送成功, 数据长度: %zu\n", length);
+            return true;
         }
     }
     else
     {
         printf("-------------------- 发送失败: 客户端为空\n");
     }
+    return false;
 }
 
 int main(int argc, char* argv[])
@@ -257,7 +259,12 @@ int main(int argc, char* argv[])
                 {
                     std::string bomFlag, endFlag;
                     auto line = utility::FileInfo::readLine(f, bomFlag, endFlag);
+                    if (line.empty())
+                    {
+                        continue;
+                    }
                     size_t offset = 0;
+                    bool ret = false;
                     while (offset < line.size())
                     {
                         size_t count = MAX_PAYLOAD;
@@ -269,9 +276,9 @@ int main(int argc, char* argv[])
                         offset += count;
                         std::vector<unsigned char> data;
                         data.insert(data.end(), buf.begin(), buf.end());
-                        sendData(data);
+                        ret = sendData(data);
                     }
-                    if (interval > 0)
+                    if (interval > 0 && ret)
                     {
                         std::this_thread::sleep_for(std::chrono::milliseconds(interval));
                     }
@@ -283,6 +290,10 @@ int main(int argc, char* argv[])
                 {
                     std::string bomFlag, endFlag;
                     auto buf = utility::FileInfo::readLine(f, bomFlag, endFlag);
+                    if (buf.empty())
+                    {
+                        continue;
+                    }
                     auto line = utility::StrTool::toLower(buf);
                     line = utility::StrTool::replace(line, "0x", "");
                     line = utility::StrTool::replace(line, " ", "");
@@ -298,6 +309,7 @@ int main(int argc, char* argv[])
                         continue;
                     }
                     size_t offset = 0;
+                    bool ret = false;
                     while (offset < line.size())
                     {
                         size_t count = MAX_PAYLOAD - 1;
@@ -310,9 +322,9 @@ int main(int argc, char* argv[])
                         auto bytes = utility::StrTool::fromHex(buf);
                         std::vector<unsigned char> data;
                         data.insert(data.end(), bytes.begin(), bytes.end());
-                        sendData(data);
+                        ret = sendData(data);
                     }
-                    if (interval > 0)
+                    if (interval > 0 && ret)
                     {
                         std::this_thread::sleep_for(std::chrono::milliseconds(interval));
                     }
