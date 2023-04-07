@@ -296,7 +296,7 @@ std::shared_ptr<iec103::Asdu1> Iec103Parser::parseAsud1(const iec103::DataUnitId
                                                         uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu1>();
         asdu->func = elements[0];
@@ -330,7 +330,7 @@ std::shared_ptr<iec103::Asdu2> Iec103Parser::parseAsud2(const iec103::DataUnitId
                                                         uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu2>();
         asdu->func = elements[0];
@@ -376,7 +376,7 @@ std::shared_ptr<iec103::Asdu3> Iec103Parser::parseAsud3(const iec103::DataUnitId
                                                         uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu3>();
         asdu->func = elements[0];
@@ -401,7 +401,7 @@ std::shared_ptr<iec103::Asdu4> Iec103Parser::parseAsud4(const iec103::DataUnitId
                                                         uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu4>();
         asdu->func = elements[0];
@@ -441,7 +441,7 @@ std::shared_ptr<iec103::Asdu5> Iec103Parser::parseAsud5(const iec103::DataUnitId
                                                         uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu5>();
         asdu->func = elements[0];
@@ -480,7 +480,7 @@ std::shared_ptr<iec103::Asdu6> Iec103Parser::parseAsud6(const iec103::DataUnitId
                                                         uint32_t elementLen)
 {
     int32_t offset = 2;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu6>();
         asdu->func = elements[0];
@@ -497,7 +497,7 @@ std::shared_ptr<iec103::Asdu7> Iec103Parser::parseAsud7(const iec103::DataUnitId
                                                         uint32_t elementLen)
 {
     int32_t offset = 2;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu7>();
         asdu->func = elements[0];
@@ -514,7 +514,7 @@ std::shared_ptr<iec103::Asdu8> Iec103Parser::parseAsud8(const iec103::DataUnitId
                                                         uint32_t elementLen)
 {
     int32_t offset = 2;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu8>();
         asdu->func = elements[0];
@@ -531,7 +531,7 @@ std::shared_ptr<iec103::Asdu9> Iec103Parser::parseAsud9(const iec103::DataUnitId
                                                         uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu9>();
         asdu->func = elements[0];
@@ -556,7 +556,7 @@ std::shared_ptr<iec103::Asdu10> Iec103Parser::parseAsud10(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu10>();
         asdu->func = elements[0];
@@ -619,7 +619,7 @@ std::shared_ptr<iec103::Asdu11> Iec103Parser::parseAsud11(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu11>();
         asdu->func = elements[0];
@@ -682,7 +682,7 @@ std::shared_ptr<iec103::Asdu20> Iec103Parser::parseAsud20(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu20>();
         asdu->func = elements[0];
@@ -710,7 +710,7 @@ std::shared_ptr<iec103::Asdu21> Iec103Parser::parseAsud21(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu21>();
         asdu->func = elements[0];
@@ -755,7 +755,7 @@ std::shared_ptr<iec103::Asdu23> Iec103Parser::parseAsud23(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu23>();
         asdu->func = elements[0];
@@ -792,7 +792,7 @@ std::shared_ptr<iec103::Asdu24> Iec103Parser::parseAsud24(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu24>();
         asdu->func = elements[0];
@@ -832,7 +832,7 @@ std::shared_ptr<iec103::Asdu25> Iec103Parser::parseAsud25(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu25>();
         asdu->func = elements[0];
@@ -872,7 +872,7 @@ std::shared_ptr<iec103::Asdu26> Iec103Parser::parseAsud26(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 3, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu26>();
         asdu->func = elements[0];
@@ -931,7 +931,7 @@ std::shared_ptr<iec103::Asdu27> Iec103Parser::parseAsud27(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 3, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu27>();
         asdu->func = elements[0];
@@ -984,7 +984,7 @@ std::shared_ptr<iec103::Asdu28> Iec103Parser::parseAsud28(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 4;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu28>();
         asdu->func = elements[0];
@@ -1003,7 +1003,7 @@ std::shared_ptr<iec103::Asdu29> Iec103Parser::parseAsud29(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu29>();
         asdu->func = elements[0];
@@ -1055,7 +1055,7 @@ std::shared_ptr<iec103::Asdu30> Iec103Parser::parseAsud30(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 3, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu30>();
         asdu->func = elements[0];
@@ -1114,7 +1114,7 @@ std::shared_ptr<iec103::Asdu31> Iec103Parser::parseAsud31(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu31>();
         asdu->func = elements[0];
@@ -1154,7 +1154,7 @@ std::shared_ptr<iec103::Asdu38> Iec103Parser::parseAsud38(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu38>();
         asdu->func = elements[0];
@@ -1182,7 +1182,7 @@ std::shared_ptr<iec103::Asdu42> Iec103Parser::parseAsud42(const iec103::DataUnit
                                                           uint32_t elementLen)
 {
     int32_t offset = 2, count = 0;
-    if (elementLen > offset)
+    if (elementLen >= offset)
     {
         auto asdu = std::make_shared<iec103::Asdu42>();
         asdu->func = elements[0];
@@ -1906,6 +1906,7 @@ int Iec103Parser::getGid(const uint8_t* data, uint32_t dataLen, const iec103::GD
         default:
             break;
         }
+        return gdd.dataSize;
     }
     return -1;
 }

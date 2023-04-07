@@ -245,7 +245,7 @@ struct CP32Time2a
  */
 struct CP56Time2a
 {
-    uint8_t year = 0; /* 年 */
+    uint16_t year = 0; /* 年 */
     uint8_t month = 0; /* 月 */
     uint8_t day = 0; /* 日 */
     uint8_t wday = 0; /* 星期几, 0-星期天 */
