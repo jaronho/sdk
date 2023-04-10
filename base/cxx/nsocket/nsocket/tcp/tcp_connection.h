@@ -61,6 +61,12 @@ public:
     void setDataCallback(const TCP_DATA_CALLBACK& onDataCb);
 
     /**
+     * @brief 设置本地端口(连接前调用才有效)
+     * @param port 本地端口
+     */
+    void setLocalPort(uint32_t port);
+
+    /**
      * @brief 连接
      * @param point 端点
      * @param async 是否异步连接(选填), 默认异步

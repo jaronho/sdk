@@ -2,6 +2,11 @@
 
 namespace nsocket
 {
+void SocketTcpBase::setLocalPort(uint32_t port)
+{
+    m_localPort = (port > 0 && port < 65536) ? port : 0;
+}
+
 SocketTcp::SocketTcp(boost::asio::ip::tcp::socket socket) : m_socket(std::move(socket)) {}
 
 SocketTcp::~SocketTcp()
@@ -9,13 +14,9 @@ SocketTcp::~SocketTcp()
     close();
 }
 
-void SocketTcp::bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code)
-{
-    m_socket.bind(point, code);
-}
-
 void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async)
 {
+    m_remotePoint = point;
     if (m_socket.is_open())
     {
         if (onConnectCb)
@@ -25,17 +26,42 @@ void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
     }
     else
     {
-        if (async)
+        boost::system::error_code code;
+        m_socket.open(boost::asio::ip::tcp::v4(), code);
+        if (code)
         {
-            m_socket.async_connect(point, onConnectCb);
-        }
-        else
-        {
-            boost::system::error_code code;
-            m_socket.connect(point, code);
             if (onConnectCb)
             {
                 onConnectCb(code);
+            }
+        }
+        else
+        {
+            if (m_localPort > 0)
+            {
+                m_socket.bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_localPort), code);
+            }
+            if (code)
+            {
+                if (onConnectCb)
+                {
+                    onConnectCb(code);
+                }
+            }
+            else
+            {
+                if (async)
+                {
+                    m_socket.async_connect(point, onConnectCb);
+                }
+                else
+                {
+                    m_socket.connect(point, code);
+                    if (onConnectCb)
+                    {
+                        onConnectCb(code);
+                    }
+                }
             }
         }
     }
@@ -98,13 +124,23 @@ bool SocketTcp::isOpened() const
 boost::asio::ip::tcp::endpoint SocketTcp::getLocalEndpoint() const
 {
     boost::system::error_code code;
-    return m_socket.local_endpoint(code);
+    auto point = m_socket.local_endpoint(code);
+    if (code && m_localPort > 0)
+    {
+        point.port(m_localPort);
+    }
+    return point;
 }
 
 boost::asio::ip::tcp::endpoint SocketTcp::getRemoteEndpoint() const
 {
     boost::system::error_code code;
-    return m_socket.remote_endpoint(code);
+    auto point = m_socket.remote_endpoint(code);
+    if (code)
+    {
+        return m_remotePoint;
+    }
+    return point;
 }
 
 bool SocketTcp::isNonBlock() const
@@ -187,13 +223,9 @@ SocketTls::~SocketTls()
     close();
 }
 
-void SocketTls::bind(const boost::asio::ip::tcp::endpoint& host, boost::system::error_code& code)
-{
-    m_sslStream.lowest_layer().bind(host, code);
-}
-
 void SocketTls::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async)
 {
+    m_remotePoint = point;
     if (m_sslStream.lowest_layer().is_open())
     {
         if (onConnectCb)
@@ -203,17 +235,42 @@ void SocketTls::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
     }
     else
     {
-        if (async)
+        boost::system::error_code code;
+        m_sslStream.lowest_layer().open(boost::asio::ip::tcp::v4(), code);
+        if (code)
         {
-            m_sslStream.lowest_layer().async_connect(point, onConnectCb);
-        }
-        else
-        {
-            boost::system::error_code code;
-            m_sslStream.lowest_layer().connect(point, code);
             if (onConnectCb)
             {
                 onConnectCb(code);
+            }
+        }
+        else
+        {
+            if (m_localPort > 0)
+            {
+                m_sslStream.lowest_layer().bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_localPort), code);
+            }
+            if (code)
+            {
+                if (onConnectCb)
+                {
+                    onConnectCb(code);
+                }
+            }
+            else
+            {
+                if (async)
+                {
+                    m_sslStream.lowest_layer().async_connect(point, onConnectCb);
+                }
+                else
+                {
+                    m_sslStream.lowest_layer().connect(point, code);
+                    if (onConnectCb)
+                    {
+                        onConnectCb(code);
+                    }
+                }
             }
         }
     }
@@ -276,13 +333,23 @@ bool SocketTls::isOpened() const
 boost::asio::ip::tcp::endpoint SocketTls::getLocalEndpoint() const
 {
     boost::system::error_code code;
-    return m_sslStream.lowest_layer().local_endpoint(code);
+    auto point = m_sslStream.lowest_layer().local_endpoint(code);
+    if (code && m_localPort > 0)
+    {
+        point.port(m_localPort);
+    }
+    return point;
 }
 
 boost::asio::ip::tcp::endpoint SocketTls::getRemoteEndpoint() const
 {
     boost::system::error_code code;
-    return m_sslStream.lowest_layer().remote_endpoint(code);
+    auto point = m_sslStream.lowest_layer().remote_endpoint(code);
+    if (code)
+    {
+        return m_remotePoint;
+    }
+    return point;
 }
 
 bool SocketTls::isNonBlock() const

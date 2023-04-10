@@ -67,20 +67,100 @@ class SocketTcpBase
 public:
     SocketTcpBase() = default;
     virtual ~SocketTcpBase() = default;
-    virtual void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) = 0;
+
+    /**
+     * @brief 设置本地端口(连接前调用才有效)
+     * @param port 本地端口
+     */
+    void setLocalPort(uint32_t port);
+
+    /**
+     * @brief 连接
+     * @param point 远端端点(远端地址, 远端端口)
+     * @param onConnectCb 连接回调
+     * @param async 是否进行异步连接, true-是, false-否
+     */
     virtual void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) = 0;
+
+    /**
+     * @brief 发送数据
+     * @param data 数据
+     * @param onSendCb 发送回调
+     */
     virtual void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb) = 0;
+
+    /**
+     * @brief 接收数据
+     * @param data [输出]数据
+     * @param onRecvCb 接收回调
+     */
     virtual void recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CALLBACK& onRecvCb) = 0;
+
+    /**
+     * @brief 关闭连接
+     */
     virtual void close() = 0;
+
+    /**
+     * @brief 连接是否已打开
+     * @return true-已打开, false-关闭
+     */
     virtual bool isOpened() const = 0;
+
+    /**
+     * @brief 获取本地端点
+     * @return 本地端点
+     */
     virtual boost::asio::ip::tcp::endpoint getLocalEndpoint() const = 0;
+
+    /**
+     * @brief 获取远端端点
+     * @return 远端端点
+     */
     virtual boost::asio::ip::tcp::endpoint getRemoteEndpoint() const = 0;
+
+    /**
+     * @brief 是否非阻塞模式
+     * @return true-非阻塞, false-阻塞
+     */
     virtual bool isNonBlock() const = 0;
+
+    /**
+     * @brief 设置非阻塞模式
+     * @param nonBlock 非阻塞模式, true-是, false-否(阻塞模式)
+     * @return true-设置成功, false-设置失败
+     */
     virtual bool setNonBlock(bool nonBlock) = 0;
+
+    /**
+     * @brief 获取发送缓冲区大小
+     * @return 发送缓冲区大小
+     */
     virtual size_t getSendBufferSize() const = 0;
+
+    /**
+     * @brief 设置发送缓冲区大小
+     * @param bufferSize 发送缓冲区大小
+     * @return true-设置成功, false-设置失败
+     */
     virtual bool setSendBufferSize(size_t bufferSize) = 0;
+
+    /**
+     * @brief 获取接收缓冲区大小
+     * @return 接收缓冲区大小
+     */
     virtual size_t getRecvBufferSize() const = 0;
+
+    /**
+     * @brief 设置接收缓冲区大小
+     * @param bufferSize 接收缓冲区大小
+     * @return true-设置成功, false-设置失败
+     */
     virtual bool setRecvBufferSize(size_t bufferSize) = 0;
+
+protected:
+    uint32_t m_localPort = 0; /* 本地端口 */
+    boost::asio::ip::tcp::endpoint m_remotePoint; /* 远端端点 */
 };
 
 /**
@@ -92,8 +172,6 @@ public:
     SocketTcp(boost::asio::ip::tcp::socket socket);
 
     ~SocketTcp();
-
-    void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) override;
 
     void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) override;
 
@@ -135,8 +213,6 @@ public:
     SocketTls(boost::asio::ip::tcp::socket socket, boost::asio::ssl::context& sslContext);
 
     ~SocketTls();
-
-    void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) override;
 
     void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) override;
 

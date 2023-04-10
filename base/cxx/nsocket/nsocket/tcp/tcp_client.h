@@ -33,6 +33,12 @@ public:
     void setDataCallback(const TCP_DATA_CALLBACK& onDataCb);
 
     /**
+     * @brief 设置本地端口(运行前调用才有效)
+     * @param port 本地端口
+     */
+    void setLocalPort(uint32_t port);
+
+    /**
      * @brief 运行(进入循环, 阻塞和占用调用线程)
      * @param host 服务器
      * @param port 端口
@@ -117,6 +123,7 @@ private:
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
+    uint32_t m_localPort; /* 本地端口 */
     boost::asio::ip::tcp::resolver::results_type m_endpoints; /* 端点 */
     boost::asio::ip::tcp::resolver::iterator m_endpointIter; /* 当前端点迭代器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)

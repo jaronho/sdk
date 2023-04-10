@@ -4,6 +4,7 @@ namespace nsocket
 {
 TcpClient::TcpClient(size_t bz)
     : m_tcpConn(nullptr)
+    , m_localPort(0)
     , m_bufferSize(bz)
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     , m_sslContext(nullptr)
@@ -21,6 +22,11 @@ void TcpClient::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)
 void TcpClient::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
 {
     m_onDataCallback = onDataCb;
+}
+
+void TcpClient::setLocalPort(uint32_t port)
+{
+    m_localPort = port;
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -68,6 +74,7 @@ void TcpClient::run(const std::string& host, unsigned int port, bool async)
             }
         });
         m_tcpConn->setDataCallback(m_onDataCallback);
+        m_tcpConn->setLocalPort(m_localPort);
         m_tcpConn->connect(m_endpointIter->endpoint(), async);
         if (RunStatus::none == m_runStatus)
         {
@@ -191,6 +198,7 @@ void TcpClient::handleConnect(const boost::system::error_code& code, bool async)
             }
             else /* 尝试下一个 */
             {
+                m_tcpConn->setLocalPort(m_localPort);
                 m_tcpConn->connect(m_endpointIter->endpoint(), async);
             }
         }

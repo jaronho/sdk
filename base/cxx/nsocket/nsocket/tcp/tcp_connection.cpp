@@ -59,6 +59,14 @@ void TcpConnection::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
     m_onDataCallback = onDataCb;
 }
 
+void TcpConnection::setLocalPort(uint32_t port)
+{
+    if (m_socketTcpBase)
+    {
+        m_socketTcpBase->setLocalPort(port);
+    }
+}
+
 void TcpConnection::connect(const boost::asio::ip::tcp::endpoint& point, bool async)
 {
     if (m_socketTcpBase)
