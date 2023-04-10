@@ -67,10 +67,10 @@ class SocketTcpBase
 public:
     SocketTcpBase() = default;
     virtual ~SocketTcpBase() = default;
+    virtual void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) = 0;
     virtual void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) = 0;
     virtual void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb) = 0;
     virtual void recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CALLBACK& onRecvCb) = 0;
-    virtual void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) = 0;
     virtual void close() = 0;
     virtual bool isOpened() const = 0;
     virtual boost::asio::ip::tcp::endpoint getLocalEndpoint() const = 0;
@@ -91,15 +91,15 @@ class SocketTcp : public SocketTcpBase
 public:
     SocketTcp(boost::asio::ip::tcp::socket socket);
 
-    virtual ~SocketTcp() = default;
+    ~SocketTcp();
+
+    void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) override;
 
     void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) override;
 
     void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb) override;
 
     void recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CALLBACK& onRecvCb) override;
-
-    void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) override;
 
     void close() override;
 
@@ -134,15 +134,15 @@ class SocketTls : public SocketTcpBase
 public:
     SocketTls(boost::asio::ip::tcp::socket socket, boost::asio::ssl::context& sslContext);
 
-    virtual ~SocketTls() = default;
+    ~SocketTls();
+
+    void bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code) override;
 
     void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) override;
 
     void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb) override;
 
     void recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CALLBACK& onRecvCb) override;
-
-    void bind(const boost::asio::ip::tcp::endpoint& host, boost::system::error_code& code) override;
 
     void close() override;
 

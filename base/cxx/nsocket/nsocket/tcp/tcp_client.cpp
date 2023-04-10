@@ -1,7 +1,5 @@
 #include "tcp_client.h"
 
-#include <functional>
-
 namespace nsocket
 {
 TcpClient::TcpClient(size_t bz)
@@ -37,7 +35,6 @@ void TcpClient::run(const std::string& host, unsigned int port, bool async)
     }
     boost::system::error_code code;
     m_endpoints = boost::asio::ip::tcp::resolver(m_ioContext).resolve(host, std::to_string(port), code);
-    m_endpointIter = m_endpoints.begin();
     if (code || m_endpoints.empty())
     {
         if (m_onConnectCallback)
@@ -47,6 +44,7 @@ void TcpClient::run(const std::string& host, unsigned int port, bool async)
     }
     else
     {
+        m_endpointIter = m_endpoints.begin();
         boost::asio::ip::tcp::socket socket(m_ioContext);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
         if (sslContext) /* 启用TLS */

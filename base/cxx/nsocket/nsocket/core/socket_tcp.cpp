@@ -4,6 +4,16 @@ namespace nsocket
 {
 SocketTcp::SocketTcp(boost::asio::ip::tcp::socket socket) : m_socket(std::move(socket)) {}
 
+SocketTcp::~SocketTcp()
+{
+    close();
+}
+
+void SocketTcp::bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code)
+{
+    m_socket.bind(point, code);
+}
+
 void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async)
 {
     if (m_socket.is_open())
@@ -68,11 +78,6 @@ void SocketTcp::recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CAL
     {
         onRecvCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
     }
-}
-
-void SocketTcp::bind(const boost::asio::ip::tcp::endpoint& point, boost::system::error_code& code)
-{
-    m_socket.bind(point, code);
 }
 
 void SocketTcp::close()
@@ -177,6 +182,16 @@ SocketTls::SocketTls(boost::asio::ip::tcp::socket socket, boost::asio::ssl::cont
 {
 }
 
+SocketTls::~SocketTls()
+{
+    close();
+}
+
+void SocketTls::bind(const boost::asio::ip::tcp::endpoint& host, boost::system::error_code& code)
+{
+    m_sslStream.lowest_layer().bind(host, code);
+}
+
 void SocketTls::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async)
 {
     if (m_sslStream.lowest_layer().is_open())
@@ -241,11 +256,6 @@ void SocketTls::recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CAL
     {
         onRecvCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
     }
-}
-
-void SocketTls::bind(const boost::asio::ip::tcp::endpoint& host, boost::system::error_code& code)
-{
-    m_sslStream.lowest_layer().bind(host, code);
 }
 
 void SocketTls::close()
