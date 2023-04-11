@@ -26,7 +26,7 @@ public:
      * @param alreadyConnected 是否已经连接上(选填), 服务器中接收到新连接时需要设置该参数为true
      * @param bz 数据缓冲区大小(字节, 选填)
      */
-    TcpConnection(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected = false, size_t bz = 1024);
+    TcpConnection(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected = false, size_t bz = 4096);
 
     ~TcpConnection();
 
@@ -50,7 +50,7 @@ public:
 
     /**
      * @brief 设置连接回调
-     * @param onDataCb 数据回调
+     * @param onConnectCb 连接回调
      */
     void setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb);
 

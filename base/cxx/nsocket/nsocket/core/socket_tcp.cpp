@@ -16,7 +16,6 @@ SocketTcp::~SocketTcp()
 
 void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async)
 {
-    m_remotePoint = point;
     if (m_socket.is_open())
     {
         if (onConnectCb)
@@ -26,6 +25,7 @@ void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
     }
     else
     {
+        m_remotePoint = point;
         boost::system::error_code code;
         m_socket.open(boost::asio::ip::tcp::v4(), code);
         if (code)
@@ -43,6 +43,7 @@ void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
             }
             if (code)
             {
+                m_socket.close();
                 if (onConnectCb)
                 {
                     onConnectCb(code);

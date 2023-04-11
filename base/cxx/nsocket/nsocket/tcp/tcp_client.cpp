@@ -3,12 +3,12 @@
 namespace nsocket
 {
 TcpClient::TcpClient(size_t bz)
-    : m_tcpConn(nullptr)
-    , m_localPort(0)
-    , m_bufferSize(bz)
+    : m_localPort(0)
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     , m_sslContext(nullptr)
 #endif
+    , m_tcpConn(nullptr)
+    , m_bufferSize(bz)
     , m_onConnectCallback(nullptr)
     , m_onDataCallback(nullptr)
 {
@@ -160,7 +160,7 @@ void TcpClient::stop()
 
 bool TcpClient::isRunning() const
 {
-    return RunStatus::start == m_runStatus;
+    return (RunStatus::start == m_runStatus);
 }
 
 boost::asio::ip::tcp::endpoint TcpClient::getLocalEndpoint() const

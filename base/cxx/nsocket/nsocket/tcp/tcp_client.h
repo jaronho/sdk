@@ -16,7 +16,7 @@ public:
      * @brief 构造函数
      * @param bz 数据缓冲区大小(字节, 选填)
      */
-    TcpClient(size_t bz = 1024);
+    TcpClient(size_t bz = 4096);
 
     virtual ~TcpClient() = default;
 
@@ -124,8 +124,8 @@ private:
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
     uint32_t m_localPort; /* 本地端口 */
-    boost::asio::ip::tcp::resolver::results_type m_endpoints; /* 端点 */
-    boost::asio::ip::tcp::resolver::iterator m_endpointIter; /* 当前端点迭代器 */
+    boost::asio::ip::tcp::resolver::results_type m_endpoints; /* 远端端点 */
+    boost::asio::ip::tcp::resolver::iterator m_endpointIter; /* 远端端点迭代器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
 #endif

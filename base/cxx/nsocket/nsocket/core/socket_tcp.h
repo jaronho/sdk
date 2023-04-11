@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -76,7 +77,7 @@ public:
 
     /**
      * @brief 连接
-     * @param point 远端端点(远端地址, 远端端口)
+     * @param point 远端端点
      * @param onConnectCb 连接回调
      * @param async 是否进行异步连接, true-是, false-否
      */
@@ -159,7 +160,7 @@ public:
     virtual bool setRecvBufferSize(size_t bufferSize) = 0;
 
 protected:
-    uint32_t m_localPort = 0; /* 本地端口 */
+    std::atomic<uint32_t> m_localPort = {0}; /* 本地端口 */
     boost::asio::ip::tcp::endpoint m_remotePoint; /* 远端端点 */
 };
 
