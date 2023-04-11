@@ -61,10 +61,13 @@ ${base_nsocket_dir}
 ${base_nsocket_files}
 
 [源文件]
-${base_nsocket_http_files}
+${base_nsocket_tcp_files}
 
 [源文件]
-${base_nsocket_tcp_files}
+${base_nsocket_udp_files}
+
+[源文件]
+${base_nsocket_http_files}
 
 [源文件]
 ${base_nsocket_websocket_files}
@@ -84,6 +87,10 @@ list(APPEND base_nsocket_http_src_list ${src_list})
 set(base_nsocket_tcp_src_list)
 get_cxx_files(nsocket/tcp src_list)
 list(APPEND base_nsocket_tcp_src_list ${src_list})
+
+set(base_nsocket_udp_src_list)
+get_cxx_files(nsocket/udp src_list)
+list(APPEND base_nsocket_udp_src_list ${src_list})
 
 set(base_nsocket_websocket_base64_src_list)
 get_cxx_files(nsocket/websocket/base64 src_list)
@@ -106,21 +113,28 @@ set(base_nsocket_files
     ${base_nsocket_core_src_list}
     ${base_nsocket_http_src_list}
     ${base_nsocket_tcp_src_list}
+    ${base_nsocket_udp_src_list}
     ${base_nsocket_websocket_base64_src_list}
     ${base_nsocket_websocket_sha1_src_list}
     ${base_nsocket_websocket_src_list}
     ${base_nsocket_src_list}
     CACHE INTERNAL "")
 
-set(base_nsocket_http_files
+set(base_nsocket_tcp_files
     ${base_nsocket_core_src_list}
-    ${base_nsocket_http_src_list}
     ${base_nsocket_tcp_src_list}
     ${base_nsocket_src_list}
     CACHE INTERNAL "")
 
-set(base_nsocket_tcp_files
+set(base_nsocket_udp_files
     ${base_nsocket_core_src_list}
+    ${base_nsocket_udp_src_list}
+    ${base_nsocket_src_list}
+    CACHE INTERNAL "")
+
+set(base_nsocket_http_files
+    ${base_nsocket_core_src_list}
+    ${base_nsocket_http_src_list}
     ${base_nsocket_tcp_src_list}
     ${base_nsocket_src_list}
     CACHE INTERNAL "")

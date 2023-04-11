@@ -15,7 +15,7 @@ namespace nsocket
 using TCP_DATA_CALLBACK = std::function<void(const std::vector<unsigned char>& data)>;
 
 /**
- * @brief TCP连接, 注意: 调用close后示例不可再使用
+ * @brief TCP连接, 注意: 调用close后实例不可再使用, 需要重新创建
  */
 class TcpConnection : public std::enable_shared_from_this<TcpConnection>
 {
@@ -68,7 +68,7 @@ public:
 
     /**
      * @brief 连接
-     * @param point 端点
+     * @param point 远端端点
      * @param async 是否异步连接(选填), 默认异步
      */
     void connect(const boost::asio::ip::tcp::endpoint& point, bool async = true);
