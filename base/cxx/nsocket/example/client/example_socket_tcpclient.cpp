@@ -9,6 +9,7 @@ int main(int argc, char* argv[])
     printf("** This is TCP client                                                                                    **\n");
     printf("** Options:                                                                                              **\n");
     printf("**                                                                                                       **\n");
+    printf("** [-lp]                  client local port (0. auto random), default: 0                                 **\n");
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
     printf("** [-p]                   server port, default: 4335                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -21,6 +22,7 @@ int main(int argc, char* argv[])
     printf("**                                                                                                       **\n");
     printf("***********************************************************************************************************\n");
     printf("\n");
+    int localPort = 0;
     std::string serverHost;
     int serverPort = 0;
     int pem = 1;
@@ -31,7 +33,16 @@ int main(int argc, char* argv[])
     for (int i = 1; i < argc;)
     {
         const char* key = argv[i];
-        if (0 == strcmp(key, "-s")) /* 服务器地址 */
+        if (0 == strcmp(key, "-lp")) /* 本机端口 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                localPort = atoi(argv[i]);
+                ++i;
+            }
+        }
+        else if (0 == strcmp(key, "-s")) /* 服务器地址 */
         {
             ++i;
             if (i < argc)
@@ -101,11 +112,15 @@ int main(int argc, char* argv[])
             ++i;
         }
     }
+    if (localPort < 0 || localPort > 65535)
+    {
+        localPort = 0;
+    }
     if (serverHost.empty())
     {
         serverHost = "127.0.0.1";
     }
-    if (serverPort <= 0)
+    if (serverPort <= 0 || serverPort > 65535)
     {
         serverPort = 4335;
     }
@@ -164,10 +179,11 @@ int main(int argc, char* argv[])
     });
     /* 创建线程专门用于网络I/O事件轮询 */
     printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
-    std::thread th([&, pem, certFile, privateKeyFile, privateKeyFilePwd]() {
+    std::thread th([&, localPort, serverHost, serverPort, pem, certFile, privateKeyFile, privateKeyFilePwd, way]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
+            client->setLocalPort(localPort);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
             if (certFile.empty())
             {

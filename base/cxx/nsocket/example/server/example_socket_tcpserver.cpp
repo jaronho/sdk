@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
     {
         serverHost = "127.0.0.1";
     }
-    if (serverPort <= 0)
+    if (serverPort <= 0 || serverPort > 65535)
     {
         serverPort = 4335;
     }
@@ -226,7 +226,7 @@ int main(int argc, char* argv[])
             }
         });
     /* 创建线程专门用于网络I/O事件轮询 */
-    std::thread th([&, certFile, privateKeyFile, privateKeyFilePwd]() {
+    std::thread th([&, pem, certFile, privateKeyFile, privateKeyFilePwd, way]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {

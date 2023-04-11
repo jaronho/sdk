@@ -2,7 +2,6 @@
 #include <fstream>
 #include <iostream>
 #include <mutex>
-#include <thread>
 
 #include "../../nsocket/websocket/server.h"
 
@@ -108,7 +107,7 @@ int main(int argc, char* argv[])
     {
         serverHost = "127.0.0.1";
     }
-    if (serverPort <= 0)
+    if (serverPort <= 0 || serverPort > 65535)
     {
         serverPort = 4335;
     }
