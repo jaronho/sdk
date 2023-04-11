@@ -2,25 +2,25 @@
 #include <chrono>
 #include <thread>
 
-#include "nsocket/tcp/tcp_client.h"
+#include "nsocket/udp/udp_node.h"
 #include "utility/cmdline/cmdline.h"
 #include "utility/digit/digit.h"
 #include "utility/filesystem/file_info.h"
 #include "utility/strtool/strtool.h"
 
-std::shared_ptr<nsocket::TcpClient> g_client = nullptr; /* 客户端 */
-std::atomic_bool g_connected = {false}; /* 是否已连接上 */
+std::shared_ptr<nsocket::UdpNode> g_node = nullptr; /* 节点 */
+std::atomic_bool g_opened = {false}; /* 是否已打开 */
 
 /**
  * @brief 发送数据
  */
-bool sendData(const std::vector<unsigned char>& data)
+bool sendData(const std::string& host, unsigned int port, const std::vector<unsigned char>& data)
 {
-    if (g_client)
+    if (g_node)
     {
         /* 发送数据 */
         std::size_t length;
-        auto code = g_client->send(data, length);
+        auto code = g_node->send(host, port, data, length);
         if (code)
         {
             printf("-------------------- 发送失败: %d, %s\n", code.value(), code.message().c_str());
@@ -42,17 +42,11 @@ int main(int argc, char* argv[])
 {
     /* 命令参数 */
     cmdline::parser parser;
-    parser.header("TCP客户端");
+    parser.header("UDP节点");
+    parser.add<std::string>("local-addr", 'L', "本地地址, 默认:", false, "127.0.0.1");
     parser.add<int>("local-port", 'l', "本地端口(0表示自动分配), 默认:", false, 0, cmdline::range(1, 65535));
-    parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "127.0.0.1");
-    parser.add<int>("port", 'p', "服务器端口, 默认:", false, 4444, cmdline::range(1, 65535));
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    parser.add<int>("cert-format", 'f', "证书文件格式, 值: 0-DER, 1-PEM, 默认:", false, 1, cmdline::oneof<int>(0, 1));
-    parser.add<std::string>("cert-file", 'c', "证书文件名, 例如: server.crt, 默认:", false, "");
-    parser.add<std::string>("key-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
-    parser.add<std::string>("key-pwd", 'P', "私钥文件密码, 例如: 123456, 默认:", false, "");
-    parser.add<int>("ssl-way", 'w', "SSL验证, 值: 1-单向验证, 2-双向验证, 默认:", false, 1, cmdline::oneof<int>(1, 2));
-#endif
+    parser.add<std::string>("remote-addr", 'R', "远端地址, 默认:", false, "127.0.0.1");
+    parser.add<int>("remote-port", 'r', "远端端口, 默认:", false, 0, cmdline::range(1, 65535));
     parser.add<int>("data-type", 'd',
                     "数据类型, 值: 1-输入(原始), 2-输入(十六进制), 3-文件(原始, 全部), 4-文件(原始, 单行), 5-文件(十六进制, 单行), 默认:",
                     false, 1, cmdline::oneof<int>(1, 2, 3, 4, 5));
@@ -60,16 +54,10 @@ int main(int argc, char* argv[])
     parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
+    auto localAddr = parser.get<std::string>("local-addr");
     auto localPort = parser.get<int>("local-port");
-    auto server = parser.get<std::string>("server");
-    auto port = parser.get<int>("port");
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    auto certFormat = parser.get<int>("cert-format");
-    auto certFile = parser.get<std::string>("cert-file");
-    auto privateKeyFile = parser.get<std::string>("key-file");
-    auto privateKeyFilePwd = parser.get<std::string>("key-pwd");
-    auto way = parser.get<int>("ssl-way");
-#endif
+    auto remoteAddr = parser.get<std::string>("remote-addr");
+    auto remotePort = parser.get<int>("remote-port");
     auto dataType = parser.get<int>("data-type");
     auto interval = parser.get<int>("interval");
     interval = interval < 0 ? 0 : interval;
@@ -96,89 +84,66 @@ int main(int argc, char* argv[])
         dataTypeDesc = "发送文件(十六进制, 单行)";
         lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
     }
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    printf("服务器: %s:%d, SSL验证: %s, 数据类型: %s%s\n", server.c_str(), port, 1 == way ? "单向验证" : "双向验证", dataTypeDesc.c_str(),
-           lineIntervalDesc.c_str());
-#else
-    printf("服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
-#endif
-    g_client = std::make_shared<nsocket::TcpClient>();
-    /* 设置连接回调 */
-    g_client->setConnectCallback([&](const boost::system::error_code& code) {
-        auto localEndpoint = g_client->getLocalEndpoint();
+    printf("本地地址: %s:%d, 远端地址: %s:%d, 数据类型: %s%s\n", localAddr.c_str(), localPort, remoteAddr.c_str(), remotePort,
+           dataTypeDesc.c_str(), lineIntervalDesc.c_str());
+    g_node = std::make_shared<nsocket::UdpNode>();
+    /* 设置打开回调 */
+    g_node->setOpenCallback([&](const boost::system::error_code& code) {
+        auto localEndpoint = g_node->getLocalEndpoint();
         auto clientHost = localEndpoint.address().to_string();
         auto clientPort = localEndpoint.port();
-        auto remoteEndpoint = g_client->getRemoteEndpoint();
-        auto serverHost = remoteEndpoint.address().to_string();
-        auto serverPort = remoteEndpoint.port();
         if (code)
         {
-            if (g_connected)
+            if (g_opened)
             {
-                printf("============================== [%s:%d] 连接 [%s:%d] 断开: %d, %s\n", clientHost.c_str(), clientPort,
-                       serverHost.c_str(), serverPort, code.value(), code.message().c_str());
+                printf("============================== [%s:%d] 关闭: %d, %s\n", clientHost.c_str(), clientPort, code.value(),
+                       code.message().c_str());
             }
             else
             {
-                printf("============================== [%s:%d] 连接 [%s:%d] 失败: %d, %s\n", clientHost.c_str(), clientPort,
-                       serverHost.c_str(), serverPort, code.value(), code.message().c_str());
+                printf("============================== [%s:%d] 打开失败: %d, %s\n", clientHost.c_str(), clientPort, code.value(),
+                       code.message().c_str());
             }
             exit(0);
         }
         else
         {
-            g_connected = true;
-            printf("============================== [%s:%d] 连接 [%s:%d] 成功\n", clientHost.c_str(), clientPort, serverHost.c_str(),
-                   serverPort);
+            g_opened = true;
+            printf("============================== [%s:%d] 打开成功\n", clientHost.c_str(), clientPort);
         }
     });
     /* 设置数据回调 */
-    g_client->setDataCallback([&](const std::vector<unsigned char>& data) {
-        printf("++++++++++ 收到数据, 长度: %zu\n", data.size());
-        /* 以十六进制格式打印数据 */
-        printf("+++++ [十六进制]\n");
-        for (size_t i = 0; i < data.size(); ++i)
-        {
-            printf("%02X ", data[i]);
-        }
-        printf("\n");
-        /* 以字符串格式打印数据 */
-        printf("+++++ [字节流]\n");
-        std::string input(data.begin(), data.end());
-        printf("%s", input.c_str());
-        printf("\n");
-    });
-    /* 创建线程专门用于网络I/O事件轮询 */
-    printf("连接服务器 ...\n");
-    std::thread th([&, localPort, server, port, certFormat, certFile, privateKeyFile, privateKeyFilePwd, way]() {
-        /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
-        try
-        {
-            g_client->setLocalPort(localPort);
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-            if (certFile.empty())
+    g_node->setDataCallback(
+        [&](const boost::asio::ip::udp::endpoint& point, const boost::system::error_code& code, const std::vector<unsigned char>& data) {
+            auto host = point.address().to_string();
+            auto port = point.port();
+            if (code)
             {
-                g_client->run(server, port);
+                printf("++++++++++ 接收[%s:%d]数据, 失败: %d, %s\n", host.c_str(), port, code.value(), code.message().c_str());
             }
             else
             {
-                std::shared_ptr<boost::asio::ssl::context> sslContext;
-                if (1 == way || privateKeyFile.empty()) /* 单向SSL */
+                printf("++++++++++ 收到[%s:%d]数据, 长度: %zu\n", host.c_str(), port, data.size());
+                /* 以十六进制格式打印数据 */
+                printf("+++++ [十六进制]\n");
+                for (size_t i = 0; i < data.size(); ++i)
                 {
-                    sslContext = nsocket::TcpClient::getSsl1WayContext(
-                        certFormat ? boost::asio::ssl::context::file_format::pem : boost::asio::ssl::context::file_format::asn1, certFile);
+                    printf("%02X ", data[i]);
                 }
-                else /* 双向SSL */
-                {
-                    sslContext = nsocket::TcpClient::getSsl2WayContext(certFormat ? boost::asio::ssl::context::file_format::pem
-                                                                                  : boost::asio::ssl::context::file_format::asn1,
-                                                                       certFile, privateKeyFile, privateKeyFilePwd);
-                }
-                g_client->run(server, port, sslContext);
+                printf("\n");
+                /* 以字符串格式打印数据 */
+                printf("+++++ [字节流]\n");
+                std::string input(data.begin(), data.end());
+                printf("%s", input.c_str());
+                printf("\n");
             }
-#else
-            g_client->run(server, port);
-#endif
+        });
+    /* 创建线程专门用于网络I/O事件轮询 */
+    std::thread th([&, localAddr, localPort]() {
+        /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
+        try
+        {
+            g_node->run(localAddr, localPort);
         }
         catch (const std::exception& e)
         {
@@ -207,7 +172,7 @@ int main(int argc, char* argv[])
         {
             std::vector<unsigned char> data;
             data.insert(data.end(), input, input + strlen(input));
-            sendData(data);
+            sendData(remoteAddr, remotePort, data);
         }
         else if (2 == dataType) /* 把十六进制转为字节流 */
         {
@@ -228,7 +193,7 @@ int main(int argc, char* argv[])
             }
             std::vector<unsigned char> data;
             data.insert(data.end(), bytes.begin(), bytes.end());
-            sendData(data);
+            sendData(remoteAddr, remotePort, data);
         }
         else if (3 == dataType || 4 == dataType || 5 == dataType) /* 读取文件内容 */
         {
@@ -251,7 +216,7 @@ int main(int argc, char* argv[])
                     {
                         std::vector<unsigned char> data;
                         data.insert(data.end(), buf, buf + count);
-                        sendData(data);
+                        sendData(remoteAddr, remotePort, data);
                         free(buf);
                     }
                 }
@@ -279,7 +244,7 @@ int main(int argc, char* argv[])
                         offset += count;
                         std::vector<unsigned char> data;
                         data.insert(data.end(), buf.begin(), buf.end());
-                        ret = sendData(data);
+                        ret = sendData(remoteAddr, remotePort, data);
                     }
                     if (interval > 0 && ret)
                     {
@@ -325,7 +290,7 @@ int main(int argc, char* argv[])
                         auto bytes = utility::StrTool::fromHex(buf);
                         std::vector<unsigned char> data;
                         data.insert(data.end(), bytes.begin(), bytes.end());
-                        ret = sendData(data);
+                        ret = sendData(remoteAddr, remotePort, data);
                     }
                     if (interval > 0 && ret)
                     {
