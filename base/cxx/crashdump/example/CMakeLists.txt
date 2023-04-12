@@ -29,4 +29,4 @@ endforeach()
 add_executable(example_crashdump ${base_crashdump_files} ${example_files})
 
 # 链接依赖库
-target_link_libraries(example_crashdump ${base_crashdump} Threads::Threads ${breakpad_libraries})
+target_link_libraries(example_crashdump Threads::Threads ${breakpad_libraries})
