@@ -47,6 +47,7 @@ int main(int argc, char* argv[])
     parser.add<int>("local-port", 'l', "本地端口(0表示自动分配), 默认:", false, 0, cmdline::range(1, 65535));
     parser.add<std::string>("remote-addr", 'R', "远端地址, 默认:", false, "127.0.0.1");
     parser.add<int>("remote-port", 'r', "远端端口, 默认:", false, 0, cmdline::range(1, 65535));
+    parser.add<int>("broadcast", 'b', "是否广播, 默认:", false, 0, cmdline::oneof(0, 1));
     parser.add<int>("data-type", 'd',
                     "数据类型, 值: 1-输入(原始), 2-输入(十六进制), 3-文件(原始, 全部), 4-文件(原始, 单行), 5-文件(十六进制, 单行), 默认:",
                     false, 1, cmdline::oneof<int>(1, 2, 3, 4, 5));
@@ -58,6 +59,7 @@ int main(int argc, char* argv[])
     auto localPort = parser.get<int>("local-port");
     auto remoteAddr = parser.get<std::string>("remote-addr");
     auto remotePort = parser.get<int>("remote-port");
+    auto broadcast = parser.get<int>("broadcast");
     auto dataType = parser.get<int>("data-type");
     auto interval = parser.get<int>("interval");
     interval = interval < 0 ? 0 : interval;
@@ -84,8 +86,8 @@ int main(int argc, char* argv[])
         dataTypeDesc = "发送文件(十六进制, 单行)";
         lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
     }
-    printf("本地地址: %s:%d, 远端地址: %s:%d, 数据类型: %s%s\n", localAddr.c_str(), localPort, remoteAddr.c_str(), remotePort,
-           dataTypeDesc.c_str(), lineIntervalDesc.c_str());
+    printf("本地地址: %s:%d, 远端地址: %s:%d, 广播: %s, 数据类型: %s%s\n", localAddr.c_str(), localPort, remoteAddr.c_str(), remotePort,
+           broadcast ? "是" : "否", dataTypeDesc.c_str(), lineIntervalDesc.c_str());
     g_node = std::make_shared<nsocket::UdpNode>();
     /* 设置打开回调 */
     g_node->setOpenCallback([&](const boost::system::error_code& code) {
