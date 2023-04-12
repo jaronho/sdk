@@ -41,9 +41,10 @@ public:
     /**
      * @brief 打开套接字
      * @param point 本地端点
+     * @param broadcast 是否广播, true-是, false-否
      * @param onOpenCb 打开回调
      */
-    virtual void open(const boost::asio::ip::udp::endpoint& point, const UDP_OPEN_CALLBACK& onOpenCb) = 0;
+    virtual void open(const boost::asio::ip::udp::endpoint& point, bool broadcast, const UDP_OPEN_CALLBACK& onOpenCb) = 0;
 
     /**
      * @brief 发送数据
@@ -131,7 +132,7 @@ public:
 
     ~SocketUdp();
 
-    void open(const boost::asio::ip::udp::endpoint& point, const UDP_OPEN_CALLBACK& onOpenCb) override;
+    void open(const boost::asio::ip::udp::endpoint& point, bool broadcast, const UDP_OPEN_CALLBACK& onOpenCb) override;
 
     void send(const boost::asio::ip::udp::endpoint& point, const boost::asio::const_buffer& data,
               const UDP_SEND_CALLBACK& onSendCb) override;

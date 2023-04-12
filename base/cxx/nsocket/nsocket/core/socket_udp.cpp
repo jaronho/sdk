@@ -9,7 +9,7 @@ SocketUdp::~SocketUdp()
     close();
 }
 
-void SocketUdp::open(const boost::asio::ip::udp::endpoint& point, const UDP_OPEN_CALLBACK& onOpenCb)
+void SocketUdp::open(const boost::asio::ip::udp::endpoint& point, bool broadcast, const UDP_OPEN_CALLBACK& onOpenCb)
 {
     if (m_socket.is_open())
     {
@@ -32,10 +32,18 @@ void SocketUdp::open(const boost::asio::ip::udp::endpoint& point, const UDP_OPEN
         }
         else
         {
-            m_socket.bind(point, code);
+            m_socket.set_option(boost::asio::socket_base::broadcast(broadcast), code);
             if (code)
             {
                 m_socket.close();
+            }
+            else
+            {
+                m_socket.bind(point, code);
+                if (code)
+                {
+                    m_socket.close();
+                }
             }
             if (onOpenCb)
             {

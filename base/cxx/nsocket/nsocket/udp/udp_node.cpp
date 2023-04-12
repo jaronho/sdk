@@ -19,7 +19,7 @@ void UdpNode::setDataCallback(const UDP_DATA_CALLBACK& onDataCb)
     m_onDataCallback = onDataCb;
 }
 
-void UdpNode::run(const std::string& host, unsigned int port)
+void UdpNode::run(const std::string& host, unsigned int port, bool broadcast)
 {
     if (isRunning())
     {
@@ -47,7 +47,7 @@ void UdpNode::run(const std::string& host, unsigned int port)
             }
         });
         m_udpHandler->setDataCallback(m_onDataCallback);
-        m_udpHandler->open(endpoints.begin()->endpoint());
+        m_udpHandler->open(endpoints.begin()->endpoint(), broadcast);
         if (RunStatus::none == m_runStatus)
         {
             m_runStatus = RunStatus::start;
@@ -63,7 +63,7 @@ void UdpNode::run(const std::string& host, unsigned int port)
 }
 
 boost::system::error_code UdpNode::send(const std::string& host, unsigned int port, const std::vector<unsigned char>& data,
-                                          size_t& sentLength)
+                                        size_t& sentLength)
 {
     auto code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
     sentLength = 0;
@@ -84,7 +84,7 @@ boost::system::error_code UdpNode::send(const std::string& host, unsigned int po
 }
 
 void UdpNode::sendAsync(const std::string& host, unsigned int port, const std::vector<unsigned char>& data,
-                          const UDP_SEND_CALLBACK& onSendCb)
+                        const UDP_SEND_CALLBACK& onSendCb)
 {
     if (!isRunning() || m_ioContext.stopped())
     {

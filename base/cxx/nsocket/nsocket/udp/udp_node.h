@@ -38,8 +38,9 @@ public:
      * @brief 运行(进入循环, 阻塞和占用调用线程)
      * @param host 本地地址
      * @param port 本地端口
+     * @param broadcast 是否广播, true-是, false-否
      */
-    void run(const std::string& host, unsigned int port = 0);
+    void run(const std::string& host, unsigned int port = 0, bool broadcast = false);
 
     /**
      * @brief 发送数据(同步)

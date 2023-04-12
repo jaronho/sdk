@@ -65,8 +65,9 @@ public:
     /**
      * @brief 打开
      * @param point 本地端点
+     * @param broadcast 是否广播, true-是, false-否
      */
-    void open(const boost::asio::ip::udp::endpoint& point);
+    void open(const boost::asio::ip::udp::endpoint& point, bool broadcast);
 
     /**
      * @brief 发送数据(同步)

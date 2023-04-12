@@ -53,12 +53,12 @@ void UdpHandler::setDataCallback(const UDP_DATA_CALLBACK& onDataCb)
     m_onDataCallback = onDataCb;
 }
 
-void UdpHandler::open(const boost::asio::ip::udp::endpoint& point)
+void UdpHandler::open(const boost::asio::ip::udp::endpoint& point, bool broadcast)
 {
     if (m_socketUdpBase)
     {
         const std::weak_ptr<UdpHandler> wpSelf = shared_from_this();
-        m_socketUdpBase->open(point, [wpSelf](const boost::system::error_code& code) {
+        m_socketUdpBase->open(point, broadcast, [wpSelf](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             if (self)
             {
