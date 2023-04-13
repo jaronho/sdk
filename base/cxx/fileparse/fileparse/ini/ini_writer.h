@@ -39,14 +39,14 @@ public:
     /**
      * @brief 设置注释标识符列表
      * @param flags 标识符列表
-     * @return true-成功, flalse-失败
+     * @return true-成功, false-失败
      */
     bool setCommentFlags(const std::vector<std::string>& flags);
 
     /**
      * @brief 删除节
      * @param nameName 节名称
-     * @return true-成功, flalse-失败(不存在)
+     * @return true-成功, false-失败(不存在)
      */
     bool removeSection(const std::string& name);
 
@@ -62,7 +62,7 @@ public:
      * @brief 删除项
      * @param nameName 节名称
      * @param key 键
-     * @return true-成功, flalse-失败(不存在)
+     * @return true-成功, false-失败(不存在)
      */
     bool removeItem(const std::string& name, const std::string& key);
 

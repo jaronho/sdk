@@ -49,7 +49,7 @@ public:
      * @brief 获取节注释
      * @param name 节名称
      * @param comment [输出]注释
-     * @return true-成功, flalse-失败(不存在)
+     * @return true-成功, false-失败(不存在)
      */
     bool getSectionComment(const std::string& name, std::string& comment) const;
 
@@ -66,7 +66,7 @@ public:
      * @param name 节名称
      * @param key 键
      * @param comment [输出]注释
-     * @return true-成功, flalse-失败(不存在)
+     * @return true-成功, false-失败(不存在)
      */
     bool getComment(const std::string& name, const std::string& key, std::string& comment) const;
 
