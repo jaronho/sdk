@@ -158,6 +158,15 @@ void TcpClient::stop()
     }
 }
 
+bool TcpClient::isEnableSSL() const
+{
+    if (m_tcpConn)
+    {
+        return m_tcpConn->isEnableSSL();
+    }
+    return false;
+}
+
 bool TcpClient::isRunning() const
 {
     return (RunStatus::start == m_runStatus);
@@ -250,10 +259,9 @@ void TcpClient::handleConnect(const boost::system::error_code& code, bool async)
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl1WayContext(boost::asio::ssl::context::file_format fileFmt,
-                                                                        const std::string& certFile)
+std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl1WayContext()
 {
-    return TcpConnection::makeSsl1WayContextClient(boost::asio::ssl::context::sslv23_client, fileFmt, certFile, true);
+    return TcpConnection::makeSsl1WayContextClient(boost::asio::ssl::context::sslv23_client, true);
 }
 
 std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl2WayContext(boost::asio::ssl::context::file_format fileFmt,

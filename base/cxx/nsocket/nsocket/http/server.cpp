@@ -4,32 +4,21 @@ namespace nsocket
 {
 namespace http
 {
-Server::Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz)
+Server::Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz,
+               size_t handshakeTimeout)
 {
-    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, reuseAddr, bz);
-    m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) { handleNewConnection(wpConn); });
+    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, reuseAddr, bz, handshakeTimeout);
+    m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) {
+        if (!m_tcpServer->isEnableSSL())
+        {
+            handleNewConnection(wpConn);
+        }
+    });
+    m_tcpServer->setHandshakeOkCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) { handleNewConnection(wpConn); });
     m_tcpServer->setConnectionDataCallback(
         [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
     m_tcpServer->setConnectionCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point,
                                                 const boost::system::error_code& code) { handleConnectionClose(cid); });
-}
-
-bool Server::isValid(std::string* errorMsg) const
-{
-    if (m_tcpServer && m_tcpServer->isValid(errorMsg))
-    {
-        return true;
-    }
-    return false;
-}
-
-bool Server::isRunning() const
-{
-    if (m_tcpServer && m_tcpServer->isRunning())
-    {
-        return true;
-    }
-    return false;
 }
 
 void Server::setRouterNotFoundCallback(const std::function<RESPONSE_PTR(uint64_t cid, const REQUEST_PTR& req)>& cb)
@@ -73,6 +62,24 @@ bool Server::run()
 #else
         return m_tcpServer->run();
 #endif
+    }
+    return false;
+}
+
+bool Server::isValid(std::string* errorMsg) const
+{
+    if (m_tcpServer && m_tcpServer->isValid(errorMsg))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool Server::isRunning() const
+{
+    if (m_tcpServer && m_tcpServer->isRunning())
+    {
+        return true;
     }
     return false;
 }

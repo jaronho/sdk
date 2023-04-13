@@ -11,8 +11,9 @@ int main(int argc, char* argv[])
     printf("**                                                                                                       **\n");
     printf("** [-lp]                  client local port (0. auto random), default: 0                                 **\n");
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
-    printf("** [-p]                   server port, default: 4335                                                     **\n");
+    printf("** [-p]                   server port, default: 4444                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    printf("** [-tls]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
     printf("** [-pem]                 specify file format [0-DER, 1-PEM]. default: 1                                 **\n");
     printf("** [-cf]                  specify certificate file. e.g. client.crt, ca.crt                              **\n");
     printf("** [-pkf]                 specify private key file, e.g. client.key                                      **\n");
@@ -25,6 +26,7 @@ int main(int argc, char* argv[])
     int localPort = 0;
     std::string serverHost;
     int serverPort = 0;
+    int tls = 0;
     int pem = 1;
     std::string certFile;
     std::string privateKeyFile;
@@ -61,6 +63,15 @@ int main(int argc, char* argv[])
             }
         }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+        else if (0 == strcmp(key, "-tls")) /* 是否启用TLS */
+        {
+            ++i;
+            if (i < argc)
+            {
+                tls = atoi(argv[i]);
+                ++i;
+            }
+        }
         else if (0 == strcmp(key, "-pem")) /* 文件格式 */
         {
             ++i;
@@ -122,7 +133,15 @@ int main(int argc, char* argv[])
     }
     if (serverPort <= 0 || serverPort > 65535)
     {
-        serverPort = 4335;
+        serverPort = 4444;
+    }
+    if (tls < 0)
+    {
+        tls = 0;
+    }
+    else if (tls > 1)
+    {
+        tls = 1;
     }
     if (pem < 0)
     {
@@ -178,34 +197,45 @@ int main(int argc, char* argv[])
         printf("\n");
     });
     /* 创建线程专门用于网络I/O事件轮询 */
-    printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
-    std::thread th([&, localPort, serverHost, serverPort, pem, certFile, privateKeyFile, privateKeyFilePwd, way]() {
+    std::thread th([&, localPort, serverHost, serverPort, tls, pem, certFile, privateKeyFile, privateKeyFilePwd, way]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
             client->setLocalPort(localPort);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-            if (certFile.empty())
+            if (0 == tls)
             {
+                printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
                 client->run(serverHost, serverPort);
             }
             else
             {
                 std::shared_ptr<boost::asio::ssl::context> sslContext;
-                if (1 == way || privateKeyFile.empty())
+                if (1 == way)
                 {
-                    sslContext = nsocket::TcpClient::getSsl1WayContext(
-                        pem ? boost::asio::ssl::context::file_format::pem : boost::asio::ssl::context::file_format::asn1, certFile);
+                    sslContext = nsocket::TcpClient::getSsl1WayContext();
+                    printf("connect to server: %s:%d, ssl way: 1\n", serverHost.c_str(), serverPort);
                 }
                 else
                 {
                     sslContext = nsocket::TcpClient::getSsl2WayContext(pem ? boost::asio::ssl::context::file_format::pem
                                                                            : boost::asio::ssl::context::file_format::asn1,
                                                                        certFile, privateKeyFile, privateKeyFilePwd);
+                    if (sslContext)
+                    {
+                        printf("connect to server: %s:%d, ssl way: 2%s%s\n", serverHost.c_str(), serverPort,
+                               certFile.empty() ? "" : (", certFile: " + certFile).c_str(),
+                               certFile.empty() ? "" : (privateKeyFile.empty() ? "" : (", privateKeyFile: " + privateKeyFile).c_str()));
+                    }
+                    else
+                    {
+                        printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
+                    }
                 }
                 client->run(serverHost, serverPort, sslContext);
             }
 #else
+            printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
             client->run(serverHost, serverPort);
 #endif
         }
@@ -217,34 +247,46 @@ int main(int argc, char* argv[])
         {
             printf("========== execption: unknown\n");
         }
+        exit(0);
     });
     th.detach();
-    /* 主线程 */
-    while (1)
+    try
     {
-        /* 接收输入数据并发送 */
-        char str[1024] = {0};
-        std::cin.getline(str, sizeof(str));
-        if (0 == strlen(str)) /* 输入为空继续等待 */
+        /* 主线程 */
+        while (1)
         {
-            continue;
+            /* 接收输入数据并发送 */
+            char str[1024] = {0};
+            std::cin.getline(str, sizeof(str));
+            if (0 == strlen(str)) /* 输入为空继续等待 */
+            {
+                continue;
+            }
+            printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
+            if (0 == strcmp(str, "quit") || 0 == strcmp(str, "close"))
+            {
+                client->stop();
+                break;
+            }
+            std::size_t length;
+            auto code = client->send(std::vector<unsigned char>(str, str + strlen(str)), length);
+            if (code)
+            {
+                printf("-------------------- on send fail, %d, %s\n", code.value(), code.message().c_str());
+            }
+            else
+            {
+                printf("++++++++++++++++++++ on send ok, length: %d\n", (int)length);
+            }
         }
-        printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
-        if (0 == strcmp(str, "quit") || 0 == strcmp(str, "close"))
-        {
-            client->stop();
-            break;
-        }
-        std::size_t length;
-        auto code = client->send(std::vector<unsigned char>(str, str + strlen(str)), length);
-        if (code)
-        {
-            printf("-------------------- on send fail, %d, %s\n", code.value(), code.message().c_str());
-        }
-        else
-        {
-            printf("++++++++++++++++++++ on send ok, length: %d\n", (int)length);
-        }
+    }
+    catch (const std::exception& e)
+    {
+        printf("========== execption: %s\n", e.what());
+    }
+    catch (...)
+    {
+        printf("========== execption: unknown\n");
     }
     return 0;
 }

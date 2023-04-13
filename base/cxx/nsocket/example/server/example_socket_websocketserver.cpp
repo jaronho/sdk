@@ -12,8 +12,9 @@ int main(int argc, char* argv[])
     printf("** Options:                                                                                              **\n");
     printf("**                                                                                                       **\n");
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
-    printf("** [-p]                   server port, default: 4335                                                     **\n");
+    printf("** [-p]                   server port, default: 4444                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    printf("** [-tls]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
     printf("** [-pem]                 specify file format [0-DER, 1-PEM]. default: 1                                 **\n");
     printf("** [-cf]                  specify certificate file. e.g. server.crt                                      **\n");
     printf("** [-pkf]                 specify private key file, e.g. server.key                                      **\n");
@@ -25,6 +26,7 @@ int main(int argc, char* argv[])
     printf("\n");
     std::string serverHost;
     int serverPort = 0;
+    int tls = 0;
     int pem = 1;
     std::string certFile;
     std::string privateKeyFile;
@@ -52,6 +54,15 @@ int main(int argc, char* argv[])
             }
         }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+        else if (0 == strcmp(key, "-tls")) /* 是否启用TLS */
+        {
+            ++i;
+            if (i < argc)
+            {
+                tls = atoi(argv[i]);
+                ++i;
+            }
+        }
         else if (0 == strcmp(key, "-pem")) /* 文件格式 */
         {
             ++i;
@@ -109,7 +120,15 @@ int main(int argc, char* argv[])
     }
     if (serverPort <= 0 || serverPort > 65535)
     {
-        serverPort = 4335;
+        serverPort = 4444;
+    }
+    if (tls < 0)
+    {
+        tls = 0;
+    }
+    else if (tls > 1)
+    {
+        tls = 1;
     }
     if (pem < 0)
     {
@@ -127,11 +146,10 @@ int main(int argc, char* argv[])
     {
         way = 2;
     }
-    printf("server: %s:%d, ssl way: %d\n", serverHost.c_str(), serverPort, way);
     nsocket::ws::Server server("ws_server", 10, serverHost, serverPort);
     if (!server.isValid())
     {
-        printf("server invalid, please check host or port\n");
+        printf("server invalid, please check host[%s] or port[%d]\n", serverHost.c_str(), serverPort);
         return 0;
     }
     server.setConnectingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
@@ -180,19 +198,17 @@ int main(int argc, char* argv[])
                 printf("++++++++++++++++++++ on message(Binary), length: %zu\n", msg.size());
             }
             printf("\n");
-            while (1)
-            {
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-            }
         }
     };
     server.setMessager(msger);
     server.setCloseCallback([&](uint64_t cid) { printf("------------------------------ client [%lld] on closed\n", cid); });
+    /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        if (certFile.empty())
+        if (0 == tls)
         {
+            printf("server: %s:%d\n", serverHost.c_str(), serverPort);
             server.run();
         }
         else
@@ -210,9 +226,19 @@ int main(int argc, char* argv[])
                                                                        : boost::asio::ssl::context::file_format::asn1,
                                                                    certFile, privateKeyFile, privateKeyFilePwd, true);
             }
-            server.run();
+            if (sslContext)
+            {
+                printf("server: %s:%d, ssl way: %d, certFile: %s, privateKeyFile: %s\n", serverHost.c_str(), serverPort, way,
+                       certFile.c_str(), privateKeyFile.c_str());
+            }
+            else
+            {
+                printf("server: %s:%d\n", serverHost.c_str(), serverPort);
+            }
+            server.run(sslContext);
         }
 #else
+        printf("server: %s:%d\n", serverHost.c_str(), serverPort);
         server.run();
 #endif
         while (1)

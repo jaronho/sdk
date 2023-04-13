@@ -1,5 +1,6 @@
 #pragma once
 #include <boost/asio/ip/address.hpp>
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -13,22 +14,37 @@ namespace nsocket
  * @brief TCP新连接回调
  * @param wpConn 连接
  */
-using TCP_CONN_NEW_CALLBACK = std::function<void(const std::weak_ptr<TcpConnection>& wpConn)>;
+using TCP_SRV_CONN_NEW_CALLBACK = std::function<void(const std::weak_ptr<TcpConnection>& wpConn)>;
+
+/**
+ * @brief TLS握手成功回调
+ * @param wpConn 连接
+ */
+using TLS_SRV_HANDSHAKE_OK_CALLBACK = std::function<void(const std::weak_ptr<TcpConnection>& wpConn)>;
+
+/**
+ * @brief TLS握手失败回调
+ * @param cid 连接ID
+ * @param point 远端端点
+ * @param code 错误码
+ */
+using TLS_SRV_HANDSHAKE_FAIL_CALLBACK =
+    std::function<void(uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
 
 /**
  * @brief TCP数据回调
  * @param wpConn 连接
  * @param data 数据
  */
-using TCP_CONN_DATA_CALLBACK = std::function<void(const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data)>;
+using TCP_SRV_CONN_DATA_CALLBACK = std::function<void(const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data)>;
 
 /**
  * @brief TCP连接关闭回调
  * @param cid 连接ID
- * @param point 端点
+ * @param point 远端端点
  * @param code 错误码
  */
-using TCP_CONN_CLOSE_CALLBACK =
+using TCP_SRV_CONN_CLOSE_CALLBACK =
     std::function<void(uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
 
 /**
@@ -85,11 +101,62 @@ public:
      * @param port 端口
      * @param reuseAddr 是否允许复用端口(选填), 默认不复用
      * @param bz 数据缓冲区大小(字节, 选填)
+     * @param handshakeTimeout 握手超时时间(选填), 单位: 毫秒
      */
     TcpServer(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr = false,
-              size_t bz = 1024);
+              size_t bz = 4096, size_t handshakeTimeout = 3000);
 
     virtual ~TcpServer();
+
+    /**
+     * @brief 设置新连接回调
+     * @param onNewCb 新连接回调
+     */
+    void setNewConnectionCallback(const TCP_SRV_CONN_NEW_CALLBACK& onNewCb);
+
+    /**
+     * @brief 设置握手成功回调
+     * @param onHandshakeOkCb 握手成功回调
+     */
+    void setHandshakeOkCallback(const TLS_SRV_HANDSHAKE_OK_CALLBACK& onHandshakeOkCb);
+
+    /**
+     * @brief 设置握手失败回调
+     * @param onHandshakeFailCb 握手失败回调
+     */
+    void setHandshakeFailCallback(const TLS_SRV_HANDSHAKE_FAIL_CALLBACK& onHandshakeFailCb);
+
+    /**
+     * @brief 设置数据回调, 注意: 严禁在回调里执行死循环或长时间循环逻辑, 否则会阻塞该连接线程
+     * @param onDataCb 数据回调
+     */
+    void setConnectionDataCallback(const TCP_SRV_CONN_DATA_CALLBACK& onDataCb);
+
+    /**
+     * @brief 设置连接关闭回调
+     * @param onCloseCb 连接关闭回调
+     */
+    void setConnectionCloseCallback(const TCP_SRV_CONN_CLOSE_CALLBACK& onCloseCb);
+
+#if (1 == ENABLE_NSOCKET_OPENSSL)
+    /**
+     * @brief 运行(非阻塞)
+     * @param sslContext TLS上下文(选填), 为空表示不启用TLS
+     * @return true-运行中, false-运行失败(服务对象无效导致)
+     */
+    bool run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
+#else
+    /**
+     * @brief 运行(非阻塞)
+     * @return true-运行中, false-运行失败(服务对象无效导致)
+     */
+    bool run();
+#endif
+
+    /**
+     * @brief 停止
+     */
+    void stop();
 
     /**
      * @brief 是否有效
@@ -99,44 +166,16 @@ public:
     bool isValid(std::string* errorMsg = nullptr) const;
 
     /**
+     * @brief 是否启用SSL
+     * @return true-是, false-否
+     */
+    bool isEnableSSL() const;
+
+    /**
      * @brief 是否运行中
      * @return true-运行中, false-非运行中
      */
     bool isRunning() const;
-
-    /**
-     * @brief 设置新连接回调
-     * @param onNewCb 新连接回调
-     */
-    void setNewConnectionCallback(const TCP_CONN_NEW_CALLBACK& onNewCb);
-
-    /**
-     * @brief 设置数据回调, 注意: 严禁在回调里执行死循环或长时间循环逻辑, 否则会阻塞该连接线程
-     * @param onDataCb 数据回调
-     */
-    void setConnectionDataCallback(const TCP_CONN_DATA_CALLBACK& onDataCb);
-
-    /**
-     * @brief 设置连接关闭回调
-     * @param onCloseCb 连接关闭回调
-     */
-    void setConnectionCloseCallback(const TCP_CONN_CLOSE_CALLBACK& onCloseCb);
-
-    /**
-     * @brief 运行(非阻塞)
-     * @param sslContext TLS上下文(选填), 为空表示不启用TLS
-     * @return true-运行中, false-运行失败(服务对象无效导致)
-     */
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    bool run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
-#else
-    bool run();
-#endif
-
-    /**
-     * @brief 停止
-     */
-    void stop();
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
@@ -177,18 +216,40 @@ private:
      */
     void handleNewConnection(boost::asio::ip::tcp::socket socket);
 
+    /**
+     * @brief 处理连接结果
+     */
+    void handleConnectionResult(const std::shared_ptr<TcpConnection>& conn, const boost::asio::ip::tcp::endpoint& point,
+                                const boost::system::error_code& code);
+
+    /**
+     * @brief 处理握手结果
+     */
+    void handleHandshakeResult(const std::shared_ptr<TcpConnection>& conn, const boost::asio::ip::tcp::endpoint& point,
+                               const boost::system::error_code& code);
+
+    /**
+     * @brief 握手超时循环检测
+     */
+    void handshakeTimeoutLoopCheck(size_t handshakeTimeout);
+
 private:
     std::shared_ptr<io_context_pool> m_contextPool; /* 上下文线程池 */
     std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor; /* 接收器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
+    std::unique_ptr<std::thread> m_handshakeTimeoutCheckThread; /* 握手超时检测线程 */
 #endif
     size_t m_bufferSize; /* 数据接收缓冲区大小 */
-    std::mutex m_mutex;
+    std::mutex m_mutexConnectionMap;
     std::unordered_map<uint64_t, std::shared_ptr<TcpConnection>> m_connectionMap; /* 连接表 */
-    TCP_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
-    TCP_CONN_DATA_CALLBACK m_onConnectionDataCallback; /* 连接数据回调 */
-    TCP_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */
+    std::mutex m_mutexHandshakeMap;
+    std::unordered_map<uint64_t, std::chrono::steady_clock::time_point> m_handshakeMap; /* 握手表 */
+    TCP_SRV_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
+    TLS_SRV_HANDSHAKE_OK_CALLBACK m_onHandshakeOkCallback; /* 握手成功回调 */
+    TLS_SRV_HANDSHAKE_FAIL_CALLBACK m_onHandshakeFailCallback; /* 握手成失败回调 */
+    TCP_SRV_CONN_DATA_CALLBACK m_onConnectionDataCallback; /* 连接数据回调 */
+    TCP_SRV_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */
     std::string m_host; /* 主机 */
     std::atomic_bool m_running = {false}; /* 是否运行中 */
     std::string m_errorMsg; /* 错误消息 */

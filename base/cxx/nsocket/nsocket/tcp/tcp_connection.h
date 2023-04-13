@@ -96,7 +96,7 @@ public:
     void close();
 
     /**
-     * @brief 是否启动用SSL
+     * @brief 是否启用SSL
      * @return true-是, false-否
      */
     bool isEnableSSL() const;
@@ -128,16 +128,13 @@ public:
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
-     * @brief 创建客户端SSL(单向验证)上下文
+     * @brief 创建客户端SSL(单向验证)上下文(不需要证书文件)
      * @param m 方法, 例如: 可以用sslv23_client
-     * @param fileFmt 文件格式
-     * @param certFile 证书文件, 例如: ca.crt, client.crt, server.crt
      * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
      * @return SSL上下文
      */
     static std::shared_ptr<boost::asio::ssl::context> makeSsl1WayContextClient(boost::asio::ssl::context::method m,
-                                                                               boost::asio::ssl::context::file_format fileFmt,
-                                                                               const std::string& certFile, bool allowSelfSigned = true);
+                                                                               bool allowSelfSigned = true);
 
     /**
      * @brief 创建服务端SSL(单向验证)上下文(当证书文件,私钥文件,私钥文件密码都为空时返回空)

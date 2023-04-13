@@ -302,14 +302,9 @@ bool TcpConnection::setNonBlock(bool nonBlock)
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
 std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSsl1WayContextClient(boost::asio::ssl::context::method m,
-                                                                                   boost::asio::ssl::context::file_format fileFmt,
-                                                                                   const std::string& certFile, bool allowSelfSigned)
+                                                                                   bool allowSelfSigned)
 {
     auto sslContext = std::make_shared<boost::asio::ssl::context>(m);
-    if (!certFile.empty())
-    {
-        sslContext->use_certificate_file(certFile, fileFmt);
-    }
     sslContext->set_verify_mode(boost::asio::ssl::verify_peer);
     sslContext->set_verify_callback([allowSelfSigned](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
         X509_STORE_CTX* cts = ctx.native_handle();

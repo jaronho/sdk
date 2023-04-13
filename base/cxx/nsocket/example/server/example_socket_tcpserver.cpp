@@ -6,9 +6,6 @@
 
 #include "../../nsocket/tcp/tcp_server.h"
 
-std::recursive_mutex g_mutex;
-std::unordered_map<boost::asio::ip::tcp::endpoint, std::weak_ptr<nsocket::TcpConnection>> g_clientMap; /* 客户端映射表 */
-
 int main(int argc, char* argv[])
 {
     printf("***********************************************************************************************************\n");
@@ -16,8 +13,9 @@ int main(int argc, char* argv[])
     printf("** Options:                                                                                              **\n");
     printf("**                                                                                                       **\n");
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
-    printf("** [-p]                   server port, default: 4335                                                     **\n");
+    printf("** [-p]                   server port, default: 4444                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    printf("** [-tls]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
     printf("** [-pem]                 specify file format [0-DER, 1-PEM]. default: 1                                 **\n");
     printf("** [-cf]                  specify certificate file. e.g. server.crt                                      **\n");
     printf("** [-pkf]                 specify private key file, e.g. server.key                                      **\n");
@@ -29,6 +27,7 @@ int main(int argc, char* argv[])
     printf("\n");
     std::string serverHost;
     int serverPort = 0;
+    int tls = 0;
     int pem = 1;
     std::string certFile;
     std::string privateKeyFile;
@@ -56,6 +55,15 @@ int main(int argc, char* argv[])
             }
         }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+        else if (0 == strcmp(key, "-tls")) /* 是否启用TLS */
+        {
+            ++i;
+            if (i < argc)
+            {
+                tls = atoi(argv[i]);
+                ++i;
+            }
+        }
         else if (0 == strcmp(key, "-pem")) /* 文件格式 */
         {
             ++i;
@@ -113,7 +121,15 @@ int main(int argc, char* argv[])
     }
     if (serverPort <= 0 || serverPort > 65535)
     {
-        serverPort = 4335;
+        serverPort = 4444;
+    }
+    if (tls < 0)
+    {
+        tls = 0;
+    }
+    else if (tls > 1)
+    {
+        tls = 1;
     }
     if (pem < 0)
     {
@@ -131,11 +147,10 @@ int main(int argc, char* argv[])
     {
         way = 2;
     }
-    printf("server: %s:%d, ssl way: %d\n", serverHost.c_str(), serverPort, way);
     auto server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, serverHost, serverPort);
     if (!server->isValid())
     {
-        printf("server invalid, please check host or port\n");
+        printf("server invalid, please check host[%s] or port[%d]\n", serverHost.c_str(), serverPort);
         return 0;
     }
     /* 设置新连接回调 */
@@ -147,13 +162,25 @@ int main(int argc, char* argv[])
             std::string clientHost = point.address().to_string().c_str();
             int clientPort = (int)point.port();
             printf("============================== on new connection [%lld] [%s:%d]\n", conn->getId(), clientHost.c_str(), clientPort);
-            std::lock_guard<std::recursive_mutex> locker(g_mutex);
-            auto iter = g_clientMap.find(point);
-            if (g_clientMap.end() == iter)
-            {
-                g_clientMap.insert(std::make_pair(point, wpConn));
-            }
         }
+    });
+    /* 设置握手成功回调 */
+    server->setHandshakeOkCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
+        const auto conn = wpConn.lock();
+        if (conn)
+        {
+            auto point = conn->getRemoteEndpoint();
+            std::string clientHost = point.address().to_string().c_str();
+            int clientPort = (int)point.port();
+            printf("==================== on handshake ok [%lld] [%s:%d]\n", conn->getId(), clientHost.c_str(), clientPort);
+        }
+    });
+    /* 设置握手失败回调 */
+    server->setHandshakeFailCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+        std::string clientHost = point.address().to_string().c_str();
+        int clientPort = (int)point.port();
+        printf("-------------------- on handshake fail [%lld] [%s:%d], %d, %s\n", cid, clientHost.c_str(), clientPort, code.value(),
+               code.message().c_str());
     });
     /* 设置连接数据回调 */
     server->setConnectionDataCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn, const std::vector<unsigned char>& data) {
@@ -218,58 +245,59 @@ int main(int argc, char* argv[])
             {
                 printf("-------------------- on connection closed [%lld] [%s:%d]\n", cid, clientHost.c_str(), clientPort);
             }
-            std::lock_guard<std::recursive_mutex> locker(g_mutex);
-            auto iter = g_clientMap.find(point);
-            if (g_clientMap.end() != iter)
-            {
-                g_clientMap.erase(iter);
-            }
         });
-    /* 创建线程专门用于网络I/O事件轮询 */
-    std::thread th([&, pem, certFile, privateKeyFile, privateKeyFilePwd, way]() {
-        /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
-        try
-        {
+    /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
+    try
+    {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-            if (certFile.empty())
+        if (0 == tls)
+        {
+            printf("server: %s:%d\n", serverHost.c_str(), serverPort);
+            server->run();
+        }
+        else
+        {
+            std::shared_ptr<boost::asio::ssl::context> sslContext;
+            if (1 == way) /* 单向SSL */
             {
-                server->run();
+                sslContext = nsocket::TcpServer::getSsl1WayContext(pem ? boost::asio::ssl::context::file_format::pem
+                                                                       : boost::asio::ssl::context::file_format::asn1,
+                                                                   certFile, privateKeyFile, privateKeyFilePwd, true);
+            }
+            else /* 双向SSL */
+            {
+                sslContext = nsocket::TcpServer::getSsl2WayContext(pem ? boost::asio::ssl::context::file_format::pem
+                                                                       : boost::asio::ssl::context::file_format::asn1,
+                                                                   certFile, privateKeyFile, privateKeyFilePwd, true);
+            }
+            if (sslContext)
+            {
+                printf("server: %s:%d, ssl way: %d, certFile: %s, privateKeyFile: %s\n", serverHost.c_str(), serverPort, way,
+                       certFile.c_str(), privateKeyFile.c_str());
             }
             else
             {
-                std::shared_ptr<boost::asio::ssl::context> sslContext;
-                if (1 == way) /* 单向SSL */
-                {
-                    sslContext = nsocket::TcpServer::getSsl1WayContext(pem ? boost::asio::ssl::context::file_format::pem
-                                                                           : boost::asio::ssl::context::file_format::asn1,
-                                                                       certFile, privateKeyFile, privateKeyFilePwd, true);
-                }
-                else /* 双向SSL */
-                {
-                    sslContext = nsocket::TcpServer::getSsl2WayContext(pem ? boost::asio::ssl::context::file_format::pem
-                                                                           : boost::asio::ssl::context::file_format::asn1,
-                                                                       certFile, privateKeyFile, privateKeyFilePwd, true);
-                }
-                server->run(sslContext);
+                printf("server: %s:%d\n", serverHost.c_str(), serverPort);
             }
+            server->run(sslContext);
+        }
 #else
-            server->run();
+        printf("server: %s:%d\n", serverHost.c_str(), serverPort);
+        server->run();
 #endif
-        }
-        catch (const std::exception& e)
+        /* 主线程 */
+        while (1)
         {
-            printf("========== execption: %s\n", e.what());
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
-        catch (...)
-        {
-            printf("========== execption: unknown\n");
-        }
-    });
-    th.detach();
-    /* 主线程 */
-    while (1)
+    }
+    catch (const std::exception& e)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        printf("========== execption: %s\n", e.what());
+    }
+    catch (...)
+    {
+        printf("========== execption: unknown\n");
     }
     return 0;
 }

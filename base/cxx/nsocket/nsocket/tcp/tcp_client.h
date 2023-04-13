@@ -38,17 +38,23 @@ public:
      */
     void setLocalPort(uint32_t port);
 
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 运行(进入循环, 阻塞和占用调用线程)
-     * @param host 服务器
-     * @param port 端口
+     * @param host 远端地址
+     * @param port 远端端口
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      * @param async 是否异步连接(选填), 默认异步
      */
-#if (1 == ENABLE_NSOCKET_OPENSSL)
     void run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr,
              bool async = true);
 #else
+    /**
+     * @brief 运行(进入循环, 阻塞和占用调用线程)
+     * @param host 远端地址
+     * @param port 远端端口
+     * @param async 是否异步连接(选填), 默认异步
+     */
     void run(const std::string& host, unsigned int port, bool async = true);
 #endif
 
@@ -73,6 +79,12 @@ public:
     void stop();
 
     /**
+     * @brief 是否启用SSL
+     * @return true-是, false-否
+     */
+    bool isEnableSSL() const;
+
+    /**
      * @brief 是否在运行
      * @param true-是, false-否
      */
@@ -92,13 +104,10 @@ public:
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
-     * @brief 获取SSL(单向验证)上下文
-     * @param fileFmt 文件格式
-     * @param certFile 证书文件, 例如: ca.crt
+     * @brief 获取SSL(单向验证)上下文(不需要证书文件)
      * @return SSL上下文
      */
-    static std::shared_ptr<boost::asio::ssl::context> getSsl1WayContext(boost::asio::ssl::context::file_format fileFmt,
-                                                                        const std::string& certFile);
+    static std::shared_ptr<boost::asio::ssl::context> getSsl1WayContext();
 
     /**
      * @brief 获取SSL(双向验证)上下文(当证书文件或私钥文件为空时返回空)

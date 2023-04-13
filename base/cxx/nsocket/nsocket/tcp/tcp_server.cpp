@@ -107,7 +107,8 @@ boost::asio::io_context& io_context_pool::getContext()
     return context;
 }
 
-TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz)
+TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz,
+                     size_t handshakeTimeout)
     : m_contextPool(std::make_shared<io_context_pool>(name, threadCount))
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     , m_sslContext(nullptr)
@@ -118,6 +119,18 @@ TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::str
     {
         m_acceptor = std::make_shared<boost::asio::ip::tcp::acceptor>(
             m_contextPool->getContext(), boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(host.c_str()), port), reuseAddr);
+#if (1 == ENABLE_NSOCKET_OPENSSL)
+        handshakeTimeout = handshakeTimeout > 1000 ? handshakeTimeout : 1000;
+        m_handshakeTimeoutCheckThread = std::make_unique<std::thread>([this, name, handshakeTimeout] {
+            setThreadName(name + "-htc"); /* 设置线程名称 */
+            while (1)
+            {
+                handshakeTimeoutLoopCheck(handshakeTimeout);
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        });
+        m_handshakeTimeoutCheckThread->detach();
+#endif
         m_host = host;
     }
     catch (const std::exception& e)
@@ -137,18 +150,29 @@ TcpServer::~TcpServer()
     stop();
 }
 
-bool TcpServer::isValid(std::string* errorMsg) const
+void TcpServer::setNewConnectionCallback(const TCP_SRV_CONN_NEW_CALLBACK& onNewCb)
 {
-    if (errorMsg)
-    {
-        (*errorMsg) = m_errorMsg;
-    }
-    return (m_acceptor ? true : false);
+    m_onNewConnectionCallback = onNewCb;
 }
 
-bool TcpServer::isRunning() const
+void TcpServer::setHandshakeOkCallback(const TLS_SRV_HANDSHAKE_OK_CALLBACK& onHandshakeOkCb)
 {
-    return m_running;
+    m_onHandshakeOkCallback = onHandshakeOkCb;
+}
+
+void TcpServer::setHandshakeFailCallback(const TLS_SRV_HANDSHAKE_FAIL_CALLBACK& onHandshakeFailCb)
+{
+    m_onHandshakeFailCallback = onHandshakeFailCb;
+}
+
+void TcpServer::setConnectionDataCallback(const TCP_SRV_CONN_DATA_CALLBACK& onDataCb)
+{
+    m_onConnectionDataCallback = onDataCb;
+}
+
+void TcpServer::setConnectionCloseCallback(const TCP_SRV_CONN_CLOSE_CALLBACK& onCloseCb)
+{
+    m_onConnectionCloseCallback = onCloseCb;
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -193,24 +217,40 @@ void TcpServer::stop()
         m_acceptor = nullptr;
     }
     m_contextPool->join();
-    std::lock_guard<std::mutex> locker(m_mutex);
-    m_connectionMap.clear();
+#if (1 == ENABLE_NSOCKET_OPENSSL)
+    if (m_handshakeTimeoutCheckThread)
+    {
+        m_handshakeTimeoutCheckThread->join();
+    }
+#endif
+    {
+        std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
+        m_connectionMap.clear();
+    }
+    {
+        std::lock_guard<std::mutex> locker(m_mutexHandshakeMap);
+        m_handshakeMap.clear();
+    }
     m_running = false;
 }
 
-void TcpServer::setNewConnectionCallback(const TCP_CONN_NEW_CALLBACK& onNewCb)
+bool TcpServer::isValid(std::string* errorMsg) const
 {
-    m_onNewConnectionCallback = onNewCb;
+    if (errorMsg)
+    {
+        (*errorMsg) = m_errorMsg;
+    }
+    return (m_acceptor ? true : false);
 }
 
-void TcpServer::setConnectionDataCallback(const TCP_CONN_DATA_CALLBACK& onDataCb)
+bool TcpServer::isEnableSSL() const
 {
-    m_onConnectionDataCallback = onDataCb;
+    return (m_sslContext ? true : false);
 }
 
-void TcpServer::setConnectionCloseCallback(const TCP_CONN_CLOSE_CALLBACK& onCloseCb)
+bool TcpServer::isRunning() const
 {
-    m_onConnectionCloseCallback = onCloseCb;
+    return m_running;
 }
 
 void TcpServer::doAccept()
@@ -251,7 +291,7 @@ void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)
     }
 #endif
     {
-        std::lock_guard<std::mutex> locker(m_mutex);
+        std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
         if (m_connectionMap.end() == m_connectionMap.find(conn->getId()))
         {
             m_connectionMap.insert(std::make_pair(conn->getId(), conn));
@@ -263,56 +303,9 @@ void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)
     conn->setConnectCallback([wpSelf, wpConn, point = conn->getRemoteEndpoint()](const boost::system::error_code& code) {
         const auto self = wpSelf.lock();
         const auto conn = wpConn.lock();
-        if (!self || !conn)
+        if (self && conn)
         {
-            return;
-        }
-        if (code) /* 断开连接 */
-        {
-            if (self && conn)
-            {
-                {
-                    std::lock_guard<std::mutex> locker(self->m_mutex);
-                    auto iter = self->m_connectionMap.find(conn->getId());
-                    if (self->m_connectionMap.end() != iter)
-                    {
-                        self->m_connectionMap.erase(iter);
-                    }
-                }
-                if (self->m_onConnectionCloseCallback)
-                {
-                    self->m_onConnectionCloseCallback(conn->getId(), point, code);
-                }
-            }
-        }
-        else /* 连接成功 */
-        {
-            if (conn->isEnableSSL()) /* 启用TLS */
-            {
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-                conn->handshake(boost::asio::ssl::stream_base::server, [wpSelf, wpConn](const boost::system::error_code& code) {
-                    if (!code) /* 握手成功 */
-                    {
-                        const auto conn = wpConn.lock();
-                        if (conn)
-                        {
-                            const auto self = wpSelf.lock();
-                            if (self && self->m_onNewConnectionCallback)
-                            {
-                                self->m_onNewConnectionCallback(wpConn);
-                            }
-                        }
-                    }
-                }); /* 需要握手 */
-#endif
-            }
-            else /* 没有启用TLS */
-            {
-                if (self->m_onNewConnectionCallback)
-                {
-                    self->m_onNewConnectionCallback(wpConn);
-                }
-            }
+            self->handleConnectionResult(conn, point, code);
         }
     });
     /* 设置数据回调 */
@@ -326,6 +319,149 @@ void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)
     /* 开始连接 */
     boost::system::error_code code;
     conn->connect(socket.remote_endpoint(code), true);
+}
+
+void TcpServer::handleConnectionResult(const std::shared_ptr<TcpConnection>& conn, const boost::asio::ip::tcp::endpoint& point,
+                                       const boost::system::error_code& code)
+{
+    if (code) /* 断开连接 */
+    {
+        {
+            std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
+            auto iter = m_connectionMap.find(conn->getId());
+            if (m_connectionMap.end() == iter)
+            {
+                return;
+            }
+            m_connectionMap.erase(iter);
+        }
+        if (m_onConnectionCloseCallback)
+        {
+            m_onConnectionCloseCallback(conn->getId(), point, code);
+        }
+    }
+    else /* 连接成功 */
+    {
+        if (m_onNewConnectionCallback)
+        {
+            m_onNewConnectionCallback(conn);
+        }
+        if (conn->isEnableSSL()) /* 启用TLS */
+        {
+#if (1 == ENABLE_NSOCKET_OPENSSL)
+            {
+                std::lock_guard<std::mutex> locker(m_mutexHandshakeMap);
+                if (m_handshakeMap.end() == m_handshakeMap.find(conn->getId()))
+                {
+                    m_handshakeMap.insert(std::make_pair(conn->getId(), std::chrono::steady_clock::now()));
+                }
+            }
+            const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
+            const std::weak_ptr<TcpConnection> wpConn = conn;
+            conn->handshake(boost::asio::ssl::stream_base::server, [wpSelf, wpConn, point](const boost::system::error_code& code) {
+                const auto self = wpSelf.lock();
+                const auto conn = wpConn.lock();
+                if (self && conn)
+                {
+                    self->handleHandshakeResult(conn, point, code);
+                }
+            });
+#endif
+        }
+    }
+}
+
+void TcpServer::handleHandshakeResult(const std::shared_ptr<TcpConnection>& conn, const boost::asio::ip::tcp::endpoint& point,
+                                      const boost::system::error_code& code)
+{
+    {
+        std::lock_guard<std::mutex> locker(m_mutexHandshakeMap);
+        auto iter = m_handshakeMap.find(conn->getId());
+        if (m_handshakeMap.end() == iter)
+        {
+            return;
+        }
+        m_handshakeMap.erase(iter);
+    }
+    if (code) /* 握手失败 */
+    {
+        if (m_onHandshakeFailCallback)
+        {
+            m_onHandshakeFailCallback(conn->getId(), point, code);
+        }
+        if (conn->isConnected())
+        {
+            conn->close();
+        }
+        else
+        {
+            {
+                std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
+                auto iter = m_connectionMap.find(conn->getId());
+                if (m_connectionMap.end() == iter)
+                {
+                    return;
+                }
+                m_connectionMap.erase(iter);
+            }
+            if (m_onConnectionCloseCallback)
+            {
+                m_onConnectionCloseCallback(conn->getId(), point, code);
+            }
+        }
+    }
+    else /* 握手成功 */
+    {
+        if (m_onHandshakeOkCallback)
+        {
+            m_onHandshakeOkCallback(conn);
+        }
+    }
+}
+void TcpServer::handshakeTimeoutLoopCheck(size_t handshakeTimeout)
+{
+    auto ntp = std::chrono::steady_clock::now();
+    /* 查找握手超时的连接 */
+    std::vector<uint64_t> timeoutIds;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexHandshakeMap);
+        for (auto iter = m_handshakeMap.begin(); m_handshakeMap.end() != iter;)
+        {
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - iter->second);
+            if (elapsed.count() >= handshakeTimeout) /* 握手超时 */
+            {
+                timeoutIds.emplace_back(iter->first);
+                m_handshakeMap.erase(iter++);
+            }
+            else
+            {
+                iter++;
+            }
+        }
+    }
+    if (timeoutIds.empty())
+    {
+        return;
+    }
+    /* 主动断开握手超时的连接 */
+    std::unordered_map<uint64_t, std::shared_ptr<TcpConnection>> connectionMap;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
+        connectionMap = m_connectionMap;
+    }
+    for (auto id : timeoutIds)
+    {
+        auto iter = connectionMap.find(id);
+        if (connectionMap.end() != iter)
+        {
+            if (m_onHandshakeFailCallback)
+            {
+                m_onHandshakeFailCallback(iter->second->getId(), iter->second->getRemoteEndpoint(),
+                                          boost::system::errc::make_error_code(boost::system::errc::timed_out));
+            }
+            iter->second->close();
+        }
+    }
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)

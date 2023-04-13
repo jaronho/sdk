@@ -26,22 +26,10 @@ public:
      * @param port 端口
      * @param reuseAddr 是否允许复用端口(选填), 默认不复用
      * @param bz 数据缓冲区大小(字节, 选填)
+     * @param handshakeTimeout 握手超时时间(选填), 单位: 毫秒
      */
     Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr = false,
-           size_t bz = 1024);
-
-    /**
-     * @brief 是否有效
-     * @param errorMsg 错误消息(选填)
-     * @return true-有效, false-无效
-     */
-    bool isValid(std::string* errorMsg = nullptr) const;
-
-    /**
-     * @brief 是否运行中
-     * @return true-运行中, false-非运行中
-     */
-    bool isRunning() const;
+           size_t bz = 4096, size_t handshakeTimeout = 3000);
 
     /**
      * @brief 设置路由未找到回调
@@ -59,16 +47,33 @@ public:
     std::vector<std::string> addRouter(const std::vector<Method>& methods, const std::vector<std::string>& uriList,
                                        std::shared_ptr<Router> router);
 
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 运行(非阻塞)
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      * @return true-运行中, false-运行失败(服务对象无效导致)
      */
-#if (1 == ENABLE_NSOCKET_OPENSSL)
     bool run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
 #else
+    /**
+     * @brief 运行(非阻塞)
+     * @return true-运行中, false-运行失败(服务对象无效导致)
+     */
     bool run();
 #endif
+
+    /**
+     * @brief 是否有效
+     * @param errorMsg 错误消息(选填)
+     * @return true-有效, false-无效
+     */
+    bool isValid(std::string* errorMsg = nullptr) const;
+
+    /**
+     * @brief 是否运行中
+     * @return true-运行中, false-非运行中
+     */
+    bool isRunning() const;
 
 private:
     /**

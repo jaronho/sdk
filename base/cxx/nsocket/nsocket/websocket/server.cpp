@@ -4,11 +4,17 @@ namespace nsocket
 {
 namespace ws
 {
-#define WS_DEBUG 0
-Server::Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz)
+Server::Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz,
+               size_t handshakeTimeout)
 {
-    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, reuseAddr, bz);
-    m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) { handleNewConnection(wpConn); });
+    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, reuseAddr, bz, handshakeTimeout);
+    m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) {
+        if (!m_tcpServer->isEnableSSL())
+        {
+            handleNewConnection(wpConn);
+        }
+    });
+    m_tcpServer->setHandshakeOkCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) { handleNewConnection(wpConn); });
     m_tcpServer->setConnectionDataCallback(
         [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
     m_tcpServer->setConnectionCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point,
@@ -96,12 +102,6 @@ void Server::handleNewConnection(const std::weak_ptr<TcpConnection>& wpConn)
     const auto conn = wpConn.lock();
     if (conn)
     {
-#if 1 == WS_DEBUG
-        auto point = conn->getRemoteEndpoint();
-        std::string clientHost = point.address().to_string().c_str();
-        int clientPort = (int)point.port();
-        printf("============================== on new connection [%lld] [%s:%d]\n", conn->getId(), clientHost.c_str(), clientPort);
-#endif
         std::lock_guard<std::mutex> locker(m_mutex);
         if (m_sessionMap.end() == m_sessionMap.find(conn->getId()))
         {
@@ -175,19 +175,6 @@ void Server::handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, co
 
 void Server::handleConnectionClose(uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)
 {
-#if 1 == WS_DEBUG
-    std::string clientHost = point.address().to_string().c_str();
-    int clientPort = (int)point.port();
-    if (code)
-    {
-        printf("-------------------- on connection closed [%lld] [%s:%d] fail, %d, %s\n", cid, clientHost.c_str(), clientPort, code.value(),
-               code.message().c_str());
-    }
-    else
-    {
-        printf("-------------------- on connection closed [%lld] [%s:%d]\n", cid, clientHost.c_str(), clientPort);
-    }
-#endif
     {
         /* 限定锁区间, 避免阻塞其他连接, 提高并发性 */
         std::lock_guard<std::mutex> locker(m_mutex);
@@ -263,17 +250,6 @@ void Server::handleFramePayload(const std::shared_ptr<Session>& session, size_t 
             m_messager->onMessagePayload(session, offset, data, dataLen);
         }
     }
-#if 1 == WS_DEBUG
-    const auto conn = session->m_wpConn.lock();
-    if (conn)
-    {
-        auto point = conn->getRemoteEndpoint();
-        std::string clientHost = point.address().to_string().c_str();
-        int clientPort = (int)point.port();
-        printf("++++++++++ on recv frame [%lld] [%s:%d], offset: %zu, length: %d\n", conn->getId(), clientHost.c_str(), clientPort, offset,
-               dataLen);
-    }
-#endif
 }
 
 void Server::handleFrameFinish(const std::shared_ptr<Session>& session)
@@ -281,12 +257,6 @@ void Server::handleFrameFinish(const std::shared_ptr<Session>& session)
     const auto conn = session->m_wpConn.lock();
     if (conn)
     {
-#if 1 == WS_DEBUG
-        auto point = conn->getRemoteEndpoint();
-        std::string clientHost = point.address().to_string().c_str();
-        int clientPort = (int)point.port();
-        printf("========== on recv frame [%lld] [%s:%d] finish\n", conn->getId(), clientHost.c_str(), clientPort);
-#endif
         if (0 == session->m_frame->opcode || 1 == session->m_frame->opcode || 2 == session->m_frame->opcode)
         {
             if (1 == session->m_frame->fin) /* 尾帧 */
