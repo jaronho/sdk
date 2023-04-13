@@ -663,7 +663,7 @@ public:
     uint8_t func = 0; /* 功能类型 */
     uint8_t _ = 0; /* 未用(固定为0) */
     FAN fan = 0; /* 故障序号 */
-    NOT not = 0; /* 带标志的状态变位数目 */
+    NOT not_ = 0; /* 带标志的状态变位数目 */
     TAP tap = 0; /* 带标志的状态变位的位置 */
     std::vector<DataSet29> dataSet; /* 数据集 */
 };

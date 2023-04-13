@@ -1,5 +1,8 @@
 #include "iec103.h"
 
+#include <math.h>
+#include <string.h>
+
 namespace npacket
 {
 /**
@@ -1016,7 +1019,7 @@ std::shared_ptr<iec103::Asdu29> Iec103Parser::parseAsud29(const iec103::DataUnit
                 break;
             }
             offset += count;
-            count = getNot(elements + offset, elementLen - offset, asdu->not );
+            count = getNot(elements + offset, elementLen - offset, asdu->not_);
             if (count <= 0)
             {
                 break;
@@ -1028,7 +1031,7 @@ std::shared_ptr<iec103::Asdu29> Iec103Parser::parseAsud29(const iec103::DataUnit
                 break;
             }
             offset += count;
-            for (uint8_t i = 0; i < asdu->not ; ++i)
+            for (uint8_t i = 0; i < asdu->not_; ++i)
             {
                 iec103::DataSet29 dataSet29;
                 if (elementLen - offset < 2)

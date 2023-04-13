@@ -473,5 +473,6 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
             m_dataCb(ntp, totalLen, header, ctrl, DataFlag::body, payload, payloadLen);
         }
     }
+    return true;
 }
 } // namespace npacket
