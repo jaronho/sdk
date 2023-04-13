@@ -179,10 +179,11 @@ void Server::handleConnectionClose(uint64_t cid, const boost::asio::ip::tcp::end
         /* 限定锁区间, 避免阻塞其他连接, 提高并发性 */
         std::lock_guard<std::mutex> locker(m_mutex);
         auto iter = m_sessionMap.find(cid);
-        if (m_sessionMap.end() != iter)
+        if (m_sessionMap.end() == iter)
         {
-            m_sessionMap.erase(iter);
+            return;
         }
+        m_sessionMap.erase(iter);
     }
     if (m_onCloseCallback)
     {
