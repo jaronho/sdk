@@ -61,6 +61,7 @@ int main(int argc, char* argv[])
     parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "127.0.0.1");
     parser.add<int>("port", 'p', "服务器端口, 默认:", false, 4444, cmdline::range(1, 65535));
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    parser.add<int>("tls", 't', "是否启用TLS, 值: 0-不启用, 1-启用, 默认:", false, 0, cmdline::range(0, 1));
     parser.add<int>("cert-format", 'f', "证书文件格式, 值: 0-DER, 1-PEM, 默认:", false, 1, cmdline::oneof<int>(0, 1));
     parser.add<std::string>("cert-file", 'c', "证书文件名, 例如: server.crt, 默认:", false, "");
     parser.add<std::string>("key-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
@@ -73,16 +74,12 @@ int main(int argc, char* argv[])
     auto server = parser.get<std::string>("server");
     auto port = parser.get<int>("port");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    auto tls = parser.get<int>("tls");
     auto certFormat = parser.get<int>("cert-format");
     auto certFile = parser.get<std::string>("cert-file");
     auto privateKeyFile = parser.get<std::string>("key-file");
     auto privateKeyFilePwd = parser.get<std::string>("key-pwd");
     auto way = parser.get<int>("ssl-way");
-#endif
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    printf("服务器: %s:%d, SSL验证: %s\n", server.c_str(), port, 1 == way ? "单向验证" : "双向验证");
-#else
-    printf("服务器: %s:%d\n", server.c_str(), port);
 #endif
     g_server = std::make_shared<nsocket::http::Server>("http_server", 10, server, port);
     if (!g_server->isValid())
@@ -193,14 +190,15 @@ int main(int argc, char* argv[])
     try
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        if (certFile.empty())
+        if (0 == tls)
         {
+            printf("启动服务器: %s:%d\n", server.c_str(), port);
             g_server->run();
         }
         else
         {
             std::shared_ptr<boost::asio::ssl::context> sslContext;
-            if (1 == way || privateKeyFile.empty()) /* 单向SSL */
+            if (1 == way) /* 单向SSL */
             {
                 sslContext = nsocket::TcpServer::getSsl1WayContext(certFormat ? boost::asio::ssl::context::file_format::pem
                                                                               : boost::asio::ssl::context::file_format::asn1,
@@ -212,9 +210,18 @@ int main(int argc, char* argv[])
                                                                               : boost::asio::ssl::context::file_format::asn1,
                                                                    certFile, privateKeyFile, privateKeyFilePwd, true);
             }
+            if (sslContext)
+            {
+                printf("启动服务器: %s:%d, SSL验证: %s\n", server.c_str(), port, 1 == way ? "单向" : "双向");
+            }
+            else
+            {
+                printf("启动服务器: %s:%d\n", server.c_str(), port);
+            }
             g_server->run(sslContext);
         }
 #else
+        printf("启动服务器: %s:%d\n", server.c_str(), port);
         g_server->run();
 #endif
         while (1)

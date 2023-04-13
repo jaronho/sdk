@@ -10,6 +10,7 @@
 
 std::shared_ptr<nsocket::TcpClient> g_client = nullptr; /* 客户端 */
 std::atomic_bool g_connected = {false}; /* 是否已连接上 */
+boost::asio::ip::tcp::endpoint g_localEndpoint; /* 本地端点 */
 
 /**
  * @brief 发送数据
@@ -47,6 +48,7 @@ int main(int argc, char* argv[])
     parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "127.0.0.1");
     parser.add<int>("port", 'p', "服务器端口, 默认:", false, 4444, cmdline::range(1, 65535));
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    parser.add<int>("tls", 't', "是否启用TLS, 值: 0-不启用, 1-启用, 默认:", false, 0, cmdline::range(0, 1));
     parser.add<int>("cert-format", 'f', "证书文件格式, 值: 0-DER, 1-PEM, 默认:", false, 1, cmdline::oneof<int>(0, 1));
     parser.add<std::string>("cert-file", 'c', "证书文件名, 例如: server.crt, 默认:", false, "");
     parser.add<std::string>("key-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
@@ -64,6 +66,7 @@ int main(int argc, char* argv[])
     auto server = parser.get<std::string>("server");
     auto port = parser.get<int>("port");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    auto tls = parser.get<int>("tls");
     auto certFormat = parser.get<int>("cert-format");
     auto certFile = parser.get<std::string>("cert-file");
     auto privateKeyFile = parser.get<std::string>("key-file");
@@ -96,23 +99,16 @@ int main(int argc, char* argv[])
         dataTypeDesc = "发送文件(十六进制, 单行)";
         lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
     }
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    printf("服务器: %s:%d, SSL验证: %s, 数据类型: %s%s\n", server.c_str(), port, 1 == way ? "单向验证" : "双向验证", dataTypeDesc.c_str(),
-           lineIntervalDesc.c_str());
-#else
-    printf("服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
-#endif
     g_client = std::make_shared<nsocket::TcpClient>();
     /* 设置连接回调 */
     g_client->setConnectCallback([&](const boost::system::error_code& code) {
-        auto localEndpoint = g_client->getLocalEndpoint();
-        auto clientHost = localEndpoint.address().to_string();
-        auto clientPort = localEndpoint.port();
         auto remoteEndpoint = g_client->getRemoteEndpoint();
         auto serverHost = remoteEndpoint.address().to_string();
         auto serverPort = remoteEndpoint.port();
         if (code)
         {
+            auto clientHost = g_localEndpoint.address().to_string();
+            auto clientPort = g_localEndpoint.port();
             if (g_connected)
             {
                 printf("============================== [%s:%d] 连接 [%s:%d] 断开: %d, %s\n", clientHost.c_str(), clientPort,
@@ -128,6 +124,9 @@ int main(int argc, char* argv[])
         else
         {
             g_connected = true;
+            g_localEndpoint = g_client->getLocalEndpoint();
+            auto clientHost = g_localEndpoint.address().to_string();
+            auto clientPort = g_localEndpoint.port();
             printf("============================== [%s:%d] 连接 [%s:%d] 成功\n", clientHost.c_str(), clientPort, serverHost.c_str(),
                    serverPort);
         }
@@ -149,34 +148,45 @@ int main(int argc, char* argv[])
         printf("\n");
     });
     /* 创建线程专门用于网络I/O事件轮询 */
-    printf("连接服务器 ...\n");
-    std::thread th([&, localPort, server, port, certFormat, certFile, privateKeyFile, privateKeyFilePwd, way]() {
+    std::thread th([&, tls, localPort, server, port, certFormat, certFile, privateKeyFile, privateKeyFilePwd, way]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
             g_client->setLocalPort(localPort);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-            if (certFile.empty())
+            if (0 == tls)
             {
+                printf("连接服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
                 g_client->run(server, port);
             }
             else
             {
                 std::shared_ptr<boost::asio::ssl::context> sslContext;
-                if (1 == way || privateKeyFile.empty()) /* 单向SSL */
+                if (1 == way) /* 单向SSL */
                 {
-                    sslContext = nsocket::TcpClient::getSsl1WayContext(
-                        certFormat ? boost::asio::ssl::context::file_format::pem : boost::asio::ssl::context::file_format::asn1, certFile);
+                    sslContext = nsocket::TcpClient::getSsl1WayContext();
+                    printf("连接服务器: %s:%d, SSL验证: 单向, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                           lineIntervalDesc.c_str());
                 }
                 else /* 双向SSL */
                 {
                     sslContext = nsocket::TcpClient::getSsl2WayContext(certFormat ? boost::asio::ssl::context::file_format::pem
                                                                                   : boost::asio::ssl::context::file_format::asn1,
                                                                        certFile, privateKeyFile, privateKeyFilePwd);
+                    if (sslContext)
+                    {
+                        printf("连接服务器: %s:%d, SSL验证: 双向, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                               lineIntervalDesc.c_str());
+                    }
+                    else
+                    {
+                        printf("连接服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
+                    }
                 }
                 g_client->run(server, port, sslContext);
             }
 #else
+            printf("连接服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
             g_client->run(server, port);
 #endif
         }
@@ -188,6 +198,7 @@ int main(int argc, char* argv[])
         {
             printf("========== 异常: 未知\n");
         }
+        exit(0);
     });
     th.detach();
     /* 主线程 */

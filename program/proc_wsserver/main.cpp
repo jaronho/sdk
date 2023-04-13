@@ -3,16 +3,16 @@
 #include <thread>
 #include <unordered_map>
 
-#include "nsocket/tcp/tcp_server.h"
+#include "nsocket/websocket/server.h"
 #include "utility/cmdline/cmdline.h"
 
-std::shared_ptr<nsocket::TcpServer> g_server = nullptr; /* 服务器 */
+std::shared_ptr<nsocket::ws::Server> g_server = nullptr; /* 服务器 */
 
 int main(int argc, char* argv[])
 {
     /* 命令参数 */
     cmdline::parser parser;
-    parser.header("TCP服务端");
+    parser.header("WebSocket服务端");
     parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "127.0.0.1");
     parser.add<int>("port", 'p', "服务器端口, 默认:", false, 4444, cmdline::range(1, 65535));
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -47,103 +47,104 @@ int main(int argc, char* argv[])
     {
         replyDesc = "原数据返回";
     }
-    g_server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, server, port);
+    g_server = std::make_shared<nsocket::ws::Server>("ws_server", 10, server, port);
     if (!g_server->isValid())
     {
         printf("启动服务器失败, 请检查地址[%s]和端口[%d]是否可用\n", server.c_str(), port);
         return 0;
     }
     /* 设置新连接回调 */
-    g_server->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
-        const auto conn = wpConn.lock();
-        if (conn)
+    g_server->setConnectingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+        const auto session = wpSession.lock();
+        if (session)
         {
-            auto point = conn->getRemoteEndpoint();
-            std::string clientHost = point.address().to_string().c_str();
-            int clientPort = (int)point.port();
-            printf("============================== 新连接 [%lld][%s:%d]\n", conn->getId(), clientHost.c_str(), clientPort);
+            printf("============================== 新连接 [%lld][%s:%d], URI: %s\n", session->getId(), session->getClientHost().c_str(),
+                   session->getClientPort(), session->getUri().c_str());
+        }
+        return nullptr;
+    });
+    /* 设置打开回调 */
+    g_server->setOpenCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+        const auto session = wpSession.lock();
+        if (session)
+        {
+            printf("==================== 打开客户端 [%lld][%s:%d], URI: %s\n", session->getId(), session->getClientHost().c_str(),
+                   session->getClientPort(), session->getUri().c_str());
         }
     });
-    /* 设置握手成功回调 */
-    g_server->setHandshakeOkCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
-        const auto conn = wpConn.lock();
-        if (conn)
+    /* 设置收到PING包回调 */
+    g_server->setPingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+        const auto session = wpSession.lock();
+        if (session)
         {
-            auto point = conn->getRemoteEndpoint();
-            std::string clientHost = point.address().to_string().c_str();
-            int clientPort = (int)point.port();
-            printf("==================== 校验成功 [%lld] [%s:%d]\n", conn->getId(), clientHost.c_str(), clientPort);
+            printf("++++++++++ 收到 [%lld][%s:%d] PING 包, 应答 PONG 包\n", session->getId(), session->getClientHost().c_str(),
+                   session->getClientPort());
+            session->sendPong();
         }
     });
-    /* 设置握手失败回调 */
-    g_server->setHandshakeFailCallback(
-        [&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
-            std::string clientHost = point.address().to_string().c_str();
-            int clientPort = (int)point.port();
-            printf("-------------------- 校验失败 [%lld] [%s:%d], %d, %s\n", cid, clientHost.c_str(), clientPort, code.value(),
-                   code.message().c_str());
-        });
-    /* 设置连接数据回调 */
-    g_server->setConnectionDataCallback(
-        [&, reply](const std::weak_ptr<nsocket::TcpConnection>& wpConn, const std::vector<unsigned char>& data) {
-            const auto conn = wpConn.lock();
-            if (conn)
+    /* 设置收到PONG包回调 */
+    g_server->setPongCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+        const auto session = wpSession.lock();
+        if (session)
+        {
+            printf("++++++++++ 收到 [%lld][%s:%d] PONG 包\n", session->getId(), session->getClientHost().c_str(), session->getClientPort());
+        }
+    });
+    /* 设置消息接收者 */
+    auto msger = std::make_shared<nsocket::ws::Messager_simple>();
+    msger->onMessage = [&, reply](const std::weak_ptr<nsocket::ws::Session>& wpSession, bool isText, const std::string& msg) {
+        const auto session = wpSession.lock();
+        if (session)
+        {
+            if (isText)
             {
-                auto point = conn->getRemoteEndpoint();
-                std::string clientHost = point.address().to_string().c_str();
-                int clientPort = (int)point.port();
-                printf("++++++++++ 收到 [%lld][%s:%d] 数据, 长度: %zu\n", conn->getId(), clientHost.c_str(), clientPort, data.size());
-                /* 以十六进制格式打印数据 */
-                printf("+++++ [十六进制]\n");
-                for (size_t i = 0; i < data.size(); ++i)
-                {
-                    printf("%02X ", data[i]);
-                }
-                printf("\n");
-                /* 以字符串格式打印数据 */
-                printf("+++++ [字节流]\n");
-                std::string str(data.begin(), data.end());
-                printf("%s", str.c_str());
-                printf("\n");
-                if (1 == reply) /* 把收到的数据原封不动返回给客户端 */
-                {
-                    conn->send(data, [&, wpConn](const boost::system::error_code& code, std::size_t length) {
-                        const auto conn = wpConn.lock();
-                        if (conn)
-                        {
-                            auto point = conn->getRemoteEndpoint();
-                            std::string clientHost = point.address().to_string().c_str();
-                            int clientPort = (int)point.port();
-                            if (code)
-                            {
-                                printf("---------- 回复 [%lld][%s:%d] 失败: %d, %s\n", conn->getId(), clientHost.c_str(), clientPort,
-                                       code.value(), code.message().c_str());
-                            }
-                            else
-                            {
-                                printf("---------- 回复 [%lld][%s:%d] 成功, 长度: %zu\n", conn->getId(), clientHost.c_str(), clientPort,
-                                       length);
-                            }
-                        }
-                    });
-                }
-            }
-        });
-    /* 设置连接关闭回调 */
-    g_server->setConnectionCloseCallback(
-        [&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
-            std::string clientHost = point.address().to_string().c_str();
-            int clientPort = (int)point.port();
-            if (code)
-            {
-                printf("-------------------- 关闭 [%lld][%s:%d] 连接: %d, %s\n", cid, clientHost.c_str(), clientPort, code.value(),
-                       code.message().c_str());
+                printf("++++++++++ 收到 [%lld][%s:%d] 消息(文本), 长度: %zu\n", session->getId(), session->getClientHost().c_str(),
+                       session->getClientPort(), msg.size());
+                printf("%s", msg.c_str());
             }
             else
             {
-                printf("-------------------- 关闭 [%lld][%s:%d] 连接\n", cid, clientHost.c_str(), clientPort);
+                printf("++++++++++ 收到 [%lld][%s:%d] 消息(二进制), 长度: %zu\n", session->getId(), session->getClientHost().c_str(),
+                       session->getClientPort(), msg.size());
+                /* 以十六进制格式打印数据 */
+                for (size_t i = 0; i < msg.size(); ++i)
+                {
+                    printf("%02X ", msg[i]);
+                }
             }
-        });
+            printf("\n");
+            if (1 == reply) /* 把收到的数据原封不动返回给客户端 */
+            {
+                if (isText)
+                {
+                    session->sendText(msg);
+                }
+                else
+                {
+                    std::vector<unsigned char> data;
+                    data.insert(data.end(), msg.begin(), msg.end());
+                    session->sendBytes(data);
+                }
+                printf("---------- 回复 [%lld][%s:%d], 长度: %zu\n", session->getId(), session->getClientHost().c_str(),
+                       session->getClientPort(), msg.size());
+            }
+        }
+    };
+    g_server->setMessager(msger);
+    /* 设置连接关闭回调 */
+    g_server->setCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+        std::string clientHost = point.address().to_string().c_str();
+        int clientPort = (int)point.port();
+        if (code)
+        {
+            printf("-------------------- 关闭客户端 [%lld][%s:%d], %d, %s\n", cid, clientHost.c_str(), clientPort, code.value(),
+                   code.message().c_str());
+        }
+        else
+        {
+            printf("-------------------- 关闭客户端 [%lld][%s:%d]\n", cid, clientHost.c_str(), clientPort);
+        }
+    });
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
     {
