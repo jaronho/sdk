@@ -47,6 +47,24 @@ static logger::Logger s_logger;
 std::recursive_mutex g_mutex;
 std::unordered_map<boost::asio::ip::tcp::endpoint, ClientInfo> g_clientMap; /* 客户端映射表 */
 
+void handleNewConnection(const std::shared_ptr<nsocket::TcpConnection>& conn)
+{
+    if (conn)
+    {
+        auto point = conn->getRemoteEndpoint();
+        ClientInfo ci;
+        ci.wpConn = conn;
+        ci.payload = std::make_shared<nsocket::Payload>(sizeof(PacketHead));
+        ci.pktHead = std::make_shared<PacketHead>();
+        std::lock_guard<std::recursive_mutex> locker(g_mutex);
+        auto iter = g_clientMap.find(point);
+        if (g_clientMap.end() == iter)
+        {
+            g_clientMap.insert(std::make_pair(point, ci));
+        }
+    }
+}
+
 int main(int argc, char* argv[])
 {
     printf("***********************************************************************************************************\n");
@@ -54,24 +72,26 @@ int main(int argc, char* argv[])
     printf("** Options:                                                                                              **\n");
     printf("**                                                                                                       **\n");
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
-    printf("** [-p]                   server port, default: 4335                                                     **\n");
+    printf("** [-p]                   server port, default: 4444                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    printf("** [-tls]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
+    printf("** [-w]                   specify ssl way verify [0, 1, 2], default: 0                                   **\n");
     printf("** [-pem]                 specify file format [0-DER, 1-PEM]. default: 1                                 **\n");
     printf("** [-cf]                  specify certificate file. e.g. client.crt, ca.crt                              **\n");
     printf("** [-pkf]                 specify private key file, e.g. client.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
-    printf("** [-w]                   specify ssl way verify [0, 1, 2], default: 0                                   **\n");
 #endif
     printf("**                                                                                                       **\n");
     printf("***********************************************************************************************************\n");
     printf("\n");
     std::string serverHost;
     int serverPort = 0;
+    int tls = 0;
+    int sslWay = 1;
     int pem = 1;
     std::string certFile;
     std::string privateKeyFile;
     std::string privateKeyFilePwd;
-    int sslWay = 0;
     for (int i = 1; i < argc;)
     {
         const char* key = argv[i];
@@ -94,6 +114,24 @@ int main(int argc, char* argv[])
             }
         }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+        else if (0 == strcmp(key, "-tls")) /* 是否启用TLS */
+        {
+            ++i;
+            if (i < argc)
+            {
+                tls = atoi(argv[i]);
+                ++i;
+            }
+        }
+        else if (0 == strcmp(key, "-w")) /* SSL校验 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                sslWay = atoi(argv[i]);
+                ++i;
+            }
+        }
         else if (0 == strcmp(key, "-pem")) /* 文件格式 */
         {
             ++i;
@@ -130,15 +168,6 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-        else if (0 == strcmp(key, "-w")) /* SSL校验 */
-        {
-            ++i;
-            if (i < argc)
-            {
-                sslWay = atoi(argv[i]);
-                ++i;
-            }
-        }
 #endif
         else
         {
@@ -151,7 +180,23 @@ int main(int argc, char* argv[])
     }
     if (serverPort <= 0)
     {
-        serverPort = 4335;
+        serverPort = 4444;
+    }
+    if (tls < 0)
+    {
+        tls = 0;
+    }
+    else if (tls > 1)
+    {
+        tls = 1;
+    }
+    if (sslWay < 0)
+    {
+        sslWay = 1;
+    }
+    else if (sslWay > 2)
+    {
+        sslWay = 2;
     }
     if (pem < 0)
     {
@@ -160,14 +205,6 @@ int main(int argc, char* argv[])
     else if (pem > 1)
     {
         pem = 1;
-    }
-    if (sslWay < 0)
-    {
-        sslWay = 0;
-    }
-    else if (sslWay > 2)
-    {
-        sslWay = 2;
     }
     /* 初始日志模块 */
     logger::LogConfig lcfg;
@@ -184,7 +221,7 @@ int main(int argc, char* argv[])
     auto server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, serverHost, serverPort, false, 10 * 1024 * 1024);
     if (!server->isValid())
     {
-        ERROR_LOG(s_logger, "服务器无效, 请检查地址和端口.");
+        ERROR_LOG(s_logger, "服务器无效, 请检查地址[{}]和端口[{}].", serverHost, serverPort);
         return 0;
     }
     /* 设置新连接回调 */
@@ -196,17 +233,29 @@ int main(int argc, char* argv[])
             std::string clientHost = point.address().to_string().c_str();
             int clientPort = (int)point.port();
             INFO_LOG(s_logger, "新建客户端连接[{}], [{}:{}]", conn->getId(), clientHost, clientPort);
-            ClientInfo ci;
-            ci.wpConn = wpConn;
-            ci.payload = std::make_shared<nsocket::Payload>(sizeof(PacketHead));
-            ci.pktHead = std::make_shared<PacketHead>();
-            std::lock_guard<std::recursive_mutex> locker(g_mutex);
-            auto iter = g_clientMap.find(point);
-            if (g_clientMap.end() == iter)
+            if (!conn->isEnableSSL())
             {
-                g_clientMap.insert(std::make_pair(point, ci));
+                handleNewConnection(conn);
             }
         }
+    });
+    /* 设置握手成功回调 */
+    server->setHandshakeOkCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
+        const auto conn = wpConn.lock();
+        if (conn)
+        {
+            auto point = conn->getRemoteEndpoint();
+            std::string clientHost = point.address().to_string().c_str();
+            int clientPort = (int)point.port();
+            INFO_LOG(s_logger, "客户端验证成功[{}], [{}:{}]", conn->getId(), clientHost, clientPort);
+            handleNewConnection(conn);
+        }
+    });
+    /* 设置握手失败回调 */
+    server->setHandshakeFailCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+        std::string clientHost = point.address().to_string().c_str();
+        int clientPort = (int)point.port();
+        WARN_LOG(s_logger, "客户端验证失败[{}], [{}:{}], {}, {}", cid, clientHost, clientPort, code.value(), code.message());
     });
     /* 设置连接数据回调 */
     server->setConnectionDataCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn, const std::vector<unsigned char>& data) {
@@ -297,23 +346,26 @@ int main(int argc, char* argv[])
             }
         });
     /* 创建线程专门用于网络I/O事件轮询 */
-    std::thread th([&, pem, certFile, privateKeyFile, privateKeyFilePwd]() {
+    std::thread th([&, tls, sslWay, pem, certFile, privateKeyFile, privateKeyFilePwd]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
             std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
-            if (1 == sslWay) /* 单向SSL */
+            if (tls) /* 通道加密 */
             {
-                sslContext = nsocket::TcpServer::getSsl1WayContext(pem ? boost::asio::ssl::context::file_format::pem
-                                                                       : boost::asio::ssl::context::file_format::asn1,
-                                                                   certFile, privateKeyFile, privateKeyFilePwd, true);
-            }
-            else if (2 == sslWay) /* 双向SSL */
-            {
-                sslContext = nsocket::TcpServer::getSsl2WayContext(pem ? boost::asio::ssl::context::file_format::pem
-                                                                       : boost::asio::ssl::context::file_format::asn1,
-                                                                   certFile, privateKeyFile, privateKeyFilePwd, true);
+                if (1 == sslWay) /* 单向SSL */
+                {
+                    sslContext = nsocket::TcpServer::getSsl1WayContext(pem ? boost::asio::ssl::context::file_format::pem
+                                                                           : boost::asio::ssl::context::file_format::asn1,
+                                                                       certFile, privateKeyFile, privateKeyFilePwd, true);
+                }
+                else /* 双向SSL */
+                {
+                    sslContext = nsocket::TcpServer::getSsl2WayContext(pem ? boost::asio::ssl::context::file_format::pem
+                                                                           : boost::asio::ssl::context::file_format::asn1,
+                                                                       certFile, privateKeyFile, privateKeyFilePwd, true);
+                }
             }
             server->run(sslContext);
 #else
@@ -328,6 +380,7 @@ int main(int argc, char* argv[])
         {
             ERROR_LOG(s_logger, "异常: 未知.");
         }
+        exit(0);
     });
     th.detach();
     /* 主线程 */

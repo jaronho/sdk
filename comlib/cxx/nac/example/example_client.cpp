@@ -55,6 +55,9 @@ int main(int argc, char* argv[])
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
     printf("** [-p]                   server port, default: 4335                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    printf("** [-tls]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
+    printf("** [-w]                   specify ssl way verify [0, 1, 2], default: 0                                   **\n");
+    printf("** [-pem]                 specify file format [0-DER, 1-PEM]. default: 1                                 **\n");
     printf("** [-cf]                  specify certificate file. e.g. client.crt, ca.crt                              **\n");
     printf("** [-pkf]                 specify private key file, e.g. client.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
@@ -64,6 +67,9 @@ int main(int argc, char* argv[])
     printf("\n");
     std::string serverHost;
     int serverPort = 0;
+    int tls = 0;
+    int sslWay = 1;
+    int pem = 1;
     std::string certFile;
     std::string privateKeyFile;
     std::string privateKeyFilePwd;
@@ -89,6 +95,33 @@ int main(int argc, char* argv[])
             }
         }
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+        else if (0 == strcmp(key, "-tls")) /* 是否启用TLS */
+        {
+            ++i;
+            if (i < argc)
+            {
+                tls = atoi(argv[i]);
+                ++i;
+            }
+        }
+        else if (0 == strcmp(key, "-w")) /* SSL校验 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                sslWay = atoi(argv[i]);
+                ++i;
+            }
+        }
+        else if (0 == strcmp(key, "-pem")) /* 文件格式 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                pem = atoi(argv[i]);
+                ++i;
+            }
+        }
         else if (0 == strcmp(key, "-cf")) /* 证书文件 */
         {
             ++i;
@@ -130,6 +163,30 @@ int main(int argc, char* argv[])
     {
         serverPort = 4335;
     }
+    if (tls < 0)
+    {
+        tls = 0;
+    }
+    else if (tls > 1)
+    {
+        tls = 1;
+    }
+    if (sslWay < 0)
+    {
+        sslWay = 1;
+    }
+    else if (sslWay > 2)
+    {
+        sslWay = 2;
+    }
+    if (pem < 0)
+    {
+        pem = 0;
+    }
+    else if (pem > 1)
+    {
+        pem = 1;
+    }
     /* 初始日志模块 */
     logger::LogConfig lcfg;
     lcfg.path = utility::FileInfo(utility::Process::getProcessExeFile()).path();
@@ -149,6 +206,9 @@ int main(int argc, char* argv[])
     nac::AccessConfig acfg;
     acfg.address = serverHost;
     acfg.port = serverPort;
+    acfg.enableTls = tls;
+    acfg.sslWay = sslWay;
+    acfg.filePEM = pem;
     acfg.certFile = certFile;
     acfg.privateKeyFile = privateKeyFile;
     acfg.privateKeyFilePwd = privateKeyFilePwd;

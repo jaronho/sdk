@@ -7,8 +7,8 @@ std::weak_ptr<threading::Executor> DataChannel::getPktExecutor()
     return m_pktExecutor;
 }
 
-bool DataChannel::connect(const std::string& address, unsigned short port, bool filePEM, const std::string& certFile,
-                          const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
+bool DataChannel::connect(const std::string& address, unsigned short port, bool enableTls, int sslWay, bool filePEM,
+                          const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
 {
     try
     {
@@ -17,7 +17,15 @@ bool DataChannel::connect(const std::string& address, unsigned short port, bool 
             WARN_LOG(m_logger, "连接失败: 重复连接.");
             return false;
         }
-        INFO_LOG(m_logger, "连接服务器: {}:{}.", address, port);
+        sslWay = sslWay < 1 ? 1 : (sslWay > 2 ? 2 : sslWay);
+        if (enableTls)
+        {
+            INFO_LOG(m_logger, "连接服务器: {}:{}, 通道加密: 是, SSL{}验证.", address, port, 1 == sslWay ? "单向" : "双向");
+        }
+        else
+        {
+            INFO_LOG(m_logger, "连接服务器: {}:{}, 通道加密: 否.", address, port);
+        }
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
         const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
         m_tcpClient = std::make_shared<nsocket::TcpClient>();
@@ -68,8 +76,8 @@ bool DataChannel::connect(const std::string& address, unsigned short port, bool 
             }
         });
         const std::weak_ptr<nsocket::TcpClient> wpTcpClient = m_tcpClient;
-        m_tcpExecutor->post("nac.loop", [wpTcpClient, address, port, filePEM, certFile, privateKeyFile, privateKeyFilePwd,
-                                         logger = m_logger]() {
+        m_tcpExecutor->post("nac.loop", [wpTcpClient, address, port, enableTls, sslWay, filePEM, certFile, privateKeyFile,
+                                         privateKeyFilePwd, logger = m_logger]() {
             const auto tcpClient = wpTcpClient.lock();
             if (tcpClient)
             {
@@ -77,16 +85,21 @@ bool DataChannel::connect(const std::string& address, unsigned short port, bool 
                 {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
                     std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
-                    if (!certFile.empty())
+                    if (enableTls)
                     {
-                        auto fmt = (filePEM ? boost::asio::ssl::context::file_format::pem : boost::asio::ssl::context::file_format::asn1);
-                        if (privateKeyFile.empty()) /* SSL单向验证 */
+                        if (1 == sslWay) /* SSL单向验证 */
                         {
-                            sslContext = nsocket::TcpClient::getSsl1WayContext(fmt, certFile);
+                            sslContext = nsocket::TcpClient::getSsl1WayContext();
                         }
                         else /* SSL双向验证 */
                         {
+                            auto fmt =
+                                (filePEM ? boost::asio::ssl::context::file_format::pem : boost::asio::ssl::context::file_format::asn1);
                             sslContext = nsocket::TcpClient::getSsl2WayContext(fmt, certFile, privateKeyFile, privateKeyFilePwd);
+                            if (!sslContext)
+                            {
+                                ERROR_LOG(logger, "缺少证书文件或私钥文件, 将默认使用非加密通道");
+                            }
                         }
                     }
                     tcpClient->run(address, port, sslContext);
