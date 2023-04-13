@@ -441,7 +441,7 @@ public:
       return false;
     }
     prog_name=argv[0];
-    auto pos=prog_name.find_last_of('/\\');
+    auto pos=prog_name.find_last_of("/\\");
     if (std::string::npos!=pos){
       prog_name=prog_name.substr(pos + 1);
     }
