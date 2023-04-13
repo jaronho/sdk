@@ -161,21 +161,24 @@ int main(int argc, char* argv[])
     }
     auto client = std::make_shared<nsocket::TcpClient>();
     /* 设置连接回调 */
+    boost::asio::ip::tcp::endpoint localEndpoint;
     client->setConnectCallback([&](const boost::system::error_code& code) {
-        auto localEndpoint = client->getLocalEndpoint();
-        auto clientHost = localEndpoint.address().to_string();
-        auto clientPort = localEndpoint.port();
         auto remoteEndpoint = client->getRemoteEndpoint();
         auto serverHost = remoteEndpoint.address().to_string();
         auto serverPort = remoteEndpoint.port();
         if (code)
         {
+            auto clientHost = localEndpoint.address().to_string();
+            auto clientPort = localEndpoint.port();
             printf("============================== [%s:%d] on connect [%s:%d] fail, %d, %s\n", clientHost.c_str(), clientPort,
                    serverHost.c_str(), serverPort, code.value(), code.message().c_str());
             exit(0);
         }
         else
         {
+            localEndpoint = client->getLocalEndpoint();
+            auto clientHost = localEndpoint.address().to_string();
+            auto clientPort = localEndpoint.port();
             printf("============================== [%s:%d] on connect [%s:%d] ok\n", clientHost.c_str(), clientPort, serverHost.c_str(),
                    serverPort);
         }

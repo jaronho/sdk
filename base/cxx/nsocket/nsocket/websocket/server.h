@@ -41,8 +41,11 @@ using WS_PONG_CALLBACK = std::function<void(const std::weak_ptr<Session>& wpSess
 /**
  * @brief 连接关闭回调
  * @param cid 连接ID
+ * @param point 远端端点
+ * @param code 错误码
  */
-using WS_CLOSE_CALLBACK = std::function<void(uint64_t cid)>;
+using WS_CLOSE_CALLBACK =
+    std::function<void(uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
 
 /**
  * @brief WebSocket服务器

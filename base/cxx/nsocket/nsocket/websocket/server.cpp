@@ -186,7 +186,7 @@ void Server::handleConnectionClose(uint64_t cid, const boost::asio::ip::tcp::end
     }
     if (m_onCloseCallback)
     {
-        m_onCloseCallback(cid);
+        m_onCloseCallback(cid, point, code);
     }
 }
 

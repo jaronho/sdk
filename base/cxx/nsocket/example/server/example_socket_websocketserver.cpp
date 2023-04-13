@@ -201,7 +201,9 @@ int main(int argc, char* argv[])
         }
     };
     server.setMessager(msger);
-    server.setCloseCallback([&](uint64_t cid) { printf("------------------------------ client [%lld] on closed\n", cid); });
+    server.setCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+        printf("------------------------------ client [%lld] on closed\n", cid);
+    });
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
     {
