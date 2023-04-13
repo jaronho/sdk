@@ -67,6 +67,7 @@ private:
  */
 struct AccessConfig
 {
+    unsigned int localPort = 0; /* 本地端口 */
     std::string address; /* 服务器地址 */
     unsigned int port = 0; /* 服务器端口 */
     bool enableTls = false; /* 是否通道加密, true-是, false-否(不需要证书/私钥) */

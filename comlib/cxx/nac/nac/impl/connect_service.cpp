@@ -58,10 +58,10 @@ void ConnectService::setHeartbeatDataGenerator(const std::function<std::string()
     m_heartbeatDataGenerator = generator;
 }
 
-bool ConnectService::connect(const std::string& address, unsigned int port, bool enableTls, int sslWay, bool filePEM,
-                             const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
-                             unsigned int connectTimeout, int32_t authBizCode, unsigned int authTimeout, int32_t heartbeatBizCode,
-                             unsigned int heartbeatInterval, unsigned int offlineTime)
+bool ConnectService::connect(unsigned short localPort, const std::string& address, unsigned int port, bool enableTls, int sslWay,
+                             bool filePEM, const std::string& certFile, const std::string& privateKeyFile,
+                             const std::string& privateKeyFilePwd, unsigned int connectTimeout, int32_t authBizCode,
+                             unsigned int authTimeout, int32_t heartbeatBizCode, unsigned int heartbeatInterval, unsigned int offlineTime)
 {
     if (address.empty() || 0 == port)
     {
@@ -96,6 +96,7 @@ bool ConnectService::connect(const std::string& address, unsigned int port, bool
              address, port, connectTimeout, authBizCode, authTimeout, heartbeatBizCode, heartbeatInterval, offlineTime);
     m_disconnectType = DisconnectType::unknown;
     updateConnectState(ConnectState::connecting);
+    m_localPort = localPort;
     m_address = address;
     m_port = port;
     m_enableTls = enableTls;
@@ -114,7 +115,7 @@ bool ConnectService::connect(const std::string& address, unsigned int port, bool
     if (dataChannel)
     {
         startTimetoutTimer();
-        return dataChannel->connect(address, port, enableTls, sslWay, filePEM, certFile, privateKeyFile, privateKeyFilePwd);
+        return dataChannel->connect(localPort, address, port, enableTls, sslWay, filePEM, certFile, privateKeyFile, privateKeyFilePwd);
     }
     return false;
 }
@@ -133,7 +134,8 @@ bool ConnectService::reconnect()
     if (dataChannel)
     {
         startTimetoutTimer();
-        return dataChannel->connect(m_address, m_port, m_enableTls, m_sslWay, m_filePEM, m_certFile, m_privateKeyFile, m_privateKeyFilePwd);
+        return dataChannel->connect(m_localPort, m_address, m_port, m_enableTls, m_sslWay, m_filePEM, m_certFile, m_privateKeyFile,
+                                    m_privateKeyFilePwd);
     }
     return false;
 }

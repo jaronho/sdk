@@ -61,6 +61,7 @@ public:
 
     /**
      * @brief 连接(连接成功后鉴权如果需要的话)
+     * @param localPort 本地端口, 0-使用自动随机分配的端口
      * @param address 服务器地址
      * @param port 服务器端口
      * @param enableTls 是否开启SSL验证
@@ -77,10 +78,11 @@ public:
      * @param offlineTime 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线, 必须大于心跳间隔
      * @return true-连接请求中, false-连接失败
      */
-    bool connect(const std::string& address, unsigned int port, bool enableTls = false, int sslWay = 1, bool filePEM = true,
-                 const std::string& certFile = "", const std::string& privateKeyFile = "", const std::string& privateKeyFilePwd = "",
-                 unsigned int connectTimeout = 0, int32_t authBizCode = 0, unsigned int authTimeout = 30, int32_t heartbeatBizCode = 0,
-                 unsigned int heartbeatInterval = 15, unsigned int offlineTime = 61);
+    bool connect(unsigned short localPort, const std::string& address, unsigned int port, bool enableTls = false, int sslWay = 1,
+                 bool filePEM = true, const std::string& certFile = "", const std::string& privateKeyFile = "",
+                 const std::string& privateKeyFilePwd = "", unsigned int connectTimeout = 0, int32_t authBizCode = 0,
+                 unsigned int authTimeout = 30, int32_t heartbeatBizCode = 0, unsigned int heartbeatInterval = 15,
+                 unsigned int offlineTime = 61);
 
     /**
      * @brief 重连, 注意: 主动断开连接再调重连则无效
@@ -204,6 +206,7 @@ private:
     std::atomic<std::chrono::steady_clock::time_point> m_lastRecvTime = {std::chrono::steady_clock::now()}; /* 最近接收时间 */
     std::atomic<std::chrono::steady_clock::time_point> m_lastSendTime = {std::chrono::steady_clock::now()}; /* 最近发送时间 */
     std::atomic<std::chrono::steady_clock::time_point> m_lastHeartbeatTime = {std::chrono::steady_clock::now()}; /* 最近心跳时间 */
+    unsigned int m_localPort = 0; /* 本地端口 */
     std::string m_address; /* 服务器地址 */
     unsigned int m_port = 0; /* 服务器端口 */
     bool m_enableTls = false; /* 是否进行通道加密 */

@@ -191,9 +191,9 @@ bool AccessCtrl::connect(const AccessConfig& cfg)
         }
     }
     /* 首次连接 */
-    return s_connectService->connect(cfg.address, cfg.port, cfg.enableTls, cfg.sslWay, cfg.filePEM, cfg.certFile, cfg.privateKeyFile,
-                                     cfg.privateKeyFilePwd, cfg.connectTimeout, (int32_t)cfg.authBizCode, cfg.authTimeout,
-                                     (int32_t)cfg.heartbeatBizCode, cfg.heartbeatInterval, cfg.offlineTime);
+    return s_connectService->connect(cfg.localPort, cfg.address, cfg.port, cfg.enableTls, cfg.sslWay, cfg.filePEM, cfg.certFile,
+                                     cfg.privateKeyFile, cfg.privateKeyFilePwd, cfg.connectTimeout, (int32_t)cfg.authBizCode,
+                                     cfg.authTimeout, (int32_t)cfg.heartbeatBizCode, cfg.heartbeatInterval, cfg.offlineTime);
 }
 
 void AccessCtrl::disconnect()

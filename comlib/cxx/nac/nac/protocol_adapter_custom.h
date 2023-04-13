@@ -22,7 +22,7 @@ public:
     /**
      * @brief 包头大小(业务数据长度内存空间 + 业务码长度内存空间 + 序列ID长度内存空间)
      */
-    static size_t headSize()
+    static uint32_t headSize()
     {
         return (sizeof(int32_t) + sizeof(int32_t) + sizeof(int64_t));
     }

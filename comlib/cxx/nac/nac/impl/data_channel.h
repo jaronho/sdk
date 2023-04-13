@@ -30,6 +30,7 @@ public:
 
     /**
      * @brief 连接(异步)
+     * @param localPort 本地端口, 0-使用自动随机分配的端口
      * @param address 服务器地址
      * @param port 服务器端口
      * @param enableTls 是否开启SSL验证
@@ -40,8 +41,9 @@ public:
      * @param privateKeyFilePwd 私钥文件密码(选填), 例如: qq123456
      * @return true-请求连接中, false-失败
      */
-    bool connect(const std::string& address, unsigned short port, bool enableTls = false, int sslWay = 1, bool filePEM = true,
-                 const std::string& certFile = "", const std::string& privateKeyFile = "", const std::string& privateKeyFilePwd = "");
+    bool connect(unsigned short localPort, const std::string& address, unsigned short port, bool enableTls = false, int sslWay = 1,
+                 bool filePEM = true, const std::string& certFile = "", const std::string& privateKeyFile = "",
+                 const std::string& privateKeyFilePwd = "");
 
     /**
      * @brief 断开连接

@@ -7,8 +7,9 @@ std::weak_ptr<threading::Executor> DataChannel::getPktExecutor()
     return m_pktExecutor;
 }
 
-bool DataChannel::connect(const std::string& address, unsigned short port, bool enableTls, int sslWay, bool filePEM,
-                          const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
+bool DataChannel::connect(unsigned short localPort, const std::string& address, unsigned short port, bool enableTls, int sslWay,
+                          bool filePEM, const std::string& certFile, const std::string& privateKeyFile,
+                          const std::string& privateKeyFilePwd)
 {
     try
     {
@@ -75,6 +76,7 @@ bool DataChannel::connect(const std::string& address, unsigned short port, bool 
                 WARN_LOG(logger, "数据接收警告: 报文处理线程为空.");
             }
         });
+        m_tcpClient->setLocalPort(localPort);
         const std::weak_ptr<nsocket::TcpClient> wpTcpClient = m_tcpClient;
         m_tcpExecutor->post("nac.loop", [wpTcpClient, address, port, enableTls, sslWay, filePEM, certFile, privateKeyFile,
                                          privateKeyFilePwd, logger = m_logger]() {
