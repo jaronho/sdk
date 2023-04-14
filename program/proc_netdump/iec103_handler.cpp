@@ -476,7 +476,7 @@ void printIEC103VariableFrame(const std::shared_ptr<npacket::iec103::VariableFra
         {
             printf("                  func: %d\n", asdu29->func);
             printf("                  fan: %d\n", asdu29->fan);
-            printf("                  not: %d\n", asdu29->not );
+            printf("                  not_: %d\n", asdu29->not_ );
             printf("                  tap: %d\n", asdu29->tap);
             for (size_t i = 0; i < asdu29->dataSet.size(); ++i)
             {
