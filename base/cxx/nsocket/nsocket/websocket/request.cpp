@@ -130,7 +130,7 @@ std::string Request::getSecWebSocketKey()
     return m_secWebSocketKey;
 }
 
-void Request::create(Request req, std::vector<unsigned char>& data)
+void Request::create(Request req, const std::string& hostPort, std::vector<unsigned char>& data)
 {
     static const std::string CRLF = "\r\n";
     static const std::string SEP = ": ";
@@ -176,6 +176,11 @@ void Request::create(Request req, std::vector<unsigned char>& data)
     if (req.headers.end() == iter)
     {
         req.headers.insert(std::make_pair("Sec-WebSocket-Key", calcSecWebSocketKey()));
+    }
+    iter = req.headers.find("Host");
+    if (req.headers.end() == iter && !hostPort.empty())
+    {
+        req.headers.insert(std::make_pair("Host", hostPort));
     }
     for (auto iter = req.headers.begin(); req.headers.end() != iter; ++iter)
     {

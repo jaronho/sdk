@@ -1,5 +1,7 @@
 #include "server.h"
 
+#include "request.h"
+
 namespace nsocket
 {
 namespace ws
@@ -19,6 +21,11 @@ Server::Server(const std::string& name, size_t threadCount, const std::string& h
         [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
     m_tcpServer->setConnectionCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point,
                                                 const boost::system::error_code& code) { handleConnectionClose(cid, point, code); });
+}
+
+Server::~Server()
+{
+    stop();
 }
 
 void Server::setConnectingCallback(const WS_SRV_CONNECTING_CALLBACK& cb)
@@ -66,6 +73,14 @@ bool Server::run()
 #endif
     }
     return false;
+}
+
+void Server::stop()
+{
+    if (m_tcpServer)
+    {
+        m_tcpServer->stop();
+    }
 }
 
 bool Server::isValid(std::string* errorMsg) const

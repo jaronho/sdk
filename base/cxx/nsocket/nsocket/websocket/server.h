@@ -5,7 +5,6 @@
 
 #include "../tcp/tcp_server.h"
 #include "messager.h"
-#include "request.h"
 #include "response.h"
 #include "session.h"
 
@@ -66,6 +65,8 @@ public:
     Server(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr = false, size_t bz = 4096,
            size_t handshakeTimeout = 3000);
 
+    virtual ~Server();
+
     /**
      * @brief 设置连接中回调
      * @param cb 连接中回调
@@ -116,6 +117,11 @@ public:
      */
     bool run();
 #endif
+
+    /**
+     * @brief 停止
+     */
+    void stop();
 
     /**
      * @brief 是否有效

@@ -52,9 +52,10 @@ public:
     /**
      * @brief 创建请求数据
      * @param req 请求对象
+     * @param hostPort 主机(端口)
      * @param data [输出]请求数据
      */
-    static void create(Request req, std::vector<unsigned char>& data);
+    static void create(Request req, const std::string& hostPort, std::vector<unsigned char>& data);
 
 public:
     std::string method; /* 方法 */

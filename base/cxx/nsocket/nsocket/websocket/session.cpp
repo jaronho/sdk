@@ -79,23 +79,6 @@ void Session::sendBytes(const std::vector<unsigned char>& bytes, bool isFin)
     }
 }
 
-void Session::sendClose(const CloseCode& code)
-{
-    const auto conn = m_wpConn.lock();
-    if (conn)
-    {
-        std::vector<unsigned char> data;
-        Frame::createCloseFrame(data, code, false);
-        conn->send(data, [&](const boost::system::error_code& code, size_t length) {
-            const auto conn = m_wpConn.lock();
-            if (conn) /* 无需判断发送结果, 直接断开连接 */
-            {
-                conn->close();
-            }
-        });
-    }
-}
-
 void Session::sendPing()
 {
     const auto conn = m_wpConn.lock();
@@ -136,10 +119,26 @@ void Session::sendPong()
     }
 }
 
+void Session::sendClose(const CloseCode& code)
+{
+    const auto conn = m_wpConn.lock();
+    if (conn)
+    {
+        std::vector<unsigned char> data;
+        Frame::createCloseFrame(data, code, false);
+        conn->send(data, [&](const boost::system::error_code& code, size_t length) {
+            const auto conn = m_wpConn.lock();
+            if (conn) /* 无需判断发送结果, 直接断开连接 */
+            {
+                conn->close();
+            }
+        });
+    }
+}
+
 bool Session::isMsgText() const
 {
     return m_isMsgText;
 }
-
 } // namespace ws
 } // namespace nsocket

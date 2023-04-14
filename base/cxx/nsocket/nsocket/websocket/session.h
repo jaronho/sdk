@@ -49,19 +49,19 @@ public:
     void sendBytes(const std::vector<unsigned char>& bytes, bool isFin = true);
 
     /**
-     * @brief 发送关闭命令(只有1帧)
-     */
-    void sendClose(const CloseCode& code = CloseCode::close_normal);
-
-    /**
-     * @brief 发送ping命令(只有1帧)
+     * @brief 发送ping命令
      */
     void sendPing();
 
     /**
-     * @brief 发送pong命令(只有1帧)
+     * @brief 发送pong命令
      */
     void sendPong();
+
+    /**
+     * @brief 发送关闭命令
+     */
+    void sendClose(const CloseCode& code = CloseCode::close_normal);
 
     /**
      * @brief 当前消息是否为文本

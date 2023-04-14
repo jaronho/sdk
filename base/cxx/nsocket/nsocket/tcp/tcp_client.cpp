@@ -14,6 +14,11 @@ TcpClient::TcpClient(size_t bz)
 {
 }
 
+TcpClient::~TcpClient()
+{
+    stop();
+}
+
 void TcpClient::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)
 {
     m_onConnectCallback = onConnectCb;

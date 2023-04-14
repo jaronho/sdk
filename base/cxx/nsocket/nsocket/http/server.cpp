@@ -21,6 +21,11 @@ Server::Server(const std::string& name, size_t threadCount, const std::string& h
                                                 const boost::system::error_code& code) { handleConnectionClose(cid); });
 }
 
+Server::~Server()
+{
+    stop();
+}
+
 void Server::setRouterNotFoundCallback(const std::function<RESPONSE_PTR(uint64_t cid, const REQUEST_PTR& req)>& cb)
 {
     m_routerNotFoundCb = cb;
@@ -64,6 +69,14 @@ bool Server::run()
 #endif
     }
     return false;
+}
+
+void Server::stop()
+{
+    if (m_tcpServer)
+    {
+        m_tcpServer->stop();
+    }
 }
 
 bool Server::isValid(std::string* errorMsg) const

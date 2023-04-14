@@ -18,7 +18,7 @@ public:
      */
     TcpClient(size_t bz = 4096);
 
-    virtual ~TcpClient() = default;
+    virtual ~TcpClient();
 
     /**
      * @brief 设置连接回调
