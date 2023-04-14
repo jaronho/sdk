@@ -2,9 +2,9 @@
 
 namespace nsocket
 {
-void SocketTcpBase::setLocalPort(uint32_t port)
+void SocketTcpBase::setLocalPort(uint16_t port)
 {
-    m_localPort = (port > 0 && port < 65536) ? port : 0;
+    m_localPort = port;
 }
 
 SocketTcp::SocketTcp(boost::asio::ip::tcp::socket socket) : m_socket(std::move(socket)) {}

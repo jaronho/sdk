@@ -28,13 +28,13 @@ public:
      * @brief 构造函数
      * @param headLen 包头长度
      */
-    Payload(unsigned int headLen);
+    Payload(uint32_t headLen);
 
     /**
      * @brief 获取包头长度
      * @return 包头长度
      */
-    unsigned int getHeadLen() const;
+    uint32_t getHeadLen() const;
 
     /**
      * @brief 重置缓冲区
@@ -58,7 +58,7 @@ private:
     };
 
 private:
-    unsigned int m_headLen = 0; /* 包头长度 */
+    uint32_t m_headLen = 0; /* 包头长度 */
     std::vector<unsigned char> m_recvBuffer; /* 接收缓冲区 */
     ParseStep m_parseStep = ParseStep::head; /* 解析步骤 */
     int m_bodyLen = 0; /* 要接收的总包体长度, 小于0表示出错 */

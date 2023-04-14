@@ -36,7 +36,7 @@ public:
      * @brief 设置本地端口(运行前调用才有效)
      * @param port 本地端口
      */
-    void setLocalPort(uint32_t port);
+    void setLocalPort(uint16_t port);
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
@@ -46,7 +46,7 @@ public:
      * @param sslContext TLS上下文(选填), 为空表示不启用TLS
      * @param async 是否异步连接(选填), 默认异步
      */
-    void run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr,
+    void run(const std::string& host, uint16_t port, const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr,
              bool async = true);
 #else
     /**
@@ -55,7 +55,7 @@ public:
      * @param port 远端端口
      * @param async 是否异步连接(选填), 默认异步
      */
-    void run(const std::string& host, unsigned int port, bool async = true);
+    void run(const std::string& host, uint16_t port, bool async = true);
 #endif
 
     /**
@@ -132,7 +132,7 @@ private:
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
-    uint32_t m_localPort; /* 本地端口 */
+    uint16_t m_localPort; /* 本地端口 */
     boost::asio::ip::tcp::resolver::results_type m_endpoints; /* 远端端点 */
     boost::asio::ip::tcp::resolver::iterator m_endpointIter; /* 远端端点迭代器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)

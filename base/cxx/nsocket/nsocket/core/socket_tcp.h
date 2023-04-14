@@ -73,7 +73,7 @@ public:
      * @brief 设置本地端口(连接前调用才有效)
      * @param port 本地端口
      */
-    void setLocalPort(uint32_t port);
+    void setLocalPort(uint16_t port);
 
     /**
      * @brief 连接
@@ -160,7 +160,7 @@ public:
     virtual bool setRecvBufferSize(size_t bufferSize) = 0;
 
 protected:
-    std::atomic<uint32_t> m_localPort = {0}; /* 本地端口 */
+    std::atomic<uint16_t> m_localPort = {0}; /* 本地端口 */
     boost::asio::ip::tcp::endpoint m_remotePoint; /* 远端端点 */
 };
 

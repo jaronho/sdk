@@ -54,7 +54,7 @@ public:
      * @param isClient 是否为客户端帧数据(选填)
      * @param isFin 是否最后一个帧(选填)
      */
-    static void createTextFrame(std::vector<unsigned char>& data, const std::string& text, bool isisClient = false, bool isFin = true);
+    static void createTextFrame(std::vector<unsigned char>& data, const std::string& text, bool isClient = false, bool isFin = true);
 
     /**
      * @brief 创建二进制帧
@@ -101,7 +101,7 @@ public:
                                        0xB-F: 暂时无定义, 为以后的控制帧保留 */
     unsigned char mask = 0; /* 是否经过掩码处理, 0: 没处理过, 1: 处理过
                                客户端发送过来的必须为1, 服务端发送出去的必须为0, 否则接收方需要断开连接 */
-    unsigned int payloadLen = 0; /* 负载长度 */
+    uint32_t payloadLen = 0; /* 负载长度 */
     unsigned char maskingKey[4] = {0}; /* 掩码 */
 
 private:
@@ -175,7 +175,7 @@ private:
     };
 
     ParseStep m_parseStep = ParseStep::fin_rsv_opcode; /* 解析步骤 */
-    unsigned int m_payloadReceived = 0; /* 已接收负载长度 */
+    uint32_t m_payloadReceived = 0; /* 已接收负载长度 */
     std::vector<unsigned char> m_tmpBytes; /* 临时字节 */
 };
 } // namespace ws

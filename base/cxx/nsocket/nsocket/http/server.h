@@ -28,7 +28,7 @@ public:
      * @param bz 数据缓冲区大小(字节, 选填)
      * @param handshakeTimeout 握手超时时间(选填), 单位: 毫秒
      */
-    Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr = false,
+    Server(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr = false,
            size_t bz = 4096, size_t handshakeTimeout = 3000);
 
     /**

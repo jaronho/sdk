@@ -64,7 +64,7 @@ public:
      * @brief 设置本地端口(连接前调用才有效)
      * @param port 本地端口
      */
-    void setLocalPort(uint32_t port);
+    void setLocalPort(uint16_t port);
 
     /**
      * @brief 连接

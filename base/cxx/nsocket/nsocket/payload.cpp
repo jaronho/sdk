@@ -5,7 +5,7 @@
 
 namespace nsocket
 {
-Payload::Payload(unsigned int headLen) : m_headLen(headLen), m_bodyLen(0)
+Payload::Payload(uint32_t headLen) : m_headLen(headLen), m_bodyLen(0)
 {
     if (headLen < 4)
     {
@@ -14,7 +14,7 @@ Payload::Payload(unsigned int headLen) : m_headLen(headLen), m_bodyLen(0)
     }
 }
 
-unsigned int Payload::getHeadLen() const
+uint32_t Payload::getHeadLen() const
 {
     return m_headLen;
 }
@@ -71,7 +71,7 @@ void Payload::unpack(const std::vector<unsigned char>& data, const HEAD_CALLBACK
         }
         else if (ParseStep::body == m_parseStep) /* 解析包体 */
         {
-            unsigned int needBodyLen = m_bodyLen - m_body.size(); /* 当前包体还需要的数据长度 */
+            uint32_t needBodyLen = m_bodyLen - m_body.size(); /* 当前包体还需要的数据长度 */
             if (needBodyLen > m_recvBuffer.size()) /* 包体未接收完毕 */
             {
                 m_body.insert(m_body.end(), m_recvBuffer.begin(), m_recvBuffer.end());

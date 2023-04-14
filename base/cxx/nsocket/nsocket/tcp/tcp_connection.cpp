@@ -59,7 +59,7 @@ void TcpConnection::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
     m_onDataCallback = onDataCb;
 }
 
-void TcpConnection::setLocalPort(uint32_t port)
+void TcpConnection::setLocalPort(uint16_t port)
 {
     if (m_socketTcpBase)
     {

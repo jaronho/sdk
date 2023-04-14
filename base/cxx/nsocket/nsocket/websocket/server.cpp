@@ -4,7 +4,7 @@ namespace nsocket
 {
 namespace ws
 {
-Server::Server(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz,
+Server::Server(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr, size_t bz,
                size_t handshakeTimeout)
 {
     m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, reuseAddr, bz, handshakeTimeout);
@@ -21,40 +21,22 @@ Server::Server(const std::string& name, size_t threadCount, const std::string& h
                                                 const boost::system::error_code& code) { handleConnectionClose(cid, point, code); });
 }
 
-bool Server::isValid(std::string* errorMsg) const
-{
-    if (m_tcpServer && m_tcpServer->isValid(errorMsg))
-    {
-        return true;
-    }
-    return false;
-}
-
-bool Server::isRunning() const
-{
-    if (m_tcpServer && m_tcpServer->isRunning())
-    {
-        return true;
-    }
-    return false;
-}
-
-void Server::setConnectingCallback(const WS_CONNECTING_CALLBACK& cb)
+void Server::setConnectingCallback(const WS_SRV_CONNECTING_CALLBACK& cb)
 {
     m_onConnectingCallback = cb;
 }
 
-void Server::setOpenCallback(const WS_OPEN_CALLBACK& cb)
+void Server::setOpenCallback(const WS_SRV_OPEN_CALLBACK& cb)
 {
     m_onOpenCallback = cb;
 }
 
-void Server::setPingCallback(const WS_PING_CALLBACK& cb)
+void Server::setPingCallback(const WS_SRV_PING_CALLBACK& cb)
 {
     m_onPingCallback = cb;
 }
 
-void Server::setPongCallback(const WS_PONG_CALLBACK& cb)
+void Server::setPongCallback(const WS_SRV_PONG_CALLBACK& cb)
 {
     m_onPongCallback = cb;
 }
@@ -64,7 +46,7 @@ void Server::setMessager(const std::shared_ptr<Messager>& msger)
     m_messager = msger;
 }
 
-void Server::setCloseCallback(const WS_CLOSE_CALLBACK& cb)
+void Server::setCloseCallback(const WS_SRV_CLOSE_CALLBACK& cb)
 {
     m_onCloseCallback = cb;
 }
@@ -82,6 +64,24 @@ bool Server::run()
 #else
         return m_tcpServer->run();
 #endif
+    }
+    return false;
+}
+
+bool Server::isValid(std::string* errorMsg) const
+{
+    if (m_tcpServer && m_tcpServer->isValid(errorMsg))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool Server::isRunning() const
+{
+    if (m_tcpServer && m_tcpServer->isRunning())
+    {
+        return true;
     }
     return false;
 }

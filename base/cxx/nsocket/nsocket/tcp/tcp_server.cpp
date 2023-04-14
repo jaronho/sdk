@@ -107,7 +107,7 @@ boost::asio::io_context& io_context_pool::getContext()
     return context;
 }
 
-TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::string& host, unsigned int port, bool reuseAddr, size_t bz,
+TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr, size_t bz,
                      size_t handshakeTimeout)
     : m_contextPool(std::make_shared<io_context_pool>(name, threadCount))
 #if (1 == ENABLE_NSOCKET_OPENSSL)

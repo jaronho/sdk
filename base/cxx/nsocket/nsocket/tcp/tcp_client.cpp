@@ -24,15 +24,15 @@ void TcpClient::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
     m_onDataCallback = onDataCb;
 }
 
-void TcpClient::setLocalPort(uint32_t port)
+void TcpClient::setLocalPort(uint16_t port)
 {
     m_localPort = port;
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-void TcpClient::run(const std::string& host, unsigned int port, const std::shared_ptr<boost::asio::ssl::context>& sslContext, bool async)
+void TcpClient::run(const std::string& host, uint16_t port, const std::shared_ptr<boost::asio::ssl::context>& sslContext, bool async)
 #else
-void TcpClient::run(const std::string& host, unsigned int port, bool async)
+void TcpClient::run(const std::string& host, uint16_t port, bool async)
 #endif
 {
     if (isRunning())
