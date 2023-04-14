@@ -4,9 +4,9 @@
 #include <unordered_map>
 
 #include "../tcp/tcp_server.h"
-#include "messager.h"
 #include "response.h"
 #include "session.h"
+#include "srv_messager.h"
 
 namespace nsocket
 {
@@ -95,7 +95,7 @@ public:
      * @brief 设置消息接收者
      * @param msger 消息接收者
      */
-    void setMessager(const std::shared_ptr<Messager>& msger);
+    void setMessager(const std::shared_ptr<SrvMessager>& msger);
 
     /**
      * @brief 设置连接关闭回调
@@ -186,7 +186,7 @@ private:
     WS_SRV_OPEN_CALLBACK m_onOpenCallback; /* 连接打开回调 */
     WS_SRV_PING_CALLBACK m_onPingCallback; /* ping回调 */
     WS_SRV_PONG_CALLBACK m_onPongCallback; /* pong回调 */
-    std::shared_ptr<Messager> m_messager; /* 消息接收者 */
+    std::shared_ptr<SrvMessager> m_messager; /* 消息接收者 */
     WS_SRV_CLOSE_CALLBACK m_onCloseCallback; /* 连接关闭回调 */
 };
 } // namespace ws

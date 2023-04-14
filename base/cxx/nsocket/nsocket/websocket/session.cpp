@@ -50,7 +50,7 @@ void Session::sendText(const std::string& text, bool isFin)
             const auto conn = m_wpConn.lock();
             if (conn)
             {
-                if (code) /* 发送失败 */
+                if (code && boost::system::errc::not_connected != code) /* 发送失败 */
                 {
                     conn->close();
                 }
@@ -70,7 +70,7 @@ void Session::sendBytes(const std::vector<unsigned char>& bytes, bool isFin)
             const auto conn = m_wpConn.lock();
             if (conn)
             {
-                if (code) /* 发送失败 */
+                if (code && boost::system::errc::not_connected != code) /* 发送失败 */
                 {
                     conn->close();
                 }
@@ -90,7 +90,7 @@ void Session::sendPing()
             const auto conn = m_wpConn.lock();
             if (conn)
             {
-                if (code) /* 发送失败 */
+                if (code && boost::system::errc::not_connected != code) /* 发送失败 */
                 {
                     conn->close();
                 }
@@ -110,7 +110,7 @@ void Session::sendPong()
             const auto conn = m_wpConn.lock();
             if (conn)
             {
-                if (code) /* 发送失败 */
+                if (code && boost::system::errc::not_connected != code) /* 发送失败 */
                 {
                     conn->close();
                 }

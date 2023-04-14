@@ -183,7 +183,7 @@ int main(int argc, char* argv[])
             printf("==================== on pong\n");
         }
     });
-    auto msger = std::make_shared<nsocket::ws::Messager_simple>();
+    auto msger = std::make_shared<nsocket::ws::SrvMessager_simple>();
     msger->onMessage = [&](const std::weak_ptr<nsocket::ws::Session>& wpSession, bool isText, const std::string& msg) {
         const auto session = wpSession.lock();
         if (session)

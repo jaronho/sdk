@@ -57,6 +57,15 @@ foreach(filename ${example_tcpclient_files})
     message("    " ${filename})
 endforeach()
 
+# 添加WebSocket客户端示例文件
+set(example_websocketclient_files)
+list(APPEND example_websocketclient_files client/example_socket_websocketclient.cpp)
+
+print_info(BODY "example websocket client files:")
+foreach(filename ${example_websocketclient_files})
+    message("    " ${filename})
+endforeach()
+
 # 添加TCP服务端示例文件
 set(example_tcpserver_files)
 list(APPEND example_tcpserver_files server/example_socket_tcpserver.cpp)
@@ -86,6 +95,7 @@ endforeach()
 
 # 构建可执行程序
 add_executable(example_nsocket_tcpclient ${base_nsocket_tcp_files} ${example_tcpclient_files})
+add_executable(example_nsocket_websocketclient ${base_nsocket_websocket_files} ${example_websocketclient_files})
 add_executable(example_nsocket_tcpserver ${base_nsocket_tcp_files} ${example_tcpserver_files})
 add_executable(example_nsocket_httpserver ${base_nsocket_http_files} ${example_httpserver_files})
 add_executable(example_nsocket_websocketserver ${base_nsocket_websocket_files} ${example_websocketserver_files})
@@ -93,11 +103,13 @@ add_executable(example_nsocket_websocketserver ${base_nsocket_websocket_files} $
 # 链接依赖库
 if(enable_nsocket_openssl)
     target_link_libraries(example_nsocket_tcpclient Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_websocketclient Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_tcpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_httpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_websocketserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
 else()
     target_link_libraries(example_nsocket_tcpclient Threads::Threads ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_websocketclient Threads::Threads ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_tcpserver Threads::Threads ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_httpserver Threads::Threads ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_websocketserver Threads::Threads ${Boost_LIBRARIES})

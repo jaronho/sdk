@@ -48,7 +48,7 @@ void Server::setPongCallback(const WS_SRV_PONG_CALLBACK& cb)
     m_onPongCallback = cb;
 }
 
-void Server::setMessager(const std::shared_ptr<Messager>& msger)
+void Server::setMessager(const std::shared_ptr<SrvMessager>& msger)
 {
     m_messager = msger;
 }

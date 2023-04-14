@@ -1,16 +1,10 @@
-#include "messager.h"
+#include "srv_messager.h"
 
 namespace nsocket
 {
 namespace ws
 {
-void Messager::onMessageBegin(const std::shared_ptr<Session>& session) {}
-
-void Messager::onMessagePayload(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen) {}
-
-void Messager::onMessageEnd(const std::shared_ptr<Session>& session) {}
-
-void Messager_batch::onMessageBegin(const std::shared_ptr<Session>& session)
+void SrvMessager_batch::onMessageBegin(const std::shared_ptr<Session>& session)
 {
     if (beginCb)
     {
@@ -18,7 +12,7 @@ void Messager_batch::onMessageBegin(const std::shared_ptr<Session>& session)
     }
 }
 
-void Messager_batch::onMessagePayload(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen)
+void SrvMessager_batch::onMessagePayload(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen)
 {
     if (payloadCb)
     {
@@ -26,7 +20,7 @@ void Messager_batch::onMessagePayload(const std::shared_ptr<Session>& session, s
     }
 }
 
-void Messager_batch::onMessageEnd(const std::shared_ptr<Session>& session)
+void SrvMessager_batch::onMessageEnd(const std::shared_ptr<Session>& session)
 {
     if (endCb)
     {
@@ -34,7 +28,7 @@ void Messager_batch::onMessageEnd(const std::shared_ptr<Session>& session)
     }
 }
 
-void Messager_simple::onMessageBegin(const std::shared_ptr<Session>& session)
+void SrvMessager_simple::onMessageBegin(const std::shared_ptr<Session>& session)
 {
     uint64_t id = session->getId();
     std::lock_guard<std::mutex> locker(m_mutex);
@@ -44,7 +38,7 @@ void Messager_simple::onMessageBegin(const std::shared_ptr<Session>& session)
     }
 }
 
-void Messager_simple::onMessagePayload(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen)
+void SrvMessager_simple::onMessagePayload(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen)
 {
     if (!data || dataLen <= 0)
     {
@@ -66,7 +60,7 @@ void Messager_simple::onMessagePayload(const std::shared_ptr<Session>& session, 
     }
 }
 
-void Messager_simple::onMessageEnd(const std::shared_ptr<Session>& session)
+void SrvMessager_simple::onMessageEnd(const std::shared_ptr<Session>& session)
 {
     std::shared_ptr<std::string> msg = nullptr;
     {

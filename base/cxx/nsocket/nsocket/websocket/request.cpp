@@ -130,10 +130,11 @@ std::string Request::getSecWebSocketKey()
     return m_secWebSocketKey;
 }
 
-void Request::create(Request req, const std::string& hostPort, std::vector<unsigned char>& data)
+void Request::create(Request req, const std::string& hostPort, std::string& secWebSocketKey, std::vector<unsigned char>& data)
 {
     static const std::string CRLF = "\r\n";
     static const std::string SEP = ": ";
+    secWebSocketKey.clear();
     data.clear();
     std::string firstLine;
     firstLine += "GET " + (req.uri.empty() ? "/" : req.uri);
@@ -175,7 +176,12 @@ void Request::create(Request req, const std::string& hostPort, std::vector<unsig
     iter = req.headers.find("Sec-WebSocket-Key");
     if (req.headers.end() == iter)
     {
-        req.headers.insert(std::make_pair("Sec-WebSocket-Key", calcSecWebSocketKey()));
+        secWebSocketKey = calcSecWebSocketKey();
+        req.headers.insert(std::make_pair("Sec-WebSocket-Key", secWebSocketKey));
+    }
+    else
+    {
+        secWebSocketKey = iter->second;
     }
     iter = req.headers.find("Host");
     if (req.headers.end() == iter && !hostPort.empty())
@@ -390,7 +396,6 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                         return 0;
                     }
                     headers.insert(std::make_pair(m_tmpKey, m_tmpValue));
-                    parseContentTypeAndLength();
                     clearTmp();
                     m_sepFlag = SepFlag::none;
                 }
@@ -400,7 +405,6 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
                 if (!m_tmpKey.empty())
                 {
                     headers.insert(std::make_pair(m_tmpKey, m_tmpValue));
-                    parseContentTypeAndLength();
                 }
                 if (!checkHeader())
                 {
@@ -458,16 +462,6 @@ int Request::parseHeader(const unsigned char* data, int length, const HEAD_CALLB
         }
     }
     return used;
-}
-
-void Request::parseContentTypeAndLength()
-{
-    if (case_insensitive_equal("Content-Type", m_tmpKey)) /* 内容类型 */
-    {
-    }
-    else if (case_insensitive_equal("Content-Length", m_tmpKey)) /* 内容长度 */
-    {
-    }
 }
 
 int Request::maxMethodLength()

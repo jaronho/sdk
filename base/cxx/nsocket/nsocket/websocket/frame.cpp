@@ -43,7 +43,7 @@ int Frame::parse(const unsigned char* data, int length, const HEAD_CALLBACK& hea
             }
             break;
         case ParseStep::mask_payload_len:
-            if ((used = parseMaskPayloadLen(remainData, remainLen)) <= 0)
+            if ((used = parseMaskPayloadLen(remainData, remainLen, finishCb)) <= 0)
             {
                 return 0;
             }
@@ -270,7 +270,7 @@ int Frame::parseFinRsvOpcode(const unsigned char* data, int length)
     return 1;
 }
 
-int Frame::parseMaskPayloadLen(const unsigned char* data, int length)
+int Frame::parseMaskPayloadLen(const unsigned char* data, int length, const FINISH_CALLBACK& finishCb)
 {
     unsigned char byte = data[0]; /* 只解析1个字节 */
     mask = byte >> 7;
@@ -296,6 +296,14 @@ int Frame::parseMaskPayloadLen(const unsigned char* data, int length)
     }
     m_payloadReceived = 0;
     m_tmpBytes.clear();
+    if (0 == mask && 0 == payloadLen)
+    {
+        if (finishCb)
+        {
+            finishCb();
+        }
+        reset();
+    }
     return 1;
 }
 

@@ -53,9 +53,10 @@ public:
      * @brief 创建请求数据
      * @param req 请求对象
      * @param hostPort 主机(端口)
+     * @param secWebSocketKey [输出]安全密钥
      * @param data [输出]请求数据
      */
-    static void create(Request req, const std::string& hostPort, std::vector<unsigned char>& data);
+    static void create(Request req, const std::string& hostPort, std::string& secWebSocketKey, std::vector<unsigned char>& data);
 
 public:
     std::string method; /* 方法 */
@@ -105,11 +106,6 @@ private:
      * @return 已解析的数据长度, <=0表示解析出错
      */
     int parseHeader(const unsigned char* data, int length, const HEAD_CALLBACK& headCb);
-
-    /**
-     * @brief 解析内容类型和长度
-     */
-    void parseContentTypeAndLength();
 
     /**
      * @brief 获取方法名最大长度
