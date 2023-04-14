@@ -121,6 +121,7 @@ void Server::handleNewConnection(const std::weak_ptr<TcpConnection>& wpConn)
         if (m_sessionMap.end() == m_sessionMap.find(conn->getId()))
         {
             auto session = std::make_shared<Session>();
+            session->m_defaultBufferSize = conn->getBufferSize();
             session->m_wpConn = wpConn;
             session->m_req = std::make_shared<Request>();
             session->m_frame = std::make_shared<Frame>();
@@ -151,10 +152,10 @@ void Server::handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, co
         int used = 0;
         auto frameHeadCb = [&]() {
             /* 扩展数据接收缓冲区 */
-            int bufferSize = session->m_frame->payloadLen;
-            if (bufferSize > 1024)
+            auto bufferSize = session->m_frame->payloadLen;
+            if (bufferSize > conn->getBufferSize())
             {
-                static const int MAX_BUFFER_SIZE = 65536; /* 64Kb */
+                static const uint32_t MAX_BUFFER_SIZE = 65536; /* 64Kb */
                 if (bufferSize > MAX_BUFFER_SIZE) /* 限制上限 */
                 {
                     bufferSize = MAX_BUFFER_SIZE;
@@ -277,11 +278,7 @@ void Server::handleFrameFinish(const std::shared_ptr<Session>& session)
         {
             if (1 == session->m_frame->fin) /* 尾帧 */
             {
-                /* 调回数据接收缓冲区空间 */
-                if (conn->getBufferSize() > 1024)
-                {
-                    conn->resizeBuffer(1024);
-                }
+                conn->resizeBuffer(session->m_defaultBufferSize); /* 调回数据接收缓冲区空间 */
                 if (m_messager)
                 {
                     m_messager->onMessageEnd(session);

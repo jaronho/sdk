@@ -156,45 +156,18 @@ void Server::handleConnectionClose(uint64_t cid)
 
 void Server::handleReqHead(const std::shared_ptr<Session>& session)
 {
-    auto req = session->req;
-#if 0
-    /* 信息打印 */
-    printf("\n======================================================================\n");
-    printf("===  Method: %s\n", req->method.c_str());
-    printf("===     Uri: %s\n", req->uri.c_str());
-    if (!req->queries.empty())
-    {
-        printf("=== Queries:\n");
-        for (auto iter = req->queries.begin(); req->queries.end() != iter; ++iter)
-        {
-            printf("             [%s] = %s\n", iter->first.c_str(), iter->second.c_str());
-        }
-    }
-    printf("=== Version: %s\n", req->version.c_str());
-    if (!req->headers.empty())
-    {
-        printf("=== Headers:\n");
-        for (auto iter = req->headers.begin(); req->headers.end() != iter; ++iter)
-        {
-            printf("             [%s] = %s\n", iter->first.c_str(), iter->second.c_str());
-        }
-    }
-    if (req->getContentLength() > 0)
-    {
-        printf("=== Content:\n");
-#endif
     const auto conn = session->wpConn.lock();
     if (conn)
     {
         /* 路由 */
-        auto iter = m_routerMap.find(req->uri);
+        auto iter = m_routerMap.find(session->req->uri);
         if (m_routerMap.end() != iter) /* 找到 */
         {
             /* 扩展数据接收缓冲区 */
-            int bufferSize = req->getContentLength();
-            if (bufferSize > 1024)
+            auto bufferSize = session->req->getContentLength();
+            if (bufferSize > conn->getBufferSize())
             {
-                static const int MAX_BUFFER_SIZE = 65536; /* 64Kb */
+                static const uint32_t MAX_BUFFER_SIZE = 65536; /* 64Kb */
                 if (bufferSize > MAX_BUFFER_SIZE) /* 限制上限 */
                 {
                     bufferSize = MAX_BUFFER_SIZE;
@@ -204,23 +177,23 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
             /* 判断是否允许请求的方法 */
             if (iter->second->m_methods.empty())
             {
-                req->isMethodAllowed = true;
+                session->req->isMethodAllowed = true;
             }
             else
             {
-                req->isMethodAllowed = false;
+                session->req->isMethodAllowed = false;
                 for (auto method : iter->second->m_methods)
                 {
-                    if (case_insensitive_equal(req->method, method_desc(method)))
+                    if (case_insensitive_equal(session->req->method, method_desc(method)))
                     {
-                        req->isMethodAllowed = true;
+                        session->req->isMethodAllowed = true;
                         break;
                     }
                 }
             }
-            if (req->isMethodAllowed) /* 允许方法, 响应头数据 */
+            if (session->req->isMethodAllowed) /* 允许方法, 响应头数据 */
             {
-                iter->second->onReqHead(conn->getId(), req);
+                iter->second->onReqHead(conn->getId(), session->req);
             }
         }
     }
