@@ -54,19 +54,11 @@ std::vector<std::string> Server::addRouter(const std::vector<Method>& methods, c
     return repeatUriList;
 }
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-bool Server::run(const std::shared_ptr<boost::asio::ssl::context>& sslContext)
-#else
-bool Server::run()
-#endif
+bool Server::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile, const std::string& pkPwd)
 {
     if (m_tcpServer)
     {
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-        return m_tcpServer->run(sslContext);
-#else
-        return m_tcpServer->run();
-#endif
+        return m_tcpServer->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
     }
     return false;
 }

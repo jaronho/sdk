@@ -71,8 +71,8 @@ int main(int argc, char* argv[])
     int sslWay = 1;
     int pem = 1;
     std::string certFile;
-    std::string privateKeyFile;
-    std::string privateKeyFilePwd;
+    std::string pkFile;
+    std::string pkPwd;
     for (int i = 1; i < argc;)
     {
         const char* key = argv[i];
@@ -136,7 +136,7 @@ int main(int argc, char* argv[])
             ++i;
             if (i < argc)
             {
-                privateKeyFile = argv[i];
+                pkFile = argv[i];
                 ++i;
             }
         }
@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
             ++i;
             if (i < argc)
             {
-                privateKeyFilePwd = argv[i];
+                pkPwd = argv[i];
                 ++i;
             }
         }
@@ -206,12 +206,12 @@ int main(int argc, char* argv[])
     nac::AccessConfig acfg;
     acfg.address = serverHost;
     acfg.port = serverPort;
-    acfg.enableTls = tls;
+    acfg.sslOn = tls;
     acfg.sslWay = sslWay;
-    acfg.filePEM = pem;
+    acfg.certFmt = pem;
     acfg.certFile = certFile;
-    acfg.privateKeyFile = privateKeyFile;
-    acfg.privateKeyFilePwd = privateKeyFilePwd;
+    acfg.pkFile = pkFile;
+    acfg.pkPwd = pkPwd;
     acfg.connectTimeout = 3;
     acfg.retryInterval = {1};
     while (!nac::AccessCtrl::connect(acfg))

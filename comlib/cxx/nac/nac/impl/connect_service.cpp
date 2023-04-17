@@ -58,10 +58,10 @@ void ConnectService::setHeartbeatDataGenerator(const std::function<std::string()
     m_heartbeatDataGenerator = generator;
 }
 
-bool ConnectService::connect(unsigned short localPort, const std::string& address, unsigned int port, bool enableTls, int sslWay,
-                             bool filePEM, const std::string& certFile, const std::string& privateKeyFile,
-                             const std::string& privateKeyFilePwd, unsigned int connectTimeout, int32_t authBizCode,
-                             unsigned int authTimeout, int32_t heartbeatBizCode, unsigned int heartbeatInterval, unsigned int offlineTime)
+bool ConnectService::connect(unsigned short localPort, const std::string& address, unsigned int port, bool sslOn, int sslWay, int certFmt,
+                             const std::string& certFile, const std::string& pkFile, const std::string& pkPwd, unsigned int connectTimeout,
+                             int32_t authBizCode, unsigned int authTimeout, int32_t heartbeatBizCode, unsigned int heartbeatInterval,
+                             unsigned int offlineTime)
 {
     if (address.empty() || 0 == port)
     {
@@ -99,12 +99,12 @@ bool ConnectService::connect(unsigned short localPort, const std::string& addres
     m_localPort = localPort;
     m_address = address;
     m_port = port;
-    m_enableTls = enableTls;
+    m_enableTls = sslOn;
     m_sslWay = sslWay;
-    m_filePEM = filePEM;
+    m_certFmt = certFmt;
     m_certFile = certFile;
-    m_privateKeyFile = privateKeyFile;
-    m_privateKeyFilePwd = privateKeyFilePwd;
+    m_privateKeyFile = pkFile;
+    m_privateKeyFilePwd = pkPwd;
     m_connectTimeout = connectTimeout;
     m_authBizCode = authBizCode;
     m_authTimeout = authTimeout;
@@ -115,7 +115,7 @@ bool ConnectService::connect(unsigned short localPort, const std::string& addres
     if (dataChannel)
     {
         startTimetoutTimer();
-        return dataChannel->connect(localPort, address, port, enableTls, sslWay, filePEM, certFile, privateKeyFile, privateKeyFilePwd);
+        return dataChannel->connect(localPort, address, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
     }
     return false;
 }
@@ -134,7 +134,7 @@ bool ConnectService::reconnect()
     if (dataChannel)
     {
         startTimetoutTimer();
-        return dataChannel->connect(m_localPort, m_address, m_port, m_enableTls, m_sslWay, m_filePEM, m_certFile, m_privateKeyFile,
+        return dataChannel->connect(m_localPort, m_address, m_port, m_enableTls, m_sslWay, m_certFmt, m_certFile, m_privateKeyFile,
                                     m_privateKeyFilePwd);
     }
     return false;

@@ -23,8 +23,8 @@ public:
     /**
      * @brief 构造函数
      * @param socket 套接字
-     * @param alreadyConnected 是否已经连接上(选填), 服务器中接收到新连接时需要设置该参数为true
-     * @param bz 数据缓冲区大小(字节, 选填)
+     * @param alreadyConnected 是否已经连接上, 服务器中接收到新连接时需要设置该参数为true
+     * @param bz 数据缓冲区大小(字节)
      */
     TcpConnection(const std::shared_ptr<SocketTcpBase>& socket, bool alreadyConnected = false, size_t bz = 4096);
 
@@ -69,7 +69,7 @@ public:
     /**
      * @brief 连接
      * @param point 远端端点
-     * @param async 是否异步连接(选填), 默认异步
+     * @param async 是否异步连接, 默认异步
      */
     void connect(const boost::asio::ip::tcp::endpoint& point, bool async = true);
 
@@ -78,7 +78,7 @@ public:
      * @brief 握手(启用TLS才需要)
      * @param type 类型, 客户端或服务端
      * @param onHandshakeCb 握手回调
-     * @param async 是否异步握手(选填), 默认异步
+     * @param async 是否异步握手, 默认异步
      */
     void handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb, bool async = true);
 #endif
@@ -130,7 +130,7 @@ public:
     /**
      * @brief 创建客户端SSL(单向验证)上下文(不需要证书文件)
      * @param m 方法, 例如: 可以用sslv23_client
-     * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
+     * @param allowSelfSigned 是否允许自签证书通过, 默认允许
      * @return SSL上下文
      */
     static std::shared_ptr<boost::asio::ssl::context> makeSsl1WayContextClient(boost::asio::ssl::context::method m,
@@ -139,32 +139,32 @@ public:
     /**
      * @brief 创建服务端SSL(单向验证)上下文(当证书文件,私钥文件,私钥文件密码都为空时返回空)
      * @param m 方法, 例如: 可以用sslv23_server
-     * @param fileFmt 文件格式
-     * @param certFile 证书文件, 例如: server.crt
-     * @param privateKeyFile 私钥文件, 例如: server.key
-     * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
-     * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
+     * @param certFmt 文件格式
+     * @param certFile 证书文件, 例如: client.crt, server.crt
+     * @param pkFile 私钥文件, 例如: client.key, server.key
+     * @param pkPwd 私钥文件密码, 例如: 123456
+     * @param allowSelfSigned 是否允许自签证书通过, 默认允许
      * @return SSL上下文
      */
-    static std::shared_ptr<boost::asio::ssl::context>
-    makeSsl1WayContextServer(boost::asio::ssl::context::method m, boost::asio::ssl::context::file_format fileFmt,
-                             const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
-                             bool allowSelfSigned = true);
+    static std::shared_ptr<boost::asio::ssl::context> makeSsl1WayContextServer(boost::asio::ssl::context::method m,
+                                                                               boost::asio::ssl::context::file_format certFmt,
+                                                                               const std::string& certFile, const std::string& pkFile,
+                                                                               const std::string& pkPwd, bool allowSelfSigned = true);
 
     /**
      * @brief 创建SSL(双向验证)上下文(当证书文件,私钥文件,私钥文件密码都为空时返回空)
      * @param m 方法, 例如: 客户端可以用sslv23_client, 服务端可以用sslv23_server
-     * @param fileFmt 文件格式
+     * @param certFmt 文件格式
      * @param certFile 证书文件, 例如: client.crt, server.crt
-     * @param privateKeyFile 私钥文件, 例如: client.key, server.key
-     * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
-     * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
+     * @param pkFile 私钥文件, 例如: client.key, server.key
+     * @param pkPwd 私钥文件密码, 例如: 123456
+     * @param allowSelfSigned 是否允许自签证书通过, 默认允许
      * @return SSL上下文
      */
     static std::shared_ptr<boost::asio::ssl::context> makeSsl2WayContext(boost::asio::ssl::context::method m,
-                                                                         boost::asio::ssl::context::file_format fileFmt,
-                                                                         const std::string& certFile, const std::string& privateKeyFile,
-                                                                         const std::string& privateKeyFilePwd, bool allowSelfSigned = true);
+                                                                         boost::asio::ssl::context::file_format certFmt,
+                                                                         const std::string& certFile, const std::string& pkFile,
+                                                                         const std::string& pkPwd, bool allowSelfSigned = true);
 #endif
 
 private:
@@ -179,12 +179,12 @@ private:
     void closeImpl();
 
 private:
-    uint64_t m_id; /* ID */
-    std::shared_ptr<SocketTcpBase> m_socketTcpBase; /* 套接字 */
+    uint64_t m_id = 0; /* ID */
+    std::shared_ptr<SocketTcpBase> m_socketTcpBase = nullptr; /* 套接字 */
     std::atomic_bool m_isEnableSSL = {false}; /* 是否启用SSL */
     std::atomic_bool m_isConnected = {false}; /* 是否已连接上 */
     std::vector<unsigned char> m_recvBuf; /* 接收缓冲区 */
-    TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
-    TCP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */
+    TCP_CONNECT_CALLBACK m_onConnectCallback = nullptr; /* 连接回调 */
+    TCP_DATA_CALLBACK m_onDataCallback = nullptr; /* 数据回调 */
 };
 } // namespace nsocket

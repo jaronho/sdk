@@ -16,12 +16,12 @@ int main(int argc, char* argv[])
     parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "127.0.0.1");
     parser.add<int>("port", 'p', "服务器端口, 默认:", false, 4444, cmdline::range(1, 65535));
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    parser.add<int>("tls", 't', "是否启用TLS, 值: 0-不启用, 1-启用, 默认:", false, 0, cmdline::range(0, 1));
-    parser.add<int>("cert-format", 'f', "证书文件格式, 值: 0-DER, 1-PEM, 默认:", false, 1, cmdline::oneof<int>(0, 1));
-    parser.add<std::string>("cert-file", 'c', "证书文件名, 例如: server.crt, 默认:", false, "");
-    parser.add<std::string>("key-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
-    parser.add<std::string>("key-pwd", 'P', "私钥文件密码, 例如: 123456, 默认:", false, "");
+    parser.add<int>("ssl-on", 't', "是否启用TLS, 值: 0-不启用, 1-启用, 默认:", false, 0, cmdline::range(0, 1));
     parser.add<int>("ssl-way", 'w', "SSL验证, 值: 1-单向验证, 2-双向验证, 默认:", false, 1, cmdline::oneof<int>(1, 2));
+    parser.add<int>("cert-fmt", 'f', "证书文件格式, 值: 1-DER, 2-PEM, 默认:", false, 2, cmdline::oneof<int>(1, 2));
+    parser.add<std::string>("cert-file", 'c', "证书文件名, 例如: server.crt, 默认:", false, "");
+    parser.add<std::string>("pk-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
+    parser.add<std::string>("pk-pwd", 'P', "私钥文件密码, 例如: 123456, 默认:", false, "");
 #endif
     parser.add<int>("reply", 'r', "应答方式, 值: 0-不应答, 1-原数据返回, 默认:", false, 0, cmdline::oneof<int>(0, 1));
     parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
@@ -30,12 +30,12 @@ int main(int argc, char* argv[])
     auto server = parser.get<std::string>("server");
     auto port = parser.get<int>("port");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    auto tls = parser.get<int>("tls");
-    auto certFormat = parser.get<int>("cert-format");
+    auto sslOn = parser.get<int>("ssl-on");
+    auto sslWay = parser.get<int>("ssl-way");
+    auto certFmt = parser.get<int>("cert-fmt");
     auto certFile = parser.get<std::string>("cert-file");
-    auto privateKeyFile = parser.get<std::string>("key-file");
-    auto privateKeyFilePwd = parser.get<std::string>("key-pwd");
-    auto way = parser.get<int>("ssl-way");
+    auto pkFile = parser.get<std::string>("pk-file");
+    auto pkPwd = parser.get<std::string>("pk-pwd");
 #endif
     auto reply = parser.get<int>("reply");
     std::string replyDesc;
@@ -148,41 +148,15 @@ int main(int argc, char* argv[])
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
     {
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-        if (0 == tls)
+        if (1 == sslOn && !certFile.empty() && !pkFile.empty())
         {
-            printf("启动服务器: %s:%d, 应答: %s\n", server.c_str(), port, replyDesc.c_str());
-            g_server->run();
+            printf("启动服务器: %s:%d, SSL验证: %s, 应答: %s\n", server.c_str(), port, 1 == sslWay ? "单向" : "双向", replyDesc.c_str());
         }
         else
         {
-            std::shared_ptr<boost::asio::ssl::context> sslContext;
-            if (1 == way) /* 单向SSL */
-            {
-                sslContext = nsocket::TcpServer::getSsl1WayContext(certFormat ? boost::asio::ssl::context::file_format::pem
-                                                                              : boost::asio::ssl::context::file_format::asn1,
-                                                                   certFile, privateKeyFile, privateKeyFilePwd, true);
-            }
-            else /* 双向SSL */
-            {
-                sslContext = nsocket::TcpServer::getSsl2WayContext(certFormat ? boost::asio::ssl::context::file_format::pem
-                                                                              : boost::asio::ssl::context::file_format::asn1,
-                                                                   certFile, privateKeyFile, privateKeyFilePwd, true);
-            }
-            if (sslContext)
-            {
-                printf("启动服务器: %s:%d, SSL验证: %s, 应答: %s\n", server.c_str(), port, 1 == way ? "单向" : "双向", replyDesc.c_str());
-            }
-            else
-            {
-                printf("启动服务器: %s:%d, 应答: %s\n", server.c_str(), port, replyDesc.c_str());
-            }
-            g_server->run(sslContext);
+            printf("启动服务器: %s:%d, 应答: %s\n", server.c_str(), port, replyDesc.c_str());
         }
-#else
-        printf("启动服务器: %s:%d, 应答: %s\n", server.c_str(), port, replyDesc.c_str());
-        g_server->run();
-#endif
+        g_server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
         /* 主线程 */
         while (1)
         {

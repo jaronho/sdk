@@ -103,20 +103,18 @@ public:
      */
     void setCloseCallback(const WS_SRV_CLOSE_CALLBACK& cb);
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 运行(非阻塞)
-     * @param sslContext TLS上下文(选填), 为空表示不启用TLS
+     * @param sslOn 是否开启SSL, true-是, false-否
+     * @param sslWay SSL验证方式, 1-单向, 2-双向
+     * @param certFmt (证书/私钥)文件格式, 1-DER, 2-PEM
+     * @param certFile 证书文件, 例如: client.crt
+     * @param pkFile 私钥文件, 例如; client.key
+     * @param pkPwd 私钥文件密码, 例如: 123456
      * @return true-运行中, false-运行失败(服务对象无效导致)
      */
-    bool run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
-#else
-    /**
-     * @brief 运行(非阻塞)
-     * @return true-运行中, false-运行失败(服务对象无效导致)
-     */
-    bool run();
-#endif
+    bool run(bool sslOn = false, int sslWay = 1, int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "",
+             const std::string& pkPwd = "");
 
     /**
      * @brief 停止

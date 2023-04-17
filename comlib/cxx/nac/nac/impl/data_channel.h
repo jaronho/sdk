@@ -33,17 +33,16 @@ public:
      * @param localPort 本地端口, 0-使用自动随机分配的端口
      * @param address 服务器地址
      * @param port 服务器端口
-     * @param enableTls 是否开启SSL验证
+     * @param sslOn 是否开启SSL验证
      * @param sslWay SSL验证方式, 1-单向, 2-双向
-     * @param filePEM (证书/私钥)文件是否为PEM格式, true-是, false-否(DER格式)
+     * @param certFmt (证书/私钥)文件格式, 1-DER, 2-PEM
      * @param certFile 证书文件(选填), 例如: client.crt
-     * @param privateKeyFile 私钥文件(选填), 例如: client.key
-     * @param privateKeyFilePwd 私钥文件密码(选填), 例如: qq123456
+     * @param pkFile 私钥文件(选填), 例如: client.key
+     * @param pkPwd 私钥文件密码(选填), 例如: qq123456
      * @return true-请求连接中, false-失败
      */
-    bool connect(unsigned short localPort, const std::string& address, unsigned short port, bool enableTls = false, int sslWay = 1,
-                 bool filePEM = true, const std::string& certFile = "", const std::string& privateKeyFile = "",
-                 const std::string& privateKeyFilePwd = "");
+    bool connect(unsigned short localPort, const std::string& address, unsigned short port, bool sslOn = false, int sslWay = 1,
+                 int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "", const std::string& pkPwd = "");
 
     /**
      * @brief 断开连接

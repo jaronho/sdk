@@ -64,12 +64,12 @@ public:
      * @param localPort 本地端口, 0-使用自动随机分配的端口
      * @param address 服务器地址
      * @param port 服务器端口
-     * @param enableTls 是否开启SSL验证
+     * @param sslOn 是否开启SSL验证
      * @param sslWay SSL验证方式, 1-单向, 2-双向
-     * @param filePEM (证书/私钥)文件是否为PEM格式, true-是, false-否(DER格式)
+     * @param certFmt (证书/私钥)文件格式, 1-DER, 2-PEM
      * @param certFile 证书文件(选填), 例如: client.crt
-     * @param privateKeyFile 私钥文件(选填), 例如: client.key
-     * @param privateKeyFilePwd 私钥文件密码(选填), 例如: qq123456
+     * @param pkFile 私钥文件(选填), 例如: client.key
+     * @param pkPwd 私钥文件密码(选填), 例如: qq123456
      * @param connectTimeout 连接超时(秒, 选填), 为0表示系统默认
      * @param authBizCode 鉴权业务码(选填), 为0时表示不需要鉴权
      * @param authTimeout 鉴权响应超时(秒, 选填), 必须大于0
@@ -78,11 +78,10 @@ public:
      * @param offlineTime 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线, 必须大于心跳间隔
      * @return true-连接请求中, false-连接失败
      */
-    bool connect(unsigned short localPort, const std::string& address, unsigned int port, bool enableTls = false, int sslWay = 1,
-                 bool filePEM = true, const std::string& certFile = "", const std::string& privateKeyFile = "",
-                 const std::string& privateKeyFilePwd = "", unsigned int connectTimeout = 0, int32_t authBizCode = 0,
-                 unsigned int authTimeout = 30, int32_t heartbeatBizCode = 0, unsigned int heartbeatInterval = 15,
-                 unsigned int offlineTime = 61);
+    bool connect(unsigned short localPort, const std::string& address, unsigned int port, bool sslOn = false, int sslWay = 1,
+                 int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "", const std::string& pkPwd = "",
+                 unsigned int connectTimeout = 0, int32_t authBizCode = 0, unsigned int authTimeout = 30, int32_t heartbeatBizCode = 0,
+                 unsigned int heartbeatInterval = 15, unsigned int offlineTime = 61);
 
     /**
      * @brief 重连, 注意: 主动断开连接再调重连则无效
@@ -211,7 +210,7 @@ private:
     unsigned int m_port = 0; /* 服务器端口 */
     bool m_enableTls = false; /* 是否进行通道加密 */
     int m_sslWay = 1; /* SSL验证, 1-单向, 2-双向 */
-    bool m_filePEM = true; /* (证书/私钥)文件是否为PEM格式 */
+    int m_certFmt = 2; /* (证书/私钥)文件格式, 1-DER, 2-PEM */
     std::string m_certFile; /* 证书文件 */
     std::string m_privateKeyFile; /* 私钥文件 */
     std::string m_privateKeyFilePwd; /* 私钥文件密码 */

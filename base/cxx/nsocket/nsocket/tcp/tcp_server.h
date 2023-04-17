@@ -99,9 +99,9 @@ public:
      * @param threadCount 线程个数
      * @param host 主机
      * @param port 端口
-     * @param reuseAddr 是否允许复用端口(选填), 默认不复用
-     * @param bz 数据缓冲区大小(字节, 选填)
-     * @param handshakeTimeout 握手超时时间(选填), 单位: 毫秒
+     * @param reuseAddr 是否允许复用端口, 默认不复用
+     * @param bz 数据缓冲区大小(字节)
+     * @param handshakeTimeout 握手超时时间, 单位: 毫秒
      */
     TcpServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr = false, size_t bz = 4096,
               size_t handshakeTimeout = 3000);
@@ -138,20 +138,18 @@ public:
      */
     void setConnectionCloseCallback(const TCP_SRV_CONN_CLOSE_CALLBACK& onCloseCb);
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 运行(非阻塞)
-     * @param sslContext TLS上下文(选填), 为空表示不启用TLS
+     * @param sslOn 是否开启SSL, true-是, false-否
+     * @param sslWay SSL验证方式, 1-单向, 2-双向
+     * @param certFmt (证书/私钥)文件格式, 1-DER, 2-PEM
+     * @param certFile 证书文件, 例如: client.crt
+     * @param pkFile 私钥文件, 例如; client.key
+     * @param pkPwd 私钥文件密码, 例如: 123456
      * @return true-运行中, false-运行失败(服务对象无效导致)
      */
-    bool run(const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr);
-#else
-    /**
-     * @brief 运行(非阻塞)
-     * @return true-运行中, false-运行失败(服务对象无效导致)
-     */
-    bool run();
-#endif
+    bool run(bool sslOn = false, int sslWay = 1, int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "",
+             const std::string& pkPwd = "");
 
     /**
      * @brief 停止
@@ -160,7 +158,7 @@ public:
 
     /**
      * @brief 是否有效
-     * @param errorMsg 错误消息(选填)
+     * @param errorMsg 错误消息
      * @return true-有效, false-无效
      */
     bool isValid(std::string* errorMsg = nullptr) const;
@@ -176,34 +174,6 @@ public:
      * @return true-运行中, false-非运行中
      */
     bool isRunning() const;
-
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    /**
-     * @brief 获取SSL(单向向验证)上下文(当证书文件或私钥文件为空时返回空)
-     * @param fileFmt 文件格式
-     * @param certFile 证书文件, 例如: server.crt
-     * @param privateKeyFile 私钥文件, 例如: server.key
-     * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
-     * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
-     * @return SSL上下文
-     */
-    static std::shared_ptr<boost::asio::ssl::context> getSsl1WayContext(boost::asio::ssl::context::file_format fileFmt,
-                                                                        const std::string& certFile, const std::string& privateKeyFile,
-                                                                        const std::string& privateKeyFilePwd, bool allowSelfSigned = true);
-
-    /**
-     * @brief 获取SSL(双向验证)上下文(当证书文件或私钥文件为空时返回空)
-     * @param fileFmt 文件格式
-     * @param certFile 证书文件, 例如: server.crt
-     * @param privateKeyFile 私钥文件, 例如: server.key
-     * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
-     * @param allowSelfSigned 是否允许自签证书通过(选填), 默认允许
-     * @return SSL上下文
-     */
-    static std::shared_ptr<boost::asio::ssl::context> getSsl2WayContext(boost::asio::ssl::context::file_format fileFmt,
-                                                                        const std::string& certFile, const std::string& privateKeyFile,
-                                                                        const std::string& privateKeyFilePwd, bool allowSelfSigned = true);
-#endif
 
 private:
     /**
@@ -234,22 +204,22 @@ private:
     void handshakeTimeoutLoopCheck(size_t handshakeTimeout);
 
 private:
-    std::shared_ptr<io_context_pool> m_contextPool; /* 上下文线程池 */
-    std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor; /* 接收器 */
+    std::shared_ptr<io_context_pool> m_contextPool = nullptr; /* 上下文线程池 */
+    std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor = nullptr; /* 接收器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
-    std::unique_ptr<std::thread> m_handshakeTimeoutCheckThread; /* 握手超时检测线程 */
+    std::shared_ptr<boost::asio::ssl::context> m_sslContext = nullptr; /* TLS上下文 */
+    std::unique_ptr<std::thread> m_handshakeTimeoutCheckThread = nullptr; /* 握手超时检测线程 */
 #endif
     std::atomic<uint32_t> m_bufferSize; /* 数据接收缓冲区大小 */
     std::mutex m_mutexConnectionMap;
     std::unordered_map<uint64_t, std::shared_ptr<TcpConnection>> m_connectionMap; /* 连接表 */
     std::mutex m_mutexHandshakeMap;
     std::unordered_map<uint64_t, std::chrono::steady_clock::time_point> m_handshakeMap; /* 握手表 */
-    TCP_SRV_CONN_NEW_CALLBACK m_onNewConnectionCallback; /* 新连接回调 */
-    TLS_SRV_HANDSHAKE_OK_CALLBACK m_onHandshakeOkCallback; /* 握手成功回调 */
-    TLS_SRV_HANDSHAKE_FAIL_CALLBACK m_onHandshakeFailCallback; /* 握手成失败回调 */
-    TCP_SRV_CONN_DATA_CALLBACK m_onConnectionDataCallback; /* 连接数据回调 */
-    TCP_SRV_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback; /* 连接关闭回调 */
+    TCP_SRV_CONN_NEW_CALLBACK m_onNewConnectionCallback = nullptr; /* 新连接回调 */
+    TLS_SRV_HANDSHAKE_OK_CALLBACK m_onHandshakeOkCallback = nullptr; /* 握手成功回调 */
+    TLS_SRV_HANDSHAKE_FAIL_CALLBACK m_onHandshakeFailCallback = nullptr; /* 握手成失败回调 */
+    TCP_SRV_CONN_DATA_CALLBACK m_onConnectionDataCallback = nullptr; /* 连接数据回调 */
+    TCP_SRV_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback = nullptr; /* 连接关闭回调 */
     std::string m_host; /* 主机 */
     std::atomic_bool m_running = {false}; /* 是否运行中 */
     std::string m_errorMsg; /* 错误消息 */

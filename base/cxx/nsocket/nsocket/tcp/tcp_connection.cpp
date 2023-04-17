@@ -330,23 +330,21 @@ std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSsl1WayContextClie
     return sslContext;
 }
 
-std::shared_ptr<boost::asio::ssl::context>
-TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::method m, boost::asio::ssl::context::file_format fileFmt,
-                                        const std::string& certFile, const std::string& privateKeyFile,
-                                        const std::string& privateKeyFilePwd, bool allowSelfSigned)
+std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::method m,
+                                                                                   boost::asio::ssl::context::file_format certFmt,
+                                                                                   const std::string& certFile, const std::string& pkFile,
+                                                                                   const std::string& pkPwd, bool allowSelfSigned)
 {
-    if (certFile.empty() || privateKeyFile.empty())
+    if (certFile.empty() || pkFile.empty())
     {
         return nullptr;
     }
     auto sslContext = std::make_shared<boost::asio::ssl::context>(m);
-    sslContext->use_certificate_file(certFile, fileFmt);
+    sslContext->use_certificate_file(certFile, certFmt);
     /* 注意: 需要先调用`set_password_callback`再调用`use_private_key_file`自动填充密码, 否则若有密码时会提示需要输入密码 */
     sslContext->set_password_callback(
-        [privateKeyFilePwd](size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
-            return privateKeyFilePwd;
-        });
-    sslContext->use_private_key_file(privateKeyFile, fileFmt);
+        [pkPwd](size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string { return pkPwd; });
+    sslContext->use_private_key_file(pkFile, certFmt);
     sslContext->set_verify_mode(boost::asio::ssl::verify_peer);
     sslContext->set_verify_callback([allowSelfSigned](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {
         X509_STORE_CTX* cts = ctx.native_handle();
@@ -373,22 +371,20 @@ TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::method m, boo
 }
 
 std::shared_ptr<boost::asio::ssl::context> TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::method m,
-                                                                             boost::asio::ssl::context::file_format fileFmt,
-                                                                             const std::string& certFile, const std::string& privateKeyFile,
-                                                                             const std::string& privateKeyFilePwd, bool allowSelfSigned)
+                                                                             boost::asio::ssl::context::file_format certFmt,
+                                                                             const std::string& certFile, const std::string& pkFile,
+                                                                             const std::string& pkPwd, bool allowSelfSigned)
 {
-    if (certFile.empty() || privateKeyFile.empty())
+    if (certFile.empty() || pkFile.empty())
     {
         return nullptr;
     }
     auto sslContext = std::make_shared<boost::asio::ssl::context>(m);
-    sslContext->use_certificate_file(certFile, fileFmt);
+    sslContext->use_certificate_file(certFile, certFmt);
     /* 注意: 需要先调用`set_password_callback`再调用`use_private_key_file`自动填充密码, 否则若有密码时会提示需要输入密码 */
     sslContext->set_password_callback(
-        [privateKeyFilePwd](size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string {
-            return privateKeyFilePwd;
-        });
-    sslContext->use_private_key_file(privateKeyFile, fileFmt);
+        [pkPwd](size_t maxLength, boost::asio::ssl::context::password_purpose passwordPurpose) -> std::string { return pkPwd; });
+    sslContext->use_private_key_file(pkFile, certFmt);
     sslContext->set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert
                                 | boost::asio::ssl::verify_client_once); /* 配置启用双向认证 */
     sslContext->set_verify_callback([allowSelfSigned](bool preverified, boost::asio::ssl::verify_context& ctx) -> bool {

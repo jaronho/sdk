@@ -7,9 +7,8 @@ std::weak_ptr<threading::Executor> DataChannel::getPktExecutor()
     return m_pktExecutor;
 }
 
-bool DataChannel::connect(unsigned short localPort, const std::string& address, unsigned short port, bool enableTls, int sslWay,
-                          bool filePEM, const std::string& certFile, const std::string& privateKeyFile,
-                          const std::string& privateKeyFilePwd)
+bool DataChannel::connect(unsigned short localPort, const std::string& address, unsigned short port, bool sslOn, int sslWay, int certFmt,
+                          const std::string& certFile, const std::string& pkFile, const std::string& pkPwd)
 {
     try
     {
@@ -19,9 +18,10 @@ bool DataChannel::connect(unsigned short localPort, const std::string& address, 
             return false;
         }
         sslWay = sslWay < 1 ? 1 : (sslWay > 2 ? 2 : sslWay);
-        if (enableTls)
+        certFmt = certFmt < 1 ? 1 : (certFmt > 2 ? 2 : certFmt);
+        if (sslOn)
         {
-            INFO_LOG(m_logger, "连接服务器: {}:{}, 通道加密: 是, SSL{}验证.", address, port, 1 == sslWay ? "单向" : "双向");
+            INFO_LOG(m_logger, "连接服务器: {}:{}, 通道加密: 是, SSL验证: {}.", address, port, 1 == sslWay ? "单向" : "双向");
         }
         else
         {
@@ -78,36 +78,13 @@ bool DataChannel::connect(unsigned short localPort, const std::string& address, 
         });
         m_tcpClient->setLocalPort(localPort);
         const std::weak_ptr<nsocket::TcpClient> wpTcpClient = m_tcpClient;
-        m_tcpExecutor->post("nac.loop", [wpTcpClient, address, port, enableTls, sslWay, filePEM, certFile, privateKeyFile,
-                                         privateKeyFilePwd, logger = m_logger]() {
+        m_tcpExecutor->post("nac.loop", [wpTcpClient, address, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, logger = m_logger]() {
             const auto tcpClient = wpTcpClient.lock();
             if (tcpClient)
             {
                 try
                 {
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-                    std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
-                    if (enableTls)
-                    {
-                        if (1 == sslWay) /* SSL单向验证 */
-                        {
-                            sslContext = nsocket::TcpClient::getSsl1WayContext();
-                        }
-                        else /* SSL双向验证 */
-                        {
-                            auto fmt =
-                                (filePEM ? boost::asio::ssl::context::file_format::pem : boost::asio::ssl::context::file_format::asn1);
-                            sslContext = nsocket::TcpClient::getSsl2WayContext(fmt, certFile, privateKeyFile, privateKeyFilePwd);
-                            if (!sslContext)
-                            {
-                                ERROR_LOG(logger, "缺少证书文件或私钥文件, 将默认使用非加密通道");
-                            }
-                        }
-                    }
-                    tcpClient->run(address, port, sslContext);
-#else
-                    tcpClient->run(address, port);
-#endif
+                    tcpClient->run(address, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, true);
                     INFO_LOG(logger, "运行结束.");
                 }
                 catch (const std::exception& e)

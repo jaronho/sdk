@@ -54,12 +54,8 @@ void Client::setLocalPort(uint16_t port)
     }
 }
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-void Client::run(const std::string& hostPortPath, uint16_t defaultPort, const std::shared_ptr<boost::asio::ssl::context>& sslContext,
-                 bool async)
-#else
-void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool async)
-#endif
+void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool sslOn, int sslWay, int certFmt, const std::string& certFile,
+                 const std::string& pkFile, const std::string& pkPwd, bool async)
 {
     size_t beg = 0;
     if (std::string::npos != hostPortPath.find("ws://"))
@@ -103,11 +99,7 @@ void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool asy
     m_uri = (std::string::npos == portEndPos) ? "/" : hostPortPath.substr(portEndPos);
     if (m_tcpClient)
     {
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-        m_tcpClient->run(host, port, sslContext);
-#else
-        m_tcpClient->run(host, port);
-#endif
+        m_tcpClient->run(host, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, async);
     }
 }
 

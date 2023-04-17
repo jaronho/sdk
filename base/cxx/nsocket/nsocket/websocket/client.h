@@ -95,25 +95,20 @@ public:
      */
     void setLocalPort(uint16_t port);
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 运行(进入循环, 阻塞和占用调用线程)
      * @param hostPortPath 远端主机端口路径, 例如: ws://127.0.0.1:4444/echo
      * @param defaultPort 默认远端端口, 当hostPortPath没有包含端口时则使用默认端口
-     * @param sslContext TLS上下文(选填), 为空表示不启用TLS
-     * @param async 是否异步连接(选填), 默认异步
+     * @param sslOn 是否开启SSL, true-是, false-否
+     * @param sslWay SSL验证方式, 1-单向, 2-双向
+     * @param certFmt 证书文件格式, 1-DER, 2-PEM
+     * @param certFile 证书文件, 例如: client.crt
+     * @param pkFile 私钥文件, 例如; client.key
+     * @param pkPwd 私钥文件密码, 例如: 123456
+     * @param async 是否异步连接, 默认异步
      */
-    void run(const std::string& hostPortPath, uint16_t defaultPort = 80,
-             const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr, bool async = true);
-#else
-    /**
-     * @brief 运行(进入循环, 阻塞和占用调用线程)
-     * @param hostPortPath 远端主机端口路径, 例如: ws://127.0.0.1:4444/echo
-     * @param defaultPort 默认远端端口, 当hostPortPath没有包含端口时则使用默认端口
-     * @param async 是否异步连接(选填), 默认异步
-     */
-    void run(const std::string& hostPortPath, uint16_t defaultPort = 80, bool async = true);
-#endif
+    void run(const std::string& hostPortPath, uint16_t defaultPort = 80, bool sslOn = false, int sslWay = 1, int certFmt = 2,
+             const std::string& certFile = "", const std::string& pkFile = "", const std::string& pkPwd = "", bool async = true);
 
     /**
      * @brief 发送文本

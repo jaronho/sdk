@@ -70,12 +70,12 @@ struct AccessConfig
     unsigned int localPort = 0; /* 本地端口 */
     std::string address; /* 服务器地址 */
     unsigned int port = 0; /* 服务器端口 */
-    bool enableTls = false; /* 是否通道加密, true-是, false-否(不需要证书/私钥) */
+    bool sslOn = false; /* 是否通道加密, true-是, false-否(不需要证书/私钥) */
     int sslWay = 1; /* SSL验证, 1-单向(不需要证书/私钥), 2-双向 */
-    bool filePEM = true; /* (证书/私钥)文件是否为PEM格式, true-是, false-否(DER格式) */
+    int certFmt = 2; /* (证书/私钥)文件格式, 1-DER, 2-PEM */
     std::string certFile; /* 证书文件(全路径), 例如: /home/root/client.crt */
-    std::string privateKeyFile; /* 私钥文件(全路径), 例如: /home/root/client.key */
-    std::string privateKeyFilePwd; /* 私钥文件密码, 例如: qq123456 */
+    std::string pkFile; /* 私钥文件(全路径), 例如: /home/root/client.key */
+    std::string pkPwd; /* 私钥文件密码, 例如: qq123456 */
     unsigned int connectTimeout = 0; /* 连接超时(秒), 为0表示系统默认 */
     BizCode authBizCode = BizCode(0); /* 鉴权业务码, 为0表示不需要鉴权 */
     unsigned int authTimeout = 30; /* 鉴权超时(秒), 必须大于0 */

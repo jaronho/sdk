@@ -2,17 +2,7 @@
 
 namespace nsocket
 {
-TcpClient::TcpClient(size_t bz)
-    : m_localPort(0)
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    , m_sslContext(nullptr)
-#endif
-    , m_tcpConn(nullptr)
-    , m_bufferSize(bz)
-    , m_onConnectCallback(nullptr)
-    , m_onDataCallback(nullptr)
-{
-}
+TcpClient::TcpClient(size_t bz) : m_bufferSize(bz) {}
 
 TcpClient::~TcpClient()
 {
@@ -34,12 +24,11 @@ void TcpClient::setLocalPort(uint16_t port)
     m_localPort = port;
 }
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-void TcpClient::run(const std::string& host, uint16_t port, const std::shared_ptr<boost::asio::ssl::context>& sslContext, bool async)
-#else
-void TcpClient::run(const std::string& host, uint16_t port, bool async)
-#endif
+void TcpClient::run(const std::string& host, uint16_t port, bool sslOn, int sslWay, int certFmt, const std::string& certFile,
+                    const std::string& pkFile, const std::string& pkPwd, bool async)
 {
+    sslWay = (1 == sslWay || 2 == sslWay) ? sslWay : 1;
+    certFmt = (1 == certFmt || 2 == certFmt) ? certFmt : 2;
     if (isRunning())
     {
         return;
@@ -57,20 +46,33 @@ void TcpClient::run(const std::string& host, uint16_t port, bool async)
     {
         m_endpointIter = m_endpoints.begin();
         boost::asio::ip::tcp::socket socket(m_ioContext);
+        std::shared_ptr<SocketTcpBase> socketPtr = nullptr;
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        if (sslContext) /* 启用TLS */
+        if (sslOn)
         {
-            m_sslContext = sslContext;
-            m_tcpConn = std::make_shared<TcpConnection>(std::make_shared<SocketTls>(std::move(socket), *m_sslContext), false, m_bufferSize);
+            if (1 == sslWay)
+            {
+                m_sslContext = TcpConnection::makeSsl1WayContextClient(boost::asio::ssl::context::sslv23_client, true);
+            }
+            else
+            {
+                m_sslContext = TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_client,
+                                                                 1 == certFmt ? boost::asio::ssl::context::file_format::asn1
+                                                                              : boost::asio::ssl::context::file_format::pem,
+                                                                 certFile, pkFile, pkPwd, true);
+            }
+            if (m_sslContext)
+            {
+                socketPtr = std::make_shared<SocketTls>(std::move(socket), *m_sslContext);
+            }
         }
-        else /* 不启用TLS */
+#endif
+        if (!socketPtr)
         {
-#endif
-            m_tcpConn = std::make_shared<TcpConnection>(std::make_shared<SocketTcp>(std::move(socket)), false, m_bufferSize);
-#if (1 == ENABLE_NSOCKET_OPENSSL)
+            socketPtr = std::make_shared<SocketTcp>(std::move(socket));
         }
-#endif
         const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
+        m_tcpConn = std::make_shared<TcpConnection>(socketPtr, false, m_bufferSize);
         m_tcpConn->setConnectCallback([wpSelf, async](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             if (self)
@@ -262,19 +264,4 @@ void TcpClient::handleConnect(const boost::system::error_code& code, bool async)
         }
     }
 }
-
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl1WayContext()
-{
-    return TcpConnection::makeSsl1WayContextClient(boost::asio::ssl::context::sslv23_client, true);
-}
-
-std::shared_ptr<boost::asio::ssl::context> TcpClient::getSsl2WayContext(boost::asio::ssl::context::file_format fileFmt,
-                                                                        const std::string& certFile, const std::string& privateKeyFile,
-                                                                        const std::string& privateKeyFilePwd)
-{
-    return TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_client, fileFmt, certFile, privateKeyFile, privateKeyFilePwd,
-                                             true);
-}
-#endif
 } // namespace nsocket

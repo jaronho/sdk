@@ -14,11 +14,11 @@ int main(int argc, char* argv[])
     printf("** [-p]                   server port, default: 4444                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     printf("** [-tls]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
-    printf("** [-pem]                 specify file format [0-DER, 1-PEM]. default: 1                                 **\n");
+    printf("** [-way]                 specify ssl way verify [1, 2], default: 1                                      **\n");
+    printf("** [-pem]                 specify file format [1-DER, 2-PEM]. default: 2                                 **\n");
     printf("** [-cf]                  specify certificate file. e.g. client.crt, ca.crt                              **\n");
     printf("** [-pkf]                 specify private key file, e.g. client.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
-    printf("** [-w]                   specify ssl way verify [1, 2], default: 1                                      **\n");
 #endif
     printf("**                                                                                                       **\n");
     printf("***********************************************************************************************************\n");
@@ -26,12 +26,12 @@ int main(int argc, char* argv[])
     int localPort = 0;
     std::string serverHost;
     int serverPort = 0;
-    int tls = 0;
-    int pem = 1;
+    int sslOn = 0;
+    int sslWay = 1;
+    int certFmt = 2;
     std::string certFile;
-    std::string privateKeyFile;
-    std::string privateKeyFilePwd;
-    int way = 1;
+    std::string pkFile;
+    std::string pkPwd;
     for (int i = 1; i < argc;)
     {
         const char* key = argv[i];
@@ -68,7 +68,16 @@ int main(int argc, char* argv[])
             ++i;
             if (i < argc)
             {
-                tls = atoi(argv[i]);
+                sslOn = atoi(argv[i]);
+                ++i;
+            }
+        }
+        else if (0 == strcmp(key, "-way")) /* SSL校验 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                sslWay = atoi(argv[i]);
                 ++i;
             }
         }
@@ -77,7 +86,7 @@ int main(int argc, char* argv[])
             ++i;
             if (i < argc)
             {
-                pem = atoi(argv[i]);
+                certFmt = atoi(argv[i]);
                 ++i;
             }
         }
@@ -95,7 +104,7 @@ int main(int argc, char* argv[])
             ++i;
             if (i < argc)
             {
-                privateKeyFile = argv[i];
+                pkFile = argv[i];
                 ++i;
             }
         }
@@ -104,16 +113,7 @@ int main(int argc, char* argv[])
             ++i;
             if (i < argc)
             {
-                privateKeyFilePwd = argv[i];
-                ++i;
-            }
-        }
-        else if (0 == strcmp(key, "-w")) /* SSL校验 */
-        {
-            ++i;
-            if (i < argc)
-            {
-                way = atoi(argv[i]);
+                pkPwd = argv[i];
                 ++i;
             }
         }
@@ -135,29 +135,29 @@ int main(int argc, char* argv[])
     {
         serverPort = 4444;
     }
-    if (tls < 0)
+    if (sslOn < 0)
     {
-        tls = 0;
+        sslOn = 0;
     }
-    else if (tls > 1)
+    else if (sslOn > 1)
     {
-        tls = 1;
+        sslOn = 1;
     }
-    if (pem < 0)
+    if (sslWay < 1)
     {
-        pem = 0;
+        sslWay = 1;
     }
-    else if (pem > 1)
+    else if (sslWay > 2)
     {
-        pem = 1;
+        sslWay = 2;
     }
-    if (way < 1)
+    if (certFmt < 1)
     {
-        way = 1;
+        certFmt = 1;
     }
-    else if (way > 2)
+    else if (certFmt > 2)
     {
-        way = 2;
+        certFmt = 2;
     }
     auto client = std::make_shared<nsocket::TcpClient>();
     /* 设置连接回调 */
@@ -200,47 +200,25 @@ int main(int argc, char* argv[])
         printf("\n");
     });
     /* 创建线程专门用于网络I/O事件轮询 */
-    std::thread th([&, localPort, serverHost, serverPort, tls, pem, certFile, privateKeyFile, privateKeyFilePwd, way]() {
+    std::thread th([&, localPort, serverHost, serverPort, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
             client->setLocalPort(localPort);
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-            if (0 == tls)
+            if (1 == sslOn && 1 == sslWay)
             {
-                printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
-                client->run(serverHost, serverPort);
+                printf("connect to server: %s:%d, ssl way: 1\n", serverHost.c_str(), serverPort);
+            }
+            else if (1 == sslOn && 2 == sslWay && !certFile.empty() && !pkFile.empty())
+            {
+                printf("connect to server: %s:%d, ssl way: 2, certFile: %s, pkFile: %s\n", serverHost.c_str(), serverPort, certFile.c_str(),
+                       pkFile.c_str());
             }
             else
             {
-                std::shared_ptr<boost::asio::ssl::context> sslContext;
-                if (1 == way)
-                {
-                    sslContext = nsocket::TcpClient::getSsl1WayContext();
-                    printf("connect to server: %s:%d, ssl way: 1\n", serverHost.c_str(), serverPort);
-                }
-                else
-                {
-                    sslContext = nsocket::TcpClient::getSsl2WayContext(pem ? boost::asio::ssl::context::file_format::pem
-                                                                           : boost::asio::ssl::context::file_format::asn1,
-                                                                       certFile, privateKeyFile, privateKeyFilePwd);
-                    if (sslContext)
-                    {
-                        printf("connect to server: %s:%d, ssl way: 2%s%s\n", serverHost.c_str(), serverPort,
-                               certFile.empty() ? "" : (", certFile: " + certFile).c_str(),
-                               certFile.empty() ? "" : (privateKeyFile.empty() ? "" : (", privateKeyFile: " + privateKeyFile).c_str()));
-                    }
-                    else
-                    {
-                        printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
-                    }
-                }
-                client->run(serverHost, serverPort, sslContext);
+                printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
             }
-#else
-            printf("connect to server: %s:%d\n", serverHost.c_str(), serverPort);
-            client->run(serverHost, serverPort);
-#endif
+            client->run(serverHost, serverPort, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
         }
         catch (const std::exception& e)
         {

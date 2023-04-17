@@ -48,12 +48,12 @@ int main(int argc, char* argv[])
     parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "127.0.0.1");
     parser.add<int>("port", 'p', "服务器端口, 默认:", false, 4444, cmdline::range(1, 65535));
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    parser.add<int>("tls", 't', "是否启用TLS, 值: 0-不启用, 1-启用, 默认:", false, 0, cmdline::range(0, 1));
-    parser.add<int>("cert-format", 'f', "证书文件格式, 值: 0-DER, 1-PEM, 默认:", false, 1, cmdline::oneof<int>(0, 1));
-    parser.add<std::string>("cert-file", 'c', "证书文件名, 例如: server.crt, 默认:", false, "");
-    parser.add<std::string>("key-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
-    parser.add<std::string>("key-pwd", 'P', "私钥文件密码, 例如: 123456, 默认:", false, "");
+    parser.add<int>("ssl-on", 't', "是否启用TLS, 值: 0-不启用, 1-启用, 默认:", false, 0, cmdline::range(0, 1));
     parser.add<int>("ssl-way", 'w', "SSL验证, 值: 1-单向验证, 2-双向验证, 默认:", false, 1, cmdline::oneof<int>(1, 2));
+    parser.add<int>("cert-fmt", 'f', "证书文件格式, 值: 1-DER, 2-PEM, 默认:", false, 2, cmdline::oneof<int>(1, 2));
+    parser.add<std::string>("cert-file", 'c', "证书文件名, 例如: server.crt, 默认:", false, "");
+    parser.add<std::string>("pk-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
+    parser.add<std::string>("pk-pwd", 'P', "私钥文件密码, 例如: 123456, 默认:", false, "");
 #endif
     parser.add<int>("data-type", 'd',
                     "数据类型, 值: 1-输入(原始), 2-输入(十六进制), 3-文件(原始, 全部), 4-文件(原始, 单行), 5-文件(十六进制, 单行), 默认:",
@@ -66,12 +66,12 @@ int main(int argc, char* argv[])
     auto server = parser.get<std::string>("server");
     auto port = parser.get<int>("port");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    auto tls = parser.get<int>("tls");
-    auto certFormat = parser.get<int>("cert-format");
+    auto sslOn = parser.get<int>("ssl-on");
+    auto sslWay = parser.get<int>("ssl-way");
+    auto certFmt = parser.get<int>("cert-fmt");
     auto certFile = parser.get<std::string>("cert-file");
-    auto privateKeyFile = parser.get<std::string>("key-file");
-    auto privateKeyFilePwd = parser.get<std::string>("key-pwd");
-    auto way = parser.get<int>("ssl-way");
+    auto pkFile = parser.get<std::string>("pk-file");
+    auto pkPwd = parser.get<std::string>("pk-pwd");
 #endif
     auto dataType = parser.get<int>("data-type");
     auto interval = parser.get<int>("interval");
@@ -148,47 +148,26 @@ int main(int argc, char* argv[])
         printf("\n");
     });
     /* 创建线程专门用于网络I/O事件轮询 */
-    std::thread th([&, tls, localPort, server, port, certFormat, certFile, privateKeyFile, privateKeyFilePwd, way]() {
+    std::thread th([&, localPort, server, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
             g_client->setLocalPort(localPort);
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-            if (0 == tls)
+            if (1 == sslOn && 1 == sslWay)
             {
-                printf("连接服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
-                g_client->run(server, port);
+                printf("连接服务器: %s:%d, SSL验证: 单向, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                       lineIntervalDesc.c_str());
+            }
+            else if (1 == sslOn && 2 == sslWay && !certFile.empty() && !pkFile.empty())
+            {
+                printf("连接服务器: %s:%d, SSL验证: 双向, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                       lineIntervalDesc.c_str());
             }
             else
             {
-                std::shared_ptr<boost::asio::ssl::context> sslContext;
-                if (1 == way) /* 单向SSL */
-                {
-                    sslContext = nsocket::TcpClient::getSsl1WayContext();
-                    printf("连接服务器: %s:%d, SSL验证: 单向, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(),
-                           lineIntervalDesc.c_str());
-                }
-                else /* 双向SSL */
-                {
-                    sslContext = nsocket::TcpClient::getSsl2WayContext(certFormat ? boost::asio::ssl::context::file_format::pem
-                                                                                  : boost::asio::ssl::context::file_format::asn1,
-                                                                       certFile, privateKeyFile, privateKeyFilePwd);
-                    if (sslContext)
-                    {
-                        printf("连接服务器: %s:%d, SSL验证: 双向, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(),
-                               lineIntervalDesc.c_str());
-                    }
-                    else
-                    {
-                        printf("连接服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
-                    }
-                }
-                g_client->run(server, port, sslContext);
+                printf("连接服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
             }
-#else
-            printf("连接服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
-            g_client->run(server, port);
-#endif
+            g_client->run(server, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
         }
         catch (const std::exception& e)
         {

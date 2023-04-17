@@ -14,7 +14,7 @@ class TcpClient final : public std::enable_shared_from_this<TcpClient>
 public:
     /**
      * @brief 构造函数
-     * @param bz 数据缓冲区大小(字节, 选填)
+     * @param bz 数据缓冲区大小(字节)
      */
     TcpClient(size_t bz = 4096);
 
@@ -38,25 +38,20 @@ public:
      */
     void setLocalPort(uint16_t port);
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
     /**
      * @brief 运行(进入循环, 阻塞和占用调用线程)
      * @param host 远端地址
      * @param port 远端端口
-     * @param sslContext TLS上下文(选填), 为空表示不启用TLS
-     * @param async 是否异步连接(选填), 默认异步
+     * @param sslOn 是否开启SSL, true-是, false-否
+     * @param sslWay SSL验证方式, 1-单向, 2-双向
+     * @param certFmt (证书/私钥)文件格式, 1-DER, 2-PEM
+     * @param certFile 证书文件, 例如: client.crt
+     * @param pkFile 私钥文件, 例如; client.key
+     * @param pkPwd 私钥文件密码, 例如: 123456
+     * @param async 是否异步连接, 默认异步
      */
-    void run(const std::string& host, uint16_t port, const std::shared_ptr<boost::asio::ssl::context>& sslContext = nullptr,
-             bool async = true);
-#else
-    /**
-     * @brief 运行(进入循环, 阻塞和占用调用线程)
-     * @param host 远端地址
-     * @param port 远端端口
-     * @param async 是否异步连接(选填), 默认异步
-     */
-    void run(const std::string& host, uint16_t port, bool async = true);
-#endif
+    void run(const std::string& host, uint16_t port, bool sslOn = false, int sslWay = 1, int certFmt = 2, const std::string& certFile = "",
+             const std::string& pkFile = "", const std::string& pkPwd = "", bool async = true);
 
     /**
      * @brief 发送数据(同步)
@@ -102,26 +97,6 @@ public:
      */
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const;
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    /**
-     * @brief 获取SSL(单向验证)上下文(不需要证书文件)
-     * @return SSL上下文
-     */
-    static std::shared_ptr<boost::asio::ssl::context> getSsl1WayContext();
-
-    /**
-     * @brief 获取SSL(双向验证)上下文(当证书文件或私钥文件为空时返回空)
-     * @param fileFmt 文件格式
-     * @param certFile 证书文件, 例如: client.crt
-     * @param privateKeyFile 私钥文件, 例如: client.key
-     * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
-     * @return SSL上下文
-     */
-    static std::shared_ptr<boost::asio::ssl::context> getSsl2WayContext(boost::asio::ssl::context::file_format fileFmt,
-                                                                        const std::string& certFile, const std::string& privateKeyFile,
-                                                                        const std::string& privateKeyFilePwd);
-#endif
-
 private:
     /**
      * @brief 处理连接结果
@@ -132,16 +107,16 @@ private:
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
-    uint16_t m_localPort; /* 本地端口 */
+    uint16_t m_localPort = 0; /* 本地端口 */
     boost::asio::ip::tcp::resolver::results_type m_endpoints; /* 远端端点 */
     boost::asio::ip::tcp::resolver::iterator m_endpointIter; /* 远端端点迭代器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    std::shared_ptr<boost::asio::ssl::context> m_sslContext; /* TLS上下文 */
+    std::shared_ptr<boost::asio::ssl::context> m_sslContext = nullptr; /* TLS上下文 */
 #endif
-    std::shared_ptr<TcpConnection> m_tcpConn; /* TCP连接 */
-    size_t m_bufferSize; /* 数据接收缓冲区大小 */
-    TCP_CONNECT_CALLBACK m_onConnectCallback; /* 连接回调 */
-    TCP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */
+    std::shared_ptr<TcpConnection> m_tcpConn = nullptr; /* TCP连接 */
+    size_t m_bufferSize = 0; /* 数据接收缓冲区大小 */
+    TCP_CONNECT_CALLBACK m_onConnectCallback = nullptr; /* 连接回调 */
+    TCP_DATA_CALLBACK m_onDataCallback = nullptr; /* 数据回调 */
     enum class RunStatus
     {
         none, /* 未开始 */

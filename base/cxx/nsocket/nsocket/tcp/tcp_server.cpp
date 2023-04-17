@@ -110,17 +110,14 @@ boost::asio::io_context& io_context_pool::getContext()
 TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr, size_t bz,
                      size_t handshakeTimeout)
     : m_contextPool(std::make_shared<io_context_pool>(name, threadCount))
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    , m_sslContext(nullptr)
-#endif
 {
     m_bufferSize = bz;
     try
     {
         m_acceptor = std::make_shared<boost::asio::ip::tcp::acceptor>(
             m_contextPool->getContext(), boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(host.c_str()), port), reuseAddr);
-#if (1 == ENABLE_NSOCKET_OPENSSL)
         handshakeTimeout = handshakeTimeout > 1000 ? handshakeTimeout : 1000;
+#if (1 == ENABLE_NSOCKET_OPENSSL)
         m_handshakeTimeoutCheckThread = std::make_unique<std::thread>([this, name, handshakeTimeout] {
             setThreadName(name + "-htc"); /* 设置线程名称 */
             while (1)
@@ -175,12 +172,10 @@ void TcpServer::setConnectionCloseCallback(const TCP_SRV_CONN_CLOSE_CALLBACK& on
     m_onConnectionCloseCallback = onCloseCb;
 }
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-bool TcpServer::run(const std::shared_ptr<boost::asio::ssl::context>& sslContext)
-#else
-bool TcpServer::run()
-#endif
+bool TcpServer::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile, const std::string& pkPwd)
 {
+    sslWay = (1 == sslWay || 2 == sslWay) ? sslWay : 1;
+    certFmt = (1 == certFmt || 2 == certFmt) ? certFmt : 2;
     if (m_running)
     {
         return true;
@@ -188,7 +183,20 @@ bool TcpServer::run()
     if (m_acceptor)
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        m_sslContext = sslContext;
+        if (1 == sslWay)
+        {
+            m_sslContext = TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::sslv23_server,
+                                                                   1 == certFmt ? boost::asio::ssl::context::file_format::asn1
+                                                                                : boost::asio::ssl::context::file_format::pem,
+                                                                   certFile, pkFile, pkPwd, true);
+        }
+        else
+        {
+            m_sslContext = TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_client,
+                                                             1 == certFmt ? boost::asio::ssl::context::file_format::asn1
+                                                                          : boost::asio::ssl::context::file_format::pem,
+                                                             certFile, pkFile, pkPwd, true);
+        }
         if (m_sslContext)
         {
             auto sessionIdCtx = std::to_string(m_acceptor->local_endpoint().port()) + ':';
@@ -277,19 +285,18 @@ void TcpServer::doAccept()
 void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)
 {
     /* 创建新连接 */
-    std::shared_ptr<TcpConnection> conn;
+    std::shared_ptr<SocketTcpBase> socketPtr = nullptr;
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     if (m_sslContext) /* 启用TLS */
     {
-        conn = std::make_shared<TcpConnection>(std::make_shared<SocketTls>(std::move(socket), *(m_sslContext)), true, m_bufferSize);
+        socketPtr = std::make_shared<SocketTls>(std::move(socket), *m_sslContext);
     }
-    else /* 不启用TLS */
+#endif
+    if (!socketPtr)
     {
-#endif
-        conn = std::make_shared<TcpConnection>(std::make_shared<SocketTcp>(std::move(socket)), true, m_bufferSize);
-#if (1 == ENABLE_NSOCKET_OPENSSL)
+        socketPtr = std::make_shared<SocketTcp>(std::move(socket));
     }
-#endif
+    auto conn = std::make_shared<TcpConnection>(socketPtr, true, m_bufferSize);
     {
         std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
         if (m_connectionMap.end() == m_connectionMap.find(conn->getId()))
@@ -463,22 +470,4 @@ void TcpServer::handshakeTimeoutLoopCheck(size_t handshakeTimeout)
         }
     }
 }
-
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-std::shared_ptr<boost::asio::ssl::context> TcpServer::getSsl1WayContext(boost::asio::ssl::context::file_format fileFmt,
-                                                                        const std::string& certFile, const std::string& privateKeyFile,
-                                                                        const std::string& privateKeyFilePwd, bool allowSelfSigned)
-{
-    return TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::sslv23_server, fileFmt, certFile, privateKeyFile,
-                                                   privateKeyFilePwd, allowSelfSigned);
-}
-
-std::shared_ptr<boost::asio::ssl::context> TcpServer::getSsl2WayContext(boost::asio::ssl::context::file_format fileFmt,
-                                                                        const std::string& certFile, const std::string& privateKeyFile,
-                                                                        const std::string& privateKeyFilePwd, bool allowSelfSigned)
-{
-    return TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_server, fileFmt, certFile, privateKeyFile, privateKeyFilePwd,
-                                             allowSelfSigned);
-}
-#endif
 } // namespace nsocket
