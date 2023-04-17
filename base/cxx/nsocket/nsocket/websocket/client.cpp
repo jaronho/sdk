@@ -55,7 +55,7 @@ void Client::setLocalPort(uint16_t port)
 }
 
 void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool sslOn, int sslWay, int certFmt, const std::string& certFile,
-                 const std::string& pkFile, const std::string& pkPwd, bool async)
+                 const std::string& pkFile, const std::string& pkPwd)
 {
     size_t beg = 0;
     if (std::string::npos != hostPortPath.find("ws://"))
@@ -99,7 +99,7 @@ void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool ssl
     m_uri = (std::string::npos == portEndPos) ? "/" : hostPortPath.substr(portEndPos);
     if (m_tcpClient)
     {
-        m_tcpClient->run(host, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, async);
+        m_tcpClient->run(host, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
     }
 }
 

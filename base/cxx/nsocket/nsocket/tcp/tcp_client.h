@@ -48,10 +48,9 @@ public:
      * @param certFile 证书文件, 例如: client.crt
      * @param pkFile 私钥文件, 例如; client.key
      * @param pkPwd 私钥文件密码, 例如: 123456
-     * @param async 是否异步连接, 默认异步
      */
     void run(const std::string& host, uint16_t port, bool sslOn = false, int sslWay = 1, int certFmt = 2, const std::string& certFile = "",
-             const std::string& pkFile = "", const std::string& pkPwd = "", bool async = true);
+             const std::string& pkFile = "", const std::string& pkPwd = "");
 
     /**
      * @brief 发送数据(同步)
@@ -101,9 +100,8 @@ private:
     /**
      * @brief 处理连接结果
      * @param code 错误码
-     * @param async 是否异步
      */
-    void handleConnect(const boost::system::error_code& code, bool async);
+    void handleConnect(const boost::system::error_code& code);
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
@@ -119,10 +117,10 @@ private:
     TCP_DATA_CALLBACK m_onDataCallback = nullptr; /* 数据回调 */
     enum class RunStatus
     {
-        none, /* 未开始 */
-        start, /* 开始 */
+        idle, /* 空闲 */
+        running, /* 运行中 */
         stop /* 停止 */
     };
-    std::atomic<RunStatus> m_runStatus = {RunStatus::none}; /* 运行状态 */
+    std::atomic<RunStatus> m_runStatus = {RunStatus::idle}; /* 运行状态 */
 };
 } // namespace nsocket

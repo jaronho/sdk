@@ -105,10 +105,9 @@ public:
      * @param certFile 证书文件, 例如: client.crt
      * @param pkFile 私钥文件, 例如; client.key
      * @param pkPwd 私钥文件密码, 例如: 123456
-     * @param async 是否异步连接, 默认异步
      */
     void run(const std::string& hostPortPath, uint16_t defaultPort = 80, bool sslOn = false, int sslWay = 1, int certFmt = 2,
-             const std::string& certFile = "", const std::string& pkFile = "", const std::string& pkPwd = "", bool async = true);
+             const std::string& certFile = "", const std::string& pkFile = "", const std::string& pkPwd = "");
 
     /**
      * @brief 发送文本

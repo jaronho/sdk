@@ -365,14 +365,17 @@ void TcpServer::handleConnectionResult(const std::shared_ptr<TcpConnection>& con
             }
             const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
             const std::weak_ptr<TcpConnection> wpConn = conn;
-            conn->handshake(boost::asio::ssl::stream_base::server, [wpSelf, wpConn, point](const boost::system::error_code& code) {
-                const auto self = wpSelf.lock();
-                const auto conn = wpConn.lock();
-                if (self && conn)
-                {
-                    self->handleHandshakeResult(conn, point, code);
-                }
-            });
+            conn->handshake(
+                boost::asio::ssl::stream_base::server,
+                [wpSelf, wpConn, point](const boost::system::error_code& code) {
+                    const auto self = wpSelf.lock();
+                    const auto conn = wpConn.lock();
+                    if (self && conn)
+                    {
+                        self->handleHandshakeResult(conn, point, code);
+                    }
+                },
+                true);
 #endif
         }
     }
