@@ -26,7 +26,7 @@ TcpConnection::TcpConnection(const std::shared_ptr<SocketTcpBase>& socket, bool 
     m_isEnableSSL = false;
 #endif
     m_isConnected = alreadyConnected;
-    resizeBuffer(bz);
+    m_recvBuf.resize(bz > 256 ? bz : 256);
 }
 
 TcpConnection::~TcpConnection()
@@ -37,16 +37,6 @@ TcpConnection::~TcpConnection()
 uint64_t TcpConnection::getId() const
 {
     return m_id;
-}
-
-size_t TcpConnection::getBufferSize() const
-{
-    return m_recvBuf.size();
-}
-
-void TcpConnection::resizeBuffer(size_t bz)
-{
-    m_recvBuf.resize(bz > 128 ? bz : 128);
 }
 
 void TcpConnection::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)

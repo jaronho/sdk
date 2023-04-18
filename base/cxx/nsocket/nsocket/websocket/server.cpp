@@ -8,19 +8,14 @@ namespace ws
 {
 Server::Server(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr, size_t bz,
                size_t handshakeTimeout)
+    : m_name(name)
+    , m_threadCount(threadCount)
+    , m_host(host)
+    , m_port(port)
+    , m_reuseAddr(reuseAddr)
+    , m_bufferSize(bz)
+    , m_handshakeTimeout(handshakeTimeout)
 {
-    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, reuseAddr, bz, handshakeTimeout);
-    m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) {
-        if (!m_tcpServer->isEnableSSL())
-        {
-            handleNewConnection(wpConn);
-        }
-    });
-    m_tcpServer->setHandshakeOkCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) { handleNewConnection(wpConn); });
-    m_tcpServer->setConnectionDataCallback(
-        [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
-    m_tcpServer->setConnectionCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point,
-                                                const boost::system::error_code& code) { handleConnectionClose(cid, point, code); });
 }
 
 Server::~Server()
@@ -60,33 +55,61 @@ void Server::setCloseCallback(const WS_SRV_CLOSE_CALLBACK& cb)
 
 bool Server::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile, const std::string& pkPwd)
 {
-    if (m_tcpServer)
+    auto tcpServer = std::make_shared<TcpServer>(m_name, m_threadCount, m_host, m_port, m_reuseAddr, m_bufferSize, m_handshakeTimeout);
+    tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) {
+        if (!tcpServer->isEnableSSL())
+        {
+            handleNewConnection(wpConn);
+        }
+    });
+    tcpServer->setHandshakeOkCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) { handleNewConnection(wpConn); });
+    tcpServer->setConnectionDataCallback(
+        [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
+    tcpServer->setConnectionCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point,
+                                              const boost::system::error_code& code) { handleConnectionClose(cid, point, code); });
     {
-        return m_tcpServer->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
+        std::lock_guard<std::mutex> locker(m_mutexTcpServer);
+        m_tcpServer = tcpServer;
     }
-    return false;
+    return tcpServer->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
 }
 
 void Server::stop()
 {
-    if (m_tcpServer)
+    std::shared_ptr<TcpServer> tcpServer = nullptr;
     {
-        m_tcpServer->stop();
+        std::lock_guard<std::mutex> locker(m_mutexTcpServer);
+        tcpServer = m_tcpServer;
+        m_tcpServer.reset();
+    }
+    if (tcpServer)
+    {
+        tcpServer->stop();
     }
 }
 
-bool Server::isValid(std::string* errorMsg) const
+bool Server::isValid(std::string* errorMsg)
 {
-    if (m_tcpServer && m_tcpServer->isValid(errorMsg))
+    std::shared_ptr<TcpServer> tcpServer = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpServer);
+        tcpServer = m_tcpServer;
+    }
+    if (tcpServer && tcpServer->isValid(errorMsg))
     {
         return true;
     }
     return false;
 }
 
-bool Server::isRunning() const
+bool Server::isRunning()
 {
-    if (m_tcpServer && m_tcpServer->isRunning())
+    std::shared_ptr<TcpServer> tcpServer = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpServer);
+        tcpServer = m_tcpServer;
+    }
+    if (tcpServer && tcpServer->isRunning())
     {
         return true;
     }
@@ -96,7 +119,7 @@ bool Server::isRunning() const
 std::unordered_map<uint64_t, std::weak_ptr<Session>> Server::getSessionMap()
 {
     std::unordered_map<uint64_t, std::weak_ptr<Session>> sessionMap;
-    std::lock_guard<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutexSessionMap);
     for (auto iter = m_sessionMap.begin(); m_sessionMap.end() != iter; ++iter)
     {
         sessionMap.insert(std::make_pair(iter->first, iter->second));
@@ -109,11 +132,10 @@ void Server::handleNewConnection(const std::weak_ptr<TcpConnection>& wpConn)
     const auto conn = wpConn.lock();
     if (conn)
     {
-        std::lock_guard<std::mutex> locker(m_mutex);
+        std::lock_guard<std::mutex> locker(m_mutexSessionMap);
         if (m_sessionMap.end() == m_sessionMap.find(conn->getId()))
         {
             auto session = std::make_shared<Session>();
-            session->m_defaultBufferSize = conn->getBufferSize();
             session->m_wpConn = wpConn;
             session->m_req = std::make_shared<Request>();
             session->m_frame = std::make_shared<Frame>();
@@ -130,7 +152,7 @@ void Server::handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, co
         std::shared_ptr<Session> session = nullptr;
         {
             /* 限定锁区间, 避免阻塞其他连接, 提高并发性 */
-            std::lock_guard<std::mutex> locker(m_mutex);
+            std::lock_guard<std::mutex> locker(m_mutexSessionMap);
             auto iter = m_sessionMap.find(conn->getId());
             if (m_sessionMap.end() != iter)
             {
@@ -142,20 +164,7 @@ void Server::handleConnectionData(const std::weak_ptr<TcpConnection>& wpConn, co
             return;
         }
         int used = 0;
-        auto frameHeadCb = [&]() {
-            /* 扩展数据接收缓冲区 */
-            auto bufferSize = session->m_frame->payloadLen;
-            if (bufferSize > conn->getBufferSize())
-            {
-                static const uint32_t MAX_BUFFER_SIZE = 65536; /* 64Kb */
-                if (bufferSize > MAX_BUFFER_SIZE) /* 限制上限 */
-                {
-                    bufferSize = MAX_BUFFER_SIZE;
-                }
-                conn->resizeBuffer(bufferSize);
-            }
-            handleFrameHead(session);
-        };
+        auto frameHeadCb = [&]() { handleFrameHead(session); };
         auto framePayloadCb = [&](size_t offset, const unsigned char* data, int dataLen) {
             handleFramePayload(session, offset, data, dataLen);
         };
@@ -185,7 +194,7 @@ void Server::handleConnectionClose(uint64_t cid, const boost::asio::ip::tcp::end
 {
     {
         /* 限定锁区间, 避免阻塞其他连接, 提高并发性 */
-        std::lock_guard<std::mutex> locker(m_mutex);
+        std::lock_guard<std::mutex> locker(m_mutexSessionMap);
         auto iter = m_sessionMap.find(cid);
         if (m_sessionMap.end() == iter)
         {
@@ -270,7 +279,6 @@ void Server::handleFrameFinish(const std::shared_ptr<Session>& session)
         {
             if (1 == session->m_frame->fin) /* 尾帧 */
             {
-                conn->resizeBuffer(session->m_defaultBufferSize); /* 调回数据接收缓冲区空间 */
                 if (m_messager)
                 {
                     m_messager->onMessageEnd(session);

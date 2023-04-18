@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
     {
         certFmt = 2;
     }
-    auto client = std::make_shared<nsocket::TcpClient>();
+    auto client = std::make_shared<nsocket::TcpClient>(localPort);
     /* 设置连接回调 */
     boost::asio::ip::tcp::endpoint localEndpoint;
     client->setConnectCallback([&](const boost::system::error_code& code) {
@@ -200,11 +200,10 @@ int main(int argc, char* argv[])
         printf("\n");
     });
     /* 创建线程专门用于网络I/O事件轮询 */
-    std::thread th([&, localPort, serverHost, serverPort, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd]() {
+    std::thread th([&, serverHost, serverPort, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
-            client->setLocalPort(localPort);
             if (1 == sslOn && 1 == sslWay)
             {
                 printf("connect to server: %s:%d, ssl way: 1\n", serverHost.c_str(), serverPort);

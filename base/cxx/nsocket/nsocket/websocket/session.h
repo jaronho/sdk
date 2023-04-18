@@ -69,7 +69,6 @@ public:
     bool isMsgText() const;
 
 protected:
-    size_t m_defaultBufferSize = 0; /* 默认缓冲区大小 */
     std::weak_ptr<TcpConnection> m_wpConn; /* TCP连接 */
     std::shared_ptr<Request> m_req; /* 请求 */
     std::shared_ptr<Frame> m_frame; /* 数据帧 */

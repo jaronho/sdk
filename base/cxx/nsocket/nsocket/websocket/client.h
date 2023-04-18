@@ -47,9 +47,10 @@ class Client final : public std::enable_shared_from_this<Client>
 public:
     /**
      * @brief 构造函数
-     * @param bz 数据缓冲区大小(字节, 选填)
+     * @param localPort 本地端口, 0表示使用自动分配
+     * @param bz 数据缓冲区大小(字节)
      */
-    Client(size_t bz = 4096);
+    Client(uint16_t localPort = 0, size_t bz = 4096);
 
     virtual ~Client();
 
@@ -90,12 +91,6 @@ public:
     void setCloseCallback(const WS_CLI_CLOSE_CALLBACK& cb);
 
     /**
-     * @brief 设置本地端口(运行前调用才有效)
-     * @param port 本地端口
-     */
-    void setLocalPort(uint16_t port);
-
-    /**
      * @brief 运行(进入循环, 阻塞和占用调用线程)
      * @param hostPortPath 远端主机端口路径, 例如: ws://127.0.0.1:4444/echo
      * @param defaultPort 默认远端端口, 当hostPortPath没有包含端口时则使用默认端口
@@ -112,14 +107,14 @@ public:
     /**
      * @brief 发送文本
      * @param text 文本数据
-     * @param isFin 是否最后一个帧(选填)
+     * @param isFin 是否最后一个帧
      */
     void sendText(const std::string& text, bool isFin = true);
 
     /**
      * @brief 发送二进制
      * @param text 二进制数据
-     * @param isFin 是否最后一个帧(选填)
+     * @param isFin 是否最后一个帧
      */
     void sendBytes(const std::vector<unsigned char>& bytes, bool isFin = true);
 
@@ -200,7 +195,6 @@ private:
     void handleFrameFinish();
 
 private:
-    size_t m_defaultBufferSize = 0; /* 默认缓冲区大小 */
     std::shared_ptr<TcpClient> m_tcpClient; /* TCP客户端 */
     std::string m_hostPort; /* 远端主机端口 */
     std::string m_uri; /* 远端URI */

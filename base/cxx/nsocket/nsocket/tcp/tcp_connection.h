@@ -37,18 +37,6 @@ public:
     uint64_t getId() const;
 
     /**
-     * @brief 获取数据缓冲区大小
-     * @return 缓冲区大小(字节)
-     */
-    size_t getBufferSize() const;
-
-    /**
-     * @brief 调整数据缓冲区大小
-     * @param bz 缓冲区大小(字节)
-     */
-    void resizeBuffer(size_t bz);
-
-    /**
      * @brief 设置连接回调
      * @param onConnectCb 连接回调
      */

@@ -87,16 +87,16 @@ private:
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
-    std::shared_ptr<UdpHandler> m_udpHandler; /* UDP处理器 */
+    std::shared_ptr<UdpHandler> m_udpHandler = nullptr; /* UDP处理器 */
     size_t m_bufferSize; /* 数据接收缓冲区大小 */
-    UDP_OPEN_CALLBACK m_onOpenCallback; /* 打开回调 */
-    UDP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */
+    UDP_OPEN_CALLBACK m_onOpenCallback = nullptr; /* 打开回调 */
+    UDP_DATA_CALLBACK m_onDataCallback = nullptr; /* 数据回调 */
     enum class RunStatus
     {
-        none, /* 未开始 */
-        start, /* 开始 */
+        idle, /* 空闲 */
+        running, /* 运行中 */
         stop /* 停止 */
     };
-    std::atomic<RunStatus> m_runStatus = {RunStatus::none}; /* 运行状态 */
+    std::atomic<RunStatus> m_runStatus = {RunStatus::idle}; /* 运行状态 */
 };
 } // namespace nsocket

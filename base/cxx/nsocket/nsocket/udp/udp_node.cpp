@@ -21,7 +21,7 @@ void UdpNode::setDataCallback(const UDP_DATA_CALLBACK& onDataCb)
 
 void UdpNode::run(const std::string& host, unsigned int port, bool broadcast)
 {
-    if (isRunning())
+    if (RunStatus::running == m_runStatus)
     {
         return;
     }
@@ -48,16 +48,11 @@ void UdpNode::run(const std::string& host, unsigned int port, bool broadcast)
         });
         m_udpHandler->setDataCallback(m_onDataCallback);
         m_udpHandler->open(endpoints.begin()->endpoint(), broadcast);
-        if (RunStatus::none == m_runStatus)
+        if (RunStatus::idle == m_runStatus)
         {
-            m_runStatus = RunStatus::start;
+            m_runStatus = RunStatus::running;
+            m_ioContext.run();
         }
-        else if (RunStatus::stop == m_runStatus)
-        {
-            stop();
-            return;
-        }
-        m_ioContext.run();
         stop();
     }
 }
@@ -67,7 +62,7 @@ boost::system::error_code UdpNode::send(const std::string& host, unsigned int po
 {
     auto code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
     sentLength = 0;
-    if (isRunning() && !m_ioContext.stopped() && m_udpHandler)
+    if (RunStatus::running == m_runStatus && !m_ioContext.stopped() && m_udpHandler)
     {
         auto endpoints = boost::asio::ip::udp::resolver(m_ioContext).resolve(host, std::to_string(port), code);
         if (code || endpoints.empty())
@@ -86,14 +81,7 @@ boost::system::error_code UdpNode::send(const std::string& host, unsigned int po
 void UdpNode::sendAsync(const std::string& host, unsigned int port, const std::vector<unsigned char>& data,
                         const UDP_SEND_CALLBACK& onSendCb)
 {
-    if (!isRunning() || m_ioContext.stopped())
-    {
-        if (onSendCb)
-        {
-            onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
-        }
-    }
-    else
+    if (RunStatus::running == m_runStatus && !m_ioContext.stopped() && m_udpHandler)
     {
         boost::system::error_code code;
         auto endpoints = boost::asio::ip::udp::resolver(m_ioContext).resolve(host, std::to_string(port), code);
@@ -110,11 +98,51 @@ void UdpNode::sendAsync(const std::string& host, unsigned int port, const std::v
             const std::weak_ptr<UdpNode> wpSelf = shared_from_this();
             boost::asio::post(m_ioContext, [wpSelf, point, data, onSendCb]() {
                 const auto self = wpSelf.lock();
+                if (self && RunStatus::running == self->m_runStatus && !self->m_ioContext.stopped() && self->m_udpHandler)
+                {
+                    self->m_udpHandler->send(point, data, onSendCb);
+                }
+                else if (onSendCb)
+                {
+                    onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+                }
+            });
+        }
+    }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
+}
+
+void UdpNode::stop()
+{
+    if (RunStatus::running == m_runStatus)
+    {
+        if (m_ioContext.stopped())
+        {
+            m_runStatus = RunStatus::stop;
+            if (m_udpHandler)
+            {
+                m_udpHandler->close();
+            }
+        }
+        else
+        {
+            const std::weak_ptr<UdpNode> wpSelf = shared_from_this();
+            boost::asio::post(m_ioContext, [wpSelf]() {
+                const auto self = wpSelf.lock();
                 if (self)
                 {
-                    if (self->m_udpHandler && self->isRunning())
+                    const auto lastStatus = self->m_runStatus.load();
+                    self->m_runStatus = RunStatus::stop;
+                    if (RunStatus::running == lastStatus)
                     {
-                        self->m_udpHandler->send(point, data, onSendCb);
+                        self->m_ioContext.stop();
+                        if (self->m_udpHandler)
+                        {
+                            self->m_udpHandler->close();
+                        }
                     }
                 }
             });
@@ -122,38 +150,9 @@ void UdpNode::sendAsync(const std::string& host, unsigned int port, const std::v
     }
 }
 
-void UdpNode::stop()
-{
-    if (isRunning() && !m_ioContext.stopped())
-    {
-        const std::weak_ptr<UdpNode> wpSelf = shared_from_this();
-        boost::asio::post(m_ioContext, [wpSelf]() {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                const auto lastStatus = self->m_runStatus.load();
-                self->m_runStatus = RunStatus::stop;
-                if (RunStatus::start != lastStatus)
-                {
-                    return;
-                }
-                self->m_ioContext.stop();
-                if (self->m_udpHandler)
-                {
-                    self->m_udpHandler->close();
-                }
-            }
-        });
-    }
-    else
-    {
-        m_runStatus = RunStatus::stop;
-    }
-}
-
 bool UdpNode::isRunning() const
 {
-    return (RunStatus::start == m_runStatus);
+    return (RunStatus::running == m_runStatus);
 }
 
 boost::asio::ip::udp::endpoint UdpNode::getLocalEndpoint() const

@@ -51,8 +51,8 @@ public:
      * @brief 创建文本帧
      * @param data [输出]帧数据
      * @param text 文本内容
-     * @param isClient 是否为客户端帧数据(选填)
-     * @param isFin 是否最后一个帧(选填)
+     * @param isClient 是否为客户端帧数据
+     * @param isFin 是否最后一个帧
      */
     static void createTextFrame(std::vector<unsigned char>& data, const std::string& text, bool isClient = false, bool isFin = true);
 
@@ -60,8 +60,8 @@ public:
      * @brief 创建二进制帧
      * @param data [输出]帧数据
      * @param bytes 帧数据(字节流)
-     * @param isClient 是否为客户端帧数据(选填)
-     * @param isFin 是否最后一个帧(选填)
+     * @param isClient 是否为客户端帧数据
+     * @param isFin 是否最后一个帧
      */
     static void createBinaryFrame(std::vector<unsigned char>& data, const std::vector<unsigned char>& bytes, bool isClient = false,
                                   bool isFin = true);
@@ -70,21 +70,21 @@ public:
      * @brief 创建关闭帧
      * @param data [输出]帧数据
      * @param code 关闭状态码
-     * @param isClient 是否为客户端帧数据(选填)
+     * @param isClient 是否为客户端帧数据
      */
     static void createCloseFrame(std::vector<unsigned char>& data, const CloseCode& code = CloseCode::close_normal, bool isClient = false);
 
     /**
      * @brief 创建ping帧
      * @param data [输出]帧数据
-     * @param isClient 是否为客户端帧数据(选填)
+     * @param isClient 是否为客户端帧数据
      */
     static void createPingFrame(std::vector<unsigned char>& data, bool isClient = false);
 
     /**
      * @brief 创建pong帧
      * @param data [输出]帧数据
-     * @param isClient 是否为客户端帧数据(选填)
+     * @param isClient 是否为客户端帧数据
      */
     static void createPongFrame(std::vector<unsigned char>& data, bool isClient = false);
 

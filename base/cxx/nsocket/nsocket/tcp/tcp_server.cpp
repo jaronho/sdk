@@ -183,26 +183,29 @@ bool TcpServer::run(bool sslOn, int sslWay, int certFmt, const std::string& cert
     if (m_acceptor)
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        if (1 == sslWay)
+        if (sslOn)
         {
-            m_sslContext = TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::sslv23_server,
-                                                                   1 == certFmt ? boost::asio::ssl::context::file_format::asn1
-                                                                                : boost::asio::ssl::context::file_format::pem,
-                                                                   certFile, pkFile, pkPwd, true);
-        }
-        else
-        {
-            m_sslContext = TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_client,
-                                                             1 == certFmt ? boost::asio::ssl::context::file_format::asn1
-                                                                          : boost::asio::ssl::context::file_format::pem,
-                                                             certFile, pkFile, pkPwd, true);
-        }
-        if (m_sslContext)
-        {
-            auto sessionIdCtx = std::to_string(m_acceptor->local_endpoint().port()) + ':';
-            sessionIdCtx.append(m_host.rbegin(), m_host.rend());
-            SSL_CTX_set_session_id_context(m_sslContext->native_handle(), (const unsigned char*)sessionIdCtx.data(),
-                                           std::min<size_t>(sessionIdCtx.size(), SSL_MAX_SSL_SESSION_ID_LENGTH));
+            if (1 == sslWay)
+            {
+                m_sslContext = TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::sslv23_server,
+                                                                       1 == certFmt ? boost::asio::ssl::context::file_format::asn1
+                                                                                    : boost::asio::ssl::context::file_format::pem,
+                                                                       certFile, pkFile, pkPwd, true);
+            }
+            else
+            {
+                m_sslContext = TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_server,
+                                                                 1 == certFmt ? boost::asio::ssl::context::file_format::asn1
+                                                                              : boost::asio::ssl::context::file_format::pem,
+                                                                 certFile, pkFile, pkPwd, true);
+            }
+            if (m_sslContext)
+            {
+                auto sessionIdCtx = std::to_string(m_acceptor->local_endpoint().port()) + ':';
+                sessionIdCtx.append(m_host.rbegin(), m_host.rend());
+                SSL_CTX_set_session_id_context(m_sslContext->native_handle(), (const unsigned char*)sessionIdCtx.data(),
+                                               std::min<size_t>(sessionIdCtx.size(), SSL_MAX_SSL_SESSION_ID_LENGTH));
+            }
         }
 #endif
         m_contextPool->start();

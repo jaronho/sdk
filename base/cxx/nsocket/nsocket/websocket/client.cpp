@@ -4,9 +4,9 @@ namespace nsocket
 {
 namespace ws
 {
-Client::Client(size_t bz)
+Client::Client(uint16_t localPort, size_t bz)
 {
-    m_tcpClient = std::make_shared<nsocket::TcpClient>(bz);
+    m_tcpClient = std::make_shared<nsocket::TcpClient>(localPort, bz);
     m_tcpClient->setConnectCallback([&](const boost::system::error_code& code) { handleConnect(code); });
     m_tcpClient->setDataCallback([&](const std::vector<unsigned char>& data) { handleData(data); });
 }
@@ -44,14 +44,6 @@ void Client::setMessager(const std::shared_ptr<CliMessager>& msger)
 void Client::setCloseCallback(const WS_CLI_CLOSE_CALLBACK& cb)
 {
     m_onCloseCallback = cb;
-}
-
-void Client::setLocalPort(uint16_t port)
-{
-    if (m_tcpClient)
-    {
-        m_tcpClient->setLocalPort(port);
-    }
 }
 
 void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool sslOn, int sslWay, int certFmt, const std::string& certFile,
@@ -97,109 +89,79 @@ void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool ssl
     host = (std::string::npos == hostEndPos) ? hostPortPath.substr(beg) : hostPortPath.substr(beg, hostEndPos - beg);
     m_hostPort = hostPortPath.substr(beg, portEndPos - beg);
     m_uri = (std::string::npos == portEndPos) ? "/" : hostPortPath.substr(portEndPos);
-    if (m_tcpClient)
-    {
-        m_tcpClient->run(host, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
-    }
+    m_tcpClient->run(host, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
 }
 
 void Client::sendText(const std::string& text, bool isFin)
 {
-    if (m_tcpClient)
-    {
-        std::vector<unsigned char> data;
-        Frame::createTextFrame(data, text, true, isFin);
-        m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
-            if (code && boost::system::errc::not_connected != code) /* 发送失败 */
-            {
-                stop();
-            }
-        });
-    }
+    std::vector<unsigned char> data;
+    Frame::createTextFrame(data, text, true, isFin);
+    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+        if (code && boost::system::errc::not_connected != code) /* 发送失败 */
+        {
+            stop();
+        }
+    });
 }
 
 void Client::sendBytes(const std::vector<unsigned char>& bytes, bool isFin)
 {
-    if (m_tcpClient)
-    {
-        std::vector<unsigned char> data;
-        Frame::createBinaryFrame(data, bytes, true, isFin);
-        m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
-            if (code && boost::system::errc::not_connected != code) /* 发送失败 */
-            {
-                stop();
-            }
-        });
-    }
+    std::vector<unsigned char> data;
+    Frame::createBinaryFrame(data, bytes, true, isFin);
+    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+        if (code && boost::system::errc::not_connected != code) /* 发送失败 */
+        {
+            stop();
+        }
+    });
 }
 
 void Client::sendPing()
 {
-    if (m_tcpClient)
-    {
-        std::vector<unsigned char> data;
-        Frame::createPingFrame(data, true);
-        m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
-            if (code && boost::system::errc::not_connected != code) /* 发送失败 */
-            {
-                stop();
-            }
-        });
-    }
+    std::vector<unsigned char> data;
+    Frame::createPingFrame(data, true);
+    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+        if (code && boost::system::errc::not_connected != code) /* 发送失败 */
+        {
+            stop();
+        }
+    });
 }
 
 void Client::sendPong()
 {
-    if (m_tcpClient)
-    {
-        std::vector<unsigned char> data;
-        Frame::createPongFrame(data, true);
-        m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
-            if (code && boost::system::errc::not_connected != code) /* 发送失败 */
-            {
-                stop();
-            }
-        });
-    }
+    std::vector<unsigned char> data;
+    Frame::createPongFrame(data, true);
+    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+        if (code && boost::system::errc::not_connected != code) /* 发送失败 */
+        {
+            stop();
+        }
+    });
 }
 
 void Client::sendClose(const CloseCode& code)
 {
-    if (m_tcpClient)
-    {
-        std::vector<unsigned char> data;
-        Frame::createCloseFrame(data, code, true);
-        m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
-            stop(); /* 无需判断发送结果, 直接断开连接 */
-        });
-    }
+    std::vector<unsigned char> data;
+    Frame::createCloseFrame(data, code, true);
+    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+        stop(); /* 无需判断发送结果, 直接断开连接 */
+    });
 }
 
 bool Client::isRunning() const
 {
-    if (m_tcpClient && m_tcpClient->isRunning())
-    {
-        return true;
-    }
-    return false;
+    return m_tcpClient->isRunning();
 }
 
 boost::asio::ip::tcp::endpoint Client::getLocalEndpoint() const
 {
-    if (m_tcpClient)
-    {
-        return m_tcpClient->getLocalEndpoint();
-    }
-    return boost::asio::ip::tcp::endpoint();
+    return m_tcpClient->getLocalEndpoint();
 }
 
 boost::asio::ip::tcp::endpoint Client::getRemoteEndpoint() const
 {
-    if (m_tcpClient)
-    {
-        return m_tcpClient->getRemoteEndpoint();
-    }
-    return boost::asio::ip::tcp::endpoint();
+    return m_tcpClient->getRemoteEndpoint();
 }
 
 std::string Client::getUri() const
@@ -209,10 +171,7 @@ std::string Client::getUri() const
 
 void Client::stop()
 {
-    if (m_tcpClient)
-    {
-        m_tcpClient->stop();
-    }
+    m_tcpClient->stop();
 }
 
 void Client::handleConnect(const boost::system::error_code& code)

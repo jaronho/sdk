@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
     {
         certFmt = 2;
     }
-    auto client = std::make_shared<nsocket::ws::Client>();
+    auto client = std::make_shared<nsocket::ws::Client>(localPort);
     client->setConnectingCallback([&, serverHost, defaultPort]() {
         auto localEndpoint = client->getLocalEndpoint();
         auto clientHost = localEndpoint.address().to_string();
@@ -206,11 +206,10 @@ int main(int argc, char* argv[])
         }
     });
     /* 创建线程专门用于网络I/O事件轮询 */
-    std::thread th([&, localPort, serverHost, defaultPort, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd]() {
+    std::thread th([&, serverHost, defaultPort, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
-            client->setLocalPort(localPort);
             if (1 == sslOn && 1 == sslWay)
             {
                 printf("connect to server: %s1, ssl way: 1\n", serverHost.c_str());

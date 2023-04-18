@@ -58,9 +58,9 @@ public:
      * @param threadCount 线程个数
      * @param host 主机地址
      * @param port 端口
-     * @param reuseAddr 是否允许复用端口(选填), 默认不复用
-     * @param bz 数据缓冲区大小(字节, 选填)
-     * @param handshakeTimeout 握手超时时间(选填), 单位: 毫秒
+     * @param reuseAddr 是否允许复用端口, 默认不复用
+     * @param bz 数据缓冲区大小(字节)
+     * @param handshakeTimeout 握手超时时间, 单位: 毫秒
      */
     Server(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr = false, size_t bz = 4096,
            size_t handshakeTimeout = 3000);
@@ -123,16 +123,16 @@ public:
 
     /**
      * @brief 是否有效
-     * @param errorMsg 错误消息(选填)
+     * @param errorMsg 错误消息
      * @return true-有效, false-无效
      */
-    bool isValid(std::string* errorMsg = nullptr) const;
+    bool isValid(std::string* errorMsg = nullptr);
 
     /**
      * @brief 是否运行中
      * @return true-运行中, false-非运行中
      */
-    bool isRunning() const;
+    bool isRunning();
 
     /**
      * @brief 获取会话表
@@ -177,15 +177,23 @@ private:
     void handleFrameFinish(const std::shared_ptr<Session>& session);
 
 private:
-    std::shared_ptr<TcpServer> m_tcpServer; /* TCP服务器 */
-    std::mutex m_mutex;
+    const std::string m_name; /* 服务名 */
+    const size_t m_threadCount; /* 线程个数 */
+    const std::string m_host; /* 主机地址 */
+    const uint16_t m_port; /* 端口 */
+    const bool m_reuseAddr; /* /* 是否允许复用端口 */
+    const size_t m_bufferSize; /* 缓冲区大小 */
+    const size_t m_handshakeTimeout; /* SSL握手超时(单位: 秒) */
+    std::mutex m_mutexTcpServer;
+    std::shared_ptr<TcpServer> m_tcpServer = nullptr; /* TCP服务器 */
+    std::mutex m_mutexSessionMap;
     std::unordered_map<uint64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
-    WS_SRV_CONNECTING_CALLBACK m_onConnectingCallback; /* 连接中回调 */
-    WS_SRV_OPEN_CALLBACK m_onOpenCallback; /* 连接打开回调 */
-    WS_SRV_PING_CALLBACK m_onPingCallback; /* ping回调 */
-    WS_SRV_PONG_CALLBACK m_onPongCallback; /* pong回调 */
-    std::shared_ptr<SrvMessager> m_messager; /* 消息接收者 */
-    WS_SRV_CLOSE_CALLBACK m_onCloseCallback; /* 连接关闭回调 */
+    WS_SRV_CONNECTING_CALLBACK m_onConnectingCallback = nullptr; /* 连接中回调 */
+    WS_SRV_OPEN_CALLBACK m_onOpenCallback = nullptr; /* 连接打开回调 */
+    WS_SRV_PING_CALLBACK m_onPingCallback = nullptr; /* ping回调 */
+    WS_SRV_PONG_CALLBACK m_onPongCallback = nullptr; /* pong回调 */
+    std::shared_ptr<SrvMessager> m_messager = nullptr; /* 消息接收者 */
+    WS_SRV_CLOSE_CALLBACK m_onCloseCallback = nullptr; /* 连接关闭回调 */
 };
 } // namespace ws
 } // namespace nsocket

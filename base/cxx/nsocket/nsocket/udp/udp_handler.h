@@ -114,10 +114,10 @@ private:
 
 private:
     uint64_t m_id; /* ID */
-    std::shared_ptr<SocketUdpBase> m_socketUdpBase; /* 套接字 */
+    std::shared_ptr<SocketUdpBase> m_socketUdpBase = nullptr; /* 套接字 */
     std::atomic_bool m_isOpened = {false}; /* 是否已打开 */
     std::vector<unsigned char> m_recvBuf; /* 接收缓冲区 */
-    UDP_OPEN_CALLBACK m_onOpenCallback; /* 打开回调 */
-    UDP_DATA_CALLBACK m_onDataCallback; /* 数据回调 */
+    UDP_OPEN_CALLBACK m_onOpenCallback = nullptr; /* 打开回调 */
+    UDP_DATA_CALLBACK m_onDataCallback = nullptr; /* 数据回调 */
 };
 } // namespace nsocket
