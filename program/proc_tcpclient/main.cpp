@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
         dataTypeDesc = "发送文件(十六进制, 单行)";
         lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
     }
-    g_client = std::make_shared<nsocket::TcpClient>();
+    g_client = std::make_shared<nsocket::TcpClient>(localPort);
     /* 设置连接回调 */
     g_client->setConnectCallback([&](const boost::system::error_code& code) {
         auto remoteEndpoint = g_client->getRemoteEndpoint();
@@ -152,7 +152,6 @@ int main(int argc, char* argv[])
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
         try
         {
-            g_client->setLocalPort(localPort);
             if (1 == sslOn && 1 == sslWay)
             {
                 printf("连接服务器: %s:%d, SSL验证: 单向, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(),
