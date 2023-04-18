@@ -29,7 +29,7 @@ bool DataChannel::connect(unsigned short localPort, const std::string& address, 
         }
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
         const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
-        m_tcpClient = std::make_shared<nsocket::TcpClient>();
+        m_tcpClient = std::make_shared<nsocket::TcpClient>(localPort);
         m_tcpClient->setConnectCallback([wpSelf, wpPktExecutor, logger = m_logger](const boost::system::error_code& code) {
             const auto pktExecutor = wpPktExecutor.lock();
             if (pktExecutor)
@@ -76,7 +76,6 @@ bool DataChannel::connect(unsigned short localPort, const std::string& address, 
                 WARN_LOG(logger, "数据接收警告: 报文处理线程为空.");
             }
         });
-        m_tcpClient->setLocalPort(localPort);
         const std::weak_ptr<nsocket::TcpClient> wpTcpClient = m_tcpClient;
         m_tcpExecutor->post("nac.loop", [wpTcpClient, address, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, logger = m_logger]() {
             const auto tcpClient = wpTcpClient.lock();
@@ -84,7 +83,7 @@ bool DataChannel::connect(unsigned short localPort, const std::string& address, 
             {
                 try
                 {
-                    tcpClient->run(address, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, true);
+                    tcpClient->run(address, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
                     INFO_LOG(logger, "运行结束.");
                 }
                 catch (const std::exception& e)

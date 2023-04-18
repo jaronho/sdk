@@ -54,7 +54,7 @@ void handleNewConnection(const std::shared_ptr<nsocket::TcpConnection>& conn)
         auto point = conn->getRemoteEndpoint();
         ClientInfo ci;
         ci.wpConn = conn;
-        ci.payload = std::make_shared<nsocket::Payload>(sizeof(PacketHead));
+        ci.payload = std::make_shared<nsocket::Payload>((uint32_t)sizeof(PacketHead));
         ci.pktHead = std::make_shared<PacketHead>();
         std::lock_guard<std::recursive_mutex> locker(g_mutex);
         auto iter = g_clientMap.find(point);
