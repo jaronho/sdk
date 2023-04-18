@@ -256,7 +256,11 @@ bool TcpServer::isValid(std::string* errorMsg) const
 
 bool TcpServer::isEnableSSL() const
 {
+#if (1 == ENABLE_NSOCKET_OPENSSL)
     return (m_sslContext ? true : false);
+#else
+    return false;
+#endif
 }
 
 bool TcpServer::isRunning() const
