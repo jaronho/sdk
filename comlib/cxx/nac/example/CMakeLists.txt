@@ -49,11 +49,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/algorithm 3rdp
 include_directories(${base_algorithm_dir})
 source_group(TREE ${base_algorithm_dir} PREFIX 3rdparty/base FILES ${base_algorithm_files})
 
-# 添加fileparse基础库
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/fileparse 3rdparty/base/fileparse)
-include_directories(${base_fileparse_dir})
-source_group(TREE ${base_fileparse_dir} PREFIX 3rdparty/base FILES ${base_fileparse_files})
-
 # 添加logger基础库
 option(enable_logger_detail "是否启用日志详情(包含文件名,行号,函数名)" ON)
 if(enable_logger_detail)
@@ -113,7 +108,6 @@ endforeach()
 # 构建可执行程序
 add_executable(example_client
                ${base_algorithm_files}
-               ${base_fileparse_files}
                ${base_logger_files}
                ${base_nsocket_files}
                ${base_threading_files}
@@ -123,7 +117,6 @@ add_executable(example_client
 
 add_executable(example_server
                ${base_algorithm_files}
-               ${base_fileparse_files}
                ${base_logger_files}
                ${base_nsocket_files}
                ${base_threading_files}

@@ -1,11 +1,11 @@
 #pragma once
 #include <functional>
 
-#include "fileparse/nlohmann/helper.hpp"
 #include "impl/connect_service.h"
 #include "impl/data_channel.h"
 #include "impl/protocol_adapter.h"
 #include "impl/session_manager.h"
+#include "protocol_adapter_custom.h"
 #include "threading/timer/steady_timer.h"
 
 /* 网络接入控制(Network Access Control) */
@@ -21,7 +21,7 @@ enum class BizCode;
  * @param ok 是否成功
  * @param data 数据
  */
-using RespCallback = std::function<void(bool ok, const nlohmann::json& data)>;
+using RespCallback = std::function<void(bool ok, const std::string& data)>;
 
 /**
  * @brief 业务执行器钩子
@@ -55,7 +55,7 @@ protected:
      * @param func 消息处理函数
      * @return true-订阅成功, false-订阅失败
      */
-    bool subscribeAccessMsg(const BizCode& bizCode, const std::function<void(int64_t seqId, const nlohmann::json& data)>& func);
+    bool subscribeAccessMsg(const BizCode& bizCode, const std::function<void(int64_t seqId, const std::string& data)>& func);
 
 private:
     std::shared_ptr<StateHandler> m_stateHandler = nullptr; /* 连接状态处理器 */
@@ -95,28 +95,30 @@ class AccessCtrl final
 public:
     /**
      * @brief 启动模块
+     * @param adapter 协议适配器
      * @param bizExecutor 业务处理线程
      * @param bizExecutorHook 业务处理线程钩子(选填), 为空时直接执行处理函数
      */
-    static void start(const threading::ExecutorPtr& bizExecutor, const BizExecutorHook& bizExecutorHook = nullptr);
+    static void start(const std::shared_ptr<ProtocolAdapter>& adapter, const threading::ExecutorPtr& bizExecutor,
+                      const BizExecutorHook& bizExecutorHook = nullptr);
 
     /**
      * @brief 设置鉴权数据生成器
      * @param generator 生成器, 返回值: 鉴权数据
      */
-    static void setAuthDataGenerator(const std::function<nlohmann::json()>& generator);
+    static void setAuthDataGenerator(const std::function<std::string()>& generator);
 
     /**
      * @brief 设置鉴权结果回调
      * @param callback 回调, 参数: 鉴权结果, 返回值: true-鉴权成功, false-鉴权失败
      */
-    static void setAuthResultCallback(const std::function<bool(const nlohmann::json& data)>& callback);
+    static void setAuthResultCallback(const std::function<bool(const std::string& data)>& callback);
 
     /**
      * @brief 设置心跳数据生成器
      * @param generator 生成器, 返回值: 心跳数据(一般为空)
      */
-    static void setHeartbeatDataGenerator(const std::function<nlohmann::json()>& generator);
+    static void setHeartbeatDataGenerator(const std::function<std::string()>& generator);
 
     /**
      * @brief 连接(非阻塞)
@@ -139,7 +141,7 @@ public:
      * @param timeout 响应超时(秒), 为0时表示不需要等待服务端响应数据
      * @return 消息序列ID, -1表示发送失败
      */
-    static int64_t sendMsg(const BizCode& bizCode, int64_t seqId, const nlohmann::json& data, const RespCallback& callback,
+    static int64_t sendMsg(const BizCode& bizCode, int64_t seqId, const std::string& data, const RespCallback& callback = nullptr,
                            unsigned int timeout = 30);
 
     /**

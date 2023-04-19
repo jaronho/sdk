@@ -3,7 +3,6 @@
 #include <thread>
 
 #include "access_def.h"
-#include "fileparse/nlohmann/helper.hpp"
 #include "logger/logger_manager.h"
 #include "nsocket/payload.h"
 #include "nsocket/tcp/tcp_server.h"
@@ -307,12 +306,9 @@ int main(int argc, char* argv[])
                             }
                             else
                             {
-                                nlohmann::json j;
-                                std::string errDesc;
-                                auto ret = nlohmann::parse(pkt->data, j, &errDesc);
                                 INFO_LOG(s_logger, "收到客户端数据[{}] [{}:{}]\n{}", conn->getId(), clientHost, clientPort, pkt->data);
-                                INFO_LOG(s_logger, "总长度: {}, bizCode: {}, seqId: {}, 包体长度: {}, {}", dataLength, pkt->bizCode,
-                                         pkt->seqId, body.size(), ret ? "解析成功." : "解析失败: " + errDesc + ".");
+                                INFO_LOG(s_logger, "总长度: {}, bizCode: {}, seqId: {}, 包体长度: {}", dataLength, pkt->bizCode, pkt->seqId,
+                                         body.size());
                             }
                             /* 应答 */
                             std::vector<unsigned char> buffer;

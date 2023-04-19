@@ -19,7 +19,7 @@ public:
     {
         subscribeAccessState([&](const nac::ConnectState& state) { onAccessState(state); });
         subscribeAccessMsg(nac::BizCode::notify_proc_upgrade,
-                           [&](unsigned long long seqId, const nlohmann::json& data) { onNotifyProcUpgrage(seqId, data); });
+                           [&](unsigned long long seqId, const std::string& data) { onNotifyProcUpgrage(seqId, data); });
     }
 
     ~Login() {}
@@ -43,7 +43,7 @@ private:
         }
     }
 
-    void onNotifyProcUpgrage(unsigned long long seqId, const nlohmann::json& data) {}
+    void onNotifyProcUpgrage(unsigned long long seqId, const std::string& data) {}
 };
 
 int main(int argc, char* argv[])
@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     printf("** Options:                                                                                              **\n");
     printf("**                                                                                                       **\n");
     printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
-    printf("** [-p]                   server port, default: 4335                                                     **\n");
+    printf("** [-p]                   server port, default: 4444                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     printf("** [-tls]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
     printf("** [-w]                   specify ssl way verify [0, 1, 2], default: 0                                   **\n");
@@ -161,7 +161,7 @@ int main(int argc, char* argv[])
     }
     if (serverPort <= 0)
     {
-        serverPort = 4335;
+        serverPort = 4444;
     }
     if (tls < 0)
     {
@@ -202,7 +202,7 @@ int main(int argc, char* argv[])
     Login login;
     /* 启动网络接入模块 */
     s_logicExecutor = threading::ThreadProxy::createAsioExecutor("logic", 1);
-    nac::AccessCtrl::start(s_logicExecutor);
+    nac::AccessCtrl::start(std::make_shared<nac::ProtocolAdapterCustom>(), s_logicExecutor);
     nac::AccessConfig acfg;
     acfg.address = serverHost;
     acfg.port = serverPort;
@@ -245,18 +245,14 @@ int main(int argc, char* argv[])
         try
         {
             auto bizCode = std::atoi(vec[0].c_str());
-            nlohmann::json data;
+            std::string data;
             long long fileSize = 0;
             if (vec.size() > 1)
             {
                 auto fileData = utility::FileInfo(vec[1]).readAll(fileSize, true);
                 if (fileData)
                 {
-                    std::string errDesc;
-                    if (!nlohmann::parse(fileData, data, &errDesc))
-                    {
-                        ERROR_LOG(s_logger, "解析文件 {} 失败, {}", vec[1], errDesc);
-                    }
+                    data = fileData;
                     free(fileData);
                 }
                 else
@@ -265,7 +261,7 @@ int main(int argc, char* argv[])
                 }
             }
             auto seqId = nac::AccessCtrl::sendMsg((nac::BizCode)bizCode, 0, data,
-                                                  [&, bizCode](bool ok, const nlohmann::json& data) {
+                                                  [&, bizCode](bool ok, const std::string& data) {
                                                       INFO_LOG(s_logger, "响应消息, bizCode: {} {}", bizCode, ok ? "成功." : "失败.");
                                                   },
                                                   10);
