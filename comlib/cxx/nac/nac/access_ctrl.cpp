@@ -103,6 +103,7 @@ static std::map<int32_t, std::list<std::weak_ptr<MsgHandler>>> s_msgHandlerMap; 
 static std::mutex s_mutexCfg;
 static AccessConfig s_cfg; /* 接入配置 */
 static threading::SteadyTimerPtr s_retryTimer = nullptr; /* 重试(自动重连)定时器 */
+static std::atomic_bool s_retryFlag = {false}; /* 重试定时器标识 */
 
 void AccessCtrl::start(const threading::ExecutorPtr& bizExecutor, const BizExecutorHook& bizExecutorHook)
 {
@@ -190,6 +191,7 @@ bool AccessCtrl::connect(const AccessConfig& cfg)
                 [&](const std::chrono::steady_clock::time_point& tp) { onRetryTimer(); }, s_dataChannel->getPktExecutor().lock());
         }
     }
+    s_retryFlag = true;
     /* 首次连接 */
     return s_connectService->connect(cfg.localPort, cfg.address, cfg.port, cfg.sslOn, cfg.sslWay, cfg.certFmt, cfg.certFile, cfg.pkFile,
                                      cfg.pkPwd, cfg.connectTimeout, (int32_t)cfg.authBizCode, cfg.authTimeout,
@@ -202,6 +204,7 @@ void AccessCtrl::disconnect()
     {
         return;
     }
+    s_retryFlag = false;
     if (s_retryTimer)
     {
         s_retryTimer->stop();
@@ -420,7 +423,7 @@ void AccessCtrl::onConnectStateChanged(const ConnectState& state)
     });
     if (ConnectState::disconnected == state) /* 断开连接, 重连 */
     {
-        if (s_retryTimer)
+        if (s_retryTimer && s_retryFlag)
         {
             s_retryTimer->start();
         }
