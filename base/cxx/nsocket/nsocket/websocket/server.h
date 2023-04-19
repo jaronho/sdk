@@ -122,13 +122,6 @@ public:
     void stop();
 
     /**
-     * @brief 是否有效
-     * @param errorMsg 错误消息
-     * @return true-有效, false-无效
-     */
-    bool isValid(std::string* errorMsg = nullptr);
-
-    /**
      * @brief 是否运行中
      * @return true-运行中, false-非运行中
      */

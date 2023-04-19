@@ -82,11 +82,6 @@ int main(int argc, char* argv[])
     auto pkPwd = parser.get<std::string>("pk-pwd");
 #endif
     g_server = std::make_shared<nsocket::http::Server>("http_server", 10, server, port);
-    if (!g_server->isValid())
-    {
-        printf("服务器启动失败, 请检查地址和端口是否可用\n");
-        return 0;
-    }
     /* 设置路由未找到回调 */
     g_server->setRouterNotFoundCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
         printf("****************************** 路由未找到 ******************************\n");

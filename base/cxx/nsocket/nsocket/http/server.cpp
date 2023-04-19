@@ -84,20 +84,6 @@ void Server::stop()
     }
 }
 
-bool Server::isValid(std::string* errorMsg)
-{
-    std::shared_ptr<TcpServer> tcpServer = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(m_mutexTcpServer);
-        tcpServer = m_tcpServer;
-    }
-    if (tcpServer && tcpServer->isValid(errorMsg))
-    {
-        return true;
-    }
-    return false;
-}
-
 bool Server::isRunning()
 {
     std::shared_ptr<TcpServer> tcpServer = nullptr;

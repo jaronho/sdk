@@ -48,11 +48,6 @@ int main(int argc, char* argv[])
         replyDesc = "原数据返回";
     }
     g_server = std::make_shared<nsocket::ws::Server>("ws_server", 10, server, port);
-    if (!g_server->isValid())
-    {
-        printf("启动服务器失败, 请检查地址[%s]和端口[%d]是否可用\n", server.c_str(), port);
-        return 0;
-    }
     /* 设置新连接回调 */
     g_server->setConnectingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
         const auto session = wpSession.lock();

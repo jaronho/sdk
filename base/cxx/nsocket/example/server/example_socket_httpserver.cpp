@@ -205,11 +205,6 @@ int main(int argc, char* argv[])
         certFmt = 2;
     }
     nsocket::http::Server server("http_server", 10, serverHost, serverPort);
-    if (!server.isValid())
-    {
-        printf("server invalid, please check host[%s] or port[%d]\n", serverHost.c_str(), serverPort);
-        return 0;
-    }
     server.setRouterNotFoundCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
         printf("************************* Not Found URI Router *************************\n");
         printf("***     Cid: %zu\n", cid);
