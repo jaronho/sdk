@@ -39,14 +39,18 @@ std::string Session::getUri() const
     return m_req->uri;
 }
 
-void Session::sendText(const std::string& text, bool isFin)
+void Session::sendText(const std::string& text, bool isFin, const TCP_SEND_CALLBACK& onSendCb)
 {
     const auto conn = m_wpConn.lock();
     if (conn)
     {
         std::vector<unsigned char> data;
         Frame::createTextFrame(data, text, false, isFin);
-        conn->send(data, [&](const boost::system::error_code& code, size_t length) {
+        conn->send(data, [&, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
             const auto conn = m_wpConn.lock();
             if (conn)
             {
@@ -57,16 +61,24 @@ void Session::sendText(const std::string& text, bool isFin)
             }
         });
     }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
 }
 
-void Session::sendBytes(const std::vector<unsigned char>& bytes, bool isFin)
+void Session::sendBytes(const std::vector<unsigned char>& bytes, bool isFin, const TCP_SEND_CALLBACK& onSendCb)
 {
     const auto conn = m_wpConn.lock();
     if (conn)
     {
         std::vector<unsigned char> data;
         Frame::createBinaryFrame(data, bytes, false, isFin);
-        conn->send(data, [&](const boost::system::error_code& code, size_t length) {
+        conn->send(data, [&, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
             const auto conn = m_wpConn.lock();
             if (conn)
             {
@@ -77,16 +89,24 @@ void Session::sendBytes(const std::vector<unsigned char>& bytes, bool isFin)
             }
         });
     }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
 }
 
-void Session::sendPing()
+void Session::sendPing(const TCP_SEND_CALLBACK& onSendCb)
 {
     const auto conn = m_wpConn.lock();
     if (conn)
     {
         std::vector<unsigned char> data;
         Frame::createPingFrame(data, false);
-        conn->send(data, [&](const boost::system::error_code& code, size_t length) {
+        conn->send(data, [&, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
             const auto conn = m_wpConn.lock();
             if (conn)
             {
@@ -97,16 +117,24 @@ void Session::sendPing()
             }
         });
     }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
 }
 
-void Session::sendPong()
+void Session::sendPong(const TCP_SEND_CALLBACK& onSendCb)
 {
     const auto conn = m_wpConn.lock();
     if (conn)
     {
         std::vector<unsigned char> data;
         Frame::createPongFrame(data, false);
-        conn->send(data, [&](const boost::system::error_code& code, size_t length) {
+        conn->send(data, [&, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
             const auto conn = m_wpConn.lock();
             if (conn)
             {
@@ -117,22 +145,34 @@ void Session::sendPong()
             }
         });
     }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
 }
 
-void Session::sendClose(const CloseCode& code)
+void Session::sendClose(const CloseCode& code, const TCP_SEND_CALLBACK& onSendCb)
 {
     const auto conn = m_wpConn.lock();
     if (conn)
     {
         std::vector<unsigned char> data;
         Frame::createCloseFrame(data, code, false);
-        conn->send(data, [&](const boost::system::error_code& code, size_t length) {
+        conn->send(data, [&, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
             const auto conn = m_wpConn.lock();
             if (conn) /* 无需判断发送结果, 直接断开连接 */
             {
                 conn->close();
             }
         });
+    }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
     }
 }
 
