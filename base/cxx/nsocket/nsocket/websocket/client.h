@@ -108,31 +108,36 @@ public:
      * @brief 发送文本
      * @param text 文本数据
      * @param isFin 是否最后一个帧
+     * @param onSendCb 发送回调
      */
-    void sendText(const std::string& text, bool isFin = true);
+    void sendText(const std::string& text, bool isFin = true, const TCP_SEND_CALLBACK& onSendCb = nullptr);
 
     /**
      * @brief 发送二进制
      * @param text 二进制数据
      * @param isFin 是否最后一个帧
+     * @param onSendCb 发送回调
      */
-    void sendBytes(const std::vector<unsigned char>& bytes, bool isFin = true);
+    void sendBytes(const std::vector<unsigned char>& bytes, bool isFin = true, const TCP_SEND_CALLBACK& onSendCb = nullptr);
 
     /**
      * @brief 发送ping命令
+     * @param onSendCb 发送回调
      */
-    void sendPing();
+    void sendPing(const TCP_SEND_CALLBACK& onSendCb = nullptr);
 
     /**
      * @brief 发送pong命令
+     * @param onSendCb 发送回调
      */
-    void sendPong();
+    void sendPong(const TCP_SEND_CALLBACK& onSendCb = nullptr);
 
     /**
      * @brief 发送关闭命令
      * @param code 关闭命令码
+     * @param onSendCb 发送回调
      */
-    void sendClose(const CloseCode& code = CloseCode::close_normal);
+    void sendClose(const CloseCode& code = CloseCode::close_normal, const TCP_SEND_CALLBACK& onSendCb = nullptr);
 
     /**
      * @brief 是否在运行

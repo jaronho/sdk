@@ -92,11 +92,15 @@ void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool ssl
     m_tcpClient->run(host, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
 }
 
-void Client::sendText(const std::string& text, bool isFin)
+void Client::sendText(const std::string& text, bool isFin, const TCP_SEND_CALLBACK& onSendCb)
 {
     std::vector<unsigned char> data;
     Frame::createTextFrame(data, text, true, isFin);
-    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+    m_tcpClient->sendAsync(data, [&, onSendCb](const boost::system::error_code& code, size_t length) {
+        if (onSendCb)
+        {
+            onSendCb(code, length);
+        }
         if (code && boost::system::errc::not_connected != code) /* 发送失败 */
         {
             stop();
@@ -104,11 +108,15 @@ void Client::sendText(const std::string& text, bool isFin)
     });
 }
 
-void Client::sendBytes(const std::vector<unsigned char>& bytes, bool isFin)
+void Client::sendBytes(const std::vector<unsigned char>& bytes, bool isFin, const TCP_SEND_CALLBACK& onSendCb)
 {
     std::vector<unsigned char> data;
     Frame::createBinaryFrame(data, bytes, true, isFin);
     m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+        if (onSendCb)
+        {
+            onSendCb(code, length);
+        }
         if (code && boost::system::errc::not_connected != code) /* 发送失败 */
         {
             stop();
@@ -116,11 +124,15 @@ void Client::sendBytes(const std::vector<unsigned char>& bytes, bool isFin)
     });
 }
 
-void Client::sendPing()
+void Client::sendPing(const TCP_SEND_CALLBACK& onSendCb)
 {
     std::vector<unsigned char> data;
     Frame::createPingFrame(data, true);
     m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+        if (onSendCb)
+        {
+            onSendCb(code, length);
+        }
         if (code && boost::system::errc::not_connected != code) /* 发送失败 */
         {
             stop();
@@ -128,11 +140,15 @@ void Client::sendPing()
     });
 }
 
-void Client::sendPong()
+void Client::sendPong(const TCP_SEND_CALLBACK& onSendCb)
 {
     std::vector<unsigned char> data;
     Frame::createPongFrame(data, true);
     m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+        if (onSendCb)
+        {
+            onSendCb(code, length);
+        }
         if (code && boost::system::errc::not_connected != code) /* 发送失败 */
         {
             stop();
@@ -140,11 +156,15 @@ void Client::sendPong()
     });
 }
 
-void Client::sendClose(const CloseCode& code)
+void Client::sendClose(const CloseCode& code, const TCP_SEND_CALLBACK& onSendCb)
 {
     std::vector<unsigned char> data;
     Frame::createCloseFrame(data, code, true);
     m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
+        if (onSendCb)
+        {
+            onSendCb(code, length);
+        }
         stop(); /* 无需判断发送结果, 直接断开连接 */
     });
 }
