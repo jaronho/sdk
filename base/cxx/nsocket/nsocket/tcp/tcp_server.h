@@ -1,5 +1,6 @@
 #pragma once
 #include <boost/asio/ip/address.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <chrono>
 #include <memory>
 #include <mutex>
@@ -193,28 +194,28 @@ private:
                                 const boost::system::error_code& code);
 
     /**
+     * @brief 处理握手
+     */
+    void handleHandshake(const std::shared_ptr<TcpConnection>& conn, const boost::asio::ip::tcp::endpoint& point);
+
+    /**
      * @brief 处理握手结果
      */
     void handleHandshakeResult(const std::shared_ptr<TcpConnection>& conn, const boost::asio::ip::tcp::endpoint& point,
                                const boost::system::error_code& code);
-
-    /**
-     * @brief 握手超时循环检测
-     */
-    void handshakeTimeoutLoopCheck(size_t handshakeTimeout);
 
 private:
     std::shared_ptr<io_context_pool> m_contextPool = nullptr; /* 上下文线程池 */
     std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor = nullptr; /* 接收器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext = nullptr; /* TLS上下文 */
-    std::unique_ptr<std::thread> m_handshakeTimeoutCheckThread = nullptr; /* 握手超时检测线程 */
+    size_t m_handshakeTimeout = 1000; /* 握手超时时间(单位: 毫秒) */
 #endif
     std::atomic<uint32_t> m_bufferSize; /* 数据接收缓冲区大小 */
     std::mutex m_mutexConnectionMap;
     std::unordered_map<uint64_t, std::shared_ptr<TcpConnection>> m_connectionMap; /* 连接表 */
     std::mutex m_mutexHandshakeMap;
-    std::unordered_map<uint64_t, std::chrono::steady_clock::time_point> m_handshakeMap; /* 握手表 */
+    std::unordered_map<uint64_t, std::shared_ptr<boost::asio::steady_timer>> m_handshakeMap; /* 握手表 */
     TCP_SRV_CONN_NEW_CALLBACK m_onNewConnectionCallback = nullptr; /* 新连接回调 */
     TLS_SRV_HANDSHAKE_OK_CALLBACK m_onHandshakeOkCallback = nullptr; /* 握手成功回调 */
     TLS_SRV_HANDSHAKE_FAIL_CALLBACK m_onHandshakeFailCallback = nullptr; /* 握手成失败回调 */
