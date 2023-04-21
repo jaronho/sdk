@@ -105,7 +105,7 @@ public:
      * @param handshakeTimeout 握手超时时间
      */
     TcpServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr = false, size_t bz = 4096,
-              const std::chrono::steady_clock::duration handshakeTimeout = std::chrono::seconds(3));
+              const std::chrono::steady_clock::duration& handshakeTimeout = std::chrono::seconds(3));
 
     virtual ~TcpServer();
 

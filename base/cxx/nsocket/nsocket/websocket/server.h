@@ -60,10 +60,10 @@ public:
      * @param port 端口
      * @param reuseAddr 是否允许复用端口, 默认不复用
      * @param bz 数据缓冲区大小(字节)
-     * @param handshakeTimeout 握手超时时间, 单位: 毫秒
+     * @param handshakeTimeout 握手超时时间
      */
     Server(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr = false, size_t bz = 4096,
-           size_t handshakeTimeout = 3000);
+           const std::chrono::steady_clock::duration& handshakeTimeout = std::chrono::seconds(3));
 
     virtual ~Server();
 
@@ -176,7 +176,7 @@ private:
     const uint16_t m_port; /* 端口 */
     const bool m_reuseAddr; /* /* 是否允许复用端口 */
     const size_t m_bufferSize; /* 缓冲区大小 */
-    const size_t m_handshakeTimeout; /* SSL握手超时(单位: 秒) */
+    const std::chrono::steady_clock::duration m_handshakeTimeout; /* SSL握手超时时间 */
     std::mutex m_mutexTcpServer;
     std::shared_ptr<TcpServer> m_tcpServer = nullptr; /* TCP服务器 */
     std::mutex m_mutexSessionMap;

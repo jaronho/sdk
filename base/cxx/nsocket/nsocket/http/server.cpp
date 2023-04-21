@@ -5,7 +5,7 @@ namespace nsocket
 namespace http
 {
 Server::Server(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr, size_t bz,
-               size_t handshakeTimeout)
+               const std::chrono::steady_clock::duration& handshakeTimeout)
     : m_name(name)
     , m_threadCount(threadCount)
     , m_host(host)

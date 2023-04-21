@@ -115,7 +115,7 @@ std::unique_ptr<std::thread> s_handshakeCheckThread = nullptr; /* 握手检测�
 #endif
 
 TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr, size_t bz,
-                     const std::chrono::steady_clock::duration handshakeTimeout)
+                     const std::chrono::steady_clock::duration& handshakeTimeout)
     : m_contextPool(std::make_shared<io_context_pool>(name, threadCount))
 {
     m_bufferSize = bz;
