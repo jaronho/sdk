@@ -115,7 +115,7 @@ std::unique_ptr<std::thread> s_handshakeCheckThread = nullptr; /* 握手检测�
 #endif
 
 TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr, size_t bz,
-                     size_t handshakeTimeout)
+                     const std::chrono::steady_clock::duration handshakeTimeout)
     : m_contextPool(std::make_shared<io_context_pool>(name, threadCount))
 {
     m_bufferSize = bz;
@@ -144,7 +144,7 @@ TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::str
                 });
             }
         }
-        m_handshakeTimeout = handshakeTimeout > 1000 ? handshakeTimeout : 1000;
+        m_handshakeTimeout = handshakeTimeout > std::chrono::seconds(1) ? handshakeTimeout : std::chrono::seconds(1);
 #endif
         m_host = host;
     }
@@ -395,7 +395,7 @@ void TcpServer::handleHandshake(const std::shared_ptr<TcpConnection>& conn, cons
     const std::weak_ptr<TcpConnection> wpConn = conn;
     if (tm)
     {
-        tm->expires_from_now(std::chrono::milliseconds(m_handshakeTimeout));
+        tm->expires_from_now(m_handshakeTimeout);
         tm->async_wait([wpSelf, wpConn, point](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             const auto conn = wpConn.lock();
