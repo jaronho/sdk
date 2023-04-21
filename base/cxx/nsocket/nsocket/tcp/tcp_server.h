@@ -89,7 +89,7 @@ private:
 };
 
 /**
- * @brief TCP服务端(注意: 需要实例化为共享指针否则会报错, 2.停止后需要重新实例化, 不可复用之前的实例)
+ * @brief TCP服务端(注意: 1.需要实例化为共享指针否则会报错, 2.停止后需要重新实例化, 不可复用之前的实例)
  */
 class TcpServer final : public std::enable_shared_from_this<TcpServer>
 {

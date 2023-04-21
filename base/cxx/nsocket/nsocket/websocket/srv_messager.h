@@ -43,7 +43,7 @@ public:
      * @brief 开始接收消息响应函数, 注意: 严禁在函数内执行死循环或长循环逻辑, 否则会否则会阻塞该连接线程
      * @param session 会话
      */
-    std::function<void(const std::shared_ptr<Session>& session)> beginCb;
+    std::function<void(const std::shared_ptr<Session>& session)> beginCb = nullptr;
 
     /**
      * @brief 消息内容响应函数(可能会被批量调用), 注意: 严禁在函数内执行死循环或长循环逻辑, 否则会否则会阻塞该连接线程
@@ -52,13 +52,13 @@ public:
      * @param data 本次接收的消息内容块
      * @param dataLen 本次接收的消息内容块长度
      */
-    std::function<void(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen)> payloadCb;
+    std::function<void(const std::shared_ptr<Session>& session, size_t offset, const unsigned char* data, int dataLen)> payloadCb = nullptr;
 
     /**
      * @brief 消息接收结束响应函数, 注意: 严禁在函数内执行死循环或长循环逻辑, 否则会否则会阻塞该连接线程
      * @param session 会话
      */
-    std::function<void(const std::shared_ptr<Session>& session)> endCb;
+    std::function<void(const std::shared_ptr<Session>& session)> endCb = nullptr;
 
 protected:
     void onMessageBegin(const std::shared_ptr<Session>& session) override;
@@ -78,7 +78,7 @@ public:
      * @param isText 消息是否为文本类型, true-文本, fasle-非文本
      * @param msg 消息内容
      */
-    std::function<void(const std::shared_ptr<Session>& session, bool isText, const std::string& msg)> onMessage;
+    std::function<void(const std::shared_ptr<Session>& session, bool isText, const std::string& msg)> onMessage = nullptr;
 
 protected:
     void onMessageBegin(const std::shared_ptr<Session>& session) override;

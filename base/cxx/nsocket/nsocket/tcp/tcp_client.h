@@ -8,7 +8,7 @@
 namespace nsocket
 {
 /**
- * @brief TCP客户端(注意: 需要实例化为共享指针否则会报错)
+ * @brief TCP客户端(注意: 1.需要实例化为共享指针否则会报错, 2.停止后需要重新实例化, 不可复用之前的实例)
  */
 class TcpClient final : public std::enable_shared_from_this<TcpClient>
 {

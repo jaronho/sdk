@@ -4,12 +4,7 @@ namespace nsocket
 {
 namespace ws
 {
-Client::Client(uint16_t localPort, size_t bz)
-{
-    m_tcpClient = std::make_shared<nsocket::TcpClient>(localPort, bz);
-    m_tcpClient->setConnectCallback([&](const boost::system::error_code& code) { handleConnect(code); });
-    m_tcpClient->setDataCallback([&](const std::vector<unsigned char>& data) { handleData(data); });
-}
+Client::Client(uint16_t localPort, size_t bz) : m_localPort(localPort), m_bufferSize(bz) {}
 
 Client::~Client()
 {
@@ -89,99 +84,218 @@ void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool ssl
     host = (std::string::npos == hostEndPos) ? hostPortPath.substr(beg) : hostPortPath.substr(beg, hostEndPos - beg);
     m_hostPort = hostPortPath.substr(beg, portEndPos - beg);
     m_uri = (std::string::npos == portEndPos) ? "/" : hostPortPath.substr(portEndPos);
-    m_tcpClient->run(host, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
+    auto tcpClient = std::make_shared<nsocket::TcpClient>(m_localPort, m_bufferSize);
+    tcpClient->setConnectCallback([&](const boost::system::error_code& code) { handleConnect(code); });
+    tcpClient->setDataCallback([&](const std::vector<unsigned char>& data) { handleData(data); });
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        m_tcpClient = tcpClient;
+    }
+    tcpClient->run(host, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
 }
 
 void Client::sendText(const std::string& text, bool isFin, const TCP_SEND_CALLBACK& onSendCb)
 {
-    std::vector<unsigned char> data;
-    Frame::createTextFrame(data, text, true, isFin);
-    m_tcpClient->sendAsync(data, [&, onSendCb](const boost::system::error_code& code, size_t length) {
-        if (onSendCb)
-        {
-            onSendCb(code, length);
-        }
-        if (code && boost::system::errc::not_connected != code) /* 发送失败 */
-        {
-            stop();
-        }
-    });
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        std::vector<unsigned char> data;
+        Frame::createTextFrame(data, text, true, isFin);
+        const std::weak_ptr<Client> wpSelf = shared_from_this();
+        tcpClient->sendAsync(data, [wpSelf, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
+            if (code && boost::system::errc::not_connected != code) /* 发送失败 */
+            {
+                const auto self = wpSelf.lock();
+                if (self)
+                {
+                    self->stop();
+                }
+            }
+        });
+    }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
 }
 
 void Client::sendBytes(const std::vector<unsigned char>& bytes, bool isFin, const TCP_SEND_CALLBACK& onSendCb)
 {
-    std::vector<unsigned char> data;
-    Frame::createBinaryFrame(data, bytes, true, isFin);
-    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
-        if (onSendCb)
-        {
-            onSendCb(code, length);
-        }
-        if (code && boost::system::errc::not_connected != code) /* 发送失败 */
-        {
-            stop();
-        }
-    });
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        std::vector<unsigned char> data;
+        Frame::createBinaryFrame(data, bytes, true, isFin);
+        const std::weak_ptr<Client> wpSelf = shared_from_this();
+        tcpClient->sendAsync(data, [wpSelf, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
+            if (code && boost::system::errc::not_connected != code) /* 发送失败 */
+            {
+                const auto self = wpSelf.lock();
+                if (self)
+                {
+                    self->stop();
+                }
+            }
+        });
+    }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
 }
 
 void Client::sendPing(const TCP_SEND_CALLBACK& onSendCb)
 {
-    std::vector<unsigned char> data;
-    Frame::createPingFrame(data, true);
-    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
-        if (onSendCb)
-        {
-            onSendCb(code, length);
-        }
-        if (code && boost::system::errc::not_connected != code) /* 发送失败 */
-        {
-            stop();
-        }
-    });
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        std::vector<unsigned char> data;
+        Frame::createPingFrame(data, true);
+        const std::weak_ptr<Client> wpSelf = shared_from_this();
+        tcpClient->sendAsync(data, [wpSelf, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
+            if (code && boost::system::errc::not_connected != code) /* 发送失败 */
+            {
+                const auto self = wpSelf.lock();
+                if (self)
+                {
+                    self->stop();
+                }
+            }
+        });
+    }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
 }
 
 void Client::sendPong(const TCP_SEND_CALLBACK& onSendCb)
 {
-    std::vector<unsigned char> data;
-    Frame::createPongFrame(data, true);
-    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
-        if (onSendCb)
-        {
-            onSendCb(code, length);
-        }
-        if (code && boost::system::errc::not_connected != code) /* 发送失败 */
-        {
-            stop();
-        }
-    });
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        std::vector<unsigned char> data;
+        Frame::createPongFrame(data, true);
+        const std::weak_ptr<Client> wpSelf = shared_from_this();
+        tcpClient->sendAsync(data, [wpSelf, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
+            if (code && boost::system::errc::not_connected != code) /* 发送失败 */
+            {
+                const auto self = wpSelf.lock();
+                if (self)
+                {
+                    self->stop();
+                }
+            }
+        });
+    }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
 }
 
 void Client::sendClose(const CloseCode& code, const TCP_SEND_CALLBACK& onSendCb)
 {
-    std::vector<unsigned char> data;
-    Frame::createCloseFrame(data, code, true);
-    m_tcpClient->sendAsync(data, [&](const boost::system::error_code& code, size_t length) {
-        if (onSendCb)
-        {
-            onSendCb(code, length);
-        }
-        stop(); /* 无需判断发送结果, 直接断开连接 */
-    });
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        std::vector<unsigned char> data;
+        Frame::createCloseFrame(data, code, true);
+        const std::weak_ptr<Client> wpSelf = shared_from_this();
+        tcpClient->sendAsync(data, [wpSelf, onSendCb](const boost::system::error_code& code, size_t length) {
+            if (onSendCb)
+            {
+                onSendCb(code, length);
+            }
+            const auto self = wpSelf.lock();
+            if (self)
+            {
+                self->stop(); /* 无需判断发送结果, 直接断开连接 */
+            }
+        });
+    }
+    else if (onSendCb)
+    {
+        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+    }
 }
 
-bool Client::isRunning() const
+bool Client::isRunning()
 {
-    return m_tcpClient->isRunning();
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient && tcpClient->isRunning())
+    {
+        return true;
+    }
+    return false;
 }
 
-boost::asio::ip::tcp::endpoint Client::getLocalEndpoint() const
+boost::asio::ip::tcp::endpoint Client::getLocalEndpoint()
 {
-    return m_tcpClient->getLocalEndpoint();
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        return tcpClient->getLocalEndpoint();
+    }
+    return boost::asio::ip::tcp::endpoint();
 }
 
-boost::asio::ip::tcp::endpoint Client::getRemoteEndpoint() const
+boost::asio::ip::tcp::endpoint Client::getRemoteEndpoint()
 {
-    return m_tcpClient->getRemoteEndpoint();
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        return m_tcpClient->getRemoteEndpoint();
+    }
+    return boost::asio::ip::tcp::endpoint();
 }
 
 std::string Client::getUri() const
@@ -191,7 +305,15 @@ std::string Client::getUri() const
 
 void Client::stop()
 {
-    m_tcpClient->stop();
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        tcpClient->stop();
+    }
 }
 
 void Client::handleConnect(const boost::system::error_code& code)
@@ -217,11 +339,18 @@ void Client::handleConnect(const boost::system::error_code& code)
         m_resp = std::make_shared<Response>();
         m_frame = std::make_shared<Frame>();
         /* 发送首次请求 */
-        size_t sentLength;
-        auto code = m_tcpClient->send(data, sentLength);
-        if (code) /* 失败, 则需要关闭连接 */
+        std::shared_ptr<TcpClient> tcpClient = nullptr;
         {
-            stop();
+            std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+            tcpClient = m_tcpClient;
+        }
+        if (tcpClient)
+        {
+            size_t sentLength;
+            if (tcpClient->send(data, sentLength)) /* 失败, 则需要关闭连接 */
+            {
+                stop();
+            }
         }
     }
 }

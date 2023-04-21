@@ -85,8 +85,8 @@ public:
 
 protected:
     std::weak_ptr<TcpConnection> m_wpConn; /* TCP连接 */
-    std::shared_ptr<Request> m_req; /* 请求 */
-    std::shared_ptr<Frame> m_frame; /* 数据帧 */
+    std::shared_ptr<Request> m_req = nullptr; /* 请求 */
+    std::shared_ptr<Frame> m_frame = nullptr; /* 数据帧 */
     bool m_isMsgText = false; /* 当前消息是否为文本 */
 };
 } // namespace ws

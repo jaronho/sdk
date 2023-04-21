@@ -52,8 +52,8 @@ std::vector<std::string> Server::addRouter(const std::vector<Method>& methods, c
 bool Server::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile, const std::string& pkPwd)
 {
     auto tcpServer = std::make_shared<TcpServer>(m_name, m_threadCount, m_host, m_port, m_reuseAddr, m_bufferSize, m_handshakeTimeout);
-    tcpServer->setNewConnectionCallback([&](const std::weak_ptr<TcpConnection>& wpConn) {
-        if (!tcpServer->isEnableSSL())
+    tcpServer->setNewConnectionCallback([&, enableSSL = tcpServer->isEnableSSL()](const std::weak_ptr<TcpConnection>& wpConn) {
+        if (!enableSSL)
         {
             handleNewConnection(wpConn);
         }

@@ -55,9 +55,9 @@ private:
 class Router_batch : public Router
 {
 public:
-    std::function<void(uint64_t cid, const REQUEST_PTR& req)> headCb;
-    std::function<void(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)> contentCb;
-    std::function<void(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req)> headCb = nullptr;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)> contentCb = nullptr;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler = nullptr;
 
 protected:
     void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
@@ -71,7 +71,8 @@ protected:
 class Router_simple : public Router
 {
 public:
-    std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& data, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& data, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler =
+        nullptr;
 
 protected:
     void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
@@ -90,7 +91,7 @@ class Router_x_www_form_urlencoded : public Router
 {
 public:
     std::function<void(uint64_t cid, const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields, const SEND_RESPONSE_FUNC& sendRespFunc)>
-        respHandler;
+        respHandler = nullptr;
 
 protected:
     void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
@@ -116,14 +117,14 @@ private:
 class Router_multipart_form_data : public Router
 {
 public:
-    std::function<void(uint64_t cid, const REQUEST_PTR& req)> headCb;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req)> headCb = nullptr;
     std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& contentType,
                        const std::string& text)>
-        textCb;
+        textCb = nullptr;
     std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& filename,
                        const std::string& contentType, size_t offset, const unsigned char* data, int dataLen, bool finish)>
-        fileCb;
-    std::function<void(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler;
+        fileCb = nullptr;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler = nullptr;
 
 protected:
     void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;

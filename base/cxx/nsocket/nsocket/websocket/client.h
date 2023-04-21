@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <mutex>
 #include <string>
 
 #include "../tcp/tcp_client.h"
@@ -143,19 +144,19 @@ public:
      * @brief 是否在运行
      * @param true-是, false-否
      */
-    bool isRunning() const;
+    bool isRunning();
 
     /**
      * @brief 获取本端端点
      * @return 本端端点
      */
-    boost::asio::ip::tcp::endpoint getLocalEndpoint() const;
+    boost::asio::ip::tcp::endpoint getLocalEndpoint();
 
     /**
      * @brief 获取远端端点
      * @return 远端端点
      */
-    boost::asio::ip::tcp::endpoint getRemoteEndpoint() const;
+    boost::asio::ip::tcp::endpoint getRemoteEndpoint();
 
     /**
      * @brief 获取远端URI
@@ -200,19 +201,22 @@ private:
     void handleFrameFinish();
 
 private:
-    std::shared_ptr<TcpClient> m_tcpClient; /* TCP客户端 */
+    const uint16_t m_localPort; /* 本地端口, 0表示使用自动分配 */
+    const size_t m_bufferSize; /* 数据缓冲区大小(字节) */
+    std::mutex m_mutexTcpClient;
+    std::shared_ptr<TcpClient> m_tcpClient = nullptr; /* TCP客户端 */
     std::string m_hostPort; /* 远端主机端口 */
     std::string m_uri; /* 远端URI */
     std::string m_secWebSocketKey; /* 安全密钥 */
-    std::shared_ptr<Response> m_resp; /* 响应 */
-    std::shared_ptr<Frame> m_frame; /* 数据帧 */
+    std::shared_ptr<Response> m_resp = nullptr; /* 响应 */
+    std::shared_ptr<Frame> m_frame = nullptr; /* 数据帧 */
     bool m_isMsgText = false; /* 当前消息是否为文本 */
-    WS_CLI_CONNECTING_CALLBACK m_onConnectingCallback; /* 连接中回调 */
-    WS_CLI_OPEN_CALLBACK m_onOpenCallback; /* 连接打开回调 */
-    WS_CLI_PING_CALLBACK m_onPingCallback; /* ping回调 */
-    WS_CLI_PONG_CALLBACK m_onPongCallback; /* pong回调 */
-    std::shared_ptr<CliMessager> m_messager; /* 消息接收者 */
-    WS_CLI_CLOSE_CALLBACK m_onCloseCallback; /* 连接关闭回调 */
+    WS_CLI_CONNECTING_CALLBACK m_onConnectingCallback = nullptr; /* 连接中回调 */
+    WS_CLI_OPEN_CALLBACK m_onOpenCallback = nullptr; /* 连接打开回调 */
+    WS_CLI_PING_CALLBACK m_onPingCallback = nullptr; /* ping回调 */
+    WS_CLI_PONG_CALLBACK m_onPongCallback = nullptr; /* pong回调 */
+    std::shared_ptr<CliMessager> m_messager = nullptr; /* 消息接收者 */
+    WS_CLI_CLOSE_CALLBACK m_onCloseCallback = nullptr; /* 连接关闭回调 */
 };
 } // namespace ws
 } // namespace nsocket
