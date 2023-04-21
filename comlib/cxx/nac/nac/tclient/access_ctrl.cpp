@@ -77,12 +77,12 @@ bool AccessObserver::subscribeAccessState(const std::function<void(const Connect
     return false;
 }
 
-bool AccessObserver::subscribeAccessMsg(const BizCode& bizCode, const std::function<void(int64_t seqId, const std::string& data)>& func)
+bool AccessObserver::subscribeAccessMsg(int32_t bizCode, const std::function<void(int64_t seqId, const std::string& data)>& func)
 {
     if (func)
     {
         auto handler = std::make_shared<MsgHandler>(func);
-        if (AccessCtrl::subscribeMsg((int32_t)bizCode, handler))
+        if (AccessCtrl::subscribeMsg(bizCode, handler))
         {
             m_msgHandlerList.emplace_back(handler);
             return true;
@@ -221,8 +221,7 @@ void AccessCtrl::disconnect()
     s_connectService->disconnect();
 }
 
-int64_t AccessCtrl::sendMsg(const BizCode& bizCode, int64_t seqId, const std::string& data, const RespCallback& callback,
-                            unsigned int timeout)
+int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, const RespCallback& callback, unsigned int timeout)
 {
     if (!s_sessionManager)
     {
@@ -238,7 +237,7 @@ int64_t AccessCtrl::sendMsg(const BizCode& bizCode, int64_t seqId, const std::st
         return -1;
     }
     return s_sessionManager->sendMsg(
-        (int32_t)bizCode, seqId, data, timeout, [&, callback](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
+        bizCode, seqId, data, timeout, [&, callback](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
             if (!s_bizExecutor)
             {
                 return;
@@ -303,7 +302,7 @@ bool AccessCtrl::subscribeMsg(int32_t bizCode, const std::shared_ptr<MsgHandler>
         std::lock_guard<std::mutex> locker(s_mutexCfg);
         cfg = s_cfg;
     }
-    if (bizCode == (int32_t)cfg.authBizCode || bizCode == (int32_t)cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
+    if (bizCode == cfg.authBizCode || bizCode == cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
     {
         return false;
     }

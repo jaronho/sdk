@@ -1,10 +1,5 @@
 #pragma once
 
-/* 网络接入控制(Network Access Control) */
-namespace nac
-{
-namespace tcli
-{
 /**
  * @brief 业务码
  */
@@ -22,5 +17,3 @@ enum class BizCode
      *********************************************************************/
     notify_proc_upgrade = 2001, /* 版本升级 */
 };
-} // namespace tcli
-} // namespace nac

@@ -14,11 +14,6 @@ namespace nac
 namespace tcli
 {
 /**
- * @brief 业务码(需要外部定义)
- */
-enum class BizCode;
-
-/**
  * @brief 响应回调
  * @param ok 是否成功
  * @param data 数据
@@ -57,7 +52,7 @@ protected:
      * @param func 消息处理函数
      * @return true-订阅成功, false-订阅失败
      */
-    bool subscribeAccessMsg(const BizCode& bizCode, const std::function<void(int64_t seqId, const std::string& data)>& func);
+    bool subscribeAccessMsg(int32_t bizCode, const std::function<void(int64_t seqId, const std::string& data)>& func);
 
 private:
     std::shared_ptr<StateHandler> m_stateHandler = nullptr; /* 连接状态处理器 */
@@ -79,9 +74,9 @@ struct AccessConfig
     std::string pkFile; /* 私钥文件(全路径), 例如: /home/root/client.key */
     std::string pkPwd; /* 私钥文件密码, 例如: qq123456 */
     unsigned int connectTimeout = 0; /* 连接超时(秒), 为0表示系统默认 */
-    BizCode authBizCode = BizCode(0); /* 鉴权业务码, 为0表示不需要鉴权 */
+    int32_t authBizCode = 0; /* 鉴权业务码, 为0表示不需要鉴权 */
     unsigned int authTimeout = 30; /* 鉴权超时(秒), 必须大于0 */
-    BizCode heartbeatBizCode = BizCode(0); /* 心跳业务码, 为0表示不需要发送心跳 */
+    int32_t heartbeatBizCode = 0; /* 心跳业务码, 为0表示不需要发送心跳 */
     unsigned int heartbeatInterval = 15; /* 心跳间隔(秒), 必须大于0 */
     unsigned int offlineTime = 61; /* 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线, 必须大于心跳间隔 */
     std::vector<unsigned int> retryInterval = {1}; /* 重试间隔(秒), 示例: {1, 1, 1, 1, 1, 2, 4, 8, 10} */
@@ -143,7 +138,7 @@ public:
      * @param timeout 响应超时(秒), 为0时表示不需要等待服务端响应数据
      * @return 消息序列ID, -1表示发送失败
      */
-    static int64_t sendMsg(const BizCode& bizCode, int64_t seqId, const std::string& data, const RespCallback& callback = nullptr,
+    static int64_t sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, const RespCallback& callback = nullptr,
                            unsigned int timeout = 30);
 
     /**

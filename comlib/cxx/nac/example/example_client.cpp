@@ -18,7 +18,7 @@ public:
     Login()
     {
         subscribeAccessState([&](const nac::tcli::ConnectState& state) { onAccessState(state); });
-        subscribeAccessMsg(nac::tcli::BizCode::notify_proc_upgrade,
+        subscribeAccessMsg((int32_t)BizCode::notify_proc_upgrade,
                            [&](unsigned long long seqId, const std::string& data) { onNotifyProcUpgrage(seqId, data); });
     }
 
@@ -260,11 +260,12 @@ int main(int argc, char* argv[])
                     fileSize = 0;
                 }
             }
-            auto seqId = nac::tcli::AccessCtrl::sendMsg((nac::tcli::BizCode)bizCode, 0, data,
-                                                        [&, bizCode](bool ok, const std::string& data) {
-                                                            INFO_LOG(s_logger, "响应消息, bizCode: {} {}", bizCode, ok ? "成功." : "失败.");
-                                                        },
-                                                        10);
+            auto seqId = nac::tcli::AccessCtrl::sendMsg(
+                bizCode, 0, data,
+                [&, bizCode](bool ok, const std::string& data) {
+                    INFO_LOG(s_logger, "响应消息, bizCode: {} {}", bizCode, ok ? "成功." : "失败.");
+                },
+                10);
             INFO_LOG(s_logger, "发送消息, 包大小: {}, bizCode: {} {}", (size_t)16 + fileSize, bizCode,
                      seqId > 0 ? "成功, seqId: " + std::to_string(seqId) + "." : "失败.");
         }
