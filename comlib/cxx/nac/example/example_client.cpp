@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 
-#include "../nac/access_ctrl.h"
+#include "../nac/tclient/access_ctrl.h"
 #include "access_def.h"
 #include "logger/logger_manager.h"
 #include "utility/filesystem/file_info.h"
@@ -12,13 +12,13 @@
 static logger::Logger s_logger;
 static threading::ExecutorPtr s_logicExecutor = nullptr; /* 逻辑线程 */
 
-class Login final : public nac::AccessObserver
+class Login final : public nac::tcli::AccessObserver
 {
 public:
     Login()
     {
-        subscribeAccessState([&](const nac::ConnectState& state) { onAccessState(state); });
-        subscribeAccessMsg(nac::BizCode::notify_proc_upgrade,
+        subscribeAccessState([&](const nac::tcli::ConnectState& state) { onAccessState(state); });
+        subscribeAccessMsg(nac::tcli::BizCode::notify_proc_upgrade,
                            [&](unsigned long long seqId, const std::string& data) { onNotifyProcUpgrage(seqId, data); });
     }
 
@@ -27,18 +27,18 @@ public:
     void reqLogin() {}
 
 private:
-    void onAccessState(const nac::ConnectState& state)
+    void onAccessState(const nac::tcli::ConnectState& state)
     {
         switch (state)
         {
-        case nac::ConnectState::idle:
+        case nac::tcli::ConnectState::idle:
             break;
-        case nac::ConnectState::connecting:
+        case nac::tcli::ConnectState::connecting:
             break;
-        case nac::ConnectState::connected:
+        case nac::tcli::ConnectState::connected:
             reqLogin();
             break;
-        case nac::ConnectState::disconnected:
+        case nac::tcli::ConnectState::disconnected:
             break;
         }
     }
@@ -202,8 +202,8 @@ int main(int argc, char* argv[])
     Login login;
     /* 启动网络接入模块 */
     s_logicExecutor = threading::ThreadProxy::createAsioExecutor("logic", 1);
-    nac::AccessCtrl::start(std::make_shared<nac::ProtocolAdapterCustom>(), s_logicExecutor);
-    nac::AccessConfig acfg;
+    nac::tcli::AccessCtrl::start(std::make_shared<nac::tcli::ProtocolAdapterCustom>(), s_logicExecutor);
+    nac::tcli::AccessConfig acfg;
     acfg.address = serverHost;
     acfg.port = serverPort;
     acfg.sslOn = tls;
@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
     acfg.pkPwd = pkPwd;
     acfg.connectTimeout = 3;
     acfg.retryInterval = {1};
-    while (!nac::AccessCtrl::connect(acfg))
+    while (!nac::tcli::AccessCtrl::connect(acfg))
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -260,11 +260,11 @@ int main(int argc, char* argv[])
                     fileSize = 0;
                 }
             }
-            auto seqId = nac::AccessCtrl::sendMsg((nac::BizCode)bizCode, 0, data,
-                                                  [&, bizCode](bool ok, const std::string& data) {
-                                                      INFO_LOG(s_logger, "响应消息, bizCode: {} {}", bizCode, ok ? "成功." : "失败.");
-                                                  },
-                                                  10);
+            auto seqId = nac::tcli::AccessCtrl::sendMsg((nac::tcli::BizCode)bizCode, 0, data,
+                                                        [&, bizCode](bool ok, const std::string& data) {
+                                                            INFO_LOG(s_logger, "响应消息, bizCode: {} {}", bizCode, ok ? "成功." : "失败.");
+                                                        },
+                                                        10);
             INFO_LOG(s_logger, "发送消息, 包大小: {}, bizCode: {} {}", (size_t)16 + fileSize, bizCode,
                      seqId > 0 ? "成功, seqId: " + std::to_string(seqId) + "." : "失败.");
         }
