@@ -52,7 +52,7 @@ public:
 
     /**
      * @brief 发送二进制
-     * @param text 二进制数据
+     * @param bytes 二进制数据
      * @param isFin 是否最后一个帧
      * @param onSendCb 发送回调
      */
