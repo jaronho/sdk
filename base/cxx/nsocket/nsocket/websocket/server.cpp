@@ -53,9 +53,14 @@ void Server::setCloseCallback(const WS_SRV_CLOSE_CALLBACK& cb)
     m_onCloseCallback = cb;
 }
 
-bool Server::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile, const std::string& pkPwd)
+bool Server::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile, const std::string& pkPwd,
+                 std::string* errDesc)
 {
     auto tcpServer = std::make_shared<TcpServer>(m_name, m_threadCount, m_host, m_port, m_reuseAddr, m_bufferSize, m_handshakeTimeout);
+    if (!tcpServer->isValid(errDesc))
+    {
+        return false;
+    }
     tcpServer->setNewConnectionCallback([&, enableSSL = tcpServer->isEnableSSL()](const std::weak_ptr<TcpConnection>& wpConn) {
         if (!enableSSL)
         {

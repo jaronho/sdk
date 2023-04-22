@@ -57,10 +57,11 @@ public:
      * @param certFile 证书文件, 例如: client.crt
      * @param pkFile 私钥文件, 例如; client.key
      * @param pkPwd 私钥文件密码, 例如: 123456
-     * @return true-运行中, false-运行失败(服务对象无效导致)
+     * @param errDesc [输出]错误描述
+     * @return true-运行中, false-运行失败
      */
     bool run(bool sslOn = false, int sslWay = 1, int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "",
-             const std::string& pkPwd = "");
+             const std::string& pkPwd = "", std::string* errDesc = nullptr);
 
     /**
      * @brief 停止

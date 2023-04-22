@@ -521,10 +521,17 @@ int main(int argc, char* argv[])
         {
             printf("server: %s:%d\n", serverHost.c_str(), serverPort);
         }
-        server.run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
-        while (1)
+        std::string errDesc;
+        if (server.run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, &errDesc))
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            while (1)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }
+        else
+        {
+            printf("server run fail: %s\n", errDesc.c_str());
         }
     }
     catch (const std::exception& e)

@@ -148,9 +148,10 @@ int main(int argc, char* argv[])
         certFmt = 2;
     }
     auto server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, serverHost, serverPort);
-    if (!server->isValid())
+    std::string errDesc;
+    if (!server->isValid(&errDesc))
     {
-        printf("server invalid, please check host[%s] or port[%d]\n", serverHost.c_str(), serverPort);
+        printf("server invalid, please check host[%s] or port[%d], %s\n", serverHost.c_str(), serverPort, errDesc.c_str());
         return 0;
     }
     /* 设置新连接回调 */
