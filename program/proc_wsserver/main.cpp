@@ -151,11 +151,18 @@ int main(int argc, char* argv[])
         {
             printf("启动服务器: %s:%d, 应答: %s\n", server.c_str(), port, replyDesc.c_str());
         }
-        g_server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
-        /* 主线程 */
-        while (1)
+        std::string errDesc;
+        if (g_server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, &errDesc))
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            /* 主线程 */
+            while (1)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }
+        else
+        {
+            printf("服务器启动失败: %s\n", errDesc.c_str());
         }
     }
     catch (const std::exception& e)

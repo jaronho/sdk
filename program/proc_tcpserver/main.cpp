@@ -48,9 +48,10 @@ int main(int argc, char* argv[])
         replyDesc = "原数据返回";
     }
     g_server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, server, port);
-    if (!g_server->isValid())
+    std::string errDesc;
+    if (!g_server->isValid(&errDesc))
     {
-        printf("启动服务器失败, 请检查地址[%s]和端口[%d]是否可用\n", server.c_str(), port);
+        printf("启动服务器失败, 请检查地址[%s]和端口[%d]是否可用, %s\n", server.c_str(), port, errDesc.c_str());
         return 0;
     }
     /* 设置新连接回调 */
