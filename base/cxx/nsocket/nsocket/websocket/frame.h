@@ -128,18 +128,20 @@ private:
      * @brief 解析MASK + PAYLOAD_LEN
      * @param data 数据
      * @param length 数据长度
+     * @param headCb 帧头回调
      * @param finishCb 结束回调
      * @return 已解析的数据长度, <=0表示解析出错
      */
-    int parseMaskPayloadLen(const unsigned char* data, int length, const FINISH_CALLBACK& finishCb);
+    int parseMaskPayloadLen(const unsigned char* data, int length, const HEAD_CALLBACK& headCb, const FINISH_CALLBACK& finishCb);
 
     /**
      * @brief 解析扩展负载字节
      * @param data 数据
      * @param length 数据长度
+     * @param headCb 帧头回调
      * @return 已解析的数据长度, <=0表示解析出错
      */
-    int parsePayloadLen(const unsigned char* data, int length, int needByteCount);
+    int parsePayloadLen(const unsigned char* data, int length, int needByteCount, const HEAD_CALLBACK& headCb);
 
     /**
      * @brief 解析MASKING_KEY

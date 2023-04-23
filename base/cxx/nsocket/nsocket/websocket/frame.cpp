@@ -43,19 +43,19 @@ int Frame::parse(const unsigned char* data, int length, const HEAD_CALLBACK& hea
             }
             break;
         case ParseStep::mask_payload_len:
-            if ((used = parseMaskPayloadLen(remainData, remainLen, finishCb)) <= 0)
+            if ((used = parseMaskPayloadLen(remainData, remainLen, headCb, finishCb)) <= 0)
             {
                 return 0;
             }
             break;
         case ParseStep::payload_len_2:
-            if ((used = parsePayloadLen(remainData, remainLen, 2)) <= 0)
+            if ((used = parsePayloadLen(remainData, remainLen, 2, headCb)) <= 0)
             {
                 return 0;
             }
             break;
         case ParseStep::payload_len_8:
-            if ((used = parsePayloadLen(remainData, remainLen, 8)) <= 0)
+            if ((used = parsePayloadLen(remainData, remainLen, 8, headCb)) <= 0)
             {
                 return 0;
             }
@@ -270,7 +270,7 @@ int Frame::parseFinRsvOpcode(const unsigned char* data, int length)
     return 1;
 }
 
-int Frame::parseMaskPayloadLen(const unsigned char* data, int length, const FINISH_CALLBACK& finishCb)
+int Frame::parseMaskPayloadLen(const unsigned char* data, int length, const HEAD_CALLBACK& headCb, const FINISH_CALLBACK& finishCb)
 {
     unsigned char byte = data[0]; /* 只解析1个字节 */
     mask = byte >> 7;
@@ -278,7 +278,18 @@ int Frame::parseMaskPayloadLen(const unsigned char* data, int length, const FINI
     if (len <= 125) /* 立即得到负载长度 */
     {
         payloadLen = len;
-        m_parseStep = ParseStep::masking_key;
+        if (0 == mask)
+        {
+            m_parseStep = ParseStep::payload;
+            if (headCb)
+            {
+                headCb();
+            }
+        }
+        else
+        {
+            m_parseStep = ParseStep::masking_key;
+        }
     }
     else if (126 == len) /* 需要解析后面的2个字节作为负载长度 */
     {
@@ -296,7 +307,7 @@ int Frame::parseMaskPayloadLen(const unsigned char* data, int length, const FINI
     }
     m_payloadReceived = 0;
     m_tmpBytes.clear();
-    if (0 == mask && 0 == payloadLen)
+    if (0 == mask && ParseStep::payload == m_parseStep && 0 == payloadLen)
     {
         if (finishCb)
         {
@@ -307,7 +318,7 @@ int Frame::parseMaskPayloadLen(const unsigned char* data, int length, const FINI
     return 1;
 }
 
-int Frame::parsePayloadLen(const unsigned char* data, int length, int needByteCount)
+int Frame::parsePayloadLen(const unsigned char* data, int length, int needByteCount, const HEAD_CALLBACK& headCb)
 {
     int used = 0;
     for (; used < length; ++used)
@@ -320,7 +331,18 @@ int Frame::parsePayloadLen(const unsigned char* data, int length, int needByteCo
                 payloadLen += m_tmpBytes[i] << (8 * (needByteCount - 1 - (int)i)); /* 大端字节序 */
             }
             m_tmpBytes.clear();
-            m_parseStep = ParseStep::masking_key;
+            if (0 == mask)
+            {
+                m_parseStep = ParseStep::payload;
+                if (headCb)
+                {
+                    headCb();
+                }
+            }
+            else
+            {
+                m_parseStep = ParseStep::masking_key;
+            }
             return (used + 1);
         }
     }
