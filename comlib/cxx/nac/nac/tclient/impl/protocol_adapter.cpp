@@ -29,7 +29,7 @@ void ProtocolAdapter::setDataChannel(const std::shared_ptr<DataChannel>& dataCha
     m_wpDataChannel = dataChannel;
 }
 
-bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const const nsocket::TCP_SEND_CALLBACK& callback)
+bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const nsocket::TCP_SEND_CALLBACK& callback)
 {
     if (pkt)
     {
