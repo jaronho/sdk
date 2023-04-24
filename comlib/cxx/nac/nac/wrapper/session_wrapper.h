@@ -46,10 +46,9 @@ protected:
     /**
      * @brief 发送回调
      * @param code 错误码
-     * @param dataLength 数据总长度
-     * @param sentLength 数据已发送长度
+     * @param length 数据长度
      */
-    using SendCallback = std::function<void(const boost::system::error_code& code, size_t dataLength, size_t sentLength)>;
+    using SendCallback = std::function<void(const boost::system::error_code& code, size_t length)>;
 
 protected:
     /**

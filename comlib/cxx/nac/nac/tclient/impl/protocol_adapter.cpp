@@ -29,7 +29,7 @@ void ProtocolAdapter::setDataChannel(const std::shared_ptr<DataChannel>& dataCha
     m_wpDataChannel = dataChannel;
 }
 
-bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const DataChannel::SendCallback& callback)
+bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const const nsocket::TCP_SEND_CALLBACK& callback)
 {
     if (pkt)
     {
@@ -43,7 +43,7 @@ bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const DataC
             }
             if (callback)
             {
-                callback(boost::system::errc::make_error_code(boost::system::errc::no_message_available), pkt->size(), 0);
+                callback(boost::system::errc::make_error_code(boost::system::errc::no_message_available), 0);
             }
         }
         else
@@ -51,7 +51,7 @@ bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const DataC
             ERROR_LOG(m_logger, "数据包发送错误: 数据通道为空.");
             if (callback)
             {
-                callback(boost::system::errc::make_error_code(boost::system::errc::not_connected), pkt->size(), 0);
+                callback(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
             }
         }
     }
@@ -60,7 +60,7 @@ bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const DataC
         ERROR_LOG(m_logger, "数据包发送错误: 数据包为空.");
         if (callback)
         {
-            callback(boost::system::errc::make_error_code(boost::system::errc::no_message), 0, 0);
+            callback(boost::system::errc::make_error_code(boost::system::errc::no_message), 0);
         }
     }
     return false;

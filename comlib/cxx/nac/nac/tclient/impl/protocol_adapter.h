@@ -40,7 +40,7 @@ public:
      * @param callback 发送回调
      * @return true-数据发送中, false-失败
      */
-    bool sendPacket(const std::shared_ptr<Packet>& pkt, const DataChannel::SendCallback& callback);
+    bool sendPacket(const std::shared_ptr<Packet>& pkt, const nsocket::TCP_SEND_CALLBACK& callback);
 
     /**
      * @brief 同步信号: 收到数据包

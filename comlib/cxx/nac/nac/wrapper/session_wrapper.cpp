@@ -119,29 +119,28 @@ int64_t SessionWrapper::sendMsg(int32_t bizCode, int64_t seqId, const std::strin
     }
     /* 发送数据包 */
     const std::weak_ptr<SessionWrapper> wpSelf = shared_from_this();
-    return sendImpl(
-        bizCode, seqId, data,
-        [wpSelf, bizCode, seqId, timeout, callback](const boost::system::error_code& code, size_t dataLength, size_t sentLength) {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                if (code || dataLength != sentLength) /* 发送失败 */
-                {
-                    self->onRespCallback(false, bizCode, seqId, timeout > 0, callback);
-                }
-                else /* 发送成功 */
-                {
-                    if (timeout > 0) /* 需要应答, 需等待应答或超时再处理 */
-                    {
-                        /* 这里不处理 */
-                    }
-                    else /* 不需要应答, 直接通知成功 */
-                    {
-                        self->onRespCallback(true, bizCode, seqId, false, callback);
-                    }
-                }
-            }
-        });
+    return sendImpl(bizCode, seqId, data,
+                    [wpSelf, bizCode, seqId, timeout, callback](const boost::system::error_code& code, size_t sentLength) {
+                        const auto self = wpSelf.lock();
+                        if (self)
+                        {
+                            if (code) /* 发送失败 */
+                            {
+                                self->onRespCallback(false, bizCode, seqId, timeout > 0, callback);
+                            }
+                            else /* 发送成功 */
+                            {
+                                if (timeout > 0) /* 需要应答, 需等待应答或超时再处理 */
+                                {
+                                    /* 这里不处理 */
+                                }
+                                else /* 不需要应答, 直接通知成功 */
+                                {
+                                    self->onRespCallback(true, bizCode, seqId, false, callback);
+                                }
+                            }
+                        }
+                    });
 }
 
 void SessionWrapper::clearSessionMap()

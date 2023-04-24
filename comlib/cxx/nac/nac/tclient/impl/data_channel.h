@@ -17,15 +17,6 @@ class DataChannel final : public std::enable_shared_from_this<DataChannel>
 {
 public:
     /**
-     * @brief 数据发送回调
-     * @param code 错误码
-     * @param dataLength 数据总长度
-     * @param sentLength 数据已发送长度
-     */
-    using SendCallback = std::function<void(const boost::system::error_code& code, size_t dataLength, size_t sentLength)>;
-
-public:
-    /**
      * @brief 获取报文处理线程
      */
     std::weak_ptr<threading::Executor> getPktExecutor();
@@ -69,7 +60,7 @@ public:
      * @param callback 回调
      * @return true-数据发送中, false-失败
      */
-    bool sendData(const std::vector<unsigned char>& data, const SendCallback& callback);
+    bool sendData(const std::vector<unsigned char>& data, const nsocket::TCP_SEND_CALLBACK& callback);
 
     /**
      * @brief 同步信号: 连接状态变化

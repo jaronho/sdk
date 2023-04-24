@@ -137,9 +137,8 @@ boost::asio::ip::tcp::endpoint DataChannel::getLocalEndpoint() const
     return boost::asio::ip::tcp::endpoint();
 }
 
-bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCallback& callback)
+bool DataChannel::sendData(const std::vector<unsigned char>& data, const nsocket::TCP_SEND_CALLBACK& callback)
 {
-    auto dataLength = data.size();
     try
     {
         if (!isOpened())
@@ -147,56 +146,51 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
             ERROR_LOG(m_logger, "数据发送错误: 未连接.");
             if (callback)
             {
-                callback(boost::system::errc::make_error_code(boost::system::errc::not_connected), dataLength, 0);
+                callback(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
             }
             return false;
         }
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
         const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
-        m_tcpClient->sendAsync(
-            data, [wpSelf, wpPktExecutor, dataLength, callback, logger = m_logger](const boost::system::error_code& code, size_t length) {
-                const auto pktExecutor = wpPktExecutor.lock();
-                if (pktExecutor)
-                {
-                    auto ntp = std::chrono::steady_clock::now();
-                    auto func = [wpSelf, dataLength, callback, ntp, code, length, logger]() {
-                        const auto self = wpSelf.lock();
-                        if (code)
-                        {
-                            ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
-                        }
-                        else
-                        {
-                            if (self)
-                            {
-                                self->sigUpdateSendTime(ntp);
-                            }
-                            else
-                            {
-                                ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
-                            }
-                            if (length > 0 && length < dataLength)
-                            {
-                                ERROR_LOG(logger, "数据发送错误: 总长度 {}, 只发送 {}, 需要断开连接.", dataLength, length);
-                                self->disconnectImpl();
-                            }
-                        }
-                        if (callback)
-                        {
-                            callback(code, dataLength, length);
-                        }
-                    };
-                    pktExecutor->post("nac.tcli.sendcb", func);
-                }
-                else
-                {
-                    WARN_LOG(logger, "数据发送警告: 报文处理线程为空.");
-                    if (callback)
-                    {
-                        callback(code, dataLength, length);
-                    }
-                }
-            });
+        m_tcpClient->sendAsync(data,
+                               [wpSelf, wpPktExecutor, callback, logger = m_logger](const boost::system::error_code& code, size_t length) {
+                                   const auto pktExecutor = wpPktExecutor.lock();
+                                   if (pktExecutor)
+                                   {
+                                       auto ntp = std::chrono::steady_clock::now();
+                                       auto func = [wpSelf, callback, ntp, code, length, logger]() {
+                                           const auto self = wpSelf.lock();
+                                           if (code)
+                                           {
+                                               ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
+                                           }
+                                           else
+                                           {
+                                               if (self)
+                                               {
+                                                   self->sigUpdateSendTime(ntp);
+                                               }
+                                               else
+                                               {
+                                                   ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
+                                               }
+                                           }
+                                           if (callback)
+                                           {
+                                               callback(code, length);
+                                           }
+                                       };
+                                       pktExecutor->post("nac.tcli.sendcb", func);
+                                   }
+                                   else
+                                   {
+                                       WARN_LOG(logger, "数据发送警告: 报文处理线程为空.");
+                                       if (callback)
+                                       {
+                                           callback(code, length);
+                                       }
+                                   }
+                               });
         return true;
     }
     catch (const std::exception& e)
@@ -209,7 +203,7 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const SendCal
     }
     if (callback)
     {
-        callback(boost::system::errc::make_error_code(boost::system::errc::io_error), dataLength, 0);
+        callback(boost::system::errc::make_error_code(boost::system::errc::io_error), 0);
     }
     return false;
 }
