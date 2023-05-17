@@ -52,6 +52,7 @@ int main(int argc, char* argv[])
                     "数据类型, 值: 1-输入(原始), 2-输入(十六进制), 3-文件(原始, 全部), 4-文件(原始, 单行), 5-文件(十六进制, 单行), 默认:",
                     false, 1, cmdline::oneof<int>(1, 2, 3, 4, 5));
     parser.add<int>("interval", 'i', "按行发送文件数据时, 每行的发送间隔(毫秒), 默认:", false, 500);
+    parser.add<int>("reply", 'a', "应答方式, 值: 0-不应答, 1-原数据返回, 默认:", false, 0, cmdline::oneof<int>(0, 1));
     parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
@@ -62,6 +63,7 @@ int main(int argc, char* argv[])
     auto broadcast = parser.get<int>("broadcast");
     auto dataType = parser.get<int>("data-type");
     auto interval = parser.get<int>("interval");
+    auto reply = parser.get<int>("reply");
     interval = interval < 0 ? 0 : interval;
     std::string dataTypeDesc, lineIntervalDesc;
     if (1 == dataType)
@@ -86,8 +88,17 @@ int main(int argc, char* argv[])
         dataTypeDesc = "发送文件(十六进制, 单行)";
         lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
     }
-    printf("本地地址: %s:%d, 远端地址: %s:%d, 广播: %s, 数据类型: %s%s\n", localAddr.c_str(), localPort, remoteAddr.c_str(), remotePort,
-           broadcast ? "是" : "否", dataTypeDesc.c_str(), lineIntervalDesc.c_str());
+    std::string replyDesc;
+    if (0 == reply)
+    {
+        replyDesc = "不应答";
+    }
+    else if (1 == reply)
+    {
+        replyDesc = "原数据返回";
+    }
+    printf("本地地址: %s:%d, 远端地址: %s:%d, 广播: %s, 数据类型: %s%s, 应答: %s\n", localAddr.c_str(), localPort, remoteAddr.c_str(),
+           remotePort, broadcast ? "是" : "否", dataTypeDesc.c_str(), lineIntervalDesc.c_str(), replyDesc.c_str());
     g_node = std::make_shared<nsocket::UdpNode>();
     /* 设置打开回调 */
     g_node->setOpenCallback([&](const boost::system::error_code& code) {
@@ -115,31 +126,44 @@ int main(int argc, char* argv[])
         }
     });
     /* 设置数据回调 */
-    g_node->setDataCallback(
-        [&](const boost::asio::ip::udp::endpoint& point, const boost::system::error_code& code, const std::vector<unsigned char>& data) {
-            auto host = point.address().to_string();
-            auto port = point.port();
-            if (code)
+    g_node->setDataCallback([&, reply](const boost::asio::ip::udp::endpoint& point, const boost::system::error_code& code,
+                                       const std::vector<unsigned char>& data) {
+        auto host = point.address().to_string();
+        auto port = point.port();
+        if (code)
+        {
+            printf("++++++++++ 接收 [%s:%d] 数据, 失败: %d, %s\n", host.c_str(), port, code.value(), code.message().c_str());
+        }
+        else
+        {
+            printf("++++++++++ 收到 [%s:%d] 数据, 长度: %zu\n", host.c_str(), port, data.size());
+            /* 以十六进制格式打印数据 */
+            printf("+++++ [十六进制]\n");
+            for (size_t i = 0; i < data.size(); ++i)
             {
-                printf("++++++++++ 接收[%s:%d]数据, 失败: %d, %s\n", host.c_str(), port, code.value(), code.message().c_str());
+                printf("%02X ", data[i]);
             }
-            else
+            printf("\n");
+            /* 以字符串格式打印数据 */
+            printf("+++++ [字节流]\n");
+            std::string input(data.begin(), data.end());
+            printf("%s", input.c_str());
+            printf("\n");
+            if (reply)
             {
-                printf("++++++++++ 收到[%s:%d]数据, 长度: %zu\n", host.c_str(), port, data.size());
-                /* 以十六进制格式打印数据 */
-                printf("+++++ [十六进制]\n");
-                for (size_t i = 0; i < data.size(); ++i)
+                size_t sentLength;
+                auto ec = g_node->send(host, port, data, sentLength);
+                if (ec)
                 {
-                    printf("%02X ", data[i]);
+                    printf("---------- 回复 [%s:%d] 失败: %d, %s\n", host.c_str(), port, ec.value(), ec.message().c_str());
                 }
-                printf("\n");
-                /* 以字符串格式打印数据 */
-                printf("+++++ [字节流]\n");
-                std::string input(data.begin(), data.end());
-                printf("%s", input.c_str());
-                printf("\n");
+                else
+                {
+                    printf("---------- 回复 [%s:%d] 成功, 长度: %zu\n", host.c_str(), port, sentLength);
+                }
             }
-        });
+        }
+    });
     /* 创建线程专门用于网络I/O事件轮询 */
     std::thread th([&, localAddr, localPort]() {
         /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
