@@ -67,7 +67,7 @@ boost::system::error_code UdpNode::send(const std::string& host, unsigned int po
         auto endpoints = boost::asio::ip::udp::resolver(m_ioContext).resolve(host, std::to_string(port), code);
         if (code || endpoints.empty())
         {
-            return code;
+            return code ? code : boost::system::errc::make_error_code(boost::system::errc::address_not_available);
         }
         auto point = endpoints.begin()->endpoint();
         m_udpHandler->send(point, data, [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
@@ -89,7 +89,7 @@ void UdpNode::sendAsync(const std::string& host, unsigned int port, const std::v
         {
             if (onSendCb)
             {
-                onSendCb(code, 0);
+                onSendCb(code ? code : boost::system::errc::make_error_code(boost::system::errc::address_not_available), 0);
             }
         }
         else
