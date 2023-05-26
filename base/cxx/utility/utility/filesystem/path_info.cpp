@@ -369,14 +369,14 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
         }
         std::string subName = path + dirp->d_name;
         DIR* subDir = opendir(subName.c_str());
-        if (!subDir)
-        {
-            ::remove(subName.c_str());
-        }
-        else
+        if (subDir)
         {
             closedir(subDir);
             clearImpl(subName, true);
+        }
+        else
+        {
+            ::remove(subName.c_str());
         }
     }
     closedir(dir);
