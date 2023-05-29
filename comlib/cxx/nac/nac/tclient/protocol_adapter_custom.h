@@ -22,11 +22,11 @@ public:
     }
 
     /**
-     * @brief 包头大小(业务数据长度内存空间 + 业务码长度内存空间 + 序列ID长度内存空间)
+     * @brief 包头大小(版本号长度内存空间 + 包体长度内存空间 + 业务码长度内存空间 + 序列ID长度内存空间)
      */
     static uint32_t headSize()
     {
-        return (sizeof(int32_t) + sizeof(int32_t) + sizeof(int64_t));
+        return (sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int64_t));
     }
 };
 
@@ -36,7 +36,11 @@ public:
 class ProtocolAdapterCustom final : public ProtocolAdapter
 {
 public:
-    ProtocolAdapterCustom();
+    /**
+     * @brief 构造函数
+     * @param version 版本号
+     */
+    ProtocolAdapterCustom(int32_t version = 0);
 
     /**
      * @brief 创建数据包
@@ -50,9 +54,9 @@ public:
 private:
     /**
      * @brief 响应连接状态变化
-     * @param isConnected 是否已连接
+     * @param code 状态码, boost::system::errc::success-连接成功, 其他-连接失败或断开
      */
-    void onConnectStatusChanged(bool isConnected) override;
+    void onConnectStatusChanged(const boost::system::error_code& code) override;
 
     /**
      * @brief 处理数据包转字节流

@@ -128,6 +128,82 @@ void AccessCtrl::start(const std::shared_ptr<ProtocolAdapter>& adapter, const th
     s_bizExecutorHook = bizExecutorHook;
 }
 
+void AccessCtrl::setPacketVersionMismatchCallback(const std::function<bool(int32_t localVersion, int32_t pktVersion)>& callback)
+{
+    if (!s_protocolAdapter)
+    {
+        return;
+    }
+    s_protocolAdapter->setPacketVersionMismatchCallback([&, callback](int32_t localVersion, int32_t pktVersion) {
+        if (!s_bizExecutor)
+        {
+            return;
+        }
+        auto name = "nac.tcli.api.pkt.version_mismatch";
+        s_bizExecutor->post(name, [&, name, localVersion, pktVersion, callback]() {
+            if (callback)
+            {
+                bool ret = true;
+                if (s_bizExecutorHook)
+                {
+                    s_bizExecutorHook(name, [localVersion, pktVersion, callback, &ret]() { ret = callback(localVersion, pktVersion); });
+                }
+                else
+                {
+                    ret = callback(localVersion, pktVersion);
+                }
+                if (!ret) /* 停止重连 */
+                {
+                    std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
+                    if (s_retryTimer)
+                    {
+                        s_retryTimer->stop();
+                        s_retryTimer.reset();
+                    }
+                }
+            }
+        });
+    });
+}
+
+void AccessCtrl::setPacketLengthAbnormalCallback(const std::function<bool(int32_t maxLength, int32_t pktLength)>& callback)
+{
+    if (!s_protocolAdapter)
+    {
+        return;
+    }
+    s_protocolAdapter->setPacketLengthAbnormalCallback([&, callback](int32_t maxLength, int32_t pktLength) {
+        if (!s_bizExecutor)
+        {
+            return;
+        }
+        auto name = "nac.tcli.api.pkt.length_abnormal";
+        s_bizExecutor->post(name, [&, name, maxLength, pktLength, callback]() {
+            if (callback)
+            {
+                bool ret = true;
+                if (s_bizExecutorHook)
+                {
+                    s_bizExecutorHook(name, [maxLength, pktLength, callback, &ret]() { ret = callback(maxLength, pktLength); });
+                }
+                else
+                {
+                    ret = callback(maxLength, pktLength);
+                }
+                if (!ret) /* 停止重连 */
+                {
+                    std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
+                    if (s_retryTimer)
+                    {
+                        s_retryTimer->stop();
+                        s_retryTimer.reset();
+                    }
+                }
+            }
+        });
+    });
+}
+
 void AccessCtrl::setAuthDataGenerator(const std::function<std::string()>& generator)
 {
     if (!s_connectService)

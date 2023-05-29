@@ -100,6 +100,18 @@ public:
                       const BizExecutorHook& bizExecutorHook = nullptr);
 
     /**
+     * @brief 设置数据包版本不匹配回调
+     * @param callback 回调, 参数: localVersion-本地版本号, pktVersion-数据包版本号, 返回值: true-允许继续重连, false-停止重连
+     */
+    static void setPacketVersionMismatchCallback(const std::function<bool(int32_t localVersion, int32_t pktVersion)>& callback);
+
+    /**
+     * @brief 设置数据包长度异常回调
+     * @param callback 回调, 参数: maxLength-最大长度, pktLength-数据包长度, 返回值: true-允许继续重连, false-停止重连
+     */
+    static void setPacketLengthAbnormalCallback(const std::function<bool(int32_t maxLength, int32_t pktLength)>& callback);
+
+    /**
      * @brief 设置鉴权数据生成器
      * @param generator 生成器, 返回值: 鉴权数据
      */
@@ -107,7 +119,7 @@ public:
 
     /**
      * @brief 设置鉴权结果回调
-     * @param callback 回调, 参数: 鉴权结果, 返回值: true-鉴权成功, false-鉴权失败
+     * @param callback 回调, 参数: data-鉴权结果, 返回值: true-鉴权成功, false-鉴权失败
      */
     static void setAuthResultCallback(const std::function<bool(const std::string& data)>& callback);
 

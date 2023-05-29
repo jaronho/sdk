@@ -124,7 +124,7 @@ private:
     /**
      * @brief 响应连接状态变化
      */
-    void onConnectStatusChanged(bool isConnected);
+    void onConnectStatusChanged(const boost::system::error_code& code);
 
     /**
      * @brief 响应更新最后接收时间

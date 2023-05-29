@@ -10,11 +10,11 @@ void ProtocolAdapter::setDataChannel(const std::shared_ptr<DataChannel>& dataCha
     if (dataChannel)
     {
         const std::weak_ptr<ProtocolAdapter> wpSelf = shared_from_this();
-        m_connections.emplace_back(dataChannel->sigConnectStatus.connect([wpSelf](bool isConnected) -> void {
+        m_connections.emplace_back(dataChannel->sigConnectStatus.connect([wpSelf](const boost::system::error_code& code) -> void {
             const auto self = wpSelf.lock();
             if (self)
             {
-                self->onConnectStatusChanged(isConnected);
+                self->onConnectStatusChanged(code);
             }
         }));
         m_connections.emplace_back(dataChannel->sigRecvData.connect([wpSelf](const std::vector<unsigned char>& data) -> bool {
@@ -27,6 +27,16 @@ void ProtocolAdapter::setDataChannel(const std::shared_ptr<DataChannel>& dataCha
         }));
     }
     m_wpDataChannel = dataChannel;
+}
+
+void ProtocolAdapter::setPacketVersionMismatchCallback(const PACKET_VERSION_MISMATCH_CALLBACK& callback)
+{
+    m_packetVersionMismatchCb = callback;
+}
+
+void ProtocolAdapter::setPacketLengthAbnormalCallback(const PACKET_LENGTH_ABNORMAL_CALLBACK& callback)
+{
+    m_packetLengthAbnormalCb = callback;
 }
 
 bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const nsocket::TCP_SEND_CALLBACK& callback)
@@ -64,6 +74,22 @@ bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const nsock
         }
     }
     return false;
+}
+
+void ProtocolAdapter::onPacketVersionMismatch(int32_t localVersion, int32_t pktVersion)
+{
+    if (m_packetVersionMismatchCb)
+    {
+        m_packetVersionMismatchCb(localVersion, pktVersion);
+    }
+}
+
+void ProtocolAdapter::onPacketLengthAbnormal(int32_t maxLength, int32_t pktLength)
+{
+    if (m_packetLengthAbnormalCb)
+    {
+        m_packetLengthAbnormalCb(maxLength, pktLength);
+    }
 }
 } // namespace tcli
 } // namespace nac

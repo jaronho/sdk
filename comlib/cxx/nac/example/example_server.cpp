@@ -17,6 +17,12 @@ static const size_t MAX_BODY_SIZE = 10 * 1024 * 1024; /* 最大包体大小 */
  */
 struct PacketHead
 {
+    static uint32_t headSize()
+    {
+        return (sizeof(int32_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int64_t));
+    }
+
+    int32_t version = 0; /* 版本号(4个字节) */
     int32_t bodyLen = 0; /* 包体长度(4个字节) */
     int32_t bizCode = 0; /* 业务码(4个字节) */
     int64_t seqId = 0; /* 序列ID(8个字节) */
@@ -27,6 +33,7 @@ struct PacketHead
  */
 struct Packet
 {
+    int32_t version = 0; /* 版本号(4个字节) */
     int32_t bizCode = 0; /* 业务码(4个字节) */
     int64_t seqId = 0; /* 序列ID(8个字节) */
     std::string data; /* 业务数据 */
@@ -53,8 +60,9 @@ void handleNewConnection(const std::shared_ptr<nsocket::TcpConnection>& conn)
         auto point = conn->getRemoteEndpoint();
         ClientInfo ci;
         ci.wpConn = conn;
-        ci.payload = std::make_shared<nsocket::Payload>((uint32_t)sizeof(PacketHead));
+        ci.payload = std::make_shared<nsocket::Payload>(PacketHead::headSize());
         ci.pktHead = std::make_shared<PacketHead>();
+        ci.pktHead->version = NAC_PROTOCOL_VERSION;
         std::lock_guard<std::recursive_mutex> locker(g_mutex);
         auto iter = g_clientMap.find(point);
         if (g_clientMap.end() == iter)
@@ -278,8 +286,15 @@ int main(int argc, char* argv[])
                         data,
                         [&](const std::vector<unsigned char>& head) {
                             int offset = 0;
+                            auto version = utility::ByteArray::read32(head.data() + offset, true); /* 版本号 */
+                            if (version != pktHead->version)
+                            {
+                                ERROR_LOG(s_logger, "数据解析错误: 包版本号 {} 与 {} 不匹配.", version, pktHead->version);
+                                return -1;
+                            }
+                            offset += sizeof(version);
                             pktHead->bodyLen = utility::ByteArray::read32(head.data() + offset, true); /* 包体长度 */
-                            if (payload->getHeadLen() + (size_t)pktHead->bodyLen >= MAX_BODY_SIZE) /* 限制数据包大小 */
+                            if (pktHead->bodyLen >= MAX_BODY_SIZE) /* 限制数据包大小 */
                             {
                                 ERROR_LOG(s_logger, "数据解析错误: 包体大小 {} 太长.", pktHead->bodyLen);
                                 return -1;
@@ -292,6 +307,7 @@ int main(int argc, char* argv[])
                         },
                         [&](const std::vector<unsigned char>& body) {
                             auto pkt = std::make_shared<Packet>();
+                            pkt->version = pktHead->version;
                             pkt->bizCode = pktHead->bizCode;
                             pkt->seqId = pktHead->seqId;
                             if (!body.empty())
@@ -312,6 +328,7 @@ int main(int argc, char* argv[])
                             }
                             /* 应答 */
                             std::vector<unsigned char> buffer;
+                            utility::ByteArray::write32(buffer, pkt->version, true); /* 版本号 */
                             utility::ByteArray::write32(buffer, 0, true); /* 包体长度 */
                             utility::ByteArray::write32(buffer, pkt->bizCode, true); /* 业务码 */
                             utility::ByteArray::write64(buffer, pkt->seqId, true); /* 序列ID */

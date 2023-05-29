@@ -64,9 +64,9 @@ public:
 
     /**
      * @brief 同步信号: 连接状态变化
-     * @param isConnected 是否已连接
+     * @param code 状态码, boost::system::errc::success-连接成功, 其他-连接失败或断开
      */
-    threading::BasicSignal<void(bool isConnected)> sigConnectStatus;
+    threading::BasicSignal<void(const boost::system::error_code& code)> sigConnectStatus;
 
     /**
      * @brief 同步信号: 收到数据

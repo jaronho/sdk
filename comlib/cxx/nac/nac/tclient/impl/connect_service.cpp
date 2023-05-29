@@ -10,11 +10,11 @@ void ConnectService::setDataChannel(const std::shared_ptr<DataChannel>& dataChan
     if (dataChannel)
     {
         const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
-        m_connections.emplace_back(dataChannel->sigConnectStatus.connect([wpSelf](bool isConnected) -> void {
+        m_connections.emplace_back(dataChannel->sigConnectStatus.connect([wpSelf](const boost::system::error_code& code) -> void {
             const auto self = wpSelf.lock();
             if (self)
             {
-                self->onConnectStatusChanged(isConnected);
+                self->onConnectStatusChanged(code);
             }
         }));
         m_connections.emplace_back(dataChannel->sigUpdateRecvTime.connect([wpSelf](std::chrono::steady_clock::time_point ntp) -> void {
@@ -176,10 +176,21 @@ void ConnectService::releaseConnection(const DisconnectType& type)
     }
 }
 
-void ConnectService::onConnectStatusChanged(bool isConnected)
+void ConnectService::onConnectStatusChanged(const boost::system::error_code& code)
 {
     stopTimeoutTimer();
-    if (isConnected) /* 连接成功 */
+    if (code) /* 连接失败 */
+    {
+        if (DisconnectType::unknown == m_disconnectType)
+        {
+            if (ConnectState::connecting == m_connectState || ConnectState::connected == m_connectState)
+            {
+                releaseConnection(DisconnectType::unknown);
+                updateConnectState(ConnectState::disconnected);
+            }
+        }
+    }
+    else /* 连接成功 */
     {
         m_lastRecvTime = m_lastSendTime = std::chrono::steady_clock::now();
         if (m_authBizCode > 0) /* 需要鉴权 */
@@ -196,17 +207,6 @@ void ConnectService::onConnectStatusChanged(bool isConnected)
                 updateConnectState(ConnectState::connected);
                 startHeartbeatTimer();
                 startOfflineCheckTimer();
-            }
-        }
-    }
-    else /* 连接失败 */
-    {
-        if (DisconnectType::unknown == m_disconnectType)
-        {
-            if (ConnectState::connecting == m_connectState || ConnectState::connected == m_connectState)
-            {
-                releaseConnection(DisconnectType::unknown);
-                updateConnectState(ConnectState::disconnected);
             }
         }
     }

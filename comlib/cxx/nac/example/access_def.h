@@ -1,5 +1,8 @@
 #pragma once
 
+/* 网络接入协议版本 */
+#define NAC_PROTOCOL_VERSION 1
+
 /**
  * @brief 业务码
  */

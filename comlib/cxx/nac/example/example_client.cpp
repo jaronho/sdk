@@ -202,7 +202,9 @@ int main(int argc, char* argv[])
     Login login;
     /* 启动网络接入模块 */
     s_logicExecutor = threading::ThreadProxy::createAsioExecutor("logic", 1);
-    nac::tcli::AccessCtrl::start(std::make_shared<nac::tcli::ProtocolAdapterCustom>(), s_logicExecutor);
+    nac::tcli::AccessCtrl::start(std::make_shared<nac::tcli::ProtocolAdapterCustom>(NAC_PROTOCOL_VERSION), s_logicExecutor);
+    nac::tcli::AccessCtrl::setPacketVersionMismatchCallback([&](int32_t localVersion, int32_t pktVersion) { return true; });
+    nac::tcli::AccessCtrl::setPacketLengthAbnormalCallback([&](int32_t maxLength, int32_t pktLength) { return true; });
     nac::tcli::AccessConfig acfg;
     acfg.address = serverHost;
     acfg.port = serverPort;

@@ -239,7 +239,7 @@ void DataChannel::onConnected(const boost::system::error_code& code)
     {
         INFO_LOG(m_logger, "连接成功.");
     }
-    sigConnectStatus(!code);
+    sigConnectStatus(code);
 }
 
 void DataChannel::onRecvData(const std::vector<unsigned char>& data)
