@@ -58,10 +58,8 @@ bool ProtocolAdapterCustom::onRecvData(const std::vector<unsigned char>& data)
             auto version = utility::ByteArray::read32(head.data() + offset, true); /* 版本号 */
             if (version != m_pkt->version)
             {
-                ret = false;
-                ERROR_LOG(m_logger, "数据解析错误: 包版本号 {} 与 {} 不匹配.", version, m_pkt->version);
+                WARN_LOG(m_logger, "数据包版本号[{}]与本地版本号[{}]不匹配.", version, m_pkt->version);
                 onPacketVersionMismatch(m_pkt->version, version);
-                return -1;
             }
             offset += sizeof(int32_t);
             auto bodyLen = utility::ByteArray::read32(head.data() + offset, true); /* 包体长度 */

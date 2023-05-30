@@ -101,15 +101,15 @@ public:
 
     /**
      * @brief 设置数据包版本不匹配回调
-     * @param callback 回调, 参数: localVersion-本地版本号, pktVersion-数据包版本号, 返回值: true-允许继续重连, false-停止重连
+     * @param callback 回调, 参数: localVersion-本地版本号, pktVersion-数据包版本号
      */
-    static void setPacketVersionMismatchCallback(const std::function<bool(int32_t localVersion, int32_t pktVersion)>& callback);
+    static void setPacketVersionMismatchCallback(const PACKET_VERSION_MISMATCH_CALLBACK& callback);
 
     /**
      * @brief 设置数据包长度异常回调
-     * @param callback 回调, 参数: maxLength-最大长度, pktLength-数据包长度, 返回值: true-允许继续重连, false-停止重连
+     * @param callback 回调, 参数: maxLength-最大长度, pktLength-数据包长度
      */
-    static void setPacketLengthAbnormalCallback(const std::function<bool(int32_t maxLength, int32_t pktLength)>& callback);
+    static void setPacketLengthAbnormalCallback(const PACKET_LENGTH_ABNORMAL_CALLBACK& callback);
 
     /**
      * @brief 设置鉴权数据生成器

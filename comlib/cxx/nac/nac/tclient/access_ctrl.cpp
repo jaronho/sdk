@@ -128,7 +128,7 @@ void AccessCtrl::start(const std::shared_ptr<ProtocolAdapter>& adapter, const th
     s_bizExecutorHook = bizExecutorHook;
 }
 
-void AccessCtrl::setPacketVersionMismatchCallback(const std::function<bool(int32_t localVersion, int32_t pktVersion)>& callback)
+void AccessCtrl::setPacketVersionMismatchCallback(const PACKET_VERSION_MISMATCH_CALLBACK& callback)
 {
     if (!s_protocolAdapter)
     {
@@ -143,30 +143,20 @@ void AccessCtrl::setPacketVersionMismatchCallback(const std::function<bool(int32
         s_bizExecutor->post(name, [&, name, localVersion, pktVersion, callback]() {
             if (callback)
             {
-                bool ret = true;
                 if (s_bizExecutorHook)
                 {
-                    s_bizExecutorHook(name, [localVersion, pktVersion, callback, &ret]() { ret = callback(localVersion, pktVersion); });
+                    s_bizExecutorHook(name, [localVersion, pktVersion, callback]() { callback(localVersion, pktVersion); });
                 }
                 else
                 {
-                    ret = callback(localVersion, pktVersion);
-                }
-                if (!ret) /* 停止重连 */
-                {
-                    std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
-                    if (s_retryTimer)
-                    {
-                        s_retryTimer->stop();
-                        s_retryTimer.reset();
-                    }
+                    callback(localVersion, pktVersion);
                 }
             }
         });
     });
 }
 
-void AccessCtrl::setPacketLengthAbnormalCallback(const std::function<bool(int32_t maxLength, int32_t pktLength)>& callback)
+void AccessCtrl::setPacketLengthAbnormalCallback(const PACKET_LENGTH_ABNORMAL_CALLBACK& callback)
 {
     if (!s_protocolAdapter)
     {
@@ -181,23 +171,13 @@ void AccessCtrl::setPacketLengthAbnormalCallback(const std::function<bool(int32_
         s_bizExecutor->post(name, [&, name, maxLength, pktLength, callback]() {
             if (callback)
             {
-                bool ret = true;
                 if (s_bizExecutorHook)
                 {
-                    s_bizExecutorHook(name, [maxLength, pktLength, callback, &ret]() { ret = callback(maxLength, pktLength); });
+                    s_bizExecutorHook(name, [maxLength, pktLength, callback]() { callback(maxLength, pktLength); });
                 }
                 else
                 {
-                    ret = callback(maxLength, pktLength);
-                }
-                if (!ret) /* 停止重连 */
-                {
-                    std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
-                    if (s_retryTimer)
-                    {
-                        s_retryTimer->stop();
-                        s_retryTimer.reset();
-                    }
+                    callback(maxLength, pktLength);
                 }
             }
         });
