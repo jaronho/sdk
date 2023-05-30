@@ -1,6 +1,9 @@
 #include "inifile.h"
 
 #include <algorithm>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 namespace ini
 {
@@ -287,6 +290,9 @@ int IniFile::save(int sortType)
     {
         if (0 == fflush(f))
         {
+#ifndef _WIN32
+            fsync(fileno(f)); /* 同步到磁盘 */
+#endif
             ret = true;
         }
     }
