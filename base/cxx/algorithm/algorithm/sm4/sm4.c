@@ -208,45 +208,61 @@ void sm4SetKeyDec(sm4_context_t* ctx, const unsigned char key[16])
 
 int sm4CryptEcb(sm4_context_t* ctx, const unsigned char* in, int inLength, unsigned char** out)
 {
+    int inputLength = 0;
+    unsigned char* input = NULL;
     int paddingCount = 0;
-    unsigned char temp[16];
     int outLength = 0;
+    unsigned char temp[16];
     int offset = 0;
     if (!ctx || !in || inLength <= 0)
     {
         return 0;
     }
-    if ((inLength % 16) > 0)
+    if (inLength % 16 >= 0)
     {
         paddingCount = 16 - (inLength % 16);
     }
-    outLength = inLength + paddingCount;
-    *out = (unsigned char*)malloc(sizeof(unsigned char) * outLength);
-    if (!(*out))
+    /* PKCS7Padding */
+    inputLength = inLength + paddingCount;
+    input = (unsigned char*)malloc(sizeof(unsigned char) * inputLength);
+    if (!input)
     {
         return 0;
     }
-    while (inLength > 0)
+    memset(input, inputLength - inLength, inputLength);
+    memcpy(input, in, inLength);
+    /* crypt */
+    outLength = inputLength;
+    *out = (unsigned char*)malloc(sizeof(unsigned char) * outLength);
+    if (!(*out))
     {
-        if (inLength < 16) /* 补位 */
+        free(input);
+        return 0;
+    }
+    while (inputLength > 0)
+    {
+        if (inputLength < 16) /* 补位 */
         {
             memset(temp, paddingCount, sizeof(temp));
-            memcpy(temp, in + offset, inLength);
+            memcpy(temp, input + offset, inputLength);
             sm4OneRound(ctx->sk, temp, (*out) + offset);
         }
         else
         {
-            sm4OneRound(ctx->sk, in + offset, (*out) + offset);
+            sm4OneRound(ctx->sk, input + offset, (*out) + offset);
         }
         offset += 16;
-        inLength -= 16;
+        inputLength -= 16;
     }
+    free(input);
     return outLength;
 }
 
 int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned char* in, int inLength, unsigned char** out)
 {
     unsigned char iv[16];
+    int inputLength = 0;
+    unsigned char* input = NULL;
     int paddingCount = 0;
     int outLength = 0;
     int i;
@@ -257,25 +273,36 @@ int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned
     {
         return 0;
     }
-    memcpy(iv, ivec, sizeof(iv));
-    if ((inLength % 16) > 0)
+    if (inLength % 16 >= 0)
     {
         paddingCount = 16 - (inLength % 16);
     }
-    outLength = inLength + paddingCount;
-    *out = (unsigned char*)malloc(sizeof(unsigned char) * outLength);
-    if (!(*out))
+    /* PKCS7Padding */
+    inputLength = inLength + paddingCount;
+    input = (unsigned char*)malloc(sizeof(unsigned char) * inputLength);
+    if (!input)
     {
         return 0;
     }
+    memset(input, inputLength - inLength, inputLength);
+    memcpy(input, in, inLength);
+    /* crypt */
+    outLength = inputLength;
+    *out = (unsigned char*)malloc(sizeof(unsigned char) * outLength);
+    if (!(*out))
+    {
+        free(input);
+        return 0;
+    }
+    memcpy(iv, ivec, sizeof(iv));
     if (SM4_ENCRYPT == ctx->mode) /* 加密 */
     {
-        while (inLength > 0)
+        while (inputLength > 0)
         {
-            if (inLength < 16) /* 补位 */
+            if (inputLength < 16) /* 补位 */
             {
                 memset(temp, paddingCount, sizeof(temp));
-                memcpy(temp, in + offset, inLength);
+                memcpy(temp, input + offset, inputLength);
                 for (i = 0; i < 16; ++i)
                 {
                     (*out)[offset + i] = (unsigned char)(temp[i] ^ iv[i]);
@@ -285,29 +312,29 @@ int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned
             {
                 for (i = 0; i < 16; ++i)
                 {
-                    (*out)[offset + i] = (in[offset + i] ^ iv[i]);
+                    (*out)[offset + i] = (input[offset + i] ^ iv[i]);
                 }
             }
             sm4OneRound(ctx->sk, (*out) + offset, (*out) + offset);
             memcpy(iv, (*out) + offset, 16);
             offset += 16;
-            inLength -= 16;
+            inputLength -= 16;
         }
     }
     else /* 解密 */
     {
-        while (inLength > 0)
+        while (inputLength > 0)
         {
-            if (inLength < 16) /* 补位 */
+            if (inputLength < 16) /* 补位 */
             {
                 memset(temp, paddingCount, sizeof(temp));
-                memcpy(temp, in + offset, inLength);
+                memcpy(temp, input + offset, inputLength);
                 sm4OneRound(ctx->sk, temp, (*out) + offset);
             }
             else
             {
-                memcpy(temp, in + offset, 16);
-                sm4OneRound(ctx->sk, in + offset, (*out) + offset);
+                memcpy(temp, input + offset, 16);
+                sm4OneRound(ctx->sk, input + offset, (*out) + offset);
             }
             for (i = 0; i < 16; ++i)
             {
@@ -315,9 +342,10 @@ int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned
             }
             memcpy(iv, temp, 16);
             offset += 16;
-            inLength -= 16;
+            inputLength -= 16;
         }
     }
+    free(input);
     return outLength;
 }
 #ifdef __cplusplus
