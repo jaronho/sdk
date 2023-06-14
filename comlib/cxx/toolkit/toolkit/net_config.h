@@ -83,9 +83,10 @@ public:
      * @brief 配置网桥(不会自动启动网桥)
      * @param name 网桥名称
      * @param ports 网络接口
+     * @param recfg 网桥存在时是否重配, true-重新配置, false-否
      * @return true-有配置操作, false-无配置操作
      */
-    static bool configBridge(const std::string& name, const std::vector<std::string>& ports);
+    static bool configBridge(const std::string& name, const std::vector<std::string>& ports, bool recfg = false);
 
     /**
      * @brief 检测ping是否可通(阻塞)

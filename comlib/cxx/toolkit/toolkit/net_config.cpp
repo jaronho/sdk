@@ -339,7 +339,7 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
 #endif
 }
 
-bool NetConfig::configBridge(const std::string& name, const std::vector<std::string>& ports)
+bool NetConfig::configBridge(const std::string& name, const std::vector<std::string>& ports, bool recfg)
 {
     if (name.empty())
     {
@@ -361,7 +361,14 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
             std::vector<std::string> delList;
             if (!bridgeInfo.diffPorts(ports, &addList, &delList)) /* 网桥端口无差异 */
             {
-                return false;
+                if (recfg)
+                {
+                    addList = delList = ports;
+                }
+                else
+                {
+                    return false;
+                }
             }
             /* 删除网络接口 */
             for (size_t j = 0; j < delList.size(); ++j)
