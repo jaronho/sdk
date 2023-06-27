@@ -1,7 +1,9 @@
 #pragma once
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 
 #include "../inner_logger.h"
 #include "../logfile/daily_logfile.h"
@@ -35,6 +37,20 @@ public:
     void setLevel(int level) override;
 
     /**
+     * @brief 获取等级文件类型
+     * @param level 等级
+     * @return 文件类型
+     */
+    int getLevelFile(int level) override;
+
+    /**
+     * @brief 设置等级文件
+     * @param level 等级
+     * @param fileType 日志等级要写入的文件类型(类型值同level), 不在类型值范围内表示记录到通用文件
+     */
+    void setLevelFile(int level, int fileType = -1) override;
+
+    /**
      * @brief 是否输出到控制台
      * @return true-是, false-否
      */
@@ -59,8 +75,24 @@ public:
                const std::string& msg) override;
 
 private:
-    std::shared_ptr<DailyLogfile> m_dailyLog; /* 每天日志文件 */
+    /**
+     * @brief 获取每天日志文件
+     * @param level 日志等级
+     * @return 每天日志文件
+     */
+    std::shared_ptr<DailyLogfile> getDailyLog(int level);
+
+private:
+    std::shared_ptr<DailyLogfile> m_dailyLog; /* 每天日志文件(通用) */
+    std::shared_ptr<DailyLogfile> m_dailyLogTrace; /* 每天日志文件(跟踪) */
+    std::shared_ptr<DailyLogfile> m_dailyLogDebug; /* 每天日志文件(调试) */
+    std::shared_ptr<DailyLogfile> m_dailyLogInfo; /* 每天日志文件(信息) */
+    std::shared_ptr<DailyLogfile> m_dailyLogWarn; /* 每天日志文件(警告) */
+    std::shared_ptr<DailyLogfile> m_dailyLogError; /* 每天日志文件(错误) */
+    std::shared_ptr<DailyLogfile> m_dailyLogFatal; /* 每天日志文件(致命) */
     std::atomic_int m_level = {LEVEL_TRACE}; /* 日志等级 */
+    std::mutex m_mutexLevelFile;
+    std::unordered_map<int, int> m_levelFile; /* 等级文件类型, key-日志等级, value-文件类型(同等级类型, 若不在范围内表示写入到通用文件) */
     std::atomic_bool m_consoleEnable = {false}; /* 是否输出到控制台(默认不输出) */
 };
 

@@ -11,6 +11,12 @@ int main()
     cfg.name = "app"; /* 默认的日志记录器名称 */
     cfg.fileExtName = ".log";
     cfg.level = logger::LEVEL_TRACE;
+#if 0
+    /* 设置不同的日志等级记录到指定的文件中 */
+    cfg.levelFile = {{logger::LEVEL_TRACE, logger::LEVEL_TRACE}, {logger::LEVEL_DEBUG, logger::LEVEL_DEBUG},
+                     {logger::LEVEL_INFO, logger::LEVEL_INFO},   {logger::LEVEL_WARN, logger::LEVEL_WARN},
+                     {logger::LEVEL_ERROR, logger::LEVEL_ERROR},  {logger::LEVEL_FATAL, logger::LEVEL_FATAL}};
+#endif
     cfg.fileMaxSize = 20 * 1024 * 1024;
     cfg.fileMaxCount = 5;
     cfg.fileIndexFixed = true;

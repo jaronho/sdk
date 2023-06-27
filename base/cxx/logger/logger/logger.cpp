@@ -44,13 +44,30 @@ void Logger::setLevel(int level)
     }
 }
 
+int Logger::getLevelFile(int level) const
+{
+    if (m_inner)
+    {
+        return m_inner->getLevelFile(level);
+    }
+    return -1;
+}
+
+void Logger::setLevelFile(int level, int fileType)
+{
+    if (m_inner)
+    {
+        m_inner->setLevelFile(level, fileType);
+    }
+}
+
 bool Logger::isConsoleEnable() const
 {
     if (m_inner)
     {
         return m_inner->isConsoleEnable();
     }
-    return true;
+    return false;
 }
 
 void Logger::setConsoleEnable(bool enable)

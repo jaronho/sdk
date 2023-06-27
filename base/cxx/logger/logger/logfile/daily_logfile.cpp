@@ -3,15 +3,17 @@
 #include <stdexcept>
 #include <stdio.h>
 
-DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& extName, size_t maxSize,
-                           size_t maxFiles, bool indexFixed, bool createDailyFolder)
+DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& suffixName,
+                           const std::string& extName, size_t maxSize, size_t maxFiles, bool indexFixed, bool createDailyFolder)
 {
     if (path.empty())
     {
         throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'path' is empty");
     }
     m_path = path;
-    m_prefixName = m_baseName = prefixName;
+    m_prefixName = prefixName;
+    m_suffixName = suffixName;
+    m_baseName = prefixName + suffixName;
     m_extName = extName;
     m_maxSize = maxSize;
     m_maxFiles = maxFiles > 0 ? maxFiles : 0;
@@ -32,7 +34,7 @@ Logfile::Result DailyLogfile::record(const std::string& content, bool newline)
     char dateStr[12] = {0};
     strftime(dateStr, sizeof(dateStr), "%Y%m%d", &t);
     std::lock_guard<std::mutex> locker(m_mutex);
-    std::string baseName = m_prefixName + dateStr;
+    std::string baseName = m_prefixName + dateStr + m_suffixName;
     if (!m_rotatingLogfile || 0 != baseName.compare(m_baseName))
     {
         std::string path = m_path;

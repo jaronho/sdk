@@ -120,6 +120,36 @@ public:
      */
     static void setLevel(int level, const std::string& loggerName = std::string());
 
+    /**
+     * @brief 获取等级文件类型
+     * @param level 日志等级
+     * @param loggerName 日志记录器名称(选填)
+     * @return 文件类型
+     */
+    static int getLevelFile(int level, const std::string& loggerName = std::string());
+
+    /**
+     * @brief 设置等级文件类型
+     * @param level 日志等级
+     * @param fileType 日志等级要写入的文件类型(类型值同level), 不在类型值范围内表示记录到通用文件
+     * @param loggerName 日志记录器名称(选填)
+     */
+    static void setLevelFile(int level, int fileType = -1, const std::string& loggerName = std::string());
+
+    /**
+     * @brief 是否输出到控制台
+     * @param loggerName 日志记录器名称(选填)
+     * @return true-是, false-否
+     */
+    static bool isConsoleEnable(const std::string& loggerName = std::string());
+
+    /**
+     * @brief 设置是否输出到控制台
+     * @param enable 开关标识
+     * @param loggerName 日志记录器名称(选填)
+     */
+    static void setConsoleEnable(bool enable, const std::string& loggerName = std::string());
+
 private:
     /**
      * @brief 创建内部日志记录器

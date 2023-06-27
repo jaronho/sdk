@@ -84,6 +84,71 @@ void LoggerManager::setLevel(int level, const std::string& loggerName)
     }
 }
 
+int LoggerManager::getLevelFile(int level, const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    auto name = loggerName.empty() ? m_logCfg.name : loggerName;
+    auto iter = m_loggerMap.find(name);
+    if (m_loggerMap.end() == iter)
+    {
+        auto it = m_logCfg.levelFile.find(level);
+        return (m_logCfg.levelFile.end() == it ? -1 : it->second);
+    }
+    return iter->second->getLevelFile(level);
+}
+
+void LoggerManager::setLevelFile(int level, int fileType, const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (loggerName.empty())
+    {
+        for (auto iter = m_loggerMap.begin(); m_loggerMap.end() != iter; ++iter)
+        {
+            iter->second->setLevelFile(level, fileType);
+        }
+    }
+    else
+    {
+        auto iter = m_loggerMap.find(loggerName);
+        if (m_loggerMap.end() != iter)
+        {
+            iter->second->setLevelFile(level, fileType);
+        }
+    }
+}
+
+bool LoggerManager::isConsoleEnable(const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    auto name = loggerName.empty() ? m_logCfg.name : loggerName;
+    auto iter = m_loggerMap.find(name);
+    if (m_loggerMap.end() == iter)
+    {
+        return m_logCfg.consoleEnable;
+    }
+    return iter->second->isConsoleEnable();
+}
+
+void LoggerManager::setConsoleEnable(bool enable, const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (loggerName.empty())
+    {
+        for (auto iter = m_loggerMap.begin(); m_loggerMap.end() != iter; ++iter)
+        {
+            iter->second->setConsoleEnable(enable);
+        }
+    }
+    else
+    {
+        auto iter = m_loggerMap.find(loggerName);
+        if (m_loggerMap.end() != iter)
+        {
+            iter->second->setConsoleEnable(enable);
+        }
+    }
+}
+
 InnerLoggerPtr LoggerManager::createInnerLogger(const LogConfig& cfg)
 {
     return std::make_shared<InnerLoggerImpl>(cfg);

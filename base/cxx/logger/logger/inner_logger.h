@@ -46,6 +46,20 @@ public:
     virtual void setLevel(int level) = 0;
 
     /**
+     * @brief 获取等级文件类型
+     * @param level 等级
+     * @return 文件类型
+     */
+    virtual int getLevelFile(int level) = 0;
+
+    /**
+     * @brief 设置等级文件类型
+     * @param level 等级
+     * @param fileType 日志等级要写入的文件类型(类型值同level), 不在类型值范围内表示记录到通用文件
+     */
+    virtual void setLevelFile(int level, int fileType = -1) = 0;
+
+    /**
      * @brief 是否输出到控制台
      * @return true-是, false-否
      */

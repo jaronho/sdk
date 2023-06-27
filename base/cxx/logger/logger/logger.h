@@ -43,25 +43,39 @@ public:
      * @brief 获取等级
      * @return 等级
      */
-    virtual int getLevel() const;
+    int getLevel() const;
 
     /**
      * @brief 设置等级
      * @param level 等级
      */
-    virtual void setLevel(int level);
+    void setLevel(int level);
+
+    /**
+     * @brief 获取等级文件类型
+     * @param level 等级
+     * @return 文件类型
+     */
+    int getLevelFile(int level) const;
+
+    /**
+     * @brief 设置等级文件类型
+     * @param level 等级
+     * @param fileType 日志等级要写入的文件类型(类型值同level), 不在类型值范围内表示记录到通用文件
+     */
+    void setLevelFile(int level, int fileType = -1);
 
     /**
      * @brief 是否输出到控制台
      * @return true-是, false-否
      */
-    virtual bool isConsoleEnable() const;
+    bool isConsoleEnable() const;
 
     /**
      * @brief 设置是否输出到控制台
      * @param enable 开关标识
      */
-    virtual void setConsoleEnable(bool enable);
+    void setConsoleEnable(bool enable);
 
     void trace(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
     void debug(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
