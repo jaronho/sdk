@@ -232,7 +232,7 @@ void DataChannel::onConnected(const boost::system::error_code& code)
 {
     if (code)
     {
-        ERROR_LOG(m_logger, "连接失败: [{}] [{}].", code.value(), code.message());
+        WARN_LOG(m_logger, "连接失败: [{}] [{}].", code.value(), code.message());
         disconnectImpl();
     }
     else
