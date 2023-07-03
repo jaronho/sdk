@@ -164,8 +164,8 @@ struct WinUsb
 public:
     std::string parentInstanceId; /* 父节点实例ID, 例如: USB\ROOT_HUB30\4&C2333A7&0&0 */
     std::string instanceId; /* 当前实例ID, 例如: USB\VID_0930&PID_140A\0060E056B626E260100040E4 */
-    int busNum; /* 总线编号 */
-    int portNum; /* 端口编号 */
+    int busNum = -1; /* 总线编号 */
+    int portNum = -1; /* 端口编号 */
     std::string vid; /* 厂商ID(小写字母) */
     std::string pid; /* 产品ID(小写字母) */
     std::string serial; /* 序列号 */
@@ -174,28 +174,6 @@ public:
     std::string deviceName; /* 设备名称 */
     std::string deviceDesc; /* 设备描述 */
 };
-
-/**
- * @brief 判断是否祖先
- * @param info 当前USB信息
- * @param winUsbList 查询到的USB信息列表
- * @return true-是, false-否
- */
-bool isAncestor(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
-{
-    auto parentInstanceId = info.parentInstanceId;
-    std::transform(parentInstanceId.begin(), parentInstanceId.end(), parentInstanceId.begin(), tolower);
-    for (const auto& item : winUsbList)
-    {
-        auto instanceId = item.instanceId;
-        std::transform(instanceId.begin(), instanceId.end(), instanceId.begin(), tolower);
-        if (parentInstanceId == instanceId)
-        {
-            return false;
-        }
-    }
-    return true;
-}
 
 /**
  * @brief 获取祖先节点总线编号(递归查询)
@@ -211,7 +189,7 @@ int getAncestorBusNum(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
     {
         auto instanceId = item.instanceId;
         std::transform(instanceId.begin(), instanceId.end(), instanceId.begin(), tolower);
-        if (parentInstanceId == instanceId)
+        if (parentInstanceId == instanceId && item.busNum > 0)
         {
             return getAncestorBusNum(item, winUsbList);
         }
@@ -555,16 +533,6 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
             info.deviceDesc = wstring2string(propertyBuffer);
         }
         winUsbList.emplace_back(info);
-    }
-    /* 筛选出祖先并确定busNum */
-    int ancestorBusNum = 1;
-    for (auto& info : winUsbList)
-    {
-        if (isAncestor(info, winUsbList))
-        {
-            info.busNum = ancestorBusNum;
-            ++ancestorBusNum;
-        }
     }
     /* 如果接入了HUB, 那么上面获取到的总线编号需要进一步转为其祖先的总线编号 */
     for (auto& info : winUsbList)
