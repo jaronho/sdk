@@ -1,9 +1,35 @@
 #pragma once
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 
 namespace nsocket
 {
+/**
+ * @brief 判断字符串是否包含指定字符串(忽略大小写)
+ * @param str 字符串
+ * @param pattern 字符串
+ * @return true-包含, false-不包含
+ */
+inline bool case_insensitive_contains(std::string str, std::string pattern) noexcept
+{
+    if (pattern.empty())
+    {
+        return true;
+    }
+    if (pattern.size() > str.size())
+    {
+        return false;
+    }
+    std::transform(str.begin(), str.end(), str.begin(), tolower);
+    std::transform(pattern.begin(), pattern.end(), pattern.begin(), tolower);
+    if (std::string::npos == str.find(pattern))
+    {
+        return false;
+    }
+    return true;
+}
+
 /**
  * @brief 比较字符串是否相等(忽略大小写)
  * @param str1 字符串1

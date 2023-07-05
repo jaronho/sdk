@@ -523,7 +523,7 @@ bool Request::checkVersion()
 bool Request::checkHeader()
 {
     auto iter = headers.find("Connection");
-    if (headers.end() == iter || !case_insensitive_equal("Upgrade", iter->second))
+    if (headers.end() == iter || iter->second.empty() || !case_insensitive_contains(iter->second, "Upgrade"))
     {
         return false;
     }
