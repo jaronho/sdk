@@ -51,6 +51,7 @@ bool ProtocolAdapter::sendPacket(const std::shared_ptr<Packet>& pkt, const nsock
             {
                 return dataChannel->sendData(buffer, callback);
             }
+            ERROR_LOG(m_logger, "数据包发送错误: 数据包不正确.");
             if (callback)
             {
                 callback(boost::system::errc::make_error_code(boost::system::errc::no_message_available), 0);
