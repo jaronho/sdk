@@ -37,11 +37,11 @@ endfunction()
 # @param: WORK_DIR 目录
 # @param: COMMIT_ID [输出]提交ID
 ###############################################################################
-function(yl_git_commit_id WORK_DIR COMMIT_ID)
+function(git_commit_id WORK_DIR COMMIT_ID)
     run_cmd(OUTPUT_VAR COMMIT_SHA1 COMMAND git rev-parse HEAD WORKING_DIRECTORY ${WORK_DIR})
     string(SUBSTRING "${COMMIT_SHA1}" 0 6 SHORT_SHA1)
     set(${COMMIT_ID} ${SHORT_SHA1} PARENT_SCOPE)
-endfunction(yl_git_commit_id)
+endfunction(git_commit_id)
 
 ###############################################################################
 # @brief: 获取目录的describe
