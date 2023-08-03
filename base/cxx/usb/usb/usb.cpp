@@ -18,6 +18,50 @@
 namespace usb
 {
 #ifdef _WIN32
+static unsigned long long digitHexToDec(const std::string& hexStr)
+{
+    unsigned long long dec = 0;
+    size_t len = hexStr.size();
+    size_t start = 0;
+    if (len >= 3)
+    {
+        const char& ch2 = hexStr.at(1);
+        if ('x' == ch2 || 'X' == ch2)
+        {
+            if ('0' != hexStr.at(0))
+            {
+                return 0;
+            }
+            start = 2;
+        }
+        else if ((ch2 < '0' || ch2 > '9') && (ch2 < 'A' || ch2 > 'F') && (ch2 < 'a' || ch2 > 'f'))
+        {
+            return 0;
+        }
+    }
+    for (size_t i = start; i < len; ++i)
+    {
+        const char& ch = hexStr.at(i);
+        if (ch >= '0' && ch <= '9')
+        {
+            dec += ((unsigned long long)(ch)-48) * (unsigned long long)(pow(16, len - i - 1));
+        }
+        else if (ch >= 'A' && ch <= 'F')
+        {
+            dec += ((unsigned long long)(ch)-55) * (unsigned long long)(pow(16, len - i - 1));
+        }
+        else if (ch >= 'a' && ch <= 'f')
+        {
+            dec += ((unsigned long long)(ch)-87) * (unsigned long long)(pow(16, len - i - 1));
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    return dec;
+}
+
 static std::string wstring2string(const std::wstring& wstr)
 {
     if (wstr.empty())
@@ -618,9 +662,7 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
         }
     }
     std::sort(rootList.begin(), rootList.end(), [](usb::WinUsb a, usb::WinUsb b) {
-        std::transform(a.pci.begin(), a.pci.end(), a.pci.begin(), toupper);
-        std::transform(b.pci.begin(), b.pci.end(), b.pci.begin(), toupper);
-        return (a.pci < b.pci); /* 根据PCI排序 */
+        return (digitHexToDec(a.pci) < digitHexToDec(b.pci)); /* 根据PCI排序 */
     });
     for (auto& info : winUsbList)
     {
