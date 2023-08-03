@@ -34,6 +34,28 @@ static std::string wstring2string(const std::wstring& wstr)
 }
 
 /**
+ * @brief 解析LocationPaths属性, 属性值格式必须为: "PCIROOT(0)#PCI(0D00)#USBROOT(0)"
+ *        "Hub_#0001"表示busNum为"0001", "Port_#0014"表示portNum值为"0014"
+ * @param propertyBuffer 属性值
+ * @param busNum [输出]总线编号
+ * @param portNum [输出]端口编号
+ * @return true-成功, false-失败
+ */
+bool parseLocationPaths(WCHAR propertyBuffer[4096], std::string& pci)
+{
+    pci.clear();
+    std::string buffer = wstring2string(propertyBuffer);
+    auto posBeg = buffer.find("#PCI(");
+    auto posEnd = buffer.find(")#USBROOT");
+    if (std::string::npos == posBeg || std::string::npos == posEnd || posBeg > posEnd)
+    {
+        return false;
+    }
+    pci = buffer.substr(posBeg + 5, posEnd - posBeg - 5);
+    return true;
+}
+
+/**
  * @brief 解析LocationInfo属性, 属性值格式必须为: "Port_#0014.Hub_#0001"
  *        "Hub_#0001"表示busNum为"0001", "Port_#0014"表示portNum值为"0014"
  * @param propertyBuffer 属性值
@@ -164,6 +186,7 @@ struct WinUsb
 public:
     std::string parentInstanceId; /* 父节点实例ID, 例如: USB\ROOT_HUB30\4&C2333A7&0&0 */
     std::string instanceId; /* 当前实例ID, 例如: USB\VID_0930&PID_140A\0060E056B626E260100040E4 */
+    std::string pci; /* PCI */
     int busNum = -1; /* 总线编号 */
     int portNum = -1; /* 端口编号 */
     std::string vid; /* 厂商ID(小写字母) */
@@ -441,23 +464,45 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
         libusb_free_device_list(devList, 1);
     }
     libusb_exit(NULL);
-    /* 根据父节点深度排序(小到大) */
+    /* 排序 */
     std::sort(usbList.begin(), usbList.end(), [](const usb::Usb& a, const usb::Usb& b) {
-        int aDepth = 0;
-        auto aParent = a.getParent();
-        while (aParent)
+        if (a.getBusNum() < b.getBusNum())
         {
-            ++aDepth;
-            aParent = aParent->getParent();
+            return true;
         }
-        int bDepth = 0;
-        auto bParent = b.getParent();
-        while (bParent)
+        else if (a.getBusNum() == b.getBusNum())
         {
-            ++bDepth;
-            bParent = bParent->getParent();
+            if (a.getPortNum() < b.getPortNum())
+            {
+                return true;
+            }
+            else if (a.getPortNum() == b.getPortNum())
+            {
+                int aDepth = 0;
+                auto aParent = a.getParent();
+                while (aParent)
+                {
+                    ++aDepth;
+                    aParent = aParent->getParent();
+                }
+                int bDepth = 0;
+                auto bParent = b.getParent();
+                while (bParent)
+                {
+                    ++bDepth;
+                    bParent = bParent->getParent();
+                }
+                if (aDepth < bDepth)
+                {
+                    return true;
+                }
+                else if (aDepth == bDepth)
+                {
+                    return a.getAddress() < b.getAddress();
+                }
+            }
         }
-        return aDepth < bDepth;
+        return false;
     });
     return usbList;
 }
@@ -519,6 +564,13 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
             return;
         }
         info.parentInstanceId = wstring2string(propertyBuffer);
+        /* 解析PCI */
+        memset(propertyBuffer, 0, sizeof(propertyBuffer));
+        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_LocationPaths, &propertyType,
+                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
+        {
+            parseLocationPaths(propertyBuffer, info.pci);
+        }
         /* 解析BusNum, PortNum */
         memset(propertyBuffer, 0, sizeof(propertyBuffer));
         if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_LocationInfo, &propertyType,
@@ -557,13 +609,28 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
         winUsbList.emplace_back(info);
     }
     /* 确认根节点及其总线编号 */
-    int rootBusNum = 1;
-    for (auto& info : winUsbList)
+    std::vector<usb::WinUsb> rootList;
+    for (const auto& info : winUsbList)
     {
         if (isRootWinUsb(info, winUsbList))
         {
-            info.busNum = rootBusNum;
-            ++rootBusNum;
+            rootList.emplace_back(info);
+        }
+    }
+    std::sort(rootList.begin(), rootList.end(), [](usb::WinUsb a, usb::WinUsb b) {
+        std::transform(a.pci.begin(), a.pci.end(), a.pci.begin(), toupper);
+        std::transform(b.pci.begin(), b.pci.end(), b.pci.begin(), toupper);
+        return (a.pci < b.pci); /* 根据PCI排序 */
+    });
+    for (auto& info : winUsbList)
+    {
+        for (size_t i = 0; i < rootList.size(); ++i)
+        {
+            if (info.instanceId == rootList[i].instanceId) /* 根节点更新总线编号 */
+            {
+                info.busNum = i + 1;
+                break;
+            }
         }
     }
     /* 如果接入了HUB, 那么上面获取到的总线编号需要进一步转为其祖先的总线编号 */
