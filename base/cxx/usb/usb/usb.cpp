@@ -176,6 +176,28 @@ public:
 };
 
 /**
+ * @brief 判断是否根节点
+ * @param info 当前USB信息
+ * @param winUsbList 查询到的USB信息列表
+ * @return true-根节点, false-非根节点
+ */
+bool isRootWinUsb(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
+{
+    auto parentInstanceId = info.parentInstanceId;
+    std::transform(parentInstanceId.begin(), parentInstanceId.end(), parentInstanceId.begin(), tolower);
+    for (const auto& item : winUsbList)
+    {
+        auto instanceId = item.instanceId;
+        std::transform(instanceId.begin(), instanceId.end(), instanceId.begin(), tolower);
+        if (parentInstanceId == instanceId)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
  * @brief 获取祖先节点总线编号(递归查询)
  * @param info 当前USB信息
  * @param winUsbList 查询到的USB信息列表
@@ -533,6 +555,16 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
             info.deviceDesc = wstring2string(propertyBuffer);
         }
         winUsbList.emplace_back(info);
+    }
+    /* 确认根节点及其总线编号 */
+    int rootBusNum = 1;
+    for (auto& info : winUsbList)
+    {
+        if (isRootWinUsb(info, winUsbList))
+        {
+            info.busNum = rootBusNum;
+            ++rootBusNum;
+        }
     }
     /* 如果接入了HUB, 那么上面获取到的总线编号需要进一步转为其祖先的总线编号 */
     for (auto& info : winUsbList)
