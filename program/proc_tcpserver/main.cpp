@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
     /* 命令参数 */
     cmdline::parser parser;
     parser.header("TCP服务端");
-    parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "127.0.0.1");
+    parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "0.0.0.0");
     parser.add<int>("port", 'p', "服务器端口, 默认:", false, 4444, cmdline::range(1, 65535));
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     parser.add<int>("ssl-on", 't', "是否启用TLS, 值: 0-不启用, 1-启用, 默认:", false, 0, cmdline::range(0, 1));

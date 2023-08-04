@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
     /* 命令参数 */
     cmdline::parser parser;
     parser.header("UDP节点");
-    parser.add<std::string>("local-addr", 'L', "本地地址, 默认:", false, "127.0.0.1");
+    parser.add<std::string>("local-addr", 'L', "本地地址, 默认:", false, "0.0.0.0");
     parser.add<int>("local-port", 'l', "本地端口(0表示自动分配), 默认:", false, 0, cmdline::range(1, 65535));
     parser.add<std::string>("remote-addr", 'R', "远端地址, 默认:", false, "127.0.0.1");
     parser.add<int>("remote-port", 'r', "远端端口, 默认:", false, 0, cmdline::range(1, 65535));
