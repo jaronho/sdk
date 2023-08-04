@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
     printf("** This is TCP server                                                                                    **\n");
     printf("** Options:                                                                                              **\n");
     printf("**                                                                                                       **\n");
-    printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
+    printf("** [-s]                   server address, default: 0.0.0.0                                               **\n");
     printf("** [-p]                   server port, default: 4444                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     printf("** [-tls]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
