@@ -202,21 +202,21 @@ bool StrTool::contains(std::string str, std::string pattern, bool caseSensitive,
     }
     if (wholeWord)
     {
-        /* 判断前面字符是否字母 */
+        /* 判断前面字符是否非打印字符, 或者数字/字母 */
         if (bpos > 0)
         {
             auto pch = str[bpos - 1];
-            if ((pch >= 'A' && pch <= 'Z') || (pch >= 'a' && pch <= 'z'))
+            if (pch < 32 || pch > 126 || (pch >= '0' && pch <= '9') || (pch >= 'A' && pch <= 'Z') || (pch >= 'a' && pch <= 'z'))
             {
                 return false;
             }
         }
-        /* 判断后面字符是否字母 */
+        /* 判断后面字符是否非打印字符, 或者数字/字母 */
         auto epos = bpos + pattern.size() - 1;
         if (epos < str.size() - 1)
         {
             auto nch = str[epos + 1];
-            if ((nch >= 'A' && nch <= 'Z') || (nch >= 'a' && nch <= 'z'))
+            if (nch < 32 || nch > 126 || (nch >= '0' && nch <= '9') || (nch >= 'A' && nch <= 'Z') || (nch >= 'a' && nch <= 'z'))
             {
                 return false;
             }
