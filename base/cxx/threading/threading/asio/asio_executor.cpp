@@ -11,10 +11,10 @@ AsioExecutor::AsioExecutor(const std::string& name, size_t threadCount) : Execut
 {
     Diagnose::onExecutorCreated(this);
     m_threads.create_threads(
-        [this, name] {
+        [this, name, threadCount] {
             /* 设置线程名称 */
             ++m_threadIndex;
-            auto threadName = name + "-" + std::to_string(m_threadIndex);
+            auto threadName = name + (threadCount > 1 ? "-" + std::to_string(m_threadIndex) : "");
             Platform::setThreadName(threadName);
             /* 关联线程id和名称 */
             auto threadId = Platform::getThreadId();
