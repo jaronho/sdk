@@ -138,8 +138,8 @@ TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::str
             }
             if (!s_handshakeCheckThread)
             {
-                s_handshakeCheckThread = std::make_unique<std::thread>([] {
-                    setThreadName("handshake::check"); /* 设置线程名称 */
+                s_handshakeCheckThread = std::make_unique<std::thread>([name] {
+                    setThreadName(name + "::hs"); /* 设置线程名称 */
                     s_handshakeCheckContext->run();
                 });
             }

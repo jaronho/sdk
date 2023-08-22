@@ -104,8 +104,8 @@ private:
     void onRecvData(const std::vector<unsigned char>& data);
 
 private:
-    threading::ExecutorPtr m_tcpExecutor = threading::ThreadProxy::createAsioExecutor("nac::tcli::loop", 1); /* TCP报文收发线程 */
-    threading::ExecutorPtr m_pktExecutor = threading::ThreadProxy::createAsioExecutor("nac::tcli::pkt", 1); /* 报文处理线程 */
+    threading::ExecutorPtr m_tcpExecutor = threading::ThreadProxy::createAsioExecutor("tcli::loop", 1); /* TCP报文收发线程 */
+    threading::ExecutorPtr m_pktExecutor = threading::ThreadProxy::createAsioExecutor("tcli::pkt", 1); /* 报文处理线程 */
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* TCP客户端 */
     logger::Logger m_logger = logger::LoggerManager::getLogger("NAC");
 };
