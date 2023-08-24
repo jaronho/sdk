@@ -189,7 +189,7 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
 {
     /* 获取网桥, 网卡 */
     auto bridgeList = getBridgeInfos();
-    std::vector<std::vector<utility::Net::IfaceInfo>> groupList;
+    std::vector<utility::Net::IfaceInfo> netcardList;
     auto interfaceList = utility::Net::getAllInterfaces();
     for (size_t i = 0; i < interfaceList.size(); ++i)
     {
@@ -213,46 +213,13 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
         {
             continue;
         }
-        /* 查找厂商编组并插入 */
-        bool findFlag = false;
-        auto vendorId = utility::StrTool::join(iface.mac, ":", 3); /* 网卡厂商ID */
-        for (auto iter = groupList.begin(); groupList.end() != iter; ++iter)
-        {
-            auto tmpInfo = (*iter)[0];
-            auto tmpVendorId = utility::StrTool::join(tmpInfo.mac, ":", 3); /* 获取当前组的厂商ID */
-            if (0 == vendorId.compare(tmpVendorId)) /* 厂商ID一致, 找到编组 */
-            {
-                iter->emplace_back(iface);
-                /* 排序(网卡地址小的排在前面) */
-                std::sort(iter->begin(), iter->end(), [](utility::Net::IfaceInfo a, utility::Net::IfaceInfo b) {
-                    return utility::StrTool::toLower(utility::StrTool::join(a.mac, ":"))
-                           < utility::StrTool::toLower(utility::StrTool::join(b.mac, ":"));
-                });
-                findFlag = true;
-                break;
-            }
-        }
-        if (findFlag)
-        {
-            continue;
-        }
-        /* 没有找到, 创建新编组 */
-        std::vector<utility::Net::IfaceInfo> group;
-        group.emplace_back(iface);
-        groupList.emplace_back(group);
+        netcardList.emplace_back(iface);
     }
-    /* 排序(编组数量多的排在前面) */
-    std::sort(groupList.begin(), groupList.end(),
-              [](std::vector<utility::Net::IfaceInfo> a, std::vector<utility::Net::IfaceInfo> b) { return a.size() > b.size(); });
-    /* 组成列表 */
-    std::vector<utility::Net::IfaceInfo> netcardList;
-    for (auto iter = groupList.begin(); groupList.end() != iter; ++iter)
-    {
-        for (auto it = iter->begin(); iter->end() != it; ++it)
-        {
-            netcardList.emplace_back(*it);
-        }
-    }
+    /* 排序(网卡地址小的排在前面) */
+    std::sort(netcardList.begin(), netcardList.end(), [](utility::Net::IfaceInfo a, utility::Net::IfaceInfo b) {
+        return utility::StrTool::toLower(utility::StrTool::join(a.mac, ":"))
+               < utility::StrTool::toLower(utility::StrTool::join(b.mac, ":"));
+    });
     return netcardList;
 }
 
