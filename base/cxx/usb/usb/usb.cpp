@@ -343,6 +343,13 @@ int Usb::getClassCode() const
     return m_classCode;
 }
 
+std::string Usb::getClassHex() const
+{
+    char buf[4] = {0};
+    sprintf(buf, "%02Xh", m_classCode);
+    return buf;
+}
+
 std::string Usb::getClassDesc() const
 {
     switch (m_classCode)

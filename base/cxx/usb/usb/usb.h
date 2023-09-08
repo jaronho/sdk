@@ -53,6 +53,12 @@ public:
     int getClassCode() const;
 
     /**
+     * @brief 获取设备类型编码(十六进制)
+     * @return 类型编码
+     */
+    std::string getClassHex() const;
+
+    /**
      * @brief 获取设备类型描述
      * @return 类型描述
      */

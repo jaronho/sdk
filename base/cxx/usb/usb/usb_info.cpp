@@ -36,17 +36,19 @@ static std::string runCommand(const std::string& cmd)
     return outStr;
 }
 
-#ifndef _WIN32
 /**
  * @brief 查询USB设备节点列表
  * @param busNum 总线
  * @param portNum 端口
  * @param address 地址
+ * @param devRootNode [输出]设备根节点
  * @return USB设备节点列表 
  */
-static std::map<std::string, std::string> queryUsbDevNodes(int busNum, int portNum, int address)
+static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int address, DevNode& devRootNode)
 {
-    std::map<std::string, std::string> devNodes;
+    devRootNode = DevNode();
+    std::vector<DevNode> devNodes;
+#ifndef _WIN32
     struct udev* udev = udev_new();
     if (!udev)
     {
@@ -99,34 +101,95 @@ static std::map<std::string, std::string> queryUsbDevNodes(int busNum, int portN
                     const char* subSystemPtr = udev_device_get_subsystem(dev);
                     if (subSystemPtr && 0 == strcmp(subSystemPtr, "block"))
                     {
-                        auto outStr = runCommand(std::string("blkid ") + devNode);
-                        std::transform(outStr.begin(), outStr.end(), outStr.begin(), toupper);
-                        /* 例如: /dev/sdb /dev/sdb1 几乎只有 /dev/sdb1 可挂载 */
-                        static const std::string UUID_FLAG = " UUID=\""; /* 文件系统UUID */
-                        static const std::string PARTUUID_FLAG = " PARTUUID=\""; /* 分区UUID */
-                        static const std::string TYPE_FLAG = " TYPE=\"";
-                        if (std::string::npos != outStr.find(UUID_FLAG) || std::string::npos != outStr.find(PARTUUID_FLAG))
+                        auto pos = std::string(devNode).rfind('/');
+                        auto devName = std::string::npos == pos ? std::string() : std::string(devNode).substr(pos + 1);
+                        auto command = std::string("lsblk -OP | grep -E 'NAME=\"") + devName + "\" KNAME=\"" + devName + "\" '";
+                        auto outStr = runCommand(command);
+                        static const std::string GROUP_FLAG = " GROUP=\""; /* 组名 */
+                        static const std::string FSTYPE_FLAG = " FSTYPE=\""; /* 文件系统类型 */
+                        static const std::string LABEL_FLAG = " LABEL=\""; /* 文件系统标签 */
+                        static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
+                        static const std::string RO_FLAG = " RO=\""; /* 只读设备 */
+                        static const std::string TYPE_FLAG = " TYPE=\""; /* 设备类型 */
+                        std::string group;
+                        auto groupPos = outStr.find(GROUP_FLAG);
+                        if (std::string::npos != groupPos)
                         {
-                            std::string fstype;
-                            auto typePos = outStr.find(TYPE_FLAG);
-                            if (std::string::npos != typePos)
+                            auto ep = outStr.find('"', groupPos + GROUP_FLAG.size());
+                            if (std::string::npos != ep)
                             {
-                                for (size_t i = typePos + TYPE_FLAG.size(); i < outStr.size(); ++i)
-                                {
-                                    if ('"' == outStr[i])
-                                    {
-                                        break;
-                                    }
-                                    fstype.push_back(outStr[i]);
-                                }
+                                group = outStr.substr(groupPos + GROUP_FLAG.size(), ep - groupPos - GROUP_FLAG.size());
                             }
-                            std::transform(fstype.begin(), fstype.end(), fstype.begin(), tolower);
-                            devNodes.insert(std::make_pair(devNode, fstype));
+                        }
+                        std::string fstype;
+                        auto fstypePos = outStr.find(FSTYPE_FLAG);
+                        if (std::string::npos != fstypePos)
+                        {
+                            auto ep = outStr.find('"', fstypePos + FSTYPE_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                fstype = outStr.substr(fstypePos + FSTYPE_FLAG.size(), ep - fstypePos - FSTYPE_FLAG.size());
+                            }
+                        }
+                        std::string label;
+                        auto labelPos = outStr.find(LABEL_FLAG);
+                        if (std::string::npos != labelPos)
+                        {
+                            auto ep = outStr.find('"', labelPos + LABEL_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                label = outStr.substr(labelPos + LABEL_FLAG.size(), ep - labelPos - LABEL_FLAG.size());
+                            }
+                        }
+                        std::string partlabel;
+                        auto partlabelPos = outStr.find(PARTLABEL_FLAG);
+                        if (std::string::npos != partlabelPos)
+                        {
+                            auto ep = outStr.find('"', partlabelPos + PARTLABEL_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                partlabel = outStr.substr(partlabelPos + PARTLABEL_FLAG.size(), ep - partlabelPos - PARTLABEL_FLAG.size());
+                            }
+                        }
+                        std::string permit = "";
+                        auto roPos = outStr.find(RO_FLAG);
+                        if (std::string::npos != roPos)
+                        {
+                            auto ep = outStr.find('"', roPos + RO_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                permit = ("0" == outStr.substr(roPos + RO_FLAG.size(), ep - roPos - RO_FLAG.size())) ? "ro" : "rw";
+                            }
+                        }
+                        std::string type;
+                        auto typePos = outStr.find(TYPE_FLAG);
+                        if (std::string::npos != typePos)
+                        {
+                            auto ep = outStr.find('"', typePos + TYPE_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                type = outStr.substr(typePos + TYPE_FLAG.size(), ep - typePos - TYPE_FLAG.size());
+                            }
+                        }
+                        if ("disk" == group)
+                        {
+                            if ("disk" == type) /* 超块 */
+                            {
+                                devRootNode = DevNode(devNode, group, fstype, label, partlabel, permit);
+                            }
+                            else if ("part" == type) /* 分区 */
+                            {
+                                devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, permit));
+                            }
+                        }
+                        else if ("cdrom" == group)
+                        {
+                            devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, permit));
                         }
                     }
                     else
                     {
-                        devNodes.insert(std::make_pair(devNode, ""));
+                        devNodes.emplace_back(DevNode(devNode));
                     }
                 }
             }
@@ -135,9 +198,13 @@ static std::map<std::string, std::string> queryUsbDevNodes(int busNum, int portN
     }
     udev_enumerate_unref(enumerate);
     udev_unref(udev);
-    return devNodes;
-}
 #endif
+    if (devNodes.empty() && !devRootNode.name.empty())
+    {
+        devNodes.emplace_back(devRootNode);
+    }
+    return devNodes;
+} // namespace usb
 
 UsbInfo::UsbInfo(const Usb& other) : Usb(other) {}
 
@@ -161,14 +228,19 @@ bool UsbInfo::operator!=(const UsbInfo& other) const
     return true;
 }
 
-std::vector<UsbInfo::DevNode> UsbInfo::getDevNodes() const
+DevNode UsbInfo::getDevRootNode() const
+{
+    return m_devRootNode;
+}
+
+std::vector<DevNode> UsbInfo::getDevNodes() const
 {
     return m_devNodes;
 }
 
 bool UsbInfo::isValid() const
 {
-    return (getBusNum() < 0 || getPortNum() < 0 || getAddress() < 0 || getVid().empty() || getPid().empty());
+    return (getBusNum() > 0 && getPortNum() > 0 && getAddress() > 0 && !getVid().empty() && !getPid().empty());
 }
 
 std::string UsbInfo::describe() const
@@ -180,7 +252,7 @@ std::string UsbInfo::describe() const
     desc.append(", ");
     desc.append("address: ").append(std::to_string(getAddress()));
     desc.append(", ");
-    desc.append("class: ").append(std::to_string(getClassCode()));
+    desc.append("class: ").append(std::to_string(getClassCode())).append("(").append(getClassHex()).append(")");
     desc.append(", ");
     desc.append("classDesc: ").append(getClassDesc());
     desc.append(", ");
@@ -216,47 +288,51 @@ std::string UsbInfo::describe() const
                 desc.append(", ");
             }
             desc.append(m_devNodes[i].name);
+            std::string temp;
+            if (!m_devNodes[i].group.empty())
+            {
+                temp.append(temp.empty() ? "(" : "").append(m_devNodes[i].group);
+            }
             if (!m_devNodes[i].fstype.empty())
             {
-                desc.append("(").append(m_devNodes[i].fstype).append(")");
+                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].fstype);
             }
+            if (!m_devNodes[i].label.empty())
+            {
+                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].label);
+            }
+            if (!m_devNodes[i].partlabel.empty())
+            {
+                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].partlabel);
+            }
+            if (!m_devNodes[i].permit.empty())
+            {
+                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].permit);
+            }
+            temp.append(temp.empty() ? "" : ")");
+            desc.append(temp);
         }
     }
     return desc;
 }
 
-std::vector<UsbInfo> UsbInfo::queryUsbInfos(const std::function<bool(const UsbInfo& info)>& filterFunc, bool withDevNode, bool mf)
+std::vector<UsbInfo> UsbInfo::queryUsbInfos(const std::function<bool(const UsbInfo& info, bool& withDevNode)>& filterFunc, bool mf)
 {
     std::vector<UsbInfo> usbInfoList;
     auto usbList = Usb::getAllUsbs(true, true, mf);
     for (size_t i = 0; i < usbList.size(); ++i)
     {
         UsbInfo info(usbList[i]);
-        if (!filterFunc || filterFunc(info))
+        bool withDevNode = false;
+        if (!filterFunc || filterFunc(info, withDevNode))
         {
-            if (withDevNode)
+            if (withDevNode && (info.isHid() || info.isStorage())) /* 只需获取HID和存储类型的设备节点 */
             {
-                info.m_devNodes = queryDevNodes(info);
+                info.m_devNodes = queryUsbDevNodes(info.getBusNum(), info.getPortNum(), info.getAddress(), info.m_devRootNode);
             }
             usbInfoList.emplace_back(info);
         }
     }
     return usbInfoList;
-}
-
-std::vector<UsbInfo::DevNode> UsbInfo::queryDevNodes(const UsbInfo& info)
-{
-    std::vector<UsbInfo::DevNode> devNodes;
-#ifndef _WIN32
-    if (info.isHid() || info.isStorage()) /* 只需获取HID和存储类型的设备节点 */
-    {
-        auto usbDevNodes = queryUsbDevNodes(info.getBusNum(), info.getPortNum(), info.getAddress());
-        for (auto iter = usbDevNodes.begin(); usbDevNodes.end() != iter; ++iter)
-        {
-            devNodes.emplace_back(DevNode(iter->first, iter->second));
-        }
-    }
-#endif
-    return devNodes;
 }
 } // namespace usb

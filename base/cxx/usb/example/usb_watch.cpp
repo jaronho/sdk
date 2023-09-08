@@ -38,7 +38,12 @@ int main(int argc, char** argv)
     bool firstLine = true;
     std::string usbListJson;
     usbListJson += "[";
-    auto usbList = usb::UsbInfo::queryUsbInfos(nullptr, true, true);
+    auto usbList = usb::UsbInfo::queryUsbInfos(
+        [](const usb::UsbInfo& info, bool& withDevNode) {
+            withDevNode = true;
+            return true;
+        },
+        true);
     for (size_t i = 0; i < usbList.size(); ++i)
     {
         const auto& info = usbList[i];
@@ -64,9 +69,7 @@ int main(int argc, char** argv)
                 line += ", ";
                 line += "\"address\":" + std::to_string(info.getAddress());
                 line += ", ";
-                char buf[4] = {0};
-                sprintf(buf, "%02Xh", info.getClassCode());
-                line += "\"classCode\":\"" + std::string(buf) + "\"";
+                line += "\"classCode\":\"" + info.getClassHex() + "\"";
                 line += ", ";
                 line += "\"classDesc\":\"" + info.getClassDesc() + "\"";
                 line += ", ";
@@ -105,10 +108,29 @@ int main(int argc, char** argv)
                             line += ",";
                         }
                         line += "\"" + devNodes[i].name;
+                        std::string temp;
+                        if (!devNodes[i].group.empty())
+                        {
+                            temp += (temp.empty() ? "(" : "") + devNodes[i].group;
+                        }
                         if (!devNodes[i].fstype.empty())
                         {
-                            line += "(" + devNodes[i].fstype + ")";
+                            temp += (temp.empty() ? "(" : ",") + devNodes[i].fstype;
                         }
+                        if (!devNodes[i].label.empty())
+                        {
+                            temp += (temp.empty() ? "(" : ",") + devNodes[i].label;
+                        }
+                        if (!devNodes[i].partlabel.empty())
+                        {
+                            temp += (temp.empty() ? "(" : ",") + devNodes[i].partlabel;
+                        }
+                        if (!devNodes[i].permit.empty())
+                        {
+                            temp += (temp.empty() ? "(" : ",") + devNodes[i].permit;
+                        }
+                        temp += temp.empty() ? "" : ")";
+                        line += temp;
                         line += "\"";
                     }
                     line += "]";

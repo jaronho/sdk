@@ -36,7 +36,12 @@ int main(int argc, char** argv)
         }
         i += 2;
     }
-    auto usbList = usb::UsbInfo::queryUsbInfos(nullptr, true, true);
+    auto usbList = usb::UsbInfo::queryUsbInfos(
+        [](const usb::UsbInfo& info, bool& withDevNode) {
+            withDevNode = true;
+            return true;
+        },
+        true);
     for (size_t i = 0; i < usbList.size(); ++i)
     {
         const auto& info = usbList[i];
