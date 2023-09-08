@@ -188,10 +188,6 @@ static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int addres
     udev_enumerate_unref(enumerate);
     udev_unref(udev);
 #endif
-    if (devNodes.empty() && !devRootNode.name.empty())
-    {
-        devNodes.emplace_back(devRootNode);
-    }
     return devNodes;
 } // namespace usb
 
@@ -266,6 +262,30 @@ std::string UsbInfo::describe() const
     desc.append(", ");
     desc.append("deviceDesc: ").append(getDeviceDesc());
 #endif
+    if (!m_devRootNode.name.empty())
+    {
+        desc.append("\n");
+        desc.append("devRootNode: ").append(m_devRootNode.name);
+        std::string temp;
+        if (!m_devRootNode.group.empty())
+        {
+            temp.append(temp.empty() ? "(" : "").append(m_devRootNode.group);
+        }
+        if (!m_devRootNode.fstype.empty())
+        {
+            temp.append(temp.empty() ? "(" : ",").append(m_devRootNode.fstype);
+        }
+        if (!m_devRootNode.label.empty())
+        {
+            temp.append(temp.empty() ? "(" : ",").append(m_devRootNode.label);
+        }
+        if (!m_devRootNode.partlabel.empty())
+        {
+            temp.append(temp.empty() ? "(" : ",").append(m_devRootNode.partlabel);
+        }
+        temp.append(temp.empty() ? "" : ")");
+        desc.append(temp);
+    }
     if (m_devNodes.size() > 0)
     {
         desc.append("\n");
