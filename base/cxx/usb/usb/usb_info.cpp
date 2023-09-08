@@ -158,7 +158,7 @@ static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int addres
                             auto ep = outStr.find('"', roPos + RO_FLAG.size());
                             if (std::string::npos != ep)
                             {
-                                permit = ("0" == outStr.substr(roPos + RO_FLAG.size(), ep - roPos - RO_FLAG.size())) ? "ro" : "rw";
+                                permit = ("1" == outStr.substr(roPos + RO_FLAG.size(), ep - roPos - RO_FLAG.size())) ? "ro" : "rw";
                             }
                         }
                         std::string type;
