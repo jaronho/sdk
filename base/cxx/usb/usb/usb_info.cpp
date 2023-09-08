@@ -160,7 +160,7 @@ static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int addres
                                 type = outStr.substr(typePos + TYPE_FLAG.size(), ep - typePos - TYPE_FLAG.size());
                             }
                         }
-                        if ("disk" == group)
+                        if ("disk" == group) /* 磁盘 */
                         {
                             if ("disk" == type) /* 超块 */
                             {
@@ -171,7 +171,7 @@ static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int addres
                                 devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel));
                             }
                         }
-                        else if ("cdrom" == group)
+                        else if ("cdrom" == group) /* 光驱 */
                         {
                             devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel));
                         }
