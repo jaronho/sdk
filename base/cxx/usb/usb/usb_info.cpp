@@ -109,7 +109,6 @@ static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int addres
                         static const std::string FSTYPE_FLAG = " FSTYPE=\""; /* 文件系统类型 */
                         static const std::string LABEL_FLAG = " LABEL=\""; /* 文件系统标签 */
                         static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
-                        static const std::string RO_FLAG = " RO=\""; /* 只读设备 */
                         static const std::string TYPE_FLAG = " TYPE=\""; /* 设备类型 */
                         std::string group;
                         auto groupPos = outStr.find(GROUP_FLAG);
@@ -151,16 +150,6 @@ static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int addres
                                 partlabel = outStr.substr(partlabelPos + PARTLABEL_FLAG.size(), ep - partlabelPos - PARTLABEL_FLAG.size());
                             }
                         }
-                        std::string permit = "";
-                        auto roPos = outStr.find(RO_FLAG);
-                        if (std::string::npos != roPos)
-                        {
-                            auto ep = outStr.find('"', roPos + RO_FLAG.size());
-                            if (std::string::npos != ep)
-                            {
-                                permit = ("1" == outStr.substr(roPos + RO_FLAG.size(), ep - roPos - RO_FLAG.size())) ? "ro" : "rw";
-                            }
-                        }
                         std::string type;
                         auto typePos = outStr.find(TYPE_FLAG);
                         if (std::string::npos != typePos)
@@ -175,16 +164,16 @@ static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int addres
                         {
                             if ("disk" == type) /* 超块 */
                             {
-                                devRootNode = DevNode(devNode, group, fstype, label, partlabel, permit);
+                                devRootNode = DevNode(devNode, group, fstype, label, partlabel);
                             }
                             else if ("part" == type) /* 分区 */
                             {
-                                devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, permit));
+                                devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel));
                             }
                         }
                         else if ("cdrom" == group)
                         {
-                            devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, permit));
+                            devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel));
                         }
                     }
                     else
@@ -304,10 +293,6 @@ std::string UsbInfo::describe() const
             if (!m_devNodes[i].partlabel.empty())
             {
                 temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].partlabel);
-            }
-            if (!m_devNodes[i].permit.empty())
-            {
-                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].permit);
             }
             temp.append(temp.empty() ? "" : ")");
             desc.append(temp);

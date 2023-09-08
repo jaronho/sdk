@@ -12,8 +12,8 @@ struct DevNode
 {
     DevNode() = default;
     DevNode(const std::string& name, const std::string& group = "", const std::string& fstype = "", const std::string& label = "",
-            const std::string& partlabel = "", const std::string& permit = "")
-        : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel), permit(permit)
+            const std::string& partlabel = "")
+        : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel)
     {
     }
 
@@ -22,7 +22,6 @@ struct DevNode
     std::string fstype; /* 文件系统类型, 如果是存储设备则为: ext4, vfat, exfat, ntfs等 */
     std::string label; /* 文件系统标签 */
     std::string partlabel; /* 分区标签 */
-    std::string permit; /* 权限, ro: 只读, rw: 读写 */
 };
 
 /**

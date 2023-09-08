@@ -125,10 +125,6 @@ int main(int argc, char** argv)
                         {
                             temp += (temp.empty() ? "(" : ",") + devNodes[i].partlabel;
                         }
-                        if (!devNodes[i].permit.empty())
-                        {
-                            temp += (temp.empty() ? "(" : ",") + devNodes[i].permit;
-                        }
                         temp += temp.empty() ? "" : ")";
                         line += temp;
                         line += "\"";
