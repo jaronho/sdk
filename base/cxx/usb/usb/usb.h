@@ -119,16 +119,22 @@ public:
     std::string getManufacturer() const;
 
     /**
-     * @brief 获取设备名称(Windows下才有值)
+     * @brief 获取设备名称(适用于Windows平台)
      * @return 设备名称
      */
     std::string getDeviceName() const;
 
     /**
-     * @brief 获取设备描述(Windows下才有值)
+     * @brief 获取设备描述(适用于Windows平台)
      * @return 设备描述
      */
     std::string getDeviceDesc() const;
+
+    /**
+     * @brief 获取存储设备类型(适用于Windows平台)
+     * @return 存储设备类型
+     */
+    std::string getStorageType() const;
 
     /**
      * @brief 判断是否HID(键盘/鼠标/加密狗等)类型
@@ -137,7 +143,7 @@ public:
     bool isHid() const;
 
     /**
-     * @brief 判断是否存储(U盘)类型
+     * @brief 判断是否存储设备类型
      * @return true-是, false-否
      */
     bool isStorage() const;
@@ -217,7 +223,8 @@ private:
     std::string m_serial; /* 序列号 */
     std::string m_product; /* 产品名称 */
     std::string m_manufacturer; /* 厂商名称 */
-    std::string m_deviceName; /* 设备名称(Windows下才有值) */
-    std::string m_deviceDesc; /* 设备描述(Windows下才有值) */
+    std::string m_deviceName; /* 设备名称(适用于Windows平台) */
+    std::string m_deviceDesc; /* 设备描述(适用于Windows平台) */
+    std::string m_storageType; /* 存储设备类型(适用于Windows平台) */
 };
 } // namespace usb

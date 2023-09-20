@@ -94,6 +94,10 @@ int main(int argc, char** argv)
                 line += "\"deviceName\":\"" + info.getDeviceName() + "\"";
                 line += ", ";
                 line += "\"deviceDesc\":\"" + info.getDeviceDesc() + "\"";
+                if (info.isStorage())
+                {
+                    line += "\"storageType\":\"" + info.getStorageType() + "\"";
+                }
 #endif
 #ifndef _WIN32
                 line += ", ";
@@ -124,6 +128,10 @@ int main(int argc, char** argv)
                         if (!devNodes[i].partlabel.empty())
                         {
                             temp += (temp.empty() ? "(" : ",") + devNodes[i].partlabel;
+                        }
+                        if (!devNodes[i].model.empty())
+                        {
+                            temp += (temp.empty() ? "(" : ",") + devNodes[i].model;
                         }
                         temp += temp.empty() ? "" : ")";
                         line += temp;

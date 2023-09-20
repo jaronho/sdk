@@ -6,22 +6,23 @@
 namespace usb
 {
 /**
- * @brief 设备节点
+ * @brief 设备节点(适用于Linux平台)
  */
 struct DevNode
 {
     DevNode() = default;
     DevNode(const std::string& name, const std::string& group = "", const std::string& fstype = "", const std::string& label = "",
-            const std::string& partlabel = "")
-        : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel)
+            const std::string& partlabel = "", const std::string& model = "")
+        : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel), model(model)
     {
     }
 
-    std::string name; /* 节点名, 如: /dev/sdb, /dev/sdb4, /dev/hidraw0 /dev/hidraw1 */
-    std::string group; /* 组名, 如: disk: 磁盘, cdrom: 光驱 */
-    std::string fstype; /* 文件系统类型, 如果是存储设备则为: ext4, vfat, exfat, ntfs等 */
-    std::string label; /* 文件系统标签 */
-    std::string partlabel; /* 分区标签 */
+    std::string name; /* 节点名, 如: /dev/sdb, /dev/sdb4, /dev/hidraw0 /dev/hidraw1等 */
+    std::string group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
+    std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat, exfat, ntfs等 */
+    std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
+    std::string partlabel; /* 分区标签, 例如: "Microsoft reserved partition" */
+    std::string model; /* 设备标识符, 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH" 等 */
 };
 
 /**
@@ -41,7 +42,7 @@ public:
     /**
      * @brief 构造函数
      * @param other 拷贝对象
-     * @param devNodes 设备节点列表
+     * @param devNodes 设备节点列表(适用于Linux平台)
      */
     UsbInfo(const UsbInfo& other, const std::vector<DevNode>& devNodes);
 
@@ -60,13 +61,13 @@ public:
     bool operator!=(const UsbInfo& other) const;
 
     /**
-     * @brief 获取根节点
+     * @brief 获取根节点(适用于Linux平台)
      * @return 根节点
      */
     DevNode getDevRootNode() const;
 
     /**
-     * @brief 获取节点列表
+     * @brief 获取节点列表(适用于Linux平台)
      * @return 设备节点列表
      */
     std::vector<DevNode> getDevNodes() const;
@@ -98,7 +99,7 @@ public:
                                               bool mf = false);
 
 private:
-    DevNode m_devRootNode; /* 设备根节点 */
-    std::vector<DevNode> m_devNodes; /* 节点(可能多个) */
+    DevNode m_devRootNode; /* 设备根节点(适用于Linux平台) */
+    std::vector<DevNode> m_devNodes; /* 节点(适用于Linux平台, 可能多个) */
 };
 } // namespace usb

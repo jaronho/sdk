@@ -74,6 +74,10 @@ int main(int argc, char** argv)
 #ifdef _WIN32
             printf("=   deviceName: %s\n", info.getDeviceName().c_str());
             printf("=   deviceDesc: %s\n", info.getDeviceDesc().c_str());
+            if (info.isStorage())
+            {
+                printf("=  storageType: %s\n", info.getStorageType().c_str());
+            }
 #endif
         }
     }

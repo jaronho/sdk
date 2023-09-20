@@ -191,10 +191,11 @@ bool parseInstanceId(WCHAR propertyBuffer[4096], std::string& instanceId, std::s
  * @param product [输出]产品名称
  * @param manufacturer [输出]厂商名称
  */
-void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string& manufacturer)
+void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string& manufacturer, std::string& storageType)
 {
     product.clear();
     manufacturer.clear();
+    storageType.clear();
     std::string buffer = wstring2string(propertyBuffer);
     auto pos = buffer.find("Prod_");
     if (std::string::npos != pos)
@@ -220,6 +221,19 @@ void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string
             manufacturer.push_back(buffer[i]);
         }
     }
+    pos = buffer.find("USBSTOR\\");
+    if (std::string::npos != pos)
+    {
+        for (size_t i = pos + 8; i < buffer.size(); ++i)
+        {
+            if ('&' == buffer[i])
+            {
+                break;
+            }
+            storageType.push_back(buffer[i]);
+        }
+        std::transform(storageType.begin(), storageType.end(), storageType.begin(), tolower);
+    }
 }
 
 /**
@@ -240,6 +254,7 @@ public:
     std::string manufacturer; /* 厂商名称 */
     std::string deviceName; /* 设备名称 */
     std::string deviceDesc; /* 设备描述 */
+    std::string storageType; /* 存储设备类型, 值: disk-磁盘, cdrom-光驱 */
 };
 
 /**
@@ -316,6 +331,7 @@ Usb::Usb(const Usb& src)
     m_manufacturer = src.m_manufacturer;
     m_deviceName = src.m_deviceName;
     m_deviceDesc = src.m_deviceDesc;
+    m_storageType = src.m_storageType;
 }
 
 std::shared_ptr<Usb> Usb::getParent() const
@@ -464,6 +480,11 @@ std::string Usb::getDeviceName() const
 std::string Usb::getDeviceDesc() const
 {
     return m_deviceDesc;
+}
+
+std::string Usb::getStorageType() const
+{
+    return m_storageType;
 }
 
 bool Usb::isHid() const
@@ -641,7 +662,7 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
         if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_Children, &propertyType,
                                       reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
         {
-            parseChildren(propertyBuffer, info.product, info.manufacturer);
+            parseChildren(propertyBuffer, info.product, info.manufacturer, info.storageType);
         }
         /* 解析设备名称 */
         memset(propertyBuffer, 0, sizeof(propertyBuffer));
@@ -814,6 +835,7 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
                 }
                 info.m_deviceName = item.deviceName;
                 info.m_deviceDesc = item.deviceDesc;
+                info.m_storageType = item.storageType;
                 break;
             }
         }

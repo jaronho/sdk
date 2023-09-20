@@ -110,6 +110,7 @@ static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int addres
                         static const std::string LABEL_FLAG = " LABEL=\""; /* 文件系统标签 */
                         static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
                         static const std::string TYPE_FLAG = " TYPE=\""; /* 设备类型 */
+                        static const std::string MODEL_FLAG = " MODEL=\""; /* 设备标识符 */
                         std::string group;
                         auto groupPos = outStr.find(GROUP_FLAG);
                         if (std::string::npos != groupPos)
@@ -160,20 +161,30 @@ static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int addres
                                 type = outStr.substr(typePos + TYPE_FLAG.size(), ep - typePos - TYPE_FLAG.size());
                             }
                         }
+                        std::string model;
+                        auto modelPos = outStr.find(MODEL_FLAG);
+                        if (std::string::npos != modelPos)
+                        {
+                            auto ep = outStr.find('"', modelPos + MODEL_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                model = outStr.substr(modelPos + MODEL_FLAG.size(), ep - modelPos - MODEL_FLAG.size());
+                            }
+                        }
                         if ("disk" == group) /* 磁盘 */
                         {
-                            if ("disk" == type) /* 超块 */
+                            if ("disk" == type) /* 超块(不可挂载) */
                             {
-                                devRootNode = DevNode(devNode, group, fstype, label, partlabel);
+                                devRootNode = DevNode(devNode, group, fstype, label, partlabel, model);
                             }
                             else if ("part" == type) /* 分区 */
                             {
-                                devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel));
+                                devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model));
                             }
                         }
                         else if ("cdrom" == group) /* 光驱 */
                         {
-                            devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel));
+                            devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model));
                         }
                     }
                     else
@@ -261,6 +272,10 @@ std::string UsbInfo::describe() const
     desc.append("deviceName: ").append(getDeviceName());
     desc.append(", ");
     desc.append("deviceDesc: ").append(getDeviceDesc());
+    if (isStorage())
+    {
+        desc.append("storageType: ").append(getStorageType());
+    }
 #endif
     if (!m_devRootNode.name.empty())
     {
@@ -282,6 +297,10 @@ std::string UsbInfo::describe() const
         if (!m_devRootNode.partlabel.empty())
         {
             temp.append(temp.empty() ? "(" : ",").append(m_devRootNode.partlabel);
+        }
+        if (!m_devRootNode.model.empty())
+        {
+            temp.append(temp.empty() ? "(" : ",").append(m_devRootNode.model);
         }
         temp.append(temp.empty() ? "" : ")");
         desc.append(temp);
@@ -313,6 +332,10 @@ std::string UsbInfo::describe() const
             if (!m_devNodes[i].partlabel.empty())
             {
                 temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].partlabel);
+            }
+            if (!m_devNodes[i].model.empty())
+            {
+                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].model);
             }
             temp.append(temp.empty() ? "" : ")");
             desc.append(temp);
