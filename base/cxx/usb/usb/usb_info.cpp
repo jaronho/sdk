@@ -44,7 +44,7 @@ static std::string runCommand(const std::string& cmd)
  * @param devRootNode [输出]设备根节点
  * @return USB设备节点列表 
  */
-static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int address, DevNode& devRootNode)
+std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int address, DevNode& devRootNode)
 {
     devRootNode = DevNode();
     std::vector<DevNode> devNodes;

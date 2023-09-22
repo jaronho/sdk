@@ -26,6 +26,16 @@ struct DevNode
 };
 
 /**
+ * @brief 查询USB设备节点列表
+ * @param busNum 总线
+ * @param portNum 端口
+ * @param address 地址
+ * @param devRootNode [输出]设备根节点
+ * @return USB设备节点列表 
+ */
+std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int address, DevNode& devRootNode);
+
+/**
  * @brief USB信息
  */
 class UsbInfo : public Usb
