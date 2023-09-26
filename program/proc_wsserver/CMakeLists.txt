@@ -29,4 +29,5 @@ add_executable(wsserver
 
 # 链接依赖库文件
 target_link_libraries(wsserver
+                      Threads::Threads
                       ${OPENSSL_LIBRARIES})

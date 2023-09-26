@@ -29,4 +29,5 @@ add_executable(tcpserver
 
 # 链接依赖库文件
 target_link_libraries(tcpserver
+                      Threads::Threads
                       ${OPENSSL_LIBRARIES})

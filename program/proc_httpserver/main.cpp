@@ -2,8 +2,10 @@
 #include <mutex>
 #include <thread>
 
+#include "fileparse/nlohmann/helper.hpp"
 #include "nsocket/http/server.h"
 #include "utility/cmdline/cmdline.h"
+#include "utility/strtool/strtool.h"
 
 std::shared_ptr<nsocket::http::Server> g_server = nullptr; /* 服务器 */
 
@@ -68,6 +70,7 @@ int main(int argc, char* argv[])
     parser.add<std::string>("pk-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
     parser.add<std::string>("pk-pwd", 'P', "私钥文件密码, 例如: 123456, 默认:", false, "");
 #endif
+    parser.add<std::string>("router", 'r', "自定义路由(JSON), 例如: [{\"method\":\"GET\",\"uri\":\"test1\"}], 默认:", false, "");
     parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
@@ -81,6 +84,7 @@ int main(int argc, char* argv[])
     auto pkFile = parser.get<std::string>("pk-file");
     auto pkPwd = parser.get<std::string>("pk-pwd");
 #endif
+    auto routerList = nlohmann::parse(parser.get<std::string>("router"));
     g_server = std::make_shared<nsocket::http::Server>("http_server", 10, server, port);
     /* 设置路由未找到回调 */
     g_server->setRouterNotFoundCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
@@ -113,6 +117,134 @@ int main(int argc, char* argv[])
         return resp;
     });
     /* 添加路由表 */
+    if (routerList.is_array())
+    {
+        auto r = std::make_shared<nsocket::http::Router_simple>();
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
+            printf("========================= 自定义路由(方法不允许) =========================\n");
+            printf("***     Cid: %zu\n", cid);
+            printf("***  Client: %s:%d\n", req->host.c_str(), req->port);
+            printf("*** Version: %s\n", req->version.c_str());
+            printf("***  Method: %s\n", req->method.c_str());
+            printf("***     Uri: %s\n", req->uri.c_str());
+            if (!req->queries.empty())
+            {
+                printf("*** Queries:\n");
+                for (auto iter = req->queries.begin(); req->queries.end() != iter; ++iter)
+                {
+                    printf("             %s: %s\n", iter->first.c_str(), iter->second.c_str());
+                }
+            }
+            if (!req->headers.empty())
+            {
+                printf("*** Headers:\n");
+                for (auto iter = req->headers.begin(); req->headers.end() != iter; ++iter)
+                {
+                    printf("             %s: %s\n", iter->first.c_str(), iter->second.c_str());
+                }
+            }
+            printf("========================================================================\n");
+            auto str = htmlString(cid, req, "405 Method Not Allow");
+            auto resp = nsocket::http::makeResponse405();
+            resp->body.insert(resp->body.end(), str.begin(), str.end());
+            return resp;
+        };
+        r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
+                             const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
+            printf("------------------------------- 自定义路由 -------------------------------\n");
+            printf("---     Cid: %zu\n", cid);
+            printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
+            printf("--- Version: %s\n", req->version.c_str());
+            printf("---  Method: %s\n", req->method.c_str());
+            printf("---     Uri: %s\n", req->uri.c_str());
+            if (!req->queries.empty())
+            {
+                printf("--- Queries:\n");
+                for (auto iter = req->queries.begin(); req->queries.end() != iter; ++iter)
+                {
+                    printf("             %s: %s\n", iter->first.c_str(), iter->second.c_str());
+                }
+            }
+            if (!req->headers.empty())
+            {
+                printf("--- Headers:\n");
+                for (auto iter = req->headers.begin(); req->headers.end() != iter; ++iter)
+                {
+                    printf("             %s: %s\n", iter->first.c_str(), iter->second.c_str());
+                }
+            }
+            printf("--- Content(%zu):\n", req->getContentLength());
+            printf("%s\n", data.c_str());
+            printf("------------------------------------------------------------------------\n");
+            auto str = htmlString(cid, req, "Welcome To Home");
+            auto resp = nsocket::http::makeResponse200();
+            resp->body.insert(resp->body.end(), str.begin(), str.end());
+            if (sendRespFunc)
+            {
+                sendRespFunc(resp);
+            }
+        };
+        if (!routerList.empty())
+        {
+            printf("自定义API接口:\n");
+        }
+        for (size_t i = 0; i < routerList.size(); ++i)
+        {
+            auto routerObj = routerList[i];
+            if (routerObj.is_object())
+            {
+                auto method = utility::StrTool::toUpper(nlohmann::getter<std::string>(routerObj, "method"));
+                auto uri = nlohmann::getter<std::string>(routerObj, "uri");
+                if (method.empty() || uri.empty())
+                {
+                    continue;
+                }
+                nsocket::http::Method methodType;
+                if ("CONNECT" == method)
+                {
+                    methodType = nsocket::http::Method::CONNECT;
+                }
+                else if ("DELETE" == method)
+                {
+                    methodType = nsocket::http::Method::DELETE;
+                }
+                else if ("GET" == method)
+                {
+                    methodType = nsocket::http::Method::GET;
+                }
+                else if ("HEAD" == method)
+                {
+                    methodType = nsocket::http::Method::HEAD;
+                }
+                else if ("PATCH" == method)
+                {
+                    methodType = nsocket::http::Method::PATCH;
+                }
+                else if ("POST" == method)
+                {
+                    methodType = nsocket::http::Method::POST;
+                }
+                else if ("PUT" == method)
+                {
+                    methodType = nsocket::http::Method::PUT;
+                }
+                else if ("OPTIONS" == method)
+                {
+                    methodType = nsocket::http::Method::OPTIONS;
+                }
+                else if ("TRACE" == method)
+                {
+                    methodType = nsocket::http::Method::TRACE;
+                }
+                else
+                {
+                    continue;
+                }
+                printf("  %s, %s\n", method.c_str(), uri.c_str());
+                g_server->addRouter({methodType}, {uri}, r);
+            }
+        }
+    }
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
         r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {

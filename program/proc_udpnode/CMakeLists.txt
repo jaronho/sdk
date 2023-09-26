@@ -29,4 +29,5 @@ add_executable(udpnode
 
 # 链接依赖库文件
 target_link_libraries(udpnode
+                      Threads::Threads
                       ${OPENSSL_LIBRARIES})
