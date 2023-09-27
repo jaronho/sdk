@@ -161,7 +161,7 @@ int onDebugFunc(CURL* handle, curl_infotype type, char* data, size_t size, void*
     return 0;
 }
 
-bool CurlObject::SendObject::reset(const std::string& data)
+bool CurlObject::SendObject::reset(const std::string& data, bool chunk)
 {
     if (data.empty())
     {
@@ -170,7 +170,13 @@ bool CurlObject::SendObject::reset(const std::string& data)
     m_data = data;
     m_length = data.size();
     m_readed = 0;
+    m_chunk = chunk;
     return true;
+}
+
+std::string& CurlObject::SendObject::data()
+{
+    return m_data;
 }
 
 size_t CurlObject::SendObject::read(void* dest, size_t count)
@@ -184,6 +190,11 @@ size_t CurlObject::SendObject::read(void* dest, size_t count)
     memcpy(dest, m_data.c_str() + m_readed, total);
     m_readed += total;
     return total;
+}
+
+bool CurlObject::SendObject::isChunk()
+{
+    return m_chunk;
 }
 
 CurlObject::CurlObject()
@@ -278,30 +289,12 @@ CurlObject::~CurlObject(void)
 
 bool CurlObject::initialize()
 {
-    memset(m_errorBuffer, 0, CURL_ERROR_SIZE);
-    auto code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
+    auto code = setOption(CURLOPT_USERAGENT, CURLEX_VERSION);
     if (CURLE_OK != code)
     {
         return false;
     }
-    code = setOption(CURLOPT_SSL_VERIFYPEER, 0L);
-    if (CURLE_OK != code)
-    {
-        return false;
-    }
-    code = setOption(CURLOPT_SSL_VERIFYHOST, 0L);
-    if (CURLE_OK != code)
-    {
-        return false;
-    }
-    code = setOption(CURLOPT_NOSIGNAL, 1L);
-    return CURLE_OK == code;
-}
-
-bool CurlObject::initialize(const std::string& caFile)
-{
-    memset(m_errorBuffer, 0, CURL_ERROR_SIZE);
-    auto code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
+    code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
     if (CURLE_OK != code)
     {
         return false;
@@ -312,6 +305,32 @@ bool CurlObject::initialize(const std::string& caFile)
         return false;
     }
     code = setOption(CURLOPT_SSL_VERIFYHOST, 0L); /* 设置不检验证书中的主机名和你访问的主机名是否一致 */
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_NOSIGNAL, 1L);
+    return CURLE_OK == code;
+}
+
+bool CurlObject::initialize(const std::string& caFile)
+{
+    auto code = setOption(CURLOPT_USERAGENT, CURLEX_VERSION);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_SSL_VERIFYPEER, 0L);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_SSL_VERIFYHOST, 0L);
     if (CURLE_OK != code)
     {
         return false;
@@ -341,18 +360,22 @@ bool CurlObject::initialize(const FileFormat& fileFmt, const std::string& certFi
     {
         fileFmtStr = "ENG";
     }
-    memset(m_errorBuffer, 0, CURL_ERROR_SIZE);
-    auto code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
+    auto code = setOption(CURLOPT_USERAGENT, CURLEX_VERSION);
     if (CURLE_OK != code)
     {
         return false;
     }
-    code = setOption(CURLOPT_SSL_VERIFYPEER, 0L); /* 设置不验证服务器证书有效性 */
+    code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
     if (CURLE_OK != code)
     {
         return false;
     }
-    code = setOption(CURLOPT_SSL_VERIFYHOST, 0L); /* 设置不检验证书中的主机名和你访问的主机名是否一致 */
+    code = setOption(CURLOPT_SSL_VERIFYPEER, 0L);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_SSL_VERIFYHOST, 0L);
     if (CURLE_OK != code)
     {
         return false;
@@ -391,8 +414,12 @@ bool CurlObject::initialize(const FileFormat& fileFmt, const std::string& certFi
 
 bool CurlObject::initialize(const std::string& user, const std::string& password)
 {
-    memset(m_errorBuffer, 0, CURL_ERROR_SIZE);
-    auto code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
+    auto code = setOption(CURLOPT_USERAGENT, CURLEX_VERSION);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_ERRORBUFFER, m_errorBuffer);
     if (CURLE_OK != code)
     {
         return false;
@@ -556,22 +583,25 @@ bool CurlObject::setResumeOffset(int64_t index)
     return CURLE_OK == code;
 }
 
-bool CurlObject::setRawData(const std::vector<char>& bytes)
+bool CurlObject::setRawData(const std::vector<char>& bytes, bool chunk)
 {
     if (bytes.empty())
     {
         return false;
     }
-    if (!m_sendObject.reset(std::string(bytes.begin(), bytes.end())))
+    if (!m_sendObject.reset(std::string(bytes.begin(), bytes.end()), chunk))
     {
         return false;
     }
-    auto code = setOption(CURLOPT_INFILESIZE_LARGE, bytes.size());
-    if (CURLE_OK != code)
+    if (chunk)
     {
-        return false;
+        auto code = setOption(CURLOPT_INFILESIZE_LARGE, bytes.size());
+        if (CURLE_OK != code)
+        {
+            return false;
+        }
+        m_headers = curl_slist_append(m_headers, "Content-Type:application/octet-stream");
     }
-    m_headers = curl_slist_append(m_headers, "Content-Type:application/octet-stream");
     return true;
 }
 
@@ -590,12 +620,7 @@ bool CurlObject::setFormData(const std::map<std::string, std::string>& fieldMap)
         }
         data.append(iter->first).append("=").append(iter->second);
     }
-    if (!m_sendObject.reset(data))
-    {
-        return false;
-    }
-    auto code = setOption(CURLOPT_INFILESIZE_LARGE, data.size());
-    if (CURLE_OK != code)
+    if (!m_sendObject.reset(data, false))
     {
         return false;
     }
@@ -658,15 +683,26 @@ bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::str
     CURLcode code;
     do
     {
-        code = setOption(CURLOPT_READFUNCTION, onSendDataFunc);
-        if (CURLE_OK != code)
+        if (m_sendObject.isChunk())
         {
-            break;
+            code = setOption(CURLOPT_READFUNCTION, onSendDataFunc);
+            if (CURLE_OK != code)
+            {
+                break;
+            }
+            code = setOption(CURLOPT_READDATA, &m_sendObject);
+            if (CURLE_OK != code)
+            {
+                break;
+            }
         }
-        code = setOption(CURLOPT_READDATA, &m_sendObject);
-        if (CURLE_OK != code)
+        else
         {
-            break;
+            code = setOption(CURLOPT_POSTFIELDS, m_sendObject.data().c_str());
+            if (CURLE_OK != code)
+            {
+                break;
+            }
         }
         code = setOption(CURLOPT_WRITEFUNCTION, onRecvDataFunc);
         if (CURLE_OK != code)

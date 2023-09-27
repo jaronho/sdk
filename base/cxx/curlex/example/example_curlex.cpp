@@ -296,9 +296,9 @@ void testCurlPut()
 }
 
 /**
- * @brief 测试POST：字节流
+ * @brief 测试POST：字节流(分块)
  */
-void testCurlPostRaw()
+void testCurlPostRawChunk()
 {
     std::string url = HOST + "/anything";
     std::cout << "===================== test curl POST raw" << std::endl;
@@ -306,7 +306,7 @@ void testCurlPostRaw()
 
     long length = 0;
     char* buffer = getFileData("test1.png", &length, false);
-    auto data = std::make_shared<curlex::RawRequestData>(buffer, length);
+    auto data = std::make_shared<curlex::RawRequestData>(buffer, length, true);
     if (buffer)
     {
         delete[] buffer;
@@ -315,8 +315,37 @@ void testCurlPostRaw()
     auto req = std::make_shared<curlex::SimpleRequest>(url);
     req->setData(data);
     curlex::FuncSet funcSet;
-    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw, send", now, total, speed); };
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw, recv", now, total, speed); };
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) {
+        printProgressInfo("POST raw (chunk), send", now, total, speed);
+    };
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) {
+        printProgressInfo("POST raw (chunk), recv", now, total, speed);
+    };
+    curlex::Response resp;
+    auto ret = curlex::curlPost(req, funcSet, resp);
+    std::cout << "ret: " << ret << std::endl;
+    printSimpleResponse(resp);
+}
+
+/**
+ * @brief 测试POST：字节流(非分块)
+ */
+void testCurlPostRawNotChunk()
+{
+    std::string url = HOST + "/anything";
+    std::cout << "===================== test curl POST raw" << std::endl;
+    std::cout << "url: " << url << std::endl;
+    std::string str = "{\"school\":\"yi zhong\",\"class\":[{\"grade\":1,\"number\":6,\"count\":42}]}";
+    auto data = std::make_shared<curlex::RawRequestData>(str.c_str(), str.size(), false);
+    auto req = std::make_shared<curlex::SimpleRequest>(url);
+    req->setData(data);
+    curlex::FuncSet funcSet;
+    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) {
+        printProgressInfo("POST raw (not chunk), send", now, total, speed);
+    };
+    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) {
+        printProgressInfo("POST raw (not chunk), recv", now, total, speed);
+    };
     curlex::Response resp;
     auto ret = curlex::curlPost(req, funcSet, resp);
     std::cout << "ret: " << ret << std::endl;
@@ -412,7 +441,10 @@ int main()
     testCurlPut();
     std::cout << std::endl << std::endl;
 
-    testCurlPostRaw();
+    testCurlPostRawChunk();
+    std::cout << std::endl << std::endl;
+
+    testCurlPostRawNotChunk();
     std::cout << std::endl << std::endl;
 
     testCurlPostForm();

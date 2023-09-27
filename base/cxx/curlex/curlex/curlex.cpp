@@ -95,7 +95,7 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
         {
         case RequestData::Type::raw: {
             auto rawReqData = std::dynamic_pointer_cast<RawRequestData>(reqData);
-            obj->setRawData(rawReqData->getBytes());
+            obj->setRawData(rawReqData->getBytes(), rawReqData->isChunk());
             break;
         }
         case RequestData::Type::form: {

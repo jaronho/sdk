@@ -9,12 +9,13 @@
 
 namespace curlex
 {
-RawRequestData::RawRequestData(const char* bytes, size_t count)
+RawRequestData::RawRequestData(const char* bytes, size_t count, bool chunk)
 {
     if (bytes && count > 0)
     {
         m_bytes.insert(m_bytes.end(), bytes, bytes + count);
     }
+    m_chunk = chunk;
 }
 
 RequestData::Type RawRequestData::getType() const
@@ -35,6 +36,11 @@ std::string RawRequestData::toString() const
 std::vector<char> RawRequestData::getBytes() const
 {
     return m_bytes;
+}
+
+bool RawRequestData::isChunk() const
+{
+    return m_chunk;
 }
 
 FormRequestData::FormRequestData(const std::map<std::string, std::string>& fieldMap) : m_fieldMap(fieldMap) {}

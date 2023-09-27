@@ -50,8 +50,9 @@ public:
      * @brief 构造函数
      * @param bytes 字节流
      * @param count 字节数
+     * @param chunk 是否分块数据
      */
-    RawRequestData(const char* bytes, size_t count);
+    RawRequestData(const char* bytes, size_t count, bool chunk = false);
 
     virtual ~RawRequestData() = default;
 
@@ -65,8 +66,15 @@ public:
      */
     std::vector<char> getBytes() const;
 
+    /**
+     * @brief 是否分块数据
+     * @return true-是, false-否
+     */
+    bool isChunk() const;
+
 private:
     std::vector<char> m_bytes; /* 字节流 */
+    bool m_chunk = false; /* 是否分块数据 */
 };
 
 using RawRequestDataPtr = std::shared_ptr<RawRequestData>;
