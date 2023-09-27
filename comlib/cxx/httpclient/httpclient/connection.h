@@ -88,9 +88,10 @@ public:
      * @brief 设置字节流数据
      * @param bytes 字节流
      * @param count 字节数
+     * @param chunk 是否分块数据
      * @return true-成功, false-失败
      */
-    bool setRawData(const char* bytes, size_t count);
+    bool setRawData(const char* bytes, size_t count, bool chunk = false);
 
     /**
      * @brief 设置表单数据, 格式: application/x-www-form-urlencoded
