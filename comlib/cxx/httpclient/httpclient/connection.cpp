@@ -55,7 +55,7 @@ void Connection::setRecvProgressFunc(const std::function<void(int64_t now, int64
     m_funcSet.recvProgressFunc = func;
 }
 
-bool Connection::setRawData(const char* bytes, size_t count)
+bool Connection::setRawData(const char* bytes, size_t count, bool chunk)
 {
     if (m_data)
     {
@@ -65,7 +65,7 @@ bool Connection::setRawData(const char* bytes, size_t count)
         }
         return true;
     }
-    m_data = HttpClient::makeRawData(bytes, count);
+    m_data = HttpClient::makeRawData(bytes, count, chunk);
     return true;
 }
 

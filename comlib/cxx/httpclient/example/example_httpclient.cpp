@@ -301,27 +301,50 @@ void testHttpPut()
 }
 
 /**
- * @brief 测试POST：字节流
+ * @brief 测试POST：字节流(分块)
  */
-void testHttpPostRaw()
+void testHttpPostRawChunk()
 {
     std::string url = HOST + "/anything";
     auto tid = threading::Platform::getThreadId();
     std::string str("[" + std::to_string(tid) + "] ");
-    str.append("===================== test curl POST raw, url: " + url + "\n");
+    str.append("===================== test curl POST raw (chunk), url: " + url + "\n");
     std::cout << str;
 
     long length = 0;
     char* buffer = getFileData("test1.png", &length, false);
     http::Connection conn(url);
-    conn.setRawData(buffer, length);
+    conn.setRawData(buffer, length, true);
     if (buffer)
     {
         delete[] buffer;
         buffer = nullptr;
     }
-    conn.setSendProgressFunc([&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw, send", now, total, speed); });
-    conn.setRecvProgressFunc([&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw, recv", now, total, speed); });
+    conn.setSendProgressFunc(
+        [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw (chunk), send", now, total, speed); });
+    conn.setRecvProgressFunc(
+        [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw (chunk), recv", now, total, speed); });
+    conn.doPost([](const curlex::Response& resp) { printSimpleResponse(resp); });
+}
+
+/**
+ * @brief 测试POST：字节流(非分块)
+ */
+void testHttpPostRawNotChunk()
+{
+    std::string url = HOST + "/anything";
+    auto tid = threading::Platform::getThreadId();
+    std::string str("[" + std::to_string(tid) + "] ");
+    str.append("===================== test curl POST raw (not chunk), url: " + url + "\n");
+    std::cout << str;
+
+    std::string data = "{\"school\":\"yi zhong\",\"class\":[{\"grade\":1,\"number\":6,\"count\":42}]}";
+    http::Connection conn(url);
+    conn.setRawData(data.c_str(), data.size(), false);
+    conn.setSendProgressFunc(
+        [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw (not chunk), send", now, total, speed); });
+    conn.setRecvProgressFunc(
+        [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw (not chunk), recv", now, total, speed); });
     conn.doPost([](const curlex::Response& resp) { printSimpleResponse(resp); });
 }
 
@@ -397,7 +420,8 @@ int main()
     funcList.emplace_back(testHttpDelete);
     funcList.emplace_back(testHttpGet);
     funcList.emplace_back(testHttpPut);
-    funcList.emplace_back(testHttpPostRaw);
+    funcList.emplace_back(testHttpPostRawChunk);
+    funcList.emplace_back(testHttpPostRawNotChunk);
     funcList.emplace_back(testHttpPostForm);
     funcList.emplace_back(testHttpPostMultipartForm);
     funcList.emplace_back(testHttpDownload);
