@@ -301,7 +301,7 @@ void testCurlPut()
 void testCurlPostRawChunk()
 {
     std::string url = HOST + "/anything";
-    std::cout << "===================== test curl POST raw" << std::endl;
+    std::cout << "===================== test curl POST raw (chunk)" << std::endl;
     std::cout << "url: " << url << std::endl;
 
     long length = 0;
@@ -333,7 +333,7 @@ void testCurlPostRawChunk()
 void testCurlPostRawNotChunk()
 {
     std::string url = HOST + "/anything";
-    std::cout << "===================== test curl POST raw" << std::endl;
+    std::cout << "===================== test curl POST raw (not chunk)" << std::endl;
     std::cout << "url: " << url << std::endl;
     std::string str = "{\"school\":\"yi zhong\",\"class\":[{\"grade\":1,\"number\":6,\"count\":42}]}";
     auto data = std::make_shared<curlex::RawRequestData>(str.c_str(), str.size(), false);
