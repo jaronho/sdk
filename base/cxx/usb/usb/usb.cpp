@@ -78,11 +78,28 @@ static std::string wstring2string(const std::wstring& wstr)
 }
 
 /**
- * @brief 解析LocationPaths属性, 属性值格式必须为: "PCIROOT(0)#PCI(0D00)#USBROOT(0)"
- *        "Hub_#0001"表示busNum为"0001", "Port_#0014"表示portNum值为"0014"
+ * @brief 解析Driver属性, 属性值格式必须为: "{36fc9e60-c465-11cf-8056-444553540000}\0002"
  * @param propertyBuffer 属性值
- * @param busNum [输出]总线编号
- * @param portNum [输出]端口编号
+ * @param driverAddress [输出]driver地址
+ * @return true-成功, false-失败
+ */
+bool parseDriver(WCHAR propertyBuffer[4096], std::string& driverAddress)
+{
+    driverAddress.clear();
+    std::string buffer = wstring2string(propertyBuffer);
+    auto pos = buffer.rfind("\\");
+    if (std::string::npos == pos)
+    {
+        return false;
+    }
+    driverAddress = buffer.substr(pos + 1);
+    return true;
+}
+
+/**
+ * @brief 解析LocationPaths属性, 属性值格式必须为: "PCIROOT(0)#PCI(0D00)#USBROOT(0)"
+ * @param propertyBuffer 属性值
+ * @param pci [输出]PCI编号
  * @return true-成功, false-失败
  */
 bool parseLocationPaths(WCHAR propertyBuffer[4096], std::string& pci)
@@ -244,6 +261,7 @@ struct WinUsb
 public:
     std::string parentInstanceId; /* 父节点实例ID, 例如: USB\ROOT_HUB30\4&C2333A7&0&0 */
     std::string instanceId; /* 当前实例ID, 例如: USB\VID_0930&PID_140A\0060E056B626E260100040E4 */
+    std::string driverAddress; /* DRIVER地址 */
     std::string pci; /* PCI */
     int busNum = -1; /* 总线编号 */
     int portNum = -1; /* 端口编号 */
@@ -636,6 +654,13 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
             return;
         }
         info.parentInstanceId = wstring2string(propertyBuffer);
+        /* 解析Driver */
+        memset(propertyBuffer, 0, sizeof(propertyBuffer));
+        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_Driver, &propertyType,
+                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
+        {
+            parseDriver(propertyBuffer, info.driverAddress);
+        }
         /* 解析PCI */
         memset(propertyBuffer, 0, sizeof(propertyBuffer));
         if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_LocationPaths, &propertyType,
@@ -690,7 +715,17 @@ void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
         }
     }
     std::sort(rootList.begin(), rootList.end(), [](usb::WinUsb a, usb::WinUsb b) {
-        return (digitHexToDec(a.pci) < digitHexToDec(b.pci)); /* 根据PCI排序 */
+        /* step1. 根据DRIVER地址排序 */
+        if (a.driverAddress < b.driverAddress)
+        {
+            return true;
+        }
+        else if (a.driverAddress > b.driverAddress)
+        {
+            return false;
+        }
+        /* step2. 根据PCI排序 */
+        return (digitHexToDec(a.pci) < digitHexToDec(b.pci));
     });
     for (auto& info : winUsbList)
     {

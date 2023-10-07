@@ -96,6 +96,7 @@ int main(int argc, char** argv)
                 line += "\"deviceDesc\":\"" + info.getDeviceDesc() + "\"";
                 if (info.isStorage())
                 {
+                    line += ", ";
                     line += "\"storageType\":\"" + info.getStorageType() + "\"";
                 }
 #endif
