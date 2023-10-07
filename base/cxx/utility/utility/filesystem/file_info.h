@@ -257,11 +257,12 @@ public:
     /**
      * @brief 从文本文件中读取一行
      * @param f 文件指针
+     * @param line [输出]行数据
      * @param bomFlag [输出]BOM标识(3个字节), 如果文件为UTF-8带BOM编码则第1行有此标识
      * @param endFlag [输出]行结束标识, 一般为 \r\n 或 \n
-     * @return 行数据
+     * @return true-成功, false-失败
      */
-    static std::string readLine(FILE* f, std::string& bomFlag, std::string& endFlag);
+    static bool readLine(FILE* f, std::string& line, std::string& bomFlag, std::string& endFlag);
 
     /**
      * @brief 向文件中写入数据

@@ -479,11 +479,10 @@ bool FileInfo::editLine(const std::function<bool(size_t num, std::string& line)>
     std::string buffer;
     size_t num = 0;
     bool changed = false;
-    while (!feof(f))
+    std::string line, bomFlag, endFlag;
+    while (readLine(f, line, bomFlag, endFlag))
     {
         ++num;
-        std::string bomFlag, endFlag;
-        auto line = readLine(f, bomFlag, endFlag);
         if (!bomFlag.empty())
         {
             buffer.append(bomFlag);
@@ -587,12 +586,12 @@ char* FileInfo::read(FILE* f, size_t offset, size_t& count, bool textFlag)
     return buffer;
 }
 
-std::string FileInfo::readLine(FILE* f, std::string& bomFlag, std::string& endFlag)
+bool FileInfo::readLine(FILE* f, std::string& line, std::string& bomFlag, std::string& endFlag)
 {
+    line.clear();
     bomFlag.clear();
     endFlag.clear();
-    std::string line;
-    if (f)
+    if (f && !feof(f))
     {
         char ch = 0;
         while (!feof(f) && '\n' != (ch = fgetc(f)))
@@ -619,8 +618,9 @@ std::string FileInfo::readLine(FILE* f, std::string& bomFlag, std::string& endFl
             }
             line.erase(lastIndex);
         }
+        return true;
     }
-    return line;
+    return false;
 }
 
 bool FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
