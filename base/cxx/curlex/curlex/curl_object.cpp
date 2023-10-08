@@ -620,7 +620,7 @@ bool CurlObject::setFormData(const std::map<std::string, std::string>& fieldMap)
         }
         data.append(iter->first).append("=").append(iter->second);
     }
-    if (!m_sendObject.reset(data, false))
+    if (!m_sendObject.reset(data, true))
     {
         return false;
     }
