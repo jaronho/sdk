@@ -14,9 +14,7 @@
 
 namespace serial
 {
-static const DWORD port_name_max_length = 256;
-static const DWORD friendly_name_max_length = 256;
-static const DWORD hardware_id_max_length = 256;
+static const DWORD max_length = 256;
 
 /* Convert a wide Unicode string to an UTF8 string */
 std::string utf8Encode(const std::wstring& wstr)
@@ -39,15 +37,15 @@ std::vector<PortInfo> Serial::getAllPorts()
         ++index;
         /* 获取端口 */
         HKEY hkey = SetupDiOpenDevRegKey(info, &data, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
-        TCHAR portNameW[port_name_max_length];
-        DWORD portNameLen = port_name_max_length;
+        TCHAR portNameW[max_length];
+        DWORD portNameLen = max_length;
         LONG ret = RegQueryValueEx(hkey, _T("PortName"), NULL, NULL, (LPBYTE)portNameW, &portNameLen);
         RegCloseKey(hkey);
         if (EXIT_SUCCESS != ret)
         {
             continue;
         }
-        if (portNameLen > 0 && portNameLen <= port_name_max_length)
+        if (portNameLen > 0 && portNameLen <= max_length)
         {
             portNameW[portNameLen - 1] = '\0';
         }
@@ -60,24 +58,11 @@ std::vector<PortInfo> Serial::getAllPorts()
         {
             continue;
         }
-        /* 获取端口友好名称 */
-        TCHAR friendlyNameW[friendly_name_max_length];
-        DWORD friendlyNameActualLen = 0;
-        BOOL got_friendly_name = SetupDiGetDeviceRegistryProperty(info, &data, SPDRP_FRIENDLYNAME, NULL, (PBYTE)friendlyNameW,
-                                                                  friendly_name_max_length, &friendlyNameActualLen);
-        if (got_friendly_name && friendlyNameActualLen > 0)
-        {
-            friendlyNameW[friendlyNameActualLen - 1] = '\0';
-        }
-        else
-        {
-            friendlyNameW[0] = '\0';
-        }
         /* 获取硬件ID */
-        TCHAR hardwareIdW[hardware_id_max_length];
+        TCHAR hardwareIdW[max_length];
         DWORD hardwareIdActualLen = 0;
-        BOOL gotHardwareId = SetupDiGetDeviceRegistryProperty(info, &data, SPDRP_HARDWAREID, NULL, (PBYTE)hardwareIdW,
-                                                              hardware_id_max_length, &hardwareIdActualLen);
+        BOOL gotHardwareId =
+            SetupDiGetDeviceRegistryProperty(info, &data, SPDRP_HARDWAREID, NULL, (PBYTE)hardwareIdW, max_length, &hardwareIdActualLen);
         if (gotHardwareId && hardwareIdActualLen > 0)
         {
             hardwareIdW[hardwareIdActualLen - 1] = '\0';
@@ -86,19 +71,48 @@ std::vector<PortInfo> Serial::getAllPorts()
         {
             hardwareIdW[0] = '\0';
         }
+        /* 获取端口友好名称 */
+        TCHAR friendlyNameW[max_length];
+        DWORD friendlyNameActualLen = 0;
+        BOOL got_friendly_name = SetupDiGetDeviceRegistryProperty(info, &data, SPDRP_FRIENDLYNAME, NULL, (PBYTE)friendlyNameW, max_length,
+                                                                  &friendlyNameActualLen);
+        if (got_friendly_name && friendlyNameActualLen > 0)
+        {
+            friendlyNameW[friendlyNameActualLen - 1] = '\0';
+        }
+        else
+        {
+            friendlyNameW[0] = '\0';
+        }
+        /* 获取本地环境属性 */
+        TCHAR locationW[max_length];
+        DWORD locationActualLen = 0;
+        BOOL got_location = SetupDiGetDeviceRegistryProperty(info, &data, SPDRP_LOCATION_INFORMATION, NULL, (PBYTE)locationW, max_length,
+                                                             &locationActualLen);
+        if (got_location && locationActualLen > 0)
+        {
+            locationW[locationActualLen - 1] = '\0';
+        }
+        else
+        {
+            locationW[0] = '\0';
+        }
 #ifdef UNICODE
         std::string portName = utf8Encode(portNameW);
-        std::string friendlyName = utf8Encode(friendlyNameW);
         std::string hardwareId = utf8Encode(hardwareIdW);
+        std::string friendlyName = utf8Encode(friendlyNameW);
+        std::string location = utf8Encode(locationW);
 #else
         std::string portName = portNameW;
-        std::string friendlyName = friendlyNameW;
         std::string hardwareId = hardwareIdW;
+        std::string friendlyName = friendlyNameW;
+        std::string location = locationW;
 #endif
         PortInfo entry;
         entry.port = portName;
-        entry.description = friendlyName;
         entry.hardwareId = hardwareId;
+        entry.description = friendlyName;
+        entry.location = location;
         /* 插入列表 */
         portList.emplace_back(entry);
     }

@@ -138,7 +138,7 @@ std::string getRealPath(const std::string& path)
 {
     std::string result;
     char* realPath = ::realpath(path.c_str(), NULL);
-    if (!realPath)
+    if (realPath)
     {
         result = realPath;
         free(realPath);
@@ -175,16 +175,18 @@ std::string getUsbSysfsHwString(const std::string& sysfsPath)
 std::vector<std::string> getSysfsInfo(const std::string& device_path)
 {
     std::string deviceName = getBaseName(device_path);
-    std::string friendlyName;
     std::string hardwareId;
+    std::string friendlyName;
+    std::string location;
     std::string sysDevicePath = formatStr("/sys/class/tty/%s/device", deviceName.c_str());
     if (0 == deviceName.compare(0, 6, "ttyUSB"))
     {
         sysDevicePath = getDirName(getDirName(getRealPath(sysDevicePath)));
         if (isPathExist(sysDevicePath))
         {
-            friendlyName = getUsbSysfsFriendlyName(sysDevicePath);
             hardwareId = getUsbSysfsHwString(sysDevicePath);
+            friendlyName = getUsbSysfsFriendlyName(sysDevicePath);
+            location = sysDevicePath;
         }
     }
     else if (0 == deviceName.compare(0, 6, "ttyACM"))
@@ -192,8 +194,9 @@ std::vector<std::string> getSysfsInfo(const std::string& device_path)
         sysDevicePath = getDirName(getRealPath(sysDevicePath));
         if (isPathExist(sysDevicePath))
         {
-            friendlyName = getUsbSysfsFriendlyName(sysDevicePath);
             hardwareId = getUsbSysfsHwString(sysDevicePath);
+            friendlyName = getUsbSysfsFriendlyName(sysDevicePath);
+            location = sysDevicePath;
         }
     }
     else
@@ -205,13 +208,10 @@ std::vector<std::string> getSysfsInfo(const std::string& device_path)
             hardwareId = readLine(sysIdPath);
         }
     }
-    if (friendlyName.empty())
-    {
-        friendlyName = deviceName;
-    }
     std::vector<std::string> result;
-    result.push_back(friendlyName);
     result.push_back(hardwareId);
+    result.push_back(friendlyName);
+    result.push_back(location);
     return result;
 }
 
@@ -231,12 +231,14 @@ std::vector<PortInfo> Serial::getAllPorts()
     {
         std::string device = *iter++;
         std::vector<std::string> info = getSysfsInfo(device);
-        std::string friendlyName = info[0];
-        std::string hardwareId = info[1];
+        std::string hardwareId = info[0];
+        std::string friendlyName = info[1];
+        std::string location = info[2];
         PortInfo entry;
         entry.port = device;
-        entry.description = friendlyName;
         entry.hardwareId = hardwareId;
+        entry.description = friendlyName;
+        entry.location = location;
         portList.emplace_back(entry);
     }
     return portList;

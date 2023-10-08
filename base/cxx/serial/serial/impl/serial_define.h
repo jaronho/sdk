@@ -109,7 +109,8 @@ enum class FlowcontrolType
 struct PortInfo
 {
     std::string port; /* 端口号 */
-    std::string description; /* 人类可读的描述信息 */
     std::string hardwareId; /* 硬件ID, 例如: USB串口设备为 VID:PID */
+    std::string description; /* 人类可读的描述信息 */
+    std::string location; /* 本地环境属性 */
 };
 } // namespace serial

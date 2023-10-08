@@ -82,20 +82,23 @@ void showAllPorts(const std::vector<serial::PortInfo> portList)
         if (portCount < 10)
         {
             printf("[%zu] 端口号: %s\n", (i + 1), portList[i].port.c_str());
-            printf("    描  述: %s\n", portList[i].description.c_str());
             printf("    硬件ID: %s\n", portList[i].hardwareId.c_str());
+            printf("    描  述: %s\n", portList[i].description.c_str());
+            printf("  本地属性: %s\n", portList[i].location.c_str());
         }
         else if (portCount < 100)
         {
             printf("[%02zu] 端口号: %s\n", (i + 1), portList[i].port.c_str());
-            printf("     描  述: %s\n", portList[i].description.c_str());
             printf("     硬件ID: %s\n", portList[i].hardwareId.c_str());
+            printf("     描  述: %s\n", portList[i].description.c_str());
+            printf("   本地属性: %s\n", portList[i].location.c_str());
         }
         else
         {
             printf("[%03zu] 端口号: %s\n", (i + 1), portList[i].port.c_str());
-            printf("      描  述: %s\n", portList[i].description.c_str());
             printf("      硬件ID: %s\n", portList[i].hardwareId.c_str());
+            printf("      描  述: %s\n", portList[i].description.c_str());
+            printf("    本地属性: %s\n", portList[i].location.c_str());
         }
         if (i == portCount - 1)
         {
