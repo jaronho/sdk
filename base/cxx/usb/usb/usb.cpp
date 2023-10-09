@@ -223,7 +223,7 @@ void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string
             {
                 break;
             }
-            product.push_back(buffer[i]);
+            product.push_back('_' == buffer[i] ? ' ' : buffer[i]);
         }
     }
     pos = buffer.find("Ven_");
