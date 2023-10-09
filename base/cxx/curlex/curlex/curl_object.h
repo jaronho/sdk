@@ -8,7 +8,7 @@
 
 namespace curlex
 {
-#define CURLEX_VERSION "1.0"
+#define CURLEX_VERSION "CurlEx/1.0"
 
 /**
  * @brief 数据接收函数
@@ -187,10 +187,10 @@ public:
     /**
      * @brief 设置原始字节流数据(适用于POST/PUT/DELETE)
      * @param bytes 字节流
-     * @param chunk 是否数据块(默认是)
+     * @param chunk 是否数据分块(默认否)
      * @return true-成功, false-失败
      */
-    bool setRawData(const std::vector<char>& bytes, bool chunk = true);
+    bool setRawData(const std::vector<char>& bytes, bool chunk = false);
 
     /**
      * @brief 设置表单数据(适用于POST/PUT/DELETE), 格式: application/x-www-form-urlencoded
@@ -253,10 +253,10 @@ private:
         /**
          * @brief 重置函数
          * @param data 数据
-         * @param chunk 是否数据块(默认是)
+         * @param chunk 是否数据分块(默认否)
          * @return true-成功, false-失败
          */
-        bool reset(const std::string& data, bool chunk = true);
+        bool reset(const std::string& data, bool chunk = false);
 
         /**
          * @brief 获取全部数据
@@ -273,7 +273,7 @@ private:
         size_t read(void* dest, size_t count);
 
         /**
-         * @brief 是否数据块
+         * @brief 是否数据分块
          * @return true-是, false-否
          */
         bool isChunk();
@@ -282,7 +282,7 @@ private:
         std::string m_data; /* 要发送的数据 */
         size_t m_length = 0; /* 数据总长度 */
         size_t m_readed = 0; /* 已读的数据长度 */
-        bool m_chunk = true; /* 是否数据块(默认是) */
+        bool m_chunk = false; /* 是否数据分块(默认否) */
     };
 
     /**

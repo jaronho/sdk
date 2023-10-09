@@ -620,7 +620,7 @@ bool CurlObject::setFormData(const std::map<std::string, std::string>& fieldMap)
         }
         data.append(iter->first).append("=").append(iter->second);
     }
-    if (!m_sendObject.reset(data, true))
+    if (!m_sendObject.reset(data, false))
     {
         return false;
     }
@@ -683,25 +683,28 @@ bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::str
     CURLcode code;
     do
     {
-        if (m_sendObject.isChunk())
+        if (!m_sendObject.data().empty())
         {
-            code = setOption(CURLOPT_READFUNCTION, onSendDataFunc);
-            if (CURLE_OK != code)
+            if (m_sendObject.isChunk())
             {
-                break;
+                code = setOption(CURLOPT_READFUNCTION, onSendDataFunc);
+                if (CURLE_OK != code)
+                {
+                    break;
+                }
+                code = setOption(CURLOPT_READDATA, &m_sendObject);
+                if (CURLE_OK != code)
+                {
+                    break;
+                }
             }
-            code = setOption(CURLOPT_READDATA, &m_sendObject);
-            if (CURLE_OK != code)
+            else
             {
-                break;
-            }
-        }
-        else
-        {
-            code = setOption(CURLOPT_POSTFIELDS, m_sendObject.data().c_str());
-            if (CURLE_OK != code)
-            {
-                break;
+                code = setOption(CURLOPT_POSTFIELDS, m_sendObject.data().c_str());
+                if (CURLE_OK != code)
+                {
+                    break;
+                }
             }
         }
         code = setOption(CURLOPT_WRITEFUNCTION, onRecvDataFunc);
