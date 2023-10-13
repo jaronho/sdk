@@ -59,91 +59,6 @@ int main(int argc, char** argv)
         }
         if (busFlag && portFlag)
         {
-            std::string line;
-            line += "{";
-            {
-                line += "\n    ";
-                line += "\"busNum\":" + std::to_string(info.getBusNum());
-                line += ", ";
-                line += "\"portNum\":" + std::to_string(info.getPortNum());
-                line += ", ";
-                line += "\"address\":" + std::to_string(info.getAddress());
-                line += ", ";
-                line += "\"classCode\":\"" + info.getClassHex() + "\"";
-                line += ", ";
-                line += "\"classDesc\":\"" + info.getClassDesc() + "\"";
-                line += ", ";
-                line += "\"protocolCode\":" + std::to_string(info.getProtocolCode());
-                line += ", ";
-                line += "\"speedLevel\":" + std::to_string(info.getSpeedLevel());
-                line += ", ";
-                line += "\"speedDesc\":\"" + info.getSpeedDesc() + "\"";
-                line += ",";
-                line += "\n    ";
-                line += "\"vid\":\"" + info.getVid() + "\"";
-                line += ", ";
-                line += "\"pid\":\"" + info.getPid() + "\"";
-                line += ", ";
-                line += "\"serial\":\"" + info.getSerial() + "\"";
-                line += ", ";
-                line += "\"product\":\"" + info.getProduct() + "\"";
-                line += ", ";
-                line += "\"manufacturer\":\"" + info.getManufacturer() + "\"";
-#ifdef _WIN32
-                line += ", ";
-                line += "\"deviceName\":\"" + info.getDeviceName() + "\"";
-                line += ", ";
-                line += "\"deviceDesc\":\"" + info.getDeviceDesc() + "\"";
-                if (info.isStorage())
-                {
-                    line += ", ";
-                    line += "\"storageType\":\"" + info.getStorageType() + "\"";
-                }
-#endif
-#ifndef _WIN32
-                line += ", ";
-                {
-                    auto devNodes = info.getDevNodes();
-                    line += "\"devNodes\":";
-                    line += "[";
-                    for (size_t i = 0; i < devNodes.size(); ++i)
-                    {
-                        if (i > 0)
-                        {
-                            line += ",";
-                        }
-                        line += "\"" + devNodes[i].name;
-                        std::string temp;
-                        if (!devNodes[i].group.empty())
-                        {
-                            temp += (temp.empty() ? "(" : "") + devNodes[i].group;
-                        }
-                        if (!devNodes[i].fstype.empty())
-                        {
-                            temp += (temp.empty() ? "(" : ",") + devNodes[i].fstype;
-                        }
-                        if (!devNodes[i].label.empty())
-                        {
-                            temp += (temp.empty() ? "(" : ",") + devNodes[i].label;
-                        }
-                        if (!devNodes[i].partlabel.empty())
-                        {
-                            temp += (temp.empty() ? "(" : ",") + devNodes[i].partlabel;
-                        }
-                        if (!devNodes[i].model.empty())
-                        {
-                            temp += (temp.empty() ? "(" : ",") + devNodes[i].model;
-                        }
-                        temp += temp.empty() ? "" : ")";
-                        line += temp;
-                        line += "\"";
-                    }
-                    line += "]";
-                }
-#endif
-            }
-            line += "\n";
-            line += "}";
             if (firstLine)
             {
                 firstLine = false;
@@ -153,7 +68,7 @@ int main(int argc, char** argv)
                 usbListJson += ",";
             }
             usbListJson += "\n";
-            usbListJson += line;
+            usbListJson += info.describe();
         }
     }
     if (!firstLine)

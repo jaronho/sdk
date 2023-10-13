@@ -12,8 +12,8 @@ struct DevNode
 {
     DevNode() = default;
     DevNode(const std::string& name, const std::string& group = "", const std::string& fstype = "", const std::string& label = "",
-            const std::string& partlabel = "", const std::string& model = "")
-        : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel), model(model)
+            const std::string& partlabel = "", const std::string& model = "", const std::string& vendor = "")
+        : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel), model(model), vendor(vendor)
     {
     }
 
@@ -22,7 +22,8 @@ struct DevNode
     std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat, exfat, ntfs等 */
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
     std::string partlabel; /* 分区标签, 例如: "Microsoft reserved partition" */
-    std::string model; /* 设备标识符, 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH" 等 */
+    std::string model; /* 设备标识符, 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
+    std::string vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
 };
 
 /**
@@ -90,8 +91,9 @@ public:
 
     /**
      * @brief 描述信息
+     * @param intend 缩进字符数
      */
-    std::string describe() const;
+    std::string describe(int allIntend = 0, int intend = 4) const;
 
     /**
      * @brief 查询USB信息

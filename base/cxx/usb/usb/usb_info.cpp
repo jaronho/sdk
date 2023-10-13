@@ -103,7 +103,7 @@ std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int address, DevN
                     {
                         auto pos = std::string(devNode).rfind('/');
                         auto devName = std::string::npos == pos ? std::string() : std::string(devNode).substr(pos + 1);
-                        auto command = std::string("lsblk -OP | grep -E 'NAME=\"") + devName + "\" KNAME=\"" + devName + "\" '";
+                        auto command = std::string("lsblk -aOP | grep -E 'NAME=\"") + devName + "\" KNAME=\"" + devName + "\" '";
                         auto outStr = runCommand(command);
                         static const std::string GROUP_FLAG = " GROUP=\""; /* 组名 */
                         static const std::string FSTYPE_FLAG = " FSTYPE=\""; /* 文件系统类型 */
@@ -111,6 +111,7 @@ std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int address, DevN
                         static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
                         static const std::string TYPE_FLAG = " TYPE=\""; /* 设备类型 */
                         static const std::string MODEL_FLAG = " MODEL=\""; /* 设备标识符 */
+                        static const std::string VENDOR_FLAG = " VENDOR=\""; /* 设备制造商 */
                         std::string group;
                         auto groupPos = outStr.find(GROUP_FLAG);
                         if (std::string::npos != groupPos)
@@ -171,20 +172,30 @@ std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int address, DevN
                                 model = outStr.substr(modelPos + MODEL_FLAG.size(), ep - modelPos - MODEL_FLAG.size());
                             }
                         }
+                        std::string vendor;
+                        auto vendorPos = outStr.find(VENDOR_FLAG);
+                        if (std::string::npos != vendorPos)
+                        {
+                            auto ep = outStr.find('"', vendorPos + VENDOR_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                vendor = outStr.substr(vendorPos + VENDOR_FLAG.size(), ep - vendorPos - VENDOR_FLAG.size());
+                            }
+                        }
                         if ("disk" == group) /* 磁盘 */
                         {
                             if ("disk" == type) /* 超块(不可挂载) */
                             {
-                                devRootNode = DevNode(devNode, group, fstype, label, partlabel, model);
+                                devRootNode = DevNode(devNode, group, fstype, label, partlabel, model, vendor);
                             }
                             else if ("part" == type) /* 分区 */
                             {
-                                devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model));
+                                devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model, vendor));
                             }
                         }
                         else if ("cdrom" == group) /* 光驱 */
                         {
-                            devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model));
+                            devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model, vendor));
                         }
                     }
                     else
@@ -239,108 +250,159 @@ bool UsbInfo::isValid() const
     return (getBusNum() > 0 && getPortNum() > 0 && getAddress() > 0 && !getVid().empty() && !getPid().empty());
 }
 
-std::string UsbInfo::describe() const
+std::string UsbInfo::describe(int allIntend, int intend) const
 {
+    std::string allIntendStr(allIntend, ' '), intendStr(intend, ' ');
     std::string desc;
-    desc.append("busNum: ").append(std::to_string(getBusNum()));
-    desc.append(", ");
-    desc.append("portNum: ").append(std::to_string(getPortNum()));
-    desc.append(", ");
-    desc.append("address: ").append(std::to_string(getAddress()));
-    desc.append(", ");
-    desc.append("class: ").append(std::to_string(getClassCode())).append("(").append(getClassHex()).append(")");
-    desc.append(", ");
-    desc.append("classDesc: ").append(getClassDesc());
-    desc.append(", ");
-    desc.append("subClass: ").append(std::to_string(getSubClassCode()));
-    desc.append(", ");
-    desc.append("protocol: ").append(std::to_string(getProtocolCode()));
-    desc.append(", ");
-    desc.append("speed: ").append(getSpeedDesc());
-    desc.append("\n");
-    desc.append("vid: ").append(getVid());
-    desc.append(", ");
-    desc.append("pid: ").append(getPid());
-    desc.append(", ");
-    desc.append("serial: ").append(getSerial());
-    desc.append(", ");
-    desc.append("product: ").append(getProduct());
-    desc.append(", ");
-    desc.append("manufacturer: ").append(getManufacturer());
+    desc += allIntendStr + "{";
+    desc += "\n"; /* 换行 */
+    desc += allIntendStr + intendStr;
+    desc += "\"busNum\": " + std::to_string(getBusNum());
+    desc += ", ";
+    desc += "\"portNum\": " + std::to_string(getPortNum());
+    desc += ", ";
+    desc += "\"address\": " + std::to_string(getAddress());
+    desc += ", ";
+    desc += "\"classCode\": " + std::to_string(getClassCode());
+    desc += ", ";
+    desc += "\"classHex\": \"" + getClassHex() + "\"";
+    desc += ", ";
+    desc += "\"classDesc\": \"" + getClassDesc() + "\"";
+    desc += ", ";
+    desc += "\"subClass\": " + std::to_string(getSubClassCode());
+    desc += ", ";
+    desc += "\"protocol\": " + std::to_string(getProtocolCode());
+    desc += ", ";
+    desc += "\"speed\": " + std::to_string(getSpeedLevel());
+    desc += ", ";
+    desc += "\"speedDesc\": \"" + getSpeedDesc() + "\"";
+    desc += ",";
+    desc += "\n"; /* 换行 */
+    desc += allIntendStr + intendStr;
+    desc += "\"vid\": \"" + getVid() + "\"";
+    desc += ", ";
+    desc += "\"pid\": \"" + getPid() + "\"";
+    desc += ", ";
+    desc += "\"serial\": \"" + getSerial() + "\"";
+    desc += ", ";
+    desc += "\"product\": \"" + getProduct() + "\"";
+    desc += ", ";
+    desc += "\"manufacturer\": \"" + getManufacturer() + "\"";
 #ifdef _WIN32
-    desc.append(", ");
-    desc.append("deviceName: ").append(getDeviceName());
-    desc.append(", ");
-    desc.append("deviceDesc: ").append(getDeviceDesc());
+    desc += ", ";
+    desc += "\"deviceName\": \"" + getDeviceName() + "\"";
+    desc += ", ";
+    desc += "\"deviceDesc\": \"" + getDeviceDesc() + "\"";
     if (isStorage())
     {
-        desc.append("storageType: ").append(getStorageType());
+        desc += ", ";
+        desc += "\"storageType\": \"" + getStorageType() + "\"";
     }
 #endif
     if (!m_devRootNode.name.empty())
     {
-        desc.append("\n");
-        desc.append("devRootNode: ").append(m_devRootNode.name);
+        desc += ",";
+        desc += "\n"; /* 换行 */
+        desc += allIntendStr + intendStr;
+        desc += "\"devRootNode\": ";
+        desc += "{";
+        desc += "\"name\": \"" + m_devRootNode.name + "\"";
         std::string temp;
         if (!m_devRootNode.group.empty())
         {
-            temp.append(temp.empty() ? "(" : "").append(m_devRootNode.group);
+            desc += ", ";
+            desc += "\"group\": \"" + m_devRootNode.group + "\"";
         }
         if (!m_devRootNode.fstype.empty())
         {
-            temp.append(temp.empty() ? "(" : ",").append(m_devRootNode.fstype);
+            desc += ", ";
+            desc += "\"fstype\": \"" + m_devRootNode.fstype + "\"";
         }
         if (!m_devRootNode.label.empty())
         {
-            temp.append(temp.empty() ? "(" : ",").append(m_devRootNode.label);
+            desc += ", ";
+            desc += "\"label\": \"" + m_devRootNode.label + "\"";
         }
         if (!m_devRootNode.partlabel.empty())
         {
-            temp.append(temp.empty() ? "(" : ",").append(m_devRootNode.partlabel);
+            desc += ", ";
+            desc += "\"partlabel\": \"" + m_devRootNode.partlabel + "\"";
         }
         if (!m_devRootNode.model.empty())
         {
-            temp.append(temp.empty() ? "(" : ",").append(m_devRootNode.model);
+            desc += ", ";
+            desc += "\"model\": \"" + m_devRootNode.model + "\"";
         }
-        temp.append(temp.empty() ? "" : ")");
-        desc.append(temp);
+        if (!m_devRootNode.vendor.empty())
+        {
+            desc += ", ";
+            desc += "\"vendor\": \"" + m_devRootNode.vendor + "\"";
+        }
+        desc += "}";
     }
     if (m_devNodes.size() > 0)
     {
-        desc.append("\n");
-        desc.append("devNodes: ");
+        desc += ",";
+        desc += "\n"; /* 换行 */
+        desc += allIntendStr + intendStr;
+        desc += "\"devNodes\": ";
+        desc += "[";
         for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
             if (i > 0)
             {
-                desc.append(", ");
+                desc += ",";
             }
-            desc.append(m_devNodes[i].name);
+            if (m_devNodes.size() > 1)
+            {
+                desc += "\n"; /* 换行 */
+                desc += allIntendStr + intendStr + intendStr;
+            }
+            desc += "{";
+            desc += "\"name\": \"" + m_devNodes[i].name + "\"";
             std::string temp;
             if (!m_devNodes[i].group.empty())
             {
-                temp.append(temp.empty() ? "(" : "").append(m_devNodes[i].group);
+                desc += ", ";
+                desc += "\"group\": \"" + m_devNodes[i].group + "\"";
             }
             if (!m_devNodes[i].fstype.empty())
             {
-                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].fstype);
+                desc += ", ";
+                desc += "\"type\": \"" + m_devNodes[i].fstype + "\"";
             }
             if (!m_devNodes[i].label.empty())
             {
-                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].label);
+                desc += ", ";
+                desc += "\"label\": \"" + m_devNodes[i].label + "\"";
             }
             if (!m_devNodes[i].partlabel.empty())
             {
-                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].partlabel);
+                desc += ", ";
+                desc += "\"partlabel\": \"" + m_devNodes[i].partlabel + "\"";
             }
             if (!m_devNodes[i].model.empty())
             {
-                temp.append(temp.empty() ? "(" : ",").append(m_devNodes[i].model);
+                desc += ", ";
+                desc += "\"model\": \"" + m_devNodes[i].model + "\"";
             }
-            temp.append(temp.empty() ? "" : ")");
-            desc.append(temp);
+            if (!m_devNodes[i].vendor.empty())
+            {
+                desc += ", ";
+                desc += "\"vendor\": \"" + m_devNodes[i].vendor + "\"";
+            }
+            desc += "}";
         }
+        if (m_devNodes.size() > 1)
+        {
+            desc += "\n"; /* 换行 */
+            desc += allIntendStr + intendStr;
+        }
+        desc += "]";
     }
+    desc += "\n"; /* 换行 */
+    desc += allIntendStr;
+    desc += "}";
     return desc;
 }
 
