@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../usb/usb_info.h"
+#include "../usb/usb.h"
 
 /**
  * USB设备查看工具
@@ -38,12 +38,7 @@ int main(int argc, char** argv)
     bool firstLine = true;
     std::string usbListJson;
     usbListJson += "[";
-    auto usbList = usb::UsbInfo::queryUsbInfos(
-        [](const usb::UsbInfo& info, bool& withDevNode) {
-            withDevNode = true;
-            return true;
-        },
-        true);
+    auto usbList = usb::Usb::getAllUsbs(true);
     for (size_t i = 0; i < usbList.size(); ++i)
     {
         const auto& info = usbList[i];

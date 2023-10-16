@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../usb/usb_info.h"
+#include "../usb/usb.h"
 
 int main(int argc, char** argv)
 {
@@ -36,12 +36,7 @@ int main(int argc, char** argv)
         }
         i += 2;
     }
-    auto usbList = usb::UsbInfo::queryUsbInfos(
-        [](const usb::UsbInfo& info, bool& withDevNode) {
-            withDevNode = true;
-            return true;
-        },
-        true);
+    auto usbList = usb::Usb::getAllUsbs(true);
     for (size_t i = 0; i < usbList.size(); ++i)
     {
         const auto& info = usbList[i];
@@ -72,8 +67,8 @@ int main(int argc, char** argv)
             printf("=      product: %s\n", info.getProduct().c_str());
             printf("= manufacturer: %s\n", info.getManufacturer().c_str());
 #ifdef _WIN32
-            printf("=   deviceName: %s\n", info.getDeviceName().c_str());
-            printf("=   deviceDesc: %s\n", info.getDeviceDesc().c_str());
+            printf("=       vendor: %s\n", info.getVendor().c_str());
+            printf("=        model: %s\n", info.getModel().c_str());
             if (info.isStorage())
             {
                 printf("=  storageType: %s\n", info.getStorageType().c_str());

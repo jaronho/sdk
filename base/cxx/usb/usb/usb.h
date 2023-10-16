@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <libusb.h>
 #include <memory>
 #include <string>
@@ -9,6 +10,26 @@ namespace usb
 #ifdef _WIN32
 struct WinUsb;
 #endif
+
+/**
+ * @brief 设备节点
+ */
+struct DevNode
+{
+    DevNode() = default;
+    DevNode(const std::string& name, const std::string& group = "", const std::string& fstype = "", const std::string& label = "",
+            const std::string& partlabel = "", const std::string& vendor = "", const std::string& model = "")
+        : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel), vendor(vendor), model(model)
+    {
+    }
+    std::string name; /* 节点名, 如, Windows: "{36fc9e60-c465-11cf-8056-444553540000}\\0196", Linux: /dev/sdb1, /dev/hidraw0 等 */
+    std::string group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
+    std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat, exfat, ntfs等 */
+    std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
+    std::string partlabel; /* 分区标签, 例如: "Microsoft reserved partition" */
+    std::string vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
+    std::string model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
+};
 
 /**
  * @brief USB类
@@ -118,23 +139,37 @@ public:
      */
     std::string getManufacturer() const;
 
+#ifdef _WIN32
     /**
-     * @brief 获取设备名称(适用于Windows平台)
-     * @return 设备名称
+     * @brief 获取设备制造商
+     * @return 设备制造商
      */
-    std::string getDeviceName() const;
+    std::string getVendor() const;
 
     /**
-     * @brief 获取设备描述(适用于Windows平台)
-     * @return 设备描述
+     * @brief 获取设备标识符(型号)
+     * @return 设备标识符(型号)
      */
-    std::string getDeviceDesc() const;
+    std::string getModel() const;
 
     /**
-     * @brief 获取存储设备类型(适用于Windows平台)
-     * @return 存储设备类型
+     * @brief 获取存储设备类型
+     * @return 存储设备类型, 值: disk-磁盘, cdrom-光驱
      */
     std::string getStorageType() const;
+#else
+    /**
+     * @brief 获取根节点
+     * @return 根节点
+     */
+    DevNode getDevRootNode() const;
+
+    /**
+     * @brief 获取节点列表
+     * @return 设备节点列表
+     */
+    std::vector<DevNode> getDevNodes() const;
+#endif
 
     /**
      * @brief 判断是否HID(键盘/鼠标/加密狗等)类型
@@ -155,13 +190,17 @@ public:
     bool isHub() const;
 
     /**
+     * @brief 描述信息
+     * @param intend 缩进字符数
+     */
+    std::string describe(int allIntend = 0, int intend = 4) const;
+
+    /**
      * @brief 获取系统中USB设备列表
-     * @param sf 是否获取序列号(选填), 默认不获取
-     * @param pf 是否获取产品名称(选填), 默认不获取
-     * @param mf 是否获取厂商名称(选填), 默认不获取
+     * @param detailFlag 是否获取设备详情
      * @return USB设备列表
      */
-    static std::vector<Usb> getAllUsbs(bool sf = false, bool pf = false, bool mf = false);
+    static std::vector<Usb> getAllUsbs(bool detailFlag = true);
 
 #ifdef _WIN32
     /**
@@ -173,40 +212,31 @@ public:
      */
     typedef void* HANDLE;
     static bool registerDeviceNotify(HANDLE handle);
+#else
+    /**
+     * @brief 查询USB设备节点列表
+     * @param busNum 总线
+     * @param portNum 端口
+     * @param address 地址
+     * @param devRootNode [输出]设备根节点
+     * @return USB设备节点列表 
+     */
+    static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int address, DevNode& devRootNode);
 #endif
 
 private:
-#ifdef _WIN32
-    /**
-     * @brief 利用Windows系统API获取WinUsb列表
-     * @param winUsbList [输出]WinUsb列表
-     */
-    static void getWinUsbList(std::vector<WinUsb>& winUsbList);
-
-    /**
-     * @brief 递归判断WinUsb和Usb的父节点是否一致
-     * @param winUsbList WinUsb列表
-     * @param parentInstanceId WinUsb父节点实例ID
-     * @param parent Usb父节点
-     * @return true-一致(表示WinUsb和Usb节点互相匹配), false-不一致
-     */
-    static bool matchWinUsbParent(const std::vector<WinUsb>& winUsbList, std::string parentInstanceId, const std::shared_ptr<Usb>& parent);
-#endif
-
     /**
      * @brief 解析得到Usb信息
      * @param dev 设备节点
-     * @param sf 是否获取序列号
-     * @param pf 是否获取产品名称
-     * @param mf 是否获取厂商名称
+     * @param detailFlag 是否获取设备详情
      * @param winUsbList WinUsb列表(Windows平台下需要)
      * @param info [输出]Usb信息
      * @return true-成功, false-失败
      */
 #ifdef _WIN32
-    static bool parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, const std::vector<WinUsb>& winUsbList, Usb& info);
+    static bool parseUsb(libusb_device* dev, bool detailFlag, const std::vector<WinUsb>& winUsbList, Usb& info);
 #else
-    static bool parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info);
+    static bool parseUsb(libusb_device* dev, bool detailFlag, Usb& info);
 #endif
 
 private:
@@ -223,8 +253,7 @@ private:
     std::string m_serial; /* 序列号 */
     std::string m_product; /* 产品名称 */
     std::string m_manufacturer; /* 厂商名称 */
-    std::string m_deviceName; /* 设备名称(适用于Windows平台) */
-    std::string m_deviceDesc; /* 设备描述(适用于Windows平台) */
-    std::string m_storageType; /* 存储设备类型(适用于Windows平台) */
+    DevNode m_devRootNode; /* 设备根节点(适用于Linux平台) */
+    std::vector<DevNode> m_devNodes; /* 设备节点(Linux平台可能多个) */
 };
 } // namespace usb

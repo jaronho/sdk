@@ -1,6 +1,7 @@
 #include "usb.h"
 
 #include <algorithm>
+#include <string.h>
 
 #ifdef _WIN32
 // Windows.h必须比其他平台文件先包含
@@ -12,221 +13,538 @@
 #include <SetupAPI.h>
 #include <cfgmgr32.h>
 #include <devpkey.h>
+#include <strsafe.h>
+#include <usb.h>
+#include <usbioctl.h>
+#include <usbiodef.h>
+#include <usbuser.h>
 #pragma comment(lib, "setupapi.lib")
+#else
+#include <libudev.h>
 #endif
 
 namespace usb
 {
 #ifdef _WIN32
-static unsigned long long digitHexToDec(const std::string& hexStr)
+/**
+ * @brief Windows平台下获取到的USB信息
+ */
+struct WinUsb
 {
-    unsigned long long dec = 0;
-    size_t len = hexStr.size();
-    size_t start = 0;
-    if (len >= 3)
+public:
+    int portNum = 0; /* 端口编号 */
+    int address = 0; /* 设备地址 */
+    std::string vid; /* 厂商ID(小写字母) */
+    std::string pid; /* 产品ID(小写字母) */
+    std::string serial; /* 序列号 */
+    std::string product; /* 产品名称 */
+    std::string manufacturer; /* 厂商名称 */
+    std::string dirverName; /* 设备驱动名称 */
+    std::string vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
+    std::string model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
+    std::string storageType; /* 存储设备类型, 值: disk-磁盘, cdrom-光驱 */
+};
+
+/* 参考 UsbView 的实现: 
+    https://www.uwe-sieber.de/usbtreeview_e.html
+    https://github.com/microsoft/Windows-driver-samples
+ */
+
+#define USB_IAD_DESCRIPTOR_TYPE 0x0B
+#define NUM_STRING_DESC_TO_GET 32
+
+typedef struct _STRING_DESCRIPTOR_NODE
+{
+    struct _STRING_DESCRIPTOR_NODE* Next;
+    UCHAR DescriptorIndex;
+    USHORT LanguageID;
+    USB_STRING_DESCRIPTOR StringDescriptor[1];
+} STRING_DESCRIPTOR_NODE, *PSTRING_DESCRIPTOR_NODE;
+
+typedef struct _USB_INTERFACE_DESCRIPTOR2
+{
+    UCHAR bLength; // offset 0, size 1
+    UCHAR bDescriptorType; // offset 1, size 1
+    UCHAR bInterfaceNumber; // offset 2, size 1
+    UCHAR bAlternateSetting; // offset 3, size 1
+    UCHAR bNumEndpoints; // offset 4, size 1
+    UCHAR bInterfaceClass; // offset 5, size 1
+    UCHAR bInterfaceSubClass; // offset 6, size 1
+    UCHAR bInterfaceProtocol; // offset 7, size 1
+    UCHAR iInterface; // offset 8, size 1
+    USHORT wNumClasses; // offset 9, size 2
+} USB_INTERFACE_DESCRIPTOR2, *PUSB_INTERFACE_DESCRIPTOR2;
+
+typedef struct _USB_IAD_DESCRIPTOR
+{
+    UCHAR bLength;
+    UCHAR bDescriptorType;
+    UCHAR bFirstInterface;
+    UCHAR bInterfaceCount;
+    UCHAR bFunctionClass;
+    UCHAR bFunctionSubClass;
+    UCHAR bFunctionProtocol;
+    UCHAR iFunction;
+} USB_IAD_DESCRIPTOR, *PUSB_IAD_DESCRIPTOR;
+
+void enumerateHub(std::string hubName, PUSB_NODE_CONNECTION_INFORMATION_EX ConnectionInfo, PUSB_DESCRIPTOR_REQUEST ConfigDesc,
+                  PSTRING_DESCRIPTOR_NODE stringDescs, std::vector<WinUsb>& usbList);
+
+std::string wstring2string(const std::wstring& wstr)
+{
+    if (!wstr.empty())
     {
-        const char& ch2 = hexStr.at(1);
-        if ('x' == ch2 || 'X' == ch2)
+        size_t len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+        char* buf = (char*)malloc(sizeof(char) * (len + 1));
+        if (buf)
         {
-            if ('0' != hexStr.at(0))
+            WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
+            buf[len] = '\0';
+            std::string str(buf);
+            free(buf);
+            return str;
+        }
+    }
+    return std::string();
+}
+
+std::string getRootHubName(HANDLE hostController)
+{
+    USB_ROOT_HUB_NAME rootHubName;
+    ULONG nBytes = 0;
+    if (!DeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, 0, 0, &rootHubName, sizeof(rootHubName), &nBytes, NULL))
+    {
+        return "";
+    }
+    nBytes = rootHubName.ActualLength;
+    PUSB_ROOT_HUB_NAME rootHubNameW = (PUSB_ROOT_HUB_NAME)GlobalAlloc(GPTR, nBytes);
+    if (NULL == rootHubNameW)
+    {
+        return "";
+    }
+    std::string rootHubNameA;
+    if (DeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, rootHubNameW, nBytes, &nBytes, NULL))
+    {
+        rootHubNameA = wstring2string(std::wstring(rootHubNameW->RootHubName, nBytes - sizeof(USB_ROOT_HUB_NAME) + sizeof(WCHAR)));
+    }
+    GlobalFree(rootHubNameW);
+    return rootHubNameA;
+}
+
+std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
+{
+    USB_NODE_CONNECTION_NAME extHubName;
+    extHubName.ConnectionIndex = connectionIndex;
+    ULONG nBytes = 0;
+    if (!DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, &extHubName, sizeof(extHubName), &extHubName, sizeof(extHubName), &nBytes,
+                         NULL))
+    {
+        return "";
+    }
+    nBytes = extHubName.ActualLength;
+    if (nBytes <= sizeof(extHubName))
+    {
+        return "";
+    }
+    PUSB_NODE_CONNECTION_NAME extHubNameW = (PUSB_NODE_CONNECTION_NAME)GlobalAlloc(GPTR, nBytes);
+    if (NULL == extHubNameW)
+    {
+        return "";
+    }
+    extHubNameW->ConnectionIndex = connectionIndex;
+    std::string extHubNameA;
+    if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, extHubNameW, nBytes, extHubNameW, nBytes, &nBytes, NULL))
+    {
+        extHubNameA = wstring2string(std::wstring(extHubNameW->NodeName, nBytes - sizeof(USB_NODE_CONNECTION_NAME) + sizeof(WCHAR)));
+    }
+    GlobalFree(extHubNameW);
+    return extHubNameA;
+}
+
+std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
+{
+    USB_NODE_CONNECTION_DRIVERKEY_NAME driverKeyName;
+    driverKeyName.ConnectionIndex = connectionIndex;
+    ULONG nBytes = 0;
+    if (!DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, &driverKeyName, sizeof(driverKeyName), &driverKeyName,
+                         sizeof(driverKeyName), &nBytes, NULL))
+    {
+        return "";
+    }
+    nBytes = driverKeyName.ActualLength;
+    if (nBytes <= sizeof(driverKeyName))
+    {
+        return "";
+    }
+    PUSB_NODE_CONNECTION_DRIVERKEY_NAME driverKeyNameW = (PUSB_NODE_CONNECTION_DRIVERKEY_NAME)GlobalAlloc(GPTR, nBytes);
+    if (NULL == driverKeyNameW)
+    {
+        return "";
+    }
+    driverKeyNameW->ConnectionIndex = connectionIndex;
+    std::string driverKeyNameA;
+    if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, driverKeyNameW, nBytes, driverKeyNameW, nBytes, &nBytes, NULL))
+    {
+        driverKeyNameA = wstring2string(
+            std::wstring(driverKeyNameW->DriverKeyName, nBytes - sizeof(USB_NODE_CONNECTION_DRIVERKEY_NAME) + sizeof(WCHAR)));
+    }
+    GlobalFree(driverKeyNameW);
+    return driverKeyNameA;
+}
+
+BOOL getDeviceProperty(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD property, LPTSTR* buffer)
+{
+    if (NULL == buffer)
+    {
+        return FALSE;
+    }
+    *buffer = NULL;
+    DWORD requiredSize = 0;
+    BOOL ret = SetupDiGetDeviceRegistryProperty(devInfo, devInfoData, property, NULL, NULL, 0, &requiredSize);
+    if ((0 == requiredSize) || (FALSE != ret && ERROR_INSUFFICIENT_BUFFER != GetLastError()))
+    {
+        return FALSE;
+    }
+    *buffer = (LPTSTR)GlobalAlloc(GPTR, requiredSize);
+    if (NULL == *buffer)
+    {
+        return FALSE;
+    }
+    if (FALSE == SetupDiGetDeviceRegistryProperty(devInfo, devInfoData, property, NULL, (PBYTE)*buffer, requiredSize, &requiredSize))
+    {
+        GlobalFree(*buffer);
+        *buffer = NULL;
+        return FALSE;
+    }
+    return TRUE;
+}
+
+void driverNameToDeviceInst(const std::string driveName, HDEVINFO* pDevInfo, PSP_DEVINFO_DATA pDevInfoData)
+{
+    if (driveName.empty() || NULL == pDevInfo || NULL == pDevInfoData)
+    {
+        return;
+    }
+    *pDevInfo = INVALID_HANDLE_VALUE;
+    memset(pDevInfoData, 0, sizeof(SP_DEVINFO_DATA));
+    HDEVINFO deviceInfo = SetupDiGetClassDevs(NULL, NULL, NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT);
+    if (INVALID_HANDLE_VALUE != deviceInfo)
+    {
+        bool matchFlag = false;
+        SP_DEVINFO_DATA deviceInfoData;
+        deviceInfoData.cbSize = sizeof(deviceInfoData);
+        for (ULONG index = 0; SetupDiEnumDeviceInfo(deviceInfo, index, &deviceInfoData); ++index)
+        {
+            PSTR buf = NULL;
+            if (getDeviceProperty(deviceInfo, &deviceInfoData, SPDRP_DRIVER, &buf))
             {
-                return 0;
+                if (0 == _stricmp(driveName.c_str(), buf))
+                {
+                    *pDevInfo = deviceInfo;
+                    CopyMemory(pDevInfoData, &deviceInfoData, sizeof(deviceInfoData));
+                    matchFlag = true;
+                }
+                GlobalFree(buf);
+                if (matchFlag)
+                {
+                    break;
+                }
             }
-            start = 2;
         }
-        else if ((ch2 < '0' || ch2 > '9') && (ch2 < 'A' || ch2 > 'F') && (ch2 < 'a' || ch2 > 'f'))
+        if (!matchFlag)
         {
-            return 0;
+            SetupDiDestroyDeviceInfoList(deviceInfo);
         }
     }
-    for (size_t i = start; i < len; ++i)
-    {
-        const char& ch = hexStr.at(i);
-        if (ch >= '0' && ch <= '9')
-        {
-            dec += ((unsigned long long)(ch)-48) * (unsigned long long)(pow(16, len - i - 1));
-        }
-        else if (ch >= 'A' && ch <= 'F')
-        {
-            dec += ((unsigned long long)(ch)-55) * (unsigned long long)(pow(16, len - i - 1));
-        }
-        else if (ch >= 'a' && ch <= 'f')
-        {
-            dec += ((unsigned long long)(ch)-87) * (unsigned long long)(pow(16, len - i - 1));
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    return dec;
 }
 
-static std::string wstring2string(const std::wstring& wstr)
+PUSB_DESCRIPTOR_REQUEST getConfigDescriptor(HANDLE hHubDevice, ULONG connectionIndex, UCHAR descriptorIndex)
 {
-    if (wstr.empty())
+    UCHAR configDescReqBuf[sizeof(USB_DESCRIPTOR_REQUEST) + sizeof(USB_CONFIGURATION_DESCRIPTOR)];
+    PUSB_DESCRIPTOR_REQUEST configDescReq = (PUSB_DESCRIPTOR_REQUEST)configDescReqBuf;
+    ULONG nBytes = sizeof(configDescReqBuf);
+    memset(configDescReq, 0, nBytes);
+    configDescReq->ConnectionIndex = connectionIndex;
+    configDescReq->SetupPacket.wValue = (USB_CONFIGURATION_DESCRIPTOR_TYPE << 8) | descriptorIndex;
+    configDescReq->SetupPacket.wLength = (USHORT)(nBytes - sizeof(USB_DESCRIPTOR_REQUEST));
+    ULONG nBytesReturned = 0;
+    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, configDescReq, nBytes, configDescReq, nBytes,
+                         &nBytesReturned, NULL))
     {
-        return std::string();
+        return NULL;
     }
-    int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-    char* buf = (char*)malloc(sizeof(char) * (len + 1));
-    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
-    buf[len] = '\0';
-    std::string str(buf);
-    free(buf);
-    return str;
+    if (nBytes != nBytesReturned)
+    {
+        return NULL;
+    }
+    PUSB_CONFIGURATION_DESCRIPTOR configDesc = (PUSB_CONFIGURATION_DESCRIPTOR)(configDescReq + 1);
+    if (configDesc->wTotalLength < sizeof(USB_CONFIGURATION_DESCRIPTOR))
+    {
+        return NULL;
+    }
+    nBytes = sizeof(USB_DESCRIPTOR_REQUEST) + configDesc->wTotalLength;
+    configDescReq = (PUSB_DESCRIPTOR_REQUEST)GlobalAlloc(GPTR, nBytes);
+    if (NULL == configDescReq)
+    {
+        return NULL;
+    }
+    configDesc = (PUSB_CONFIGURATION_DESCRIPTOR)(configDescReq + 1);
+    configDescReq->ConnectionIndex = connectionIndex;
+    configDescReq->SetupPacket.wValue = (USB_CONFIGURATION_DESCRIPTOR_TYPE << 8) | descriptorIndex;
+    configDescReq->SetupPacket.wLength = (USHORT)(nBytes - sizeof(USB_DESCRIPTOR_REQUEST));
+    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, configDescReq, nBytes, configDescReq, nBytes,
+                         &nBytesReturned, NULL))
+    {
+        GlobalFree(configDescReq);
+        return NULL;
+    }
+    if (nBytes != nBytesReturned)
+    {
+        GlobalFree(configDescReq);
+        return NULL;
+    }
+    if (configDesc->wTotalLength != (nBytes - sizeof(USB_DESCRIPTOR_REQUEST)))
+    {
+        GlobalFree(configDescReq);
+        return NULL;
+    }
+    return configDescReq;
 }
 
-/**
- * @brief 解析Driver属性, 属性值格式必须为: "{36fc9e60-c465-11cf-8056-444553540000}\0002"
- * @param propertyBuffer 属性值
- * @param driverAddress [输出]driver地址
- * @return true-成功, false-失败
- */
-bool parseDriver(WCHAR propertyBuffer[4096], std::string& driverAddress)
+BOOL areThereStringDescriptors(PUSB_DEVICE_DESCRIPTOR deviceDesc, PUSB_CONFIGURATION_DESCRIPTOR configDesc)
 {
-    driverAddress.clear();
-    std::string buffer = wstring2string(propertyBuffer);
-    auto pos = buffer.rfind("\\");
-    if (std::string::npos == pos)
+    if (deviceDesc->iManufacturer || deviceDesc->iProduct || deviceDesc->iSerialNumber)
     {
-        return false;
+        return TRUE;
     }
-    driverAddress = buffer.substr(pos + 1);
-    return true;
-}
-
-/**
- * @brief 解析LocationPaths属性, 属性值格式必须为: "PCIROOT(0)#PCI(0D00)#USBROOT(0)"
- * @param propertyBuffer 属性值
- * @param pci [输出]PCI编号
- * @return true-成功, false-失败
- */
-bool parseLocationPaths(WCHAR propertyBuffer[4096], std::string& pci)
-{
-    pci.clear();
-    std::string buffer = wstring2string(propertyBuffer);
-    auto posBeg = buffer.find("#PCI(");
-    auto posEnd = buffer.find(")#USBROOT");
-    if (std::string::npos == posBeg || std::string::npos == posEnd || posBeg > posEnd)
+    PUCHAR descEnd = (PUCHAR)configDesc + configDesc->wTotalLength;
+    PUSB_COMMON_DESCRIPTOR commonDesc = (PUSB_COMMON_DESCRIPTOR)configDesc;
+    while ((PUCHAR)commonDesc + sizeof(USB_COMMON_DESCRIPTOR) < descEnd && (PUCHAR)commonDesc + commonDesc->bLength <= descEnd)
     {
-        return false;
-    }
-    pci = buffer.substr(posBeg + 5, posEnd - posBeg - 5);
-    return true;
-}
-
-/**
- * @brief 解析LocationInfo属性, 属性值格式必须为: "Port_#0014.Hub_#0001"
- *        "Hub_#0001"表示busNum为"0001", "Port_#0014"表示portNum值为"0014"
- * @param propertyBuffer 属性值
- * @param busNum [输出]总线编号
- * @param portNum [输出]端口编号
- * @return true-成功, false-失败
- */
-bool parseLocationInfo(WCHAR propertyBuffer[4096], int& busNum, int& portNum)
-{
-    busNum = -1;
-    portNum = -1;
-    std::string buffer = wstring2string(propertyBuffer);
-    auto pos = buffer.find("Hub_#");
-    if (std::string::npos == pos || pos + 9 > buffer.size())
-    {
-        return false;
-    }
-    auto busNumBuf = buffer.substr(pos + 5, 4);
-    pos = buffer.find("Port_#");
-    if (std::string::npos == pos || pos + 10 > buffer.size())
-    {
-        return false;
-    }
-    auto portNumBuf = buffer.substr(pos + 6, 4);
-    try
-    {
-        busNum = std::atoi(busNumBuf.c_str());
-        portNum = std::atoi(portNumBuf.c_str());
-    }
-    catch (...)
-    {
-        busNum = -1;
-        portNum = -1;
-        return false;
-    }
-    return true;
-}
-
-/**
- * @brief 解析InstanceId属性, 属性值格式必须为: "USB\VID_0930&PID_140A\D04B61EC2646E25150000113"
- *        "VID_0930"表示VID值为"0930", "PID_140A"表示PID值为"140A"
- *        "D04B61EC2646E25150000113"表示为序列号, 注意只有存储设备才有序列号, 且序列号中不含有"&"
- *        例如, 非存储设备的值格式为: "USB\VID_093A&PID_2510\5&31036E8E&0&3"
- * @param instanceId [输出]实例ID
- * @param vid [输出]厂商ID(小写字母)
- * @param pid [输出]产品ID(小写字母)
- * @param serial [输出]序列号
- * @return true-成功, false-失败
- */
-bool parseInstanceId(WCHAR propertyBuffer[4096], std::string& instanceId, std::string& vid, std::string& pid, std::string& serial)
-{
-    instanceId.clear();
-    vid.clear();
-    pid.clear();
-    serial.clear();
-    std::string buffer = wstring2string(propertyBuffer);
-    instanceId = buffer;
-    auto pos = buffer.find("VID_");
-    if (std::string::npos == pos || pos + 8 > buffer.size())
-    {
-        return false;
-    }
-    vid = buffer.substr(pos + 4, 4);
-    std::transform(vid.begin(), vid.end(), vid.begin(), tolower);
-    pos = buffer.find("PID_");
-    if (std::string::npos == pos || pos + 8 > buffer.size())
-    {
-        vid.clear();
-        return false;
-    }
-    pid = buffer.substr(pos + 4, 4);
-    std::transform(pid.begin(), pid.end(), pid.begin(), tolower);
-    pos = buffer.find_last_of('\\');
-    if (std::string::npos != pos)
-    {
-        serial = buffer.substr(pos + 1);
-        if (std::string::npos != serial.find('&'))
+        switch (commonDesc->bDescriptorType)
         {
-            serial.clear();
-        }
-    }
-    return true;
-}
-
-/**
- * @brief 解析Children属性, 属性值格式, 例如: "USBSTOR\Disk&Ven_TOSHIBA&Prod_TransMemory&Rev_PMAP\D04B61EC2646E25150000113&0"
- *        "Prod_TransMemory"表示产品名称为"TransMemory", "Ven_TOSHIBA"表示厂商名称为"TOSHIBA"
- *        如果无产品名称和厂商名称, 格式可能为: "HID\VID_093A&PID_2510\6&365403a8&0&0000"
- * @param product [输出]产品名称
- * @param manufacturer [输出]厂商名称
- */
-void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string& manufacturer, std::string& storageType)
-{
-    product.clear();
-    manufacturer.clear();
-    storageType.clear();
-    std::string buffer = wstring2string(propertyBuffer);
-    auto pos = buffer.find("Prod_");
-    if (std::string::npos != pos)
-    {
-        for (size_t i = pos + 5; i < buffer.size(); ++i)
-        {
-            if ('&' == buffer[i])
+        case USB_CONFIGURATION_DESCRIPTOR_TYPE:
+        case USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE:
+            if (commonDesc->bLength != sizeof(USB_CONFIGURATION_DESCRIPTOR))
             {
                 break;
             }
-            product.push_back('_' == buffer[i] ? ' ' : buffer[i]);
+            if (((PUSB_CONFIGURATION_DESCRIPTOR)commonDesc)->iConfiguration)
+            {
+                return TRUE;
+            }
+            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
+            continue;
+        case USB_INTERFACE_DESCRIPTOR_TYPE:
+            if (commonDesc->bLength != sizeof(USB_INTERFACE_DESCRIPTOR) && commonDesc->bLength != sizeof(USB_INTERFACE_DESCRIPTOR2))
+            {
+                break;
+            }
+            if (((PUSB_INTERFACE_DESCRIPTOR)commonDesc)->iInterface)
+            {
+                return TRUE;
+            }
+            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
+            continue;
+        default:
+            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
+            continue;
+        }
+        break;
+    }
+    return FALSE;
+}
+
+PSTRING_DESCRIPTOR_NODE getStringDescriptor(HANDLE hHubDevice, ULONG connectionIndex, UCHAR descriptorIndex, USHORT languageID)
+{
+    UCHAR stringDescReqBuf[sizeof(USB_DESCRIPTOR_REQUEST) + MAXIMUM_USB_STRING_LENGTH];
+    PUSB_DESCRIPTOR_REQUEST stringDescReq = (PUSB_DESCRIPTOR_REQUEST)stringDescReqBuf;
+    ULONG nBytes = sizeof(stringDescReqBuf);
+    memset(stringDescReq, 0, nBytes);
+    stringDescReq->ConnectionIndex = connectionIndex;
+    stringDescReq->SetupPacket.wValue = (USB_STRING_DESCRIPTOR_TYPE << 8) | descriptorIndex;
+    stringDescReq->SetupPacket.wIndex = languageID;
+    stringDescReq->SetupPacket.wLength = (USHORT)(nBytes - sizeof(USB_DESCRIPTOR_REQUEST));
+    ULONG nBytesReturned = 0;
+    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, stringDescReq, nBytes, stringDescReq, nBytes,
+                         &nBytesReturned, NULL))
+    {
+        return NULL;
+    }
+    if (nBytesReturned < 2)
+    {
+        return NULL;
+    }
+    PUSB_STRING_DESCRIPTOR stringDesc = (PUSB_STRING_DESCRIPTOR)(stringDescReq + 1);
+    if (USB_STRING_DESCRIPTOR_TYPE != stringDesc->bDescriptorType)
+    {
+        return NULL;
+    }
+    if (stringDesc->bLength != nBytesReturned - sizeof(USB_DESCRIPTOR_REQUEST))
+    {
+        return NULL;
+    }
+    if (0 != stringDesc->bLength % 2)
+    {
+        return NULL;
+    }
+    PSTRING_DESCRIPTOR_NODE stringDescNode =
+        (PSTRING_DESCRIPTOR_NODE)GlobalAlloc(GPTR, sizeof(STRING_DESCRIPTOR_NODE) + stringDesc->bLength);
+    if (NULL == stringDescNode)
+    {
+        return NULL;
+    }
+    stringDescNode->DescriptorIndex = descriptorIndex;
+    stringDescNode->LanguageID = languageID;
+    memcpy(stringDescNode->StringDescriptor, stringDesc, stringDesc->bLength);
+    return stringDescNode;
+}
+
+HRESULT getStringDescriptors(HANDLE hHubDevice, ULONG connectionIndex, UCHAR descriptorIndex, ULONG numLanguageIDs, USHORT* languageIDs,
+                             PSTRING_DESCRIPTOR_NODE StringDescNodeHead)
+{
+    PSTRING_DESCRIPTOR_NODE tail = NULL;
+    PSTRING_DESCRIPTOR_NODE trailing = NULL;
+    for (tail = StringDescNodeHead; tail != NULL; tail = tail->Next)
+    {
+        if (tail->DescriptorIndex == descriptorIndex)
+        {
+            return S_OK;
+        }
+        trailing = tail;
+    }
+    tail = trailing;
+    for (ULONG i = 0; (tail != NULL) && (i < numLanguageIDs); i++)
+    {
+        tail->Next = getStringDescriptor(hHubDevice, connectionIndex, descriptorIndex, languageIDs[i]);
+        tail = tail->Next;
+    }
+    if (tail == NULL)
+    {
+        return E_FAIL;
+    }
+    return S_OK;
+}
+
+PSTRING_DESCRIPTOR_NODE getAllStringDescriptors(HANDLE hHubDevice, ULONG connectionIndex, PUSB_DEVICE_DESCRIPTOR deviceDesc,
+                                                PUSB_CONFIGURATION_DESCRIPTOR configDesc)
+{
+    PSTRING_DESCRIPTOR_NODE supportedLanguagesString = getStringDescriptor(hHubDevice, connectionIndex, 0, 0);
+    if (supportedLanguagesString == NULL)
+    {
+        return NULL;
+    }
+    ULONG numLanguageIDs = (supportedLanguagesString->StringDescriptor->bLength - 2) / 2;
+    USHORT* languageIDs = (USHORT*)(&supportedLanguagesString->StringDescriptor->bString[0]);
+    if (deviceDesc->iManufacturer)
+    {
+        getStringDescriptors(hHubDevice, connectionIndex, deviceDesc->iManufacturer, numLanguageIDs, languageIDs, supportedLanguagesString);
+    }
+    if (deviceDesc->iProduct)
+    {
+        getStringDescriptors(hHubDevice, connectionIndex, deviceDesc->iProduct, numLanguageIDs, languageIDs, supportedLanguagesString);
+    }
+    if (deviceDesc->iSerialNumber)
+    {
+        getStringDescriptors(hHubDevice, connectionIndex, deviceDesc->iSerialNumber, numLanguageIDs, languageIDs, supportedLanguagesString);
+    }
+    PUCHAR descEnd = (PUCHAR)configDesc + configDesc->wTotalLength;
+    PUSB_COMMON_DESCRIPTOR commonDesc = (PUSB_COMMON_DESCRIPTOR)configDesc;
+    BOOL getMoreStrings = FALSE;
+    while ((PUCHAR)commonDesc + sizeof(USB_COMMON_DESCRIPTOR) < descEnd && (PUCHAR)commonDesc + commonDesc->bLength <= descEnd)
+    {
+        switch (commonDesc->bDescriptorType)
+        {
+        case USB_CONFIGURATION_DESCRIPTOR_TYPE:
+            if (commonDesc->bLength != sizeof(USB_CONFIGURATION_DESCRIPTOR))
+            {
+                break;
+            }
+            if (((PUSB_CONFIGURATION_DESCRIPTOR)commonDesc)->iConfiguration)
+            {
+                getStringDescriptors(hHubDevice, connectionIndex, ((PUSB_CONFIGURATION_DESCRIPTOR)commonDesc)->iConfiguration,
+                                     numLanguageIDs, languageIDs, supportedLanguagesString);
+            }
+            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
+            continue;
+        case USB_IAD_DESCRIPTOR_TYPE:
+            if (commonDesc->bLength < sizeof(USB_IAD_DESCRIPTOR))
+            {
+                break;
+            }
+            if (((PUSB_IAD_DESCRIPTOR)commonDesc)->iFunction)
+            {
+                getStringDescriptors(hHubDevice, connectionIndex, ((PUSB_IAD_DESCRIPTOR)commonDesc)->iFunction, numLanguageIDs, languageIDs,
+                                     supportedLanguagesString);
+            }
+            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
+            continue;
+        case USB_INTERFACE_DESCRIPTOR_TYPE:
+            if (commonDesc->bLength != sizeof(USB_INTERFACE_DESCRIPTOR) && commonDesc->bLength != sizeof(USB_INTERFACE_DESCRIPTOR2))
+            {
+                break;
+            }
+            if (((PUSB_INTERFACE_DESCRIPTOR)commonDesc)->iInterface)
+            {
+                getStringDescriptors(hHubDevice, connectionIndex, ((PUSB_INTERFACE_DESCRIPTOR)commonDesc)->iInterface, numLanguageIDs,
+                                     languageIDs, supportedLanguagesString);
+            }
+            if (USB_DEVICE_CLASS_VIDEO == ((PUSB_INTERFACE_DESCRIPTOR)commonDesc)->bInterfaceClass)
+            {
+                getMoreStrings = TRUE;
+            }
+            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
+            continue;
+        default:
+            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
+            continue;
+        }
+        break;
+    }
+    if (getMoreStrings)
+    {
+        for (UCHAR uIndex = 1; (uIndex < NUM_STRING_DESC_TO_GET); uIndex++)
+        {
+            HRESULT hr = getStringDescriptors(hHubDevice, connectionIndex, uIndex, numLanguageIDs, languageIDs, supportedLanguagesString);
+            if (FAILED(hr))
+            {
+                break;
+            }
         }
     }
-    pos = buffer.find("Ven_");
+    return supportedLanguagesString;
+}
+
+std::string getDisplayString(UCHAR index, PSTRING_DESCRIPTOR_NODE stringDescs)
+{
+    std::string desc;
+    char pString[512];
+    while (stringDescs)
+    {
+        if (stringDescs->DescriptorIndex == index)
+        {
+            memset(pString, 0, 512);
+            if (stringDescs->StringDescriptor->bLength > sizeof(USHORT))
+            {
+                ULONG nBytes = WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, stringDescs->StringDescriptor->bString,
+                                                   (stringDescs->StringDescriptor->bLength - 2) / 2, pString, 512, NULL, NULL);
+                if (nBytes)
+                {
+                    desc += pString;
+                }
+            }
+        }
+        stringDescs = stringDescs->Next;
+    }
+    return desc;
+}
+
+void parseBusRelations(const std::string& buffer, std::string& vendor, std::string& model, std::string& storageType)
+{
+    vendor.clear();
+    model.clear();
+    storageType.clear();
+    auto pos = buffer.find("Ven_");
     if (std::string::npos != pos)
     {
         for (size_t i = pos + 4; i < buffer.size(); ++i)
@@ -235,7 +553,19 @@ void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string
             {
                 break;
             }
-            manufacturer.push_back(buffer[i]);
+            vendor.push_back('_' == buffer[i] ? ' ' : buffer[i]);
+        }
+    }
+    pos = buffer.find("Prod_");
+    if (std::string::npos != pos)
+    {
+        for (size_t i = pos + 5; i < buffer.size(); ++i)
+        {
+            if ('&' == buffer[i])
+            {
+                break;
+            }
+            model.push_back('_' == buffer[i] ? ' ' : buffer[i]);
         }
     }
     pos = buffer.find("USBSTOR\\");
@@ -253,70 +583,233 @@ void parseChildren(WCHAR propertyBuffer[4096], std::string& product, std::string
     }
 }
 
-/**
- * @brief Windows平台下获取到的USB信息
- */
-struct WinUsb
+void enumerateHubPorts(HANDLE hHubDevice, ULONG numPorts, std::vector<WinUsb>& usbList)
 {
-public:
-    std::string parentInstanceId; /* 父节点实例ID, 例如: USB\ROOT_HUB30\4&C2333A7&0&0 */
-    std::string instanceId; /* 当前实例ID, 例如: USB\VID_0930&PID_140A\0060E056B626E260100040E4 */
-    std::string driverAddress; /* DRIVER地址 */
-    std::string pci; /* PCI */
-    int busNum = -1; /* 总线编号 */
-    int portNum = -1; /* 端口编号 */
-    std::string vid; /* 厂商ID(小写字母) */
-    std::string pid; /* 产品ID(小写字母) */
-    std::string serial; /* 序列号 */
-    std::string product; /* 产品名称 */
-    std::string manufacturer; /* 厂商名称 */
-    std::string deviceName; /* 设备名称 */
-    std::string deviceDesc; /* 设备描述 */
-    std::string storageType; /* 存储设备类型, 值: disk-磁盘, cdrom-光驱 */
-};
-
-/**
- * @brief 判断是否根节点
- * @param info 当前USB信息
- * @param winUsbList 查询到的USB信息列表
- * @return true-根节点, false-非根节点
- */
-bool isRootWinUsb(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
-{
-    auto parentInstanceId = info.parentInstanceId;
-    std::transform(parentInstanceId.begin(), parentInstanceId.end(), parentInstanceId.begin(), tolower);
-    for (const auto& item : winUsbList)
+    for (ULONG index = 1; index <= numPorts; ++index)
     {
-        auto instanceId = item.instanceId;
-        std::transform(instanceId.begin(), instanceId.end(), instanceId.begin(), tolower);
-        if (parentInstanceId == instanceId)
+        ULONG nBytesEx = sizeof(USB_NODE_CONNECTION_INFORMATION_EX) + (sizeof(USB_PIPE_INFO) * 30);
+        PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfoEx = (PUSB_NODE_CONNECTION_INFORMATION_EX)GlobalAlloc(GPTR, nBytesEx);
+        if (NULL == connectionInfoEx)
         {
-            return false;
+            break;
         }
+        USB_PORT_CONNECTOR_PROPERTIES portConnectorProps;
+        ZeroMemory(&portConnectorProps, sizeof(portConnectorProps));
+        portConnectorProps.ConnectionIndex = index;
+        ULONG nBytes = 0;
+        DeviceIoControl(hHubDevice, IOCTL_USB_GET_PORT_CONNECTOR_PROPERTIES, &portConnectorProps, sizeof(USB_PORT_CONNECTOR_PROPERTIES),
+                        &portConnectorProps, sizeof(USB_PORT_CONNECTOR_PROPERTIES), &nBytes, NULL);
+        connectionInfoEx->ConnectionIndex = index;
+        if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION_EX, connectionInfoEx, nBytesEx, connectionInfoEx,
+                             nBytesEx, &nBytesEx, NULL))
+        {
+            nBytes = sizeof(USB_NODE_CONNECTION_INFORMATION) + sizeof(USB_PIPE_INFO) * 30;
+            PUSB_NODE_CONNECTION_INFORMATION connectionInfo = (PUSB_NODE_CONNECTION_INFORMATION)GlobalAlloc(GPTR, nBytes);
+            if (NULL == connectionInfo)
+            {
+                GlobalFree(connectionInfoEx);
+                continue;
+            }
+            connectionInfo->ConnectionIndex = index;
+            if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION, connectionInfo, nBytes, connectionInfo, nBytes,
+                                 &nBytes, NULL))
+            {
+                GlobalFree(connectionInfo);
+                GlobalFree(connectionInfoEx);
+                continue;
+            }
+            connectionInfoEx->ConnectionIndex = connectionInfo->ConnectionIndex;
+            connectionInfoEx->DeviceDescriptor = connectionInfo->DeviceDescriptor;
+            connectionInfoEx->CurrentConfigurationValue = connectionInfo->CurrentConfigurationValue;
+            connectionInfoEx->Speed = connectionInfo->LowSpeed ? UsbLowSpeed : UsbFullSpeed;
+            connectionInfoEx->DeviceIsHub = connectionInfo->DeviceIsHub;
+            connectionInfoEx->DeviceAddress = connectionInfo->DeviceAddress;
+            connectionInfoEx->NumberOfOpenPipes = connectionInfo->NumberOfOpenPipes;
+            connectionInfoEx->ConnectionStatus = connectionInfo->ConnectionStatus;
+            memcpy(&connectionInfoEx->PipeList[0], &connectionInfo->PipeList[0], sizeof(USB_PIPE_INFO) * 30);
+            GlobalFree(connectionInfo);
+        }
+        PUSB_DESCRIPTOR_REQUEST configDesc = NULL;
+        if (DeviceConnected == connectionInfoEx->ConnectionStatus)
+        {
+            configDesc = getConfigDescriptor(hHubDevice, index, 0);
+        }
+        PSTRING_DESCRIPTOR_NODE stringDescs = NULL;
+        if (configDesc && areThereStringDescriptors(&connectionInfoEx->DeviceDescriptor, (PUSB_CONFIGURATION_DESCRIPTOR)(configDesc + 1)))
+        {
+            stringDescs = getAllStringDescriptors(hHubDevice, index, &connectionInfoEx->DeviceDescriptor,
+                                                  (PUSB_CONFIGURATION_DESCRIPTOR)(configDesc + 1));
+        }
+        if (DeviceConnected == connectionInfoEx->ConnectionStatus) /* Port Plugin Device */
+        {
+            char vid[16] = {0};
+            sprintf(vid, "%04x", connectionInfoEx->DeviceDescriptor.idVendor);
+            char pid[16] = {0};
+            sprintf(pid, "%04x", connectionInfoEx->DeviceDescriptor.idProduct);
+            std::string serial;
+            if (connectionInfoEx->DeviceDescriptor.iSerialNumber)
+            {
+                serial = getDisplayString(connectionInfoEx->DeviceDescriptor.iSerialNumber, stringDescs);
+            }
+            std::string product;
+            if (connectionInfoEx->DeviceDescriptor.iProduct)
+            {
+                product = getDisplayString(connectionInfoEx->DeviceDescriptor.iProduct, stringDescs);
+            }
+            std::string manufacturer;
+            if (connectionInfoEx->DeviceDescriptor.iManufacturer)
+            {
+                manufacturer = getDisplayString(connectionInfoEx->DeviceDescriptor.iManufacturer, stringDescs);
+            }
+            std::string dirverName = getDriverKeyName(hHubDevice, index);
+            std::string vendor, model, storageType;
+            HDEVINFO devInfo = INVALID_HANDLE_VALUE;
+            SP_DEVINFO_DATA devInfoData = {0};
+            driverNameToDeviceInst(dirverName, &devInfo, &devInfoData);
+            if (INVALID_HANDLE_VALUE != devInfo)
+            {
+                DEVPROPTYPE propertyType = 0;
+                WCHAR propertyBuffer[1024] = {0};
+                DWORD requiredSize = 0;
+                if (SetupDiGetDevicePropertyW(devInfo, &devInfoData, &DEVPKEY_Device_BusRelations, &propertyType,
+                                              reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
+                {
+                    parseBusRelations(wstring2string(propertyBuffer), vendor, model, storageType);
+                }
+                SetupDiDestroyDeviceInfoList(devInfo);
+            }
+            WinUsb info;
+            info.portNum = index;
+            info.address = connectionInfoEx->DeviceAddress;
+            info.vid = vid;
+            info.pid = pid;
+            info.serial = serial;
+            info.product = product;
+            info.manufacturer = manufacturer;
+            info.dirverName = dirverName;
+            info.vendor = vendor;
+            info.model = model;
+            info.storageType = storageType;
+            usbList.emplace_back(info);
+        }
+        if (connectionInfoEx->DeviceIsHub) /* Hub Device */
+        {
+            enumerateHub(getExternalHubName(hHubDevice, index), connectionInfoEx, configDesc, stringDescs, usbList);
+        }
+        if (configDesc)
+        {
+            GlobalFree(configDesc);
+        }
+        while (stringDescs)
+        {
+            PSTRING_DESCRIPTOR_NODE Next = stringDescs->Next;
+            GlobalFree(stringDescs);
+            stringDescs = Next;
+        }
+        GlobalFree(connectionInfoEx);
     }
-    return true;
 }
 
-/**
- * @brief 获取祖先节点总线编号(递归查询)
- * @param info 当前USB信息
- * @param winUsbList 查询到的USB信息列表
- * @return 总线编号
- */
-int getAncestorBusNum(const WinUsb& info, const std::vector<WinUsb>& winUsbList)
+void enumerateHub(std::string hubName, PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, PUSB_DESCRIPTOR_REQUEST configDesc,
+                  PSTRING_DESCRIPTOR_NODE stringDescs, std::vector<WinUsb>& usbList)
 {
-    auto parentInstanceId = info.parentInstanceId;
-    std::transform(parentInstanceId.begin(), parentInstanceId.end(), parentInstanceId.begin(), tolower);
-    for (const auto& item : winUsbList)
+    if (hubName.empty())
     {
-        auto instanceId = item.instanceId;
-        std::transform(instanceId.begin(), instanceId.end(), instanceId.begin(), tolower);
-        if (parentInstanceId == instanceId && item.busNum > 0)
-        {
-            return getAncestorBusNum(item, winUsbList);
-        }
+        return;
     }
-    return info.busNum;
+    PUSB_NODE_INFORMATION hubInfo = (PUSB_NODE_INFORMATION)GlobalAlloc(GPTR, sizeof(USB_NODE_INFORMATION));
+    if (NULL == hubInfo)
+    {
+        return;
+    }
+    do
+    {
+        std::string deviceName = "\\\\.\\" + hubName;
+        HANDLE hHubDevice = CreateFile(deviceName.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+        if (INVALID_HANDLE_VALUE == hHubDevice)
+        {
+            break;
+        }
+        ULONG nBytes = 0;
+        if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_INFORMATION, hubInfo, sizeof(USB_NODE_INFORMATION), hubInfo,
+                             sizeof(USB_NODE_INFORMATION), &nBytes, NULL))
+        {
+            CloseHandle(hHubDevice);
+            break;
+        }
+        if (NULL == connectionInfo) /* Root Hub */
+        {
+        }
+        else /* Extend Hub */
+        {
+        }
+        enumerateHubPorts(hHubDevice, hubInfo->u.HubInformation.HubDescriptor.bNumberOfPorts, usbList);
+        CloseHandle(hHubDevice);
+    } while (0);
+    GlobalFree(hubInfo);
+}
+
+std::vector<WinUsb> enumerateHostControllers()
+{
+    std::vector<WinUsb> usbList;
+    HDEVINFO devInfo = SetupDiGetClassDevs((LPGUID)&GUID_CLASS_USB_HOST_CONTROLLER, NULL, NULL, (DIGCF_PRESENT | DIGCF_DEVICEINTERFACE));
+    if (NULL == devInfo)
+    {
+        return usbList;
+    }
+    SP_DEVINFO_DATA devInfoData;
+    devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+    for (ULONG index = 0; SetupDiEnumDeviceInfo(devInfo, index, &devInfoData); ++index)
+    {
+        SP_DEVICE_INTERFACE_DATA devInterfaceData;
+        devInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+        if (!SetupDiEnumDeviceInterfaces(devInfo, 0, (LPGUID)&GUID_CLASS_USB_HOST_CONTROLLER, index, &devInterfaceData))
+        {
+            break;
+        }
+        ULONG requiredSize = 0;
+        BOOL ret = SetupDiGetDeviceInterfaceDetail(devInfo, &devInterfaceData, NULL, 0, &requiredSize, NULL);
+        if (FALSE == ret && ERROR_INSUFFICIENT_BUFFER != GetLastError())
+        {
+            break;
+        }
+        PSP_DEVICE_INTERFACE_DETAIL_DATA devDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA)GlobalAlloc(GPTR, requiredSize);
+        if (NULL == devDetailData)
+        {
+            break;
+        }
+        devDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+        if (SetupDiGetDeviceInterfaceDetail(devInfo, &devInterfaceData, devDetailData, requiredSize, &requiredSize, NULL))
+        {
+            HANDLE hHCDev = CreateFile(devDetailData->DevicePath, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+            if (INVALID_HANDLE_VALUE != hHCDev)
+            {
+                enumerateHub(getRootHubName(hHCDev), NULL, NULL, NULL, usbList);
+                CloseHandle(hHCDev);
+            }
+        }
+        GlobalFree(devDetailData);
+    }
+    SetupDiDestroyDeviceInfoList(devInfo);
+    return usbList;
+}
+#else
+static std::string runCommand(const std::string& cmd)
+{
+    std::string outStr;
+    FILE* stream = popen(cmd.c_str(), "r");
+    if (stream)
+    {
+        const size_t bufferSize = 1024;
+        char buffer[bufferSize] = {0};
+        while (fread(buffer, 1, bufferSize, stream) > 0)
+        {
+            outStr.append(buffer);
+            memset(buffer, 0, bufferSize);
+        }
+        pclose(stream);
+    }
+    return outStr;
 }
 #endif
 
@@ -347,9 +840,8 @@ Usb::Usb(const Usb& src)
     m_serial = src.m_serial;
     m_product = src.m_product;
     m_manufacturer = src.m_manufacturer;
-    m_deviceName = src.m_deviceName;
-    m_deviceDesc = src.m_deviceDesc;
-    m_storageType = src.m_storageType;
+    m_devRootNode = src.m_devRootNode;
+    m_devNodes = src.m_devNodes;
 }
 
 std::shared_ptr<Usb> Usb::getParent() const
@@ -490,20 +982,32 @@ std::string Usb::getManufacturer() const
     return m_manufacturer;
 }
 
-std::string Usb::getDeviceName() const
+#ifdef _WIN32
+std::string Usb::getVendor() const
 {
-    return m_deviceName;
+    return m_devNodes.empty() ? "" : m_devNodes[0].vendor;
 }
 
-std::string Usb::getDeviceDesc() const
+std::string Usb::getModel() const
 {
-    return m_deviceDesc;
+    return m_devNodes.empty() ? "" : m_devNodes[0].model;
 }
 
 std::string Usb::getStorageType() const
 {
-    return m_storageType;
+    return m_devNodes.empty() ? "" : m_devNodes[0].group;
 }
+#else
+DevNode Usb::getDevRootNode() const
+{
+    return m_devRootNode;
+}
+
+std::vector<DevNode> Usb::getDevNodes() const
+{
+    return m_devNodes;
+}
+#endif
 
 bool Usb::isHid() const
 {
@@ -520,7 +1024,164 @@ bool Usb::isHub() const
     return (LIBUSB_CLASS_HUB == m_classCode);
 }
 
-std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
+std::string Usb::describe(int allIntend, int intend) const
+{
+    std::string allIntendStr(allIntend, ' '), intendStr(intend, ' ');
+    std::string desc;
+    desc += allIntendStr + "{";
+    desc += "\n"; /* 换行 */
+    desc += allIntendStr + intendStr;
+    desc += "\"busNum\": " + std::to_string(getBusNum());
+    desc += ", ";
+    desc += "\"portNum\": " + std::to_string(getPortNum());
+    desc += ", ";
+    desc += "\"address\": " + std::to_string(getAddress());
+    desc += ", ";
+    desc += "\"classCode\": " + std::to_string(getClassCode());
+    desc += ", ";
+    desc += "\"classHex\": \"" + getClassHex() + "\"";
+    desc += ", ";
+    desc += "\"classDesc\": \"" + getClassDesc() + "\"";
+    desc += ", ";
+    desc += "\"subClass\": " + std::to_string(getSubClassCode());
+    desc += ", ";
+    desc += "\"protocol\": " + std::to_string(getProtocolCode());
+    desc += ", ";
+    desc += "\"speed\": " + std::to_string(getSpeedLevel());
+    desc += ", ";
+    desc += "\"speedDesc\": \"" + getSpeedDesc() + "\"";
+    desc += ",";
+    desc += "\n"; /* 换行 */
+    desc += allIntendStr + intendStr;
+    desc += "\"vid\": \"" + getVid() + "\"";
+    desc += ", ";
+    desc += "\"pid\": \"" + getPid() + "\"";
+    desc += ", ";
+    desc += "\"serial\": \"" + getSerial() + "\"";
+    desc += ", ";
+    desc += "\"product\": \"" + getProduct() + "\"";
+    desc += ", ";
+    desc += "\"manufacturer\": \"" + getManufacturer() + "\"";
+#ifdef _WIN32
+    desc += ", ";
+    desc += "\"vendor\": \"" + getVendor() + "\"";
+    desc += ", ";
+    desc += "\"model\": \"" + getModel() + "\"";
+    if (isStorage())
+    {
+        desc += ", ";
+        desc += "\"storageType\": \"" + getStorageType() + "\"";
+    }
+#else
+    if (!m_devRootNode.name.empty())
+    {
+        desc += ",";
+        desc += "\n"; /* 换行 */
+        desc += allIntendStr + intendStr;
+        desc += "\"devRootNode\": ";
+        desc += "{";
+        desc += "\"name\": \"" + m_devRootNode.name + "\"";
+        std::string temp;
+        if (!m_devRootNode.group.empty())
+        {
+            desc += ", ";
+            desc += "\"group\": \"" + m_devRootNode.group + "\"";
+        }
+        if (!m_devRootNode.fstype.empty())
+        {
+            desc += ", ";
+            desc += "\"fstype\": \"" + m_devRootNode.fstype + "\"";
+        }
+        if (!m_devRootNode.label.empty())
+        {
+            desc += ", ";
+            desc += "\"label\": \"" + m_devRootNode.label + "\"";
+        }
+        if (!m_devRootNode.partlabel.empty())
+        {
+            desc += ", ";
+            desc += "\"partlabel\": \"" + m_devRootNode.partlabel + "\"";
+        }
+        if (!m_devRootNode.vendor.empty())
+        {
+            desc += ", ";
+            desc += "\"vendor\": \"" + m_devRootNode.vendor + "\"";
+        }
+        if (!m_devRootNode.model.empty())
+        {
+            desc += ", ";
+            desc += "\"model\": \"" + m_devRootNode.model + "\"";
+        }
+        desc += "}";
+    }
+    if (m_devNodes.size() > 0)
+    {
+        desc += ",";
+        desc += "\n"; /* 换行 */
+        desc += allIntendStr + intendStr;
+        desc += "\"devNodes\": ";
+        desc += "[";
+        for (size_t i = 0; i < m_devNodes.size(); ++i)
+        {
+            if (i > 0)
+            {
+                desc += ",";
+            }
+            if (m_devNodes.size() > 1)
+            {
+                desc += "\n"; /* 换行 */
+                desc += allIntendStr + intendStr + intendStr;
+            }
+            desc += "{";
+            desc += "\"name\": \"" + m_devNodes[i].name + "\"";
+            std::string temp;
+            if (!m_devNodes[i].group.empty())
+            {
+                desc += ", ";
+                desc += "\"group\": \"" + m_devNodes[i].group + "\"";
+            }
+            if (!m_devNodes[i].fstype.empty())
+            {
+                desc += ", ";
+                desc += "\"type\": \"" + m_devNodes[i].fstype + "\"";
+            }
+            if (!m_devNodes[i].label.empty())
+            {
+                desc += ", ";
+                desc += "\"label\": \"" + m_devNodes[i].label + "\"";
+            }
+            if (!m_devNodes[i].partlabel.empty())
+            {
+                desc += ", ";
+                desc += "\"partlabel\": \"" + m_devNodes[i].partlabel + "\"";
+            }
+            if (!m_devNodes[i].vendor.empty())
+            {
+                desc += ", ";
+                desc += "\"vendor\": \"" + m_devNodes[i].vendor + "\"";
+            }
+            if (!m_devNodes[i].model.empty())
+            {
+                desc += ", ";
+                desc += "\"model\": \"" + m_devNodes[i].model + "\"";
+            }
+            desc += "}";
+        }
+        if (m_devNodes.size() > 1)
+        {
+            desc += "\n"; /* 换行 */
+            desc += allIntendStr + intendStr;
+        }
+        desc += "]";
+    }
+#endif
+    desc += "\n"; /* 换行 */
+    desc += allIntendStr;
+    desc += "}";
+    return desc;
+}
+
+std::vector<Usb> Usb::getAllUsbs(bool detailFlag)
 {
     std::vector<Usb> usbList;
     if (LIBUSB_SUCCESS != libusb_init(NULL))
@@ -533,19 +1194,19 @@ std::vector<Usb> Usb::getAllUsbs(bool sf, bool pf, bool mf)
     {
 #ifdef _WIN32
         std::vector<WinUsb> winUsbList;
-        /* Windows平台下libusb无法打开设备, 需要通过系统API获取详细信息 */
-        if (sf || pf || mf)
+        if (detailFlag)
         {
-            getWinUsbList(winUsbList);
+            /* Windows平台下libusb无法打开设备, 需要通过系统API获取详细信息 */
+            winUsbList = enumerateHostControllers();
         }
 #endif
         for (ssize_t i = 0; i < count; ++i) /* 遍历设备列表 */
         {
             Usb info;
 #ifdef _WIN32
-            if (parseUsb(devList[i], sf, pf, mf, winUsbList, info))
+            if (parseUsb(devList[i], detailFlag, winUsbList, info))
 #else
-            if (parseUsb(devList[i], sf, pf, mf, info))
+            if (parseUsb(devList[i], detailFlag, info))
 #endif
             {
                 usbList.emplace_back(info);
@@ -622,158 +1283,179 @@ bool Usb::registerDeviceNotify(HANDLE handle)
     }
     return true;
 }
-#endif
-
-#ifdef _WIN32
-void Usb::getWinUsbList(std::vector<WinUsb>& winUsbList)
-{
-    winUsbList.clear();
-    HDEVINFO deviceInfo = SetupDiGetClassDevsW(NULL, L"USB", NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT);
-    if (!deviceInfo || INVALID_HANDLE_VALUE == deviceInfo)
-    {
-        return;
-    }
-    int index = 0;
-    while (1)
-    {
-        SP_DEVINFO_DATA deviceData;
-        deviceData.cbSize = sizeof(deviceData);
-        if (!SetupDiEnumDeviceInfo(deviceInfo, index++, &deviceData))
-        {
-            break;
-        }
-        DEVPROPTYPE propertyType = 0;
-        WCHAR propertyBuffer[4096] = {0};
-        DWORD requiredSize = 0;
-        WinUsb info;
-        /* 解析父节点 */
-        memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (!SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_Parent, &propertyType,
-                                       reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
-        {
-            return;
-        }
-        info.parentInstanceId = wstring2string(propertyBuffer);
-        /* 解析Driver */
-        memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_Driver, &propertyType,
-                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
-        {
-            parseDriver(propertyBuffer, info.driverAddress);
-        }
-        /* 解析PCI */
-        memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_LocationPaths, &propertyType,
-                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
-        {
-            parseLocationPaths(propertyBuffer, info.pci);
-        }
-        /* 解析BusNum, PortNum */
-        memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_LocationInfo, &propertyType,
-                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
-        {
-            parseLocationInfo(propertyBuffer, info.busNum, info.portNum);
-        }
-        /* 解析VID, PID, 序列号 */
-        memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_InstanceId, &propertyType,
-                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
-        {
-            parseInstanceId(propertyBuffer, info.instanceId, info.vid, info.pid, info.serial);
-        }
-        /* 解析产品名称, 厂商名称 */
-        memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_Children, &propertyType,
-                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
-        {
-            parseChildren(propertyBuffer, info.product, info.manufacturer, info.storageType);
-        }
-        /* 解析设备名称 */
-        memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_BusReportedDeviceDesc, &propertyType,
-                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
-        {
-            info.deviceName = wstring2string(propertyBuffer);
-        }
-        /* 解析设备描述 */
-        memset(propertyBuffer, 0, sizeof(propertyBuffer));
-        if (SetupDiGetDevicePropertyW(deviceInfo, &deviceData, &DEVPKEY_Device_DeviceDesc, &propertyType,
-                                      reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
-        {
-            info.deviceDesc = wstring2string(propertyBuffer);
-        }
-        winUsbList.emplace_back(info);
-    }
-    /* 确认根节点及其总线编号 */
-    std::vector<usb::WinUsb> rootList;
-    for (const auto& info : winUsbList)
-    {
-        if (isRootWinUsb(info, winUsbList))
-        {
-            rootList.emplace_back(info);
-        }
-    }
-    std::sort(rootList.begin(), rootList.end(), [](usb::WinUsb a, usb::WinUsb b) {
-        /* step1. 根据DRIVER地址排序 */
-        if (a.driverAddress < b.driverAddress)
-        {
-            return true;
-        }
-        else if (a.driverAddress > b.driverAddress)
-        {
-            return false;
-        }
-        /* step2. 根据PCI排序 */
-        return (digitHexToDec(a.pci) < digitHexToDec(b.pci));
-    });
-    for (auto& info : winUsbList)
-    {
-        for (size_t i = 0; i < rootList.size(); ++i)
-        {
-            if (info.instanceId == rootList[i].instanceId) /* 根节点更新总线编号 */
-            {
-                info.busNum = i + 1;
-                break;
-            }
-        }
-    }
-    /* 如果接入了HUB, 那么上面获取到的总线编号需要进一步转为其祖先的总线编号 */
-    for (auto& info : winUsbList)
-    {
-        info.busNum = getAncestorBusNum(info, winUsbList);
-    }
-    SetupDiDestroyDeviceInfoList(deviceInfo);
-}
-
-bool Usb::matchWinUsbParent(const std::vector<WinUsb>& winUsbList, std::string parentInstanceId, const std::shared_ptr<Usb>& parent)
-{
-    if (!parent || !parent->m_parent) /* 到达根节点 */
-    {
-        return true;
-    }
-    std::transform(parentInstanceId.begin(), parentInstanceId.end(), parentInstanceId.begin(), tolower);
-    for (const auto& item : winUsbList)
-    {
-        auto instanceId = item.instanceId;
-        std::transform(instanceId.begin(), instanceId.end(), instanceId.begin(), tolower);
-        if (instanceId == parentInstanceId && item.busNum == parent->m_busNum && item.portNum == parent->m_portNum
-            && item.vid == parent->m_vid && item.pid == parent->m_pid)
-        {
-            if (matchWinUsbParent(winUsbList, item.parentInstanceId, parent->m_parent))
-            {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-#endif
-
-#ifdef _WIN32
-bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, const std::vector<WinUsb>& winUsbList, Usb& info)
 #else
-bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
+std::vector<DevNode> Usb::queryUsbDevNodes(int busNum, int portNum, int address, DevNode& devRootNode)
+{
+    devRootNode = DevNode();
+    std::vector<DevNode> devNodes;
+    struct udev* udev = udev_new();
+    if (!udev)
+    {
+        return devNodes;
+    }
+    udev_enumerate* enumerate = udev_enumerate_new(udev);
+    if (!enumerate)
+    {
+        udev_unref(udev);
+        return devNodes;
+    }
+    udev_enumerate_add_match_is_initialized(enumerate); /* 只查找已经初始化的设备 */
+    udev_enumerate_add_match_subsystem(enumerate, "block");
+    udev_enumerate_add_match_subsystem(enumerate, "hidraw");
+    udev_enumerate_scan_devices(enumerate);
+    struct udev_list_entry* devEntryList = udev_enumerate_get_list_entry(enumerate);
+    if (!devEntryList)
+    {
+        udev_enumerate_unref(enumerate);
+        udev_unref(udev);
+        return devNodes;
+    }
+    struct udev_list_entry* devEntry;
+    udev_list_entry_foreach(devEntry, devEntryList) /* 遍历设备 */
+    {
+        const char* entryName = udev_list_entry_get_name(devEntry);
+        if (!entryName)
+        {
+            continue;
+        }
+        struct udev_device* dev = udev_device_new_from_syspath(udev, entryName);
+        if (!dev)
+        {
+            continue;
+        }
+        const char* devNode = udev_device_get_devnode(dev);
+        if (devNode)
+        {
+            struct udev_device* pDev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
+            if (pDev)
+            {
+                const char* busNumPtr = udev_device_get_property_value(pDev, "BUSNUM");
+                const char* portNumPtr = udev_device_get_sysnum(pDev);
+                const char* devNumPtr = udev_device_get_property_value(pDev, "DEVNUM");
+                /* 找到指定插口的USB设备 */
+                if ((busNumPtr && portNumPtr && devNumPtr)
+                    && (std::atoi(busNumPtr) == busNum && std::atoi(portNumPtr) == portNum && std::atoi(devNumPtr) == address))
+                {
+                    /* 如果是存储设备, 则需要判断节点是否为可挂载的分区 */
+                    const char* subSystemPtr = udev_device_get_subsystem(dev);
+                    if (subSystemPtr && 0 == strcmp(subSystemPtr, "block"))
+                    {
+                        auto pos = std::string(devNode).rfind('/');
+                        auto devName = std::string::npos == pos ? std::string() : std::string(devNode).substr(pos + 1);
+                        auto command = std::string("lsblk -aOP | grep -E 'NAME=\"") + devName + "\" KNAME=\"" + devName + "\" '";
+                        auto outStr = runCommand(command);
+                        static const std::string GROUP_FLAG = " GROUP=\""; /* 组名 */
+                        static const std::string FSTYPE_FLAG = " FSTYPE=\""; /* 文件系统类型 */
+                        static const std::string LABEL_FLAG = " LABEL=\""; /* 文件系统标签 */
+                        static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
+                        static const std::string TYPE_FLAG = " TYPE=\""; /* 设备类型 */
+                        static const std::string MODEL_FLAG = " MODEL=\""; /* 设备标识符 */
+                        static const std::string VENDOR_FLAG = " VENDOR=\""; /* 设备制造商 */
+                        std::string group;
+                        auto groupPos = outStr.find(GROUP_FLAG);
+                        if (std::string::npos != groupPos)
+                        {
+                            auto ep = outStr.find('"', groupPos + GROUP_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                group = outStr.substr(groupPos + GROUP_FLAG.size(), ep - groupPos - GROUP_FLAG.size());
+                            }
+                        }
+                        std::string fstype;
+                        auto fstypePos = outStr.find(FSTYPE_FLAG);
+                        if (std::string::npos != fstypePos)
+                        {
+                            auto ep = outStr.find('"', fstypePos + FSTYPE_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                fstype = outStr.substr(fstypePos + FSTYPE_FLAG.size(), ep - fstypePos - FSTYPE_FLAG.size());
+                            }
+                        }
+                        std::string label;
+                        auto labelPos = outStr.find(LABEL_FLAG);
+                        if (std::string::npos != labelPos)
+                        {
+                            auto ep = outStr.find('"', labelPos + LABEL_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                label = outStr.substr(labelPos + LABEL_FLAG.size(), ep - labelPos - LABEL_FLAG.size());
+                            }
+                        }
+                        std::string partlabel;
+                        auto partlabelPos = outStr.find(PARTLABEL_FLAG);
+                        if (std::string::npos != partlabelPos)
+                        {
+                            auto ep = outStr.find('"', partlabelPos + PARTLABEL_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                partlabel = outStr.substr(partlabelPos + PARTLABEL_FLAG.size(), ep - partlabelPos - PARTLABEL_FLAG.size());
+                            }
+                        }
+                        std::string type;
+                        auto typePos = outStr.find(TYPE_FLAG);
+                        if (std::string::npos != typePos)
+                        {
+                            auto ep = outStr.find('"', typePos + TYPE_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                type = outStr.substr(typePos + TYPE_FLAG.size(), ep - typePos - TYPE_FLAG.size());
+                            }
+                        }
+                        std::string model;
+                        auto modelPos = outStr.find(MODEL_FLAG);
+                        if (std::string::npos != modelPos)
+                        {
+                            auto ep = outStr.find('"', modelPos + MODEL_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                model = outStr.substr(modelPos + MODEL_FLAG.size(), ep - modelPos - MODEL_FLAG.size());
+                            }
+                        }
+                        std::string vendor;
+                        auto vendorPos = outStr.find(VENDOR_FLAG);
+                        if (std::string::npos != vendorPos)
+                        {
+                            auto ep = outStr.find('"', vendorPos + VENDOR_FLAG.size());
+                            if (std::string::npos != ep)
+                            {
+                                vendor = outStr.substr(vendorPos + VENDOR_FLAG.size(), ep - vendorPos - VENDOR_FLAG.size());
+                            }
+                        }
+                        if ("disk" == group) /* 磁盘 */
+                        {
+                            if ("disk" == type) /* 超块(不可挂载) */
+                            {
+                                devRootNode = DevNode(devNode, group, fstype, label, partlabel, model, vendor);
+                            }
+                            else if ("part" == type) /* 分区 */
+                            {
+                                devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model, vendor));
+                            }
+                        }
+                        else if ("cdrom" == group) /* 光驱 */
+                        {
+                            devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model, vendor));
+                        }
+                    }
+                    else
+                    {
+                        devNodes.emplace_back(DevNode(devNode));
+                    }
+                }
+            }
+        }
+        udev_device_unref(dev);
+    }
+    udev_enumerate_unref(enumerate);
+    udev_unref(udev);
+    return devNodes;
+}
+#endif
+
+#ifdef _WIN32
+bool Usb::parseUsb(libusb_device* dev, bool detailFlag, const std::vector<WinUsb>& winUsbList, Usb& info)
+#else
+bool Usb::parseUsb(libusb_device* dev, bool detailFlag, Usb& info)
 #endif
 {
     if (!dev)
@@ -790,9 +1472,9 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
     {
         info.m_parent = std::make_shared<Usb>();
 #ifdef _WIN32
-        if (!parseUsb(parent, sf, pf, mf, winUsbList, *info.m_parent))
+        if (!parseUsb(parent, detailFlag, winUsbList, *info.m_parent))
 #else
-        if (!parseUsb(parent, sf, pf, mf, *info.m_parent))
+        if (!parseUsb(parent, detailFlag, *info.m_parent))
 #endif
         {
             info.m_parent = nullptr;
@@ -824,55 +1506,49 @@ bool Usb::parseUsb(libusb_device* dev, bool sf, bool pf, bool mf, Usb& info)
     char pid[6] = {0}; /* 产品ID */
     sprintf(pid, "%04x", desc.idProduct);
     info.m_pid = pid;
-    if (sf || pf || mf) /* 获取详细信息 */
+    if (detailFlag) /* 获取详细信息 */
     {
         libusb_device_handle* handle;
         if (LIBUSB_SUCCESS == libusb_open(dev, &handle) && handle)
         {
-            if (sf)
-            {
-                char serial[256] = {0}; /* 序列号 */
-                libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, (unsigned char*)serial, sizeof(serial));
-                info.m_serial = serial;
-            }
-            if (pf)
-            {
-                char product[256] = {0}; /* 产品名称 */
-                libusb_get_string_descriptor_ascii(handle, desc.iProduct, (unsigned char*)product, sizeof(product));
-                info.m_product = product;
-            }
-            if (mf)
-            {
-                char manufacturer[256] = {0}; /* 厂商名称 */
-                libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, (unsigned char*)manufacturer, sizeof(manufacturer));
-                info.m_manufacturer = manufacturer;
-            }
+            char serial[256] = {0}; /* 序列号 */
+            libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, (unsigned char*)serial, sizeof(serial));
+            info.m_serial = serial;
+            char product[256] = {0}; /* 产品名称 */
+            libusb_get_string_descriptor_ascii(handle, desc.iProduct, (unsigned char*)product, sizeof(product));
+            info.m_product = product;
+            char manufacturer[256] = {0}; /* 厂商名称 */
+            libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, (unsigned char*)manufacturer, sizeof(manufacturer));
+            info.m_manufacturer = manufacturer;
             libusb_close(handle);
         }
 #ifdef _WIN32
         /* Windows平台下需要从WinUsb列表中获取详细信息 */
-        for (auto item : winUsbList)
+        for (const auto& item : winUsbList)
         {
-            if (item.busNum == info.m_busNum && item.portNum == info.m_portNum && item.vid == info.m_vid && item.pid == info.m_pid
-                && matchWinUsbParent(winUsbList, item.parentInstanceId, info.m_parent)) /* WinUsb匹配Usb */
+            if (item.portNum == info.m_portNum && item.address == info.m_address && item.vid == info.m_vid
+                && item.pid == info.m_pid) /* WinUsb匹配Usb */
             {
-                if (sf && info.m_serial.empty())
+                if (info.m_serial.empty())
                 {
                     info.m_serial = item.serial;
                 }
-                if (pf && info.m_product.empty())
+                if (info.m_product.empty())
                 {
                     info.m_product = item.product;
                 }
-                if (mf && info.m_manufacturer.empty())
+                if (info.m_manufacturer.empty())
                 {
                     info.m_manufacturer = item.manufacturer;
                 }
-                info.m_deviceName = item.deviceName;
-                info.m_deviceDesc = item.deviceDesc;
-                info.m_storageType = item.storageType;
+                info.m_devNodes.emplace_back(DevNode(item.dirverName, item.storageType, "", "", "", item.vendor, item.model));
                 break;
             }
+        }
+#else
+        if (info.isHid() || info.isStorage()) /* 只需获取HID和存储类型的设备节点 */
+        {
+            info.m_devNodes = queryUsbDevNodes(info.m_busNum, info.m_portNum, info.m_address, info.m_devRootNode);
         }
 #endif
     }

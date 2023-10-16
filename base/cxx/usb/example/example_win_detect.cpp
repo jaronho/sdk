@@ -61,7 +61,7 @@ void syncUsbList(const std::vector<usb::Usb>& nowList, std::vector<usb::Usb>* ad
 
 void handleDeviceArrived()
 {
-    auto nowList = usb::Usb::getAllUsbs(true, true, true);
+    auto nowList = usb::Usb::getAllUsbs(true);
     std::vector<usb::Usb> addedList;
     syncUsbList(nowList, &addedList, nullptr);
     if (addedList.empty())
@@ -73,17 +73,17 @@ void handleDeviceArrived()
     {
         auto item = addedList[i];
         printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
-               "%s, serial: %s, product: %s, manufacturer: %s, deviceName: %s, deviceDesc: %s%s\n",
+               "%s, serial: %s, product: %s, manufacturer: %s, vendor: %s, model: %s%s\n",
                (i + 1), item.getBusNum(), item.getPortNum(), item.getAddress(), item.getClassCode(), item.getClassDesc().c_str(),
                item.getSubClassCode(), item.getProtocolCode(), item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(),
-               item.getProduct().c_str(), item.getManufacturer().c_str(), item.getDeviceName().c_str(), item.getDeviceDesc().c_str(),
+               item.getProduct().c_str(), item.getManufacturer().c_str(), item.getVendor().c_str(), item.getModel().c_str(),
                item.isStorage() ? (", storageType: " + item.getStorageType()).c_str() : "");
     }
 }
 
 void handleDeviceRemoved()
 {
-    auto nowList = usb::Usb::getAllUsbs(true, true, true);
+    auto nowList = usb::Usb::getAllUsbs(true);
     std::vector<usb::Usb> removedList;
     syncUsbList(nowList, nullptr, &removedList);
     if (removedList.empty())
@@ -95,10 +95,10 @@ void handleDeviceRemoved()
     {
         auto item = removedList[i];
         printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
-               "%s, serial: %s, product: %s, manufacturer: %s, deviceName: %s, deviceDesc: %s%s\n",
+               "%s, serial: %s, product: %s, manufacturer: %s, vendor: %s, model: %s%s\n",
                (i + 1), item.getBusNum(), item.getPortNum(), item.getAddress(), item.getClassCode(), item.getClassDesc().c_str(),
                item.getSubClassCode(), item.getProtocolCode(), item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(),
-               item.getProduct().c_str(), item.getManufacturer().c_str(), item.getDeviceName().c_str(), item.getDeviceDesc().c_str(),
+               item.getProduct().c_str(), item.getManufacturer().c_str(), item.getVendor().c_str(), item.getModel().c_str(),
                item.isStorage() ? (", storageType: " + item.getStorageType()).c_str() : "");
     }
 }
@@ -169,7 +169,7 @@ DWORD WINAPI threadFunc(LPVOID lpParam)
 int main()
 {
     /* 初始USB列表 */
-    s_usbList = usb::Usb::getAllUsbs(true, true, true);
+    s_usbList = usb::Usb::getAllUsbs(true);
     /* 创建线程(控制台程序主线程无法接收Windows消息) */
     DWORD threadId;
     HANDLE threadHandle = CreateThread(NULL, 0, threadFunc, NULL, 0, &threadId);
