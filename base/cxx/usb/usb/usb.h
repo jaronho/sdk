@@ -7,9 +7,7 @@
 
 namespace usb
 {
-#ifdef _WIN32
-struct WinUsb;
-#endif
+struct UsbImpl;
 
 /**
  * @brief 设备节点
@@ -215,13 +213,11 @@ public:
 #else
     /**
      * @brief 查询USB设备节点列表
-     * @param busNum 总线
-     * @param portNum 端口
      * @param address 地址
      * @param devRootNode [输出]设备根节点
      * @return USB设备节点列表 
      */
-    static std::vector<DevNode> queryUsbDevNodes(int busNum, int portNum, int address, DevNode& devRootNode);
+    static std::vector<DevNode> queryUsbDevNodes(int address, DevNode& devRootNode);
 #endif
 
 private:
@@ -229,15 +225,11 @@ private:
      * @brief 解析得到Usb信息
      * @param dev 设备节点
      * @param detailFlag 是否获取设备详情
-     * @param winUsbList WinUsb列表(Windows平台下需要)
+     * @param implList UsbImpl列表
      * @param info [输出]Usb信息
      * @return true-成功, false-失败
      */
-#ifdef _WIN32
-    static bool parseUsb(libusb_device* dev, bool detailFlag, const std::vector<WinUsb>& winUsbList, Usb& info);
-#else
-    static bool parseUsb(libusb_device* dev, bool detailFlag, Usb& info);
-#endif
+    static bool parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList, Usb& info);
 
 private:
     std::shared_ptr<Usb> m_parent = nullptr; /* 父节点 */
