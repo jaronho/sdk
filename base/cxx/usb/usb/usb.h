@@ -35,17 +35,11 @@ struct DevNode
 class Usb
 {
 public:
-    Usb();
+    Usb() = default;
 
     Usb(const Usb& src);
 
     virtual ~Usb() = default;
-
-    /**
-     * @brief 获取父节点
-     * @return 父节点
-     */
-    std::shared_ptr<Usb> getParent() const;
 
     /**
      * @brief 获取总线编号
@@ -210,14 +204,6 @@ public:
      */
     typedef void* HANDLE;
     static bool registerDeviceNotify(HANDLE handle);
-#else
-    /**
-     * @brief 查询USB设备节点列表
-     * @param address 地址
-     * @param devRootNode [输出]设备根节点
-     * @return USB设备节点列表 
-     */
-    static std::vector<DevNode> queryUsbDevNodes(int address, DevNode& devRootNode);
 #endif
 
 private:
@@ -232,14 +218,13 @@ private:
     static bool parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList, Usb& info);
 
 private:
-    std::shared_ptr<Usb> m_parent = nullptr; /* 父节点 */
-    int m_busNum = 0; /* 总线编号 */
-    int m_portNum = 0; /* 端口编号(Linux中也叫系统编号sysNum) */
-    int m_address = 0; /* 地址(每次拔插都会变) */
-    int m_classCode = 0; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
-    int m_subClassCode = 0; /* 设备子类型编码 */
-    int m_protocolCode = 0; /* 设备协议编码 */
-    int m_speedLevel = 0; /* 速度等级 */
+    int m_busNum = -1; /* 总线编号 */
+    int m_portNum = -1; /* 端口编号(Linux中也叫系统编号sysNum) */
+    int m_address = -1; /* 地址(每次拔插都会变) */
+    int m_classCode = -1; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
+    int m_subClassCode = -1; /* 设备子类型编码 */
+    int m_protocolCode = -1; /* 设备协议编码 */
+    int m_speedLevel = -1; /* 速度等级 */
     std::string m_vid; /* 厂商ID(小写字母) */
     std::string m_pid; /* 产品ID(小写字母) */
     std::string m_serial; /* 序列号 */
