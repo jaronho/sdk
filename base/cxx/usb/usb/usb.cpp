@@ -1015,6 +1015,12 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
         return;
     }
     udev_enumerate_add_match_is_initialized(enumerate); /* 只查找已经初始化的设备 */
+#if 0 /* 暂时屏蔽设备过滤类型 */
+    udev_enumerate_add_match_subsystem(enumerate, "block");
+    udev_enumerate_add_match_subsystem(enumerate, "hidraw");
+    udev_enumerate_add_match_subsystem(enumerate, "scsi");
+    udev_enumerate_add_match_subsystem(enumerate, "video4linux");
+#endif
     udev_enumerate_scan_devices(enumerate);
     struct udev_list_entry* devEntryList = udev_enumerate_get_list_entry(enumerate);
     if (!devEntryList)
