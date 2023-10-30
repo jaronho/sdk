@@ -8,7 +8,7 @@ include(cmake/tools.cmake)
 #[[
 [命令行]
 option(use_curl_staticlib "是否使用CURL静态库" OFF) # ON表示链接CURL静态库, OFF或者不设置表示链接动态库(目前只支持Windows)
-find_package(CURL 7.76.1 REQUIRED)
+find_package(CURL 8.4.0 REQUIRED)
 if(CURL_FOUND) # 注意: curl库区分ssl和非ssl
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         if(use_curl_staticlib)
