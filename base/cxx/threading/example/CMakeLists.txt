@@ -40,18 +40,39 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/threading)
 include_directories(${base_threading_dir})
 source_group(TREE ${base_threading_dir} PREFIX 3rdparty/base FILES ${base_threading_files})
 
-# 添加示例文件
-set(example_files)
-get_cxx_files(${CMAKE_CURRENT_SOURCE_DIR} src_list)
-list(APPEND example_files ${src_list})
+# 添加asio示例文件
+set(example_asio_files)
+list(APPEND example_asio_files example_asio_executor.cpp)
 
-print_info(BODY "example files:")
-foreach(filename ${example_files})
+print_info(BODY "example asio files:")
+foreach(filename ${example_asio_files})
+    message("    " ${filename})
+endforeach()
+
+# 添加simdb接收示例文件
+set(example_simdb_recv_files)
+list(APPEND example_simdb_recv_files example_simdb_recv.cpp)
+
+print_info(BODY "example simdb recv files:")
+foreach(filename ${example_simdb_recv_files})
+    message("    " ${filename})
+endforeach()
+
+# 添加simdb发送示例文件
+set(example_simdb_send_files)
+list(APPEND example_simdb_send_files example_simdb_send.cpp)
+
+print_info(BODY "example simdb send files:")
+foreach(filename ${example_simdb_send_files})
     message("    " ${filename})
 endforeach()
 
 # 构建可执行程序
-add_executable(example_threading ${base_threading_files} ${example_files})
+add_executable(example_asio ${base_threading_files} ${example_asio_files})
+add_executable(example_simdb_recv ${example_simdb_recv_files})
+add_executable(example_simdb_send ${example_simdb_send_files})
 
 # 链接依赖库
-target_link_libraries(example_threading Threads::Threads ${Boost_LIBRARIES})
+target_link_libraries(example_asio Threads::Threads ${Boost_LIBRARIES})
+target_link_libraries(example_simdb_recv Threads::Threads)
+target_link_libraries(example_simdb_send Threads::Threads)
