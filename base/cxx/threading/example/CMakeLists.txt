@@ -49,30 +49,8 @@ foreach(filename ${example_asio_files})
     message("    " ${filename})
 endforeach()
 
-# 添加simdb接收示例文件
-set(example_simdb_recv_files)
-list(APPEND example_simdb_recv_files example_simdb_recv.cpp)
-
-print_info(BODY "example simdb recv files:")
-foreach(filename ${example_simdb_recv_files})
-    message("    " ${filename})
-endforeach()
-
-# 添加simdb发送示例文件
-set(example_simdb_send_files)
-list(APPEND example_simdb_send_files example_simdb_send.cpp)
-
-print_info(BODY "example simdb send files:")
-foreach(filename ${example_simdb_send_files})
-    message("    " ${filename})
-endforeach()
-
 # 构建可执行程序
 add_executable(example_asio ${base_threading_files} ${example_asio_files})
-add_executable(example_simdb_recv ${example_simdb_recv_files})
-add_executable(example_simdb_send ${example_simdb_send_files})
 
 # 链接依赖库
 target_link_libraries(example_asio Threads::Threads ${Boost_LIBRARIES})
-target_link_libraries(example_simdb_recv Threads::Threads)
-target_link_libraries(example_simdb_send Threads::Threads)
