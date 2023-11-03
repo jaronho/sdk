@@ -485,7 +485,7 @@ public:
     }
   }
 
-  bool headCmpEx(u64* expected, au64 desired)
+  bool headCmpEx(u64* expected, u64 desired)
   {
     using namespace std;
 
@@ -1226,7 +1226,7 @@ private:
   //bool       runIfMatch(VerIdx vi, const void* const buf, u32 len, u32 hash, FUNC f) const 
   //Match       runIfMatch(VerIdx vi, const void* const buf, u32 len, u32 hash, FUNC f) const 
   template<class FUNC, class T>
-  auto       runIfMatch(VerIdx vi, const void* const buf, u32 len, u32 hash, FUNC f, T defaultRet = decltype(f(vi))() ) const -> std::pair<Match, T>   // std::pair<Match, decltype(f(vi))>
+  auto       runIfMatch(VerIdx vi, const void* const buf, u32 len, u32 hash, FUNC f, T defaultRet) const -> std::pair<Match, T>   // std::pair<Match, decltype(f(vi))>
   { 
     Match m;
     T funcRet = defaultRet;                                                                   
@@ -1344,7 +1344,7 @@ public:
   }
 
   template<class FUNC, class T>
-  bool      runMatch(const void *const key, u32 klen, u32 hash, FUNC f, T defaultRet = decltype(f(vi))() )       const 
+  bool      runMatch(const void *const key, u32 klen, u32 hash, FUNC f, T defaultRet)       const 
   {
     using namespace std;
     
