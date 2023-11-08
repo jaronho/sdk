@@ -43,10 +43,6 @@ unsigned char* rc4Crypto(unsigned char* input, unsigned long length, const unsig
         sbox[y] = temp;
         k = (sbox[x] + sbox[y]) % 256;
         temp = input[index] ^ sbox[k];
-        if ('\0' == temp)
-        {
-            temp = input[index];
-        }
         input[index] = temp;
     }
     return input;
