@@ -7,25 +7,19 @@
 namespace algorithm
 {
 #endif
-unsigned char* rc4Crypto(unsigned char* input, unsigned long length, const unsigned char* pszKey)
+unsigned char* rc4Crypto(unsigned char* input, unsigned long length, const unsigned char* pszKey, unsigned long keyLen)
 {
-    unsigned int keySize = 0;
     unsigned char sbox[256] = {0}, key[256] = {0}, temp = 0;
     unsigned long index = 0;
     int i = 0, j = 0, x = 0, y = 0, k = 0;
-    if (!input || 0 == length || !pszKey)
-    {
-        return input;
-    }
-    keySize = strlen((char*)pszKey);
-    if (0 == keySize)
+    if (!input || 0 == length || !pszKey || 0 == keyLen)
     {
         return input;
     }
     for (i = 0; i < 256; ++i)
     {
         sbox[i] = i;
-        key[i] = pszKey[i % keySize];
+        key[i] = pszKey[i % keyLen];
     }
     for (i = 0, j = 0; i < 256; ++i)
     {
