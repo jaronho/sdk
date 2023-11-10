@@ -4,7 +4,7 @@
 
 namespace threading
 {
-Executor::Executor(const std::string& name, size_t maxCount) : m_name(name), m_maxCount() {}
+Executor::Executor(const std::string& name, size_t maxCount) : m_name(name), m_maxCount(maxCount) {}
 
 std::string Executor::getName() const
 {
