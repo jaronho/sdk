@@ -8,7 +8,7 @@
 namespace threading
 {
 FiberExecutor::FiberExecutor(const std::string& name, size_t maxFiberCount, size_t stackSize)
-    : Executor(name), m_channel(std::make_unique<boost::fibers::buffered_channel<TaskPtr>>(maxFiberCount))
+    : Executor(name, maxFiberCount), m_channel(std::make_unique<boost::fibers::buffered_channel<TaskPtr>>(maxFiberCount))
 {
     Diagnose::onExecutorCreated(this);
     std::promise<void> result;
@@ -68,12 +68,12 @@ TaskPtr FiberExecutor::post(const TaskPtr& task)
 {
     auto threadId = Platform::getThreadId();
     task->setState(Task::State::queuing);
+    Diagnose::onTaskCreated(this, task.get());
     auto ret = m_channel->try_push(task);
     switch (ret)
     {
     case boost::fibers::channel_op_status::success: {
         ++m_count;
-        Diagnose::onTaskCreated(this, task.get());
         break;
     }
     case boost::fibers::channel_op_status::full: {

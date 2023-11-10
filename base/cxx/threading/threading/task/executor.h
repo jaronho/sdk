@@ -16,8 +16,9 @@ public:
     /**
      * @brief 构造函数
      * @param name 执行者名称(强烈建议设置唯一标识, 以方便后续诊断)
+     * @param maxCount 允许同时执行的最多任务数
      */
-    Executor(const std::string& name);
+    Executor(const std::string& name, size_t maxCount);
 
     virtual ~Executor() = default;
 
@@ -26,6 +27,12 @@ public:
 	 * @return 执行者名称
 	 */
     std::string getName() const;
+
+    /**
+     * @brief 获取允许同时执行的最多任务数
+     * @return 最多任务数
+     */
+    size_t getMaxCount() const;
 
     /**
      * @brief 等待退出
@@ -49,6 +56,7 @@ public:
 
 private:
     const std::string m_name; /* 执行者名称 */
+    const size_t m_maxCount; /* 最多任务数 */
 };
 
 using ExecutorPtr = std::shared_ptr<Executor>;

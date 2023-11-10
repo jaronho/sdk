@@ -4,11 +4,16 @@
 
 namespace threading
 {
-Executor::Executor(const std::string& name) : m_name(name) {}
+Executor::Executor(const std::string& name, size_t maxCount) : m_name(name), m_maxCount() {}
 
 std::string Executor::getName() const
 {
     return m_name;
+}
+
+size_t Executor::getMaxCount() const
+{
+    return m_maxCount;
 }
 
 TaskPtr Executor::post(const std::string& name, const std::function<void()>& func)

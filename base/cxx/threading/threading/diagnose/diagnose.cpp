@@ -212,7 +212,7 @@ void Diagnose::onTaskCreated(const Executor* executor, const Task* task)
     }
     TaskCreatedCallback createdCallback;
     std::string executorName;
-    int taskCount = 0;
+    size_t maxCount, nowCount;
     std::string taskName;
     {
         std::lock_guard<std::mutex> locker(s_mutexTask);
@@ -225,18 +225,19 @@ void Diagnose::onTaskCreated(const Executor* executor, const Task* task)
         {
             return;
         }
+        executorName = executor->getName();
+        maxCount = executor->getMaxCount();
+        nowCount = iter->second->taskList.size();
+        taskName = task->getName();
         auto diagTask = std::make_shared<DiagTask>(task);
         diagTask->executorName = executor->getName();
         diagTask->queuing = std::chrono::steady_clock::now();
         iter->second->taskList.insert(std::make_pair(task, diagTask));
         createdCallback = s_taskCreatedCallback;
-        executorName = executor->getName();
-        taskCount = iter->second->taskList.size();
-        taskName = task->getName();
     }
     if (createdCallback)
     {
-        createdCallback(executorName, taskCount, taskName);
+        createdCallback(executorName, maxCount, nowCount, taskName);
     }
 }
 

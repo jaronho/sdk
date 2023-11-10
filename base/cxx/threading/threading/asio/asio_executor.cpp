@@ -7,7 +7,8 @@
 
 namespace threading
 {
-AsioExecutor::AsioExecutor(const std::string& name, size_t threadCount) : Executor(name), m_worker(boost::asio::make_work_guard(m_context))
+AsioExecutor::AsioExecutor(const std::string& name, size_t threadCount)
+    : Executor(name, threadCount), m_worker(boost::asio::make_work_guard(m_context))
 {
     Diagnose::onExecutorCreated(this);
     m_threads.create_threads(

@@ -49,10 +49,12 @@ struct ExecutorDiagnoseInfo
 /**
  * @brief 任务创建回调
  * @param executorName 执行者名称
- * @param taskCount 当前执行者中的任务数量(包含当前新绑定的)
+ * @param maxCount 当前执行者所能允许同时执行的最多任务数
+ * @param nowCount 当前执行者中的正在执行的任务数量(不包含当前任务)
  * @param taskName 任务名称
  */
-using TaskCreatedCallback = std::function<void(const std::string& executorName, int taskCount, const std::string& taskName)>;
+using TaskCreatedCallback =
+    std::function<void(const std::string& executorName, size_t maxCount, size_t nowCount, const std::string& taskName)>;
 
 /**
  * @brief 任务(正常)状态回调
