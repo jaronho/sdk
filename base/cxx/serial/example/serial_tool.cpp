@@ -326,6 +326,16 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     fprintf(stderr, "串口被关闭.\n");
 }
 
+bool isOptionName(const std::string& str)
+{
+    if ("-s" == str || "-port" == str || "-baud" == str || "-data" == str || "-parity" == str || "-stop" == str || "-flow" == str
+        || "-crlf" == str || "--txhex" == str || "--rxhex" == str || "--rxline" == str || "--rxhide" == str)
+    {
+        return true;
+    }
+    return false;
+}
+
 int main(int argc, char** argv)
 {
     printf("*************************************************************************************************************\n");
@@ -424,6 +434,11 @@ int main(int argc, char** argv)
             break;
         }
         std::string val = argv[i + 1];
+        if (isOptionName(val))
+        {
+            i += 1;
+            continue;
+        }
         if (0 == key.compare("-port")) /* 端口 */
         {
             flagPortName = 1;
@@ -432,7 +447,13 @@ int main(int argc, char** argv)
         else if (0 == key.compare("-baud")) /* 波特率 */
         {
             flagBaurate = 2;
-            baudrate = stoul(val);
+            try
+            {
+                baudrate = stoul(val);
+            }
+            catch (...)
+            {
+            }
         }
         else if (0 == key.compare("-data")) /* 数据位 */
         {
@@ -533,7 +554,13 @@ int main(int argc, char** argv)
         else if (0 == key.compare("-crlf")) /* 数据结束符 */
         {
             flagCRLF = 2;
-            crlf = stoul(val);
+            try
+            {
+                crlf = stoul(val);
+            }
+            catch (...)
+            {
+            }
         }
         i += 2;
     }

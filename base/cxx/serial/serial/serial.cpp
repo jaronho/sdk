@@ -139,23 +139,30 @@ std::string Serial::read(size_t size)
         return bytes;
     }
     std::lock_guard<std::mutex> locker(m_mutex);
-    char* buf = new char[size];
-    ssize_t len = m_impl->read(buf, size);
-    if (len > 0)
+    char* buf = (char*)malloc(size);
+    if (buf)
     {
-        bytes.append(buf, len);
+        auto len = m_impl->read(buf, size);
+        if (len > 0)
+        {
+            bytes.append(buf, len);
+        }
+        free(buf);
     }
-    delete[] buf;
     return bytes;
 }
 
-std::string Serial::readAll()
+std::string Serial::readAll(ssize_t* availableCount)
 {
     static const size_t BUF_SIZE = 1025;
     char buf[BUF_SIZE] = {0};
     std::string bytes;
     std::lock_guard<std::mutex> locker(m_mutex);
-    ssize_t canReadCount = m_impl->availableForRead();
+    auto canReadCount = m_impl->availableForRead();
+    if (availableCount)
+    {
+        *availableCount = canReadCount;
+    }
     while (canReadCount > 0)
     {
         size_t willReadCount = BUF_SIZE - 1;
@@ -163,15 +170,12 @@ std::string Serial::readAll()
         {
             willReadCount = canReadCount;
         }
-        ssize_t len = m_impl->read(buf, willReadCount);
-        if (len < 0)
+        auto len = m_impl->read(buf, willReadCount);
+        if (willReadCount != len)
         {
             break;
         }
-        else if (len > 0)
-        {
-            bytes.append(buf, len);
-        }
+        bytes.append(buf, len);
         canReadCount -= len;
     }
     return bytes;
@@ -185,35 +189,42 @@ std::string Serial::readLine(size_t maxSize, const std::string& eol)
     {
         return line;
     }
-    char* buf = (char*)(malloc(maxSize));
-    size_t totalReadLen = 0;
-    std::lock_guard<std::mutex> locker(m_mutex);
-    while (1)
+    char* buf = (char*)malloc(maxSize);
+    if (buf)
     {
-        ssize_t len = m_impl->read(buf + totalReadLen, 1);
-        if (len <= 0) /* 读取1字节异常或超时 */
+        ssize_t totalReadLen = 0;
+        std::lock_guard<std::mutex> locker(m_mutex);
+        while (1)
         {
-            break;
+            auto len = m_impl->read(buf + totalReadLen, 1);
+            if (1 != len) /* 读取1字节异常或超时 */
+            {
+                break;
+            }
+            totalReadLen += len;
+            if (totalReadLen < eolSize)
+            {
+                continue;
+            }
+            if (std::string(buf + totalReadLen - eolSize, eolSize) == eol) /* 找到行尾标识 */
+            {
+                break;
+            }
+            if (totalReadLen == maxSize) /* 达到行指定最大长度 */
+            {
+                break;
+            }
         }
-        totalReadLen += len;
-        if (totalReadLen < eolSize)
+        if (totalReadLen > 0)
         {
-            continue;
+            line.append(buf, totalReadLen);
         }
-        if (std::string(buf + totalReadLen - eolSize, eolSize) == eol) /* 找到行尾标识 */
-        {
-            break;
-        }
-        if (totalReadLen == maxSize) /* 达到行指定最大长度 */
-        {
-            break;
-        }
+        free(buf);
     }
-    line.append(buf, totalReadLen);
     return line;
 }
 
-std::vector<std::string> Serial::readLines(size_t maxSize, std::string eol)
+std::vector<std::string> Serial::readLines(size_t maxSize, const std::string& eol)
 {
     std::vector<std::string> lines;
     size_t eolSize = eol.size();
@@ -221,39 +232,43 @@ std::vector<std::string> Serial::readLines(size_t maxSize, std::string eol)
     {
         return lines;
     }
-    char* buf = (char*)(malloc(maxSize));
-    size_t totalReadLen = 0;
-    size_t startOfLine = 0;
-    std::lock_guard<std::mutex> locker(m_mutex);
-    while (totalReadLen < maxSize)
+    char* buf = (char*)malloc(maxSize);
+    if (buf)
     {
-        ssize_t len = m_impl->read(buf + totalReadLen, 1);
-        if (len <= 0) /* 读取1字节异常或超时 */
+        size_t totalReadLen = 0;
+        size_t startOfLine = 0;
+        std::lock_guard<std::mutex> locker(m_mutex);
+        while (totalReadLen < maxSize)
         {
-            if (startOfLine != totalReadLen)
+            auto len = m_impl->read(buf + totalReadLen, 1);
+            if (1 != len) /* 读取1字节异常或超时 */
+            {
+                if (startOfLine != totalReadLen)
+                {
+                    lines.emplace_back(std::string(buf + startOfLine, totalReadLen - startOfLine));
+                }
+                break;
+            }
+            totalReadLen += len;
+            if (totalReadLen < eolSize)
+            {
+                continue;
+            }
+            if (std::string(buf + totalReadLen - eolSize, eolSize) == eol) /* 找到行尾标识 */
             {
                 lines.emplace_back(std::string(buf + startOfLine, totalReadLen - startOfLine));
+                startOfLine = totalReadLen;
             }
-            break;
-        }
-        totalReadLen += len;
-        if (totalReadLen < eolSize)
-        {
-            continue;
-        }
-        if (std::string(buf + totalReadLen - eolSize, eolSize) == eol) /* 找到行尾标识 */
-        {
-            lines.emplace_back(std::string(buf + startOfLine, totalReadLen - startOfLine));
-            startOfLine = totalReadLen;
-        }
-        if (totalReadLen == maxSize) /* 达到所有行之和指定最大长度 */
-        {
-            if (startOfLine != totalReadLen)
+            if (totalReadLen == maxSize) /* 达到所有行之和指定最大长度 */
             {
-                lines.emplace_back(std::string(buf + startOfLine, totalReadLen - startOfLine));
+                if (startOfLine != totalReadLen)
+                {
+                    lines.emplace_back(std::string(buf + startOfLine, totalReadLen - startOfLine));
+                }
+                break;
             }
-            break;
         }
+        free(buf);
     }
     return lines;
 }

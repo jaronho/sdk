@@ -156,9 +156,10 @@ public:
 
     /**
      * @brief 读取所有数据
+     * @param availableCount [输出]可读数据长度
      * @return 所有数据
      */
-    std::string readAll();
+    std::string readAll(ssize_t* availableCount = nullptr);
 
     /**
      * @brief 读行数据
@@ -174,7 +175,7 @@ public:
      * @param eol 行结尾标识
      * @return 多行列表
      */
-    std::vector<std::string> readLines(size_t maxSize = 65536, std::string eol = "\n");
+    std::vector<std::string> readLines(size_t maxSize = 65536, const std::string& eol = "\n");
 
     /**
      * @brief 写数据
