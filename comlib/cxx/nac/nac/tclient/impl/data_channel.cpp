@@ -14,6 +14,7 @@ bool DataChannel::connect(unsigned short localPort, const std::string& address, 
 {
     try
     {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
         if (m_tcpClient)
         {
             WARN_LOG(m_logger, "连接失败: 重复连接.");
@@ -123,18 +124,24 @@ void DataChannel::disconnect()
     disconnectImpl();
 }
 
-bool DataChannel::isOpened() const
+bool DataChannel::isOpened()
 {
-    return (m_tcpClient && m_tcpClient->isRunning());
+    std::shared_ptr<nsocket::TcpClient> tcpClient;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    return (tcpClient && tcpClient->isRunning());
 }
 
-boost::asio::ip::tcp::endpoint DataChannel::getLocalEndpoint() const
+boost::asio::ip::tcp::endpoint DataChannel::getLocalEndpoint()
 {
-    if (m_tcpClient)
+    std::shared_ptr<nsocket::TcpClient> tcpClient;
     {
-        return m_tcpClient->getLocalEndpoint();
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
     }
-    return boost::asio::ip::tcp::endpoint();
+    return (tcpClient ? tcpClient->getLocalEndpoint() : boost::asio::ip::tcp::endpoint());
 }
 
 bool DataChannel::sendData(const std::vector<unsigned char>& data, const nsocket::TCP_SEND_CALLBACK& callback)
@@ -150,48 +157,56 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const nsocket
             }
             return false;
         }
-        const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
-        const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
-        m_tcpClient->sendAsync(data,
-                               [wpSelf, wpPktExecutor, callback, logger = m_logger](const boost::system::error_code& code, size_t length) {
-                                   const auto pktExecutor = wpPktExecutor.lock();
-                                   if (pktExecutor)
-                                   {
-                                       auto ntp = std::chrono::steady_clock::now();
-                                       auto func = [wpSelf, callback, ntp, code, length, logger]() {
-                                           const auto self = wpSelf.lock();
-                                           if (code)
-                                           {
-                                               ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
-                                           }
-                                           else
-                                           {
-                                               if (self)
-                                               {
-                                                   self->sigUpdateSendTime(ntp);
-                                               }
-                                               else
-                                               {
-                                                   ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
-                                               }
-                                           }
-                                           if (callback)
-                                           {
-                                               callback(code, length);
-                                           }
-                                       };
-                                       pktExecutor->post("nac.tcli.sendcb", func);
-                                   }
-                                   else
-                                   {
-                                       WARN_LOG(logger, "数据发送警告: 报文处理线程为空.");
-                                       if (callback)
-                                       {
-                                           callback(code, length);
-                                       }
-                                   }
-                               });
-        return true;
+        std::shared_ptr<nsocket::TcpClient> tcpClient;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+            tcpClient = m_tcpClient;
+        }
+        if (tcpClient)
+        {
+            const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
+            const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
+            tcpClient->sendAsync(
+                data, [wpSelf, wpPktExecutor, callback, logger = m_logger](const boost::system::error_code& code, size_t length) {
+                    const auto pktExecutor = wpPktExecutor.lock();
+                    if (pktExecutor)
+                    {
+                        auto ntp = std::chrono::steady_clock::now();
+                        auto func = [wpSelf, callback, ntp, code, length, logger]() {
+                            const auto self = wpSelf.lock();
+                            if (code)
+                            {
+                                ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
+                            }
+                            else
+                            {
+                                if (self)
+                                {
+                                    self->sigUpdateSendTime(ntp);
+                                }
+                                else
+                                {
+                                    ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
+                                }
+                            }
+                            if (callback)
+                            {
+                                callback(code, length);
+                            }
+                        };
+                        pktExecutor->post("nac.tcli.sendcb", func);
+                    }
+                    else
+                    {
+                        WARN_LOG(logger, "数据发送警告: 报文处理线程为空.");
+                        if (callback)
+                        {
+                            callback(code, length);
+                        }
+                    }
+                });
+            return true;
+        }
     }
     catch (const std::exception& e)
     {
@@ -212,10 +227,15 @@ void DataChannel::disconnectImpl()
 {
     try
     {
-        if (m_tcpClient)
+        std::shared_ptr<nsocket::TcpClient> tcpClient;
         {
-            m_tcpClient->stop();
+            std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+            tcpClient = m_tcpClient;
             m_tcpClient.reset();
+        }
+        if (tcpClient)
+        {
+            tcpClient->stop();
         }
     }
     catch (const std::exception& e)

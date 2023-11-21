@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <mutex>
 
 #include "logger/logger_manager.h"
 #include "nsocket/tcp/tcp_client.h"
@@ -46,13 +47,13 @@ public:
      * @brief 连接是否已打开
      * @return true-已打开, false-未打开
      */
-    bool isOpened() const;
+    bool isOpened();
 
     /**
      * @brief 获取本端端点
      * @return 本端端点
      */
-    boost::asio::ip::tcp::endpoint getLocalEndpoint() const;
+    boost::asio::ip::tcp::endpoint getLocalEndpoint();
 
     /**
      * @brief 发送数据(异步)
@@ -106,6 +107,7 @@ private:
 private:
     threading::ExecutorPtr m_tcpExecutor = threading::ThreadProxy::createAsioExecutor("tcli::loop", 1); /* TCP报文收发线程 */
     threading::ExecutorPtr m_pktExecutor = threading::ThreadProxy::createAsioExecutor("tcli::pkt", 1); /* 报文处理线程 */
+    std::mutex m_mutexTcpClient;
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* TCP客户端 */
     logger::Logger m_logger = logger::LoggerManager::getLogger("NAC");
 };
