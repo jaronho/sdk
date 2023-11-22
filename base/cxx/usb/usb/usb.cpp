@@ -1193,6 +1193,9 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
 
 Usb::Usb(const Usb& src)
 {
+    m_dev = src.m_dev;
+    m_parent = src.m_parent;
+    m_children = src.m_children;
     m_busNum = src.m_busNum;
     m_portNum = src.m_portNum;
     m_address = src.m_address;
@@ -1207,6 +1210,16 @@ Usb::Usb(const Usb& src)
     m_manufacturer = src.m_manufacturer;
     m_devRootNode = src.m_devRootNode;
     m_devNodes = src.m_devNodes;
+}
+
+std::shared_ptr<Usb> Usb::getParent() const
+{
+    return m_parent;
+}
+
+std::vector<std::shared_ptr<usb::Usb>> Usb::getChildren() const
+{
+    return m_children;
 }
 
 int Usb::getBusNum() const
@@ -1384,12 +1397,12 @@ bool Usb::isHub() const
     return (LIBUSB_CLASS_HUB == m_classCode);
 }
 
-std::string Usb::describe(int allIntend, int intend) const
+std::string Usb::describe(bool showDevNode, bool showChildren, int allIntend, int intend) const
 {
-    std::string allIntendStr(allIntend, ' '), intendStr(intend, ' ');
+    std::string allIntendStr(allIntend, ' '), intendStr(intend, ' '), crlfStr(intend > 0 ? "\n" : "");
     std::string desc;
     desc += allIntendStr + "{";
-    desc += "\n"; /* 换行 */
+    desc += crlfStr; /* 换行 */
     desc += allIntendStr + intendStr;
     desc += "\"busNum\": " + std::to_string(getBusNum());
     desc += ", ";
@@ -1411,7 +1424,7 @@ std::string Usb::describe(int allIntend, int intend) const
     desc += ", ";
     desc += "\"speedDesc\": \"" + getSpeedDesc() + "\"";
     desc += ",";
-    desc += "\n"; /* 换行 */
+    desc += crlfStr; /* 换行 */
     desc += allIntendStr + intendStr;
     desc += "\"vid\": \"" + getVid() + "\"";
     desc += ", ";
@@ -1433,10 +1446,10 @@ std::string Usb::describe(int allIntend, int intend) const
         desc += "\"storageType\": \"" + getStorageType() + "\"";
     }
 #else
-    if (!m_devRootNode.name.empty())
+    if (showDevNode && !m_devRootNode.name.empty())
     {
         desc += ",";
-        desc += "\n"; /* 换行 */
+        desc += crlfStr; /* 换行 */
         desc += allIntendStr + intendStr;
         desc += "\"devRootNode\": ";
         desc += "{";
@@ -1474,10 +1487,10 @@ std::string Usb::describe(int allIntend, int intend) const
         }
         desc += "}";
     }
-    if (m_devNodes.size() > 0)
+    if (showDevNode && m_devNodes.size() > 0)
     {
         desc += ",";
-        desc += "\n"; /* 换行 */
+        desc += crlfStr; /* 换行 */
         desc += allIntendStr + intendStr;
         desc += "\"devNodes\": ";
         desc += "[";
@@ -1489,7 +1502,7 @@ std::string Usb::describe(int allIntend, int intend) const
             }
             if (m_devNodes.size() > 1)
             {
-                desc += "\n"; /* 换行 */
+                desc += crlfStr; /* 换行 */
                 desc += allIntendStr + intendStr + intendStr;
             }
             desc += "{";
@@ -1529,21 +1542,39 @@ std::string Usb::describe(int allIntend, int intend) const
         }
         if (m_devNodes.size() > 1)
         {
-            desc += "\n"; /* 换行 */
+            desc += crlfStr; /* 换行 */
             desc += allIntendStr + intendStr;
         }
         desc += "]";
     }
 #endif
-    desc += "\n"; /* 换行 */
+    desc += crlfStr; /* 换行 */
+    if (showChildren && !m_children.empty())
+    {
+        desc += allIntendStr + intendStr;
+        desc += "\"children\": [";
+        for (size_t i = 0; i < m_children.size(); ++i)
+        {
+            if (i > 0)
+            {
+                desc += ",";
+            }
+            desc += crlfStr; /* 换行 */
+            desc += m_children[i]->describe(showDevNode, showChildren, allIntend + intend + intend, intend);
+        }
+        desc += crlfStr; /* 换行 */
+        desc += allIntendStr + intendStr;
+        desc += "]";
+        desc += crlfStr; /* 换行 */
+    }
     desc += allIntendStr;
     desc += "}";
     return desc;
 }
 
-std::vector<Usb> Usb::getAllUsbs(bool detailFlag)
+std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
 {
-    std::vector<Usb> usbList;
+    std::vector<std::shared_ptr<usb::Usb>> usbList;
     if (LIBUSB_SUCCESS != libusb_init(NULL))
     {
         return usbList;
@@ -1564,36 +1595,40 @@ std::vector<Usb> Usb::getAllUsbs(bool detailFlag)
             enumerateUsbDevNodes(implList);
 #endif
         }
-        for (ssize_t i = 0; i < count; ++i) /* 遍历设备列表 */
+        /* 遍历设备列表 */
+        for (ssize_t i = 0; i < count; ++i)
         {
-            Usb info;
-            if (parseUsb(devList[i], detailFlag, implList, info))
+            auto info = parseUsb(devList[i], detailFlag, implList);
+            if (info)
             {
                 usbList.emplace_back(info);
             }
+        }
+        /* 确认父子节点关系 */
+        for (size_t m = 0; m < usbList.size(); ++m)
+        {
+            if (usbList[m]->m_parent)
+            {
+                for (size_t n = 0; n < usbList.size(); ++n)
+                {
+                    if (usbList[m]->m_parent->m_dev == usbList[n]->m_dev)
+                    {
+                        usbList[m]->m_parent = usbList[n];
+                        usbList[n]->m_children.emplace_back(usbList[m]);
+                        break;
+                    }
+                }
+            }
+        }
+        for (size_t k = 0; k < usbList.size(); ++k)
+        {
+            usbList[k]->m_dev = NULL;
         }
         libusb_free_device_list(devList, 1);
     }
     libusb_exit(NULL);
     /* 排序 */
-    std::sort(usbList.begin(), usbList.end(), [](const usb::Usb& a, const usb::Usb& b) {
-        if (a.getBusNum() < b.getBusNum())
-        {
-            return true;
-        }
-        else if (a.getBusNum() == b.getBusNum())
-        {
-            if (a.getPortNum() < b.getPortNum())
-            {
-                return true;
-            }
-            else if (a.getPortNum() == b.getPortNum())
-            {
-                return a.getAddress() < b.getAddress();
-            }
-        }
-        return false;
-    });
+    sortUsbList(usbList);
     return usbList;
 }
 
@@ -1624,20 +1659,29 @@ bool Usb::registerDeviceNotify(HANDLE handle)
 }
 #endif
 
-bool Usb::parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList, Usb& info)
+std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList)
 {
     if (!dev)
     {
-        return false;
+        return nullptr;
     }
     struct libusb_device_descriptor desc;
     if (LIBUSB_SUCCESS != libusb_get_device_descriptor(dev, &desc))
     {
-        return false;
+        return nullptr;
     }
-    info.m_busNum = libusb_get_bus_number(dev); /* 总线编号 */
-    info.m_portNum = libusb_get_port_number(dev); /* 端口编号(Linux中也叫系统编号sysNum) */
-    info.m_address = libusb_get_device_address(dev); /* 地址(每次拔插都会变) */
+    auto info = std::make_shared<Usb>();
+    info->m_dev = dev;
+    libusb_device* parent = libusb_get_parent(dev);
+    std::shared_ptr<Usb> parentNode;
+    if (parent) /* 解析父节点 */
+    {
+        info->m_parent = std::make_shared<Usb>();
+        info->m_parent->m_dev = parent;
+    }
+    info->m_busNum = libusb_get_bus_number(dev); /* 总线编号 */
+    info->m_portNum = libusb_get_port_number(dev); /* 端口编号(Linux中也叫系统编号sysNum) */
+    info->m_address = libusb_get_device_address(dev); /* 地址(每次拔插都会变) */
     int classCode = desc.bDeviceClass; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
     if (LIBUSB_CLASS_PER_INTERFACE == desc.bDeviceClass && desc.bNumConfigurations > 0)
     {
@@ -1651,16 +1695,16 @@ bool Usb::parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImp
             libusb_free_config_descriptor(config);
         }
     }
-    info.m_classCode = classCode;
-    info.m_subClassCode = desc.bDeviceSubClass;
-    info.m_protocolCode = desc.bDeviceProtocol;
-    info.m_speedLevel = libusb_get_device_speed(dev); /* 速度等级 */
+    info->m_classCode = classCode;
+    info->m_subClassCode = desc.bDeviceSubClass;
+    info->m_protocolCode = desc.bDeviceProtocol;
+    info->m_speedLevel = libusb_get_device_speed(dev); /* 速度等级 */
     char vid[6] = {0}; /* 厂商ID */
     sprintf(vid, "%04x", desc.idVendor);
-    info.m_vid = vid;
+    info->m_vid = vid;
     char pid[6] = {0}; /* 产品ID */
     sprintf(pid, "%04x", desc.idProduct);
-    info.m_pid = pid;
+    info->m_pid = pid;
     if (detailFlag) /* 获取详细信息 */
     {
 #if 0 /* Windows平台下打不开, Linux平台下有时会卡住, 因此弃而不用 */
@@ -1669,44 +1713,70 @@ bool Usb::parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImp
         {
             char serial[256] = {0}; /* 序列号 */
             libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, (unsigned char*)serial, sizeof(serial));
-            info.m_serial = serial;
+            info->m_serial = serial;
             char product[256] = {0}; /* 产品名称 */
             libusb_get_string_descriptor_ascii(handle, desc.iProduct, (unsigned char*)product, sizeof(product));
-            info.m_product = product;
+            info->m_product = product;
             char manufacturer[256] = {0}; /* 厂商名称 */
             libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, (unsigned char*)manufacturer, sizeof(manufacturer));
-            info.m_manufacturer = manufacturer;
+            info->m_manufacturer = manufacturer;
             libusb_close(handle);
         }
 #endif
         /* 获取详细信息 */
         for (const auto& item : implList)
         {
-            if (item.busNum == info.m_busNum && item.portNum == info.m_portNum && item.address == info.m_address && item.vid == info.m_vid
-                && item.pid == info.m_pid)
+            if (item.busNum == info->m_busNum && item.portNum == info->m_portNum && item.address == info->m_address
+                && item.vid == info->m_vid && item.pid == info->m_pid)
             {
-                if (info.m_serial.empty())
+                if (info->m_serial.empty())
                 {
-                    info.m_serial = item.serial;
+                    info->m_serial = item.serial;
                 }
-                if (info.m_product.empty())
+                if (info->m_product.empty())
                 {
-                    info.m_product = item.product;
+                    info->m_product = item.product;
                 }
-                if (info.m_manufacturer.empty())
+                if (info->m_manufacturer.empty())
                 {
-                    info.m_manufacturer = item.manufacturer;
+                    info->m_manufacturer = item.manufacturer;
                 }
 #ifdef _WIN32
-                info.m_devNodes.emplace_back(DevNode(item.dirverName, item.storageType, "", "", "", item.vendor, item.model));
+                info->m_devNodes.emplace_back(DevNode(item.dirverName, item.storageType, "", "", "", item.vendor, item.model));
 #else
-                info.m_devRootNode = item.devRootNode;
-                info.m_devNodes = item.devNodes;
+                info->m_devRootNode = item.devRootNode;
+                info->m_devNodes = item.devNodes;
 #endif
                 break;
             }
         }
     }
-    return true;
+    return info;
+}
+
+void Usb::sortUsbList(std::vector<std::shared_ptr<Usb>>& usbList)
+{
+    for (size_t i = 0; i < usbList.size(); ++i)
+    {
+        sortUsbList(usbList[i]->m_children);
+    }
+    std::sort(usbList.begin(), usbList.end(), [](std::shared_ptr<usb::Usb> a, std::shared_ptr<usb::Usb> b) {
+        if (a->getBusNum() < b->getBusNum())
+        {
+            return true;
+        }
+        else if (a->getBusNum() == b->getBusNum())
+        {
+            if (a->getPortNum() < b->getPortNum())
+            {
+                return true;
+            }
+            else if (a->getPortNum() == b->getPortNum())
+            {
+                return a->getAddress() < b->getAddress();
+            }
+        }
+        return false;
+    });
 }
 } // namespace usb

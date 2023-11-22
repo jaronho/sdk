@@ -9,9 +9,10 @@
 #define THRD_MESSAGE_EXIT WM_USER + 1
 static const TCHAR CLASS_NAME[] = "Example Win Detect";
 static HWND s_hwnd = NULL;
-static std::vector<usb::Usb> s_usbList;
+static std::vector<std::shared_ptr<usb::Usb>> s_usbList;
 
-void syncUsbList(const std::vector<usb::Usb>& nowList, std::vector<usb::Usb>* addedList, std::vector<usb::Usb>* removedList)
+void syncUsbList(const std::vector<std::shared_ptr<usb::Usb>>& nowList, std::vector<std::shared_ptr<usb::Usb>>* addedList,
+                 std::vector<std::shared_ptr<usb::Usb>>* removedList)
 {
     /* 计算新插入 */
     if (addedList)
@@ -22,7 +23,7 @@ void syncUsbList(const std::vector<usb::Usb>& nowList, std::vector<usb::Usb>* ad
             bool addedFlag = true;
             for (const auto& info : s_usbList)
             {
-                if (now.getAddress() == info.getAddress())
+                if (now->getAddress() == info->getAddress())
                 {
                     addedFlag = false;
                     break;
@@ -43,7 +44,7 @@ void syncUsbList(const std::vector<usb::Usb>& nowList, std::vector<usb::Usb>* ad
             bool removedFlag = true;
             for (const auto& now : nowList)
             {
-                if (info.getAddress() == now.getAddress())
+                if (info->getAddress() == now->getAddress())
                 {
                     removedFlag = false;
                     break;
@@ -62,7 +63,7 @@ void syncUsbList(const std::vector<usb::Usb>& nowList, std::vector<usb::Usb>* ad
 void handleDeviceArrived()
 {
     auto nowList = usb::Usb::getAllUsbs(true);
-    std::vector<usb::Usb> addedList;
+    std::vector<std::shared_ptr<usb::Usb>> addedList;
     syncUsbList(nowList, &addedList, nullptr);
     if (addedList.empty())
     {
@@ -74,17 +75,17 @@ void handleDeviceArrived()
         auto item = addedList[i];
         printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
                "%s, serial: %s, product: %s, manufacturer: %s, vendor: %s, model: %s%s\n",
-               (i + 1), item.getBusNum(), item.getPortNum(), item.getAddress(), item.getClassCode(), item.getClassDesc().c_str(),
-               item.getSubClassCode(), item.getProtocolCode(), item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(),
-               item.getProduct().c_str(), item.getManufacturer().c_str(), item.getVendor().c_str(), item.getModel().c_str(),
-               item.isStorage() ? (", storageType: " + item.getStorageType()).c_str() : "");
+               (i + 1), item->getBusNum(), item->getPortNum(), item->getAddress(), item->getClassCode(), item->getClassDesc().c_str(),
+               item->getSubClassCode(), item->getProtocolCode(), item->getVid().c_str(), item->getPid().c_str(), item->getSerial().c_str(),
+               item->getProduct().c_str(), item->getManufacturer().c_str(), item->getVendor().c_str(), item->getModel().c_str(),
+               item->isStorage() ? (", storageType: " + item->getStorageType()).c_str() : "");
     }
 }
 
 void handleDeviceRemoved()
 {
     auto nowList = usb::Usb::getAllUsbs(true);
-    std::vector<usb::Usb> removedList;
+    std::vector<std::shared_ptr<usb::Usb>> removedList;
     syncUsbList(nowList, nullptr, &removedList);
     if (removedList.empty())
     {
@@ -96,10 +97,10 @@ void handleDeviceRemoved()
         auto item = removedList[i];
         printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
                "%s, serial: %s, product: %s, manufacturer: %s, vendor: %s, model: %s%s\n",
-               (i + 1), item.getBusNum(), item.getPortNum(), item.getAddress(), item.getClassCode(), item.getClassDesc().c_str(),
-               item.getSubClassCode(), item.getProtocolCode(), item.getVid().c_str(), item.getPid().c_str(), item.getSerial().c_str(),
-               item.getProduct().c_str(), item.getManufacturer().c_str(), item.getVendor().c_str(), item.getModel().c_str(),
-               item.isStorage() ? (", storageType: " + item.getStorageType()).c_str() : "");
+               (i + 1), item->getBusNum(), item->getPortNum(), item->getAddress(), item->getClassCode(), item->getClassDesc().c_str(),
+               item->getSubClassCode(), item->getProtocolCode(), item->getVid().c_str(), item->getPid().c_str(), item->getSerial().c_str(),
+               item->getProduct().c_str(), item->getManufacturer().c_str(), item->getVendor().c_str(), item->getModel().c_str(),
+               item->isStorage() ? (", storageType: " + item->getStorageType()).c_str() : "");
     }
 }
 

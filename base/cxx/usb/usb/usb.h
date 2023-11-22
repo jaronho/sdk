@@ -42,6 +42,18 @@ public:
     virtual ~Usb() = default;
 
     /**
+     * @brief 获取父节点
+     * @return 父节点
+     */
+    std::shared_ptr<Usb> getParent() const;
+
+    /**
+     * @brief 获取子节点
+     * @return 子节点
+     */
+    std::vector<std::shared_ptr<usb::Usb>> getChildren() const;
+
+    /**
      * @brief 获取总线编号
      * @return 总线编号
      */
@@ -183,16 +195,19 @@ public:
 
     /**
      * @brief 描述信息
+     * @param showDevNode 是否显示设备节点
+     * @param showChildren 是否显示子节点
+     * @param allIntend 全局缩进字符数
      * @param intend 缩进字符数
      */
-    std::string describe(int allIntend = 0, int intend = 4) const;
+    std::string describe(bool showDevNode = true, bool showChildren = false, int allIntend = 0, int intend = 4) const;
 
     /**
      * @brief 获取系统中USB设备列表
      * @param detailFlag 是否获取设备详情
      * @return USB设备列表
      */
-    static std::vector<Usb> getAllUsbs(bool detailFlag = true);
+    static std::vector<std::shared_ptr<usb::Usb>> getAllUsbs(bool detailFlag = true);
 
 #ifdef _WIN32
     /**
@@ -212,12 +227,20 @@ private:
      * @param dev 设备节点
      * @param detailFlag 是否获取设备详情
      * @param implList UsbImpl列表
-     * @param info [输出]Usb信息
-     * @return true-成功, false-失败
+     * @return Usb信息
      */
-    static bool parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList, Usb& info);
+    static std::shared_ptr<usb::Usb> parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList);
+
+    /**
+     * @brief 排序Usb信息列表
+     * @param usbList [输入/输出]USB列表
+     */
+    static void sortUsbList(std::vector<std::shared_ptr<Usb>>& usbList);
 
 private:
+    libusb_device* m_dev = NULL;
+    std::shared_ptr<usb::Usb> m_parent = nullptr; /* 父节点 */
+    std::vector<std::shared_ptr<usb::Usb>> m_children; /* 子节点 */
     int m_busNum = -1; /* 总线编号 */
     int m_portNum = -1; /* 端口编号(Linux中也叫系统编号sysNum) */
     int m_address = -1; /* 地址(每次拔插都会变) */

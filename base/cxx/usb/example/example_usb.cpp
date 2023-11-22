@@ -43,35 +43,35 @@ int main(int argc, char** argv)
         bool busFlag = true;
         if (busNum >= 0)
         {
-            busFlag = (info.getBusNum() == busNum);
+            busFlag = (info->getBusNum() == busNum);
         }
         bool portFlag = true;
         if (portNum >= 0)
         {
-            portFlag = (info.getPortNum() == portNum);
+            portFlag = (info->getPortNum() == portNum);
         }
         if (busFlag && portFlag)
         {
             printf("============================================================ [%02d]\n", ((int)i + 1));
-            printf("=       busNum: %d\n", info.getBusNum());
-            printf("=      portNum: %d\n", info.getPortNum());
-            printf("=      address: %d\n", info.getAddress());
-            printf("=        class: %d\n", info.getClassCode());
-            printf("=    classDesc: %s\n", info.getClassDesc().c_str());
-            printf("=     subClass: %d\n", info.getSubClassCode());
-            printf("=     protocol: %d\n", info.getProtocolCode());
-            printf("=        speed: %s\n", info.getSpeedDesc().c_str());
-            printf("=          vid: %s\n", info.getVid().c_str());
-            printf("=          pid: %s\n", info.getPid().c_str());
-            printf("=       serial: %s\n", info.getSerial().c_str());
-            printf("=      product: %s\n", info.getProduct().c_str());
-            printf("= manufacturer: %s\n", info.getManufacturer().c_str());
+            printf("=       busNum: %d\n", info->getBusNum());
+            printf("=      portNum: %d\n", info->getPortNum());
+            printf("=      address: %d\n", info->getAddress());
+            printf("=        class: %d\n", info->getClassCode());
+            printf("=    classDesc: %s\n", info->getClassDesc().c_str());
+            printf("=     subClass: %d\n", info->getSubClassCode());
+            printf("=     protocol: %d\n", info->getProtocolCode());
+            printf("=        speed: %s\n", info->getSpeedDesc().c_str());
+            printf("=          vid: %s\n", info->getVid().c_str());
+            printf("=          pid: %s\n", info->getPid().c_str());
+            printf("=       serial: %s\n", info->getSerial().c_str());
+            printf("=      product: %s\n", info->getProduct().c_str());
+            printf("= manufacturer: %s\n", info->getManufacturer().c_str());
 #ifdef _WIN32
-            printf("=       vendor: %s\n", info.getVendor().c_str());
-            printf("=        model: %s\n", info.getModel().c_str());
-            if (info.isStorage())
+            printf("=       vendor: %s\n", info->getVendor().c_str());
+            printf("=        model: %s\n", info->getModel().c_str());
+            if (info->isStorage())
             {
-                printf("=  storageType: %s\n", info.getStorageType().c_str());
+                printf("=  storageType: %s\n", info->getStorageType().c_str());
             }
 #endif
         }
