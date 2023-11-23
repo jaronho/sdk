@@ -1382,6 +1382,19 @@ std::vector<DevNode> Usb::getDevNodes() const
 }
 #endif
 
+std::string Usb::getPath() const
+{
+    std::string path = std::to_string(m_portNum);
+    auto parent = m_parent;
+    while (parent && parent->m_parent)
+    {
+        path = std::to_string(parent->m_portNum) + "." + path;
+        parent = parent->m_parent;
+    }
+    path = std::to_string(m_busNum) + "-" + path;
+    return path;
+}
+
 bool Usb::isHid() const
 {
     return (LIBUSB_CLASS_HID == m_classCode);
@@ -1397,13 +1410,20 @@ bool Usb::isHub() const
     return (LIBUSB_CLASS_HUB == m_classCode);
 }
 
-std::string Usb::describe(bool showDevNode, bool showChildren, int allIntend, int intend) const
+std::string Usb::describe(bool showPath, bool showDevNode, bool showChildren, int allIntend, int intend) const
 {
     std::string allIntendStr(allIntend, ' '), intendStr(intend, ' '), crlfStr(intend > 0 ? "\n" : "");
     std::string desc;
     desc += allIntendStr + "{";
     desc += crlfStr; /* 换行 */
-    desc += allIntendStr + intendStr;
+    if (showPath)
+    {
+        desc += allIntendStr + intendStr;
+        desc += "\"path\": \"" + getPath() + "\"";
+        desc += ", ";
+        desc += crlfStr; /* 换行 */
+        desc += allIntendStr + intendStr;
+    }
     desc += "\"busNum\": " + std::to_string(getBusNum());
     desc += ", ";
     desc += "\"portNum\": " + std::to_string(getPortNum());
@@ -1548,9 +1568,10 @@ std::string Usb::describe(bool showDevNode, bool showChildren, int allIntend, in
         desc += "]";
     }
 #endif
-    desc += crlfStr; /* 换行 */
     if (showChildren && !m_children.empty())
     {
+        desc += ",";
+        desc += crlfStr; /* 换行 */
         desc += allIntendStr + intendStr;
         desc += "\"children\": [";
         for (size_t i = 0; i < m_children.size(); ++i)
@@ -1560,13 +1581,13 @@ std::string Usb::describe(bool showDevNode, bool showChildren, int allIntend, in
                 desc += ",";
             }
             desc += crlfStr; /* 换行 */
-            desc += m_children[i]->describe(showDevNode, showChildren, allIntend + intend + intend, intend);
+            desc += m_children[i]->describe(showPath, showDevNode, showChildren, allIntend + intend + intend, intend);
         }
         desc += crlfStr; /* 换行 */
         desc += allIntendStr + intendStr;
         desc += "]";
-        desc += crlfStr; /* 换行 */
     }
+    desc += crlfStr; /* 换行 */
     desc += allIntendStr;
     desc += "}";
     return desc;

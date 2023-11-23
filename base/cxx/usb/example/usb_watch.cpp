@@ -17,19 +17,17 @@ bool isOptionName(const std::string& str)
  * USB设备查看工具
  * 用法: ./usb_watch [选项]
  * 选项: -h 帮助信息
- *       -a 是否显示所有, 当设置该选项时, 会显示设备节点信息
- *       -t 是否树形显示, 当设置该选项时, -b, -p选项无效
- *       -b busNum 总线编号, 指定要查找哪个总线上的设备, 例如: 1
- *       -p portNum 端口编号, 指定要查找哪个端口上的设备, 例如: 2
- * 例如: ./usb_watch -b 1 -p 2
+ *       -p 是否显示路径,, 会显示设备路径信息, 格式: 总线_1级接口.2级接口.N级接口
+ *       -d 是否显示设备节点
+ *       -t 是否树形显示
+ * 例如: ./usb_watch -p -d -t
  */
 int main(int argc, char** argv)
 {
     /* 参数值 */
+    bool pathFlag = false;
     bool devFlag = false;
     bool treeFlag = false;
-    int busNum = -1;
-    int portNum = -1;
     /* 解析参数 */
     for (int i = 1; i < argc;)
     {
@@ -38,14 +36,19 @@ int main(int argc, char** argv)
         {
             printf("USB设备查看工具\n");
             printf("用法: ./usb_watch [选项]\n");
-            printf("选项: -h             帮助信息\n");
+            printf("选项: -h    帮助信息\n");
+            printf("选项: -p    是否显示路径, 格式: 总线_1级接口.2级接口.N级接口\n");
 #ifndef _WIN32
-            printf("      -d             是否显示设备节点信息, 当设置该选项时, 会显示设备节点信息\n");
+            printf("      -d    是否显示设备节点信息\n");
 #endif
-            printf("      -t             是否树形显示, 当设置该选项时, -b, -p选项无效\n");
-            printf("      -b 总线编号    指定要查找哪个总线上的设备, 例如: 1\n");
-            printf("      -p 端口编号    指定要查找哪个端口上的设备, 例如: 2\n");
+            printf("      -t    是否树形显示\n");
             return 0;
+        }
+        else if (0 == key.compare("-p")) /* 路径 */
+        {
+            pathFlag = true;
+            i += 1;
+            continue;
         }
         else if (0 == key.compare("-d")) /* 设备节点 */
         {
@@ -59,37 +62,6 @@ int main(int argc, char** argv)
             i += 1;
             continue;
         }
-        if (i + 1 >= argc)
-        {
-            break;
-        }
-        const char* val = argv[i + 1];
-        if (isOptionName(val))
-        {
-            i += 1;
-            continue;
-        }
-        if (0 == key.compare("-b")) /* 总线编号 */
-        {
-            try
-            {
-                busNum = std::atoi(val);
-            }
-            catch (...)
-            {
-            }
-        }
-        else if (0 == key.compare("-p")) /* 端口编号 */
-        {
-            try
-            {
-                portNum = std::atoi(val);
-            }
-            catch (...)
-            {
-            }
-        }
-        i += 2;
     }
     bool firstLine = true;
     std::string usbListJson;
@@ -111,34 +83,21 @@ int main(int argc, char** argv)
                     usbListJson += ",";
                 }
                 usbListJson += "\n";
-                usbListJson += info->describe(devFlag, true, 0, 4);
+                usbListJson += info->describe(pathFlag, devFlag, true, 0, 4);
             }
         }
         else
         {
-            bool busFlag = true;
-            if (busNum >= 0)
+            if (firstLine)
             {
-                busFlag = (info->getBusNum() == busNum);
+                firstLine = false;
             }
-            bool portFlag = true;
-            if (portNum >= 0)
+            else
             {
-                portFlag = (info->getPortNum() == portNum);
+                usbListJson += ",";
             }
-            if (busFlag && portFlag)
-            {
-                if (firstLine)
-                {
-                    firstLine = false;
-                }
-                else
-                {
-                    usbListJson += ",";
-                }
-                usbListJson += "\n";
-                usbListJson += info->describe(devFlag, false, 0, 4);
-            }
+            usbListJson += "\n";
+            usbListJson += info->describe(pathFlag, devFlag, false, 0, 4);
         }
     }
     if (!firstLine)

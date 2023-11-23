@@ -176,6 +176,12 @@ public:
 #endif
 
     /**
+     * @brief 获取路径
+     * @return 路径, 例如: 总线_1级接口.2级接口.N级接口
+     */
+    std::string getPath() const;
+
+    /**
      * @brief 判断是否HID(键盘/鼠标/加密狗等)类型
      * @return true-是, false-否
      */
@@ -195,12 +201,14 @@ public:
 
     /**
      * @brief 描述信息
+     * @param showPath 显示路径
      * @param showDevNode 是否显示设备节点
      * @param showChildren 是否显示子节点
      * @param allIntend 全局缩进字符数
      * @param intend 缩进字符数
      */
-    std::string describe(bool showDevNode = true, bool showChildren = false, int allIntend = 0, int intend = 4) const;
+    std::string describe(bool showPath = false, bool showDevNode = true, bool showChildren = false, int allIntend = 0,
+                         int intend = 4) const;
 
     /**
      * @brief 获取系统中USB设备列表
