@@ -70,7 +70,7 @@ public:
 
     /**
      * @brief 等待时间
-     * @param maxMS 最大等待的时间(单位:毫秒), 超过此时间则结束等待, 为0时表示一直循环
+     * @param maxMS 最大等待的时间(单位:毫秒), 超过此时间则结束等待
      * @param func 过程中执行的函数(选填), 返回值: true-结束等待, false-继续等待
      * @param loopGap 循环的时间间隔(单位:毫秒)(选填)
      */
@@ -78,7 +78,7 @@ public:
 
     /**
      * @brief 等待次数
-     * @param maxCount 最大等待的次数, 超过此值则结束等待, 为0时表示一直循环
+     * @param maxCount 最大等待的次数, 超过此值则结束等待
      * @param func 过程中执行的函数(选填), 返回值: true-结束等待, false-继续等待
      * @param loopGap 循环的时间间隔(单位:毫秒)(选填)
      */
