@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
+#include <sys/timeb.h>
 #include <thread>
 #ifdef _WIN32
 #include <Windows.h>
@@ -12,6 +13,29 @@
 serial::Serial g_com; /* 串口对象 */
 std::chrono::steady_clock::time_point g_lastRecvTimestamp; /* 上次接收的时间戳 */
 size_t g_totalRecvLength = 0; /* 总的接收长度(字节) */
+
+std::string getDateTime()
+{
+    struct tm t;
+    time_t now;
+    time(&now);
+#ifdef _WIN32
+    localtime_s(&t, &now);
+#else
+    t = *localtime(&now);
+#endif
+    char buf1[20] = {0};
+    strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &t);
+    char buf2[4] = {0};
+    struct timeb tb;
+    ftime(&tb);
+#ifdef _WIN32
+    sprintf_s(buf2, sizeof(buf2), "%03d", tb.millitm);
+#else
+    sprintf(buf2, "%03d", tb.millitm);
+#endif
+    return std::string(buf1).append(".").append(buf2);
+}
 
 /**
  * @brief 十六进制字符串转字节流
@@ -287,7 +311,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 g_lastRecvTimestamp = std::chrono::steady_clock::now();
                 if (0 == g_totalRecvLength)
                 {
-                    fprintf(stderr, "==================================================\n");
+                    fprintf(stderr, "================================================== [%s]\n", getDateTime().c_str());
                 }
                 else if (autoLine)
                 {
