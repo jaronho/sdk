@@ -137,7 +137,7 @@ void showAllPorts(const std::vector<serial::PortInfo> portList)
  */
 void openSerial(const std::string& port, unsigned long baudrate, const serial::Databits& databits, const serial::ParityType& parity,
                 const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, int crlf, bool sendHex, bool showHex,
-                bool autoLine, bool hideRecv)
+                bool autoLine, bool showTime, bool hideRecv)
 {
     /* 串口设置及打开 */
     g_com.setPort(port);
@@ -224,6 +224,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     printf("发送格式: %s\n", sendHex ? "Hex(十六进制)" : "ASCII字符");
     printf("接收格式: %s\n", showHex ? "Hex(十六进制)" : "ASCII字符");
     printf("接收换行: %s\n", autoLine ? "自动换行" : "不自动换行");
+    printf("接收时间: %s\n", showTime ? "显示" : "隐藏");
     printf("接收显示: %s\n", hideRecv ? "隐藏" : "显示");
     printf("\n");
     auto ret = g_com.open();
@@ -286,7 +287,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
             if (sendHex)
             {
                 char* bytes;
-                int len = hexStrToBytes(std::string(input) + endFlagHex, &bytes);
+                auto len = hexStrToBytes(std::string(input) + endFlagHex, &bytes);
                 if (bytes)
                 {
                     g_com.write(bytes, len);
@@ -300,52 +301,59 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         }
     });
     th.detach();
-    /* 监听串口数据, 坑爹: 这里打印只能输出到stderr, 用stdout的话会阻塞(不知道啥原因) */
+    /* 监听串口数据, 坑: 这里打印只能输出到stderr, 用stdout的话会阻塞(不知道啥原因) */
+    bool newLine = true;
     while (g_com.isOpened())
     {
-        std::string bytes = g_com.readAll();
-        if (!hideRecv)
+        auto bytes = g_com.readAll();
+        if (hideRecv)
         {
-            if (!bytes.empty())
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            continue;
+        }
+        if (!bytes.empty())
+        {
+            if (autoLine && !newLine)
             {
-                g_lastRecvTimestamp = std::chrono::steady_clock::now();
-                if (0 == g_totalRecvLength)
+                fprintf(stderr, "\n");
+                if (showTime)
                 {
-                    fprintf(stderr, "================================================== [%s]\n", getDateTime().c_str());
+                    fprintf(stderr, "[%s] ", getDateTime().c_str());
                 }
-                else if (autoLine)
+            }
+            for (size_t i = 0, len = bytes.size(); i < len; ++i)
+            {
+                if (newLine)
                 {
-                    fprintf(stderr, "\n");
+                    newLine = false;
+                    if (showHex)
+                    {
+                        fprintf(stderr, "\n");
+                    }
+                    if (showTime)
+                    {
+                        fprintf(stderr, "[%s] ", getDateTime().c_str());
+                    }
                 }
                 if (showHex)
                 {
-                    for (size_t i = 0, cnt = bytes.size(); i < cnt; ++i)
+                    fprintf(stderr, "%02X", bytes[i]);
+                    if (i < len - 1)
                     {
-                        fprintf(stderr, "%02X", bytes[i]);
-                        if (i < cnt - 1)
-                        {
-                            fprintf(stderr, " ");
-                        }
+                        fprintf(stderr, " ");
                     }
                 }
                 else
                 {
-                    fprintf(stderr, "%s", bytes.c_str());
+                    fprintf(stderr, "%c", bytes[i]);
                 }
-                g_totalRecvLength += bytes.size();
-            }
-            if (g_totalRecvLength > 0)
-            {
-                std::chrono::milliseconds elapsed =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - g_lastRecvTimestamp);
-                if (elapsed.count() >= 400)
+                if ('\n' == bytes[i] || '\r' == bytes[i])
                 {
-                    fprintf(stderr, "\n========== 总的接收长度: %zu (字节)\n", g_totalRecvLength);
-                    g_totalRecvLength = 0;
+                    newLine = true;
                 }
             }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     fprintf(stderr, "串口被关闭.\n");
 }
@@ -382,6 +390,7 @@ int main(int argc, char** argv)
     printf("** [--txhex]           使用十六进制格式发送数据(选填), 默认: ASCII.                                        **\n");
     printf("** [--rxhex]           使用十六进制格式显示接收数据(选填), 默认: ASCII.                                    **\n");
     printf("** [--rxline]          自动换行接收数据(选填), 默认: 不自动换行.                                           **\n");
+    printf("** [--rxtime]          显示接收数据时间(选填), 默认: 隐藏.                                                 **\n");
     printf("** [--rxhide]          隐藏接收到的数据(选填), 默认: 显示.                                                 **\n");
     printf("**                                                                                                         **\n");
     printf("** 示例:                                                                                                   **\n");
@@ -404,7 +413,8 @@ int main(int argc, char** argv)
     int flagCRLF = 2;
     int flagTxHex = 0;
     int flagRxHex = 0;
-    int flagRxAutoLine = 0;
+    int flagRxLine = 0;
+    int flagRxTime = 0;
     int flagRxHide = 0;
     /* 错误的参数值 */
     std::string valDatabits;
@@ -443,7 +453,13 @@ int main(int argc, char** argv)
         }
         else if (0 == key.compare("--rxline")) /* 接收显示自动换行 */
         {
-            flagRxAutoLine = 2;
+            flagRxLine = 2;
+            i += 1;
+            continue;
+        }
+        else if (0 == key.compare("--rxtime")) /* 接收显示时间 */
+        {
+            flagRxTime = 2;
             i += 1;
             continue;
         }
@@ -603,9 +619,10 @@ int main(int argc, char** argv)
     flagFlowcontrol = 2;
     flagTxHex = 0;
     flagRxHex = 0;
-    flagRxAutoLine = 0;
+    flagRxLine = 0;
+    flagRxTime = 0;
     flagRxHide = 0;
-    portName = "COM27";
+    portName = "COM21";
     baudrate = 115200;
     databits = serial::Databits::eight;
     pariry = serial::ParityType::none;
@@ -686,7 +703,7 @@ int main(int argc, char** argv)
         return 0;
     }
     /* 打开串口 */
-    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, crlf, 2 == flagTxHex, 2 == flagRxHex, 2 == flagRxAutoLine,
-               2 == flagRxHide);
+    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, crlf, 2 == flagTxHex, 2 == flagRxHex, 2 == flagRxLine,
+               2 == flagRxTime, 2 == flagRxHide);
     return 0;
 }
