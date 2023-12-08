@@ -10,6 +10,7 @@ namespace algorithm
  */
 template<typename T>
 #define ATOMIC_CMP_FUNC std::function<int(const T& a, const T& b)> /* 值比较函数, 返回值: 负数-小于, 0-等于, 正数-大于 */
+#define ATOMIC_UPDATE_CALLBACK std::function<void(const T& value, bool changed)> /* 值更新回调, 参数: value-最新值, changed-是否变化 */
 class Atomic
 {
 public:
@@ -33,6 +34,16 @@ public:
     }
 
     /**
+     * @brief 设置值更新回调
+     * @param callback 值更新回调, 参数: value-最新值, changed-是否变化
+     */
+    void setUpdateCallback(const ATOMIC_UPDATE_CALLBACK& callback)
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        m_updateCallback = callback;
+    }
+
+    /**
      * @brief 获取值
      * @return 值
      */
@@ -45,11 +56,23 @@ public:
     /**
      * @brief 设置值
      * @param value 值
+     * @return true-值变化, false-值未变化
      */
-    void set(const T& value)
+    bool set(const T& value)
     {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        m_value = value;
+        bool changed = false;
+        ATOMIC_UPDATE_CALLBACK updateCallback = nullptr;
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            changed = (value != m_value);
+            m_value = value;
+            updateCallback = m_updateCallback;
+        }
+        if (updateCallback)
+        {
+            updateCallback(value, changed);
+        }
+        return changed;
     }
 
     Atomic& operator=(const T& value)
@@ -158,5 +181,6 @@ private:
     std::mutex m_mutex;
     T m_value = T{}; /* 值 */
     ATOMIC_CMP_FUNC m_cmpFunc = nullptr; /* 值比较函数 */
+    ATOMIC_UPDATE_CALLBACK m_updateCallback = nullptr; /* 值更新回调 */
 };
 } // namespace algorithm
