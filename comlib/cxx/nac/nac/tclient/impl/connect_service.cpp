@@ -63,7 +63,7 @@ void ConnectService::setHeartbeatDataGenerator(const std::function<std::string()
 bool ConnectService::connect(unsigned short localPort, const std::string& address, unsigned int port, bool sslOn, int sslWay, int certFmt,
                              const std::string& certFile, const std::string& pkFile, const std::string& pkPwd, unsigned int connectTimeout,
                              int32_t authBizCode, unsigned int authTimeout, int32_t heartbeatBizCode, unsigned int heartbeatInterval,
-                             unsigned int offlineTime)
+                             bool heartbeatFixedSend, unsigned int offlineTime)
 {
     if (address.empty() || 0 == port)
     {
@@ -94,8 +94,10 @@ bool ConnectService::connect(unsigned short localPort, const std::string& addres
         return false;
     }
     INFO_LOG(m_logger,
-             "连接配置: 服务器[{}:{}], 连接超时[{}秒], 鉴权(业务码[{}], 超时[{}秒]), 心跳(业务码[{}], 间隔[{}秒], 掉线判定时间[{}秒]).",
-             address, port, connectTimeout, authBizCode, authTimeout, heartbeatBizCode, heartbeatInterval, offlineTime);
+             "连接配置: 服务器[{}:{}], 连接超时[{}秒], 鉴权(业务码[{}], 超时[{}秒]), 心跳(业务码[{}], 间隔[{}秒], {}间隔发送, "
+             "掉线判定时间[{}秒]).",
+             address, port, connectTimeout, authBizCode, authTimeout, heartbeatBizCode, heartbeatInterval,
+             heartbeatFixedSend ? "固定" : "非固定", offlineTime);
     m_disconnectType = DisconnectType::unknown;
     updateConnectState(ConnectState::connecting);
     m_localPort = localPort;
@@ -112,6 +114,7 @@ bool ConnectService::connect(unsigned short localPort, const std::string& addres
     m_authTimeout = authTimeout;
     m_heartbeatBizCode = heartbeatBizCode;
     m_heartbeatInterval = heartbeatInterval;
+    m_heartbeatFixedSend = heartbeatFixedSend;
     m_offlineTime = offlineTime;
     const auto dataChannel = m_wpDataChannel.lock();
     if (dataChannel)
@@ -350,9 +353,9 @@ void ConnectService::startHeartbeatTimer()
 void ConnectService::onHeartbeatTimer()
 {
     auto ntp = std::chrono::steady_clock::now();
-    /* 超过一定时间未向服务发送数据, 需要发送心跳包来维持连接 */
     const int ELAPSED_DELTA = 500; /* 时间增量(毫秒), 这是由于定时器触发没办法精确到毫秒会有误差 */
-    auto elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastSendTime.load()).count();
+    auto lastTime = m_heartbeatFixedSend ? m_lastHeartbeatTime.load() : m_lastSendTime.load();
+    auto elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - lastTime).count();
     if ((elapsedLastSend + ELAPSED_DELTA) >= (m_heartbeatInterval * 1000))
     {
         if (ConnectState::connected == m_connectState)

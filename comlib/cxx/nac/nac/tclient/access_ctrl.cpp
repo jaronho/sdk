@@ -265,7 +265,7 @@ bool AccessCtrl::connect(const AccessConfig& cfg)
     /* 首次连接 */
     return s_connectService->connect(cfg.localPort, cfg.address, cfg.port, cfg.sslOn, cfg.sslWay, cfg.certFmt, cfg.certFile, cfg.pkFile,
                                      cfg.pkPwd, cfg.connectTimeout, (int32_t)cfg.authBizCode, cfg.authTimeout,
-                                     (int32_t)cfg.heartbeatBizCode, cfg.heartbeatInterval, cfg.offlineTime);
+                                     (int32_t)cfg.heartbeatBizCode, cfg.heartbeatInterval, cfg.heartbeatFixedSend, cfg.offlineTime);
 }
 
 void AccessCtrl::disconnect()

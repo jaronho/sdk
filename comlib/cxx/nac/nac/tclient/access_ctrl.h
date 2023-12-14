@@ -78,6 +78,7 @@ struct AccessConfig
     unsigned int authTimeout = 30; /* 鉴权超时(秒), 必须大于0 */
     int32_t heartbeatBizCode = 0; /* 心跳业务码, 为0表示不需要发送心跳 */
     unsigned int heartbeatInterval = 15; /* 心跳间隔(秒), 必须大于0 */
+    bool heartbeatFixedSend = false; /* 心跳是否固定间隔发送, 若不固定则在心跳间隔内未收任何服务端数据包时才发送心跳 */
     unsigned int offlineTime = 61; /* 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线, 必须大于心跳间隔 */
     std::vector<unsigned int> retryInterval = {1}; /* 重试间隔(秒), 示例: {1, 1, 1, 1, 1, 2, 4, 8, 10} */
 };
