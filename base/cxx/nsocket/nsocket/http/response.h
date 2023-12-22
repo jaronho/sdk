@@ -19,10 +19,9 @@ class Response
 public:
     /**
      * @brief 打包响应数据(把对象转为字节流)
-     * @param resp 响应对象
-     * @param data [输出]响应数据
+     * @return 响应数据
      */
-    static void pack(Response resp, std::vector<unsigned char>& data);
+    std::vector<unsigned char> pack();
 
 public:
     std::string version; /* 版本 */
@@ -31,12 +30,6 @@ public:
     std::vector<unsigned char> body; /* 包体, 当有业务数据返回时需要填充该字段 */
 };
 using RESPONSE_PTR = std::shared_ptr<Response>;
-
-/**
- * @brief 发送响应数据函数
- * @param resp 响应数据
- */
-using SEND_RESPONSE_FUNC = std::function<void(const RESPONSE_PTR& resp)>;
 
 /**
  * @brief 创建200响应 

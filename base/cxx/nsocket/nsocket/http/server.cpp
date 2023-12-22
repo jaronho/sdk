@@ -21,13 +21,13 @@ Server::~Server()
     stop();
 }
 
-void Server::setRouterNotFoundCallback(const std::function<RESPONSE_PTR(uint64_t cid, const REQUEST_PTR& req)>& cb)
+void Server::setDefaultRouterCallback(const std::function<void(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)>& cb)
 {
-    m_routerNotFoundCb = cb;
+    m_defaultRouterCb = cb;
 }
 
 std::vector<std::string> Server::addRouter(const std::vector<Method>& methods, const std::vector<std::string>& uriList,
-                                           std::shared_ptr<Router> router)
+                                           const std::shared_ptr<Router>& router)
 {
     std::vector<std::string> repeatUriList;
     for (auto uri : uriList)
@@ -218,62 +218,66 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
     {
         std::shared_ptr<Response> resp = nullptr;
         auto iter = m_routerMap.find(session->req->uri);
-        if (m_routerMap.end() == iter) /* 找不到路由 */
+        if (m_routerMap.end() == iter) /* 找不到路由(进入默认路由) */
         {
-            if (m_routerNotFoundCb)
+            if (m_defaultRouterCb)
             {
-                resp = m_routerNotFoundCb(conn->getId(), session->req);
+                m_defaultRouterCb(conn->getId(), session->req,
+                                  Connector([&, wpConn = session->wpConn](const const std::vector<unsigned char>& data,
+                                                                          const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
+                                            [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
+                return;
             }
-            if (!resp)
-            {
-                resp = std::make_shared<Response>();
-                resp->statusCode = StatusCode::client_error_not_found;
-            }
+            resp = std::make_shared<Response>();
+            resp->statusCode = StatusCode::client_error_not_found;
         }
         else /* 找到路由 */
         {
             if (session->req->isMethodAllowed) /* 允许方法 */
             {
-                iter->second->onResponse(conn->getId(), session->req, [&, wpConn = session->wpConn](const std::shared_ptr<Response>& resp) {
-                    sendResponse(wpConn, resp);
-                });
+                iter->second->onResponse(
+                    conn->getId(), session->req,
+                    Connector([&, wpConn = session->wpConn](const const std::vector<unsigned char>& data,
+                                                            const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
+                              [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
                 return;
             }
             /* 方法不允许 */
             if (iter->second->methodNotAllowedCb)
             {
-                resp = iter->second->methodNotAllowedCb(conn->getId(), session->req);
+                iter->second->methodNotAllowedCb(
+                    conn->getId(), session->req,
+                    Connector([&, wpConn = session->wpConn](const const std::vector<unsigned char>& data,
+                                                            const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
+                              [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
+                return;
             }
-            if (!resp)
-            {
-                resp = std::make_shared<Response>();
-                resp->statusCode = StatusCode::client_error_method_not_allowed;
-            }
+            resp = std::make_shared<Response>();
+            resp->statusCode = StatusCode::client_error_method_not_allowed;
         }
         /* 发送响应数据 */
-        sendResponse(session->wpConn, resp);
+        sendResponse(session->wpConn, resp ? resp->pack() : std::vector<unsigned char>(),
+                     [&, wpConn = session->wpConn](const boost::system::error_code& code, size_t length) {
+                         closeConnection(wpConn); /* 关闭连接 */
+                     });
     }
 }
 
-void Server::sendResponse(const std::weak_ptr<TcpConnection>& wpConn, std::shared_ptr<Response> resp)
+void Server::sendResponse(const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb)
 {
     const auto conn = wpConn.lock();
     if (conn)
     {
-        if (!resp)
-        {
-            resp = std::make_shared<Response>();
-            resp->statusCode = StatusCode::success_ok;
-        }
-        std::vector<unsigned char> data;
-        Response::pack(*resp, data);
-        conn->send(data, [&, wpConn](const boost::system::error_code& code, size_t length) {
-            const auto conn = wpConn.lock();
-            if (conn)
-            {
-                conn->close(); /* 响应结束后, 需要关闭连接(有些客户端不会主动关闭连接), TODO: 后续可能要做Keep-Alive */
-            }
-        });
+        conn->send(data, cb);
+    }
+}
+
+void Server::closeConnection(const std::weak_ptr<TcpConnection>& wpConn)
+{
+    const auto conn = wpConn.lock();
+    if (conn)
+    {
+        conn->close(); /* 响应结束后, 需要关闭连接(有些客户端不会主动关闭连接) */
     }
 }
 } // namespace http

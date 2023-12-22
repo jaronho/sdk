@@ -38,6 +38,32 @@ static bool parseMultipartFormDataBoundary(const std::string& contentType, std::
     return true;
 }
 
+Connector::Connector(const std::function<void(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb)>& sendFunc,
+                     const std::function<void()>& closeFunc)
+    : m_sendFunc(sendFunc), m_closeFunc(closeFunc)
+{
+}
+
+void Connector::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb, bool closeFlag) const
+{
+    if (m_sendFunc)
+    {
+        m_sendFunc(data, cb);
+    }
+    if (closeFlag && m_closeFunc)
+    {
+        m_closeFunc();
+    }
+}
+
+void Connector::close() const
+{
+    if (m_closeFunc)
+    {
+        m_closeFunc();
+    }
+}
+
 std::vector<Method> Router::getAllowMethods()
 {
     return m_methods;
@@ -47,12 +73,9 @@ void Router::onReqHead(uint64_t cid, const REQUEST_PTR& req) {}
 
 void Router::onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) {}
 
-void Router::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router::onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)
 {
-    if (sendRespFunc)
-    {
-        sendRespFunc(nullptr);
-    }
+    conn.close();
 }
 
 void Router_batch::onReqHead(uint64_t cid, const REQUEST_PTR& req)
@@ -71,18 +94,15 @@ void Router_batch::onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t off
     }
 }
 
-void Router_batch::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router_batch::onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)
 {
-    if (sendRespFunc)
+    if (respHandler)
     {
-        if (respHandler)
-        {
-            respHandler(cid, req, sendRespFunc);
-        }
-        else
-        {
-            sendRespFunc(nullptr);
-        }
+        respHandler(cid, req, conn);
+    }
+    else
+    {
+        conn.close();
     }
 }
 
@@ -117,7 +137,7 @@ void Router_simple::onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t of
     }
 }
 
-void Router_simple::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router_simple::onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)
 {
     std::shared_ptr<std::string> content = nullptr;
     {
@@ -130,16 +150,13 @@ void Router_simple::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_
             m_contentMap.erase(iter);
         }
     }
-    if (sendRespFunc)
+    if (content && respHandler)
     {
-        if (content && respHandler)
-        {
-            respHandler(cid, req, *content.get(), sendRespFunc);
-        }
-        else
-        {
-            sendRespFunc(nullptr);
-        }
+        respHandler(cid, req, *content.get(), conn);
+    }
+    else
+    {
+        conn.close();
     }
 }
 
@@ -219,7 +236,7 @@ void Router_x_www_form_urlencoded::onReqContent(uint64_t cid, const REQUEST_PTR&
     }
 }
 
-void Router_x_www_form_urlencoded::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router_x_www_form_urlencoded::onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)
 {
     std::shared_ptr<Wrapper> wrapper = nullptr;
     {
@@ -232,20 +249,17 @@ void Router_x_www_form_urlencoded::onResponse(uint64_t cid, const REQUEST_PTR& r
             m_wrapperMap.erase(iter);
         }
     }
-    if (sendRespFunc)
+    if (wrapper && respHandler)
     {
-        if (wrapper && respHandler)
+        if (!wrapper->tmpKey.empty())
         {
-            if (!wrapper->tmpKey.empty())
-            {
-                wrapper->fields.insert(std::make_pair(url_decode(wrapper->tmpKey), url_decode(wrapper->tmpValue)));
-            }
-            respHandler(cid, req, wrapper->fields, sendRespFunc);
+            wrapper->fields.insert(std::make_pair(url_decode(wrapper->tmpKey), url_decode(wrapper->tmpValue)));
         }
-        else
-        {
-            sendRespFunc(nullptr);
-        }
+        respHandler(cid, req, wrapper->fields, conn);
+    }
+    else
+    {
+        conn.close();
     }
 }
 
@@ -313,7 +327,7 @@ void Router_multipart_form_data::onReqContent(uint64_t cid, const REQUEST_PTR& r
     }
 }
 
-void Router_multipart_form_data::onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)
+void Router_multipart_form_data::onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)
 {
     {
         /* 限定锁区间, 避免阻塞其他路由, 提高并发性 */
@@ -324,16 +338,13 @@ void Router_multipart_form_data::onResponse(uint64_t cid, const REQUEST_PTR& req
             m_formMap.erase(iter);
         }
     }
-    if (sendRespFunc)
+    if (respHandler)
     {
-        if (respHandler)
-        {
-            respHandler(cid, req, sendRespFunc);
-        }
-        else
-        {
-            sendRespFunc(nullptr);
-        }
+        respHandler(cid, req, conn);
+    }
+    else
+    {
+        conn.close();
     }
 }
 } // namespace http

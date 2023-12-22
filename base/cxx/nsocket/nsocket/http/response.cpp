@@ -4,25 +4,25 @@ namespace nsocket
 {
 namespace http
 {
-void Response::pack(Response resp, std::vector<unsigned char>& data)
+std::vector<unsigned char> Response::pack()
 {
+    std::vector<unsigned char> data;
     static const std::string CRLF = "\r\n";
     static const std::string SEP = ": ";
-    data.clear();
-    if (resp.version.empty())
+    if (version.empty())
     {
-        resp.version = "HTTP/1.1";
+        version = "HTTP/1.1";
     }
-    data.insert(data.end(), resp.version.begin(), resp.version.end());
+    data.insert(data.end(), version.begin(), version.end());
     data.push_back(' ');
-    auto statusStr = status_desc(resp.statusCode);
+    auto statusStr = status_desc(statusCode);
     data.insert(data.end(), statusStr.begin(), statusStr.end());
     data.insert(data.end(), CRLF.begin(), CRLF.end());
-    if (resp.headers.end() == resp.headers.find("Content-Length"))
+    if (headers.end() == headers.find("Content-Length"))
     {
-        resp.headers.insert(std::make_pair("Content-Length", std::to_string(resp.body.size())));
+        headers.insert(std::make_pair("Content-Length", std::to_string(body.size())));
     }
-    for (auto iter = resp.headers.begin(); resp.headers.end() != iter; ++iter)
+    for (auto iter = headers.begin(); headers.end() != iter; ++iter)
     {
         data.insert(data.end(), iter->first.begin(), iter->first.end());
         data.insert(data.end(), SEP.begin(), SEP.end());
@@ -30,7 +30,8 @@ void Response::pack(Response resp, std::vector<unsigned char>& data)
         data.insert(data.end(), CRLF.begin(), CRLF.end());
     }
     data.insert(data.end(), CRLF.begin(), CRLF.end());
-    data.insert(data.end(), resp.body.begin(), resp.body.end());
+    data.insert(data.end(), body.begin(), body.end());
+    return data;
 }
 
 RESPONSE_PTR makeResponse200()

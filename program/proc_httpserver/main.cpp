@@ -86,8 +86,8 @@ int main(int argc, char* argv[])
 #endif
     auto routerList = nlohmann::parse(parser.get<std::string>("router"));
     g_server = std::make_shared<nsocket::http::Server>("http_server", 10, server, port);
-    /* 设置路由未找到回调 */
-    g_server->setRouterNotFoundCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
+    /* 设置默认路由回调 */
+    g_server->setDefaultRouterCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
         printf("****************************** 路由未找到 ******************************\n");
         printf("***     Cid: %zu\n", cid);
         printf("***  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -114,13 +114,13 @@ int main(int argc, char* argv[])
         auto str = htmlString(cid, req, "404 Not Found");
         auto resp = nsocket::http::makeResponse404();
         resp->body.insert(resp->body.end(), str.begin(), str.end());
-        return resp;
+        conn.send(resp->pack());
     });
     /* 添加路由表 */
     if (routerList.is_array())
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
-        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
             printf("========================= 自定义路由(方法不允许) =========================\n");
             printf("***     Cid: %zu\n", cid);
             printf("***  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -147,10 +147,10 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "405 Method Not Allow");
             auto resp = nsocket::http::makeResponse405();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            return resp;
+            conn.send(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
-                             const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
+                             const nsocket::http::Connector& conn) {
             printf("------------------------------- 自定义路由 -------------------------------\n");
             printf("---     Cid: %zu\n", cid);
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -179,10 +179,7 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "Welcome To Home");
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            if (sendRespFunc)
-            {
-                sendRespFunc(resp);
-            }
+            conn.send(resp->pack());
         };
         if (!routerList.empty())
         {
@@ -247,7 +244,7 @@ int main(int argc, char* argv[])
     }
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
-        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
             printf("========================= 简单路由(方法不允许) =========================\n");
             printf("***     Cid: %zu\n", cid);
             printf("***  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -274,10 +271,10 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "405 Method Not Allow");
             auto resp = nsocket::http::makeResponse405();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            return resp;
+            conn.send(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
-                             const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
+                             const nsocket::http::Connector& conn) {
             printf("------------------------------- 简单路由 -------------------------------\n");
             printf("---     Cid: %zu\n", cid);
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -306,10 +303,7 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "Welcome To Home");
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            if (sendRespFunc)
-            {
-                sendRespFunc(resp);
-            }
+            conn.send(resp->pack());
         };
         g_server->addRouter({nsocket::http::Method::GET}, {"/", "index", "index.htm", "index.html"}, r);
     }

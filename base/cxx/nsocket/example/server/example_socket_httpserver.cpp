@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
         certFmt = 2;
     }
     nsocket::http::Server server("http_server", 10, serverHost, serverPort);
-    server.setRouterNotFoundCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
+    server.setDefaultRouterCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
         printf("************************* Not Found URI Router *************************\n");
         printf("***     Cid: %zu\n", cid);
         printf("***  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -232,12 +232,12 @@ int main(int argc, char* argv[])
         auto str = htmlString(cid, req, "404 Not Found");
         auto resp = nsocket::http::makeResponse404();
         resp->body.insert(resp->body.end(), str.begin(), str.end());
-        return resp;
+        conn.send(resp->pack());
     });
     /* 添加路由表 */
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
-        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
             printf("Support methods:");
@@ -248,10 +248,10 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
             auto resp = nsocket::http::makeResponse405();
-            return resp;
+            conn.send(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
-                             const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
+                             const nsocket::http::Connector& conn) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
@@ -279,16 +279,13 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "Welcome To Home");
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            if (sendRespFunc)
-            {
-                sendRespFunc(resp);
-            }
+            conn.send(resp->pack());
         };
         server.addRouter({nsocket::http::Method::GET}, {"/", "index", "index.htm", "index.html"}, r);
     }
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
-        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
             printf("Support methods:");
@@ -299,10 +296,10 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
             auto resp = nsocket::http::makeResponse405();
-            return resp;
+            conn.send(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
-                             const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
+                             const nsocket::http::Connector& conn) {
             printf("-------------------------- Simple Router --------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
@@ -331,16 +328,13 @@ int main(int argc, char* argv[])
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            if (sendRespFunc)
-            {
-                sendRespFunc(resp);
-            }
+            conn.send(resp->pack());
         };
         server.addRouter({nsocket::http::Method::GET, nsocket::http::Method::POST}, {"/simple"}, r);
     }
     {
         auto r = std::make_shared<nsocket::http::Router_x_www_form_urlencoded>();
-        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
             printf("-------------------------- Form Router --------------------------\n");
             printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
             printf("Support methods:");
@@ -351,10 +345,10 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
             auto resp = nsocket::http::makeResponse405();
-            return resp;
+            conn.send(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields,
-                             const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
+                             const nsocket::http::Connector& conn) {
             printf("--------------------------- Form Router ---------------------------\n");
             printf("---  Client: %s:%d\n", req->host.c_str(), req->port);
             printf("---  Method: %s\n", req->method.c_str());
@@ -389,10 +383,7 @@ int main(int argc, char* argv[])
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            if (sendRespFunc)
-            {
-                sendRespFunc(resp);
-            }
+            conn.send(resp->pack());
         };
         server.addRouter({nsocket::http::Method::POST}, {"/form"}, r);
     }
@@ -410,7 +401,7 @@ int main(int argc, char* argv[])
         }
 #endif
         auto r = std::make_shared<nsocket::http::Router_multipart_form_data>();
-        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
+        r->methodNotAllowedCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
             printf("-------------------------- Multi Router --------------------------\n");
             printf("Method: %s not allowed for Uri: %s\n", req->method.c_str(), req->uri.c_str());
             printf("Support methods:");
@@ -421,7 +412,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
             auto resp = nsocket::http::makeResponse405();
-            return resp;
+            conn.send(resp->pack());
         };
         r->headCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("--------------------------- Multi Router ---------------------------\n");
@@ -490,7 +481,7 @@ int main(int argc, char* argv[])
                 }
             }
         };
-        r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::SEND_RESPONSE_FUNC& sendRespFunc) {
+        r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
             /* 为了安全性起见, 在请求结束后, 再一次查找是否有未关闭的文件句柄, 有的话则关闭 */
             auto iter = g_fileHandlerMap.find(cid);
             if (g_fileHandlerMap.end() != iter)
@@ -503,10 +494,7 @@ int main(int argc, char* argv[])
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            if (sendRespFunc)
-            {
-                sendRespFunc(resp);
-            }
+            conn.send(resp->pack());
         };
         server.addRouter({nsocket::http::Method::POST}, {"/multi"}, r);
     }

@@ -34,10 +34,10 @@ public:
     virtual ~Server();
 
     /**
-     * @brief 设置路由未找到回调
+     * @brief 设置默认路由回调
      * @param cb 回调
      */
-    void setRouterNotFoundCallback(const std::function<RESPONSE_PTR(uint64_t cid, const REQUEST_PTR& req)>& cb);
+    void setDefaultRouterCallback(const std::function<void(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)>& cb);
 
     /**
      * @brief 添加路由
@@ -47,7 +47,7 @@ public:
      * @return 返回已添加过的URI列表
      */
     std::vector<std::string> addRouter(const std::vector<Method>& methods, const std::vector<std::string>& uriList,
-                                       std::shared_ptr<Router> router);
+                                       const std::shared_ptr<Router>& router);
 
     /**
      * @brief 运行(非阻塞)
@@ -118,7 +118,12 @@ private:
     /**
      * @brief 发送响应
      */
-    void sendResponse(const std::weak_ptr<TcpConnection>& wpConn, std::shared_ptr<Response> resp);
+    void sendResponse(const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb);
+
+    /**
+     * @brief 关闭连接
+     */
+    void closeConnection(const std::weak_ptr<TcpConnection>& wpConn);
 
 private:
     const std::string m_name; /* 服务名 */
@@ -132,7 +137,7 @@ private:
     std::shared_ptr<TcpServer> m_tcpServer = nullptr; /* TCP服务器 */
     std::mutex m_mutexSessionMap;
     std::unordered_map<uint64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
-    std::function<RESPONSE_PTR(uint64_t cid, const REQUEST_PTR& req)> m_routerNotFoundCb = nullptr; /* 路由未找到回调 */
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)> m_defaultRouterCb = nullptr; /* 默认路由回调 */
     std::unordered_map<std::string, std::shared_ptr<Router>> m_routerMap; /* 路由表 */
 };
 } // namespace http

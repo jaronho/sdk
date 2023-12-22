@@ -5,14 +5,46 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../core/socket_tcp.h"
 #include "multipart_form_data.h"
 #include "request.h"
-#include "response.h"
 
 namespace nsocket
 {
 namespace http
 {
+/**
+ * @brief 连接器
+ */
+class Connector
+{
+public:
+    Connector() = default;
+
+    /**
+     * @brief 构造函数
+     */
+    Connector(const std::function<void(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb)>& sendFunc,
+              const std::function<void()>& closeFunc);
+
+    /**
+     * @brief 发送数据(同步)
+     * @param data 数据
+     * @param cb 发送回调
+     * @param finFlag 发送后是否关闭连接, 默认true关闭, 如果数据需要分批发送则设置为false, 等数据都发送完毕再关闭
+     */
+    void send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb = nullptr, bool closeFlag = true) const;
+
+    /**
+     * @brief 关闭连接, 主要用于分批发送数据后手动调用
+     */
+    void close() const;
+
+private:
+    const std::function<void(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb)> m_sendFunc = nullptr; /* 发送函数 */
+    const std::function<void()> m_closeFunc = nullptr; /* 关闭连接函数 */
+};
+
 /**
  * @brief 路由
  */
@@ -40,10 +72,10 @@ protected:
     /**
      * @brief 响应客户端
      */
-    virtual void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc);
+    virtual void onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn);
 
 public:
-    std::function<RESPONSE_PTR(uint64_t cid, const REQUEST_PTR& req)> methodNotAllowedCb = nullptr; /* 方法不允许回调 */
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)> methodNotAllowedCb = nullptr; /* 方法不允许回调 */
 
 private:
     std::vector<Method> m_methods; /* 支持的方法, 例如: {Method::POST} */
@@ -57,12 +89,12 @@ class Router_batch : public Router
 public:
     std::function<void(uint64_t cid, const REQUEST_PTR& req)> headCb = nullptr;
     std::function<void(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen)> contentCb = nullptr;
-    std::function<void(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler = nullptr;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)> respHandler = nullptr;
 
 protected:
     void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
     void onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
+    void onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn) override;
 };
 
 /**
@@ -71,13 +103,12 @@ protected:
 class Router_simple : public Router
 {
 public:
-    std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& data, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler =
-        nullptr;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& data, const Connector& conn)> respHandler = nullptr;
 
 protected:
     void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
     void onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
+    void onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn) override;
 
 private:
     std::mutex m_mutex;
@@ -90,13 +121,13 @@ private:
 class Router_x_www_form_urlencoded : public Router
 {
 public:
-    std::function<void(uint64_t cid, const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields, const SEND_RESPONSE_FUNC& sendRespFunc)>
-        respHandler = nullptr;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const CaseInsensitiveMultimap& fields, const Connector& conn)> respHandler =
+        nullptr;
 
 protected:
     void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
     void onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
+    void onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn) override;
 
 private:
     struct Wrapper
@@ -124,12 +155,12 @@ public:
     std::function<void(uint64_t cid, const REQUEST_PTR& req, const std::string& name, const std::string& filename,
                        const std::string& contentType, size_t offset, const unsigned char* data, int dataLen, bool finish)>
         fileCb = nullptr;
-    std::function<void(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc)> respHandler = nullptr;
+    std::function<void(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)> respHandler = nullptr;
 
 protected:
     void onReqHead(uint64_t cid, const REQUEST_PTR& req) override;
     void onReqContent(uint64_t cid, const REQUEST_PTR& req, size_t offset, const unsigned char* data, int dataLen) override;
-    void onResponse(uint64_t cid, const REQUEST_PTR& req, const SEND_RESPONSE_FUNC& sendRespFunc) override;
+    void onResponse(uint64_t cid, const REQUEST_PTR& req, const Connector& conn) override;
 
 private:
     std::mutex m_mutex;
