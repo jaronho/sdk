@@ -232,7 +232,7 @@ int main(int argc, char* argv[])
         auto str = htmlString(cid, req, "404 Not Found");
         auto resp = nsocket::http::makeResponse404();
         resp->body.insert(resp->body.end(), str.begin(), str.end());
-        conn.send(resp->pack());
+        conn.sendAndClose(resp->pack());
     });
     /* 添加路由表 */
     {
@@ -248,7 +248,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
             auto resp = nsocket::http::makeResponse405();
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
                              const nsocket::http::Connector& conn) {
@@ -279,7 +279,7 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "Welcome To Home");
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         server.addRouter({nsocket::http::Method::GET}, {"/", "index", "index.htm", "index.html"}, r);
     }
@@ -296,7 +296,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
             auto resp = nsocket::http::makeResponse405();
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
                              const nsocket::http::Connector& conn) {
@@ -328,7 +328,7 @@ int main(int argc, char* argv[])
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         server.addRouter({nsocket::http::Method::GET, nsocket::http::Method::POST}, {"/simple"}, r);
     }
@@ -345,7 +345,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
             auto resp = nsocket::http::makeResponse405();
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::CaseInsensitiveMultimap& fields,
                              const nsocket::http::Connector& conn) {
@@ -383,7 +383,7 @@ int main(int argc, char* argv[])
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         server.addRouter({nsocket::http::Method::POST}, {"/form"}, r);
     }
@@ -412,7 +412,7 @@ int main(int argc, char* argv[])
             printf("\n");
             printf("--------------------------------------------------------------------\n");
             auto resp = nsocket::http::makeResponse405();
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         r->headCb = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req) {
             printf("--------------------------- Multi Router ---------------------------\n");
@@ -494,7 +494,7 @@ int main(int argc, char* argv[])
                                  + "\",\"port\":" + std::to_string(req->port) + "}}";
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), result.begin(), result.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         server.addRouter({nsocket::http::Method::POST}, {"/multi"}, r);
     }

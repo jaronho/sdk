@@ -1,5 +1,7 @@
 #include "response.h"
 
+#include <algorithm>
+
 namespace nsocket
 {
 namespace http
@@ -34,7 +36,58 @@ std::vector<unsigned char> Response::pack()
     return data;
 }
 
-RESPONSE_PTR makeResponse200()
+std::string getFileMimeType(const std::string& fileName)
+{
+    static auto isEndWidth = [](std::string str, std::string end) {
+        if (end.empty())
+        {
+            return true;
+        }
+        if (end.size() > str.size())
+        {
+            return false;
+        }
+        std::transform(str.begin(), str.end(), str.begin(), tolower);
+        std::transform(end.begin(), end.end(), end.begin(), tolower);
+        if (0 == str.compare(str.size() - end.size(), end.size(), end))
+        {
+            return true;
+        }
+        return false;
+    };
+    if (isEndWidth(fileName, ".js"))
+    {
+        return "application/javascript";
+    }
+    else if (isEndWidth(fileName, ".pdf"))
+    {
+        return "application/pdf";
+    }
+    else if (isEndWidth(fileName, ".gif"))
+    {
+        return "image/gif";
+    }
+    else if (isEndWidth(fileName, ".jpeg") || isEndWidth(fileName, ".jpg"))
+    {
+        return "image/jpeg";
+    }
+    else if (isEndWidth(fileName, ".png"))
+    {
+        return "image/png";
+    }
+    else if (isEndWidth(fileName, ".css"))
+    {
+        return "text/css";
+    }
+    else if (isEndWidth(fileName, ".html"))
+    {
+        return "text/html";
+    }
+    return "application/octet-stream";
+}
+
+RESPONSE_PTR
+makeResponse200()
 {
     auto resp = std::make_shared<nsocket::http::Response>();
     resp->statusCode = StatusCode::success_ok;

@@ -32,6 +32,13 @@ public:
 using RESPONSE_PTR = std::shared_ptr<Response>;
 
 /**
+ * @brief 获取文件对应的MIME类型
+ * @param fileName 文件名
+ * @return MIME类型
+ */
+std::string getFileMimeType(const std::string& fileName);
+
+/**
  * @brief 创建200响应 
  */
 RESPONSE_PTR makeResponse200();

@@ -28,17 +28,23 @@ public:
               const std::function<void()>& closeFunc);
 
     /**
-     * @brief 发送数据(同步)
-     * @param data 数据
-     * @param cb 发送回调
-     * @param finFlag 发送后是否关闭连接, 默认true关闭, 如果数据需要分批发送则设置为false, 等数据都发送完毕再关闭
-     */
-    void send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb = nullptr, bool closeFlag = true) const;
-
-    /**
      * @brief 关闭连接, 主要用于分批发送数据后手动调用
      */
     void close() const;
+
+    /**
+     * @brief 发送数据(同步)
+     * @param data 数据
+     * @param cb 发送回调
+     */
+    void send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb = nullptr) const;
+
+    /**
+     * @brief 发送数据并关闭连接(同步)
+     * @param data 数据
+     * @param cb 发送回调
+     */
+    void sendAndClose(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb = nullptr) const;
 
 private:
     const std::function<void(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb)> m_sendFunc = nullptr; /* 发送函数 */

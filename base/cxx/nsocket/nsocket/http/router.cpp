@@ -44,20 +44,28 @@ Connector::Connector(const std::function<void(const std::vector<unsigned char>& 
 {
 }
 
-void Connector::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb, bool closeFlag) const
+void Connector::close() const
 {
-    if (m_sendFunc)
-    {
-        m_sendFunc(data, cb);
-    }
-    if (closeFlag && m_closeFunc)
+    if (m_closeFunc)
     {
         m_closeFunc();
     }
 }
 
-void Connector::close() const
+void Connector::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb) const
 {
+    if (m_sendFunc)
+    {
+        m_sendFunc(data, cb);
+    }
+}
+
+void Connector::sendAndClose(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb) const
+{
+    if (m_sendFunc)
+    {
+        m_sendFunc(data, cb);
+    }
     if (m_closeFunc)
     {
         m_closeFunc();
