@@ -25,15 +25,14 @@ void testFilesystem()
     {
         printf("exist: true\n");
         long long fileSize;
-        char* fileData = fi.readAll(fileSize, true);
+        char* fileData = fi.readAll(fileSize);
         printf("size: %lld\n", fileSize);
         if (fileData)
         {
             printf("data:--------------------\n%s\n--------------------\n", fileData);
             free(fileData);
         }
-        size_t offset = 2;
-        size_t count = 4;
+        size_t offset = 2, count = 4;
         char* buffer = fi.read(offset, count);
         if (buffer)
         {

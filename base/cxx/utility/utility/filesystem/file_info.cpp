@@ -307,7 +307,7 @@ long long FileInfo::size() const
     return fileSize;
 }
 
-char* FileInfo::readAll(long long& fileSize, bool textFlag) const
+char* FileInfo::readAll(long long& fileSize) const
 {
     if (m_fullName.empty())
     {
@@ -321,26 +321,26 @@ char* FileInfo::readAll(long long& fileSize, bool textFlag) const
         return NULL;
     }
     size_t count = 0;
-    auto fileData = read(f, 0, count, textFlag);
+    auto fileData = read(f, 0, count);
     fileSize = count;
     fclose(f);
     return fileData;
 }
 
-std::string FileInfo::readAll(bool textFlag) const
+std::string FileInfo::readAll() const
 {
     std::string fileString;
     long long fileSize;
-    char* fileData = readAll(fileSize, textFlag);
+    char* fileData = readAll(fileSize);
     if (fileData)
     {
-        fileString = fileData;
+        fileString = std::string(fileData, fileData + fileSize);
         free(fileData);
     }
     return fileString;
 }
 
-char* FileInfo::read(size_t offset, size_t& count, bool textFlag) const
+char* FileInfo::read(size_t offset, size_t& count) const
 {
     if (m_fullName.empty())
     {
@@ -351,7 +351,7 @@ char* FileInfo::read(size_t offset, size_t& count, bool textFlag) const
     {
         return NULL;
     }
-    auto buffer = read(f, offset, count, textFlag);
+    auto buffer = read(f, offset, count);
     fclose(f);
     return buffer;
 }
@@ -537,7 +537,7 @@ bool FileInfo::isTextFile() const
     return ret;
 }
 
-char* FileInfo::read(FILE* f, size_t offset, size_t& count, bool textFlag)
+char* FileInfo::read(FILE* f, size_t offset, size_t& count)
 {
     if (!f)
     {
@@ -562,7 +562,7 @@ char* FileInfo::read(FILE* f, size_t offset, size_t& count, bool textFlag)
         {
             count = fileSize - offset;
         }
-        auto buffSize = count + (textFlag ? 1 : 0);
+        auto buffSize = count;
         buffer = (char*)malloc(buffSize);
         if (buffer)
         {
@@ -573,10 +573,6 @@ char* FileInfo::read(FILE* f, size_t offset, size_t& count, bool textFlag)
             fseeko64(f, offset, SEEK_SET);
 #endif
             count = fread(buffer, 1, buffSize, f);
-            if (textFlag)
-            {
-                buffer[buffSize - 1] = '\0';
-            }
         }
     }
     else

@@ -77,9 +77,12 @@ void testCharset(int argc, char** argv)
                 utility::FileInfo fi(name);
                 if (fi.isTextFile())
                 {
-                    long long contentLen;
-                    char* content = fi.readAll(contentLen, true);
-                    if (content)
+                    auto content = fi.readAll();
+                    if (content.empty())
+                    {
+                        printf("    file content empty\n");
+                    }
+                    else
                     {
                         printf("      text file content charset:");
                         switch (utility::Charset::getCoding(content))
@@ -94,11 +97,6 @@ void testCharset(int argc, char** argv)
                             printf(" Unknown\n");
                             break;
                         }
-                        free(content);
-                    }
-                    else
-                    {
-                        printf("    file content empty\n");
                     }
                 }
             },

@@ -163,26 +163,23 @@ public:
     /**
      * @brief 获取文件所有数据
      * @param fileSize [输出]文件大小, -1-文件不存在, >=0-文件大小
-     * @param textFlag true-文本, false-二进制
      * @return 数据(需要外部调用free释放内存)
      */
-    char* readAll(long long& fileSize, bool textFlag = false) const;
+    char* readAll(long long& fileSize) const;
 
     /**
      * @brief 获取文件所有数据
-     * @param textFlag true-文本, false-二进制
      * @return 数据
      */
-    std::string readAll(bool textFlag = false) const;
+    std::string readAll() const;
 
     /**
      * @brief 读取文件数据
      * @param offset 读取的偏移值, 为0时表示从头开始
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数)
-     * @param textFlag true-文本, false-二进制
      * @return 数据(需要外部调用free释放内存)
      */
-    char* read(size_t offset, size_t& count, bool textFlag = false) const;
+    char* read(size_t offset, size_t& count) const;
 
     /**
      * @brief 写文件数据
@@ -249,10 +246,9 @@ public:
      * @param f 文件指针
      * @param offset 读取的偏移值, 为0时表示从头开始
      * @param count [输入/输出]要读取的字节数(返回实际读取的字节数), 为0时表示读取所有
-     * @param textFlag true-文本, false-二进制
      * @return 数据(需要外部调用free释放内存)
      */
-    static char* read(FILE* f, size_t offset, size_t& count, bool textFlag);
+    static char* read(FILE* f, size_t offset, size_t& count);
 
     /**
      * @brief 从文本文件中读取一行
