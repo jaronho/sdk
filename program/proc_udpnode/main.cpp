@@ -236,7 +236,7 @@ int main(int argc, char* argv[])
                 while (offset < fileSize)
                 {
                     size_t count = MAX_PAYLOAD;
-                    auto buf = utility::FileInfo::read(f, offset, count, false);
+                    auto buf = utility::FileInfo::read(f, offset, count);
                     offset += count;
                     if (buf)
                     {
@@ -251,8 +251,11 @@ int main(int argc, char* argv[])
             {
                 while (!feof(f))
                 {
-                    std::string bomFlag, endFlag;
-                    auto line = utility::FileInfo::readLine(f, bomFlag, endFlag);
+                    std::string line, bomFlag, endFlag;
+                    if (!utility::FileInfo::readLine(f, line, bomFlag, endFlag))
+                    {
+                        break;
+                    }
                     if (line.empty())
                     {
                         continue;
@@ -282,38 +285,41 @@ int main(int argc, char* argv[])
             {
                 while (!feof(f))
                 {
-                    std::string bomFlag, endFlag;
-                    auto buf = utility::FileInfo::readLine(f, bomFlag, endFlag);
-                    if (buf.empty())
+                    std::string line, bomFlag, endFlag;
+                    if (!utility::FileInfo::readLine(f, line, bomFlag, endFlag))
+                    {
+                        break;
+                    }
+                    if (line.empty())
                     {
                         continue;
                     }
-                    auto line = utility::StrTool::toLower(buf);
-                    line = utility::StrTool::replace(line, "0x", "");
-                    line = utility::StrTool::replace(line, " ", "");
-                    if (!utility::Digit::isHex(line)) /* 非十六进制 */
+                    auto buf = utility::StrTool::toLower(line);
+                    buf = utility::StrTool::replace(buf, "0x", "");
+                    buf = utility::StrTool::replace(buf, " ", "");
+                    if (!utility::Digit::isHex(buf)) /* 非十六进制 */
                     {
-                        printf("-------------------- 发送失败: 数据格式错误(非十六进制), %s\n", buf.c_str());
+                        printf("-------------------- 发送失败: 数据格式错误(非十六进制), %s\n", line.c_str());
                         break;
                     }
-                    auto bytes = utility::StrTool::fromHex(line);
+                    auto bytes = utility::StrTool::fromHex(buf);
                     if (bytes.empty())
                     {
-                        printf("-------------------- 发送失败: 数据格式错误(非十六进制), %s\n", buf.c_str());
+                        printf("-------------------- 发送失败: 数据格式错误(非十六进制), %s\n", line.c_str());
                         continue;
                     }
                     size_t offset = 0;
                     bool ret = false;
-                    while (offset < line.size())
+                    while (offset < buf.size())
                     {
                         size_t count = MAX_PAYLOAD - 1;
-                        if (count > line.size() - offset)
+                        if (count > buf.size() - offset)
                         {
-                            count = line.size() - offset;
+                            count = buf.size() - offset;
                         }
-                        auto buf = line.substr(offset, count);
+                        auto tmp = buf.substr(offset, count);
                         offset += count;
-                        auto bytes = utility::StrTool::fromHex(buf);
+                        auto bytes = utility::StrTool::fromHex(tmp);
                         std::vector<unsigned char> data;
                         data.insert(data.end(), bytes.begin(), bytes.end());
                         ret = sendData(remoteAddr, remotePort, data);

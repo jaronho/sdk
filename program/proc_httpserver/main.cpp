@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
         auto str = htmlString(cid, req, "404 Not Found");
         auto resp = nsocket::http::makeResponse404();
         resp->body.insert(resp->body.end(), str.begin(), str.end());
-        conn.send(resp->pack());
+        conn.sendAndClose(resp->pack());
     });
     /* 添加路由表 */
     if (routerList.is_array())
@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "405 Method Not Allow");
             auto resp = nsocket::http::makeResponse405();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
                              const nsocket::http::Connector& conn) {
@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "Welcome To Home");
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         if (!routerList.empty())
         {
@@ -271,7 +271,7 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "405 Method Not Allow");
             auto resp = nsocket::http::makeResponse405();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         r->respHandler = [&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& data,
                              const nsocket::http::Connector& conn) {
@@ -303,7 +303,7 @@ int main(int argc, char* argv[])
             auto str = htmlString(cid, req, "Welcome To Home");
             auto resp = nsocket::http::makeResponse200();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
         };
         g_server->addRouter({nsocket::http::Method::GET}, {"/", "index", "index.htm", "index.html"}, r);
     }
