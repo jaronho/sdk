@@ -223,7 +223,7 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             if (m_defaultRouterCb)
             {
                 m_defaultRouterCb(conn->getId(), session->req,
-                                  Connector([&, wpConn = session->wpConn](const const std::vector<unsigned char>& data,
+                                  Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
                                                                           const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
                                             [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
                 return;
@@ -237,7 +237,7 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             {
                 iter->second->onResponse(
                     conn->getId(), session->req,
-                    Connector([&, wpConn = session->wpConn](const const std::vector<unsigned char>& data,
+                    Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
                                                             const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
                               [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
                 return;
@@ -247,7 +247,7 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             {
                 iter->second->methodNotAllowedCb(
                     conn->getId(), session->req,
-                    Connector([&, wpConn = session->wpConn](const const std::vector<unsigned char>& data,
+                    Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
                                                             const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
                               [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
                 return;
