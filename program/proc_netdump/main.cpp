@@ -1,4 +1,4 @@
-﻿#include <algorithm>
+#include <algorithm>
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -188,17 +188,17 @@ int main(int argc, char* argv[])
 {
     /* 命令参数 */
     cmdline::parser parser;
-    parser.header("网络数据抓包工具");
-    parser.add("list", 'l', "显示所有网络设备");
-    parser.add<std::string>("interface", 'I', "指定要抓取数据的网络设备", false);
-    parser.add<std::string>("ip", 'i', "指定要抓取数据的IPv4地址", false);
+    parser.header("网络数据抓包工具.");
+    parser.add("list", 'l', "显示所有网络设备.");
+    parser.add<std::string>("interface", 'I', "指定要抓取数据的网络设备.", false);
+    parser.add<std::string>("ip", 'i', "指定要抓取数据的IPv4地址.", false);
 #ifndef _WIN32
     parser.add<std::string>("direction", 'd', "抓包流向, 值范围: [inout-所有, in-接收, out-发送], 默认:", false, "inout",
-                            cmdline::oneof("inout", "in", "out"));
+                            cmdline::oneof(std::string("inout"), std::string("in"), std::string("out")));
 #endif
     auto protos = utility::StrTool::join(Filter::protoList(), ", ");
     parser.add<std::string>("express", 'e', "设置过滤表达式, 目前只支持单个协议过滤, 例如: " + protos, false, "");
-    parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
+    parser.parse_check(argc, argv, " 用法 ", " 选项 ", "显示帮助信息并退出.");
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
     bool showList = parser.exist("list");
