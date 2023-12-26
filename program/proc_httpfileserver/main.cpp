@@ -7,6 +7,7 @@
 #include "nsocket/http/server.h"
 #include "utility/charset/charset.h"
 #include "utility/cmdline/cmdline.h"
+#include "utility/datetime/datetime.h"
 #include "utility/filesystem/file_info.h"
 #include "utility/filesystem/path_info.h"
 #include "utility/strtool/strtool.h"
@@ -17,10 +18,11 @@
  */
 struct ItemInfo
 {
-    std::string name;
-    utility::FileAttribute attr;
+    std::string name; /* 名称 */
+    utility::FileAttribute attr; /* 属性 */
 };
 
+utility::PathInfo g_rootDir; /* 根目录 */
 std::shared_ptr<nsocket::http::Server> g_server = nullptr; /* 服务器 */
 
 /**
@@ -77,14 +79,22 @@ std::string htmlString(uint64_t cid, const nsocket::http::REQUEST_PTR& req, cons
  */
 std::string fileSizeUnit(size_t fileSize)
 {
-    char buf[32] = {0};
+    char buf[64] = {0};
     if (fileSize >= 1024 * 1024 * 1024) /* 大于1G */
     {
-        sprintf(buf, "%.2f G", fileSize / 1024.f / 1024.f / 1024.f);
+        sprintf(buf, "<font color=\"#FF0000\">%.2f G</font>", fileSize / 1024.f / 1024.f / 1024.f);
+    }
+    else if (fileSize >= 512 * 1024 * 1024) /* 大于512M */
+    {
+        sprintf(buf, "<font color=\"#E0670B\">%.1f M</font>", fileSize / 1024.f / 1024.f);
+    }
+    else if (fileSize >= 100 * 1024 * 1024) /* 大于100M */
+    {
+        sprintf(buf, "<font color=\"#0000FF\">%.1f M</font>", fileSize / 1024.f / 1024.f);
     }
     else if (fileSize >= 1024 * 1024) /* 大于1M */
     {
-        sprintf(buf, "%.1f M", fileSize / 1024.f / 1024.f);
+        sprintf(buf, "<font color=\"#30BF50\">%.1f M</font>", fileSize / 1024.f / 1024.f);
     }
     else if (fileSize >= 1024) /* 大于1K */
     {
@@ -105,11 +115,17 @@ void handleDir(const nsocket::http::Connector& conn, const std::string& rootDir,
     /* 页面头部 */
     std::string str;
     str.append("<html>");
+    str.append("\n");
     str.append("<head><title>Index of " + uri + "</title></head>");
+    str.append("\n");
     str.append("<body>");
+    str.append("\n");
     str.append("<h1>Index of " + uri + "</h1>");
+    str.append("\n");
     str.append("<hr>");
+    str.append("\n");
     str.append("<pre>");
+    str.append("\n");
     /* 返回上一级 */
     bool newLine = false;
     if ("/" != uri) /* 当前在子目录 */
@@ -153,29 +169,51 @@ void handleDir(const nsocket::http::Connector& conn, const std::string& rootDir,
         auto target = utility::FileInfo(info.name).filename();
         if (newLine)
         {
-            str.append("<br/>");
+            str.append("\n");
         }
         newLine = true;
-        static const size_t MAX_TARGET_NAME_LENGTH = 60;
+        static const int MAX_TARGET_NAME_LENGTH = 80;
+        auto length = target.size();
+        /* 名字太长换行 */
+        std::string tmpTarget = target;
+        std::string lines;
+        while (tmpTarget.size() >= MAX_TARGET_NAME_LENGTH - 1)
+        {
+            length = MAX_TARGET_NAME_LENGTH - 1;
+            lines += lines.empty() ? "" : "\n";
+            lines += tmpTarget.substr(0, MAX_TARGET_NAME_LENGTH - 1);
+            tmpTarget = tmpTarget.substr(MAX_TARGET_NAME_LENGTH - 1);
+        }
+        if (!lines.empty() && !tmpTarget.empty())
+        {
+            length = tmpTarget.size();
+            lines += "\n";
+            lines += tmpTarget;
+        }
+        /* 渲染 */
+        int spaceCount = 0;
         if (info.attr.isDir)
         {
-            str.append("<a href=\"" + target + "/\">" + target + "/</a>");
-            auto spaceCount = MAX_TARGET_NAME_LENGTH - target.size() - 1;
-            str.append(std::string(spaceCount, ' ')).append(info.attr.modifyTimeFmt());
-            str.append(std::string(6, ' ')).append("-");
+            str.append("<a href=\"" + target + "/\">" + (lines.empty() ? target : lines) + "/</a>");
+            spaceCount = MAX_TARGET_NAME_LENGTH - length - 1;
         }
         else
         {
-            str.append("<a href=\"" + target + "\">" + target + +"</a>");
-            auto spaceCount = MAX_TARGET_NAME_LENGTH - target.size();
-            str.append(std::string(spaceCount, ' ')).append(info.attr.modifyTimeFmt());
-            str.append(std::string(6, ' ')).append(fileSizeUnit(info.attr.size));
+            str.append("<a href=\"" + target + "\">" + (lines.empty() ? target : lines) + +"</a>");
+            spaceCount = MAX_TARGET_NAME_LENGTH - length;
         }
+        spaceCount = spaceCount > 0 ? spaceCount : 1;
+        str.append(std::string(spaceCount, ' ')).append(info.attr.modifyTimeFmt());
+        str.append(std::string(6, ' ')).append(info.attr.isDir ? "-" : fileSizeUnit(info.attr.size));
     }
     /* 页面尾部 */
+    str.append("\n");
     str.append("</pre>");
+    str.append("\n");
     str.append("<hr>");
+    str.append("\n");
     str.append("</body>");
+    str.append("\n");
     str.append("</html>");
     /* 发送响应 */
     auto resp = nsocket::http::makeResponse200();
@@ -245,7 +283,7 @@ int main(int argc, char* argv[])
 {
     /* 命令参数 */
     cmdline::parser parser;
-    parser.header("HTTP服务端");
+    parser.header("HTTP文件服务器");
     parser.add<std::string>("server", 's', "服务器地址, 默认:", false, "0.0.0.0");
     parser.add<int>("port", 'p', "服务器端口, 默认:", false, 4444, cmdline::range(1, 65535));
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -256,7 +294,8 @@ int main(int argc, char* argv[])
     parser.add<std::string>("pk-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
     parser.add<std::string>("pk-pwd", 'P', "私钥文件密码, 例如: 123456, 默认:", false, "");
 #endif
-    parser.add<std::string>("dir", 'r', "资源文件路径, 例如: /home/data/files, 默认:", false, "");
+    parser.add<std::string>("dir", 'd', "资源文件路径, 例如: /home/data/files, 默认:", false, "");
+    parser.add<int>("thread-num", 'n', "并发线程数量, 默认:", false, 10, cmdline::range(1, 1024));
     parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
@@ -271,24 +310,25 @@ int main(int argc, char* argv[])
     auto pkPwd = parser.get<std::string>("pk-pwd");
 #endif
     auto fileDir = parser.get<std::string>("dir");
+    auto threadNum = parser.get<int>("thread-num");
     fileDir = fileDir.empty() ? utility::PathInfo::getcwd() : fileDir;
-    fileDir = utility::StrTool::replace(fileDir, "\\", "/");
-    utility::PathInfo rootDir(fileDir);
-    if (!rootDir.exist())
+    g_rootDir = utility::PathInfo(fileDir);
+    if (!g_rootDir.exist())
     {
-        printf("资源文件路径: %s 不存在\n", rootDir.path().c_str());
+        printf("资源文件路径: %s 不存在\n", g_rootDir.path().c_str());
         return 0;
     }
-    else if (!rootDir.isAbsolute())
+    else if (!g_rootDir.isAbsolute())
     {
-        printf("资源文件路径: %s 不能为相对路径\n", rootDir.path().c_str());
+        printf("资源文件路径: %s 不能为相对路径\n", g_rootDir.path().c_str());
         return 0;
     }
-    printf("资源文件路径: %s\n", rootDir.path().c_str());
-    g_server = std::make_shared<nsocket::http::Server>("http_server", 15, server, port);
+    printf("资源文件路径: %s\n", g_rootDir.path().c_str());
+    g_server = std::make_shared<nsocket::http::Server>("http_server", threadNum, server, port);
     /* 设置默认路由回调 */
     g_server->setDefaultRouterCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
-        printf("****************************** 默认路由 ******************************\n");
+        bool keeyAlive = false;
+        printf("************************* [%s] *************************\n", utility::DateTime::getNow().yyyyMMddhhmmss().c_str());
         printf("***     Cid: %zu\n", cid);
         printf("***  Client: %s:%d\n", req->host.c_str(), req->port);
         printf("*** Version: %s\n", req->version.c_str());
@@ -308,32 +348,36 @@ int main(int argc, char* argv[])
             for (auto iter = req->headers.begin(); req->headers.end() != iter; ++iter)
             {
                 printf("             %s: %s\n", iter->first.c_str(), iter->second.c_str());
+                if (utility::StrTool::equal("Connection", iter->first, false) && utility::StrTool::equal("keep-alive", iter->second, false))
+                {
+                    keeyAlive = true;
+                }
             }
         }
-        printf("************************************************************************\n");
+        printf("***********************************************************************\n");
         if ("GET" != req->method) /* 方法不允许 */
         {
             printf("方法 %s 不被允许\n", req->method.c_str());
             auto str = htmlString(cid, req, "405 Method Not Allow");
             auto resp = nsocket::http::makeResponse405();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
             return;
         }
-        auto target = rootDir.path().append(req->uri);
-        target = utility::Util::urlDecode(target);
+        auto uri = req->uri;
+        uri = utility::Util::urlDecode(uri);
 #ifdef _WIN32
-        target = utility::Charset::utf8ToGbk(target);
+        uri = utility::Charset::utf8ToGbk(uri);
 #endif
-        target = utility::StrTool::replace(target, "\\", "/");
+        auto target = g_rootDir.path().append(uri);
         utility::FileAttribute attr;
         if (!utility::getFileAttribute(target, attr))
         {
             printf("资源: %s 不存在\n", target.c_str());
-            auto str = htmlString(cid, req, "404 Not Found");
+            auto str = htmlString(cid, req, "404 Not Found: " + uri);
             auto resp = nsocket::http::makeResponse404();
             resp->body.insert(resp->body.end(), str.begin(), str.end());
-            conn.send(resp->pack());
+            conn.sendAndClose(resp->pack());
             return;
         }
         printf("资源: %s\n", target.c_str());
@@ -341,7 +385,7 @@ int main(int argc, char* argv[])
         {
             printf("目录, 创建时间: %s, 修改时间: %s, 访问时间: %s\n", attr.createTimeFmt().c_str(), attr.modifyTimeFmt().c_str(),
                    attr.accessTimeFmt().c_str());
-            handleDir(conn, rootDir.path(), req->uri);
+            handleDir(conn, g_rootDir.path(), uri);
         }
         else if (attr.isFile) /* 文件 */
         {
@@ -349,7 +393,10 @@ int main(int argc, char* argv[])
                    attr.modifyTimeFmt().c_str(), attr.accessTimeFmt().c_str(), attr.size);
             handleFile(conn, target, attr.size);
         }
-        conn.close();
+        if (!keeyAlive) /* 非保活才关闭连接 */
+        {
+            conn.close();
+        }
     });
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
