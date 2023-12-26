@@ -29,19 +29,20 @@ static std::wstring string2wstring(const std::string& str)
 }
 #endif
 
-bool getFileAttribute(std::string name, FileAttribute& attr)
+bool getFileAttribute(const std::string& name, FileAttribute& attr)
 {
     memset(&attr, 0, sizeof(FileAttribute));
     if (name.empty() || "." == name || ".." == name)
     {
         return false;
     }
-    const char& lastChar = name[name.size() - 1];
-    if (name.size() > 1 && ('/' == lastChar || '\\' == lastChar))
+    auto temp = name;
+    const char& lastChar = temp[temp.size() - 1];
+    if (temp.size() > 1 && ('/' == lastChar || '\\' == lastChar))
     {
-        name.pop_back();
+        temp.pop_back();
     }
-    auto subName = name.substr(name.find_last_of("/\\") + 1, name.size());
+    auto subName = temp.substr(temp.find_last_of("/\\") + 1, temp.size());
     if ("." == subName || ".." == subName)
     {
         return false;
@@ -90,19 +91,20 @@ bool getFileAttribute(std::string name, FileAttribute& attr)
     return true;
 }
 
-bool getDiskAttribute(std::string name, DiskAttribute& attr)
+bool getDiskAttribute(const std::string& name, DiskAttribute& attr)
 {
     memset(&attr, 0, sizeof(DiskAttribute));
     if (name.empty() || "." == name || ".." == name)
     {
         return false;
     }
-    const char& lastChar = name[name.size() - 1];
-    if (name.size() > 1 && ('/' == lastChar || '\\' == lastChar))
+    auto temp = name;
+    const char& lastChar = temp[temp.size() - 1];
+    if (temp.size() > 1 && ('/' == lastChar || '\\' == lastChar))
     {
-        name.pop_back();
+        temp.pop_back();
     }
-    auto subName = name.substr(name.find_last_of("/\\") + 1, name.size());
+    auto subName = temp.substr(temp.find_last_of("/\\") + 1, temp.size());
     if ("." == subName || ".." == subName)
     {
         return false;

@@ -61,7 +61,7 @@ typedef struct
  * @param attr [输出]属性
  * @return true-成功, false-失败
  */
-bool getDiskAttribute(std::string name, DiskAttribute& attr);
+bool getDiskAttribute(const std::string& name, DiskAttribute& attr);
 
 /**
  * @brief 获取文件(目录)属性
@@ -69,5 +69,5 @@ bool getDiskAttribute(std::string name, DiskAttribute& attr);
  * @param attr [输出]属性
  * @return true-成功, false-失败
  */
-bool getFileAttribute(std::string name, FileAttribute& attr);
+bool getFileAttribute(const std::string& name, FileAttribute& attr);
 } // namespace utility
