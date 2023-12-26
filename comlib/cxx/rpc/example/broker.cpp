@@ -6,9 +6,12 @@ int main(int argc, char* argv[])
     printf("** This is RPC broker                                                                                    **\n");
     printf("** Options:                                                                                              **\n");
     printf("**                                                                                                       **\n");
-    printf("** [-s]                   server address, default: 127.0.0.1                                             **\n");
+    printf("** [-s]                   server address, default: 0.0.0.0                                               **\n");
     printf("** [-p]                   server port, default: 4335                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
+    printf("** [-ssl]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
+    printf("** [-way]                 specify ssl way verify [1, 2], default: 1                                      **\n");
+    printf("** [-fmt]                 specify file format [1-DER, 2-PEM]. default: 2                                 **\n");
     printf("** [-cf]                  specify certificate file. e.g. server.crt                                      **\n");
     printf("** [-pkf]                 specify private key file, e.g. server.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
@@ -18,6 +21,9 @@ int main(int argc, char* argv[])
     printf("\n");
     std::string serverHost;
     int serverPort = 0;
+    int sslOn = 0;
+    int sslWay = 1;
+    int certFmt = 2;
     std::string certFile;
     std::string privateKeyFile;
     std::string privateKeyFilePwd;
@@ -42,7 +48,33 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-#if (1 == ENABLE_NSOCKET_OPENSSL)
+        else if (0 == strcmp(key, "-ssl")) /* 是否启用SSL */
+        {
+            ++i;
+            if (i < argc)
+            {
+                sslOn = atoi(argv[i]);
+                ++i;
+            }
+        }
+        else if (0 == strcmp(key, "-way")) /* SSL校验 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                sslWay = atoi(argv[i]);
+                ++i;
+            }
+        }
+        else if (0 == strcmp(key, "-fmt")) /* 文件格式 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                certFmt = atoi(argv[i]);
+                ++i;
+            }
+        }
         else if (0 == strcmp(key, "-cf")) /* 证书文件 */
         {
             ++i;
@@ -70,7 +102,6 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-#endif
         else
         {
             ++i;
@@ -78,18 +109,39 @@ int main(int argc, char* argv[])
     }
     if (serverHost.empty())
     {
-        serverHost = "127.0.0.1";
+        serverHost = "0.0.0.0";
     }
     if (serverPort <= 0)
     {
         serverPort = 4335;
     }
-    printf("broker: %s:%d\n", serverHost.c_str(), serverPort);
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    rpc::Broker broker("rpc_broker", 2, serverHost, serverPort, certFile, privateKeyFile, privateKeyFilePwd);
-#else
-    rpc::Broker broker("rpc_broker", 2, serverHost, serverPort);
-#endif
+    if (sslOn < 0)
+    {
+        sslOn = 0;
+    }
+    else if (sslOn > 1)
+    {
+        sslOn = 1;
+    }
+    if (sslWay < 1)
+    {
+        sslWay = 1;
+    }
+    else if (sslWay > 2)
+    {
+        sslWay = 2;
+    }
+    if (certFmt < 1)
+    {
+        certFmt = 1;
+    }
+    else if (certFmt > 2)
+    {
+        certFmt = 2;
+    }
+    printf("broker: %s:%d, ssl: %d, way: %d, certFmt: %d, certFile: %s, pkFile: %s\n", serverHost.c_str(), serverPort, sslOn, sslWay,
+           certFmt, certFile.c_str(), privateKeyFile.c_str());
+    rpc::Broker broker("rpc_broker", 2, serverHost, serverPort, sslOn, sslWay, certFmt, certFile, privateKeyFile, privateKeyFilePwd);
     if (!broker.isValid())
     {
         printf("broker invalid, please check host or port\n");

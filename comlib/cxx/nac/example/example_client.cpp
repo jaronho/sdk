@@ -251,7 +251,7 @@ int main(int argc, char* argv[])
             long long fileSize = 0;
             if (vec.size() > 1)
             {
-                auto fileData = utility::FileInfo(vec[1]).readAll(fileSize, true);
+                auto fileData = utility::FileInfo(vec[1]).readAll(fileSize);
                 if (fileData)
                 {
                     data = fileData;

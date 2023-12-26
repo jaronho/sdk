@@ -184,7 +184,8 @@ public:
         {
             auto name = "session_" + std::to_string(m_call.seq_id);
             m_timer = std::make_shared<threading::SteadyTimer>(
-                name, timeout, std::chrono::steady_clock::duration::zero(), [&]() { onTimeout(); }, s_executor);
+                name, timeout, std::chrono::steady_clock::duration::zero(),
+                [&](const std::chrono::steady_clock::time_point& tp) { onTimeout(); }, s_executor);
         }
         m_timer->start();
         return true;
@@ -236,12 +237,8 @@ private:
     std::weak_ptr<Client> m_wpCallerClient;
 };
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-Broker::Broker(const std::string& name, size_t threadCount, const std::string& serverHost, int serverPort, const std::string& certFile,
-               const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
-#else
-Broker::Broker(const std::string& name, size_t threadCount, const std::string& serverHost, int serverPort)
-#endif
+Broker::Broker(const std::string& name, size_t threadCount, const std::string& serverHost, int serverPort, bool sslOn, int sslWay,
+               int certFmt, const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
 {
     m_tcpServer = std::make_shared<nsocket::TcpServer>(name, threadCount, serverHost, serverPort);
     m_tcpServer->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) { handleNewConnection(wpConn); });
@@ -249,11 +246,12 @@ Broker::Broker(const std::string& name, size_t threadCount, const std::string& s
                                                const std::vector<unsigned char>& data) { handleRecvConnectionData(wpConn, data); });
     m_tcpServer->setConnectionCloseCallback([&](int64_t sid, const boost::asio::ip::tcp::endpoint& point,
                                                 const boost::system::error_code& code) { handleConnectionClose(point, code); });
-#if (1 == ENABLE_NSOCKET_OPENSSL)
+    m_sslOn = sslOn;
+    m_sslWay = sslWay;
+    m_certFmt = certFmt;
     m_certFile = certFile;
     m_privateKeyFile = privateKeyFile;
     m_privateKeyFilePwd = privateKeyFilePwd;
-#endif
 }
 
 bool Broker::isValid() const
@@ -283,12 +281,7 @@ bool Broker::run()
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
     {
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-        return m_tcpServer->run(nsocket::TcpServer::getSsl2WayContext(boost::asio::ssl::context::file_format::pem, m_certFile,
-                                                                      m_privateKeyFile, m_privateKeyFilePwd, true));
-#else
-        return m_tcpServer->run();
-#endif
+        return m_tcpServer->run(m_sslOn, m_sslWay, m_certFmt, m_certFile, m_privateKeyFile, m_privateKeyFilePwd);
     }
     catch (const std::exception& e)
     {

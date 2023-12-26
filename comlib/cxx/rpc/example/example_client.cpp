@@ -12,8 +12,11 @@ int main(int argc, char* argv[])
     printf("** [-s]                   broker address, default: 127.0.0.1                                             **\n");
     printf("** [-p]                   broker port, default: 4335                                                     **\n");
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    printf("** [-cf]                  specify certificate file. e.g. client.crt                                      **\n");
-    printf("** [-pkf]                 specify private key file, e.g. client.key                                      **\n");
+    printf("** [-ssl]                 specify enable ssl [0-disable, 1-enable]. default: 0                           **\n");
+    printf("** [-way]                 specify ssl way verify [1, 2], default: 1                                      **\n");
+    printf("** [-fmt]                 specify file format [1-DER, 2-PEM]. default: 2                                 **\n");
+    printf("** [-cf]                  specify certificate file. e.g. server.crt                                      **\n");
+    printf("** [-pkf]                 specify private key file, e.g. server.key                                      **\n");
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
 #endif
     printf("** [-id]                  specify client id will use broker, e.g. client_1, client_2                     **\n");
@@ -22,6 +25,9 @@ int main(int argc, char* argv[])
     printf("\n");
     std::string brokerHost;
     int brokerPort = 0;
+    int sslOn = 0;
+    int sslWay = 1;
+    int certFmt = 2;
     std::string certFile;
     std::string privateKeyFile;
     std::string privateKeyFilePwd;
@@ -47,7 +53,33 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-#if (1 == ENABLE_NSOCKET_OPENSSL)
+        else if (0 == strcmp(key, "-ssl")) /* 是否启用SSL */
+        {
+            ++i;
+            if (i < argc)
+            {
+                sslOn = atoi(argv[i]);
+                ++i;
+            }
+        }
+        else if (0 == strcmp(key, "-way")) /* SSL校验 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                sslWay = atoi(argv[i]);
+                ++i;
+            }
+        }
+        else if (0 == strcmp(key, "-fmt")) /* 文件格式 */
+        {
+            ++i;
+            if (i < argc)
+            {
+                certFmt = atoi(argv[i]);
+                ++i;
+            }
+        }
         else if (0 == strcmp(key, "-cf")) /* 证书文件 */
         {
             ++i;
@@ -75,7 +107,6 @@ int main(int argc, char* argv[])
                 ++i;
             }
         }
-#endif
         else if (0 == strcmp(key, "-id")) /* 客户端ID */
         {
             ++i;
@@ -98,17 +129,38 @@ int main(int argc, char* argv[])
     {
         brokerPort = 4335;
     }
+    if (sslOn < 0)
+    {
+        sslOn = 0;
+    }
+    else if (sslOn > 1)
+    {
+        sslOn = 1;
+    }
+    if (sslWay < 1)
+    {
+        sslWay = 1;
+    }
+    else if (sslWay > 2)
+    {
+        sslWay = 2;
+    }
+    if (certFmt < 1)
+    {
+        certFmt = 1;
+    }
+    else if (certFmt > 2)
+    {
+        certFmt = 2;
+    }
     if (id.empty())
     {
         printf("id must not be empty\n");
         return 0;
     }
-    printf("connect to broker: %s:%d\n", brokerHost.c_str(), brokerPort);
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    rpc::Client client(id, brokerHost, brokerPort, certFile, privateKeyFile, privateKeyFilePwd);
-#else
-    rpc::Client client(id, brokerHost, brokerPort);
-#endif
+    printf("connect to broker: %s:%d, ssl: %d, way: %d, certFmt: %d, certFile: %s, pkFile: %s\n", brokerHost.c_str(), brokerPort, sslOn,
+           sslWay, certFmt, certFile.c_str(), privateKeyFile.c_str());
+    rpc::Client client(id, brokerHost, brokerPort, sslOn, sslWay, certFmt, certFile, privateKeyFile, privateKeyFilePwd);
     client.setBindHandler([&](const rpc::ErrorCode& code) { printf("bind to broker %s\n", rpc::error_desc(code).c_str()); });
     client.setCallHandler([&](const std::string& callId, int proc, const std::vector<unsigned char>& data) {
         printf("++++++++++++++++++++ [%s] call [%d], data length: %d\n", callId.c_str(), proc, (int)data.size());

@@ -97,7 +97,7 @@ bool ConnectService::connect(unsigned short localPort, const std::string& addres
              "连接配置: 服务器[{}:{}], 连接超时[{}秒], 鉴权(业务码[{}], 超时[{}秒]), 心跳(业务码[{}], 间隔[{}秒], {}间隔发送, "
              "掉线判定时间[{}秒]).",
              address, port, connectTimeout, authBizCode, authTimeout, heartbeatBizCode, heartbeatInterval,
-             heartbeatFixedSend ? "固定" : "非固定", offlineTime);
+             heartbeatFixedSend ? "[固定]" : "[非固定]", offlineTime);
     m_disconnectType = DisconnectType::unknown;
     updateConnectState(ConnectState::connecting);
     m_localPort = localPort;

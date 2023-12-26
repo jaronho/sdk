@@ -43,7 +43,8 @@ public:
             {
                 auto name = "session_" + std::to_string(m_call.seq_id);
                 m_timer = std::make_shared<threading::SteadyTimer>(
-                    name, timeout, std::chrono::steady_clock::duration::zero(), [&]() { onTimeout(); }, s_executor);
+                    name, timeout, std::chrono::steady_clock::duration::zero(),
+                    [&](const std::chrono::steady_clock::time_point& tp) { onTimeout(); }, s_executor);
             }
             m_timer->start();
         }
@@ -101,12 +102,8 @@ private:
     Client& m_client;
 };
 
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-Client::Client(const std::string& id, const std::string& brokerHost, int brokerPort, const std::string& certFile,
-               const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
-#else
-Client::Client(const std::string& id, const std::string& brokerHost, int brokerPort)
-#endif
+Client::Client(const std::string& id, const std::string& brokerHost, int brokerPort, bool sslOn, int sslWay, int certFmt,
+               const std::string& certFile, const std::string& privateKeyFile, const std::string& privateKeyFilePwd)
 {
     if (id.empty())
     {
@@ -118,11 +115,12 @@ Client::Client(const std::string& id, const std::string& brokerHost, int brokerP
     m_id = id;
     m_brokerHost = brokerHost;
     m_serverPort = brokerPort;
-#if (1 == ENABLE_NSOCKET_OPENSSL)
+    m_sslOn = sslOn;
+    m_sslWay = sslWay;
+    m_certFmt = certFmt;
     m_certFile = certFile;
     m_privateKeyFile = privateKeyFile;
     m_privateKeyFilePwd = privateKeyFilePwd;
-#endif
     m_running = false;
     m_binded = false;
 }
@@ -161,14 +159,7 @@ void Client::run(bool async, std::chrono::steady_clock::duration retryTime)
             m_tcpClient = std::make_shared<nsocket::TcpClient>();
             m_tcpClient->setConnectCallback([&, async](const boost::system::error_code& code) { handleConnection(code, async); });
             m_tcpClient->setDataCallback([&](const std::vector<unsigned char>& data) { handleRecvData(data); });
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-            m_tcpClient->run(m_brokerHost, m_serverPort,
-                             nsocket::TcpClient::getSsl2WayContext(boost::asio::ssl::context::file_format::pem, m_certFile,
-                                                                   m_privateKeyFile, m_privateKeyFilePwd),
-                             async);
-#else
-            m_tcpClient->run(m_brokerHost, m_serverPort, async);
-#endif
+            m_tcpClient->run(m_brokerHost, m_serverPort, m_sslOn, m_sslWay, m_certFmt, m_certFile, m_privateKeyFile, m_privateKeyFilePwd);
         }
         catch (const std::exception& e)
         {

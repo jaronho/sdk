@@ -27,16 +27,15 @@ public:
      * @param id 调用者ID
      * @param brokerHost 代理服务地址
      * @param brokerPort 代理服务端口
+     * @param sslOn 是否开启SSL, true-是, false-否
+     * @param sslWay SSL验证方式, 1-单向, 2-双向
+     * @param certFmt (证书/私钥)文件格式, 1-DER, 2-PEM
      * @param certFile 证书文件, 例如: client.crt
      * @param privateKeyFile 私钥文件, 例如: client.key
      * @param privateKeyFilePwd 私钥文件密码, 例如: 123456
      */
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    Client(const std::string& id, const std::string& brokerHost, int brokerPort, const std::string& certFile = "",
-           const std::string& privateKeyFile = "", const std::string& privateKeyFilePwd = "");
-#else
-    Client(const std::string& id, const std::string& brokerHost, int brokerPort);
-#endif
+    Client(const std::string& id, const std::string& brokerHost, int brokerPort, bool sslOn = false, int sslWay = 1, int certFmt = 2,
+           const std::string& certFile = "", const std::string& privateKeyFile = "", const std::string& privateKeyFilePwd = "");
 
     /**
      * @brief 设置绑定回调
@@ -116,6 +115,9 @@ private:
     std::string m_id; /* 客户端ID */
     std::string m_brokerHost; /* broker地址 */
     int m_serverPort; /* broker端口 */
+    bool m_sslOn = false;
+    int m_sslWay = 1;
+    int m_certFmt = 2;
     std::string m_certFile;
     std::string m_privateKeyFile;
     std::string m_privateKeyFilePwd;

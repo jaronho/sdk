@@ -22,16 +22,16 @@ public:
      * @param threadCount 运行线程数
      * @param serverHost 服务器地址
      * @param serverPort 服务器端口
+     * @param sslOn 是否开启SSL, true-是, false-否
+     * @param sslWay SSL验证方式, 1-单向, 2-双向
+     * @param certFmt (证书/私钥)文件格式, 1-DER, 2-PEM
      * @param certFile 证书文件, 例如: client.crt
      * @param privateKeyFile 私钥文件, 例如: client.key
      * @param privateKeyFilePwd 私钥文件密码, 例如: 123456
      */
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    Broker(const std::string& name, size_t threadCount, const std::string& serverHost, int serverPort, const std::string& certFile = "",
-           const std::string& privateKeyFile = "", const std::string& privateKeyFilePwd = "");
-#else
-    Broker(const std::string& name, size_t threadCount, const std::string& serverHost, int serverPort);
-#endif
+    Broker(const std::string& name, size_t threadCount, const std::string& serverHost, int serverPort, bool sslOn = false, int sslWay = 1,
+           int certFmt = 2, const std::string& certFile = "", const std::string& privateKeyFile = "",
+           const std::string& privateKeyFilePwd = "");
 
     /**
      * @brief 是否有效
@@ -79,6 +79,9 @@ private:
 
 private:
     std::shared_ptr<nsocket::TcpServer> m_tcpServer; /* 服务器 */
+    bool m_sslOn = false;
+    int m_sslWay = 1;
+    int m_certFmt = 2;
     std::string m_certFile;
     std::string m_privateKeyFile;
     std::string m_privateKeyFilePwd;

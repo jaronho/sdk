@@ -90,7 +90,7 @@ int main(int argc, char** argv)
     }
     else
     {
-        auto arr = nlohmann::parse(utility::FileInfo(fullFile).readAll(true));
+        auto arr = nlohmann::parse(utility::FileInfo(fullFile).readAll());
         if (arr.is_array())
         {
             for (size_t i = 0; i < arr.size(); ++i)
