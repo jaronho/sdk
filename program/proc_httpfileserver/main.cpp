@@ -174,7 +174,7 @@ void handleDir(const nsocket::http::Connector& conn, const std::string& rootDir,
         newLine = true;
         static const int MAX_TARGET_NAME_LENGTH = 80;
         auto length = target.size();
-        /* 名字太长换行 */
+        /* 固定长度并换行 */
         std::string tmpTarget = target;
         std::string lines;
         while (tmpTarget.size() >= MAX_TARGET_NAME_LENGTH - 1)
@@ -190,19 +190,28 @@ void handleDir(const nsocket::http::Connector& conn, const std::string& rootDir,
             lines += "\n";
             lines += tmpTarget;
         }
-        /* 渲染 */
-        int spaceCount = 0;
+        /* 链接内容 */
         if (info.attr.isDir)
         {
             str.append("<a href=\"" + target + "/\">" + (lines.empty() ? target : lines) + "/</a>");
-            spaceCount = MAX_TARGET_NAME_LENGTH - length - 1;
         }
         else
         {
             str.append("<a href=\"" + target + "\">" + (lines.empty() ? target : lines) + +"</a>");
-            spaceCount = MAX_TARGET_NAME_LENGTH - length;
         }
+        /* 补位空格 */
+        auto spaceCount = MAX_TARGET_NAME_LENGTH - length - (info.attr.isDir ? 1 : 0);
         spaceCount = spaceCount > 0 ? spaceCount : 1;
+        std::vector<unsigned int> nonAsciiChars;
+        utility::Charset::getCoding(target, &nonAsciiChars);
+        for (auto byteCount : nonAsciiChars)
+        {
+            if (byteCount > 2)
+            {
+                spaceCount += byteCount - 2;
+            }
+        }
+        /* 最后修改时间/文件大小 */
         str.append(std::string(spaceCount, ' ')).append(info.attr.modifyTimeFmt());
         str.append(std::string(6, ' ')).append(info.attr.isDir ? "-" : fileSizeUnit(info.attr.size));
     }
@@ -239,11 +248,11 @@ void handleFile(const nsocket::http::Connector& conn, const std::string& fileNam
         textFileData = fi.readAll();
         switch (utility::Charset::getCoding(textFileData))
         {
-        case utility::Charset::Coding::gbk:
-            mimeType += "; charset=gb2312";
-            break;
         case utility::Charset::Coding::utf8:
             mimeType += "; charset=utf-8";
+            break;
+        case utility::Charset::Coding::gbk:
+            mimeType += "; charset=gb2312";
             break;
         }
     }
