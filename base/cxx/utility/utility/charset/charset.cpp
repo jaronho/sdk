@@ -418,55 +418,12 @@ static int unicode_to_gbk(const wchar* wstr, int wlen, char* outbuf, int osize)
     return ret;
 }
 
-static bool is_gbk(const char* str, int len)
+static bool is_utf8(const char* str, int len, std::vector<unsigned int>* nonAsciiChars)
 {
-    /* 需要说明的是: 
-       is_gbk是通过双字节是否落在GBK的编码范围内实现的, 而UTF8编码格式的每个字节都是落在GBK的编码范围内,
-       所以只有先调用is_utf8先判断不是UTF8编码，再调用is_gbk才有意义. */
-    if (str && len > 0)
+    if (nonAsciiChars)
     {
-        unsigned int byteCount = 0; /* GBK可用1-2个字节编码, 中文2个, 英文1个 */
-        for (size_t i = 0; i < len; ++i)
-        {
-            unsigned char ch = str[i];
-            if ('\0' == ch)
-            {
-                break;
-            }
-            if (0 == byteCount)
-            {
-                if (ch >= 0x80)
-                {
-                    if (ch >= 0x81 && ch <= 0xFE)
-                    {
-                        byteCount = 2;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                    byteCount--;
-                }
-            }
-            else
-            {
-                if (ch < 0x40 || ch > 0xFE)
-                {
-                    return false;
-                }
-                byteCount--;
-            }
-        }
-        if (0 != byteCount) /* 违反GBK编码规则 */
-        {
-            return false;
-        }
+        nonAsciiChars->clear();
     }
-    return true;
-}
-
-bool is_utf8(const char* str, int len)
-{
     if (str && len > 0)
     {
         unsigned int byteCount = 0; /* UTF8可用1-6个字节编码, ASCII用1个字节 */
@@ -505,6 +462,10 @@ bool is_utf8(const char* str, int len)
                     {
                         return false;
                     }
+                    if (nonAsciiChars)
+                    {
+                        nonAsciiChars->emplace_back(byteCount);
+                    }
                     byteCount--;
                 }
             }
@@ -518,6 +479,62 @@ bool is_utf8(const char* str, int len)
             }
         }
         if (0 != byteCount) /* 违反UTF8编码规则 */
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool is_gbk(const char* str, int len, std::vector<unsigned int>* nonAsciiChars)
+{
+    /* 需要说明的是: 
+       is_gbk是通过双字节是否落在GBK的编码范围内实现的, 而UTF8编码格式的每个字节都是落在GBK的编码范围内,
+       所以只有先调用is_utf8先判断不是UTF8编码，再调用is_gbk才有意义. */
+
+    if (nonAsciiChars)
+    {
+        nonAsciiChars->clear();
+    }
+    if (str && len > 0)
+    {
+        unsigned int byteCount = 0; /* GBK可用1-2个字节编码, 中文2个, 英文1个 */
+        for (size_t i = 0; i < len; ++i)
+        {
+            unsigned char ch = str[i];
+            if ('\0' == ch)
+            {
+                break;
+            }
+            if (0 == byteCount)
+            {
+                if (ch >= 0x80)
+                {
+                    if (ch >= 0x81 && ch <= 0xFE)
+                    {
+                        byteCount = 2;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                    if (nonAsciiChars)
+                    {
+                        nonAsciiChars->emplace_back(byteCount);
+                    }
+                    byteCount--;
+                }
+            }
+            else
+            {
+                if (ch < 0x40 || ch > 0xFE)
+                {
+                    return false;
+                }
+                byteCount--;
+            }
+        }
+        if (0 != byteCount) /* 违反GBK编码规则 */
         {
             return false;
         }
@@ -740,13 +757,17 @@ bool Charset::setLocale(const std::string& locale)
     return (currLocale ? true : false);
 }
 
-Charset::Coding Charset::getCoding(const std::string& str)
+Charset::Coding Charset::getCoding(const std::string& str, std::vector<unsigned int>* nonAsciiChars)
 {
-    if (is_utf8(str.c_str(), str.size()))
+    if (nonAsciiChars)
+    {
+        nonAsciiChars->clear();
+    }
+    if (is_utf8(str.c_str(), str.size(), nonAsciiChars))
     {
         return Coding::utf8;
     }
-    else if (is_gbk(str.c_str(), str.size()))
+    else if (is_gbk(str.c_str(), str.size(), nonAsciiChars))
     {
         return Coding::gbk;
     }

@@ -35,14 +35,15 @@ void testCharset(int argc, char** argv)
                 else
                 {
                     printf(" charset:");
-                    switch (utility::Charset::getCoding(name))
+                    std::vector<unsigned int> nonAsciiChars;
+                    switch (utility::Charset::getCoding(name, &nonAsciiChars))
                     {
-                    case utility::Charset::Coding::gbk:
-                        printf(" GBK\n");
-                        printf("             UTF8: %s\n", utility::Charset::gbkToUtf8(name).c_str());
-                        break;
                     case utility::Charset::Coding::utf8:
-                        printf(" UTF8\n");
+                        printf(" UTF8, none ASCII character count: %zu\n", nonAsciiChars.size());
+                        break;
+                    case utility::Charset::Coding::gbk:
+                        printf(" GBK, none ASCII character count: %zu\n", nonAsciiChars.size());
+                        printf("             UTF8: %s\n", utility::Charset::gbkToUtf8(name).c_str());
                         break;
                     case utility::Charset::Coding::unknown:
                         printf(" Unknown\n");
@@ -60,14 +61,15 @@ void testCharset(int argc, char** argv)
                 else
                 {
                     printf(" charset:");
-                    switch (utility::Charset::getCoding(name))
+                    std::vector<unsigned int> nonAsciiChars;
+                    switch (utility::Charset::getCoding(name, &nonAsciiChars))
                     {
-                    case utility::Charset::Coding::gbk:
-                        printf(" GBK\n");
-                        printf("         UTF8: %s\n", utility::Charset::gbkToUtf8(name).c_str());
-                        break;
                     case utility::Charset::Coding::utf8:
-                        printf(" UTF8\n");
+                        printf(" UTF8, none ASCII character count: %zu\n", nonAsciiChars.size());
+                        break;
+                    case utility::Charset::Coding::gbk:
+                        printf(" GBK, none ASCII character count: %zu\n", nonAsciiChars.size());
+                        printf("         UTF8: %s\n", utility::Charset::gbkToUtf8(name).c_str());
                         break;
                     case utility::Charset::Coding::unknown:
                         printf(" Unknown\n");
@@ -85,13 +87,14 @@ void testCharset(int argc, char** argv)
                     else
                     {
                         printf("      text file content charset:");
-                        switch (utility::Charset::getCoding(content))
+                        std::vector<unsigned int> nonAsciiChars;
+                        switch (utility::Charset::getCoding(content, &nonAsciiChars))
                         {
-                        case utility::Charset::Coding::gbk:
-                            printf(" GBK\n");
-                            break;
                         case utility::Charset::Coding::utf8:
-                            printf(" UTF8\n");
+                            printf(" UTF8, none ASCII character count: %zu\n", nonAsciiChars.size());
+                            break;
+                        case utility::Charset::Coding::gbk:
+                            printf(" GBK, none ASCII character count: %zu\n", nonAsciiChars.size());
                             break;
                         case utility::Charset::Coding::unknown:
                             printf(" Unknown\n");

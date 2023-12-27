@@ -1,16 +1,20 @@
 #pragma once
 #include <string>
+#include <vector>
 
 namespace utility
 {
+/**
+ * @brief 字符集
+ */
 class Charset final
 {
 public:
     enum class Coding
     {
-        gbk,
+        unknown = -1,
         utf8,
-        unknown
+        gbk
     };
 
 public:
@@ -38,7 +42,7 @@ public:
      * @param str 字符串
      * @return 编码
      */
-    static Coding getCoding(const std::string& str);
+    static Coding getCoding(const std::string& str, std::vector<unsigned int>* nonAsciiChars = nullptr);
 
     /**
      * @brief UTF8转Unicode
