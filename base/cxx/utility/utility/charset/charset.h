@@ -40,6 +40,7 @@ public:
     /**
      * @brief 获取编码
      * @param str 字符串
+     * @param nonAsciiChars 非ASCII字符列表, 列表size表示非ASCII字符总个数, value表示每个字符所占的字节数
      * @return 编码
      */
     static Coding getCoding(const std::string& str, std::vector<unsigned int>* nonAsciiChars = nullptr);
