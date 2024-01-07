@@ -195,7 +195,10 @@ void ConnectService::onConnectStatusChanged(const boost::system::error_code& cod
     }
     else /* 连接成功 */
     {
-        m_lastRecvTime = m_lastSendTime = std::chrono::steady_clock::now();
+        {
+            std::lock_guard<std::mutex> locker(m_mutexTimePoint);
+            m_lastRecvTime = m_lastSendTime = std::chrono::steady_clock::now();
+        }
         if (m_authBizCode > 0) /* 需要鉴权 */
         {
             if (ConnectState::connecting == m_connectState)
@@ -217,11 +220,13 @@ void ConnectService::onConnectStatusChanged(const boost::system::error_code& cod
 
 void ConnectService::onUpdateLastRecvTime(std::chrono::steady_clock::time_point ntp)
 {
+    std::lock_guard<std::mutex> locker(m_mutexTimePoint);
     m_lastRecvTime = ntp;
 }
 
 void ConnectService::onUpdateLastSendTime(std::chrono::steady_clock::time_point ntp)
 {
+    std::lock_guard<std::mutex> locker(m_mutexTimePoint);
     m_lastSendTime = ntp;
 }
 
@@ -354,7 +359,11 @@ void ConnectService::onHeartbeatTimer()
 {
     auto ntp = std::chrono::steady_clock::now();
     const int ELAPSED_DELTA = 500; /* 时间增量(毫秒), 这是由于定时器触发没办法精确到毫秒会有误差 */
-    auto lastTime = m_heartbeatFixedSend ? m_lastHeartbeatTime.load() : m_lastSendTime.load();
+    std::chrono::steady_clock::time_point lastTime;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTimePoint);
+        lastTime = m_heartbeatFixedSend ? m_lastHeartbeatTime : m_lastSendTime;
+    }
     auto elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - lastTime).count();
     if ((elapsedLastSend + ELAPSED_DELTA) >= (m_heartbeatInterval * 1000))
     {
@@ -389,6 +398,7 @@ void ConnectService::sendHeartbeatMsg()
                                         const auto self = wpSelf.lock();
                                         if (self && sendOk)
                                         {
+                                            std::lock_guard<std::mutex> locker(self->m_mutexTimePoint);
                                             self->m_lastHeartbeatTime = std::chrono::steady_clock::now();
                                         }
                                     });
@@ -426,13 +436,21 @@ void ConnectService::onOfflineCheckTimer()
     bool isUnSendServerData = false;
     std::string unRecvMsg, unSendMsg;
     /* 超过一定时间未收到服务端数据包(注意: 这里进行>判断, 不进行=判断), 表示掉线 */
-    auto elapsedLastRecv = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastRecvTime.load()).count();
+    long long elapsedLastRecv = 0;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTimePoint);
+        elapsedLastRecv = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastRecvTime).count();
+    }
     if (elapsedLastRecv > (m_offlineTime * 1000))
     {
         isUnRecvServerData = true;
         unRecvMsg = "超过[" + std::to_string(elapsedLastRecv) + "]毫秒未收到包)";
         /* 超过一定时间向服务端发送数据包 */
-        auto elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastSendTime.load()).count();
+        long long elapsedLastSend = 0;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexTimePoint);
+            elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastSendTime).count();
+        }
         if (elapsedLastSend > (m_heartbeatInterval * 1000))
         {
             isUnSendServerData = true;

@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <mutex>
 
 #include "session_manager.h"
 #include "threading/timer/steady_timer.h"
@@ -205,9 +206,10 @@ private:
     std::function<std::string()> m_authDataGenerator = nullptr; /* 鉴权数据生成器 */
     std::function<bool(const std::string& data)> m_authResultCb = nullptr; /* 鉴权结果回调 */
     std::function<std::string()> m_heartbeatDataGenerator = nullptr; /* 心跳数据生成器 */
-    std::atomic<std::chrono::steady_clock::time_point> m_lastRecvTime = {std::chrono::steady_clock::now()}; /* 最近接收时间 */
-    std::atomic<std::chrono::steady_clock::time_point> m_lastSendTime = {std::chrono::steady_clock::now()}; /* 最近发送时间 */
-    std::atomic<std::chrono::steady_clock::time_point> m_lastHeartbeatTime = {std::chrono::steady_clock::now()}; /* 最近心跳时间 */
+    std::mutex m_mutexTimePoint;
+    std::chrono::steady_clock::time_point m_lastRecvTime = std::chrono::steady_clock::now(); /* 最近接收时间 */
+    std::chrono::steady_clock::time_point m_lastSendTime = std::chrono::steady_clock::now(); /* 最近发送时间 */
+    std::chrono::steady_clock::time_point m_lastHeartbeatTime = std::chrono::steady_clock::now(); /* 最近心跳时间 */
     unsigned int m_localPort = 0; /* 本地端口 */
     std::string m_address; /* 服务器地址 */
     unsigned int m_port = 0; /* 服务器端口 */
