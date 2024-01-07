@@ -3224,8 +3224,7 @@ void check_format_string(S format_str) {
   FMT_CONSTEXPR_DECL auto s = to_string_view(format_str);
   using checker = format_string_checker<typename S::char_type, error_handler,
                                         remove_cvref_t<Args>...>;
-  FMT_CONSTEXPR_DECL bool invalid_format =
-      (parse_format_string<true>(s, checker(s, {})), true);
+  auto invalid_format = (parse_format_string<true>(s, checker(s, {})), true);
   (void)invalid_format;
 }
 
