@@ -180,7 +180,7 @@ std::vector<std::shared_ptr<PcapDevice>> PcapDevice::getAllDevices(std::string* 
     pcap_if_t* allDevs = nullptr;
     char errbuf[PCAP_ERRBUF_SIZE];
     int err = pcap_findalldevs(&allDevs, errbuf);
-    if (errbuf < 0)
+    if (err < 0)
     {
         if (errorBuffer)
         {

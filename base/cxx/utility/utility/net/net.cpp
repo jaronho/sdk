@@ -60,8 +60,8 @@ bool Net::isIPv4Inner(const std::string& ip)
     {
         return true;
     }
-    unsigned long long a1 = 0, a2 = 0, a3 = 0, a4 = 0;
-    if (4 != sscanf(ip.c_str(), "%lld.%lld.%lld.%lld", &a1, &a2, &a3, &a4))
+    int a1 = 0, a2 = 0, a3 = 0, a4 = 0;
+    if (4 != sscanf(ip.c_str(), "%d.%d.%d.%d", &a1, &a2, &a3, &a4))
     {
         return false;
     }

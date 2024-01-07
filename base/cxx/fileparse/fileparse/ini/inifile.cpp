@@ -74,7 +74,7 @@ bool getKeyAndValue(const std::string& content, std::string& key, std::string& v
     {
         ++i;
     }
-    if (i >= 0 && i < len)
+    if (i > 0 && i < len)
     {
         key = std::string(content.c_str(), i);
         value = std::string(content.c_str() + i + 1, len - i - 1);

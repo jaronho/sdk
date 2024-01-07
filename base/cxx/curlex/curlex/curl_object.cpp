@@ -380,7 +380,7 @@ bool CurlObject::initialize(const FileFormat& fileFmt, const std::string& certFi
     {
         return false;
     }
-    code = setOption(CURLOPT_SSLCERTTYPE, fileFmtStr);
+    code = setOption(CURLOPT_SSLCERTTYPE, fileFmtStr.c_str());
     if (CURLE_OK != code)
     {
         return false;
@@ -390,7 +390,7 @@ bool CurlObject::initialize(const FileFormat& fileFmt, const std::string& certFi
     {
         return false;
     }
-    code = setOption(CURLOPT_SSLKEYTYPE, fileFmtStr);
+    code = setOption(CURLOPT_SSLKEYTYPE, fileFmtStr.c_str());
     if (CURLE_OK != code)
     {
         return false;

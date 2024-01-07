@@ -278,7 +278,7 @@ uint32_t ByteArray::bcount(const std::string& value)
 
 uint32_t ByteArray::bcount(const unsigned char* value, uint32_t len)
 {
-    if (len >= 0)
+    if (len > 0)
     {
         return sizeof(uint32_t) + len;
     }

@@ -53,6 +53,8 @@ public:
                 return "loopback";
             case Type::slip:
                 return "slip";
+            default:
+                break;
             }
             return std::to_string(realType);
         }
