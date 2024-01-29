@@ -17,6 +17,10 @@ include_directories(${libusb_platform_include_dir})
 include_directories(${base_usb_dir})
 source_group(TREE ${base_usb_dir} PREFIX 3rdparty/base FILES ${base_usb_files})
 
+if (MSVC)
+    add_compile_options("/utf-8") # 添加UTF8编码支持
+endif()
+
 # 构建可执行程序
 add_executable(example_usb ${base_usb_files} example_usb.cpp)
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")

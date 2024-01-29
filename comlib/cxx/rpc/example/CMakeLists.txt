@@ -76,6 +76,10 @@ include_directories(${comlib_rpc_dir})
 source_group(TREE ${comlib_rpc_dir} PREFIX 3rdparty/comlib FILES ${comlib_rpc_broker_files})
 source_group(TREE ${comlib_rpc_dir} PREFIX 3rdparty/comlib FILES ${comlib_rpc_client_files})
 
+if (MSVC)
+    add_compile_options("/utf-8") # 添加UTF8编码支持
+endif()
+
 # 构建可执行程序
 add_executable(broker ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${comlib_rpc_broker_files} broker.cpp)
 add_executable(example_client ${base_algorithm_files} ${base_nsocket_files} ${base_threading_files} ${base_utility_files} ${comlib_rpc_client_files} example_client.cpp)

@@ -54,6 +54,10 @@ foreach(filename ${example_files})
     message("    " ${filename})
 endforeach()
 
+if (MSVC)
+    add_compile_options("/utf-8") # 添加UTF8编码支持
+endif()
+
 # 构建可执行程序
 add_executable(example_curlex ${base_curlex_files} ${example_files})
 

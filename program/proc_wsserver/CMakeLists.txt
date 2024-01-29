@@ -21,6 +21,10 @@ set(proc_files)
 get_cxx_files(. src_list)
 list(APPEND proc_files ${src_list})
 
+if (MSVC)
+    add_compile_options("/utf-8") # 添加UTF8编码支持
+endif()
+
 # 构建可执行文件
 add_executable(wsserver
                ${base_nsocket_websocket_files}

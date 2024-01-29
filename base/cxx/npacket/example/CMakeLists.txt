@@ -41,6 +41,10 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/npacket)
 include_directories(${base_npacket_dir})
 source_group(TREE ${base_npacket_dir} PREFIX 3rdparty/base FILES ${base_npacket_files})
 
+if (MSVC)
+    add_compile_options("/utf-8") # 添加UTF8编码支持
+endif()
+
 # 构建可执行程序
 add_executable(netstat_tool ${base_npacket_files} netstat_tool.cpp)
 add_executable(npacket_tool ${base_npacket_files} npacket_tool.cpp)

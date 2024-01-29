@@ -49,6 +49,10 @@ foreach(filename ${example_asio_files})
     message("    " ${filename})
 endforeach()
 
+if (MSVC)
+    add_compile_options("/utf-8") # 添加UTF8编码支持
+endif()
+
 # 构建可执行程序
 add_executable(example_asio ${base_threading_files} ${example_asio_files})
 

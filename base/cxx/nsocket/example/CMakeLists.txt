@@ -93,6 +93,10 @@ foreach(filename ${example_websocketserver_files})
     message("    " ${filename})
 endforeach()
 
+if (MSVC)
+    add_compile_options("/utf-8") # 添加UTF8编码支持
+endif()
+
 # 构建可执行程序
 add_executable(example_nsocket_tcpclient ${base_nsocket_tcp_files} ${example_tcpclient_files})
 add_executable(example_nsocket_websocketclient ${base_nsocket_websocket_files} ${example_websocketclient_files})

@@ -29,6 +29,10 @@ foreach(filename ${example_simdb_send_files})
     message("    " ${filename})
 endforeach()
 
+if (MSVC)
+    add_compile_options("/utf-8") # 添加UTF8编码支持
+endif()
+
 # 构建可执行程序
 add_executable(example_simdb_recv ${base_ipc_simdb_files} ${example_simdb_recv_files})
 add_executable(example_simdb_send ${base_ipc_simdb_files} ${example_simdb_send_files})
