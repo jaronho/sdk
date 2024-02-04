@@ -372,8 +372,12 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
 #endif
 }
 
-bool NetConfig::checkPing(const std::string& src, const std::string& dest, int timeout)
+bool NetConfig::checkPing(const std::string& src, const std::string& dest, int timeout, std::string* result)
 {
+    if (result)
+    {
+        result->clear();
+    }
     if (dest.empty())
     {
         return false;
@@ -406,7 +410,15 @@ bool NetConfig::checkPing(const std::string& src, const std::string& dest, int t
     std::string outStr; /* 这里需要读取输出, 否则Linux下会失败 */
     if (0 != utility::System::runCmd(command, &outStr))
     {
+        if (result)
+        {
+            *result = outStr;
+        }
         return false;
+    }
+    if (result)
+    {
+        *result = outStr;
     }
     if (std::string::npos != outStr.rfind("100%") || std::string::npos == outStr.rfind("0%")) /* 数据包丢失 */
     {

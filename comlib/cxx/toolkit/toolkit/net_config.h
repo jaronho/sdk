@@ -93,8 +93,9 @@ public:
      * @param src 本机要使用的网络接口(当本机有多个网卡时, 可以指定使用哪一个), 为空表示默认, 例如: 网卡名(enp1s0) 或 IP(192.168.3.123)
      * @param dest 目标地址, 可以为IP或域名
      * @param timeout 超时时间(单位: 秒), 小等于0表示使用默认超时
+     * @param detail [输出]检测结果
      * @return true-可通, false-不通
      */
-    static bool checkPing(const std::string& src, const std::string& dest, int timeout = 1);
+    static bool checkPing(const std::string& src, const std::string& dest, int timeout = 1, std::string* result = nullptr);
 };
 } // namespace toolkit
