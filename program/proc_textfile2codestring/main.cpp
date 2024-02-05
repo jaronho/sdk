@@ -1,3 +1,4 @@
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
 #include "utility/cmdline/cmdline.h"
@@ -7,6 +8,12 @@
 int main(int argc, char* argv[])
 {
     SetConsoleOutputCP(CP_UTF8);
+    /* 关闭控制台程序的快速编辑模式, 否则会出现点击界面, 程序将会变成阻塞状态, 不按回车无法继续运行 */
+    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode;
+    GetConsoleMode(hStdin, &mode);
+    mode &= ~ENABLE_QUICK_EDIT_MODE; /* 移除快速编辑模式 */
+    SetConsoleMode(hStdin, mode);
     /* 命令参数 */
     cmdline::parser parser;
     parser.header("文本文件转代码字符串");

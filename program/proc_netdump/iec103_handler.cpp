@@ -1,4 +1,4 @@
-﻿#include "iec103_handler.h"
+#include "iec103_handler.h"
 
 #include <stdio.h>
 

@@ -1,4 +1,4 @@
-﻿#include "ftp_handler.h"
+#include "ftp_handler.h"
 
 #include <stdio.h>
 
