@@ -27,7 +27,7 @@ struct LogConfig
         , fileMaxCount(0U)
         , fileIndexFixed(false)
         , newFolderDaily(true)
-        , consoleEnable(false)
+        , consoleMode(0)
     {
     }
 
@@ -40,6 +40,6 @@ struct LogConfig
     size_t fileMaxCount; /* (选填)每天允许最多的日志文件数, 默认: 0-表示不限制 */
     bool fileIndexFixed; /* 文件数最大时, 索引值固定还是递增, 默认: false-递增 */
     bool newFolderDaily; /* (选填)是否每天使用新文件夹, 默认: true-表示每天都创建新文件夹 */
-    bool consoleEnable; /* (选填)是否把日志输出到控制台, 默认: false-不输出到控制台 */
+    int consoleMode; /* (选填)控制台日志输出模式: 0-不输出, 1-普通输出, 2-带样式输出 */
 };
 } // namespace logger

@@ -13,16 +13,6 @@ std::string LoggerManager::m_defaultTagName;
 
 void LoggerManager::start(const LogConfig& cfg, const std::string& defultTagName)
 {
-    if (cfg.path.empty())
-    {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
-                               + "] arg 'cfg.path' is empty");
-    }
-    if (cfg.name.empty())
-    {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
-                               + "] arg 'cfg.name' is empty");
-    }
     std::lock_guard<std::mutex> locker(m_mutex);
     m_logCfg = cfg;
     m_defaultTagName = defultTagName;
@@ -39,10 +29,6 @@ Logger LoggerManager::getLogger(const std::string& tagName, int level, const std
         return Logger(tag, iter->second);
     }
     /* 默认日志器找不到则创建 */
-    if (m_logCfg.path.empty())
-    {
-        return Logger();
-    }
     LogConfig cfg = m_logCfg;
     cfg.name = name;
     cfg.level = level < 0 ? cfg.level : level;
@@ -117,26 +103,26 @@ void LoggerManager::setLevelFile(int level, int fileType, const std::string& log
     }
 }
 
-bool LoggerManager::isConsoleEnable(const std::string& loggerName)
+int LoggerManager::getConsoleMode(const std::string& loggerName)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     auto name = loggerName.empty() ? m_logCfg.name : loggerName;
     auto iter = m_loggerMap.find(name);
     if (m_loggerMap.end() == iter)
     {
-        return m_logCfg.consoleEnable;
+        return m_logCfg.consoleMode;
     }
-    return iter->second->isConsoleEnable();
+    return iter->second->getConsoleMode();
 }
 
-void LoggerManager::setConsoleEnable(bool enable, const std::string& loggerName)
+void LoggerManager::setConsoleMode(int mode, const std::string& loggerName)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     if (loggerName.empty())
     {
         for (auto iter = m_loggerMap.begin(); m_loggerMap.end() != iter; ++iter)
         {
-            iter->second->setConsoleEnable(enable);
+            iter->second->setConsoleMode(mode);
         }
     }
     else
@@ -144,7 +130,7 @@ void LoggerManager::setConsoleEnable(bool enable, const std::string& loggerName)
         auto iter = m_loggerMap.find(loggerName);
         if (m_loggerMap.end() != iter)
         {
-            iter->second->setConsoleEnable(enable);
+            iter->second->setConsoleMode(mode);
         }
     }
 }

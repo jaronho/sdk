@@ -60,16 +60,16 @@ public:
     virtual void setLevelFile(int level, int fileType = -1) = 0;
 
     /**
-     * @brief 是否输出到控制台
-     * @return true-是, false-否
+     * @brief 获取控制台日志输出模式
+     * @return 0-不输出, 1-普通输出, 2-带样式输出
      */
-    virtual bool isConsoleEnable() const = 0;
+    virtual int getConsoleMode() const = 0;
 
     /**
-     * @brief 设置是否输出到控制台
-     * @param enable 开关标识
+     * @brief 设置控制台日志输出模式
+     * @param mode 模式: 0-不输出, 1-普通输出, 2-带样式输出
      */
-    virtual void setConsoleEnable(bool enable) = 0;
+    virtual void setConsoleMode(int mode) = 0;
 
     /**
      * @brief 打印日志

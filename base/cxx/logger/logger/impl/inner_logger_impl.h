@@ -51,16 +51,16 @@ public:
     void setLevelFile(int level, int fileType = -1) override;
 
     /**
-     * @brief 是否输出到控制台
-     * @return true-是, false-否
+     * @brief 获取控制台日志输出模式
+     * @return 0-不输出, 1-普通输出, 2-带样式输出
      */
-    bool isConsoleEnable() const override;
+    int getConsoleMode() const override;
 
     /**
-     * @brief 设置是否输出到控制台
-     * @param enable 开关标识
+     * @brief 设置控制台日志输出模式
+     * @param mode 模式: 0-不输出, 1-普通输出, 2-带样式输出
      */
-    void setConsoleEnable(bool enable) override;
+    void setConsoleMode(int mode) override;
 
     /**
      * @brief 打印日志
@@ -83,17 +83,17 @@ private:
     std::shared_ptr<DailyLogfile> getDailyLog(int level);
 
 private:
-    std::shared_ptr<DailyLogfile> m_dailyLog; /* 每天日志文件(通用) */
-    std::shared_ptr<DailyLogfile> m_dailyLogTrace; /* 每天日志文件(跟踪) */
-    std::shared_ptr<DailyLogfile> m_dailyLogDebug; /* 每天日志文件(调试) */
-    std::shared_ptr<DailyLogfile> m_dailyLogInfo; /* 每天日志文件(信息) */
-    std::shared_ptr<DailyLogfile> m_dailyLogWarn; /* 每天日志文件(警告) */
-    std::shared_ptr<DailyLogfile> m_dailyLogError; /* 每天日志文件(错误) */
-    std::shared_ptr<DailyLogfile> m_dailyLogFatal; /* 每天日志文件(致命) */
+    std::shared_ptr<DailyLogfile> m_dailyLog = nullptr; /* 每天日志文件(通用) */
+    std::shared_ptr<DailyLogfile> m_dailyLogTrace = nullptr; /* 每天日志文件(跟踪) */
+    std::shared_ptr<DailyLogfile> m_dailyLogDebug = nullptr; /* 每天日志文件(调试) */
+    std::shared_ptr<DailyLogfile> m_dailyLogInfo = nullptr; /* 每天日志文件(信息) */
+    std::shared_ptr<DailyLogfile> m_dailyLogWarn = nullptr; /* 每天日志文件(警告) */
+    std::shared_ptr<DailyLogfile> m_dailyLogError = nullptr; /* 每天日志文件(错误) */
+    std::shared_ptr<DailyLogfile> m_dailyLogFatal = nullptr; /* 每天日志文件(致命) */
     std::atomic_int m_level = {LEVEL_TRACE}; /* 日志等级 */
     std::mutex m_mutexLevelFile;
     std::unordered_map<int, int> m_levelFile; /* 等级文件类型, key-日志等级, value-文件类型(同等级类型, 若不在范围内表示写入到通用文件) */
-    std::atomic_bool m_consoleEnable = {false}; /* 是否输出到控制台(默认不输出) */
+    std::atomic_int m_consoleMode = {0}; /* 控制台日志输出模式: 0-不输出, 1-普通输出, 2-带样式输出 */
 };
 
 using InnerLoggerPtr = std::shared_ptr<InnerLogger>;

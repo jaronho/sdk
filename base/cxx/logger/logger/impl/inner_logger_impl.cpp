@@ -103,26 +103,29 @@ int getThreadId()
 
 InnerLoggerImpl::InnerLoggerImpl(const LogConfig& cfg) : InnerLogger(cfg.path, cfg.name)
 {
-    m_dailyLog = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
-                                                cfg.fileIndexFixed, cfg.newFolderDaily);
-    m_dailyLogTrace = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_trace", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
-                                                     cfg.fileIndexFixed, cfg.newFolderDaily);
-    m_dailyLogDebug = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_debug", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
-                                                     cfg.fileIndexFixed, cfg.newFolderDaily);
-    m_dailyLogInfo = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_info", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
+    if (!cfg.path.empty())
+    {
+        m_dailyLog = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
                                                     cfg.fileIndexFixed, cfg.newFolderDaily);
-    m_dailyLogWarn = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_warn", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
-                                                    cfg.fileIndexFixed, cfg.newFolderDaily);
-    m_dailyLogError = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_error", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
-                                                     cfg.fileIndexFixed, cfg.newFolderDaily);
-    m_dailyLogFatal = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_fatal", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
-                                                     cfg.fileIndexFixed, cfg.newFolderDaily);
+        m_dailyLogTrace = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_trace", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
+                                                         cfg.fileIndexFixed, cfg.newFolderDaily);
+        m_dailyLogDebug = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_debug", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
+                                                         cfg.fileIndexFixed, cfg.newFolderDaily);
+        m_dailyLogInfo = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_info", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
+                                                        cfg.fileIndexFixed, cfg.newFolderDaily);
+        m_dailyLogWarn = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_warn", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
+                                                        cfg.fileIndexFixed, cfg.newFolderDaily);
+        m_dailyLogError = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_error", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
+                                                         cfg.fileIndexFixed, cfg.newFolderDaily);
+        m_dailyLogFatal = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_fatal", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
+                                                         cfg.fileIndexFixed, cfg.newFolderDaily);
+    }
     m_level.store(cfg.level);
     {
         std::lock_guard<std::mutex> locker(m_mutexLevelFile);
         m_levelFile = cfg.levelFile;
     }
-    m_consoleEnable.store(cfg.consoleEnable);
+    m_consoleMode.store(cfg.consoleMode);
 }
 
 int InnerLoggerImpl::getLevel() const
@@ -156,14 +159,18 @@ void InnerLoggerImpl::setLevelFile(int level, int fileType)
     }
 }
 
-bool InnerLoggerImpl::isConsoleEnable() const
+int InnerLoggerImpl::getConsoleMode() const
 {
-    return m_consoleEnable.load();
+    return m_consoleMode.load();
 }
 
-void InnerLoggerImpl::setConsoleEnable(bool enable)
+void InnerLoggerImpl::setConsoleMode(int mode)
 {
-    m_consoleEnable.store(enable);
+    if (mode < 0 || mode > 2)
+    {
+        mode = 0;
+    }
+    m_consoleMode.store(mode);
 }
 
 void InnerLoggerImpl::print(int level, const std::string& tag, const std::string& file, int line, const std::string& func,
@@ -198,9 +205,17 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
     if (level >= m_level)
     {
         /* 记录到文件 */
-        getDailyLog(level)->record(content, true);
+        auto dailyLog = getDailyLog(level);
+        if (dailyLog)
+        {
+            dailyLog->record(content, true);
+        }
         /* 打印到控制台 */
-        if (m_consoleEnable)
+        if (1 == m_consoleMode)
+        {
+            fmt::print("{}\n", content);
+        }
+        else if (2 == m_consoleMode)
         {
             fmt::print(getLevelTextStyle(level), "{}\n", content);
         }

@@ -66,16 +66,16 @@ public:
     void setLevelFile(int level, int fileType = -1);
 
     /**
-     * @brief 是否输出到控制台
-     * @return true-是, false-否
+     * @brief 获取控制台日志输出模式
+     * @return 0-不输出, 1-普通输出, 2-带样式输出
      */
-    bool isConsoleEnable() const;
+    int getConsoleMode() const;
 
     /**
-     * @brief 设置是否输出到控制台
-     * @param enable 开关标识
+     * @brief 设置控制台日志输出模式
+     * @param mode 模式: 0-不输出, 1-普通输出, 2-带样式输出
      */
-    void setConsoleEnable(bool enable);
+    void setConsoleMode(int mode);
 
     void trace(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
     void debug(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
