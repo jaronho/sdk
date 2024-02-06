@@ -213,7 +213,7 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
         /* 打印到控制台 */
         if (1 == m_consoleMode)
         {
-            fmt::print("{}\n", content);
+            fmt::print(fmt::v7::text_style(), "{}\n", content);
         }
         else if (2 == m_consoleMode)
         {
