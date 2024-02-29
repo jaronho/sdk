@@ -75,6 +75,16 @@ public:
     static std::vector<std::string> split(const std::string& str, int sepNum);
 
     /**
+     * @breif 截取字符串
+     * @param str 原始字符串
+     * @param sep 分割符
+     * @param maxCount 允许的最多个数
+     * @param output [输出]分割后的字符串列表
+     * @return 最终分割个数
+     */
+    static uint32_t split(char* str, const char* sep, uint32_t maxCount, char* output[]);
+
+    /**
      * @brief 组合
      * @param strList 字符串列表
      * @param sep 组合的符号(选填), 默认为空

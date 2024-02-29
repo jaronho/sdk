@@ -130,6 +130,31 @@ std::vector<std::string> StrTool::split(const std::string& str, int sepNum)
     return strList;
 }
 
+uint32_t StrTool::split(char* str, const char* sep, uint32_t maxCount, char* output[])
+{
+    char* block;
+    uint8_t count = 0;
+    if (str && maxCount > 0 && output)
+    {
+        if (sep)
+        {
+            block = strtok(str, sep);
+            while (NULL != block && count < maxCount)
+            {
+                output[count] = block;
+                ++count;
+                block = strtok(NULL, sep);
+            }
+        }
+        else
+        {
+            output[count] = str;
+            ++count;
+        }
+    }
+    return count;
+}
+
 std::string StrTool::join(const std::vector<std::string>& strList, const std::string& sep, size_t count)
 {
     if (0 == count || count > strList.size())
