@@ -54,6 +54,18 @@ public:
     std::vector<std::shared_ptr<usb::Usb>> getChildren() const;
 
     /**
+     * @brief 获取父路径
+     * @return 路径, 例如: 总线_1级接口.2级接口.N级接口
+     */
+    std::string getParentPath() const;
+
+    /**
+     * @brief 获取路径
+     * @return 路径, 例如: 总线_1级接口.2级接口.N级接口
+     */
+    std::string getPath() const;
+
+    /**
      * @brief 获取总线编号
      * @return 总线编号
      */
@@ -176,12 +188,6 @@ public:
 #endif
 
     /**
-     * @brief 获取路径
-     * @return 路径, 例如: 总线_1级接口.2级接口.N级接口
-     */
-    std::string getPath() const;
-
-    /**
      * @brief 判断是否HID(键盘/鼠标/加密狗等)类型
      * @return true-是, false-否
      */
@@ -198,6 +204,11 @@ public:
      * @return true-是, false-否
      */
     bool isHub() const;
+
+    /**
+     * @brief JSON字符串
+     */
+    std::string jsonString() const;
 
     /**
      * @brief 描述信息
@@ -231,6 +242,12 @@ public:
 
 private:
     /**
+     * @brief 计算路径
+     * @return 路径, 例如: 总线_1级接口.2级接口.N级接口
+     */
+    std::string calculatePath() const;
+
+    /**
      * @brief 解析得到Usb信息
      * @param dev 设备节点
      * @param detailFlag 是否获取设备详情
@@ -249,6 +266,8 @@ private:
     libusb_device* m_dev = NULL;
     std::shared_ptr<usb::Usb> m_parent = nullptr; /* 父节点 */
     std::vector<std::shared_ptr<usb::Usb>> m_children; /* 子节点 */
+    std::string m_parentPath; /* 父路径 */
+    std::string m_path; /* 路径 */
     int m_busNum = -1; /* 总线编号 */
     int m_portNum = -1; /* 端口编号(Linux中也叫系统编号sysNum) */
     int m_address = -1; /* 地址(每次拔插都会变) */

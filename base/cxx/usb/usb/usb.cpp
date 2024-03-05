@@ -1196,6 +1196,8 @@ Usb::Usb(const Usb& src)
     m_dev = src.m_dev;
     m_parent = src.m_parent;
     m_children = src.m_children;
+    m_parentPath = src.m_parentPath;
+    m_path = src.m_path;
     m_busNum = src.m_busNum;
     m_portNum = src.m_portNum;
     m_address = src.m_address;
@@ -1220,6 +1222,16 @@ std::shared_ptr<Usb> Usb::getParent() const
 std::vector<std::shared_ptr<usb::Usb>> Usb::getChildren() const
 {
     return m_children;
+}
+
+std::string Usb::getParentPath() const
+{
+    return m_parentPath;
+}
+
+std::string Usb::getPath() const
+{
+    return m_path;
 }
 
 int Usb::getBusNum() const
@@ -1382,19 +1394,6 @@ std::vector<DevNode> Usb::getDevNodes() const
 }
 #endif
 
-std::string Usb::getPath() const
-{
-    std::string path = std::to_string(m_portNum);
-    auto parent = m_parent;
-    while (parent && parent->m_parent)
-    {
-        path = std::to_string(parent->m_portNum) + "." + path;
-        parent = parent->m_parent;
-    }
-    path = std::to_string(m_busNum) + "-" + path;
-    return path;
-}
-
 bool Usb::isHid() const
 {
     return (LIBUSB_CLASS_HID == m_classCode);
@@ -1408,6 +1407,86 @@ bool Usb::isStorage() const
 bool Usb::isHub() const
 {
     return (LIBUSB_CLASS_HUB == m_classCode);
+}
+
+std::string Usb::jsonString() const
+{
+    std::string str;
+    str.append("{\n");
+    str.append("    \"parentPath\": \"").append(m_parentPath).append("\", \"path\": \"").append(m_path).append("\",\n");
+    str.append("    \"busNum\": ")
+        .append(std::to_string(m_busNum))
+        .append(", \"portNum\": ")
+        .append(std::to_string(m_portNum))
+        .append(", \"address\": ")
+        .append(std::to_string(m_address))
+        .append(",\n");
+    str.append("    \"vid\": \"")
+        .append(m_vid)
+        .append("\", \"pid\": \"")
+        .append(m_pid)
+        .append("\", \"serial\": \"")
+        .append(m_serial)
+        .append("\", \"classCode\": ")
+        .append(std::to_string(m_classCode))
+        .append(", \"subClass\": ")
+        .append(std::to_string(m_subClassCode))
+        .append(", \"protocol\": ")
+        .append(std::to_string(m_protocolCode))
+        .append(", \"speed\": ")
+        .append(std::to_string(m_speedLevel))
+        .append(",\n");
+    str.append("    \"product\": \"").append(m_product).append("\", \"manufacturer\": \"").append(m_manufacturer).append("\",\n");
+    str.append("    \"devRootNode\": {\"name\": \"")
+        .append(m_devRootNode.name)
+        .append("\", \"group\": \"")
+        .append(m_devRootNode.group)
+        .append("\", \"fstype\": \"")
+        .append(m_devRootNode.fstype)
+        .append("\", \"label\": \"")
+        .append(m_devRootNode.label)
+        .append("\", \"partlabel\": \"")
+        .append(m_devRootNode.partlabel)
+        .append("\", \"vendor\": \"")
+        .append(m_devRootNode.vendor)
+        .append("\", \"model\": \"")
+        .append(m_devRootNode.model)
+        .append("\"},\n");
+    str.append("    \"devNodes\": ");
+    if (m_devNodes.empty())
+    {
+        str.append("[]\n");
+    }
+    else
+    {
+        str.append("\n    [\n");
+        for (size_t i = 0; i < m_devNodes.size(); ++i)
+        {
+            str.append("        {\"name\": \"")
+                .append(m_devNodes[i].name)
+                .append("\", \"group\": \"")
+                .append(m_devNodes[i].group)
+                .append("\", \"fstype\": \"")
+                .append(m_devNodes[i].fstype)
+                .append("\", \"label\": \"")
+                .append(m_devNodes[i].label)
+                .append("\", \"partlabel\": \"")
+                .append(m_devNodes[i].partlabel)
+                .append("\", \"vendor\": \"")
+                .append(m_devNodes[i].vendor)
+                .append("\", \"model\": \"")
+                .append(m_devNodes[i].model)
+                .append("\"}");
+            if (i < m_devNodes.size() - 1)
+            {
+                str.append(",");
+            }
+            str.append("\n");
+        }
+        str.append("    ]\n");
+    }
+    str.append("}");
+    return str;
 }
 
 std::string Usb::describe(bool showPath, bool showDevNode, bool showChildren, int allIntend, int intend) const
@@ -1644,6 +1723,11 @@ std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
         for (size_t k = 0; k < usbList.size(); ++k)
         {
             usbList[k]->m_dev = NULL;
+            if (usbList[k]->m_parent)
+            {
+                usbList[k]->m_parentPath = usbList[k]->m_parent->calculatePath();
+            }
+            usbList[k]->m_path = usbList[k]->calculatePath();
         }
         libusb_free_device_list(devList, 1);
     }
@@ -1679,6 +1763,19 @@ bool Usb::registerDeviceNotify(HANDLE handle)
     return true;
 }
 #endif
+
+std::string Usb::calculatePath() const
+{
+    std::string path = std::to_string(m_portNum);
+    auto parent = m_parent;
+    while (parent && parent->m_parent)
+    {
+        path = std::to_string(parent->m_portNum) + "." + path;
+        parent = parent->m_parent;
+    }
+    path = std::to_string(m_busNum) + "-" + path;
+    return path;
+}
 
 std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList)
 {
