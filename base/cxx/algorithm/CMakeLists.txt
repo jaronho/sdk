@@ -22,6 +22,9 @@ ${base_algorithm_base64_files}
 ${base_algorithm_md5_files}
 
 [源文件]
+${base_algorithm_misc_files}
+
+[源文件]
 ${base_algorithm_rc4_files}
 
 [源文件]
@@ -52,6 +55,9 @@ set(base_algorithm_base64_files ${src_list} CACHE INTERNAL "")
 get_cxx_files(algorithm/md5 src_list)
 set(base_algorithm_md5_files ${src_list} CACHE INTERNAL "")
 
+get_cxx_files(algorithm/misc src_list)
+set(base_algorithm_misc_files ${src_list} CACHE INTERNAL "")
+
 get_cxx_files(algorithm/rc4 src_list)
 set(base_algorithm_rc4_files ${src_list} CACHE INTERNAL "")
 
@@ -75,6 +81,7 @@ set(base_algorithm_files
     ${base_algorithm_atomic_files}
     ${base_algorithm_base64_files}
     ${base_algorithm_md5_files}
+    ${base_algorithm_misc_files}
     ${base_algorithm_rc4_files}
     ${base_algorithm_sha1_files}
     ${base_algorithm_sm3_files}
