@@ -114,6 +114,12 @@ public:
     int getProtocolCode() const;
 
     /**
+     * @brief 获取设备子协议编码(如果设备为HID类型则值表示: 0-无协议, 1-键盘协议, 2-鼠标协议)
+     * @return 子协议编码, 如果编码个数大于1表示该设备是复合设备
+     */
+    std::vector<int> getSubProtocolCode() const;
+
+    /**
      * @brief 获取速度等级
      * @return 速度等级
      */
@@ -274,6 +280,7 @@ private:
     int m_classCode = -1; /* 设备类型编码(用于判断鼠标,键盘,Hub等) */
     int m_subClassCode = -1; /* 设备子类型编码 */
     int m_protocolCode = -1; /* 设备协议编码 */
+    std::vector<int> m_subProtocolCode; /* 设备子协议编码, 如果设备为HID类型则值表示: 0-无协议, 1-键盘协议, 2-鼠标协议 */
     int m_speedLevel = -1; /* 速度等级 */
     std::string m_vid; /* 厂商ID(小写字母) */
     std::string m_pid; /* 产品ID(小写字母) */

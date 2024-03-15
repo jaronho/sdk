@@ -11,13 +11,10 @@
 //
 #include <Dbt.h>
 #include <SetupAPI.h>
-#include <cfgmgr32.h>
 #include <devpkey.h>
 #include <strsafe.h>
 #include <usb.h>
 #include <usbioctl.h>
-#include <usbiodef.h>
-#include <usbuser.h>
 #pragma comment(lib, "setupapi.lib")
 #else
 #include <libudev.h>
@@ -229,7 +226,7 @@ void driverNameToDeviceInst(const std::string driveName, HDEVINFO* pDevInfo, PSP
     }
     *pDevInfo = INVALID_HANDLE_VALUE;
     memset(pDevInfoData, 0, sizeof(SP_DEVINFO_DATA));
-    HDEVINFO deviceInfo = SetupDiGetClassDevs(NULL, NULL, NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT);
+    HDEVINFO deviceInfo = SetupDiGetClassDevs(NULL, NULL, NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
     if (INVALID_HANDLE_VALUE != deviceInfo)
     {
         bool matchFlag = false;
@@ -1204,6 +1201,7 @@ Usb::Usb(const Usb& src)
     m_classCode = src.m_classCode;
     m_subClassCode = src.m_subClassCode;
     m_protocolCode = src.m_protocolCode;
+    m_subProtocolCode = src.m_subProtocolCode;
     m_speedLevel = src.m_speedLevel;
     m_vid = src.m_vid;
     m_pid = src.m_pid;
@@ -1317,6 +1315,11 @@ int Usb::getProtocolCode() const
     return m_protocolCode;
 }
 
+std::vector<int> Usb::getSubProtocolCode() const
+{
+    return m_subProtocolCode;
+}
+
 int Usb::getSpeedLevel() const
 {
     return m_speedLevel;
@@ -1426,9 +1429,16 @@ std::string Usb::jsonString() const
         .append(std::to_string(m_subClassCode))
         .append(", \"protocol\": ")
         .append(std::to_string(m_protocolCode))
-        .append(", \"speed\": ")
-        .append(std::to_string(m_speedLevel))
-        .append(",\n");
+        .append(", \"subProtocol\": [");
+    for (size_t i = 0; i < m_subProtocolCode.size(); ++i)
+    {
+        if (i > 0)
+        {
+            str.append(", ");
+        }
+        str.append(std::to_string(m_subProtocolCode[i]));
+    }
+    str.append("]").append(", \"speed\": ").append(std::to_string(m_speedLevel)).append(",\n");
     str.append("    \"vid\": \"")
         .append(m_vid)
         .append("\", \"pid\": \"")
@@ -1501,42 +1511,53 @@ std::string Usb::describe(bool showPath, bool showDevNode, bool showChildren, in
     if (showPath)
     {
         desc += allIntendStr + intendStr;
-        desc += "\"path\": \"" + getPath() + "\"";
+        desc += "\"path\": \"" + m_path + "\"";
         desc += ", ";
         desc += crlfStr; /* 换行 */
         desc += allIntendStr + intendStr;
     }
-    desc += "\"busNum\": " + std::to_string(getBusNum());
+    desc += "\"busNum\": " + std::to_string(m_busNum);
     desc += ", ";
-    desc += "\"portNum\": " + std::to_string(getPortNum());
+    desc += "\"portNum\": " + std::to_string(m_portNum);
     desc += ", ";
-    desc += "\"address\": " + std::to_string(getAddress());
+    desc += "\"address\": " + std::to_string(m_address);
     desc += ", ";
-    desc += "\"classCode\": " + std::to_string(getClassCode());
+    desc += "\"classCode\": " + std::to_string(m_classCode);
     desc += ", ";
     desc += "\"classHex\": \"" + getClassHex() + "\"";
     desc += ", ";
     desc += "\"classDesc\": \"" + getClassDesc() + "\"";
     desc += ", ";
-    desc += "\"subClass\": " + std::to_string(getSubClassCode());
+    desc += "\"subClass\": " + std::to_string(m_subClassCode);
     desc += ", ";
-    desc += "\"protocol\": " + std::to_string(getProtocolCode());
+    desc += "\"protocol\": " + std::to_string(m_protocolCode);
     desc += ", ";
-    desc += "\"speed\": " + std::to_string(getSpeedLevel());
+    desc += "\"subProtocol\": [";
+    for (size_t i = 0; i < m_subProtocolCode.size(); ++i)
+    {
+        if (i > 0)
+        {
+            desc += ", ";
+        }
+        desc += std::to_string(m_subProtocolCode[i]);
+    }
+    desc += "]";
+    desc += ", ";
+    desc += "\"speed\": " + std::to_string(m_speedLevel);
     desc += ", ";
     desc += "\"speedDesc\": \"" + getSpeedDesc() + "\"";
     desc += ",";
     desc += crlfStr; /* 换行 */
     desc += allIntendStr + intendStr;
-    desc += "\"vid\": \"" + getVid() + "\"";
+    desc += "\"vid\": \"" + m_vid + "\"";
     desc += ", ";
-    desc += "\"pid\": \"" + getPid() + "\"";
+    desc += "\"pid\": \"" + m_pid + "\"";
     desc += ", ";
-    desc += "\"serial\": \"" + getSerial() + "\"";
+    desc += "\"serial\": \"" + m_serial + "\"";
     desc += ", ";
-    desc += "\"product\": \"" + getProduct() + "\"";
+    desc += "\"product\": \"" + m_product + "\"";
     desc += ", ";
-    desc += "\"manufacturer\": \"" + getManufacturer() + "\"";
+    desc += "\"manufacturer\": \"" + m_manufacturer + "\"";
 #ifdef _WIN32
     desc += ", ";
     desc += "\"vendor\": \"" + getVendor() + "\"";
@@ -1809,9 +1830,17 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
         struct libusb_config_descriptor* config;
         if (LIBUSB_SUCCESS == libusb_get_config_descriptor(dev, 0, &config) && config)
         {
-            if (config->bNumInterfaces > 0 && config->interface[0].altsetting > 0)
+            for (uint8_t i = 0; i < config->bNumInterfaces; ++i)
             {
-                classCode = config->interface[0].altsetting->bInterfaceClass;
+                struct libusb_interface inf = config->interface[i];
+                if (inf.num_altsetting > 0 && inf.altsetting)
+                {
+                    if (0 == classCode)
+                    {
+                        classCode = inf.altsetting->bInterfaceClass;
+                    }
+                    info->m_subProtocolCode.emplace_back(inf.altsetting->bInterfaceProtocol);
+                }
             }
             libusb_free_config_descriptor(config);
         }
