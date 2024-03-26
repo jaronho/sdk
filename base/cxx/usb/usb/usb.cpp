@@ -37,6 +37,7 @@ struct UsbImpl
     std::string vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
     std::string model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
     std::string storageType; /* 存储设备类型, 值: disk-磁盘, cdrom-光驱 */
+    std::string storageVolume; /* 存储设备驱动器号, 例如: C:\, D:\ */
 #else
     DevNode devRootNode; /* 设备根节点 */
     std::vector<DevNode> devNodes; /* 设备节点 */
@@ -105,6 +106,17 @@ std::string wstring2string(const std::wstring& wstr)
         }
     }
     return std::string();
+}
+
+std::string guid2string(GUID guid)
+{
+    WCHAR wszGuidStr[39]; /* 定义一个足够大的缓冲区来存储GUID的字符串表示形式: 38个字符 + 1个终止符 null */
+    int nChars = StringFromGUID2(guid, wszGuidStr, sizeof(wszGuidStr) / sizeof(WCHAR)); /* 调用 StringFromGUID2 函数转换GUID */
+    if (nChars <= 0)
+    {
+        return "";
+    }
+    return wstring2string(wszGuidStr);
 }
 
 std::string getRootHubName(HANDLE hostController)
@@ -538,11 +550,13 @@ std::string getDisplayString(UCHAR index, PSTRING_DESCRIPTOR_NODE stringDescs)
     return desc;
 }
 
-void parseBusRelations(const std::string& buffer, std::string& vendor, std::string& model, std::string& storageType)
+void parseBusRelations(const std::string& buffer, std::string& vendor, std::string& model, std::string& storageType,
+                       std::string& devicePath)
 {
     vendor.clear();
     model.clear();
     storageType.clear();
+    devicePath.clear();
     auto pos = buffer.find("Ven_");
     if (std::string::npos != pos)
     {
@@ -568,9 +582,15 @@ void parseBusRelations(const std::string& buffer, std::string& vendor, std::stri
         }
     }
     pos = buffer.find("USBSTOR\\");
+    size_t offset = 8;
+    if (std::string::npos == pos)
+    {
+        pos = buffer.find("SCSI\\");
+        offset = 5;
+    }
     if (std::string::npos != pos)
     {
-        for (size_t i = pos + 8; i < buffer.size(); ++i)
+        for (size_t i = pos + offset; i < buffer.size(); ++i)
         {
             if ('&' == buffer[i])
             {
@@ -580,6 +600,76 @@ void parseBusRelations(const std::string& buffer, std::string& vendor, std::stri
         }
         std::transform(storageType.begin(), storageType.end(), storageType.begin(), tolower);
     }
+    std::string interfaceClassGUID;
+    if ("disk" == storageType) /* 磁盘 */
+    {
+        interfaceClassGUID = guid2string(GUID_DEVINTERFACE_DISK);
+    }
+    else if ("cdrom" == storageType) /* 光驱 */
+    {
+        interfaceClassGUID = guid2string(GUID_DEVINTERFACE_CDROM);
+    }
+    if (!interfaceClassGUID.empty())
+    {
+        devicePath = buffer;
+        for (size_t i = 0; i < devicePath.size(); ++i)
+        {
+            if ('\\' == devicePath[i])
+            {
+                devicePath[i] = '#';
+            }
+        }
+        devicePath = "\\\\?\\" + devicePath + "#" + interfaceClassGUID;
+        std::transform(devicePath.begin(), devicePath.end(), devicePath.begin(), tolower);
+    }
+}
+
+void parseStorageVolume(const std::string& devicePath, std::string& volume)
+{
+    volume.clear();
+    if (devicePath.empty())
+    {
+        return;
+    }
+    auto handle = CreateFileA(devicePath.c_str(), 0, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (!handle)
+    {
+        return;
+    }
+    DWORD nBytes = 0;
+    STORAGE_DEVICE_NUMBER deviceNum;
+    if (!DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes, NULL))
+    {
+        CloseHandle(handle);
+        return;
+    }
+    DWORD drives = GetLogicalDrives();
+    int index = 0;
+    while (drives && volume.empty())
+    {
+        if (1 == (drives & 0x1))
+        {
+            char volumeChar = 'A' + index;
+            char drivePath[10] = {0};
+            sprintf_s(drivePath, "\\\\.\\%c:", volumeChar);
+            auto tmpHandle = CreateFileA(drivePath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+            if (tmpHandle)
+            {
+                STORAGE_DEVICE_NUMBER devNum;
+                if (DeviceIoControl(tmpHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &devNum, sizeof(devNum), &nBytes, NULL))
+                {
+                    if (devNum.DeviceType == deviceNum.DeviceType && devNum.DeviceNumber == deviceNum.DeviceNumber)
+                    {
+                        volume = std::string(1, volumeChar) + ":\\";
+                    }
+                }
+                CloseHandle(tmpHandle);
+            }
+        }
+        drives = drives >> 1;
+        ++index;
+    }
+    CloseHandle(handle);
 }
 
 void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::vector<UsbImpl>& usbList)
@@ -661,7 +751,7 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
                 manufacturer = getDisplayString(connectionInfoEx->DeviceDescriptor.iManufacturer, stringDescs);
             }
             std::string dirverName = getDriverKeyName(hHubDevice, index);
-            std::string vendor, model, storageType;
+            std::string vendor, model, storageType, devicePath, storageVolume;
             HDEVINFO devInfo = INVALID_HANDLE_VALUE;
             SP_DEVINFO_DATA devInfoData = {0};
             driverNameToDeviceInst(dirverName, &devInfo, &devInfoData);
@@ -673,7 +763,8 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
                 if (SetupDiGetDevicePropertyW(devInfo, &devInfoData, &DEVPKEY_Device_BusRelations, &propertyType,
                                               reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
                 {
-                    parseBusRelations(wstring2string(propertyBuffer), vendor, model, storageType);
+                    parseBusRelations(wstring2string(propertyBuffer), vendor, model, storageType, devicePath);
+                    parseStorageVolume(devicePath, storageVolume);
                 }
                 SetupDiDestroyDeviceInfoList(devInfo);
             }
@@ -690,6 +781,7 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
             info.vendor = vendor;
             info.model = model;
             info.storageType = storageType;
+            info.storageVolume = storageVolume;
             usbList.emplace_back(info);
         }
         if (connectionInfoEx->DeviceIsHub) /* Hub Device */
@@ -1385,6 +1477,11 @@ std::string Usb::getStorageType() const
 {
     return m_devNodes.empty() ? "" : m_devNodes[0].group;
 }
+
+std::string Usb::getStorageVolume() const
+{
+    return m_devNodes.empty() ? "" : m_devNodes[0].name;
+}
 #else
 DevNode Usb::getDevRootNode() const
 {
@@ -1567,6 +1664,8 @@ std::string Usb::describe(bool showPath, bool showDevNode, bool showChildren, in
     {
         desc += ", ";
         desc += "\"storageType\": \"" + getStorageType() + "\"";
+        desc += ", ";
+        desc += "\"storageVolume\": \"" + getStorageVolume() + "\"";
     }
 #else
     if (showDevNode && !m_devRootNode.name.empty())
@@ -1892,7 +1991,7 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
                     info->m_manufacturer = item.manufacturer;
                 }
 #ifdef _WIN32
-                info->m_devNodes.emplace_back(DevNode(item.dirverName, item.storageType, "", "", "", item.vendor, item.model));
+                info->m_devNodes.emplace_back(DevNode(item.storageVolume, item.storageType, "", "", "", item.vendor, item.model));
 #else
                 info->m_devRootNode = item.devRootNode;
                 info->m_devNodes = item.devNodes;

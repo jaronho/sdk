@@ -20,7 +20,7 @@ struct DevNode
         : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel), vendor(vendor), model(model)
     {
     }
-    std::string name; /* 节点名, 如, Windows: "{36fc9e60-c465-11cf-8056-444553540000}\\0196", Linux: /dev/sdb1, /dev/hidraw0 等 */
+    std::string name; /* 节点名, 如, Windows: "C:\, D:\", Linux: /dev/sdb1, /dev/hidraw0 等 */
     std::string group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
     std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat, exfat, ntfs等 */
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
@@ -179,6 +179,12 @@ public:
      * @return 存储设备类型, 值: disk-磁盘, cdrom-光驱
      */
     std::string getStorageType() const;
+
+    /**
+     * @brief 获取存储设备驱动器号
+     * @return 存储设备驱动器号, 例如: C:\, D:\
+     */
+    std::string getStorageVolume() const;
 #else
     /**
      * @brief 获取根节点
