@@ -181,10 +181,10 @@ public:
     std::string getStorageType() const;
 
     /**
-     * @brief 获取存储设备驱动器号
-     * @return 存储设备驱动器号, 例如: C:\, D:\
+     * @brief 获取存储设备驱动器列表
+     * @return 存储设备驱动器列表, 例如: C:\, D:\
      */
-    std::string getStorageVolume() const;
+    std::vector<std::string> getStorageVolumes() const;
 #else
     /**
      * @brief 获取根节点

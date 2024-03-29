@@ -72,7 +72,17 @@ int main(int argc, char** argv)
             if (info->isStorage())
             {
                 printf("=   storageType: %s\n", info->getStorageType().c_str());
-                printf("= storageVolume: %s\n", info->getStorageVolume().c_str());
+                printf("= storageVolume: %");
+                auto storageVolumes = info->getStorageVolumes();
+                for (size_t i = 0; i < storageVolumes.size(); ++i)
+                {
+                    if (i > 0)
+                    {
+                        printf(", ");
+                    }
+                    printf("%s", storageVolumes[i].c_str());
+                }
+                printf("\n");
             }
 #endif
         }
