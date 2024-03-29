@@ -1578,9 +1578,11 @@ std::string Usb::jsonString() const
         str.append("\n    [\n");
         for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
-            str.append("        {\"name\": \"")
-                .append(m_devNodes[i].name)
-                .append("\", \"group\": \"")
+            str.append("        {\"name\": \"").append(m_devNodes[i].name);
+#ifdef _WIN32
+            str.append("\\"); /* JSON字符串要再增加1个反斜杠"\"进行转义 */
+#endif
+            str.append("\", \"group\": \"")
                 .append(m_devNodes[i].group)
                 .append("\", \"fstype\": \"")
                 .append(m_devNodes[i].fstype)
