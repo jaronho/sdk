@@ -1,6 +1,7 @@
 #include "usb.h"
 
 #include <algorithm>
+#include <map>
 #include <string.h>
 
 #ifdef _WIN32
@@ -22,6 +23,13 @@
 
 namespace usb
 {
+struct DriverInfo
+{
+    std::string driver; /* 设备驱动器, 例如: C:\, D:\ */
+    std::string fstype; /* 文件系统类型, 如果是存储设备则值为: FAT32, exfat, NTFS等 */
+    std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
+};
+
 struct UsbImpl
 {
     int busNum = -1; /* 总线编号 */
@@ -34,10 +42,11 @@ struct UsbImpl
     std::string manufacturer; /* 厂商名称 */
 #ifdef _WIN32
     std::string dirverName; /* 设备驱动名称 */
+    std::string deviceId; /* 设备ID */
     std::string vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
     std::string model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
     std::string storageType; /* 存储设备类型, 值: disk-磁盘, cdrom-光驱 */
-    std::vector<std::string> storageVolumes; /* 存储设备驱动器列表, 例如: C:\, D:\ */
+    std::vector<DriverInfo> driverList; /* 存储设备驱动器列表 */
 #else
     DevNode devRootNode; /* 设备根节点 */
     std::vector<DevNode> devNodes; /* 设备节点 */
@@ -624,9 +633,9 @@ void parseBusRelations(const std::string& buffer, std::string& vendor, std::stri
     }
 }
 
-void parseStorageVolume(const std::string& devicePath, std::vector<std::string>& volumes)
+void parseStorageDriver(const std::string& devicePath, std::vector<DriverInfo>& driverList)
 {
-    volumes.clear();
+    driverList.clear();
     if (devicePath.empty())
     {
         return;
@@ -649,9 +658,9 @@ void parseStorageVolume(const std::string& devicePath, std::vector<std::string>&
     {
         if (1 == (drives & 0x1))
         {
-            char volumeChar = 'A' + index;
+            char driverChar = 'A' + index;
             char drivePath[10] = {0};
-            sprintf_s(drivePath, "\\\\.\\%c:", volumeChar);
+            sprintf_s(drivePath, "\\\\.\\%c:", driverChar);
             auto tmpHandle = CreateFileA(drivePath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
             if (tmpHandle)
             {
@@ -660,7 +669,19 @@ void parseStorageVolume(const std::string& devicePath, std::vector<std::string>&
                 {
                     if (devNum.DeviceType == deviceNum.DeviceType && devNum.DeviceNumber == deviceNum.DeviceNumber)
                     {
-                        volumes.emplace_back(std::string(1, volumeChar) + ":\\");
+                        auto driver = std::string(1, driverChar) + ":\\";
+                        const int bufferSize = 256;
+                        CHAR volumeName[bufferSize] = {0};
+                        DWORD volumeSerialNumber = 0;
+                        DWORD maximumComponentLength = 0;
+                        CHAR fileSystemName[bufferSize] = {0};
+                        GetVolumeInformationA(driver.c_str(), volumeName, bufferSize, &volumeSerialNumber, &maximumComponentLength, NULL,
+                                              fileSystemName, bufferSize);
+                        DriverInfo info;
+                        info.driver = driver;
+                        info.fstype = fileSystemName;
+                        info.label = volumeName;
+                        driverList.emplace_back(info);
                     }
                 }
                 CloseHandle(tmpHandle);
@@ -751,8 +772,8 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
                 manufacturer = getDisplayString(connectionInfoEx->DeviceDescriptor.iManufacturer, stringDescs);
             }
             std::string dirverName = getDriverKeyName(hHubDevice, index);
-            std::string vendor, model, storageType, devicePath;
-            std::vector<std::string> storageVolumes;
+            std::string deviceId, vendor, model, storageType, devicePath;
+            std::vector<DriverInfo> driverList;
             HDEVINFO devInfo = INVALID_HANDLE_VALUE;
             SP_DEVINFO_DATA devInfoData = {0};
             driverNameToDeviceInst(dirverName, &devInfo, &devInfoData);
@@ -764,8 +785,9 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
                 if (SetupDiGetDevicePropertyW(devInfo, &devInfoData, &DEVPKEY_Device_BusRelations, &propertyType,
                                               reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
                 {
-                    parseBusRelations(wstring2string(propertyBuffer), vendor, model, storageType, devicePath);
-                    parseStorageVolume(devicePath, storageVolumes);
+                    deviceId = wstring2string(propertyBuffer);
+                    parseBusRelations(deviceId, vendor, model, storageType, devicePath);
+                    parseStorageDriver(devicePath, driverList);
                 }
                 SetupDiDestroyDeviceInfoList(devInfo);
             }
@@ -779,10 +801,11 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
             info.product = product;
             info.manufacturer = manufacturer;
             info.dirverName = dirverName;
+            info.deviceId = deviceId;
             info.vendor = vendor;
             info.model = model;
             info.storageType = storageType;
-            info.storageVolumes = storageVolumes;
+            info.driverList = driverList;
             usbList.emplace_back(info);
         }
         if (connectionInfoEx->DeviceIsHub) /* Hub Device */
@@ -1281,6 +1304,47 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
 }
 #endif
 
+#if _WIN32
+DevNode::DevNode(const std::string& name, const std::string& group, const std::string& fstype, const std::string& label,
+                 const std::string& partlabel, const std::string& vendor, const std::string& model, const std::string& mountpoint)
+    : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel), vendor(vendor), model(model), m_mountpoint(mountpoint)
+#else
+DevNode::DevNode(const std::string& name, const std::string& group, const std::string& fstype, const std::string& label,
+                 const std::string& partlabel, const std::string& vendor, const std::string& model)
+    : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel), vendor(vendor), model(model)
+#endif
+{
+}
+
+std::string DevNode::getMountpoint() const
+{
+    std::string mountpoint;
+#if _WIN32
+    mountpoint = m_mountpoint;
+#else
+    if (0 == name.find("/dev/"))
+    {
+        auto pos = name.find_last_of("/");
+        auto basename = (pos < name.size()) ? name.substr(pos + 1, name.size() - 1) : name;
+        std::vector<std::string> outVec;
+        runCommand("lsblk | grep \"" + basename + " \"", nullptr, &outVec);
+        if (1 == outVec.size() && !outVec[0].empty())
+        {
+            auto line = outVec[0];
+            line.erase(0, line.find_first_not_of(' '));
+            line.erase(line.find_last_not_of(' ') + 1);
+            pos = line.find_last_of(' ');
+            if (std::string::npos != pos)
+            {
+                mountpoint = (pos < line.size()) ? line.substr(pos + 1, line.size() - 1) : line;
+                mountpoint = (mountpoint.empty() || '/' != mountpoint[0]) ? std::string() : mountpoint;
+            }
+        }
+    }
+#endif
+    return mountpoint;
+}
+
 Usb::Usb(const Usb& src)
 {
     m_dev = src.m_dev;
@@ -1479,26 +1543,17 @@ std::string Usb::getStorageType() const
     return m_devNodes.empty() ? "" : m_devNodes[0].group;
 }
 
-std::vector<std::string> Usb::getStorageVolumes() const
-{
-    std::vector<std::string> volumes;
-    for (const auto& devNode : m_devNodes)
-    {
-        volumes.emplace_back(devNode.name);
-    }
-    return volumes;
-}
 #else
 DevNode Usb::getDevRootNode() const
 {
     return m_devRootNode;
 }
+#endif
 
 std::vector<DevNode> Usb::getDevNodes() const
 {
     return m_devNodes;
 }
-#endif
 
 bool Usb::isHid() const
 {
@@ -1553,6 +1608,7 @@ std::string Usb::jsonString() const
         .append("\", \"manufacturer\": \"")
         .append(m_manufacturer)
         .append("\",\n");
+#ifndef _WIN32
     str.append("    \"devRootNode\": {\"name\": \"")
         .append(m_devRootNode.name)
         .append("\", \"group\": \"")
@@ -1568,6 +1624,7 @@ std::string Usb::jsonString() const
         .append("\", \"model\": \"")
         .append(m_devRootNode.model)
         .append("\"},\n");
+#endif
     str.append("    \"devNodes\": ");
     if (m_devNodes.empty())
     {
@@ -1579,9 +1636,6 @@ std::string Usb::jsonString() const
         for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
             str.append("        {\"name\": \"").append(m_devNodes[i].name);
-#ifdef _WIN32
-            str.append("\\"); /* JSON字符串要再增加1个反斜杠"\"进行转义 */
-#endif
             str.append("\", \"group\": \"")
                 .append(m_devNodes[i].group)
                 .append("\", \"fstype\": \"")
@@ -1593,8 +1647,13 @@ std::string Usb::jsonString() const
                 .append("\", \"vendor\": \"")
                 .append(m_devNodes[i].vendor)
                 .append("\", \"model\": \"")
-                .append(m_devNodes[i].model)
-                .append("\"}");
+                .append(m_devNodes[i].model);
+#ifdef _WIN32
+            str.append("\", \"mountpoint:\": \"")
+                .append(m_devNodes[i].getMountpoint())
+                .append("\\\""); /* JSON字符串要再增加1个反斜杠"\"进行转义 */
+#endif
+            str.append("}");
             if (i < m_devNodes.size() - 1)
             {
                 str.append(",");
@@ -1671,16 +1730,32 @@ std::string Usb::describe(bool showPath, bool showDevNode, bool showChildren, in
     if (isStorage())
     {
         desc += ", ";
-        desc += "\"storageType\": \"" + getStorageType() + "\"";
+        desc += "\"storageType\": \"" + (m_devNodes.empty() ? "" : m_devNodes[0].group) + "\"";
         desc += ", ";
+        desc += crlfStr; /* 换行 */
+        desc += allIntendStr + intendStr;
         desc += "\"storageVolumes\": [";
         for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
-            if (i > 0)
+            if (m_devNodes.size() > 1)
             {
-                desc += ", ";
+                desc += crlfStr; /* 换行 */
+                desc += allIntendStr + intendStr + intendStr;
             }
-            desc += "\"" + m_devNodes[i].name + "\\\""; /* JSON字符串要再增加1个反斜杠"\"进行转义 */
+            desc += "{";
+            desc += "\"fstype\": \"" + m_devNodes[i].fstype + "\", ";
+            desc += "\"label\": \"" + m_devNodes[i].label + "\", ";
+            desc += "\"mountpoint\": \"" + m_devNodes[i].getMountpoint() + "\\\""; /* JSON字符串要再增加1个反斜杠"\"进行转义 */
+            desc += "}";
+            if (i < m_devNodes.size() - 1)
+            {
+                desc += ",";
+            }
+        }
+        if (m_devNodes.size() > 1)
+        {
+            desc += crlfStr; /* 换行 */
+            desc += allIntendStr + intendStr;
         }
         desc += "]";
     }
@@ -2008,9 +2083,17 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
                     info->m_manufacturer = item.manufacturer;
                 }
 #ifdef _WIN32
-                for (const auto& volume : item.storageVolumes)
+                if (item.driverList.empty())
                 {
-                    info->m_devNodes.emplace_back(DevNode(volume, item.storageType, "", "", "", item.vendor, item.model));
+                    info->m_devNodes.emplace_back(DevNode("", item.storageType, "", "", "", item.vendor, item.model, ""));
+                }
+                else
+                {
+                    for (const auto& di : item.driverList)
+                    {
+                        info->m_devNodes.emplace_back(
+                            DevNode("", item.storageType, di.fstype, di.label, "", item.vendor, item.model, di.driver));
+                    }
                 }
 #else
                 info->m_devRootNode = item.devRootNode;

@@ -15,18 +15,33 @@ struct UsbImpl;
 struct DevNode
 {
     DevNode() = default;
+#if _WIN32
     DevNode(const std::string& name, const std::string& group = "", const std::string& fstype = "", const std::string& label = "",
-            const std::string& partlabel = "", const std::string& vendor = "", const std::string& model = "")
-        : name(name), group(group), fstype(fstype), label(label), partlabel(partlabel), vendor(vendor), model(model)
-    {
-    }
-    std::string name; /* 节点名, 如, Windows: "C:\, D:\", Linux: /dev/sdb1, /dev/hidraw0 等 */
+            const std::string& partlabel = "", const std::string& vendor = "", const std::string& model = "",
+            const std::string& mountpoint = "");
+#else
+    DevNode(const std::string& name, const std::string& group = "", const std::string& fstype = "", const std::string& label = "",
+            const std::string& partlabel = "", const std::string& vendor = "", const std::string& model = "");
+#endif
+
+    /**
+     * @brief 获取挂载点
+     * @return 挂载点, 如: Windows: H:\, I:\, Linux: /mnt/myUdisk
+     */
+    std::string getMountpoint() const;
+
+    std::string name; /* 节点名, 如, Linux: /dev/sdb1, /dev/hidraw0 等 */
     std::string group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
-    std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat, exfat, ntfs等 */
+    std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat(FAT32), exfat(exFAT), ntfs(NTFS)等 */
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
     std::string partlabel; /* 分区标签, 例如: "Microsoft reserved partition" */
     std::string vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
     std::string model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
+
+#if _WIN32
+private:
+    std::string m_mountpoint; /* 设备挂载点, 如: Windows: H:\, I:\ */
+#endif
 };
 
 /**
@@ -180,24 +195,19 @@ public:
      */
     std::string getStorageType() const;
 
-    /**
-     * @brief 获取存储设备驱动器列表
-     * @return 存储设备驱动器列表, 例如: C:\, D:\
-     */
-    std::vector<std::string> getStorageVolumes() const;
 #else
     /**
      * @brief 获取根节点
      * @return 根节点
      */
     DevNode getDevRootNode() const;
+#endif
 
     /**
      * @brief 获取节点列表
      * @return 设备节点列表
      */
     std::vector<DevNode> getDevNodes() const;
-#endif
 
     /**
      * @brief 判断是否HID(键盘/鼠标/加密狗等)类型

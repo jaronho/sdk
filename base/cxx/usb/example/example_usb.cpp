@@ -71,16 +71,23 @@ int main(int argc, char** argv)
             printf("=         model: %s\n", info->getModel().c_str());
             if (info->isStorage())
             {
-                printf("=   storageType: %s\n", info->getStorageType().c_str());
+                auto devNodes = info->getDevNodes();
+                printf("=   storageType: %s\n", (devNodes.empty() ? "" : devNodes[0].group).c_str());
                 printf("= storageVolume: %");
-                auto storageVolumes = info->getStorageVolumes();
-                for (size_t i = 0; i < storageVolumes.size(); ++i)
+                for (size_t i = 0; i < devNodes.size(); ++i)
                 {
-                    if (i > 0)
+                    auto mountpoint = devNodes[i].getMountpoint();
+                    if (!mountpoint.empty())
                     {
-                        printf(", ");
+                        mountpoint = mountpoint.substr(0, mountpoint.size() - 1);
+                        if (i > 0)
+                        {
+                            printf("\n                 ");
+                        }
+                        auto label = devNodes[i].label;
+                        label = label.empty() ? mountpoint : label;
+                        printf("%s(%s), %s", label.c_str(), mountpoint.c_str(), devNodes[i].fstype.c_str());
                     }
-                    printf("%s", storageVolumes[i].c_str());
                 }
                 printf("\n");
             }

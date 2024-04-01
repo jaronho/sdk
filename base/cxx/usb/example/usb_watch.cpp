@@ -97,7 +97,7 @@ int main(int argc, char** argv)
                 usbListJson += ",";
             }
             usbListJson += "\n";
-            usbListJson += info->describe(pathFlag, devFlag, false, 0, 4);
+            usbListJson += info->jsonString(); //info->describe(pathFlag, devFlag, false, 0, 4);
         }
     }
     if (!firstLine)

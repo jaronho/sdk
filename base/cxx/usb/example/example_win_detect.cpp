@@ -73,22 +73,29 @@ void handleDeviceArrived()
     for (size_t i = 0; i < addedList.size(); ++i)
     {
         auto item = addedList[i];
-        auto storageVolumes = item->getStorageVolumes();
-        std::string strStorageVolumes;
-        for (size_t n = 0; n < storageVolumes.size(); ++n)
+        auto devNodes = item->getDevNodes();
+        auto storageType = devNodes.empty() ? "" : devNodes[0].group;
+        std::string storageVolumes;
+        for (size_t n = 0; n < devNodes.size(); ++n)
         {
-            if (n > 0)
+            auto mountpoint = devNodes[n].getMountpoint();
+            if (!mountpoint.empty())
             {
-                strStorageVolumes += ", ";
+                if (n > 0)
+                {
+                    storageVolumes += ", ";
+                }
+                auto label = devNodes[n].label;
+                label = label.empty() ? mountpoint : label;
+                storageVolumes += label + "(" + mountpoint + ") " + devNodes[n].fstype;
             }
-            strStorageVolumes += storageVolumes[n];
         }
         printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
                "%s, serial: %s, product: %s, manufacturer: %s, vendor: %s, model: %s%s\n",
                (i + 1), item->getBusNum(), item->getPortNum(), item->getAddress(), item->getClassCode(), item->getClassDesc().c_str(),
                item->getSubClassCode(), item->getProtocolCode(), item->getVid().c_str(), item->getPid().c_str(), item->getSerial().c_str(),
                item->getProduct().c_str(), item->getManufacturer().c_str(), item->getVendor().c_str(), item->getModel().c_str(),
-               item->isStorage() ? (", storageType: " + item->getStorageType() + ", storageVolume: " + strStorageVolumes).c_str() : "");
+               item->isStorage() ? (", storageType: " + storageType + ", storageVolume: " + storageVolumes).c_str() : "");
     }
 }
 
@@ -105,22 +112,29 @@ void handleDeviceRemoved()
     for (size_t i = 0; i < removedList.size(); ++i)
     {
         auto item = removedList[i];
-        auto storageVolumes = item->getStorageVolumes();
-        std::string strStorageVolumes;
-        for (size_t n = 0; n < storageVolumes.size(); ++n)
+        auto devNodes = item->getDevNodes();
+        auto storageType = devNodes.empty() ? "" : devNodes[0].group;
+        std::string storageVolumes;
+        for (size_t n = 0; n < devNodes.size(); ++n)
         {
-            if (n > 0)
+            auto mountpoint = devNodes[n].getMountpoint();
+            if (!mountpoint.empty())
             {
-                strStorageVolumes += ", ";
+                if (n > 0)
+                {
+                    storageVolumes += ", ";
+                }
+                auto label = devNodes[n].label;
+                label = label.empty() ? mountpoint : label;
+                storageVolumes += label + "(" + mountpoint + ") " + devNodes[n].fstype;
             }
-            strStorageVolumes += storageVolumes[n];
         }
         printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
                "%s, serial: %s, product: %s, manufacturer: %s, vendor: %s, model: %s%s\n",
                (i + 1), item->getBusNum(), item->getPortNum(), item->getAddress(), item->getClassCode(), item->getClassDesc().c_str(),
                item->getSubClassCode(), item->getProtocolCode(), item->getVid().c_str(), item->getPid().c_str(), item->getSerial().c_str(),
                item->getProduct().c_str(), item->getManufacturer().c_str(), item->getVendor().c_str(), item->getModel().c_str(),
-               item->isStorage() ? (", storageType: " + item->getStorageType() + ", storageVolume: " + strStorageVolumes).c_str() : "");
+               item->isStorage() ? (", storageType: " + storageType + ", storageVolume: " + storageVolumes).c_str() : "");
     }
 }
 
