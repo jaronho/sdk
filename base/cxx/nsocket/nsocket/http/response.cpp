@@ -86,8 +86,7 @@ std::string getFileMimeType(const std::string& fileName)
     return "application/octet-stream";
 }
 
-RESPONSE_PTR
-makeResponse200()
+RESPONSE_PTR makeResponse200()
 {
     auto resp = std::make_shared<nsocket::http::Response>();
     resp->statusCode = StatusCode::success_ok;

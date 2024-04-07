@@ -47,7 +47,7 @@ using WS_SRV_CLOSE_CALLBACK =
     std::function<void(uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code)>;
 
 /**
- * @brief WebSocket服务器
+ * @brief WebSocket服务器(注意: 需要实例化为共享指针否则会报错)
  */
 class Server final : public std::enable_shared_from_this<Server>
 {

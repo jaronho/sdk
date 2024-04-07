@@ -41,7 +41,7 @@ using WS_CLI_PONG_CALLBACK = std::function<void()>;
 using WS_CLI_CLOSE_CALLBACK = std::function<void(const boost::system::error_code& code)>;
 
 /**
- * @brief WebSocket客户端
+ * @brief WebSocket客户端(注意: 需要实例化为共享指针否则会报错)
  */
 class Client final : public std::enable_shared_from_this<Client>
 {

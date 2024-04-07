@@ -23,6 +23,7 @@ Server::~Server()
 
 void Server::setDefaultRouterCallback(const std::function<void(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)>& cb)
 {
+    std::lock_guard<std::mutex> locker(m_mutexDefaultRouterCb);
     m_defaultRouterCb = cb;
 }
 
@@ -30,20 +31,23 @@ std::vector<std::string> Server::addRouter(const std::vector<Method>& methods, c
                                            const std::shared_ptr<Router>& router)
 {
     std::vector<std::string> repeatUriList;
-    for (auto uri : uriList)
     {
-        if (uri.empty() || '/' != uri[0])
+        std::lock_guard<std::mutex> locker(m_mutexRouterMap);
+        for (auto uri : uriList)
         {
-            uri.insert(uri.begin(), '/');
-        }
-        if (m_routerMap.end() == m_routerMap.find(uri)) /* 新的URI */
-        {
-            router->m_methods = methods;
-            m_routerMap.insert(std::make_pair(uri, router));
-        }
-        else /* URI已添加过 */
-        {
-            repeatUriList.emplace_back(uri);
+            if (uri.empty() || '/' != uri[0])
+            {
+                uri.insert(uri.begin(), '/');
+            }
+            if (m_routerMap.end() == m_routerMap.find(uri)) /* 新的URI */
+            {
+                router->m_methods = methods;
+                m_routerMap.insert(std::make_pair(uri, router));
+            }
+            else /* URI已添加过 */
+            {
+                repeatUriList.emplace_back(uri);
+            }
         }
     }
     return repeatUriList;
@@ -165,19 +169,26 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
     const auto conn = session->wpConn.lock();
     if (conn)
     {
-        /* 路由 */
-        auto iter = m_routerMap.find(session->req->uri);
-        if (m_routerMap.end() != iter) /* 找到 */
+        std::shared_ptr<Router> router = nullptr;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexRouterMap);
+            auto iter = m_routerMap.find(session->req->uri);
+            if (m_routerMap.end() != iter)
+            {
+                router = iter->second;
+            }
+        }
+        if (router) /* 找到路由 */
         {
             /* 判断是否允许请求的方法 */
-            if (iter->second->m_methods.empty())
+            if (router->m_methods.empty())
             {
                 session->req->isMethodAllowed = true;
             }
             else
             {
                 session->req->isMethodAllowed = false;
-                for (auto method : iter->second->m_methods)
+                for (auto method : router->m_methods)
                 {
                     if (case_insensitive_equal(session->req->method, method_desc(method)))
                     {
@@ -188,7 +199,7 @@ void Server::handleReqHead(const std::shared_ptr<Session>& session)
             }
             if (session->req->isMethodAllowed) /* 允许方法, 响应头数据 */
             {
-                iter->second->onReqHead(conn->getId(), session->req);
+                router->onReqHead(conn->getId(), session->req);
             }
         }
     }
@@ -201,11 +212,18 @@ void Server::handleReqContent(const std::shared_ptr<Session>& session, size_t of
         const auto conn = session->wpConn.lock();
         if (conn)
         {
-            /* 路由 */
-            auto iter = m_routerMap.find(session->req->uri);
-            if (m_routerMap.end() != iter)
+            std::shared_ptr<Router> router = nullptr;
             {
-                iter->second->onReqContent(conn->getId(), session->req, offset, data, dataLen);
+                std::lock_guard<std::mutex> locker(m_mutexRouterMap);
+                auto iter = m_routerMap.find(session->req->uri);
+                if (m_routerMap.end() != iter)
+                {
+                    router = iter->second;
+                }
+            }
+            if (router) /* 找到路由 */
+            {
+                router->onReqContent(conn->getId(), session->req, offset, data, dataLen);
             }
         }
     }
@@ -216,36 +234,29 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
     const auto conn = session->wpConn.lock();
     if (conn)
     {
-        std::shared_ptr<Response> resp = nullptr;
-        auto iter = m_routerMap.find(session->req->uri);
-        if (m_routerMap.end() == iter) /* 找不到路由(进入默认路由) */
+        std::shared_ptr<Router> router = nullptr;
         {
-            if (m_defaultRouterCb)
+            std::lock_guard<std::mutex> locker(m_mutexRouterMap);
+            auto iter = m_routerMap.find(session->req->uri);
+            if (m_routerMap.end() != iter)
             {
-                m_defaultRouterCb(conn->getId(), session->req,
-                                  Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
-                                                                          const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
-                                            [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
-                return;
+                router = iter->second;
             }
-            resp = std::make_shared<Response>();
-            resp->statusCode = StatusCode::client_error_not_found;
         }
-        else /* 找到路由 */
+        std::shared_ptr<Response> resp = nullptr;
+        if (router) /* 找到路由 */
         {
             if (session->req->isMethodAllowed) /* 允许方法 */
             {
-                iter->second->onResponse(
-                    conn->getId(), session->req,
-                    Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
-                                                            const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
-                              [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
+                router->onResponse(conn->getId(), session->req,
+                                   Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
+                                                                           const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
+                                             [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
                 return;
             }
-            /* 方法不允许 */
-            if (iter->second->methodNotAllowedCb)
+            else if (router->methodNotAllowedCb) /* 方法不允许 */
             {
-                iter->second->methodNotAllowedCb(
+                router->methodNotAllowedCb(
                     conn->getId(), session->req,
                     Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
                                                             const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
@@ -254,6 +265,24 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             }
             resp = std::make_shared<Response>();
             resp->statusCode = StatusCode::client_error_method_not_allowed;
+        }
+        else /* 找不到路由(进入默认路由) */
+        {
+            std::function<void(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)> defaultRouterCb = nullptr;
+            {
+                std::lock_guard<std::mutex> locker(m_mutexDefaultRouterCb);
+                defaultRouterCb = m_defaultRouterCb;
+            }
+            if (defaultRouterCb)
+            {
+                defaultRouterCb(conn->getId(), session->req,
+                                Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
+                                                                        const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
+                                          [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
+                return;
+            }
+            resp = std::make_shared<Response>();
+            resp->statusCode = StatusCode::client_error_not_found;
         }
         /* 发送响应数据 */
         sendResponse(session->wpConn, resp ? resp->pack() : std::vector<unsigned char>(),

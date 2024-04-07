@@ -13,7 +13,7 @@ namespace nsocket
 namespace http
 {
 /**
- * @brief HTTP服务器
+ * @brief HTTP服务器(注意: 需要实例化为共享指针否则会报错)
  */
 class Server final : public std::enable_shared_from_this<Server>
 {
@@ -137,7 +137,9 @@ private:
     std::shared_ptr<TcpServer> m_tcpServer = nullptr; /* TCP服务器 */
     std::mutex m_mutexSessionMap;
     std::unordered_map<uint64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
+    std::mutex m_mutexDefaultRouterCb;
     std::function<void(uint64_t cid, const REQUEST_PTR& req, const Connector& conn)> m_defaultRouterCb = nullptr; /* 默认路由回调 */
+    std::mutex m_mutexRouterMap;
     std::unordered_map<std::string, std::shared_ptr<Router>> m_routerMap; /* 路由表 */
 };
 } // namespace http
