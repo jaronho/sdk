@@ -418,16 +418,24 @@ static int unicode_to_gbk(const wchar* wstr, int wlen, char* outbuf, int osize)
     return ret;
 }
 
-static bool is_utf8(const char* str, int len, std::vector<unsigned int>* nonAsciiChars)
+static bool is_utf8(const char* str, int len, bool& withBom, std::vector<unsigned int>* nonAsciiChars)
 {
+    withBom = false;
     if (nonAsciiChars)
     {
         nonAsciiChars->clear();
     }
     if (str && len > 0)
     {
+        size_t i = 0;
+        /* BOM字符检测 */
+        if (len >= 3 && (0xEF == (unsigned char)str[0] && 0xBB == (unsigned char)str[1] && 0xBF == (unsigned char)str[2]))
+        {
+            withBom = true;
+            i = 3;
+        }
         unsigned int byteCount = 0; /* UTF8可用1-6个字节编码, ASCII用1个字节 */
-        for (size_t i = 0; i < len; ++i)
+        for (; i < len; ++i)
         {
             unsigned char ch = str[i];
             if ('\0' == ch)
@@ -763,8 +771,13 @@ Charset::Coding Charset::getCoding(const std::string& str, std::vector<unsigned 
     {
         nonAsciiChars->clear();
     }
-    if (is_utf8(str.c_str(), str.size(), nonAsciiChars))
+    bool withBom = false;
+    if (is_utf8(str.c_str(), str.size(), withBom, nonAsciiChars))
     {
+        if (withBom)
+        {
+            return Coding::utf8_bom;
+        }
         return Coding::utf8;
     }
     else if (is_gbk(str.c_str(), str.size(), nonAsciiChars))

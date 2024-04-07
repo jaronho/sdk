@@ -14,6 +14,7 @@ public:
     {
         unknown = -1,
         utf8,
+        utf8_bom,
         gbk
     };
 
