@@ -21,6 +21,11 @@ include_directories(${base_utility_dir})
 source_group(TREE ${base_utility_dir} PREFIX 3rdparty/base FILES ${base_utility_files})
 ##########################################################################################
 
+# 添加hfs公共库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../comlib/cxx/hfs/ 3rdparty/comlib/hfs)
+include_directories(${comlib_hfs_dir})
+source_group(TREE ${comlib_hfs_dir} PREFIX 3rdparty/comlib FILES ${comlib_hfs_files})
+
 # 添加工程文件
 set(proc_files)
 get_cxx_files(. src_list)
@@ -35,6 +40,7 @@ add_executable(httpfileserver
                ${base_fileparse_files}
                ${base_nsocket_http_files}
                ${base_utility_files}
+               ${comlib_hfs_files}
                ${proc_files})
 
 # 链接依赖库文件

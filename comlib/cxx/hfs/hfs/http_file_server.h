@@ -50,14 +50,23 @@ public:
      * @param threadCount 线程个数
      * @param host 主机地址
      * @param port 端口
+     * @param rootDir 资源根目录, 默认使用程序所在目录, 默认程序文件所在目录
+     * @param fileBlockSize 每次读取的文件块大小(字节), 取值范围[4Kb - 16Mb], 默认1Mb
      * @param reuseAddr 是否允许复用端口, 默认不复用
      * @param bz 数据缓冲区大小(字节)
      * @param handshakeTimeout 握手超时时间
      */
-    HttpFileServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr = false,
-                   size_t bz = 4096, const std::chrono::steady_clock::duration& handshakeTimeout = std::chrono::seconds(3));
+    HttpFileServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, std::string rootDir = "",
+                   size_t fileBlockSize = 1024 * 1024, bool reuseAddr = false, size_t bz = 4096,
+                   const std::chrono::steady_clock::duration& handshakeTimeout = std::chrono::seconds(3));
 
     virtual ~HttpFileServer();
+
+    /**
+     * @brief 获取资源根目录
+     * @return 资源根目录
+     */
+    std::string getRootDir() const;
 
     /**
      * @brief 设置方法不允许处理器(若不设置的话则使用内部默认处理器)
@@ -95,7 +104,6 @@ public:
 
     /**
      * @brief 运行(非阻塞)
-     * @param rootDir 资源根目录, 默认使用程序所在目录
      * @param sslOn 是否开启SSL, true-是, false-否
      * @param sslWay SSL验证方式, 1-单向, 2-双向
      * @param certFmt (证书/私钥)文件格式, 1-DER, 2-PEM
@@ -105,8 +113,8 @@ public:
      * @param errDesc [输出]错误描述
      * @return true-运行中, false-运行失败
      */
-    bool run(std::string rootDir = "", bool sslOn = false, int sslWay = 1, int certFmt = 2, const std::string& certFile = "",
-             const std::string& pkFile = "", const std::string& pkPwd = "", std::string* errDesc = nullptr);
+    bool run(bool sslOn = false, int sslWay = 1, int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "",
+             const std::string& pkPwd = "", std::string* errDesc = nullptr);
 
     /**
      * @brief 停止
@@ -118,12 +126,6 @@ public:
      * @return true-运行中, false-非运行中
      */
     bool isRunning();
-
-    /**
-     * @brief 获取资源根目录
-     * @return 资源根目录
-     */
-    std::string getRootDir();
 
 private:
     /**
@@ -149,10 +151,10 @@ private:
     const bool m_reuseAddr; /* /* 是否允许复用端口 */
     const size_t m_bufferSize; /* 缓冲区大小 */
     const std::chrono::steady_clock::duration m_handshakeTimeout; /* SSL握手超时时间 */
+    std::string m_rootDir; /* 文件资源根目录 */
+    size_t m_fileBlockSize; /* 每次读取的文件块大小 */
     std::mutex m_mutexHttpServer;
     std::shared_ptr<nsocket::http::Server> m_httpServer = nullptr; /* HTTP服务器 */
-    std::mutex m_mutexRootDir;
-    std::string m_rootDir; /* 文件资源根目录 */
     std::mutex m_mutexNotAllowHandler;
     NotHandler m_notAllowHandler = nullptr; /* 方法不允许处理器 */
     std::mutex m_mutexNotFoundHandler;

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <thread>
 
-#include "../hfs/hfs.h"
+#include "../hfs/http_file_server.h"
 
 int main(int argc, char* argv[])
 {
@@ -155,9 +155,9 @@ int main(int argc, char* argv[])
     }
     printf("server: %s:%d, ssl: %d, way: %d, certFmt: %d, certFile: %s, pkFile: %s\n", host.c_str(), port, sslOn, sslWay, certFmt,
            certFile.c_str(), privateKeyFile.c_str());
-    auto server = std::make_shared<hfs::HttpFileServer>("hfs", 6, host, port);
-    server->run(filePath);
+    auto server = std::make_shared<hfs::HttpFileServer>("hfs", 6, host, port, filePath);
     printf("path: %s\n", server->getRootDir().c_str());
+    server->run();
     while (1)
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));

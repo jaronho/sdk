@@ -18,8 +18,8 @@ set(comlib_hfs_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 
 # 组装文件列表
 set(comlib_hfs_files
-    ${CMAKE_CURRENT_SOURCE_DIR}/hfs/hfs.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/hfs/hfs.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/hfs/http_file_server.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/hfs/http_file_server.h
     CACHE INTERNAL "")
 
 # 打印文件列表

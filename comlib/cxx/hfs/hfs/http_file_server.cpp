@@ -1,4 +1,4 @@
-#include "hfs.h"
+#include "http_file_server.h"
 
 #include <algorithm>
 
@@ -100,8 +100,8 @@ std::string fileSizeUnit(size_t fileSize)
     return buf;
 }
 
-HttpFileServer::HttpFileServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr,
-                               size_t bz, const std::chrono::steady_clock::duration& handshakeTimeout)
+HttpFileServer::HttpFileServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, std::string rootDir,
+                               size_t fileBlockSize, bool reuseAddr, size_t bz, const std::chrono::steady_clock::duration& handshakeTimeout)
     : m_name(name)
     , m_threadCount(threadCount)
     , m_host(host)
@@ -110,11 +110,27 @@ HttpFileServer::HttpFileServer(const std::string& name, size_t threadCount, cons
     , m_bufferSize(bz)
     , m_handshakeTimeout(handshakeTimeout)
 {
+    rootDir = rootDir.empty() ? utility::FileInfo(utility::Process::getProcessExeFile()).path() : rootDir;
+    utility::PathInfo pi(rootDir);
+    pi.create();
+    m_rootDir = pi.path();
+    static const size_t MIN_FILE_BLOCK_SIZE = (4 * 1024);
+    static const size_t MAX_FILE_BLOCK_SIZE = (16 * 1024 * 1024);
+    if (fileBlockSize < MIN_FILE_BLOCK_SIZE || fileBlockSize > MAX_FILE_BLOCK_SIZE)
+    {
+        fileBlockSize = MIN_FILE_BLOCK_SIZE;
+    }
+    m_fileBlockSize = fileBlockSize;
 }
 
 HttpFileServer::~HttpFileServer()
 {
     stop();
+}
+
+std::string HttpFileServer::getRootDir() const
+{
+    return m_rootDir;
 }
 
 void HttpFileServer::setNotAllowHandler(const NotHandler& handler)
@@ -157,16 +173,9 @@ std::vector<std::string> HttpFileServer::addRouter(const std::vector<nsocket::ht
     return {};
 }
 
-bool HttpFileServer::run(std::string rootDir, bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile,
+bool HttpFileServer::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile,
                          const std::string& pkPwd, std::string* errDesc)
 {
-    rootDir = rootDir.empty() ? utility::FileInfo(utility::Process::getProcessExeFile()).path() : rootDir;
-    utility::PathInfo pi(rootDir);
-    pi.create();
-    {
-        std::lock_guard<std::mutex> locker(m_mutexRootDir);
-        m_rootDir = pi.path();
-    }
     auto httpServer =
         std::make_shared<nsocket::http::Server>(m_name, m_threadCount, m_host, m_port, m_reuseAddr, m_bufferSize, m_handshakeTimeout);
     const std::weak_ptr<HttpFileServer> wpSelf = shared_from_this();
@@ -213,12 +222,6 @@ bool HttpFileServer::isRunning()
     return false;
 }
 
-std::string HttpFileServer::getRootDir()
-{
-    std::lock_guard<std::mutex> locker(m_mutexRootDir);
-    return m_rootDir;
-}
-
 void HttpFileServer::handleDefaultRouter(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn)
 {
     bool keeyAlive = false;
@@ -258,12 +261,7 @@ void HttpFileServer::handleDefaultRouter(uint64_t cid, const nsocket::http::REQU
         }
         return;
     }
-    std::string rootDir;
-    {
-        std::lock_guard<std::mutex> locker(m_mutexRootDir);
-        rootDir = m_rootDir;
-    }
-    auto target = rootDir + uri;
+    auto target = m_rootDir + uri;
     utility::FileAttribute attr;
     if (!utility::getFileAttribute(target, attr))
     {
@@ -295,12 +293,12 @@ void HttpFileServer::handleDefaultRouter(uint64_t cid, const nsocket::http::REQU
         }
         if (handler)
         {
-            handler(conn, keeyAlive, rootDir, uri);
+            handler(conn, keeyAlive, m_rootDir, uri);
         }
         else
         {
             internHandler = true;
-            handleDir(conn, rootDir, uri);
+            handleDir(conn, m_rootDir, uri);
         }
     }
     else if (attr.isFile) /* нд╪Ч */
@@ -485,7 +483,7 @@ void HttpFileServer::handleFile(const nsocket::http::Connector& conn, const std:
         while (1)
         {
             offset += count;
-            count = 1024 * 1024;
+            count = m_fileBlockSize;
             auto data = fi.read(offset, count);
             if (!data)
             {
