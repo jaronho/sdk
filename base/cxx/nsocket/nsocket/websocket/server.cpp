@@ -61,17 +61,39 @@ bool Server::run(bool sslOn, int sslWay, int certFmt, const std::string& certFil
     {
         return false;
     }
-    tcpServer->setNewConnectionCallback([&, tcpServer](const std::weak_ptr<TcpConnection>& wpConn) {
-        if (!tcpServer->isEnableSSL())
+    const std::weak_ptr<Server> wpSelf = shared_from_this();
+    tcpServer->setNewConnectionCallback([wpSelf, tcpServer](const std::weak_ptr<TcpConnection>& wpConn) {
+        const auto self = wpSelf.lock();
+        if (self)
         {
-            handleNewConnection(wpConn);
+            if (!tcpServer->isEnableSSL())
+            {
+                self->handleNewConnection(wpConn);
+            }
         }
     });
-    tcpServer->setHandshakeOkCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) { handleNewConnection(wpConn); });
-    tcpServer->setConnectionDataCallback(
-        [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
-    tcpServer->setConnectionCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point,
-                                              const boost::system::error_code& code) { handleConnectionClose(cid, point, code); });
+    tcpServer->setHandshakeOkCallback([wpSelf](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
+        const auto self = wpSelf.lock();
+        if (self)
+        {
+            self->handleNewConnection(wpConn);
+        }
+    });
+    tcpServer->setConnectionDataCallback([wpSelf](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) {
+        const auto self = wpSelf.lock();
+        if (self)
+        {
+            self->handleConnectionData(wpConn, data);
+        }
+    });
+    tcpServer->setConnectionCloseCallback(
+        [wpSelf](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+            const auto self = wpSelf.lock();
+            if (self)
+            {
+                self->handleConnectionClose(cid, point, code);
+            }
+        });
     {
         std::lock_guard<std::mutex> locker(m_mutexTcpServer);
         m_tcpServer = tcpServer;
@@ -216,20 +238,25 @@ void Server::handleRequest(const std::shared_ptr<Session>& session)
         std::vector<unsigned char> data;
         Response::create(*resp, session->m_req->getSecWebSocketKey(), data);
         /* 响应客户端, 用于通知客户端WebSocket连接建立成功 */
+        const std::weak_ptr<Server> wpSelf = shared_from_this();
         std::weak_ptr<Session> wpSession = session;
-        conn->send(data, [&, wpSession](const boost::system::error_code& code, size_t length) {
-            const auto session = wpSession.lock();
-            if (session)
+        conn->send(data, [wpSelf, wpSession](const boost::system::error_code& code, size_t length) {
+            const auto self = wpSelf.lock();
+            if (self)
             {
-                if (code) /* 失败, 则需要关闭连接 */
+                const auto session = wpSession.lock();
+                if (session)
                 {
-                    session->sendClose(CloseCode::close_no_status);
-                }
-                else /* 成功, 表示连接建立成功 */
-                {
-                    if (m_onOpenCallback)
+                    if (code) /* 失败, 则需要关闭连接 */
                     {
-                        m_onOpenCallback(session);
+                        session->sendClose(CloseCode::close_no_status);
+                    }
+                    else /* 成功, 表示连接建立成功 */
+                    {
+                        if (self->m_onOpenCallback)
+                        {
+                            self->m_onOpenCallback(session);
+                        }
                     }
                 }
             }

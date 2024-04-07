@@ -61,17 +61,39 @@ bool Server::run(bool sslOn, int sslWay, int certFmt, const std::string& certFil
     {
         return false;
     }
-    tcpServer->setNewConnectionCallback([&, tcpServer](const std::weak_ptr<TcpConnection>& wpConn) {
-        if (!tcpServer->isEnableSSL())
+    const std::weak_ptr<Server> wpSelf = shared_from_this();
+    tcpServer->setNewConnectionCallback([wpSelf, tcpServer](const std::weak_ptr<TcpConnection>& wpConn) {
+        const auto& self = wpSelf.lock();
+        if (self)
         {
-            handleNewConnection(wpConn);
+            if (!tcpServer->isEnableSSL())
+            {
+                self->handleNewConnection(wpConn);
+            }
         }
     });
-    tcpServer->setHandshakeOkCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) { handleNewConnection(wpConn); });
-    tcpServer->setConnectionDataCallback(
-        [&](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) { handleConnectionData(wpConn, data); });
-    tcpServer->setConnectionCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point,
-                                              const boost::system::error_code& code) { handleConnectionClose(cid); });
+    tcpServer->setHandshakeOkCallback([wpSelf](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
+        const auto& self = wpSelf.lock();
+        if (self)
+        {
+            self->handleNewConnection(wpConn);
+        }
+    });
+    tcpServer->setConnectionDataCallback([wpSelf](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) {
+        const auto& self = wpSelf.lock();
+        if (self)
+        {
+            self->handleConnectionData(wpConn, data);
+        }
+    });
+    tcpServer->setConnectionCloseCallback(
+        [wpSelf](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+            const auto& self = wpSelf.lock();
+            if (self)
+            {
+                self->handleConnectionClose(cid);
+            }
+        });
     {
         std::lock_guard<std::mutex> locker(m_mutexTcpServer);
         m_tcpServer = tcpServer;
@@ -244,23 +266,49 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             }
         }
         std::shared_ptr<Response> resp = nullptr;
+        const std::weak_ptr<Server> wpSelf = shared_from_this();
         if (router) /* 找到路由 */
         {
             if (session->req->isMethodAllowed) /* 允许方法 */
             {
-                router->onResponse(conn->getId(), session->req,
-                                   Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
-                                                                           const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
-                                             [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
+                router->onResponse(
+                    conn->getId(), session->req,
+                    Connector(
+                        [wpSelf, wpConn = session->wpConn](const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb) {
+                            const auto& self = wpSelf.lock();
+                            if (self)
+                            {
+                                self->sendResponse(wpConn, data, cb);
+                            }
+                        },
+                        [wpSelf, wpConn = session->wpConn]() {
+                            const auto& self = wpSelf.lock();
+                            if (self)
+                            {
+                                self->closeConnection(wpConn);
+                            }
+                        }));
                 return;
             }
             else if (router->methodNotAllowedCb) /* 方法不允许 */
             {
                 router->methodNotAllowedCb(
                     conn->getId(), session->req,
-                    Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
-                                                            const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
-                              [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
+                    Connector(
+                        [wpSelf, wpConn = session->wpConn](const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb) {
+                            const auto& self = wpSelf.lock();
+                            if (self)
+                            {
+                                self->sendResponse(wpConn, data, cb);
+                            }
+                        },
+                        [wpSelf, wpConn = session->wpConn]() {
+                            const auto& self = wpSelf.lock();
+                            if (self)
+                            {
+                                self->closeConnection(wpConn);
+                            }
+                        }));
                 return;
             }
             resp = std::make_shared<Response>();
@@ -275,10 +323,23 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
             }
             if (defaultRouterCb)
             {
-                defaultRouterCb(conn->getId(), session->req,
-                                Connector([&, wpConn = session->wpConn](const std::vector<unsigned char>& data,
-                                                                        const TCP_SEND_CALLBACK& cb) { sendResponse(wpConn, data, cb); },
-                                          [&, wpConn = session->wpConn]() { closeConnection(wpConn); }));
+                defaultRouterCb(
+                    conn->getId(), session->req,
+                    Connector(
+                        [wpSelf, wpConn = session->wpConn](const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& cb) {
+                            const auto& self = wpSelf.lock();
+                            if (self)
+                            {
+                                self->sendResponse(wpConn, data, cb);
+                            }
+                        },
+                        [wpSelf, wpConn = session->wpConn]() {
+                            const auto& self = wpSelf.lock();
+                            if (self)
+                            {
+                                self->closeConnection(wpConn);
+                            }
+                        }));
                 return;
             }
             resp = std::make_shared<Response>();
@@ -286,8 +347,12 @@ void Server::handleReqFinish(const std::shared_ptr<Session>& session)
         }
         /* 发送响应数据 */
         sendResponse(session->wpConn, resp ? resp->pack() : std::vector<unsigned char>(),
-                     [&, wpConn = session->wpConn](const boost::system::error_code& code, size_t length) {
-                         closeConnection(wpConn); /* 关闭连接 */
+                     [wpSelf, wpConn = session->wpConn](const boost::system::error_code& code, size_t length) {
+                         const auto& self = wpSelf.lock();
+                         if (self)
+                         {
+                             self->closeConnection(wpConn); /* 关闭连接 */
+                         }
                      });
     }
 }

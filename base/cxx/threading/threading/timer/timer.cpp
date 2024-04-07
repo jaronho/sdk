@@ -77,6 +77,7 @@ Timer::Timer(const std::string& name, const TimerTriggerFunc& func, const Execut
             setThreadName("thd::timer");
             s_context->run();
         });
+        s_thread->detach();
     }
 }
 

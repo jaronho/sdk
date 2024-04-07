@@ -142,6 +142,7 @@ TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::str
                     setThreadName(name + "::hs"); /* 设置线程名称 */
                     s_handshakeCheckContext->run();
                 });
+                s_handshakeCheckThread->detach();
             }
         }
         m_handshakeTimeout = handshakeTimeout > std::chrono::seconds(1) ? handshakeTimeout : std::chrono::seconds(1);
@@ -384,11 +385,18 @@ void TcpServer::handleHandshake(const std::shared_ptr<TcpConnection>& conn, cons
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::steady_timer> tm = nullptr;
     {
+        std::lock_guard<std::mutex> locker(s_mutexHandshakeCheck);
+        tm = std::make_shared<boost::asio::steady_timer>(*s_handshakeCheckContext);
+    }
+    {
         std::lock_guard<std::mutex> locker(m_mutexHandshakeMap);
         if (m_handshakeMap.end() == m_handshakeMap.find(conn->getId()))
         {
-            tm = std::make_shared<boost::asio::steady_timer>(*s_handshakeCheckContext);
             m_handshakeMap.insert(std::make_pair(conn->getId(), tm));
+        }
+        else
+        {
+            tm.reset();
         }
     }
     const std::weak_ptr<TcpServer> wpSelf = shared_from_this();

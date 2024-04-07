@@ -85,8 +85,21 @@ void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool ssl
     m_hostPort = hostPortPath.substr(beg, portEndPos - beg);
     m_uri = (std::string::npos == portEndPos) ? "/" : hostPortPath.substr(portEndPos);
     auto tcpClient = std::make_shared<nsocket::TcpClient>(m_localPort, m_bufferSize);
-    tcpClient->setConnectCallback([&](const boost::system::error_code& code) { handleConnect(code); });
-    tcpClient->setDataCallback([&](const std::vector<unsigned char>& data) { handleData(data); });
+    const std::weak_ptr<Client> wpSelf = shared_from_this();
+    tcpClient->setConnectCallback([wpSelf](const boost::system::error_code& code) {
+        const auto self = wpSelf.lock();
+        if (self)
+        {
+            self->handleConnect(code);
+        }
+    });
+    tcpClient->setDataCallback([wpSelf](const std::vector<unsigned char>& data) {
+        const auto self = wpSelf.lock();
+        if (self)
+        {
+            self->handleData(data);
+        }
+    });
     {
         std::lock_guard<std::mutex> locker(m_mutexTcpClient);
         m_tcpClient = tcpClient;
