@@ -22,6 +22,13 @@ public:
     FiberExecutor(const std::string& name, size_t maxFiberCount = 1024, size_t stackSize = 512 * 1024);
 
     virtual ~FiberExecutor();
+    
+    /**
+     * @brief 扩展队列大小(说明: 调用该接口无用, 对于fiber暂时不支持扩展)
+     * @param count 队列大小
+     * @return 当前队列大小
+     */
+    size_t extend(size_t count) override;
 
     /**
      * @brief 等待退出

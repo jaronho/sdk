@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
@@ -30,9 +31,16 @@ public:
 
     /**
      * @brief 获取允许同时执行的最多任务数
-     * @return 最多任务数
+     * @return 当前最多任务数
      */
     size_t getMaxCount() const;
+
+    /**
+     * @brief 扩展任务数
+     * @param count 数量
+     * @return 当前最多任务数
+     */
+    virtual size_t extend(size_t count);
 
     /**
      * @brief 等待退出
@@ -56,7 +64,7 @@ public:
 
 private:
     const std::string m_name; /* 执行者名称 */
-    const size_t m_maxCount; /* 最多任务数 */
+    std::atomic_size_t m_maxCount = {0}; /* 最多任务数 */
 };
 
 using ExecutorPtr = std::shared_ptr<Executor>;

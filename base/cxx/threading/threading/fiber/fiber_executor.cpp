@@ -52,6 +52,12 @@ FiberExecutor::FiberExecutor(const std::string& name, size_t maxFiberCount, size
     result.get_future().get();
 }
 
+size_t FiberExecutor::extend(size_t count)
+{
+    auto totalCount = Executor::extend(0); // 说明: 对于fiber暂时不支持扩展
+    return totalCount;
+}
+
 FiberExecutor::~FiberExecutor()
 {
     m_channel->close();

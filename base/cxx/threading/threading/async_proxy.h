@@ -54,6 +54,12 @@ public:
     static void stop();
 
     /**
+     * @brief 扩展线程个数
+     * @param threadCount 线程个数
+     */
+    static void extend(size_t threadCount);
+
+    /**
      * @brief 执行异步任务
      * @param task 异步任务
      */

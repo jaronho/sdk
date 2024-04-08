@@ -83,6 +83,14 @@ void AsyncProxy::stop()
     }
 }
 
+void AsyncProxy::extend(size_t threadCount)
+{
+    if (s_workerThreads)
+    {
+        s_workerThreads->extend(threadCount);
+    }
+}
+
 void AsyncProxy::execute(const std::shared_ptr<AsyncTask>& task)
 {
     if (!s_workerThreads)

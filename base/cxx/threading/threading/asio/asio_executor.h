@@ -24,6 +24,13 @@ public:
     virtual ~AsioExecutor();
 
     /**
+     * @brief 扩展线程池
+     * @param count 线程数量
+     * @return 当前线程数
+     */
+    size_t extend(size_t count) override;
+
+    /**
      * @brief 等待退出
      */
     void join() override;
@@ -40,6 +47,9 @@ public:
      * @return IO上下文
      */
     boost::asio::io_context* getContext();
+
+private:
+    void threadFunc(const std::string& name, size_t totalCount);
 
 private:
     std::atomic_int m_threadIndex = {0}; /* 线程索引 */
