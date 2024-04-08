@@ -222,109 +222,8 @@ bool HttpFileServer::isRunning()
     return false;
 }
 
-void HttpFileServer::handleDefaultRouter(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn)
-{
-    bool keeyAlive = false;
-    for (auto iter = req->headers.begin(); req->headers.end() != iter; ++iter)
-    {
-        auto name = iter->first;
-        std::transform(name.begin(), name.end(), name.begin(), tolower);
-        auto value = iter->second;
-        std::transform(value.begin(), value.end(), value.begin(), tolower);
-        if ("connection" == name && std::string::npos != value.find("keep-alive"))
-        {
-            keeyAlive = true;
-        }
-    }
-    auto uri = req->uri;
-    uri = nsocket::http::url_decode(uri);
-#ifdef _WIN32
-    uri = utility::Charset::utf8ToGbk(uri);
-#endif
-    if ("GET" != req->method) /* 方法不允许 */
-    {
-        NotHandler handler = nullptr;
-        {
-            std::lock_guard<std::mutex> locker(m_mutexNotAllowHandler);
-            handler = m_notAllowHandler;
-        }
-        if (handler)
-        {
-            handler(conn, cid, req, uri);
-        }
-        else
-        {
-            auto htmlStr = htmlString(cid, req, "405 Method Not Allow");
-            auto resp = nsocket::http::makeResponse405();
-            resp->body.insert(resp->body.end(), htmlStr.begin(), htmlStr.end());
-            conn.sendAndClose(resp->pack());
-        }
-        return;
-    }
-    auto target = m_rootDir + uri;
-    utility::FileAttribute attr;
-    if (!utility::getFileAttribute(target, attr))
-    {
-        NotHandler handler = nullptr;
-        {
-            std::lock_guard<std::mutex> locker(m_mutexNotFoundHandler);
-            handler = m_notFoundHandler;
-        }
-        if (handler)
-        {
-            handler(conn, cid, req, uri);
-        }
-        else
-        {
-            auto htmlStr = htmlString(cid, req, "404 Not Found: " + uri);
-            auto resp = nsocket::http::makeResponse404();
-            resp->body.insert(resp->body.end(), htmlStr.begin(), htmlStr.end());
-            conn.sendAndClose(resp->pack());
-        }
-        return;
-    }
-    bool internHandler = false;
-    if (attr.isDir) /* 目录 */
-    {
-        DirAccessHandler handler = nullptr;
-        {
-            std::lock_guard<std::mutex> locker(m_mutexDirAccessHandler);
-            handler = m_dirAccessHandler;
-        }
-        if (handler)
-        {
-            handler(conn, keeyAlive, m_rootDir, uri);
-        }
-        else
-        {
-            internHandler = true;
-            handleDir(conn, m_rootDir, uri);
-        }
-    }
-    else if (attr.isFile) /* 文件 */
-    {
-        FileGetHandler handler = nullptr;
-        {
-            std::lock_guard<std::mutex> locker(m_mutexFileGetHandler);
-            handler = m_fileGetHandler;
-        }
-        if (handler)
-        {
-            handler(conn, keeyAlive, target, attr.size);
-        }
-        else
-        {
-            internHandler = true;
-            handleFile(conn, target, attr.size);
-        }
-    }
-    if (internHandler && !keeyAlive) /* 非保活才关闭连接 */
-    {
-        conn.close();
-    }
-}
-
-void HttpFileServer::handleDir(const nsocket::http::Connector& conn, const std::string& rootDir, const std::string& uri)
+void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn,
+                                             bool keepAlive, const std::string& rootDir, const std::string& uri)
 {
     /* 页面头部 */
     std::string str;
@@ -447,9 +346,14 @@ void HttpFileServer::handleDir(const nsocket::http::Connector& conn, const std::
 #endif
     resp->body.insert(resp->body.end(), str.begin(), str.end());
     conn.send(resp->pack());
+    if (!keepAlive) /* 非保活才关闭连接 */
+    {
+        conn.close();
+    }
 }
 
-void HttpFileServer::handleFile(const nsocket::http::Connector& conn, const std::string& fileName, size_t fileSize)
+void HttpFileServer::defaultFileGetHandler(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn,
+                                           bool keepAlive, const std::string& fileName, size_t fileSize)
 {
     utility::FileInfo fi(fileName);
     auto mimeType = nsocket::http::getFileMimeType(fileName);
@@ -496,6 +400,105 @@ void HttpFileServer::handleFile(const nsocket::http::Connector& conn, const std:
     else
     {
         conn.send(std::vector<unsigned char>(textFileData.c_str(), textFileData.c_str() + fileSize));
+    }
+    if (!keepAlive) /* 非保活才关闭连接 */
+    {
+        conn.close();
+    }
+}
+
+void HttpFileServer::handleDefaultRouter(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn)
+{
+    bool keeyAlive = false;
+    for (auto iter = req->headers.begin(); req->headers.end() != iter; ++iter)
+    {
+        auto name = iter->first;
+        std::transform(name.begin(), name.end(), name.begin(), tolower);
+        auto value = iter->second;
+        std::transform(value.begin(), value.end(), value.begin(), tolower);
+        if ("connection" == name && std::string::npos != value.find("keep-alive"))
+        {
+            keeyAlive = true;
+        }
+    }
+    auto uri = req->uri;
+    uri = nsocket::http::url_decode(uri);
+#ifdef _WIN32
+    uri = utility::Charset::utf8ToGbk(uri);
+#endif
+    if ("GET" != req->method) /* 方法不允许 */
+    {
+        NotHandler handler = nullptr;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexNotAllowHandler);
+            handler = m_notAllowHandler;
+        }
+        if (handler)
+        {
+            handler(cid, req, conn, uri);
+        }
+        else
+        {
+            auto htmlStr = htmlString(cid, req, "405 Method Not Allow");
+            auto resp = nsocket::http::makeResponse405();
+            resp->body.insert(resp->body.end(), htmlStr.begin(), htmlStr.end());
+            conn.sendAndClose(resp->pack());
+        }
+        return;
+    }
+    auto target = m_rootDir + uri;
+    utility::FileAttribute attr;
+    if (!utility::getFileAttribute(target, attr))
+    {
+        NotHandler handler = nullptr;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexNotFoundHandler);
+            handler = m_notFoundHandler;
+        }
+        if (handler)
+        {
+            handler(cid, req, conn, uri);
+        }
+        else
+        {
+            auto htmlStr = htmlString(cid, req, "404 Not Found: " + uri);
+            auto resp = nsocket::http::makeResponse404();
+            resp->body.insert(resp->body.end(), htmlStr.begin(), htmlStr.end());
+            conn.sendAndClose(resp->pack());
+        }
+        return;
+    }
+    if (attr.isDir) /* 目录 */
+    {
+        DirAccessHandler handler = nullptr;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexDirAccessHandler);
+            handler = m_dirAccessHandler;
+        }
+        if (handler)
+        {
+            handler(cid, req, conn, keeyAlive, m_rootDir, uri);
+        }
+        else
+        {
+            defaultDirAccessHandler(cid, req, conn, keeyAlive, m_rootDir, uri);
+        }
+    }
+    else if (attr.isFile) /* 文件 */
+    {
+        FileGetHandler handler = nullptr;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexFileGetHandler);
+            handler = m_fileGetHandler;
+        }
+        if (handler)
+        {
+            handler(cid, req, conn, keeyAlive, target, attr.size);
+        }
+        else
+        {
+            defaultFileGetHandler(cid, req, conn, keeyAlive, target, attr.size);
+        }
     }
 }
 } // namespace hfs

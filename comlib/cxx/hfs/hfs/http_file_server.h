@@ -10,33 +10,37 @@ namespace hfs
 {
 /**
  * @brief 资源不存在(404)/方法不允许(405)处理器
- * @param conn 连接对象, 用于处理器内数据发送和连接断开
  * @param cid 连接ID
  * @param req 请求对象
+ * @param conn 连接器, 用于处理器内数据发送和连接断开
  * @param uri 资源URI
  */
 using NotHandler =
-    std::function<void(const nsocket::http::Connector& conn, uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& uri)>;
+    std::function<void(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn, const std::string& uri)>;
 
 /**
  * @brief 目录访问处理器
- * @param conn 连接对象, 用于处理器内数据发送和连接断开
+ * @param cid 连接ID
+ * @param req 请求对象
+ * @param conn 连接器, 用于处理器内数据发送和连接断开
  * @param keepAlive 连接是否保活, 如果非保活则需要处理器最后断开连接
  * @param rootDir 资源根目录
  * @param uri 当前访问的相对目录(不包含根目录)
  */
-using DirAccessHandler =
-    std::function<void(const nsocket::http::Connector& conn, bool keepAlive, const std::string& rootDir, const std::string& uri)>;
+using DirAccessHandler = std::function<void(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn,
+                                            bool keepAlive, const std::string& rootDir, const std::string& uri)>;
 
 /**
  * @brief 文件获取处理器
- * @param conn 连接对象, 用于处理器内数据发送和连接断开
+ * @param cid 连接ID
+ * @param req 请求对象
+ * @param conn 连接器, 用于处理器内数据发送和连接断开
  * @param keepAlive 连接是否保活, 如果非保活则需要处理器最后断开连接
  * @param fileName 文件完整路径
  * @param fileSize 文件大小(字节)
  */
-using FileGetHandler =
-    std::function<void(const nsocket::http::Connector& conn, bool keepAlive, const std::string& fileName, size_t fileSize)>;
+using FileGetHandler = std::function<void(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn,
+                                          bool keepAlive, const std::string& fileName, size_t fileSize)>;
 
 /**
  * @brief HTTP文件服务(注意: 需要实例化为共享指针否则会报错)
@@ -127,21 +131,38 @@ public:
      */
     bool isRunning();
 
+    /**
+     * @brief 默认目录访问处理器
+     * @param cid 连接ID
+     * @param req 请求对象
+     * @param conn 连接器, 用于处理器内数据发送和连接断开
+     * @param keepAlive 连接是否保活, 如果非保活则处理器最后将断开连接
+     * @param rootDir 资源根目录
+     * @param uri 当前访问的相对目录(不包含根目录)
+     */
+    void defaultDirAccessHandler(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn, bool keepAlive,
+                                 const std::string& rootDir, const std::string& uri);
+
+    /**
+     * @brief 默认文件获取处理器
+     * @param cid 连接ID
+     * @param req 请求对象
+     * @param conn 连接器, 用于处理器内数据发送和连接断开
+     * @param keepAlive 连接是否保活, 如果非保活则处理器最后将断开连接
+     * @param fileName 文件完整路径
+     * @param fileSize 文件大小(字节)
+     */
+    void defaultFileGetHandler(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn, bool keepAlive,
+                               const std::string& fileName, size_t fileSize);
+
 private:
     /**
      * @brief 处理默认路由
+     * @param cid 连接ID
+     * @param req 请求对象
+     * @param conn 连接器
      */
     void handleDefaultRouter(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn);
-
-    /**
-     * @brief 处理目录
-     */
-    void handleDir(const nsocket::http::Connector& conn, const std::string& rootDir, const std::string& uri);
-
-    /**
-     * @brief 处理文件
-     */
-    void handleFile(const nsocket::http::Connector& conn, const std::string& fileName, size_t fileSize);
 
 private:
     const std::string m_name; /* 服务名 */
