@@ -20,11 +20,9 @@ AsioExecutor::~AsioExecutor()
     Diagnose::onExecutorDestroyed(this);
 }
 
-size_t AsioExecutor::extend(size_t count)
+size_t AsioExecutor::getBusyCount()
 {
-    auto totalCount = Executor::extend(count);
-    m_threads.create_threads([this, name = getName(), totalCount] { threadFunc(name, totalCount); }, count);
-    return totalCount;
+    return m_busyCount;
 }
 
 void AsioExecutor::join()
@@ -43,7 +41,8 @@ TaskPtr AsioExecutor::post(const TaskPtr& task)
         std::lock_guard<std::mutex> locker(m_mapMutex);
         threadIdNameMap = m_threadIdNameMap;
     }
-    boost::asio::post(m_context, [threadIdNameMap, task] {
+    boost::asio::post(m_context, [this, threadIdNameMap, task] {
+        ++m_busyCount;
         /* 获取线程名称 */
         auto threadId = Platform::getThreadId();
         std::string threadName = std::to_string(threadId);
@@ -72,8 +71,16 @@ TaskPtr AsioExecutor::post(const TaskPtr& task)
         {
             Diagnose::onTaskException(threadId, threadName, task.get(), "unknown exception");
         }
+        --m_busyCount;
     });
     return task;
+}
+
+size_t AsioExecutor::extend(size_t count)
+{
+    auto totalCount = Executor::extend(count);
+    m_threads.create_threads([this, name = getName(), totalCount] { threadFunc(name, totalCount); }, count);
+    return totalCount;
 }
 
 boost::asio::io_context* AsioExecutor::getContext()

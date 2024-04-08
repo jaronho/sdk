@@ -54,10 +54,23 @@ public:
     static void stop();
 
     /**
+     * @brief 获取线程总数
+     * @return 线程总数
+     */
+    static size_t getTotalCount();
+
+    /**
+     * @brief 获取线程空闲数
+     * @return 线程空闲数
+     */
+    static size_t getFreeCount();
+
+    /**
      * @brief 扩展线程个数
      * @param threadCount 线程个数
+     * @return 线程总数
      */
-    static void extend(size_t threadCount);
+    static size_t extend(size_t threadCount);
 
     /**
      * @brief 执行异步任务

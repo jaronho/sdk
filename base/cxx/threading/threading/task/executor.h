@@ -36,11 +36,10 @@ public:
     size_t getMaxCount() const;
 
     /**
-     * @brief 扩展任务数
-     * @param count 数量
-     * @return 当前最多任务数
+     * @brief 获取正在执行的任务数
+     * @return 正在执行的任务数
      */
-    virtual size_t extend(size_t count);
+    virtual size_t getBusyCount() = 0;
 
     /**
      * @brief 等待退出
@@ -61,6 +60,13 @@ public:
      * @return 基于传入函数创建的任务
      */
     virtual TaskPtr post(const std::string& name, const std::function<void()>& func);
+
+    /**
+     * @brief 扩展任务数
+     * @param count 数量
+     * @return 当前最多任务数
+     */
+    virtual size_t extend(size_t count);
 
 private:
     const std::string m_name; /* 执行者名称 */

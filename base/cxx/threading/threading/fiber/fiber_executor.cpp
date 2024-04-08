@@ -24,7 +24,8 @@ FiberExecutor::FiberExecutor(const std::string& name, size_t maxFiberCount, size
             --m_count;
             /* 创建fiber运行 */
             boost::fibers::fiber{std::allocator_arg, boost::fibers::default_stack(stackSize),
-                                 [threadId, name, task = std::move(task)]() {
+                                 [this, threadId, name, task = std::move(task)]() {
+                                     ++m_busyCount;
                                      try
                                      {
                                          if (!task->isCancelled())
@@ -44,6 +45,7 @@ FiberExecutor::FiberExecutor(const std::string& name, size_t maxFiberCount, size
                                      {
                                          Diagnose::onTaskException(threadId, name, task.get(), "unknown exception");
                                      }
+                                     --m_busyCount;
                                  }}
                 .detach();
         }
@@ -52,17 +54,16 @@ FiberExecutor::FiberExecutor(const std::string& name, size_t maxFiberCount, size
     result.get_future().get();
 }
 
-size_t FiberExecutor::extend(size_t count)
-{
-    auto totalCount = Executor::extend(0); // 说明: 对于fiber暂时不支持扩展
-    return totalCount;
-}
-
 FiberExecutor::~FiberExecutor()
 {
     m_channel->close();
     join();
     Diagnose::onExecutorDestroyed(this);
+}
+
+size_t FiberExecutor::getBusyCount()
+{
+    return m_busyCount;
 }
 
 void FiberExecutor::join()
@@ -95,5 +96,11 @@ TaskPtr FiberExecutor::post(const TaskPtr& task)
     }
     }
     return task;
+}
+
+size_t FiberExecutor::extend(size_t count)
+{
+    auto totalCount = Executor::extend(0); // 说明: 对于fiber暂时不支持扩展
+    return totalCount;
 }
 } // namespace threading

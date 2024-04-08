@@ -83,12 +83,31 @@ void AsyncProxy::stop()
     }
 }
 
-void AsyncProxy::extend(size_t threadCount)
+size_t AsyncProxy::getTotalCount()
 {
     if (s_workerThreads)
     {
-        s_workerThreads->extend(threadCount);
+        return s_workerThreads->getMaxCount();
     }
+    return 0;
+}
+
+size_t AsyncProxy::getFreeCount()
+{
+    if (s_workerThreads)
+    {
+        return (s_workerThreads->getMaxCount() - s_workerThreads->getBusyCount());
+    }
+    return 0;
+}
+
+size_t AsyncProxy::extend(size_t threadCount)
+{
+    if (s_workerThreads)
+    {
+        return s_workerThreads->extend(threadCount);
+    }
+    return 0;
 }
 
 void AsyncProxy::execute(const std::shared_ptr<AsyncTask>& task)

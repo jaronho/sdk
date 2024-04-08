@@ -22,13 +22,12 @@ public:
     FiberExecutor(const std::string& name, size_t maxFiberCount = 1024, size_t stackSize = 512 * 1024);
 
     virtual ~FiberExecutor();
-    
+
     /**
-     * @brief 扩展队列大小(说明: 调用该接口无用, 对于fiber暂时不支持扩展)
-     * @param count 队列大小
-     * @return 当前队列大小
+     * @brief 获取正在执行的fiber数
+     * @return 正在执行的fiber数
      */
-    size_t extend(size_t count) override;
+    size_t getBusyCount() override;
 
     /**
      * @brief 等待退出
@@ -41,10 +40,18 @@ public:
      * @return 异步任务(和入参一致)
      */
     TaskPtr post(const TaskPtr& task) override;
+    
+    /**
+     * @brief 扩展队列大小(说明: 调用该接口无用, 对于fiber暂时不支持扩展)
+     * @param count 队列大小
+     * @return 当前队列大小
+     */
+    size_t extend(size_t count) override;
 
 private:
     std::unique_ptr<boost::fibers::buffered_channel<TaskPtr>> m_channel; /* fiber队列 */
     std::atomic_int m_count = {0}; /* 任务队列个数 */
     std::unique_ptr<std::thread> m_thread; /* 线程 */
+    std::atomic_int m_busyCount = {0}; /* 正在执行的fiber数 */
 };
 } // namespace threading

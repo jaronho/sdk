@@ -24,11 +24,10 @@ public:
     virtual ~AsioExecutor();
 
     /**
-     * @brief 扩展线程池
-     * @param count 线程数量
-     * @return 当前线程数
+     * @brief 获取正在执行的线程数
+     * @return 正在执行的线程数
      */
-    size_t extend(size_t count) override;
+    size_t getBusyCount() override;
 
     /**
      * @brief 等待退出
@@ -41,6 +40,13 @@ public:
      * @return 异步任务(和入参一致)
      */
     TaskPtr post(const TaskPtr& task) override;
+
+    /**
+     * @brief 扩展线程池
+     * @param count 线程数量
+     * @return 当前线程数
+     */
+    size_t extend(size_t count) override;
 
     /**
      * @brief 获取IO上下文
@@ -58,5 +64,6 @@ private:
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_worker;
     std::mutex m_mapMutex; /* 映射表互斥锁 */
     std::unordered_map<int, std::string> m_threadIdNameMap; /* 线程id和名称映射表 */
+    std::atomic_int m_busyCount = {0}; /* 正在执行的线程数 */
 };
 } // namespace threading
