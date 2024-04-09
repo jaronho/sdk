@@ -85,16 +85,15 @@ std::vector<std::string> StrTool::split(const std::string& str, const std::strin
     {
         return strList;
     }
-    std::string::size_type pos;
-    for (size_t i = 0; i < str.size(); ++i)
+    for (size_t i = 0; i <= str.size();)
     {
-        pos = str.find(sep, i);
+        auto pos = str.find(sep, i);
         if (std::string::npos == pos)
         {
             pos = str.size();
         }
         strList.emplace_back(str.substr(i, pos - i));
-        i = pos + sep.size() - 1;
+        i = pos + sep.size();
     }
     return strList;
 }
