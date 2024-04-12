@@ -136,8 +136,8 @@ void showAllPorts(const std::vector<serial::PortInfo> portList)
  * @brief 打开串口 
  */
 void openSerial(const std::string& port, unsigned long baudrate, const serial::Databits& databits, const serial::ParityType& parity,
-                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, int crlf, bool sendHex, bool showHex,
-                bool autoLine, bool showTime, bool hideRecv)
+                const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, int crlf, bool showTime, bool sendHex,
+                bool showHex, bool autoLine, bool hideRecv)
 {
     /* 串口设置及打开 */
     g_com.setPort(port);
@@ -221,10 +221,10 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     {
         printf("结束符: 无\n");
     }
+    printf("显示时间: %s\n", showTime ? "显示" : "隐藏");
     printf("发送格式: %s\n", sendHex ? "Hex(十六进制)" : "ASCII字符");
     printf("接收格式: %s\n", showHex ? "Hex(十六进制)" : "ASCII字符");
     printf("接收换行: %s\n", autoLine ? "自动换行" : "不自动换行");
-    printf("接收时间: %s\n", showTime ? "显示" : "隐藏");
     printf("接收显示: %s\n", hideRecv ? "隐藏" : "显示");
     printf("\n");
     auto ret = g_com.open();
@@ -290,12 +290,20 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 auto len = hexStrToBytes(std::string(input) + endFlagHex, &bytes);
                 if (bytes)
                 {
+                    if (showTime)
+                    {
+                        fprintf(stderr, "Tx[%s] %s\n", getDateTime().c_str(), input);
+                    }
                     g_com.write(bytes, len);
                     free(bytes);
                 }
             }
             else
             {
+                if (showTime)
+                {
+                    fprintf(stderr, "Tx[%s] %s\n", getDateTime().c_str(), input);
+                }
                 g_com.write(std::string(input) + endFlag);
             }
         }
@@ -318,7 +326,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 fprintf(stderr, "\n");
                 if (showTime)
                 {
-                    fprintf(stderr, "[%s] ", getDateTime().c_str());
+                    fprintf(stderr, "Rx[%s] ", getDateTime().c_str());
                 }
             }
             for (size_t i = 0, len = bytes.size(); i < len; ++i)
@@ -332,7 +340,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                     }
                     if (showTime)
                     {
-                        fprintf(stderr, "[%s] ", getDateTime().c_str());
+                        fprintf(stderr, "Rx[%s] ", getDateTime().c_str());
                     }
                 }
                 if (showHex)
@@ -360,8 +368,8 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
 
 bool isOptionName(const std::string& str)
 {
-    if ("-s" == str || "-port" == str || "-baud" == str || "-data" == str || "-parity" == str || "-stop" == str || "-flow" == str
-        || "-crlf" == str || "--txhex" == str || "--rxhex" == str || "--rxline" == str || "--rxhide" == str)
+    if ("-port" == str || "-baud" == str || "-data" == str || "-parity" == str || "-stop" == str || "-flow" == str || "-crlf" == str
+        || "-list" == str || "--time" == str || "--txhex" == str || "--rxhex" == str || "--rxline" == str || "--rxhide" == str)
     {
         return true;
     }
@@ -370,17 +378,18 @@ bool isOptionName(const std::string& str)
 
 int main(int argc, char** argv)
 {
+#ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
+#endif
     printf("*************************************************************************************************************\n");
     printf("** 说明: 串口调试工具, 支持: 收/发数据, ASCII/十六进制. 打开成功后在控制台输入字符并回车即可发送.          **\n");
     printf("**                                                                                                         **\n");
     printf("** 选项:                                                                                                   **\n");
     printf("**                                                                                                         **\n");
-    printf("** [-s]                显示所有串口端口.                                                                   **\n");
 #ifdef _WIN32
-    printf("** [-port 端口号]      串口端口号(必填), 例如: COM1, COM2, COM3等.                                         **\n");
+    printf("** [-port 串口号]      串口号(必填), 例如: COM1, COM2, COM3等.                                             **\n");
 #else
-    printf("** [-port 端口号]      串口端口号(必填), 例如: /dev/ttyS0, /dev/ttyUSB0等.                                 **\n");
+    printf("** [-port 串口号]      串口号(必填), 例如: /dev/ttyS0, /dev/ttyUSB0等.                                     **\n");
 #endif
     printf("** [-baud 波特率]      波特率(选填), 例如: 9600, 19200, 38400, 115200等, 默认: 115200.                     **\n");
     printf("** [-data 数据位]      数据位(选填), 值: [5, 6, 7, 8], 默认: 8.                                            **\n");
@@ -388,11 +397,12 @@ int main(int argc, char** argv)
     printf("** [-stop 停止位]      停止位(选填), 值: [1, 1.5, 2], 默认: 1.                                             **\n");
     printf("** [-flow 流控]        流控(选填), 值: [None: N|n, Software: S|s, Hardware: H|h], 默认: N.                 **\n");
     printf("** [-crlf 结束符]      发送结束符(选填), 值: [0: 无, 1: CR(回车), 2: LF(换行), 3: CRLF(回车换行)], 默认: 0.**\n");
+    printf("** [--list]            显示所有串口, 默认: 不显示.                                                         **\n");
+    printf("** [--time]            显示发送/接收数据时间(选填), 默认: 不显示.                                          **\n");
     printf("** [--txhex]           使用十六进制格式发送数据(选填), 默认: ASCII.                                        **\n");
     printf("** [--rxhex]           使用十六进制格式显示接收数据(选填), 默认: ASCII.                                    **\n");
     printf("** [--rxline]          自动换行接收数据(选填), 默认: 不自动换行.                                           **\n");
-    printf("** [--rxtime]          显示接收数据时间(选填), 默认: 隐藏.                                                 **\n");
-    printf("** [--rxhide]          隐藏接收到的数据(选填), 默认: 显示.                                                 **\n");
+    printf("** [--rxhide]          不显示接收到的数据(选填), 默认: 显示.                                               **\n");
     printf("**                                                                                                         **\n");
     printf("** 示例:                                                                                                   **\n");
 #ifdef _WIN32
@@ -403,25 +413,14 @@ int main(int argc, char** argv)
     printf("**                                                                                                         **\n");
     printf("*************************************************************************************************************\n");
     printf("\n");
-    /* 参数标识: 0-没有找到, 1-值错误, 2-值正确 */
-    int flagShow = 0;
-    int flagPortName = 0;
-    int flagBaurate = 2;
-    int flagDatabits = 2;
-    int flagParity = 2;
-    int flagStopbits = 2;
-    int flagFlowcontrol = 2;
-    int flagCRLF = 2;
-    int flagTxHex = 0;
-    int flagRxHex = 0;
-    int flagRxLine = 0;
-    int flagRxTime = 0;
-    int flagRxHide = 0;
-    /* 错误的参数值 */
-    std::string valDatabits;
-    std::string valParity;
-    std::string valStopbits;
-    std::string valFlowcontrol;
+    /* 参数标识 */
+    bool flagPort = false;
+    bool flagList = false;
+    bool flagTime = false;
+    bool flagTxHex = false;
+    bool flagRxHex = false;
+    bool flagRxLine = false;
+    bool flagRxHide = false;
     /* 参数值 */
     std::string portName;
     unsigned long baudrate = 115200;
@@ -431,285 +430,279 @@ int main(int argc, char** argv)
     serial::FlowcontrolType flowcontrol = serial::FlowcontrolType::none;
     int crlf = 0;
     /* 解析参数 */
-    for (int i = 1; i < argc;)
+    auto portList = serial::Serial::getAllPorts();
+    std::string errorStr;
+    for (int i = 1; i < argc; ++i)
     {
         std::string key = argv[i];
-        if (0 == key.compare("-s")) /* 显示 */
+        if (0 == key.compare("-port")) /* 串口 */
         {
-            flagShow = 2;
-            i += 1;
-            continue;
-        }
-        else if (0 == key.compare("--txhex")) /* 发送十六进制 */
-        {
-            flagTxHex = 2;
-            i += 1;
-            continue;
-        }
-        else if (0 == key.compare("--rxhex")) /* 接收显示十六进制 */
-        {
-            flagRxHex = 2;
-            i += 1;
-            continue;
-        }
-        else if (0 == key.compare("--rxline")) /* 接收显示自动换行 */
-        {
-            flagRxLine = 2;
-            i += 1;
-            continue;
-        }
-        else if (0 == key.compare("--rxtime")) /* 接收显示时间 */
-        {
-            flagRxTime = 2;
-            i += 1;
-            continue;
-        }
-        else if (0 == key.compare("--rxhide")) /* 是否显示接收 */
-        {
-            flagRxHide = 2;
-            i += 1;
-            continue;
-        }
-        if (i + 1 >= argc)
-        {
-            break;
-        }
-        std::string val = argv[i + 1];
-        if (isOptionName(val))
-        {
-            i += 1;
-            continue;
-        }
-        if (0 == key.compare("-port")) /* 端口 */
-        {
-            flagPortName = 1;
-            portName = val;
+            flagPort = true;
+            ++i;
+            if (i >= argc)
+            {
+                errorStr += "错误: 串口 -port 缺少参数\n";
+            }
+            else
+            {
+                std::string val(argv[i]);
+                if (isOptionName(val))
+                {
+                    --i;
+                    errorStr += "错误: 串口 -port 缺少参数\n";
+                }
+                else
+                {
+                    for (size_t i = 0; i < portList.size(); ++i)
+                    {
+                        if (0 == val.compare(portList[i].port))
+                        {
+                            portName = val;
+                            break;
+                        }
+                    }
+                    if (portName.empty())
+                    {
+                        errorStr += "错误: 串口 " + val + " 不存在\n";
+                    }
+                }
+            }
         }
         else if (0 == key.compare("-baud")) /* 波特率 */
         {
-            flagBaurate = 2;
-            try
+            ++i;
+            if (i >= argc)
             {
-                baudrate = stoul(val);
+                errorStr += "错误: 波特率 -baud 缺少参数\n";
             }
-            catch (...)
+            else
             {
+                std::string val(argv[i]);
+                if (isOptionName(val))
+                {
+                    --i;
+                    errorStr += "错误: 波特率 -baud 缺少参数\n";
+                }
+                else
+                {
+                    baudrate = std::atoi(argv[i]);
+                }
             }
         }
         else if (0 == key.compare("-data")) /* 数据位 */
         {
-            flagDatabits = 2;
-            if (0 == val.compare("5"))
+            ++i;
+            if (i >= argc)
             {
-                databits = serial::Databits::five;
-            }
-            else if (0 == val.compare("6"))
-            {
-                databits = serial::Databits::six;
-            }
-            else if (0 == val.compare("7"))
-            {
-                databits = serial::Databits::seven;
-            }
-            else if (0 == val.compare("8"))
-            {
-                databits = serial::Databits::eight;
+                errorStr += "错误: 数据位 -data 缺少参数\n";
             }
             else
             {
-                flagDatabits = 1;
-                valDatabits = val;
+                std::string val(argv[i]);
+                if (isOptionName(val))
+                {
+                    --i;
+                    errorStr += "错误: 数据位 -data 缺少参数\n";
+                }
+                else if (0 == val.compare("5"))
+                {
+                    databits = serial::Databits::five;
+                }
+                else if (0 == val.compare("6"))
+                {
+                    databits = serial::Databits::six;
+                }
+                else if (0 == val.compare("7"))
+                {
+                    databits = serial::Databits::seven;
+                }
+                else if (0 == val.compare("8"))
+                {
+                    databits = serial::Databits::eight;
+                }
+                else
+                {
+                    errorStr += "错误: 数据位 " + val + " 无效.\n";
+                }
             }
         }
         else if (0 == key.compare("-parity")) /* 校验位 */
         {
-            flagParity = 2;
-            if (0 == val.compare("N") || 0 == val.compare("n"))
+            ++i;
+            if (i >= argc)
             {
-                pariry = serial::ParityType::none;
-            }
-            else if (0 == val.compare("O") || 0 == val.compare("o"))
-            {
-                pariry = serial::ParityType::odd;
-            }
-            else if (0 == val.compare("E") || 0 == val.compare("e"))
-            {
-                pariry = serial::ParityType::even;
-            }
-            else if (0 == val.compare("M") || 0 == val.compare("m"))
-            {
-                pariry = serial::ParityType::mark;
-            }
-            else if (0 == val.compare("S") || 0 == val.compare("s"))
-            {
-                pariry = serial::ParityType::space;
+                errorStr += "错误: 校验位 -parity 缺少参数\n";
             }
             else
             {
-                flagParity = 1;
-                valParity = val;
+                std::string val(argv[i]);
+                if (isOptionName(val))
+                {
+                    --i;
+                    errorStr += "错误: 校验位 -parity 缺少参数\n";
+                }
+                else if (0 == val.compare("N") || 0 == val.compare("n"))
+                {
+                    pariry = serial::ParityType::none;
+                }
+                else if (0 == val.compare("O") || 0 == val.compare("o"))
+                {
+                    pariry = serial::ParityType::odd;
+                }
+                else if (0 == val.compare("E") || 0 == val.compare("e"))
+                {
+                    pariry = serial::ParityType::even;
+                }
+                else if (0 == val.compare("M") || 0 == val.compare("m"))
+                {
+                    pariry = serial::ParityType::mark;
+                }
+                else if (0 == val.compare("S") || 0 == val.compare("s"))
+                {
+                    pariry = serial::ParityType::space;
+                }
+                else
+                {
+                    errorStr += "错误: 校验位 " + val + " 无效.\n";
+                }
             }
         }
         else if (0 == key.compare("-stop")) /* 停止位 */
         {
-            flagStopbits = 2;
-            if (0 == val.compare("1"))
+            ++i;
+            if (i >= argc)
             {
-                stopbits = serial::Stopbits::one;
-            }
-            else if (0 == val.compare("1.5"))
-            {
-                stopbits = serial::Stopbits::one_and_half;
-            }
-            else if (0 == val.compare("2"))
-            {
-                stopbits = serial::Stopbits::two;
+                errorStr += "错误: 停止位 -stop 缺少参数\n";
             }
             else
             {
-                flagStopbits = 1;
-                valStopbits = val;
+                std::string val(argv[i]);
+                if (isOptionName(val))
+                {
+                    --i;
+                    errorStr += "错误: 停止位 -stop 缺少参数\n";
+                }
+                else if (0 == val.compare("1"))
+                {
+                    stopbits = serial::Stopbits::one;
+                }
+                else if (0 == val.compare("1.5"))
+                {
+                    stopbits = serial::Stopbits::one_and_half;
+                }
+                else if (0 == val.compare("2"))
+                {
+                    stopbits = serial::Stopbits::two;
+                }
+                else
+                {
+                    errorStr += "错误: 停止位 " + val + " 无效.\n";
+                }
             }
         }
         else if (0 == key.compare("-flow")) /* 流控 */
         {
-            flagFlowcontrol = 2;
-            if (0 == val.compare("N") || 0 == val.compare("n"))
+            ++i;
+            if (i >= argc)
             {
-                flowcontrol = serial::FlowcontrolType::none;
-            }
-            else if (0 == val.compare("S") || 0 == val.compare("s"))
-            {
-                flowcontrol = serial::FlowcontrolType::software;
-            }
-            else if (0 == val.compare("H") || 0 == val.compare("h"))
-            {
-                flowcontrol = serial::FlowcontrolType::hardware;
+                errorStr += "错误: 流控 -flow 缺少参数\n";
             }
             else
             {
-                flagFlowcontrol = 1;
-                valFlowcontrol = val;
+                std::string val(argv[i]);
+                if (isOptionName(val))
+                {
+                    --i;
+                    errorStr += "错误: 流控 -flow 缺少参数\n";
+                }
+                else if (0 == val.compare("N") || 0 == val.compare("n"))
+                {
+                    flowcontrol = serial::FlowcontrolType::none;
+                }
+                else if (0 == val.compare("S") || 0 == val.compare("s"))
+                {
+                    flowcontrol = serial::FlowcontrolType::software;
+                }
+                else if (0 == val.compare("H") || 0 == val.compare("h"))
+                {
+                    flowcontrol = serial::FlowcontrolType::hardware;
+                }
+                else
+                {
+                    errorStr += "错误: 流控 " + val + " 无效.\n";
+                }
             }
         }
         else if (0 == key.compare("-crlf")) /* 数据结束符 */
         {
-            flagCRLF = 2;
-            try
+            ++i;
+            if (i >= argc)
             {
-                crlf = stoul(val);
+                errorStr += "错误: 结束符 -crlf 缺少参数\n";
             }
-            catch (...)
+            else
             {
+                std::string val(argv[i]);
+                if (isOptionName(val))
+                {
+                    --i;
+                    errorStr += "错误: 结束符 -crlf 缺少参数\n";
+                }
+                else if (0 == val.compare("0") || 0 == val.compare("1") || 0 == val.compare("2") || 0 == val.compare("3"))
+                {
+                    crlf = std::atoi(val.c_str());
+                }
+                else
+                {
+                    errorStr += "错误: 结束符 " + val + " 无效.\n";
+                }
             }
+        }
+        else if (0 == key.compare("--list")) /* 显示列表 */
+        {
+            flagList = true;
+            showAllPorts(portList);
+        }
+        else if (0 == key.compare("--time")) /* 发送/接收显示时间 */
+        {
+            flagTime = true;
+        }
+        else if (0 == key.compare("--txhex")) /* 发送十六进制 */
+        {
+            flagTxHex = true;
+        }
+        else if (0 == key.compare("--rxhex")) /* 接收显示十六进制 */
+        {
+            flagRxHex = true;
+        }
+        else if (0 == key.compare("--rxline")) /* 接收显示自动换行 */
+        {
+            flagRxLine = true;
+        }
+        else if (0 == key.compare("--rxhide")) /* 是否显示接收 */
+        {
+            flagRxHide = true;
         }
         else
         {
-            printf("不存在选项: %s\n", key.c_str());
-            return 0;
+            errorStr += "错误: 不支持 " + key + " 选项\n";
         }
-        i += 2;
-    }
-    /* 判断是否显示 */
-    auto portList = serial::Serial::getAllPorts();
-    if (2 == flagShow)
-    {
-        showAllPorts(portList);
-    }
-    /* 临时调试数据 */
-#if 0
-    flagBaurate = 2;
-    flagDatabits = 2;
-    flagParity = 2;
-    flagStopbits = 2;
-    flagFlowcontrol = 2;
-    flagTxHex = 0;
-    flagRxHex = 0;
-    flagRxLine = 0;
-    flagRxTime = 0;
-    flagRxHide = 0;
-    portName = "COM21";
-    baudrate = 115200;
-    databits = serial::Databits::eight;
-    pariry = serial::ParityType::none;
-    stopbits = serial::Stopbits::one;
-    flowcontrol = serial::FlowcontrolType::none;
-#endif
-    /* 判断端口是否正确 */
-    for (size_t i = 0; i < portList.size(); ++i)
-    {
-        if (0 == portName.compare(portList[i].port))
-        {
-            flagPortName = 2;
-            break;
-        }
-    }
-    if (0 == flagPortName)
-    {
-        if (0 == flagShow)
-        {
-            printf("错误: 缺少端口选项 -port\n");
-            return 0;
-        }
-    }
-    else if (1 == flagPortName)
-    {
-        printf("错误: 端口 '%s' 无效.\n", portName.c_str());
-        return 0;
-    }
-    std::string errorStr;
-    /* 判断波特率 */
-    if (0 == flagBaurate)
-    {
-        errorStr += "错误: 缺少波特率选项 -baud\n";
-    }
-    /* 判断数据位 */
-    if (0 == flagDatabits)
-    {
-        errorStr += "错误: 缺少数据位选项 -data\n";
-    }
-    else if (1 == flagDatabits)
-    {
-        errorStr += "错误: 数据位 '" + valDatabits + "' 无效.\n";
-    }
-    /* 判断校验位 */
-    if (0 == flagParity)
-    {
-        errorStr += "错误: 缺少校验位选项 -parity\n";
-    }
-    else if (1 == flagParity)
-    {
-        errorStr += "错误: 校验位 '" + valParity + "' 无效.\n";
-    }
-    /* 判断停止位 */
-    if (0 == flagStopbits)
-    {
-        errorStr += "错误: 缺少停止位选项 -stop\n";
-    }
-    else if (1 == flagStopbits)
-    {
-        errorStr += "错误: 停止位 '" + valStopbits + "' 无效.\n";
-    }
-    /* 判断流控 */
-    if (0 == flagFlowcontrol)
-    {
-        errorStr += "错误: 缺少流控选项 -flow\n";
-    }
-    else if (1 == flagFlowcontrol)
-    {
-        errorStr += "错误: 流控 '" + valFlowcontrol + "' 无效.\n";
     }
     /* 参数判断 */
+    if (flagList && errorStr.empty())
+    {
+        return 0;
+    }
+    if (!flagPort)
+    {
+        errorStr += "错误: 未指定串口\n";
+    }
     if (!errorStr.empty())
     {
-        if (0 == flagShow)
-        {
-            printf("%s\n", errorStr.c_str());
-        }
+        printf("%s", errorStr.c_str());
         return 0;
     }
     /* 打开串口 */
-    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, crlf, 2 == flagTxHex, 2 == flagRxHex, 2 == flagRxLine,
-               2 == flagRxTime, 2 == flagRxHide);
+    openSerial(portName, baudrate, databits, pariry, stopbits, flowcontrol, crlf, flagTime, flagTxHex, flagRxHex, flagRxLine, flagRxHide);
     return 0;
 }
