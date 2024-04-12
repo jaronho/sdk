@@ -292,7 +292,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 {
                     if (showTime)
                     {
-                        fprintf(stderr, "Tx[%s] %s\n", getDateTime().c_str(), input);
+                        fprintf(stderr, "[Tx][%s] %s\n", getDateTime().c_str(), input);
                     }
                     g_com.write(bytes, len);
                     free(bytes);
@@ -302,7 +302,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
             {
                 if (showTime)
                 {
-                    fprintf(stderr, "Tx[%s] %s\n", getDateTime().c_str(), input);
+                    fprintf(stderr, "[Tx][%s] %s\n", getDateTime().c_str(), input);
                 }
                 g_com.write(std::string(input) + endFlag);
             }
@@ -326,7 +326,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 fprintf(stderr, "\n");
                 if (showTime)
                 {
-                    fprintf(stderr, "Rx[%s] ", getDateTime().c_str());
+                    fprintf(stderr, "[Rx][%s] ", getDateTime().c_str());
                 }
             }
             for (size_t i = 0, len = bytes.size(); i < len; ++i)
@@ -340,7 +340,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                     }
                     if (showTime)
                     {
-                        fprintf(stderr, "Rx[%s] ", getDateTime().c_str());
+                        fprintf(stderr, "[Rx][%s] ", getDateTime().c_str());
                     }
                 }
                 if (showHex)
