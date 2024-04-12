@@ -341,8 +341,8 @@ double DateTime::toTimestamp() const
     t.tm_hour = hour;
     t.tm_min = minute;
     t.tm_sec = second;
-    double timestamp = 0;
-    timestamp += (long)mktime(&t);
+    t.tm_isdst = -1; /* 不关心是否处于夏令时(自动根据日期来决定是否处于夏令时) */
+    double timestamp = mktime(&t);
     timestamp += (float)millisecond / 1000;
     return (timestamp > 0 ? timestamp : 0);
 }
@@ -486,6 +486,7 @@ bool DateTime::setLocalTime(const DateTime& dt)
     t.tm_hour = dt.hour;
     t.tm_min = dt.minute;
     t.tm_sec = dt.second;
+    t.tm_isdst = -1; /* 不关心是否处于夏令时(自动根据日期来决定是否处于夏令时) */
     struct timeval tv;
     tv.tv_sec = mktime(&t);
     tv.tv_usec = 0;
