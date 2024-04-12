@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <functional>
 #include <string>
 
@@ -63,5 +64,11 @@ public:
      * @return true-成功, false-失败
      */
     static bool killProcess(int pid);
+
+    /**
+     * @brief 获取当前进程运行时间
+     * @return 运行时间(毫秒)
+     */
+    static std::chrono::milliseconds getRunningTime();
 };
 } // namespace utility

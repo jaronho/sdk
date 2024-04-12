@@ -488,4 +488,10 @@ bool Process::killProcess(int pid)
 #endif
     return true;
 }
+
+static std::chrono::steady_clock::time_point s_startupTime = std::chrono::steady_clock::now(); /* 当前进程启动时间点 */
+std::chrono::milliseconds Process::getRunningTime()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - s_startupTime);
+}
 } // namespace utility

@@ -316,7 +316,7 @@ void System::waitForTime(unsigned int maxMS, const std::function<bool()>& func, 
                 std::this_thread::sleep_for(std::chrono::milliseconds(loopGap));
             }
         }
-        else
+        else /* 无执行函数, 则作为等待接口调用 */
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(maxMS));
         }
@@ -347,7 +347,7 @@ void System::waitForCount(unsigned int maxCount, const std::function<bool()>& fu
                 std::this_thread::sleep_for(std::chrono::milliseconds(loopGap));
             }
         }
-        else
+        else /* 无执行函数, 则作为等待接口调用 */
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(maxCount * loopGap));
         }
