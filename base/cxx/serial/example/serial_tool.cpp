@@ -370,6 +370,7 @@ bool isOptionName(const std::string& str)
 
 int main(int argc, char** argv)
 {
+    SetConsoleOutputCP(CP_UTF8);
     printf("*************************************************************************************************************\n");
     printf("** 说明: 串口调试工具, 支持: 收/发数据, ASCII/十六进制. 打开成功后在控制台输入字符并回车即可发送.          **\n");
     printf("**                                                                                                         **\n");
@@ -601,6 +602,11 @@ int main(int argc, char** argv)
             catch (...)
             {
             }
+        }
+        else
+        {
+            printf("不存在选项: %s\n", key.c_str());
+            return 0;
         }
         i += 2;
     }
