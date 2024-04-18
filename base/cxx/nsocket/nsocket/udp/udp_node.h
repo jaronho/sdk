@@ -1,6 +1,7 @@
 #pragma once
 #include <boost/asio/io_context.hpp>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -20,7 +21,7 @@ public:
      */
     UdpNode(size_t bz = 65536);
 
-    virtual ~UdpNode() = default;
+    virtual ~UdpNode();
 
     /**
      * @brief 设置打开回调
@@ -76,7 +77,7 @@ public:
      * @brief 获取本端端点
      * @return 本端端点
      */
-    boost::asio::ip::udp::endpoint getLocalEndpoint() const;
+    boost::asio::ip::udp::endpoint getLocalEndpoint();
 
 private:
     /**
@@ -87,6 +88,7 @@ private:
 
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
+    std::mutex m_mutex;
     std::shared_ptr<UdpHandler> m_udpHandler = nullptr; /* UDP处理器 */
     size_t m_bufferSize; /* 数据接收缓冲区大小 */
     UDP_OPEN_CALLBACK m_onOpenCallback = nullptr; /* 打开回调 */

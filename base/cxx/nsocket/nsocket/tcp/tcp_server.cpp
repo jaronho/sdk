@@ -199,38 +199,53 @@ bool TcpServer::run(bool sslOn, int sslWay, int certFmt, const std::string& cert
     {
         return true;
     }
-    if (m_acceptor)
+    std::shared_ptr<io_context_pool> contextPool = nullptr;
+    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        contextPool = m_contextPool;
+        acceptor = m_acceptor;
+    }
+    if (acceptor)
     {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
         if (sslOn)
         {
+            std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
             if (1 == sslWay)
             {
-                m_sslContext = TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::sslv23_server,
-                                                                       1 == certFmt ? boost::asio::ssl::context::file_format::asn1
-                                                                                    : boost::asio::ssl::context::file_format::pem,
-                                                                       certFile, pkFile, pkPwd, true);
+                sslContext = TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::sslv23_server,
+                                                                     1 == certFmt ? boost::asio::ssl::context::file_format::asn1
+                                                                                  : boost::asio::ssl::context::file_format::pem,
+                                                                     certFile, pkFile, pkPwd, true);
             }
             else
             {
-                m_sslContext = TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_server,
-                                                                 1 == certFmt ? boost::asio::ssl::context::file_format::asn1
-                                                                              : boost::asio::ssl::context::file_format::pem,
-                                                                 certFile, pkFile, pkPwd, true);
+                sslContext = TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_server,
+                                                               1 == certFmt ? boost::asio::ssl::context::file_format::asn1
+                                                                            : boost::asio::ssl::context::file_format::pem,
+                                                               certFile, pkFile, pkPwd, true);
             }
-            if (m_sslContext)
+            if (sslContext)
             {
-                auto sessionIdCtx = std::to_string(m_acceptor->local_endpoint().port()) + ':';
+                auto sessionIdCtx = std::to_string(acceptor->local_endpoint().port()) + ':';
                 sessionIdCtx.append(m_host.rbegin(), m_host.rend());
-                SSL_CTX_set_session_id_context(m_sslContext->native_handle(), (const unsigned char*)sessionIdCtx.data(),
+                SSL_CTX_set_session_id_context(sslContext->native_handle(), (const unsigned char*)sessionIdCtx.data(),
                                                std::min<size_t>(sessionIdCtx.size(), SSL_MAX_SSL_SESSION_ID_LENGTH));
+            }
+            {
+                std::lock_guard<std::mutex> locker(m_mutex);
+                m_sslContext = sslContext;
             }
         }
 #endif
-        m_contextPool->start();
-        doAccept();
-        m_running = true;
-        return true;
+        if (contextPool)
+        {
+            contextPool->start();
+            doAccept();
+            m_running = true;
+            return true;
+        }
     }
     return false;
 }
@@ -241,12 +256,23 @@ void TcpServer::stop()
     {
         return;
     }
-    if (m_acceptor)
+    std::shared_ptr<io_context_pool> contextPool = nullptr;
+    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor = nullptr;
     {
-        m_acceptor->close();
-        m_acceptor = nullptr;
+        std::lock_guard<std::mutex> locker(m_mutex);
+        contextPool = m_contextPool;
+        m_contextPool.reset();
+        acceptor = m_acceptor;
+        m_acceptor.reset();
     }
-    m_contextPool->join();
+    if (acceptor)
+    {
+        acceptor->close();
+    }
+    if (contextPool)
+    {
+        contextPool->join();
+    }
     {
         std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
         m_connectionMap.clear();
@@ -258,19 +284,29 @@ void TcpServer::stop()
     m_running = false;
 }
 
-bool TcpServer::isValid(std::string* errorMsg) const
+bool TcpServer::isValid(std::string* errorMsg)
 {
     if (errorMsg)
     {
         (*errorMsg) = m_errorMsg;
     }
-    return (m_acceptor ? true : false);
+    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        acceptor = m_acceptor;
+    }
+    return (acceptor ? true : false);
 }
 
-bool TcpServer::isEnableSSL() const
+bool TcpServer::isEnableSSL()
 {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    return (m_sslContext ? true : false);
+    std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        sslContext = m_sslContext;
+    }
+    return (sslContext ? true : false);
 #else
     return false;
 #endif
@@ -283,22 +319,28 @@ bool TcpServer::isRunning() const
 
 void TcpServer::doAccept()
 {
-    if (m_acceptor)
+    std::shared_ptr<io_context_pool> contextPool = nullptr;
+    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        contextPool = m_contextPool;
+        acceptor = m_acceptor;
+    }
+    if (contextPool && acceptor)
     {
         const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
-        m_acceptor->async_accept(m_contextPool->getContext(),
-                                 [wpSelf](boost::system::error_code code, boost::asio::ip::tcp::socket socket) {
-                                     const auto self = wpSelf.lock();
-                                     if (self)
-                                     {
-                                         if (!code) /* 有新连接请求 */
-                                         {
-                                             self->handleNewConnection(std::move(socket));
-                                         }
-                                         /* 继续接收下一个连接 */
-                                         self->doAccept();
-                                     }
-                                 });
+        acceptor->async_accept(contextPool->getContext(), [wpSelf](boost::system::error_code code, boost::asio::ip::tcp::socket socket) {
+            const auto self = wpSelf.lock();
+            if (self)
+            {
+                if (!code) /* 有新连接请求 */
+                {
+                    self->handleNewConnection(std::move(socket));
+                }
+                /* 继续接收下一个连接 */
+                self->doAccept();
+            }
+        });
     }
 }
 
@@ -307,9 +349,14 @@ void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)
     /* 创建新连接 */
     std::shared_ptr<SocketTcpBase> socketPtr = nullptr;
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    if (m_sslContext) /* 启用TLS */
+    std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
     {
-        socketPtr = std::make_shared<SocketTls>(std::move(socket), *m_sslContext);
+        std::lock_guard<std::mutex> locker(m_mutex);
+        sslContext = m_sslContext;
+    }
+    if (sslContext) /* 启用TLS */
+    {
+        socketPtr = std::make_shared<SocketTls>(std::move(socket), *sslContext);
     }
 #endif
     if (!socketPtr)

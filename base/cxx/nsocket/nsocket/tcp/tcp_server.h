@@ -162,13 +162,13 @@ public:
      * @param errorMsg 错误消息
      * @return true-有效, false-无效
      */
-    bool isValid(std::string* errorMsg = nullptr) const;
+    bool isValid(std::string* errorMsg = nullptr);
 
     /**
      * @brief 是否启用SSL
      * @return true-是, false-否
      */
-    bool isEnableSSL() const;
+    bool isEnableSSL();
 
     /**
      * @brief 是否运行中
@@ -205,6 +205,7 @@ private:
                                const boost::system::error_code& code);
 
 private:
+    std::mutex m_mutex;
     std::shared_ptr<io_context_pool> m_contextPool = nullptr; /* 上下文线程池 */
     std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor = nullptr; /* 接收器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)

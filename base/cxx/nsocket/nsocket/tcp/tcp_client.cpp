@@ -150,32 +150,19 @@ void TcpClient::stop()
     if (RunStatus::running == m_runStatus)
     {
         m_runStatus = RunStatus::idle;
+        if (!m_ioContext.stopped())
+        {
+            m_ioContext.stop();
+        }
         std::shared_ptr<TcpConnection> tcpConn = nullptr;
         {
             std::lock_guard<std::mutex> locker(m_mutex);
             tcpConn = m_tcpConn;
+            m_tcpConn.reset();
         }
-        if (m_ioContext.stopped())
+        if (tcpConn)
         {
-            if (tcpConn)
-            {
-                tcpConn->close();
-            }
-        }
-        else
-        {
-            const std::weak_ptr<TcpClient> wpSelf = shared_from_this();
-            boost::asio::post(m_ioContext, [wpSelf, tcpConn]() {
-                if (tcpConn)
-                {
-                    tcpConn->close();
-                }
-                const auto self = wpSelf.lock();
-                if (self && RunStatus::idle == self->m_runStatus)
-                {
-                    self->m_ioContext.stop();
-                }
-            });
+            tcpConn->close();
         }
     }
 }

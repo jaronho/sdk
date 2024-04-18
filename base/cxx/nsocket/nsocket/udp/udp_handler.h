@@ -2,6 +2,7 @@
 #include <atomic>
 #include <boost/asio/io_context.hpp>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "../core/socket_udp.h"
@@ -92,7 +93,7 @@ public:
      * @brief 获取本端端点
      * @return 本端端点
      */
-    boost::asio::ip::udp::endpoint getLocalEndpoint() const;
+    boost::asio::ip::udp::endpoint getLocalEndpoint();
 
     /**
      * @brief 设置非阻塞(说明: 需要打开成功后才调用)
@@ -114,6 +115,7 @@ private:
 
 private:
     uint64_t m_id; /* ID */
+    std::mutex m_mutex;
     std::shared_ptr<SocketUdpBase> m_socketUdpBase = nullptr; /* 套接字 */
     std::atomic_bool m_isOpened = {false}; /* 是否已打开 */
     std::vector<unsigned char> m_recvBuf; /* 接收缓冲区 */

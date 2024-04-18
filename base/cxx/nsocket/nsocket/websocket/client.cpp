@@ -322,6 +322,7 @@ void Client::stop()
     {
         std::lock_guard<std::mutex> locker(m_mutexTcpClient);
         tcpClient = m_tcpClient;
+        m_tcpClient.reset();
     }
     if (tcpClient)
     {

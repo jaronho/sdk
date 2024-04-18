@@ -55,10 +55,15 @@ void UdpHandler::setDataCallback(const UDP_DATA_CALLBACK& onDataCb)
 
 void UdpHandler::open(const boost::asio::ip::udp::endpoint& point, bool broadcast)
 {
-    if (m_socketUdpBase)
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
     {
         const std::weak_ptr<UdpHandler> wpSelf = shared_from_this();
-        m_socketUdpBase->open(point, broadcast, [wpSelf](const boost::system::error_code& code) {
+        socketUdpBase->open(point, broadcast, [wpSelf](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             if (self)
             {
@@ -91,7 +96,12 @@ void UdpHandler::open(const boost::asio::ip::udp::endpoint& point, bool broadcas
 void UdpHandler::send(const boost::asio::ip::udp::endpoint& point, const std::vector<unsigned char>& data,
                       const UDP_SEND_CALLBACK& onSendCb)
 {
-    if (m_socketUdpBase && m_isOpened)
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase && m_isOpened)
     {
         if (data.empty())
         {
@@ -106,14 +116,22 @@ void UdpHandler::send(const boost::asio::ip::udp::endpoint& point, const std::ve
             size_t sentLength = 0;
             while (sentLength < data.size()) /* 循环发送所有数据 */
             {
-                m_socketUdpBase->send(point, boost::asio::buffer(data.data() + sentLength, data.size() - sentLength),
-                                      [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
-                                          code = ec;
-                                          sentLength += length;
-                                      });
-                if (code) /* 发送失败 */
+                if (m_isOpened)
                 {
-                    break;
+                    socketUdpBase->send(point, boost::asio::buffer(data.data() + sentLength, data.size() - sentLength),
+                                        [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
+                                            code = ec;
+                                            sentLength += length;
+                                        });
+                    if (code) /* 发送失败 */
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+                    return;
                 }
             }
             if (onSendCb)
@@ -130,33 +148,38 @@ void UdpHandler::send(const boost::asio::ip::udp::endpoint& point, const std::ve
 
 void UdpHandler::UdpHandler::recv()
 {
-    if (m_socketUdpBase)
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
     {
         const std::weak_ptr<UdpHandler> wpSelf = shared_from_this();
-        m_socketUdpBase->recv(boost::asio::buffer(m_recvBuf),
-                              [wpSelf](const boost::asio::ip::udp::endpoint& point, const boost::system::error_code& code, size_t length) {
-                                  const auto self = wpSelf.lock();
-                                  if (self)
-                                  {
-                                      std::vector<unsigned char> data;
-                                      if (!code) /* 接收成功 */
-                                      {
-                                          const unsigned char* rawData = (const unsigned char*)self->m_recvBuf.data();
-                                          if (rawData && length > 0)
-                                          {
-                                              data.insert(data.end(), rawData, rawData + length);
-                                          }
-                                      }
-                                      if (self->m_onDataCallback)
-                                      {
-                                          self->m_onDataCallback(point, code, data);
-                                      }
-                                      if (self->m_isOpened)
-                                      {
-                                          self->recv(); /* 继续接收 */
-                                      }
-                                  }
-                              });
+        socketUdpBase->recv(boost::asio::buffer(m_recvBuf),
+                            [wpSelf](const boost::asio::ip::udp::endpoint& point, const boost::system::error_code& code, size_t length) {
+                                const auto self = wpSelf.lock();
+                                if (self)
+                                {
+                                    std::vector<unsigned char> data;
+                                    if (!code) /* 接收成功 */
+                                    {
+                                        const unsigned char* rawData = (const unsigned char*)self->m_recvBuf.data();
+                                        if (rawData && length > 0)
+                                        {
+                                            data.insert(data.end(), rawData, rawData + length);
+                                        }
+                                    }
+                                    if (self->m_onDataCallback)
+                                    {
+                                        self->m_onDataCallback(point, code, data);
+                                    }
+                                    if (self->m_isOpened)
+                                    {
+                                        self->recv(); /* 继续接收 */
+                                    }
+                                }
+                            });
     }
     else
     {
@@ -171,9 +194,15 @@ void UdpHandler::UdpHandler::recv()
 void UdpHandler::closeImpl()
 {
     m_isOpened = false;
-    if (m_socketUdpBase)
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
     {
-        m_socketUdpBase->close();
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+        m_socketUdpBase.reset();
+    }
+    if (socketUdpBase)
+    {
+        socketUdpBase->close();
     }
 }
 
@@ -192,20 +221,30 @@ bool UdpHandler::isOpened() const
     return m_isOpened;
 }
 
-boost::asio::ip::udp::endpoint UdpHandler::getLocalEndpoint() const
+boost::asio::ip::udp::endpoint UdpHandler::getLocalEndpoint()
 {
-    if (m_socketUdpBase)
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
     {
-        return m_socketUdpBase->getLocalEndpoint();
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
+    {
+        return socketUdpBase->getLocalEndpoint();
     }
     return boost::asio::ip::udp::endpoint();
 }
 
 bool UdpHandler::setNonBlock(bool nonBlock)
 {
-    if (m_socketUdpBase)
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
     {
-        return m_socketUdpBase->setNonBlock(nonBlock);
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
+    {
+        return socketUdpBase->setNonBlock(nonBlock);
     }
     return false;
 }

@@ -51,18 +51,28 @@ void TcpConnection::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
 
 void TcpConnection::setLocalPort(uint16_t port)
 {
-    if (m_socketTcpBase)
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
     {
-        m_socketTcpBase->setLocalPort(port);
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        socketTcpBase->setLocalPort(port);
     }
 }
 
 void TcpConnection::connect(const boost::asio::ip::tcp::endpoint& point, bool async)
 {
-    if (m_socketTcpBase)
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
     {
         const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
-        m_socketTcpBase->connect(
+        socketTcpBase->connect(
             point,
             [wpSelf](const boost::system::error_code& code) {
                 const auto self = wpSelf.lock();
@@ -108,7 +118,12 @@ void TcpConnection::connect(const boost::asio::ip::tcp::endpoint& point, bool as
 #if (1 == ENABLE_NSOCKET_OPENSSL)
 void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb, bool async)
 {
-    std::shared_ptr<SocketTls> tlsPtr = std::dynamic_pointer_cast<SocketTls>(m_socketTcpBase);
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    std::shared_ptr<SocketTls> tlsPtr = std::dynamic_pointer_cast<SocketTls>(socketTcpBase);
     if (tlsPtr)
     {
         const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
@@ -152,7 +167,12 @@ void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type
 
 void TcpConnection::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
-    if (m_socketTcpBase && m_isConnected)
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase && m_isConnected)
     {
         if (data.empty())
         {
@@ -167,14 +187,22 @@ void TcpConnection::send(const std::vector<unsigned char>& data, const TCP_SEND_
             size_t sentLength = 0;
             while (sentLength < data.size()) /* 循环发送所有数据 */
             {
-                m_socketTcpBase->send(boost::asio::buffer(data.data() + sentLength, data.size() - sentLength),
-                                      [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
-                                          code = ec;
-                                          sentLength += length;
-                                      });
-                if (code) /* 发送失败 */
+                if (m_isConnected)
                 {
-                    break;
+                    socketTcpBase->send(boost::asio::buffer(data.data() + sentLength, data.size() - sentLength),
+                                        [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
+                                            code = ec;
+                                            sentLength += length;
+                                        });
+                    if (code) /* 发送失败 */
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+                    return;
                 }
             }
             if (onSendCb)
@@ -191,10 +219,15 @@ void TcpConnection::send(const std::vector<unsigned char>& data, const TCP_SEND_
 
 void TcpConnection::TcpConnection::recv()
 {
-    if (m_socketTcpBase)
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
     {
         const std::weak_ptr<TcpConnection> wpSelf = shared_from_this();
-        m_socketTcpBase->recv(boost::asio::buffer(m_recvBuf), [wpSelf](const boost::system::error_code& code, size_t length) {
+        socketTcpBase->recv(boost::asio::buffer(m_recvBuf), [wpSelf](const boost::system::error_code& code, size_t length) {
             const auto self = wpSelf.lock();
             if (self)
             {
@@ -237,9 +270,15 @@ void TcpConnection::TcpConnection::recv()
 void TcpConnection::closeImpl()
 {
     m_isConnected = false;
-    if (m_socketTcpBase)
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
     {
-        m_socketTcpBase->close();
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+        m_socketTcpBase.reset();
+    }
+    if (socketTcpBase)
+    {
+        socketTcpBase->close();
     }
 }
 
@@ -263,29 +302,44 @@ bool TcpConnection::isConnected() const
     return m_isConnected;
 }
 
-boost::asio::ip::tcp::endpoint TcpConnection::getLocalEndpoint() const
+boost::asio::ip::tcp::endpoint TcpConnection::getLocalEndpoint()
 {
-    if (m_socketTcpBase)
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
     {
-        return m_socketTcpBase->getLocalEndpoint();
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        return socketTcpBase->getLocalEndpoint();
     }
     return boost::asio::ip::tcp::endpoint();
 }
 
-boost::asio::ip::tcp::endpoint TcpConnection::getRemoteEndpoint() const
+boost::asio::ip::tcp::endpoint TcpConnection::getRemoteEndpoint()
 {
-    if (m_socketTcpBase)
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
     {
-        return m_socketTcpBase->getRemoteEndpoint();
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        return socketTcpBase->getRemoteEndpoint();
     }
     return boost::asio::ip::tcp::endpoint();
 }
 
 bool TcpConnection::setNonBlock(bool nonBlock)
 {
-    if (m_socketTcpBase)
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
     {
-        return m_socketTcpBase->setNonBlock(nonBlock);
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        return socketTcpBase->setNonBlock(nonBlock);
     }
     return false;
 }

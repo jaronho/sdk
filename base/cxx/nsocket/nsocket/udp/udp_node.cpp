@@ -9,6 +9,11 @@ static std::atomic_int s_count{0};
 
 UdpNode::UdpNode(size_t bz) : m_udpHandler(nullptr), m_bufferSize(bz), m_onOpenCallback(nullptr), m_onDataCallback(nullptr) {}
 
+UdpNode::~UdpNode()
+{
+    stop();
+};
+
 void UdpNode::setOpenCallback(const UDP_OPEN_CALLBACK& onOpenCb)
 {
     m_onOpenCallback = onOpenCb;
@@ -37,17 +42,21 @@ void UdpNode::run(const std::string& host, unsigned int port, bool broadcast)
     else
     {
         boost::asio::ip::udp::socket socket(m_ioContext);
-        m_udpHandler = std::make_shared<UdpHandler>(std::make_shared<SocketUdp>(std::move(socket)), m_bufferSize);
+        auto udpHandler = std::make_shared<UdpHandler>(std::make_shared<SocketUdp>(std::move(socket)), m_bufferSize);
         const std::weak_ptr<UdpNode> wpSelf = shared_from_this();
-        m_udpHandler->setOpenCallback([wpSelf](const boost::system::error_code& code) {
+        udpHandler->setOpenCallback([wpSelf](const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             if (self)
             {
                 self->handleOpen(code);
             }
         });
-        m_udpHandler->setDataCallback(m_onDataCallback);
-        m_udpHandler->open(endpoints.begin()->endpoint(), broadcast);
+        udpHandler->setDataCallback(m_onDataCallback);
+        {
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_udpHandler = udpHandler;
+        }
+        udpHandler->open(endpoints.begin()->endpoint(), broadcast);
         if (RunStatus::idle == m_runStatus)
         {
             m_runStatus = RunStatus::running;
@@ -62,7 +71,12 @@ boost::system::error_code UdpNode::send(const std::string& host, unsigned int po
 {
     auto code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
     sentLength = 0;
-    if (RunStatus::running == m_runStatus && !m_ioContext.stopped() && m_udpHandler)
+    std::shared_ptr<UdpHandler> udpHandler = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        udpHandler = m_udpHandler;
+    }
+    if (RunStatus::running == m_runStatus && !m_ioContext.stopped() && udpHandler)
     {
         auto endpoints = boost::asio::ip::udp::resolver(m_ioContext).resolve(host, std::to_string(port), code);
         if (code || endpoints.empty())
@@ -70,7 +84,7 @@ boost::system::error_code UdpNode::send(const std::string& host, unsigned int po
             return code ? code : boost::system::errc::make_error_code(boost::system::errc::address_not_available);
         }
         auto point = endpoints.begin()->endpoint();
-        m_udpHandler->send(point, data, [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
+        udpHandler->send(point, data, [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
             code = ec;
             sentLength += length;
         });
@@ -81,7 +95,12 @@ boost::system::error_code UdpNode::send(const std::string& host, unsigned int po
 void UdpNode::sendAsync(const std::string& host, unsigned int port, const std::vector<unsigned char>& data,
                         const UDP_SEND_CALLBACK& onSendCb)
 {
-    if (RunStatus::running == m_runStatus && !m_ioContext.stopped() && m_udpHandler)
+    std::shared_ptr<UdpHandler> udpHandler = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        udpHandler = m_udpHandler;
+    }
+    if (RunStatus::running == m_runStatus && !m_ioContext.stopped() && udpHandler)
     {
         boost::system::error_code code;
         auto endpoints = boost::asio::ip::udp::resolver(m_ioContext).resolve(host, std::to_string(port), code);
@@ -98,9 +117,21 @@ void UdpNode::sendAsync(const std::string& host, unsigned int port, const std::v
             const std::weak_ptr<UdpNode> wpSelf = shared_from_this();
             boost::asio::post(m_ioContext, [wpSelf, point, data, onSendCb]() {
                 const auto self = wpSelf.lock();
-                if (self && RunStatus::running == self->m_runStatus && !self->m_ioContext.stopped() && self->m_udpHandler)
+                if (self)
                 {
-                    self->m_udpHandler->send(point, data, onSendCb);
+                    std::shared_ptr<UdpHandler> udpHandler = nullptr;
+                    {
+                        std::lock_guard<std::mutex> locker(self->m_mutex);
+                        udpHandler = self->m_udpHandler;
+                    }
+                    if (RunStatus::running == self->m_runStatus && !self->m_ioContext.stopped() && udpHandler)
+                    {
+                        udpHandler->send(point, data, onSendCb);
+                    }
+                    else if (onSendCb)
+                    {
+                        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+                    }
                 }
                 else if (onSendCb)
                 {
@@ -119,33 +150,20 @@ void UdpNode::stop()
 {
     if (RunStatus::running == m_runStatus)
     {
-        if (m_ioContext.stopped())
+        m_runStatus = RunStatus::stop;
+        if (!m_ioContext.stopped())
         {
-            m_runStatus = RunStatus::stop;
-            if (m_udpHandler)
-            {
-                m_udpHandler->close();
-            }
+            m_ioContext.stop();
         }
-        else
+        std::shared_ptr<UdpHandler> udpHandler = nullptr;
         {
-            const std::weak_ptr<UdpNode> wpSelf = shared_from_this();
-            boost::asio::post(m_ioContext, [wpSelf]() {
-                const auto self = wpSelf.lock();
-                if (self)
-                {
-                    const auto lastStatus = self->m_runStatus.load();
-                    self->m_runStatus = RunStatus::stop;
-                    if (RunStatus::running == lastStatus)
-                    {
-                        self->m_ioContext.stop();
-                        if (self->m_udpHandler)
-                        {
-                            self->m_udpHandler->close();
-                        }
-                    }
-                }
-            });
+            std::lock_guard<std::mutex> locker(m_mutex);
+            udpHandler = m_udpHandler;
+            m_udpHandler.reset();
+        }
+        if (udpHandler)
+        {
+            udpHandler->close();
         }
     }
 }
@@ -155,18 +173,28 @@ bool UdpNode::isRunning() const
     return (RunStatus::running == m_runStatus);
 }
 
-boost::asio::ip::udp::endpoint UdpNode::getLocalEndpoint() const
+boost::asio::ip::udp::endpoint UdpNode::getLocalEndpoint()
 {
-    if (m_udpHandler)
+    std::shared_ptr<UdpHandler> udpHandler = nullptr;
     {
-        return m_udpHandler->getLocalEndpoint();
+        std::lock_guard<std::mutex> locker(m_mutex);
+        udpHandler = m_udpHandler;
+    }
+    if (udpHandler)
+    {
+        return udpHandler->getLocalEndpoint();
     }
     return boost::asio::ip::udp::endpoint();
 }
 
 void UdpNode::handleOpen(const boost::system::error_code& code)
 {
-    if (!m_udpHandler || code) /* 处理器为空, 或打开失败 */
+    std::shared_ptr<UdpHandler> udpHandler = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        udpHandler = m_udpHandler;
+    }
+    if (!udpHandler || code) /* 处理器为空, 或打开失败 */
     {
         stop();
     }

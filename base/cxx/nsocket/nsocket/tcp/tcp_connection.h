@@ -2,6 +2,7 @@
 #include <atomic>
 #include <boost/asio/io_context.hpp>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "../core/socket_tcp.h"
@@ -99,13 +100,13 @@ public:
      * @brief 获取本端端点
      * @return 本端端点
      */
-    boost::asio::ip::tcp::endpoint getLocalEndpoint() const;
+    boost::asio::ip::tcp::endpoint getLocalEndpoint();
 
     /**
      * @brief 获取远端端点
      * @return 远端端点
      */
-    boost::asio::ip::tcp::endpoint getRemoteEndpoint() const;
+    boost::asio::ip::tcp::endpoint getRemoteEndpoint();
 
     /**
      * @brief 设置非阻塞(说明: 需要连接成功后才调用)
@@ -168,6 +169,7 @@ private:
 
 private:
     uint64_t m_id = 0; /* ID */
+    std::mutex m_mutex;
     std::shared_ptr<SocketTcpBase> m_socketTcpBase = nullptr; /* 套接字 */
     std::atomic_bool m_isEnableSSL = {false}; /* 是否启用SSL */
     std::atomic_bool m_isConnected = {false}; /* 是否已连接上 */
