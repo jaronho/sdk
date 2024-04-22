@@ -1,12 +1,13 @@
 #include "usb.h"
 
 #include <algorithm>
+#include <iomanip>
+#include <iostream>
 #include <map>
+#include <sstream>
 #include <string.h>
 
 #ifdef _WIN32
-// Windows.h必须比其他平台文件先包含
-#include <Windows.h>
 // initguid.h必须在devpkey.h前面包含
 #include <initguid.h>
 //
@@ -16,6 +17,7 @@
 #include <strsafe.h>
 #include <usb.h>
 #include <usbioctl.h>
+#include <winioctl.h>
 #pragma comment(lib, "setupapi.lib")
 #else
 #include <libudev.h>
@@ -119,13 +121,29 @@ std::string wstring2string(const std::wstring& wstr)
 
 std::string guid2string(GUID guid)
 {
-    WCHAR wszGuidStr[39]; /* 定义一个足够大的缓冲区来存储GUID的字符串表示形式: 38个字符 + 1个终止符 null */
-    int nChars = StringFromGUID2(guid, wszGuidStr, sizeof(wszGuidStr) / sizeof(WCHAR)); /* 调用 StringFromGUID2 函数转换GUID */
-    if (nChars <= 0)
+    std::wostringstream oss;
+    oss << std::hex << std::uppercase << std::setfill(L'0'); /* GUID 的数据结构为：Data1, Data2, Data3, Data4[2], Data4[6] */
+    oss << L"{";
+    /* step1. 将 Data1 转换为字符串 */
+    oss << std::setw(8) << guid.Data1;
+    /* step2. 将 Data2 和 Data3 转换为字符串 */
+    oss << '-' << std::setw(4) << guid.Data2;
+    oss << '-' << std::setw(4) << guid.Data3;
+    /* step3. 处理 Data4 前2个短整型 */
+    oss << '-';
+    for (int i = 0; i < 2; ++i)
     {
-        return "";
+        oss << std::setw(2) << (unsigned short)guid.Data4[i];
     }
-    return wstring2string(wszGuidStr);
+    /* step4. 处理 Data4 的其余6个字节 */
+    oss << '-';
+    for (int i = 2; i < 8; ++i)
+    {
+        oss << std::setw(2) << (unsigned char)guid.Data4[i];
+    }
+    oss << L"}";
+    /* step5. 转为std::string */
+    return wstring2string(oss.str());
 }
 
 std::string getRootHubName(HANDLE hostController)
