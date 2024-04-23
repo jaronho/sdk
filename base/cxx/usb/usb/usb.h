@@ -7,7 +7,14 @@
 
 namespace usb
 {
-struct UsbImpl;
+#ifndef _WIN32
+/**
+ * @brief 判断路径是否已设置为挂载点
+ * @param path 路径
+ * @return true-是, false-否
+ */
+static bool isMountpoint(std::string path);
+#endif
 
 /**
  * @brief 设备节点
@@ -43,6 +50,8 @@ private:
     std::string m_mountpoint; /* 设备挂载点, 如: Windows: H:\, I:\ */
 #endif
 };
+
+struct UsbImpl;
 
 /**
  * @brief USB类

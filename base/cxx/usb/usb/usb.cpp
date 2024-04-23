@@ -1320,6 +1320,22 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
     udev_enumerate_unref(enumerate);
     udev_unref(udev);
 }
+
+bool isMountpoint(std::string path)
+{
+    if (path.empty())
+    {
+        return false;
+    }
+    path.insert(0, " ");
+    std::vector<std::string> outVec;
+    runCommand("lsblk | grep \"" + path + "\"", nullptr, &outVec);
+    if (1 == outVec.size() && (outVec[0].rfind(path) + path.size()) == outVec[0].size())
+    {
+        return true;
+    }
+    return false;
+}
 #endif
 
 #if _WIN32
