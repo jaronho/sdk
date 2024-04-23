@@ -264,19 +264,56 @@ char* md5Fini(md5_context_t* context, unsigned char digest[16], int convertToStr
 
 void md5Sign(const unsigned char* input, unsigned int inputLen, unsigned char digest[16])
 {
-    md5_context_t md5;
-    md5Init(&md5);
-    md5Update(&md5, input, inputLen);
-    md5Fini(&md5, digest, 0);
+    md5_context_t ctx;
+    md5Init(&ctx);
+    md5Update(&ctx, input, inputLen);
+    md5Fini(&ctx, digest, 0);
 }
 
 char* md5SignStr(const unsigned char* input, unsigned int inputLen)
 {
     unsigned char digest[16];
-    md5_context_t md5;
-    md5Init(&md5);
-    md5Update(&md5, input, inputLen);
-    return md5Fini(&md5, digest, 1);
+    md5_context_t ctx;
+    md5Init(&ctx);
+    md5Update(&ctx, input, inputLen);
+    return md5Fini(&ctx, digest, 1);
+}
+
+char* md5SignFile(const char* filename, unsigned long long blockSize)
+{
+    blockSize = blockSize >= 1024 ? blockSize : 1024;
+    if (!filename || 0 == strlen(filename))
+    {
+        return NULL;
+    }
+    char* str = NULL;
+    FILE* f = fopen(filename, "rb");
+    if (f)
+    {
+        char* buffer = (char*)malloc(blockSize);
+        if (buffer)
+        {
+            md5_context_t ctx;
+            md5Init(&ctx);
+            unsigned long long offset = 0, count = blockSize;
+            while (count > 0)
+            {
+#ifdef _WIN32
+                _fseeki64(f, offset, SEEK_SET);
+#else
+                fseeko64(f, offset, SEEK_SET);
+#endif
+                count = fread(buffer, 1, blockSize, f);
+                offset += count;
+                md5Update(&ctx, (unsigned char*)buffer, count);
+            }
+            unsigned char digest[16];
+            str = md5Fini(&ctx, digest, 1);
+            free(buffer);
+        }
+        fclose(f);
+    }
+    return str;
 }
 #ifdef __cplusplus
 } // namespace algorithm

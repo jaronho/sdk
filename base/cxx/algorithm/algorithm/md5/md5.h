@@ -54,6 +54,14 @@ extern "C"
      * @return md5字符串(32位小写)(需要外部调用free释放内存)
      */
     char* md5SignStr(const unsigned char* input, unsigned int inputLen);
+
+    /** 
+     * @brief md5加密文件, 内部集成了md5Init, md5Update, md5Fini三个接口的调用(一般直接调用该接口即可)
+     * @param filename 文件路径
+     * @param blockSize 每次读取的文件块大小(字节), 最小1024字节
+     * @return md5字符串(32位小写)(需要外部调用free释放内存)
+     */
+    char* md5SignFile(const char* filename, unsigned long long blockSize);
 #ifdef __cplusplus
 }
 } // namespace algorithm
