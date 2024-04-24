@@ -1298,16 +1298,16 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
                 {
                     if (uuid.empty()) /* 超块(不可挂载) */
                     {
-                        iter->devRootNode = DevNode(devNode, group, fstype, label, partlabel, model, vendor);
+                        iter->devRootNode = DevNode(devNode, group, fstype, label, partlabel, vendor, model);
                     }
                     else /* 可挂载分区 */
                     {
-                        iter->devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model, vendor));
+                        iter->devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, vendor, model));
                     }
                 }
                 else if ("cdrom" == group) /* 光驱 */
                 {
-                    iter->devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, model, vendor));
+                    iter->devNodes.emplace_back(DevNode(devNode, group, fstype, label, partlabel, vendor, model));
                 }
             }
             else /* 非存储设备 */
