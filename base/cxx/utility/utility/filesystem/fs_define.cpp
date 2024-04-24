@@ -27,6 +27,41 @@ static std::wstring string2wstring(const std::string& str)
     free(buf);
     return wstr;
 }
+
+static BOOL isShortcut(const std::string& filename)
+{
+    HRESULT hr = (HRESULT)-1;
+    static const std::string INK_SUFFIX = ".lnk";
+    if (filename.size() > INK_SUFFIX.size() && INK_SUFFIX == filename.substr(filename.size() - INK_SUFFIX.size()))
+    {
+        if (CoInitialize(NULL) >= 0)
+        {
+            IShellLink* psl;
+            if (CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLink, (LPVOID*)&psl) >= 0)
+            {
+                IPersistFile* ppf;
+                if (psl->QueryInterface(IID_IPersistFile, (LPVOID*)&ppf) >= 0)
+                {
+                    hr = ppf->Load(string2wstring(filename).c_str(), STGM_READ); /* 尝试加载快捷方式 */
+                    ppf->Release();
+                }
+                psl->Release();
+            }
+            CoUninitialize();
+        }
+    }
+    return (hr >= 0);
+}
+#else
+bool isSymbolicLink(const std::string& filename)
+{
+    struct stat st;
+    if (!filename.empty() && 0 == lstat(filename.c_str(), &st))
+    {
+        return S_ISLNK(st.st_mode);
+    }
+    return false;
+}
 #endif
 
 bool getFileAttribute(const std::string& name, FileAttribute& attr)
@@ -69,21 +104,20 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
     attr.isDir = S_IFDIR & st.st_mode;
     attr.isFile = S_IFREG & st.st_mode;
 #ifdef _WIN32
-    SHFILEINFO shFileInfo;
-    memset(&shFileInfo, 0, sizeof(SHFILEINFO));
 #ifdef UNICODE
-    SHGetFileInfo(string2wstring(name).c_str(), 0, &shFileInfo, sizeof(SHFILEINFO),
-                  SHGFI_DISPLAYNAME | SHGFI_ICON | SHGFI_SMALLICON | SHGFI_TYPENAME | SHGFI_ATTRIBUTES);
+    DWORD dwAttrib = GetFileAttributesW(string2wstring(name).c_str());
 #else
-    SHGetFileInfo(name.c_str(), 0, &shFileInfo, sizeof(SHFILEINFO),
-                  SHGFI_DISPLAYNAME | SHGFI_ICON | SHGFI_SMALLICON | SHGFI_TYPENAME | SHGFI_ATTRIBUTES);
+    DWORD dwAttrib = GetFileAttributesA(name.c_str());
 #endif
-    attr.isSystem = SFGAO_SYSTEM & shFileInfo.dwAttributes;
-    attr.isSymLink = SFGAO_LINK & shFileInfo.dwAttributes;
-    attr.isHidden = SFGAO_HIDDEN & shFileInfo.dwAttributes;
-    attr.isWritable = !(SFGAO_READONLY & shFileInfo.dwAttributes);
+    attr.isSymLink = isShortcut(name);
+    if (INVALID_FILE_ATTRIBUTES != dwAttrib)
+    {
+        attr.isSystem = dwAttrib & FILE_ATTRIBUTE_SYSTEM;
+        attr.isHidden = dwAttrib & FILE_ATTRIBUTE_HIDDEN;
+        attr.isWritable = !(dwAttrib & FILE_ATTRIBUTE_READONLY);
+    }
 #else
-    attr.isSymLink = S_IFLNK & st.st_mode;
+    attr.isSymLink = isSymbolicLink(name);
     attr.isHidden = subName.empty() ? false : '.' == subName[0]; /* linux中文件名第1个字符为.表示隐藏 */
     attr.isWritable = S_IWUSR & st.st_mode;
 #endif

@@ -46,10 +46,10 @@ typedef struct
     size_t size = 0; /* 文件大小(注:为目录时该字段无效) */
     bool isDir; /* 是否目录 */
     bool isFile; /* 是否文件 */
+    bool isSymLink; /* 是否链接文件 */
 #ifdef _WIN32
     bool isSystem; /* 是否系统文件 */
 #endif
-    bool isSymLink; /* 是否链接文件 */
     bool isHidden; /* 是否隐藏 */
     bool isWritable; /* 是否可写 */
     bool isExecutable; /* 是否可执行 */
