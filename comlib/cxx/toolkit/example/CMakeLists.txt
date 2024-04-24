@@ -43,11 +43,13 @@ add_executable(example_app_singleton
 			   example_app_singleton.cpp)
 
 add_executable(example_toolkit
+			   ${base_algorithm_files}
 			   ${base_utility_filesystem_files}
 			   ${base_utility_net_files}
 			   ${base_utility_strtool_files}
 			   ${base_utility_system_files}
 			   ${comlib_toolkit_net_config_files}
+			   ${comlib_toolkit_tool_files}
 			   example_toolkit.cpp)
 
 add_executable(file_deleter_tool
