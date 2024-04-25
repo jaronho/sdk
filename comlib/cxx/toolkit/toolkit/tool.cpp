@@ -15,7 +15,7 @@ std::string Tool::md5Directory(const std::string& path,
 {
     blockSize = blockSize > (50 * 1024 * 1024) ? (50 * 1024 * 1024) : blockSize;
     std::string value;
-    utility::PathInfo pi(path);
+    utility::PathInfo pi(path, true);
     pi.traverse(
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
             if (1 == depth)
@@ -31,6 +31,10 @@ std::string Tool::md5Directory(const std::string& path,
                 progressCb(name, attr.isDir, attr.size);
             }
             auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
+            if (!relativeName.empty() && '/' == relativeName[0])
+            {
+                relativeName.erase(0);
+            }
             value += relativeName;
             value = algorithm::md5SignStr((const unsigned char*)value.c_str(), value.size());
             return true;
@@ -41,6 +45,10 @@ std::string Tool::md5Directory(const std::string& path,
                 progressCb(name, attr.isDir, attr.size);
             }
             auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
+            if (!relativeName.empty() && '/' == relativeName[0])
+            {
+                relativeName.erase(0);
+            }
             value += relativeName;
             if (md5FileFunc)
             {

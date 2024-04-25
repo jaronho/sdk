@@ -52,12 +52,12 @@ int main(int argc, char** argv)
     parser.add("verbose", 'v', "show progress");
     parser.add("help", 'h', "show help");
     parser.parse_check(argc, argv);
-    if (parser.exist("help"))
+    auto target = parser.get<std::string>("input");
+    if (target.empty() || parser.exist("help"))
     {
         printf("%s\n", parser.usage().c_str());
         return 0;
     }
-    auto target = parser.get<std::string>("input");
     auto blockSize = parser.get<int>("block");
     utility::FileAttribute attr;
     utility::getFileAttribute(target, attr);
