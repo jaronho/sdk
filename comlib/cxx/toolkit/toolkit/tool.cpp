@@ -11,7 +11,7 @@ namespace toolkit
 {
 std::string Tool::md5Directory(const std::string& path,
                                const std::function<void(const std::string& name, bool isDir, size_t fileSize)>& progressCb,
-                               const std::function<std::string(const std::string& name)>& md5FileFunc)
+                               const std::function<std::string(const std::string& name)>& md5FileFunc, size_t blockSize)
 {
     std::string value;
     utility::PathInfo pi(path);
@@ -39,7 +39,7 @@ std::string Tool::md5Directory(const std::string& path,
             }
             else
             {
-                auto buf = algorithm::md5SignFile(name.c_str(), 1024 * 1024);
+                auto buf = algorithm::md5SignFile(name.c_str(), blockSize);
                 if (buf)
                 {
                     value += buf;
