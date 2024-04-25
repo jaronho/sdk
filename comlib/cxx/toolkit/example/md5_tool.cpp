@@ -12,29 +12,29 @@
 #include "utility/filesystem/path_info.h"
 #include "utility/strtool/strtool.h"
 
-/* ×ª»»×Ö½Úµ½ºÏÊÊµÄµ¥Î» */
+/* è½¬æ¢å­—èŠ‚åˆ°åˆé€‚çš„å•ä½ */
 static std::string convertBytesToAppropriateUnit(double bytes)
 {
-    /* ¶¨Òå×Ö½Úµ½KB, MB, GBµÄ×ª»»³£Á¿ */
+    /* å®šä¹‰å­—èŠ‚åˆ°KB, MB, GBçš„è½¬æ¢å¸¸é‡ */
     static const double BYTES_IN_KB = 1024.0;
     static const double BYTES_IN_MB = BYTES_IN_KB * 1024.0;
     static const double BYTES_IN_GB = BYTES_IN_MB * 1024.0;
     std::ostringstream oss;
-    if (bytes < BYTES_IN_KB) /* Èç¹û×Ö½ÚÊıĞ¡ÓÚ1KB, Ö±½ÓÒÔ×Ö½ÚÎªµ¥Î»ÏÔÊ¾ */
+    if (bytes < BYTES_IN_KB) /* å¦‚æœå­—èŠ‚æ•°å°äº1KB, ç›´æ¥ä»¥å­—èŠ‚ä¸ºå•ä½æ˜¾ç¤º */
     {
         return std::to_string((size_t)bytes) + " B";
     }
-    else if (bytes < BYTES_IN_MB) /* Èç¹û×Ö½ÚÊıĞ¡ÓÚ1MB£¬ÒÔKBÎªµ¥Î»ÏÔÊ¾ */
+    else if (bytes < BYTES_IN_MB) /* å¦‚æœå­—èŠ‚æ•°å°äº1MBï¼Œä»¥KBä¸ºå•ä½æ˜¾ç¤º */
     {
         oss << std::fixed << std::setprecision(2) << (bytes / BYTES_IN_KB);
         return oss.str() + " KB";
     }
-    else if (bytes < BYTES_IN_GB) /* Èç¹û×Ö½ÚÊıĞ¡ÓÚ1GB£¬ÒÔMBÎªµ¥Î»ÏÔÊ¾ */
+    else if (bytes < BYTES_IN_GB) /* å¦‚æœå­—èŠ‚æ•°å°äº1GBï¼Œä»¥MBä¸ºå•ä½æ˜¾ç¤º */
     {
         oss << std::fixed << std::setprecision(2) << (bytes / BYTES_IN_MB);
         return oss.str() + " MB";
     }
-    /* Èç¹û×Ö½ÚÊı´óÓÚ»òµÈÓÚ1GB£¬ÒÔGBÎªµ¥Î»ÏÔÊ¾ */
+    /* å¦‚æœå­—èŠ‚æ•°å¤§äºæˆ–ç­‰äº1GBï¼Œä»¥GBä¸ºå•ä½æ˜¾ç¤º */
     oss << std::fixed << std::setprecision(2) << (bytes / BYTES_IN_GB);
     return oss.str() + " GB";
 }
@@ -62,7 +62,7 @@ int main(int argc, char** argv)
     utility::FileAttribute attr;
     utility::getFileAttribute(target, attr);
     std::string value;
-    if (attr.isDir) /* Ä¿Â¼ */
+    if (attr.isDir) /* ç›®å½• */
     {
         if (parser.exist("verbose"))
         {
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
                     if (1 == depth)
                     {
                         auto dirName = utility::FileInfo(name).filename();
-                        if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* Ìø¹ıWindowsÎÄ¼şÏµÍ³Ä¿Â¼ */
+                        if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* è·³è¿‡Windowsæ–‡ä»¶ç³»ç»Ÿç›®å½• */
                         {
                             return false;
                         }
@@ -105,11 +105,11 @@ int main(int argc, char** argv)
             {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
                 std::string timeStr;
-                if (elapsed < 1000) /* 1ÃëÄÚ */
+                if (elapsed < 1000) /* 1ç§’å†… */
                 {
                     timeStr = std::to_string(elapsed) + " ms";
                 }
-                else if (elapsed < 60000) /* 1·ÖÖÓÄÚ */
+                else if (elapsed < 60000) /* 1åˆ†é’Ÿå†… */
                 {
                     auto second = elapsed / 1000;
                     auto millsecond = (elapsed - second * 1000) % 1000;
@@ -120,7 +120,7 @@ int main(int argc, char** argv)
                     }
                     timeStr += " s";
                 }
-                else if (elapsed < 3600000) /* 1Ğ¡Ê±ÄÚ */
+                else if (elapsed < 3600000) /* 1å°æ—¶å†… */
                 {
                     auto minute = elapsed / 60000;
                     auto second = (elapsed % 60000) / 1000;
@@ -139,7 +139,7 @@ int main(int argc, char** argv)
                     }
                     timeStr += " m";
                 }
-                else if (elapsed < 86400000) /* 1ÌìÄÚ */
+                else if (elapsed < 86400000) /* 1å¤©å†… */
                 {
                     auto hour = elapsed / 3600000;
                     auto minute = (elapsed % 3600000) / 60000;
@@ -179,7 +179,7 @@ int main(int argc, char** argv)
             value = toolkit::Tool::md5Directory(target, nullptr, nullptr, blockSize);
         }
     }
-    else if (attr.isFile) /* ÎÄ¼ş */
+    else if (attr.isFile) /* æ–‡ä»¶ */
     {
         auto buf = algorithm::md5SignFile(target.c_str(), blockSize);
         if (buf)

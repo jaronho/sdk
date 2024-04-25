@@ -23,38 +23,43 @@ void testFileCopy(int argc, char** argv)
     /* 参数设置 */
     auto srcFilelist = utility::StrTool::split(filelist, ",");
     auto filterFunc = [](const std::string& name, const utility::FileAttribute& attr, int depth) {
+        if (1 == depth)
+        {
+            if (attr.isDir)
+            {
+                auto dirName = utility::FileInfo(name).filename();
+                if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
+                {
+                    printf("[%d] source directory %s is system, skip\n", depth, name.c_str());
+                    return true;
+                }
+            }
 #ifdef _WIN32
-        if (attr.isSystem) /* 系统 */
-        {
-            if (attr.isDir)
+            if (attr.isSystem) /* 系统 */
             {
-                printf("[%d] source directory %s is system, skip\n", depth, name.c_str());
+                if (attr.isDir)
+                {
+                    printf("[%d] source directory %s is system, skip\n", depth, name.c_str());
+                }
+                else
+                {
+                    printf("[%d] source file %s is sysem, skip\n", depth, name.c_str());
+                }
+                return true;
             }
-            else
-            {
-                printf("[%d] source file %s is sysem, skip\n", depth, name.c_str());
-            }
-            return true;
-        }
 #endif
-        if (attr.isDir
-            && (utility::StrTool::contains(name, "$RECYCLE.BIN", false)
-                || utility::StrTool::contains(name, "System Volume Information", false))) /* 文件系统目录(跳过) */
-        {
-            printf("[%d] source directory %s is system, skip\n", depth, name.c_str());
-            return true;
-        }
-        if (1 == depth && attr.isHidden) /* 第1层且为隐藏的目录(跳过) */
-        {
-            if (attr.isDir)
+            if (attr.isHidden) /* 隐藏 */
             {
-                printf("[%d] source directory %s is hidden, skip\n", depth, name.c_str());
+                if (attr.isDir)
+                {
+                    printf("[%d] source directory %s is hidden, skip\n", depth, name.c_str());
+                }
+                else
+                {
+                    printf("[%d] source file %s is hidden, skip\n", depth, name.c_str());
+                }
+                return true;
             }
-            else
-            {
-                printf("[%d] source file %s is hidden, skip\n", depth, name.c_str());
-            }
-            return true;
         }
         return false;
     };

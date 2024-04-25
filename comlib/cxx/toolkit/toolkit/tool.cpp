@@ -21,7 +21,7 @@ std::string Tool::md5Directory(const std::string& path,
             if (1 == depth)
             {
                 auto dirName = utility::FileInfo(name).filename();
-                if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
+                if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 璺宠繃Windows鏂囦欢绯荤粺鐩綍 */
                 {
                     return false;
                 }

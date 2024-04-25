@@ -32,10 +32,13 @@ void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const DeleteCheckFunc& f
     std::vector<InfoInner> folderList;
     std::vector<InfoInner> fileList;
     auto folderCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-        if (utility::StrTool::contains(name, "$RECYCLE.BIN", false)
-            || utility::StrTool::contains(name, "System Volume Information", false)) /* 文件系统目录(跳过) */
+        if (1 == depth)
         {
-            return false;
+            auto dirName = utility::FileInfo(name).filename();
+            if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
+            {
+                return false;
+            }
         }
         if (!folderCheckFunc || folderCheckFunc(name, attr, depth))
         {
@@ -110,10 +113,13 @@ void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const 
         auto nowTimestamp = (int64_t)utility::DateTime::getNowTimestamp();
         std::vector<InfoInner> folderList;
         auto folderCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-            if (utility::StrTool::contains(name, "$RECYCLE.BIN", false)
-                || utility::StrTool::contains(name, "System Volume Information", false)) /* 文件系统目录(跳过) */
+            if (1 == depth)
             {
-                return false;
+                auto dirName = utility::FileInfo(name).filename();
+                if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
+                {
+                    return false;
+                }
             }
             if (!folderCheckFunc || folderCheckFunc(name, attr, depth))
             {
