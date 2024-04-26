@@ -99,7 +99,7 @@ int main(int argc, char** argv)
                     }
                     printf("[%s] %s [%c] %s\n", dtString().c_str(), progress.c_str(), isDir ? 'D' : 'F', fileDesc.c_str());
                 },
-                nullptr, blockSize);
+                blockSize);
             printf("\n");
             if (!value.empty())
             {
@@ -176,7 +176,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            value = toolkit::Tool::md5Directory(target, nullptr, nullptr, blockSize);
+            value = toolkit::Tool::md5Directory(target, nullptr, blockSize);
         }
     }
     else if (attr.isFile) /* 文件 */

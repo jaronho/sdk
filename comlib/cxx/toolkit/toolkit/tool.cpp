@@ -11,10 +11,12 @@ namespace toolkit
 {
 std::string Tool::md5Directory(const std::string& path,
                                const std::function<void(const std::string& name, bool isDir, size_t fileSize)>& progressCb,
-                               const std::function<std::string(const std::string& name)>& md5FileFunc, size_t blockSize)
+                               size_t blockSize)
 {
     blockSize = blockSize > (50 * 1024 * 1024) ? (50 * 1024 * 1024) : blockSize;
-    std::string value;
+    algorithm::md5_context_t ctx;
+    md5Init(&ctx);
+    char* buffer = NULL;
     utility::PathInfo pi(path, true);
     pi.traverse(
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
@@ -35,8 +37,7 @@ std::string Tool::md5Directory(const std::string& path,
             {
                 relativeName.erase(0);
             }
-            value += relativeName;
-            value = algorithm::md5SignStr((const unsigned char*)value.c_str(), value.size());
+            md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
             return true;
         },
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
@@ -49,23 +50,45 @@ std::string Tool::md5Directory(const std::string& path,
             {
                 relativeName.erase(0);
             }
-            value += relativeName;
-            if (md5FileFunc)
+            md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
+            FILE* f = fopen(name.c_str(), "rb");
+            if (f)
             {
-                value += md5FileFunc(name);
-            }
-            else
-            {
-                auto buf = algorithm::md5SignFile(name.c_str(), blockSize);
-                if (buf)
+                if (!buffer)
                 {
-                    value += buf;
-                    free(buf);
+                    buffer = (char*)malloc(blockSize);
                 }
+                if (buffer)
+                {
+                    unsigned long long offset = 0, count = blockSize;
+                    while (count > 0)
+                    {
+#ifdef _WIN32
+                        _fseeki64(f, offset, SEEK_SET);
+#else
+                        fseeko64(f, offset, SEEK_SET);
+#endif
+                        count = fread(buffer, 1, blockSize, f);
+                        offset += count;
+                        md5Update(&ctx, (unsigned char*)buffer, count);
+                    }
+                }
+                fclose(f);
             }
-            value = algorithm::md5SignStr((const unsigned char*)value.c_str(), value.size());
         },
         nullptr, true, false);
+    if (buffer)
+    {
+        free(buffer);
+    }
+    std::string value;
+    unsigned char digest[16];
+    auto buf = md5Fini(&ctx, digest, 1);
+    if (buf)
+    {
+        value = buf;
+        free(buf);
+    }
     return value;
 }
 } // namespace toolkit
