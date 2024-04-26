@@ -408,7 +408,7 @@ void PathInfo::traverseBFS(const std::string& path, int depth,
         int depth = 0;
     };
     std::queue<InfoInner> infoQueue;
-    infoQueue.push(InfoInner(path, depth + 1));
+    infoQueue.push(InfoInner(path, depth));
     while (!infoQueue.empty())
     {
         if (stopCb && stopCb())
@@ -438,56 +438,47 @@ void PathInfo::traverseBFS(const std::string& path, int depth,
         {
             continue;
         }
-        if (!(_A_SUBDIR & fileData.attrib))
-        {
-            std::string subName = path + fileData.name;
-            FileAttribute attr;
-            if (getFileAttribute(subName, attr) && attr.isFile) /* 文件 */
-            {
-                if (fileCb)
-                {
-                    fileCb(subName, attr, depth);
-                }
-            }
-        }
-#ifdef _WIN64
-        while (0 == _findnexti64(handle, &fileData))
-#else
-        while (0 == _findnext(handle, &fileData))
-#endif
+        while (handle)
         {
             if (stopCb && stopCb())
             {
                 break;
             }
-            if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
+            if (0 != strcmp(".", fileData.name) && 0 != strcmp("..", fileData.name))
             {
-                continue;
+                std::string subName = info.path + fileData.name;
+                int subDepth = info.depth + 1;
+                FileAttribute attr;
+                if (getFileAttribute(subName, attr))
+                {
+                    if (attr.isDir) /* 目录 */
+                    {
+                        bool allowEnterSub = true;
+                        if (folderCb)
+                        {
+                            allowEnterSub = folderCb(subName, attr, subDepth);
+                        }
+                        if (recursive && allowEnterSub)
+                        {
+                            infoQueue.push(InfoInner(subName, subDepth));
+                        }
+                    }
+                    else if (attr.isFile) /* 文件 */
+                    {
+                        if (fileCb)
+                        {
+                            fileCb(subName, attr, subDepth);
+                        }
+                    }
+                }
             }
-            std::string subName = info.path + fileData.name;
-            int subDepth = info.depth + 1;
-            FileAttribute attr;
-            if (getFileAttribute(subName, attr))
+#ifdef _WIN64
+            if (0 != _findnexti64(handle, &fileData))
+#else
+            if (0 != _findnext(handle, &fileData))
+#endif
             {
-                if (attr.isDir) /* 目录 */
-                {
-                    bool allowEnterSub = true;
-                    if (folderCb)
-                    {
-                        allowEnterSub = folderCb(subName, attr, subDepth);
-                    }
-                    if (recursive && allowEnterSub)
-                    {
-                        infoQueue.push(InfoInner(subName, subDepth));
-                    }
-                }
-                else if (attr.isFile) /* 文件 */
-                {
-                    if (fileCb)
-                    {
-                        fileCb(subName, attr, subDepth);
-                    }
-                }
+                break;
             }
         }
         _findclose(handle);
@@ -574,55 +565,46 @@ void PathInfo::traverseDFS(std::string path, int depth,
     {
         return;
     }
-    if (!(_A_SUBDIR & fileData.attrib))
-    {
-        std::string subName = path + fileData.name;
-        FileAttribute attr;
-        if (getFileAttribute(subName, attr) && attr.isFile) /* 文件 */
-        {
-            if (fileCb)
-            {
-                fileCb(subName, attr, depth);
-            }
-        }
-    }
-#ifdef _WIN64
-    while (0 == _findnexti64(handle, &fileData))
-#else
-    while (0 == _findnext(handle, &fileData))
-#endif
+    while (handle)
     {
         if (stopCb && stopCb())
         {
             break;
         }
-        if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
+        if (0 != strcmp(".", fileData.name) && 0 != strcmp("..", fileData.name))
         {
-            continue;
+            std::string subName = path + fileData.name;
+            FileAttribute attr;
+            if (getFileAttribute(subName, attr))
+            {
+                if (attr.isDir) /* 目录 */
+                {
+                    bool allowEnterSub = true;
+                    if (folderCb)
+                    {
+                        allowEnterSub = folderCb(subName, attr, depth);
+                    }
+                    if (recursive && allowEnterSub)
+                    {
+                        traverseDFS(subName, depth, folderCb, fileCb, stopCb, true);
+                    }
+                }
+                else if (attr.isFile) /* 文件 */
+                {
+                    if (fileCb)
+                    {
+                        fileCb(subName, attr, depth);
+                    }
+                }
+            }
         }
-        std::string subName = path + fileData.name;
-        FileAttribute attr;
-        if (getFileAttribute(subName, attr))
+#ifdef _WIN64
+        if (0 != _findnexti64(handle, &fileData))
+#else
+        if (0 != _findnext(handle, &fileData))
+#endif
         {
-            if (attr.isDir) /* 目录 */
-            {
-                bool allowEnterSub = true;
-                if (folderCb)
-                {
-                    allowEnterSub = folderCb(subName, attr, depth);
-                }
-                if (recursive && allowEnterSub)
-                {
-                    traverseDFS(subName, depth, folderCb, fileCb, stopCb, true);
-                }
-            }
-            else if (attr.isFile) /* 文件 */
-            {
-                if (fileCb)
-                {
-                    fileCb(subName, attr, depth);
-                }
-            }
+            break;
         }
     }
     _findclose(handle);
