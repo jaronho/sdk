@@ -64,6 +64,7 @@ add_executable(file_deleter_tool
 
 add_executable(md5_tool
 			   ${base_algorithm_files}
+			   ${base_utility_charset_files}
 			   ${base_utility_cmdline_files}
 			   ${base_utility_datetime_files}
 			   ${base_utility_filesystem_files}

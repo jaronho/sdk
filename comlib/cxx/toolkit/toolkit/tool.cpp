@@ -1,6 +1,7 @@
 #include "tool.h"
 
 #include "algorithm/md5/md5.h"
+#include "utility/charset/charset.h"
 #include "utility/filesystem/file_info.h"
 #include "utility/filesystem/path_info.h"
 #include "utility/process/process.h"
@@ -37,6 +38,10 @@ std::string Tool::md5Directory(const std::string& path,
             {
                 relativeName.erase(0);
             }
+            if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
+            {
+                relativeName = utility::Charset::gbkToUtf8(relativeName);
+            }
             md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
             return true;
         },
@@ -49,6 +54,10 @@ std::string Tool::md5Directory(const std::string& path,
             if (!relativeName.empty() && '/' == relativeName[0])
             {
                 relativeName.erase(0);
+            }
+            if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
+            {
+                relativeName = utility::Charset::gbkToUtf8(relativeName);
             }
             md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
             FILE* f = fopen(name.c_str(), "rb");
@@ -90,5 +99,5 @@ std::string Tool::md5Directory(const std::string& path,
         free(buf);
     }
     return value;
-}
+} // namespace toolkit
 } // namespace toolkit

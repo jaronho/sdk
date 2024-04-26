@@ -68,7 +68,7 @@ int main(int argc, char** argv)
         {
             size_t totalFolderCount = 0, totalFileCount = 0, nowCount = 0;
             printf("[%s] start counting the number of files/folders\n", dtString().c_str());
-            utility::PathInfo pi(target);
+            utility::PathInfo pi(target, true);
             pi.traverse(
                 [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
                     if (1 == depth)
@@ -93,6 +93,10 @@ int main(int argc, char** argv)
                     auto nowCountStr = std::to_string(nowCount);
                     auto progress = "[" + utility::StrTool::fillPlace(nowCountStr, ' ', totalCountStr.size()) + "/" + totalCountStr + "]";
                     auto fileDesc = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
+                    if (!fileDesc.empty() && '/' == fileDesc[0])
+                    {
+                        fileDesc.erase(0);
+                    }
                     if (!isDir)
                     {
                         fileDesc += " (" + convertBytesToAppropriateUnit(fileSize) += ")";
