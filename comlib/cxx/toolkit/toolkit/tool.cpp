@@ -21,14 +21,6 @@ std::string Tool::md5Directory(const std::string& path,
     utility::PathInfo pi(path, true);
     pi.traverse(
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-            if (1 == depth)
-            {
-                auto dirName = utility::FileInfo(name).filename();
-                if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
-                {
-                    return false;
-                }
-            }
             if (progressCb)
             {
                 progressCb(name, attr.isDir, attr.size);

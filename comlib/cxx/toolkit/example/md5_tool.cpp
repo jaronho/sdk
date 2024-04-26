@@ -71,18 +71,10 @@ int main(int argc, char** argv)
             utility::PathInfo pi(target, true);
             pi.traverse(
                 [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-                    if (1 == depth)
-                    {
-                        auto dirName = utility::FileInfo(name).filename();
-                        if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
-                        {
-                            return false;
-                        }
-                    }
                     ++totalFolderCount;
                     return true;
                 },
-                [&](const std::string& name, const utility::FileAttribute& attr, int depth) { ++totalFileCount; }, nullptr, true);
+                [&](const std::string& name, const utility::FileAttribute& attr, int depth) { ++totalFileCount; }, nullptr, true, false);
             printf("[%s] folder: %zu, file: %zu\n", dtString().c_str(), totalFolderCount, totalFileCount);
             auto tp = std::chrono::steady_clock::now();
             value = toolkit::Tool::md5Directory(
