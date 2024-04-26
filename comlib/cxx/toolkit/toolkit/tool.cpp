@@ -99,5 +99,5 @@ std::string Tool::md5Directory(const std::string& path,
         free(buf);
     }
     return value;
-} // namespace toolkit
+}
 } // namespace toolkit
