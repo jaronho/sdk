@@ -166,7 +166,7 @@ int main(int argc, char** argv)
                 {
                     timeStr = std::to_string(elapsed / 60000) + " m";
                 }
-                printf("[%s] cost time: %s\n", dtString().c_str(), timeStr.c_str());
+                printf("[%s] cost time (%zu ms): %s\n", dtString().c_str(), elapsed, timeStr.c_str());
                 printf("\n");
             }
         }
