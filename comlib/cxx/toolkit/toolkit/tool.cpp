@@ -21,6 +21,10 @@ std::string Tool::md5Directory(const std::string& path, int type,
     utility::PathInfo pi(path, true);
     pi.traverse(
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (progressCb)
+            {
+                progressCb(name, attr.isDir, attr.size);
+            }
             if (type > 0)
             {
                 auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
@@ -40,10 +44,6 @@ std::string Tool::md5Directory(const std::string& path, int type,
                 }
                 if (calcFlag)
                 {
-                    if (progressCb)
-                    {
-                        progressCb(name, attr.isDir, attr.size);
-                    }
                     md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
                 }
             }

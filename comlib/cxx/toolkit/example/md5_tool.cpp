@@ -90,7 +90,7 @@ int main(int argc, char** argv)
                 target, type,
                 [&](const std::string& name, bool isDir, size_t fileSize) {
                     ++nowCount;
-                    auto totalCountStr = std::to_string((type > 0 ? totalFolderCount : 0) + totalFileCount);
+                    auto totalCountStr = std::to_string(totalFolderCount + totalFileCount);
                     auto nowCountStr = std::to_string(nowCount);
                     auto progress = "[" + utility::StrTool::fillPlace(nowCountStr, ' ', totalCountStr.size()) + "/" + totalCountStr + "]";
                     auto fileDesc = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
