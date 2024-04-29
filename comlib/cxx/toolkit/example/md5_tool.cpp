@@ -3,6 +3,9 @@
 #include <iostream>
 #include <stdio.h>
 #include <string>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 #include "../toolkit/tool.h"
 #include "algorithm/md5/md5.h"
@@ -46,11 +49,16 @@ static std::string dtString()
 
 int main(int argc, char** argv)
 {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
     cmdline::parser parser;
-    parser.add<std::string>("input", 'i', "file or folder", false, "");
-    parser.add<int>("block", 'b', "file read block size", false, 1024 * 1024);
-    parser.add("verbose", 'v', "show progress");
-    parser.add("help", 'h', "show help");
+    parser.add<std::string>("input", 'i', "输入指定文件路径或目录路径", false, "");
+    parser.add<int>("type", 't', "算法类型: 0-计算文件内容(默认值), 1-计算(ASCII或GBK编码)目录/文件名和文件内容", false, 0,
+                    cmdline::range(0, 1));
+    parser.add<int>("block", 'b', "每次读文件的块大小(字节), 默认: 1Mb", false, 1024 * 1024);
+    parser.add("verbose", 'v', "显示进度信息");
+    parser.add("help", 'h', "显示帮助信息");
     parser.parse_check(argc, argv);
     auto target = parser.get<std::string>("input");
     if (target.empty() || parser.exist("help"))
@@ -58,6 +66,7 @@ int main(int argc, char** argv)
         printf("%s\n", parser.usage().c_str());
         return 0;
     }
+    auto type = parser.get<int>("type");
     auto blockSize = parser.get<int>("block");
     utility::FileAttribute attr;
     utility::getFileAttribute(target, attr);
@@ -67,7 +76,7 @@ int main(int argc, char** argv)
         if (parser.exist("verbose"))
         {
             size_t totalFolderCount = 0, totalFileCount = 0, nowCount = 0;
-            printf("[%s] start counting the number of files/folders\n", dtString().c_str());
+            printf("[%s] 开始计算目录和文件数量\n", dtString().c_str());
             utility::PathInfo pi(target, true);
             pi.traverse(
                 [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
@@ -75,13 +84,13 @@ int main(int argc, char** argv)
                     return true;
                 },
                 [&](const std::string& name, const utility::FileAttribute& attr, int depth) { ++totalFileCount; }, nullptr, true, false);
-            printf("[%s] folder: %zu, file: %zu\n", dtString().c_str(), totalFolderCount, totalFileCount);
+            printf("[%s] 目录数: %zu, 文件数: %zu\n", dtString().c_str(), totalFolderCount, totalFileCount);
             auto tp = std::chrono::steady_clock::now();
             value = toolkit::Tool::md5Directory(
-                target,
+                target, type,
                 [&](const std::string& name, bool isDir, size_t fileSize) {
                     ++nowCount;
-                    auto totalCountStr = std::to_string(totalFolderCount + totalFileCount);
+                    auto totalCountStr = std::to_string((type > 0 ? totalFolderCount : 0) + totalFileCount);
                     auto nowCountStr = std::to_string(nowCount);
                     auto progress = "[" + utility::StrTool::fillPlace(nowCountStr, ' ', totalCountStr.size()) + "/" + totalCountStr + "]";
                     auto fileDesc = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
@@ -93,7 +102,7 @@ int main(int argc, char** argv)
                     {
                         fileDesc += " (" + convertBytesToAppropriateUnit(fileSize) += ")";
                     }
-                    printf("[%s] %s [%c] %s\n", dtString().c_str(), progress.c_str(), isDir ? 'D' : 'F', fileDesc.c_str());
+                    printf("[%s] %s [%c] %s\n", dtString().c_str(), progress.c_str(), (isDir ? 'D' : 'F'), fileDesc.c_str());
                 },
                 blockSize);
             printf("\n");
@@ -126,7 +135,7 @@ int main(int argc, char** argv)
                     {
                         timeStr += ":";
                         char buf[16] = {0};
-                        sprintf(buf, "%02d", second);
+                        sprintf(buf, "%02zu", second);
                         timeStr += buf;
                         if (millsecond > 0)
                         {
@@ -146,13 +155,13 @@ int main(int argc, char** argv)
                     {
                         timeStr += ":";
                         char buf1[16] = {0};
-                        sprintf(buf1, "%02d", minute);
+                        sprintf(buf1, "%02zu", minute);
                         timeStr += buf1;
                         timeStr += ":";
                         if (second > 0 || millsecond > 0)
                         {
                             char buf2[16] = {0};
-                            sprintf(buf2, "%02d", second);
+                            sprintf(buf2, "%02zu", second);
                             timeStr += buf2;
                             if (millsecond > 0)
                             {
@@ -166,13 +175,13 @@ int main(int argc, char** argv)
                 {
                     timeStr = std::to_string(elapsed / 60000) + " m";
                 }
-                printf("[%s] cost time (%zu ms): %s\n", dtString().c_str(), elapsed, timeStr.c_str());
+                printf("[%s] 耗时 (%zu ms): %s\n", dtString().c_str(), elapsed, timeStr.c_str());
                 printf("\n");
             }
         }
         else
         {
-            value = toolkit::Tool::md5Directory(target, nullptr, blockSize);
+            value = toolkit::Tool::md5Directory(target, type, nullptr, blockSize);
         }
     }
     else if (attr.isFile) /* 文件 */

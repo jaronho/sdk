@@ -10,7 +10,7 @@
 
 namespace toolkit
 {
-std::string Tool::md5Directory(const std::string& path,
+std::string Tool::md5Directory(const std::string& path, int type,
                                const std::function<void(const std::string& name, bool isDir, size_t fileSize)>& progressCb,
                                size_t blockSize)
 {
@@ -21,20 +21,32 @@ std::string Tool::md5Directory(const std::string& path,
     utility::PathInfo pi(path, true);
     pi.traverse(
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-            if (progressCb)
+            if (type > 0)
             {
-                progressCb(name, attr.isDir, attr.size);
+                auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
+                if (!relativeName.empty() && '/' == relativeName[0])
+                {
+                    relativeName.erase(0);
+                }
+                bool calcFlag = false;
+                if (utility::Charset::isAscii(relativeName))
+                {
+                    calcFlag = true;
+                }
+                else if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
+                {
+                    relativeName = utility::Charset::gbkToUtf8(relativeName);
+                    calcFlag = true;
+                }
+                if (calcFlag)
+                {
+                    if (progressCb)
+                    {
+                        progressCb(name, attr.isDir, attr.size);
+                    }
+                    md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
+                }
             }
-            auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
-            if (!relativeName.empty() && '/' == relativeName[0])
-            {
-                relativeName.erase(0);
-            }
-            if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
-            {
-                relativeName = utility::Charset::gbkToUtf8(relativeName);
-            }
-            md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
             return true;
         },
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
@@ -42,16 +54,28 @@ std::string Tool::md5Directory(const std::string& path,
             {
                 progressCb(name, attr.isDir, attr.size);
             }
-            auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
-            if (!relativeName.empty() && '/' == relativeName[0])
+            if (type > 0)
             {
-                relativeName.erase(0);
+                auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
+                if (!relativeName.empty() && '/' == relativeName[0])
+                {
+                    relativeName.erase(0);
+                }
+                bool calcFlag = false;
+                if (utility::Charset::isAscii(relativeName))
+                {
+                    calcFlag = true;
+                }
+                else if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
+                {
+                    relativeName = utility::Charset::gbkToUtf8(relativeName);
+                    calcFlag = true;
+                }
+                if (calcFlag)
+                {
+                    md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
+                }
             }
-            if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
-            {
-                relativeName = utility::Charset::gbkToUtf8(relativeName);
-            }
-            md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
             FILE* f = fopen(name.c_str(), "rb");
             if (f)
             {
