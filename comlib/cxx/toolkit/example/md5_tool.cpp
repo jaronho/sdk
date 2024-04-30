@@ -54,8 +54,8 @@ int main(int argc, char** argv)
 #endif
     cmdline::parser parser;
     parser.add<std::string>("input", 'i', "输入指定文件路径或目录路径", false, "");
-    parser.add<int>("type", 't', "算法类型: 0-计算文件内容(默认值), 1-计算(ASCII或GBK编码)目录/文件名和文件内容", false, 0,
-                    cmdline::range(0, 1));
+    parser.add<int>("type", 't', "算法类型: 0-文件内容, 1-目录/文件名和文件内容, 2-(ASCII且同时符合所有平台命名规则)目录/文件名和文件内容",
+                    false, 0, cmdline::range(0, 1));
     parser.add<int>("block", 'b', "每次读文件的块大小(字节), 默认: 1Mb", false, 1024 * 1024);
     parser.add("verbose", 'v', "显示进度信息");
     parser.add("help", 'h', "显示帮助信息");

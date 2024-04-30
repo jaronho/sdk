@@ -13,7 +13,7 @@ public:
     /**
      * @brief 计算目录MD5值, 算法: 深度遍历目录, 按顺序计算目录/文件名/文件内容的MD5值
      * @param path 目录
-     * @param type 算法类型: 0-计算文件内容, 1-计算(ASCII/GBK编码)目录/文件名和文件内容
+     * @param type 算法类型: 0-文件内容, 1-目录/文件名和文件内容, 2-(ASCII且同时符合所有平台命名规则)目录/文件名和文件内容
      * @param progressCb 进度回调, 参数: name-文件路径, isDir-是否目录, fileSize-文件大小(字节, 目录恒为4个字节)
      * @param blockSize 内部文件MD5计算函数每次读文件的块大小(字节)
      * @return 目录MD5值

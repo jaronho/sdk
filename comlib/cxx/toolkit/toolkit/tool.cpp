@@ -4,9 +4,7 @@
 #include "utility/charset/charset.h"
 #include "utility/filesystem/file_info.h"
 #include "utility/filesystem/path_info.h"
-#include "utility/process/process.h"
 #include "utility/strtool/strtool.h"
-#include "utility/system/system.h"
 
 namespace toolkit
 {
@@ -25,27 +23,23 @@ std::string Tool::md5Directory(const std::string& path, int type,
             {
                 progressCb(name, attr.isDir, attr.size);
             }
-            if (type > 0)
+            auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
+            if (!relativeName.empty() && '/' == relativeName[0])
             {
-                auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
-                if (!relativeName.empty() && '/' == relativeName[0])
-                {
-                    relativeName.erase(0);
-                }
-                bool calcFlag = false;
-                if (utility::Charset::isAscii(relativeName))
-                {
-                    calcFlag = true;
-                }
-                else if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
-                {
-                    relativeName = utility::Charset::gbkToUtf8(relativeName);
-                    calcFlag = true;
-                }
-                if (calcFlag)
-                {
-                    md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
-                }
+                relativeName.erase(0);
+            }
+            bool calcFlag = false;
+            if (1 == type)
+            {
+                calcFlag = true;
+            }
+            else if (2 == type && utility::Charset::isAscii(name) && utility::isValidFilename(utility::FileInfo(name).filename(), 0))
+            {
+                calcFlag = true;
+            }
+            if (calcFlag)
+            {
+                md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
             }
             return true;
         },
@@ -54,27 +48,23 @@ std::string Tool::md5Directory(const std::string& path, int type,
             {
                 progressCb(name, attr.isDir, attr.size);
             }
-            if (type > 0)
+            auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
+            if (!relativeName.empty() && '/' == relativeName[0])
             {
-                auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
-                if (!relativeName.empty() && '/' == relativeName[0])
-                {
-                    relativeName.erase(0);
-                }
-                bool calcFlag = false;
-                if (utility::Charset::isAscii(relativeName))
-                {
-                    calcFlag = true;
-                }
-                else if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
-                {
-                    relativeName = utility::Charset::gbkToUtf8(relativeName);
-                    calcFlag = true;
-                }
-                if (calcFlag)
-                {
-                    md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
-                }
+                relativeName.erase(0);
+            }
+            bool calcFlag = false;
+            if (1 == type)
+            {
+                calcFlag = true;
+            }
+            else if (2 == type && utility::Charset::isAscii(name) && utility::isValidFilename(utility::FileInfo(name).filename(), 0))
+            {
+                calcFlag = true;
+            }
+            if (calcFlag)
+            {
+                md5Update(&ctx, (unsigned char*)relativeName.c_str(), relativeName.size());
             }
             FILE* f = fopen(name.c_str(), "rb");
             if (f)
@@ -115,5 +105,5 @@ std::string Tool::md5Directory(const std::string& path, int type,
         free(buf);
     }
     return value;
-}
+} // namespace toolkit
 } // namespace toolkit
