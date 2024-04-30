@@ -1,7 +1,9 @@
 #include "fs_define.h"
 
+#include <algorithm>
 #include <string.h>
 #include <sys/stat.h>
+#include <vector>
 #ifdef _WIN32
 #include <Shlobj.h>
 #include <atlstr.h>
@@ -64,6 +66,50 @@ bool isSymbolicLink(const std::string& filename)
 }
 #endif
 
+bool getDiskAttribute(const std::string& name, DiskAttribute& attr)
+{
+    memset(&attr, 0, sizeof(DiskAttribute));
+    if (name.empty() || "." == name || ".." == name)
+    {
+        return false;
+    }
+    auto temp = name;
+    const char& lastChar = temp[temp.size() - 1];
+    if (temp.size() > 1 && ('/' == lastChar || '\\' == lastChar))
+    {
+        temp.pop_back();
+    }
+    auto subName = temp.substr(temp.find_last_of("/\\") + 1, temp.size());
+    if ("." == subName || ".." == subName)
+    {
+        return false;
+    }
+#ifdef _WIN32
+    DWORD dwSectPerClust = 0, dwbytesPerSect = 0, dwFreeClusters = 0, dwTotalClusters = 0;
+    BOOL result = FALSE;
+#ifdef UNICODE
+    result = GetDiskFreeSpaceW(string2wstring(name).c_str(), &dwSectPerClust, &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
+#else
+    result = GetDiskFreeSpaceA(name.c_str(), &dwSectPerClust, &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
+#endif
+    if (result)
+    {
+        attr.blockSize = ((size_t)dwSectPerClust * dwbytesPerSect); /* 簇大小 = 每簇扇区数 * 每扇区字节数 */
+        attr.totalBlock = dwTotalClusters;
+        attr.freeBlock = dwFreeClusters;
+    }
+#else
+    struct statfs st;
+    if (statfs(name.c_str(), &st) >= 0)
+    {
+        attr.blockSize = st.f_bsize;
+        attr.totalBlock = st.f_blocks;
+        attr.freeBlock = st.f_bfree;
+    }
+#endif
+    return true;
+}
+
 bool getFileAttribute(const std::string& name, FileAttribute& attr)
 {
     memset(&attr, 0, sizeof(FileAttribute));
@@ -125,47 +171,39 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
     return true;
 }
 
-bool getDiskAttribute(const std::string& name, DiskAttribute& attr)
+bool isValidFilename(std::string name, int platformType)
 {
-    memset(&attr, 0, sizeof(DiskAttribute));
-    if (name.empty() || "." == name || ".." == name)
+    platformType = (platformType >= 0 && platformType <= 2) ? platformType : 0;
+    if (name.size() > 255)
     {
         return false;
     }
-    auto temp = name;
-    const char& lastChar = temp[temp.size() - 1];
-    if (temp.size() > 1 && ('/' == lastChar || '\\' == lastChar))
+    if (0 == platformType || 1 == platformType)
     {
-        temp.pop_back();
+        /* Windows有特定的不允许使用的字符集和保留名称 */
+        static const std::string INVALID_CHARS = "<>:\"/\\|?*";
+        static const std::vector<std::string> RESERVED_NAMES = {"AUX",  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
+                                                                "COM8", "COM9", "CON",  "LPT1", "LPT2", "LPT3", "LPT4", "LPT5",
+                                                                "LPT6", "LPT7", "LPT8", "LPT9", "NUL",  "PRN"};
+        if (!INVALID_CHARS.empty() && std::string::npos != name.find_first_of(INVALID_CHARS))
+        {
+            return false;
+        }
+        std::transform(name.begin(), name.end(), name.begin(), toupper); /* 不区分大小写 */
+        if (RESERVED_NAMES.end()
+            != std::find_if(RESERVED_NAMES.begin(), RESERVED_NAMES.end(), [&](const std::string& item) { return (item == name); }))
+        {
+            return false;
+        }
     }
-    auto subName = temp.substr(temp.find_last_of("/\\") + 1, temp.size());
-    if ("." == subName || ".." == subName)
+    if (0 == platformType || 2 == platformType)
     {
-        return false;
+        static const std::string INVALID_CHARS = "/";
+        if (!INVALID_CHARS.empty() && std::string::npos != name.find_first_of(INVALID_CHARS))
+        {
+            return false;
+        }
     }
-#ifdef _WIN32
-    DWORD dwSectPerClust = 0, dwbytesPerSect = 0, dwFreeClusters = 0, dwTotalClusters = 0;
-    BOOL result = FALSE;
-#ifdef UNICODE
-    result = GetDiskFreeSpaceW(string2wstring(name).c_str(), &dwSectPerClust, &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
-#else
-    result = GetDiskFreeSpaceA(name.c_str(), &dwSectPerClust, &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
-#endif
-    if (result)
-    {
-        attr.blockSize = ((size_t)dwSectPerClust * dwbytesPerSect); /* 簇大小 = 每簇扇区数 * 每扇区字节数 */
-        attr.totalBlock = dwTotalClusters;
-        attr.freeBlock = dwFreeClusters;
-    }
-#else
-    struct statfs st;
-    if (statfs(name.c_str(), &st) >= 0)
-    {
-        attr.blockSize = st.f_bsize;
-        attr.totalBlock = st.f_blocks;
-        attr.freeBlock = st.f_bfree;
-    }
-#endif
     return true;
 }
 } // namespace utility

@@ -70,4 +70,12 @@ bool getDiskAttribute(const std::string& name, DiskAttribute& attr);
  * @return true-成功, false-失败
  */
 bool getFileAttribute(const std::string& name, FileAttribute& attr);
+
+/**
+ * @brief 是否有效的文件(目录)名
+ * @param name 文件(目录)名
+ * @param platformType 判断平台类型: 0-所有, 1-Windows, 2-Linux
+ * @return true-有效, false-无效
+ */
+bool isValidFilename(std::string name, int platformType = 0);
 } // namespace utility
