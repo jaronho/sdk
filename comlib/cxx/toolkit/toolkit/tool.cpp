@@ -10,7 +10,7 @@ namespace toolkit
 {
 std::string Tool::md5Directory(const std::string& path, int type,
                                const std::function<void(const std::string& name, bool isDir, size_t fileSize)>& progressCb,
-                               size_t blockSize)
+                               const std::function<bool()>& stopFunc, size_t blockSize)
 {
     blockSize = blockSize > (50 * 1024 * 1024) ? (50 * 1024 * 1024) : blockSize;
     algorithm::md5_context_t ctx;
@@ -91,7 +91,7 @@ std::string Tool::md5Directory(const std::string& path, int type,
                 fclose(f);
             }
         },
-        nullptr, true, false);
+        stopFunc, true, false);
     if (buffer)
     {
         free(buffer);

@@ -15,11 +15,12 @@ public:
      * @param path 目录
      * @param type 算法类型: 0-文件内容, 1-目录/文件名和文件内容, 2-(ASCII且同时符合所有平台命名规则)目录/文件名和文件内容
      * @param progressCb 进度回调, 参数: name-文件路径, isDir-是否目录, fileSize-文件大小(字节, 目录恒为4个字节)
+     * @param stopFunc 停止函数, 返回值: true-停止, false-继续
      * @param blockSize 内部文件MD5计算函数每次读文件的块大小(字节)
      * @return 目录MD5值
      */
     static std::string md5Directory(const std::string& path, int type = 0,
                                     const std::function<void(const std::string& name, bool isDir, size_t fileSize)>& progressCb = nullptr,
-                                    size_t blockSize = 1024 * 1024);
+                                    const std::function<bool()>& stopFunc = nullptr, size_t blockSize = 1024 * 1024);
 };
 } // namespace toolkit
