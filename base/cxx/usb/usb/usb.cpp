@@ -679,7 +679,7 @@ void parseStorageDriver(const std::string& devicePath, std::vector<DriverInfo>& 
             char driverChar = 'A' + index;
             char drivePath[10] = {0};
             sprintf_s(drivePath, "\\\\.\\%c:", driverChar);
-            auto tmpHandle = CreateFileA(drivePath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+            auto tmpHandle = CreateFileA(drivePath, 0, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
             if (tmpHandle)
             {
                 STORAGE_DEVICE_NUMBER devNum;
@@ -859,7 +859,7 @@ void enumerateHub(int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFOR
     do
     {
         std::string deviceName = "\\\\.\\" + hubName;
-        HANDLE hHubDevice = CreateFile(deviceName.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+        HANDLE hHubDevice = CreateFile(deviceName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
         if (INVALID_HANDLE_VALUE == hHubDevice)
         {
             break;
@@ -915,7 +915,7 @@ std::vector<UsbImpl> enumerateHostControllers()
         devDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
         if (SetupDiGetDeviceInterfaceDetail(devInfo, &devInterfaceData, devDetailData, requiredSize, &requiredSize, NULL))
         {
-            HANDLE hHCDev = CreateFile(devDetailData->DevicePath, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+            HANDLE hHCDev = CreateFile(devDetailData->DevicePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
             if (INVALID_HANDLE_VALUE != hHCDev)
             {
                 enumerateHub(index + 1, getRootHubName(hHCDev), NULL, NULL, NULL, usbList);
