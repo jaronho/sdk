@@ -692,9 +692,10 @@ void parseStorageDriver(const std::string& devicePath, std::vector<DriverInfo>& 
                         CHAR volumeName[bufferSize] = {0};
                         DWORD volumeSerialNumber = 0;
                         DWORD maximumComponentLength = 0;
+                        DWORD fileSystemFlags = 0; /* 例如: 0 != (fileSystemFlags & FILE_READ_ONLY_VOLUME) 表示只读 */
                         CHAR fileSystemName[bufferSize] = {0};
-                        GetVolumeInformationA(driver.c_str(), volumeName, bufferSize, &volumeSerialNumber, &maximumComponentLength, NULL,
-                                              fileSystemName, bufferSize);
+                        GetVolumeInformationA(driver.c_str(), volumeName, bufferSize, &volumeSerialNumber, &maximumComponentLength,
+                                              &fileSystemFlags, fileSystemName, bufferSize);
                         DriverInfo info;
                         info.driver = driver;
                         info.fstype = fileSystemName;
