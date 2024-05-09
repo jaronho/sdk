@@ -30,7 +30,7 @@ struct DriverInfo
     std::string driver; /* 设备驱动器, 例如: C:\, D:\ */
     std::string fstype; /* 文件系统类型, 如果是存储设备则值为: FAT32, exfat, NTFS等 */
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
-    bool writable = false; /* 是否可写 */
+    bool readonly = true; /* 是否只读 */
 };
 
 struct UsbImpl
@@ -700,7 +700,7 @@ void parseStorageDriver(const std::string& devicePath, std::vector<DriverInfo>& 
                         info.driver = driver;
                         info.fstype = fileSystemName;
                         info.label = volumeName;
-                        info.writable = (0 == (fileSystemFlags & FILE_READ_ONLY_VOLUME));
+                        info.readonly = (0 != (fileSystemFlags & FILE_READ_ONLY_VOLUME));
                         driverList.emplace_back(info);
                     }
                 }
@@ -1575,12 +1575,10 @@ std::string Usb::getGroup() const
     return m_group;
 }
 
-#ifndef _WIN32
 DevNode Usb::getDevRootNode() const
 {
     return m_devRootNode;
 }
-#endif
 
 std::vector<DevNode> Usb::getDevNodes() const
 {
@@ -1667,6 +1665,7 @@ std::string Usb::jsonString() const
         str.append("\n    [\n");
         for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
+            auto mountpoint = m_devNodes[i].getMountpoint();
             str.append("        {\"name\": \"").append(m_devNodes[i].name);
             str.append("\", \"fstype\": \"")
                 .append(m_devNodes[i].fstype)
@@ -1675,14 +1674,14 @@ std::string Usb::jsonString() const
                 .append("\", \"partlabel\": \"")
                 .append(m_devNodes[i].partlabel)
                 .append("\", \"mountpoint:\": \"")
-                .append(m_devNodes[i].getMountpoint());
+                .append(mountpoint);
 #ifdef _WIN32
-            if (!m_devNodes[i].getMountpoint().empty())
+            if (!mountpoint.empty())
             {
-                str.append("\\\""); /* JSON字符串要再增加1个反斜杠"\"进行转义 */
+                str.append("\\"); /* JSON字符串要再增加1个反斜杠"\"进行转义 */
             }
 #endif
-            str.append("}");
+            str.append("\"}");
             if (i < m_devNodes.size() - 1)
             {
                 str.append(",");
@@ -1850,6 +1849,12 @@ std::string Usb::describe(bool showPath, bool showDevNode, bool showChildren, in
             {
                 desc += ", ";
                 desc += "\"partlabel\": \"" + m_devNodes[i].partlabel + "\"";
+            }
+            auto mountpoint = m_devNodes[i].getMountpoint();
+            if (!mountpoint.empty())
+            {
+                desc += ", ";
+                desc += "\"mountpoint\": \"" + mountpoint + "\"";
             }
             desc += "}";
         }

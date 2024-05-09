@@ -89,12 +89,13 @@ void handleDeviceArrived()
                 storageVolumes += label + "(" + mountpoint + ") " + devNodes[n].fstype;
             }
         }
-        printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
-               "%s, serial: %s, product: %s, manufacturer: %s, model: %s, vendor: %s, group: %s%s\n",
-               (i + 1), item->getBusNum(), item->getPortNum(), item->getAddress(), item->getClassCode(), item->getClassDesc().c_str(),
-               item->getSubClassCode(), item->getProtocolCode(), item->getVid().c_str(), item->getPid().c_str(), item->getSerial().c_str(),
-               item->getProduct().c_str(), item->getManufacturer().c_str(), item->getModel().c_str(), item->getVendor().c_str(),
-               item->getGroup().c_str(), item->isStorage() ? (", storageVolume: " + storageVolumes).c_str() : "");
+        printf(
+            "[%02zd] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
+            "%s, serial: %s, product: %s, manufacturer: %s, model: %s, vendor: %s, group: %s%s\n",
+            (i + 1), item->getBusNum(), item->getPortNum(), item->getAddress(), item->getClassCode(), item->getClassDesc().c_str(),
+            item->getSubClassCode(), item->getProtocolCode(), item->getVid().c_str(), item->getPid().c_str(), item->getSerial().c_str(),
+            item->getProduct().c_str(), item->getManufacturer().c_str(), item->getModel().c_str(), item->getVendor().c_str(),
+            item->getGroup().c_str(), item->isStorage() ? (", storageVolume: " + storageVolumes).c_str() : "");
     }
 }
 
@@ -127,12 +128,13 @@ void handleDeviceRemoved()
                 storageVolumes += label + "(" + mountpoint + ") " + devNodes[n].fstype;
             }
         }
-        printf("[%02d] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
-               "%s, serial: %s, product: %s, manufacturer: %s, model: %s, vendor: %s, group: %s%s\n",
-               (i + 1), item->getBusNum(), item->getPortNum(), item->getAddress(), item->getClassCode(), item->getClassDesc().c_str(),
-               item->getSubClassCode(), item->getProtocolCode(), item->getVid().c_str(), item->getPid().c_str(), item->getSerial().c_str(),
-               item->getProduct().c_str(), item->getManufacturer().c_str(), item->getModel().c_str(), item->getVendor().c_str(),
-               item->getGroup().c_str(), item->isStorage() ? (", storageVolume: " + storageVolumes).c_str() : "");
+        printf(
+            "[%02zd] busNum: %d, portNum: %d, address: %d\n     class: %d, classDesc: %s, subClass: %d, protocol: %d\n     vid: %s, pid: "
+            "%s, serial: %s, product: %s, manufacturer: %s, model: %s, vendor: %s, group: %s%s\n",
+            (i + 1), item->getBusNum(), item->getPortNum(), item->getAddress(), item->getClassCode(), item->getClassDesc().c_str(),
+            item->getSubClassCode(), item->getProtocolCode(), item->getVid().c_str(), item->getPid().c_str(), item->getSerial().c_str(),
+            item->getProduct().c_str(), item->getManufacturer().c_str(), item->getModel().c_str(), item->getVendor().c_str(),
+            item->getGroup().c_str(), item->isStorage() ? (", storageVolume: " + storageVolumes).c_str() : "");
     }
 }
 

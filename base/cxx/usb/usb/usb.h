@@ -192,16 +192,14 @@ public:
      */
     std::string getGroup() const;
 
-#ifndef _WIN32
     /**
-     * @brief 获取根节点
+     * @brief 获取根节点(适用于Linux平台)
      * @return 根节点
      */
     DevNode getDevRootNode() const;
-#endif
 
     /**
-     * @brief 获取节点列表
+     * @brief 获取节点列表(Windows一般至多1个, Linux平台可能多个)
      * @return 设备节点列表
      */
     std::vector<DevNode> getDevNodes() const;
@@ -304,6 +302,6 @@ private:
     std::string m_vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
     std::string m_group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
     DevNode m_devRootNode; /* 设备根节点(适用于Linux平台) */
-    std::vector<DevNode> m_devNodes; /* 设备节点(Linux平台可能多个) */
+    std::vector<DevNode> m_devNodes; /* 设备节点(Windows一般至多1个, Linux平台可能多个) */
 };
 } // namespace usb
