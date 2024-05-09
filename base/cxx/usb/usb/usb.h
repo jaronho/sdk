@@ -22,14 +22,8 @@ static bool isMountpoint(std::string path);
 struct DevNode
 {
     DevNode() = default;
-#if _WIN32
-    DevNode(const std::string& name, const std::string& group = "", const std::string& fstype = "", const std::string& label = "",
-            const std::string& partlabel = "", const std::string& vendor = "", const std::string& model = "",
-            const std::string& mountpoint = "");
-#else
-    DevNode(const std::string& name, const std::string& group = "", const std::string& fstype = "", const std::string& label = "",
-            const std::string& partlabel = "", const std::string& vendor = "", const std::string& model = "");
-#endif
+    DevNode(const std::string& name, const std::string& fstype = "", const std::string& label = "", const std::string& partlabel = "",
+            const std::string& winDriver = "");
 
     /**
      * @brief 获取挂载点
@@ -38,17 +32,12 @@ struct DevNode
     std::string getMountpoint() const;
 
     std::string name; /* 节点名, 如, Linux: /dev/sdb1, /dev/hidraw0 等 */
-    std::string group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
     std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat(FAT32), exfat(exFAT), ntfs(NTFS)等 */
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
     std::string partlabel; /* 分区标签, 例如: "Microsoft reserved partition" */
-    std::string vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
-    std::string model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
 
-#if _WIN32
 private:
-    std::string m_mountpoint; /* 设备挂载点, 如: Windows: H:\, I:\ */
-#endif
+    std::string m_winDriver; /* 设备驱动器(Windows平台), 如: H:\, I:\ */
 };
 
 struct UsbImpl;
@@ -185,26 +174,25 @@ public:
      */
     std::string getManufacturer() const;
 
-#ifdef _WIN32
     /**
-     * @brief 获取设备制造商
+     * @brief 获取设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等
+     * @return 设备标识符
+     */
+    std::string getModel() const;
+
+    /**
+     * @brief 获取设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等
      * @return 设备制造商
      */
     std::string getVendor() const;
 
     /**
-     * @brief 获取设备标识符(型号)
-     * @return 设备标识符(型号)
+     * @brief 获取组名, 值: disk-磁盘, cdrom-光驱
+     * @return 组名
      */
-    std::string getModel() const;
+    std::string getGroup() const;
 
-    /**
-     * @brief 获取存储设备类型
-     * @return 存储设备类型, 值: disk-磁盘, cdrom-光驱
-     */
-    std::string getStorageType() const;
-
-#else
+#ifndef _WIN32
     /**
      * @brief 获取根节点
      * @return 根节点
@@ -312,6 +300,9 @@ private:
     std::string m_serial; /* 序列号 */
     std::string m_product; /* 产品名称 */
     std::string m_manufacturer; /* 厂商名称 */
+    std::string m_model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
+    std::string m_vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
+    std::string m_group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
     DevNode m_devRootNode; /* 设备根节点(适用于Linux平台) */
     std::vector<DevNode> m_devNodes; /* 设备节点(Linux平台可能多个) */
 };

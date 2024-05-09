@@ -66,13 +66,13 @@ int main(int argc, char** argv)
             printf("=        serial: %s\n", info->getSerial().c_str());
             printf("=       product: %s\n", info->getProduct().c_str());
             printf("=  manufacturer: %s\n", info->getManufacturer().c_str());
-#ifdef _WIN32
-            printf("=        vendor: %s\n", info->getVendor().c_str());
             printf("=         model: %s\n", info->getModel().c_str());
+            printf("=        vendor: %s\n", info->getVendor().c_str());
+            printf("=         group: %s\n", info->getGroup().c_str());
+#ifdef _WIN32
+            auto devNodes = info->getDevNodes();
             if (info->isStorage())
             {
-                auto devNodes = info->getDevNodes();
-                printf("=   storageType: %s\n", (devNodes.empty() ? "" : devNodes[0].group).c_str());
                 printf("= storageVolume: %");
                 for (size_t i = 0; i < devNodes.size(); ++i)
                 {
