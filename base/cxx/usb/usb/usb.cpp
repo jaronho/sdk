@@ -1314,6 +1314,10 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
                 {
                     iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel));
                 }
+                else /* 其他 */
+                {
+                    iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel));
+                }
             }
             else /* 非存储设备 */
             {
