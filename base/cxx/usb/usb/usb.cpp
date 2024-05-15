@@ -25,12 +25,30 @@
 
 namespace usb
 {
+struct LogicalDrive
+{
+    std::string driver;
+    UINT driveType = 0;
+    std::string fstype;
+    std::string label;
+    DEVICE_TYPE deviceType = 0;
+    DWORD deviceNumber = 0;
+    std::string serial;
+    std::string vendor;
+    std::string model;
+};
+
 struct DriverInfo
 {
+    DriverInfo() = default;
+    DriverInfo(const std::string& driver, const std::string& fstype = "", const std::string& label = "")
+        : driver(driver), fstype(fstype), label(label)
+    {
+    }
+
     std::string driver; /* 设备驱动器, 例如: C:\, D:\ */
     std::string fstype; /* 文件系统类型, 如果是存储设备则值为: FAT32, exfat, NTFS等 */
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
-    bool readonly = true; /* 是否只读 */
 };
 
 struct UsbImpl
@@ -651,7 +669,7 @@ void parseBusRelations(const std::string& buffer, std::string& model, std::strin
     }
 }
 
-void parseStorageDriver(const std::string& devicePath, std::vector<DriverInfo>& driverList)
+void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>& localDriveList, std::vector<DriverInfo>& driverList)
 {
     driverList.clear();
     if (devicePath.empty())
@@ -665,11 +683,23 @@ void parseStorageDriver(const std::string& devicePath, std::vector<DriverInfo>& 
     }
     DWORD nBytes = 0;
     STORAGE_DEVICE_NUMBER deviceNum;
-    if (!DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes, NULL))
+    if (DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes, NULL))
     {
-        CloseHandle(handle);
-        return;
+        auto iter = std::find_if(localDriveList.begin(), localDriveList.end(), [&](const LogicalDrive& item) {
+            return (item.deviceType == deviceNum.DeviceType && item.deviceNumber == deviceNum.DeviceNumber);
+        });
+        if (localDriveList.end() != iter)
+        {
+            driverList.emplace_back(DriverInfo(iter->driver, iter->fstype, iter->label));
+            localDriveList.erase(iter);
+        }
     }
+    CloseHandle(handle);
+}
+
+std::vector<LogicalDrive> getLogicalDriveList()
+{
+    std::vector<LogicalDrive> localDriveList;
     DWORD drives = GetLogicalDrives();
     int index = 0;
     while (drives)
@@ -679,42 +709,61 @@ void parseStorageDriver(const std::string& devicePath, std::vector<DriverInfo>& 
             char driverChar = 'A' + index;
             char drivePath[10] = {0};
             sprintf_s(drivePath, "\\\\.\\%c:", driverChar);
-            auto tmpHandle = CreateFileA(drivePath, 0, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-            if (tmpHandle)
+            auto handle = CreateFileA(drivePath, 0, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+            if (handle)
             {
+                std::string driver = std::string(1, driverChar) + ":\\";
+                const int bufferSize = 256;
+                CHAR volumeName[bufferSize] = {0};
+                DWORD volumeSerialNumber = 0;
+                DWORD maximumComponentLength = 0;
+                DWORD fileSystemFlags = 0;
+                CHAR fileSystemName[bufferSize] = {0};
+                GetVolumeInformationA(driver.c_str(), volumeName, bufferSize, &volumeSerialNumber, &maximumComponentLength,
+                                      &fileSystemFlags, fileSystemName, bufferSize);
+                LogicalDrive info;
+                info.driver = driver;
+                info.driveType = GetDriveTypeA(driver.c_str());
+                info.fstype = fileSystemName;
+                info.label = volumeName;
+                DWORD nBytes = 0;
                 STORAGE_DEVICE_NUMBER devNum;
-                if (DeviceIoControl(tmpHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &devNum, sizeof(devNum), &nBytes, NULL))
+                if (DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &devNum, sizeof(devNum), &nBytes, NULL))
                 {
-                    if (devNum.DeviceType == deviceNum.DeviceType && devNum.DeviceNumber == deviceNum.DeviceNumber)
-                    {
-                        auto driver = std::string(1, driverChar) + ":\\";
-                        const int bufferSize = 256;
-                        CHAR volumeName[bufferSize] = {0};
-                        DWORD volumeSerialNumber = 0;
-                        DWORD maximumComponentLength = 0;
-                        DWORD fileSystemFlags = 0;
-                        CHAR fileSystemName[bufferSize] = {0};
-                        GetVolumeInformationA(driver.c_str(), volumeName, bufferSize, &volumeSerialNumber, &maximumComponentLength,
-                                              &fileSystemFlags, fileSystemName, bufferSize);
-                        DriverInfo info;
-                        info.driver = driver;
-                        info.fstype = fileSystemName;
-                        info.label = volumeName;
-                        info.readonly = (0 != (fileSystemFlags & FILE_READ_ONLY_VOLUME));
-                        driverList.emplace_back(info);
-                    }
+                    info.deviceType = devNum.DeviceType;
+                    info.deviceNumber = devNum.DeviceNumber;
                 }
-                CloseHandle(tmpHandle);
+                STORAGE_PROPERTY_QUERY query;
+                ZeroMemory(&query, sizeof(query));
+                query.PropertyId = StorageDeviceProperty;
+                query.QueryType = PropertyStandardQuery;
+                CHAR buffer[sizeof(STORAGE_DEVICE_DESCRIPTOR) + 512 - 1] = {0};
+                STORAGE_DEVICE_DESCRIPTOR* pDevDesc = (STORAGE_DEVICE_DESCRIPTOR*)buffer;
+                pDevDesc->Size = sizeof(STORAGE_DEVICE_DESCRIPTOR) + 512 - 1;
+                if (DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), pDevDesc, pDevDesc->Size, &nBytes, NULL))
+                {
+                    info.serial = &buffer[pDevDesc->SerialNumberOffset];
+                    if (std::all_of(info.serial.begin(), info.serial.end(), isspace)) /* 全部是空格 */
+                    {
+                        info.serial.clear();
+                    }
+                    info.vendor = &buffer[pDevDesc->VendorIdOffset];
+                    info.model = &buffer[pDevDesc->ProductIdOffset];
+                }
+                localDriveList.emplace_back(info);
+                CloseHandle(handle);
             }
         }
         drives = drives >> 1;
         ++index;
     }
-    CloseHandle(handle);
+    return localDriveList;
 }
 
 void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::vector<UsbImpl>& usbList)
 {
+    auto localDriveList = getLogicalDriveList();
+    bool recheckDriverFlag = false;
     for (ULONG index = 1; index <= numPorts; ++index)
     {
         ULONG nBytesEx = sizeof(USB_NODE_CONNECTION_INFORMATION_EX) + (sizeof(USB_PIPE_INFO) * 30);
@@ -807,7 +856,14 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
                 {
                     deviceId = wstring2string(propertyBuffer);
                     parseBusRelations(deviceId, model, vendor, group, devicePath);
-                    parseStorageDriver(devicePath, driverList);
+                    if (!devicePath.empty())
+                    {
+                        parseStorageDriver(devicePath, localDriveList, driverList);
+                        if (driverList.empty())
+                        {
+                            recheckDriverFlag = true;
+                        }
+                    }
                 }
                 SetupDiDestroyDeviceInfoList(devInfo);
             }
@@ -843,6 +899,24 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
             stringDescs = Next;
         }
         GlobalFree(connectionInfoEx);
+    }
+    if (recheckDriverFlag) /* 再次检测驱动器 */
+    {
+        for (size_t i = 0; i < usbList.size(); ++i)
+        {
+            if (("disk" == usbList[i].group || "cdrom" == usbList[i].group) && usbList[i].driverList.empty())
+            {
+                auto iter = std::find_if(localDriveList.begin(), localDriveList.end(), [&](const LogicalDrive& item) {
+                    return ((DRIVE_REMOVABLE == item.driveType || DRIVE_CDROM == item.driveType) && item.serial == usbList[i].serial
+                            && item.vendor == usbList[i].vendor && item.model == usbList[i].model);
+                });
+                if (localDriveList.end() != iter)
+                {
+                    usbList[i].driverList.emplace_back(DriverInfo(iter->driver, iter->fstype, iter->label));
+                    localDriveList.erase(iter);
+                }
+            }
+        }
     }
 }
 
