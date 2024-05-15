@@ -264,8 +264,8 @@ bool System::checkFileLock(int fd)
     {
         return false;
     }
-    return true;
 #endif
+    return true;
 }
 
 bool System::checkFileLock(const std::string& filename)
