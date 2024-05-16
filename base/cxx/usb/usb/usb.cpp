@@ -77,6 +77,49 @@ struct UsbImpl
 };
 
 #ifdef _WIN32
+std::string SafeArrayToString(SAFEARRAY* psa)
+{
+    BSTR bstr = NULL;
+    if (psa)
+    {
+        if (psa->fFeatures & FADF_VARIANT) /* 检查SAFEARRAY的类型是否为VT_BSTR */
+        {
+            VARIANT* pVar;
+            if (SUCCEEDED(SafeArrayAccessData(psa, (void HUGEP**)&pVar))) /* 需要处理VARIANT型SAFEARRAY */
+            {
+                bstr = SysAllocString(pVar->bstrVal); /* 复制BSTR */
+                SafeArrayUnaccessData(psa);
+            }
+        }
+        else if (1 == psa->cDims && psa->rgsabound[0].cElements > 0)
+        {
+            long index = 0; /* 确保SAFEARRAY是一维的并且至少有一个元素, 选择第一个元素 */
+            VARIANT element;
+            if (SUCCEEDED(SafeArrayGetElement(psa, &index, &element))) /* 锁定SAFEARRAY的数据, 以便复制 */
+            {
+                bstr = SysAllocString(element.bstrVal); /* 复制BSTR */
+                VariantClear(&element); /* 清理VARIANT, SysAllocString会增加引用计数 */
+            }
+        }
+    }
+    if (bstr)
+    {
+        std::wstring wstr = bstr;
+        SysFreeString(bstr);
+        size_t len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+        char* buf = (char*)malloc(sizeof(char) * (len + 1));
+        if (buf)
+        {
+            WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
+            buf[len] = '\0';
+            std::string str(buf);
+            free(buf);
+            return str;
+        }
+    }
+    return std::string();
+}
+
 /* 参考 UsbView 的实现: 
     https://www.uwe-sieber.de/usbtreeview_e.html
     https://github.com/microsoft/Windows-driver-samples
@@ -1406,20 +1449,226 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
     udev_unref(udev);
 }
 
-bool isMountpoint(std::string path)
+bool isMountpoint(const std::string& path)
 {
     if (path.empty())
     {
         return false;
     }
-    path.insert(0, " ");
+    std::string pathFlag = " " + path;
     std::vector<std::string> outVec;
-    runCommand("lsblk | grep \"" + path + "\"", nullptr, &outVec);
-    if (1 == outVec.size() && (outVec[0].rfind(path) + path.size()) == outVec[0].size())
+    runCommand("lsblk | grep \"" + pathFlag + "\"", nullptr, &outVec);
+    if (1 == outVec.size() && (outVec[0].rfind(pathFlag) + pathFlag.size()) == outVec[0].size())
     {
         return true;
     }
     return false;
+}
+#endif
+
+#ifdef _WIN32
+std::vector<CdromInfo> getCdromInfoList()
+{
+    std::vector<CdromInfo> infoList;
+    if (SUCCEEDED(CoInitializeEx(NULL, COINIT_MULTITHREADED)))
+    {
+        IDiscMaster2* pDiscMaster;
+        if (SUCCEEDED(CoCreateInstance(CLSID_MsftDiscMaster2, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDiscMaster))))
+        {
+            LONG totalDevices = 0;
+            if (SUCCEEDED(pDiscMaster->get_Count(&totalDevices)))
+            {
+                for (LONG index = 0; index < totalDevices; ++index)
+                {
+                    BSTR recorderID;
+                    if (FAILED(pDiscMaster->get_Item(index, &recorderID)))
+                    {
+                        continue;
+                    }
+                    IDiscRecorder2* pDiscRecorder;
+                    if (SUCCEEDED(CoCreateInstance(CLSID_MsftDiscRecorder2, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDiscRecorder))))
+                    {
+                        if (SUCCEEDED(pDiscRecorder->InitializeDiscRecorder(recorderID)))
+                        {
+                            SAFEARRAY* volumePathNames = NULL;
+                            if (SUCCEEDED(pDiscRecorder->get_VolumePathNames(&volumePathNames)))
+                            {
+                                std::string driver = SafeArrayToString(volumePathNames);
+                                SafeArrayDestroy(volumePathNames);
+                                CdromInfo info;
+                                info.name = driver;
+                                SAFEARRAY* ppFeaturePages = NULL;
+                                if (SUCCEEDED(pDiscRecorder->get_SupportedFeaturePages(&ppFeaturePages)) && ppFeaturePages)
+                                {
+                                    LONG lBound, uBound;
+                                    if (SUCCEEDED(::SafeArrayGetLBound(ppFeaturePages, 1, &lBound))
+                                        && SUCCEEDED(::SafeArrayGetUBound(ppFeaturePages, 1, &uBound)))
+                                    {
+                                        for (LONG i = lBound; i <= uBound; ++i)
+                                        {
+                                            VARIANT element;
+                                            if (FAILED(::SafeArrayGetElement(ppFeaturePages, &i, &element)))
+                                            {
+                                                continue;
+                                            }
+                                            IMAPI_FEATURE_PAGE_TYPE featPage = (IMAPI_FEATURE_PAGE_TYPE)element.lVal;
+                                            if (IMAPI_FEATURE_PAGE_TYPE_CDRW_CAV_WRITE == featPage)
+                                            {
+                                                info.can_write_CD_R = 1;
+                                                info.can_write_CD_RW = 1;
+                                            }
+                                            else if (IMAPI_FEATURE_PAGE_TYPE_DVD_DASH_WRITE == featPage)
+                                            {
+                                                info.can_write_DVD_R = 1;
+                                                info.can_write_DVD_RAM = 1;
+                                            }
+                                        }
+                                    }
+                                    SafeArrayDestroy(ppFeaturePages);
+                                }
+                                infoList.emplace_back(info);
+                            }
+                        }
+                        pDiscRecorder->Release();
+                    }
+                    SysFreeString(recorderID);
+                }
+            }
+            pDiscMaster->Release();
+        }
+        CoUninitialize();
+    }
+    return infoList;
+}
+#else
+std::vector<CdromInfo> getCdromInfoList(std::string& outStr)
+{
+    std::vector<CdromInfo> infoList;
+    std::vector<std::string> outVec;
+    runCommand("cat /proc/sys/dev/cdrom/info", &outStr, &outVec);
+    for (const auto& line : outVec)
+    {
+        std::vector<std::string> vec;
+        for (size_t i = 0; i <= line.size();)
+        {
+            auto pos = line.find(":", i);
+            if (std::string::npos == pos)
+            {
+                pos = line.size();
+            }
+            vec.emplace_back(line.substr(i, pos - i));
+            i = pos + 1;
+        }
+        if (2 == vec.size())
+        {
+            const auto& title = vec[0];
+            std::vector<std::string> valueList;
+            std::string tmp;
+            for (auto ch : vec[1])
+            {
+                if ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z'))
+                {
+                    tmp.push_back(ch);
+                }
+                else if (!tmp.empty())
+                {
+                    valueList.emplace_back(tmp);
+                    tmp.clear();
+                }
+            }
+            if (!tmp.empty())
+            {
+                valueList.emplace_back(tmp);
+            }
+            for (size_t i = 0; i < valueList.size(); ++i)
+            {
+                if ("drive name" == title)
+                {
+                    infoList.emplace_back(CdromInfo("/dev/" + valueList[i]));
+                }
+                else if (i < infoList.size())
+                {
+                    if ("drive speed" == title)
+                    {
+                        infoList[i].speed = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("drive # of slots" == title)
+                    {
+                        infoList[i].slots = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can close tray" == title)
+                    {
+                        infoList[i].can_close_tray = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can open tray" == title)
+                    {
+                        infoList[i].can_open_tray = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can lock tray" == title)
+                    {
+                        infoList[i].can_lock_tray = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can change speed" == title)
+                    {
+                        infoList[i].can_change_speed = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can select disk" == title)
+                    {
+                        infoList[i].can_select_disk = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can read multisession" == title)
+                    {
+                        infoList[i].can_read_multisession = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can read MCN" == title)
+                    {
+                        infoList[i].can_read_MCN = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Reports media changed" == title)
+                    {
+                        infoList[i].reports_media_changed = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can play audio" == title)
+                    {
+                        infoList[i].can_play_audio = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can write CD-R" == title)
+                    {
+                        infoList[i].can_write_CD_R = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can write CD-RW" == title)
+                    {
+                        infoList[i].can_write_CD_RW = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can read DVD" == title)
+                    {
+                        infoList[i].can_read_DVD = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can write DVD-R" == title)
+                    {
+                        infoList[i].can_write_DVD_R = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can write DVD-RAM" == title)
+                    {
+                        infoList[i].can_write_DVD_RAM = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can read MRW" == title)
+                    {
+                        infoList[i].can_read_MRW = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can write MRW" == title)
+                    {
+                        infoList[i].can_write_MRW = std::atoi(valueList[i].c_str());
+                    }
+                    else if ("Can write RAM" == title)
+                    {
+                        infoList[i].can_write_RAM = std::atoi(valueList[i].c_str());
+                    }
+                }
+            }
+        }
+    }
+    return infoList;
 }
 #endif
 
@@ -1665,6 +1914,11 @@ std::vector<DevNode> Usb::getDevNodes() const
     return m_devNodes;
 }
 
+CdromInfo Usb::getCdromInfo() const
+{
+    return m_cdromInfo;
+}
+
 bool Usb::isHid() const
 {
     return (LIBUSB_CLASS_HID == m_classCode);
@@ -1678,6 +1932,16 @@ bool Usb::isStorage() const
 bool Usb::isHub() const
 {
     return (LIBUSB_CLASS_HUB == m_classCode);
+}
+
+bool Usb::isDisk() const
+{
+    return ("disk" == m_group);
+}
+
+bool Usb::isCdrom() const
+{
+    return ("cdrom" == m_group);
 }
 
 std::string Usb::describe(bool showChildren, int allIntend, int intend) const
@@ -1785,6 +2049,18 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
                 desc += "\"";
 #endif
             }
+#ifdef _WIN32
+            if (!m_cdromInfo.name.empty() && mountpoint == m_cdromInfo.name)
+#else
+            if (!m_cdromInfo.name.empty() && m_devNodes[i].name == m_cdromInfo.name)
+#endif
+            {
+                desc += ", ";
+                desc += "\"CD-R\": " + std::to_string(m_cdromInfo.can_write_CD_R) + ", ";
+                desc += "\"CD-RW\": " + std::to_string(m_cdromInfo.can_write_CD_RW) + ", ";
+                desc += "\"DVD-R\": " + std::to_string(m_cdromInfo.can_write_DVD_R) + ", ";
+                desc += "\"DVD-RW\": " + std::to_string(m_cdromInfo.can_write_DVD_RAM);
+            }
             desc += "}";
         }
         if (m_devNodes.size() > 1)
@@ -1824,21 +2100,25 @@ std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
     if (count > 0 && devList)
     {
         std::vector<UsbImpl> implList;
+        std::vector<CdromInfo> cdromList;
         if (detailFlag)
         {
 #ifdef _WIN32
             /* Windows平台下libusb无法打开设备, 需要通过系统API获取详细信息 */
             implList = enumerateHostControllers();
+            cdromList = getCdromInfoList();
 #else
             /* Linux平台下libusb打开设备可能会卡住, 因此通过读取系统内核文件获取详细信息 */
             implList = enumerateUsbDevices();
             enumerateUsbDevNodes(implList);
+            std::string outStr;
+            cdromList = getCdromInfoList(outStr);
 #endif
         }
         /* 遍历设备列表 */
         for (ssize_t i = 0; i < count; ++i)
         {
-            auto info = parseUsb(devList[i], detailFlag, implList);
+            auto info = parseUsb(devList[i], detailFlag, implList, cdromList);
             if (info)
             {
                 usbList.emplace_back(info);
@@ -1917,7 +2197,8 @@ std::string Usb::calculatePath() const
     return path;
 }
 
-std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList)
+std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList,
+                                        const std::vector<CdromInfo>& cdromList)
 {
     if (!dev)
     {
@@ -2028,6 +2309,27 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
                 info->m_devRootNode = item.devRootNode;
                 info->m_devNodes = item.devNodes;
 #endif
+                if ("cdrom" == info->m_group && !info->m_devNodes.empty())
+                {
+                    auto iter = std::find_if(cdromList.begin(), cdromList.end(), [&](const CdromInfo& item) {
+#ifdef _WIN32
+                        return (item.name == info->m_devNodes[0].getMountpoint());
+#else
+                        for (const auto& devNode : info->m_devNodes)
+                        {
+                            if (devNode.name == item.name)
+                            {
+                                return true;
+                            }
+                        }
+                        return false;
+#endif
+                    });
+                    if (cdromList.end() != iter)
+                    {
+                        info->m_cdromInfo = (*iter);
+                    }
+                }
                 break;
             }
         }

@@ -1,4 +1,7 @@
 #pragma once
+#ifdef _WIN32
+#include <imapi2.h> /* 必须在<libusb.h>前包含 */
+#endif
 #include <functional>
 #include <libusb.h>
 #include <memory>
@@ -13,7 +16,55 @@ namespace usb
  * @param path 路径
  * @return true-是, false-否
  */
-static bool isMountpoint(std::string path);
+bool isMountpoint(const std::string& path);
+#endif
+
+/**
+ * @brief 光驱信息
+ */
+struct CdromInfo
+{
+    CdromInfo() = default;
+    CdromInfo(const std::string& name) : name(name) {}
+
+    std::string name; /* 设备名, 例如: /dev/sr0 */
+#ifdef _WIN32
+    int can_write_CD_R = 0; /* 是否支持写入CD-R光盘 */
+    int can_write_CD_RW = 0; /* 是否支持写入CD-RW光盘 */
+    int can_write_DVD_R = 0; /* 是否支持写入DVD-R光盘 */
+    int can_write_DVD_RAM = 0; /* 是否支持写入DVD-RAM光盘 */
+#else
+    int speed = 0; /* 读取速度, 例如: 4表示驱动器可以以4倍速读取CD */
+    int slots = 0; /* 插槽数量, 对于大多数标准的单槽光驱, 这个值通常是1 */
+    int can_close_tray = 0; /* 是否支持关闭托盘的能力 */
+    int can_open_tray = 0; /* 是否支持打开托盘的能力 */
+    int can_lock_tray = 0; /* 是否支持锁定托盘, 防止用户手动打开 */
+    int can_change_speed = 0; /* 是否支持改变光驱的读取速度 */
+    int can_select_disk = 0; /* 对于多盘位光驱, 是否支持在不同的盘之间切换, 则为1 */
+    int can_read_multisession = 0; /* 是否支持读取多会话（Multi-Session）光盘 */
+    int can_read_MCN = 0; /* 是否支持读取光盘上的媒体目录号（Media Catalog Number） */
+    int reports_media_changed = 0; /* 是否支持在更换光盘后向系统报告媒体变更 */
+    int can_play_audio = 0; /* 是否支持播放音频CD */
+    int can_write_CD_R = 0; /* 是否支持写入CD-R光盘 */
+    int can_write_CD_RW = 0; /* 是否支持写入CD-RW光盘 */
+    int can_read_DVD = 0; /* 是否支持读取DVD光盘 */
+    int can_write_DVD_R = 0; /* 是否支持写入DVD-R光盘 */
+    int can_write_DVD_RAM = 0; /* 是否支持写入DVD-RAM光盘 */
+    int can_read_MRW = 0; /* 是否支持读取MRW（Multi-Read/Multi-Write）格式的光盘 */
+    int can_write_MRW = 0; /* 是否支持写入MRW（Multi-Read/Multi-Write）格式的光盘 */
+    int can_write_RAM = 0; /* 是否支持写入CD-RAM（CD Random Access Memory）光盘 */
+#endif
+};
+
+/**
+ * @brief 获取光驱信息
+ * @param outStr [输出]光驱原始信息(Linux平台)
+ * @return 光驱信息
+ */
+#ifdef _WIN32
+std::vector<CdromInfo> getCdromInfoList();
+#else
+std::vector<CdromInfo> getCdromInfoList(std::string& outStr);
 #endif
 
 /**
@@ -31,7 +82,7 @@ struct DevNode
      */
     std::string getMountpoint() const;
 
-    std::string name; /* 节点名, 如, Linux: /dev/sdb1, /dev/hidraw0 等 */
+    std::string name; /* 节点名, 如, Linux: /dev/sdb1, /dev/sr0, /dev/hidraw0 等 */
     std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat(FAT32), exfat(exFAT), ntfs(NTFS)等 */
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
     std::string partlabel; /* 分区标签, 例如: "Microsoft reserved partition" */
@@ -205,6 +256,12 @@ public:
     std::vector<DevNode> getDevNodes() const;
 
     /**
+     * @brief 获取光驱信息
+     * @return 光驱信息
+     */
+    CdromInfo getCdromInfo() const;
+
+    /**
      * @brief 判断是否HID(键盘/鼠标/加密狗等)类型
      * @return true-是, false-否
      */
@@ -221,6 +278,18 @@ public:
      * @return true-是, false-否
      */
     bool isHub() const;
+
+    /**
+     * @brief 判断是否磁盘
+     * @return true-是, false-否
+     */
+    bool isDisk() const;
+
+    /**
+     * @brief 判断是否光驱
+     * @return true-是, false-否
+     */
+    bool isCdrom() const;
 
     /**
      * @brief 描述信息
@@ -261,9 +330,11 @@ private:
      * @param dev 设备节点
      * @param detailFlag 是否获取设备详情
      * @param implList UsbImpl列表
+     * @param cdromList 光驱设备列表
      * @return Usb信息
      */
-    static std::shared_ptr<usb::Usb> parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList);
+    static std::shared_ptr<usb::Usb> parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList,
+                                              const std::vector<CdromInfo>& cdromList);
 
     /**
      * @brief 排序Usb信息列表
@@ -295,5 +366,6 @@ private:
     std::string m_group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
     DevNode m_devRootNode; /* 设备根节点(适用于Linux平台) */
     std::vector<DevNode> m_devNodes; /* 设备节点(Windows一般至多1个, Linux平台可能多个) */
+    CdromInfo m_cdromInfo; /* 光驱设备信息 */
 };
 } // namespace usb
