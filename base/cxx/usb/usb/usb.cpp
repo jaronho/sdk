@@ -25,6 +25,7 @@
 
 namespace usb
 {
+#ifdef _WIN32
 struct LogicalDrive
 {
     std::string driver;
@@ -37,6 +38,7 @@ struct LogicalDrive
     std::string vendor;
     std::string model;
 };
+#endif
 
 struct DriverInfo
 {
@@ -1678,293 +1680,134 @@ bool Usb::isHub() const
     return (LIBUSB_CLASS_HUB == m_classCode);
 }
 
-std::string Usb::jsonString() const
-{
-    std::string str;
-    str.append("{\n");
-    str.append("    \"parentPath\": \"").append(m_parentPath).append("\", \"path\": \"").append(m_path).append("\",\n");
-    str.append("    \"busNum\": ")
-        .append(std::to_string(m_busNum))
-        .append(", \"portNum\": ")
-        .append(std::to_string(m_portNum))
-        .append(", \"address\": ")
-        .append(std::to_string(m_address))
-        .append(", \"classCode\": ")
-        .append(std::to_string(m_classCode))
-        .append(", \"subClass\": ")
-        .append(std::to_string(m_subClassCode))
-        .append(", \"protocol\": ")
-        .append(std::to_string(m_protocolCode))
-        .append(", \"subProtocol\": [");
-    for (size_t i = 0; i < m_subProtocolCode.size(); ++i)
-    {
-        if (i > 0)
-        {
-            str.append(", ");
-        }
-        str.append(std::to_string(m_subProtocolCode[i]));
-    }
-    str.append("]").append(", \"speed\": ").append(std::to_string(m_speedLevel)).append(",\n");
-    str.append("    \"vid\": \"")
-        .append(m_vid)
-        .append("\", \"pid\": \"")
-        .append(m_pid)
-        .append("\", \"serial\": \"")
-        .append(m_serial)
-        .append("\", \"product\": \"")
-        .append(m_product)
-        .append("\", \"manufacturer\": \"")
-        .append(m_manufacturer)
-        .append("\", \"model\": \"")
-        .append(m_model)
-        .append("\", \"vendor\": \"")
-        .append(m_vendor)
-        .append("\", \"group\": \"")
-        .append(m_group)
-        .append("\",\n");
-#ifndef _WIN32
-    str.append("    \"devRootNode\": {\"name\": \"")
-        .append(m_devRootNode.name)
-        .append("\", \"fstype\": \"")
-        .append(m_devRootNode.fstype)
-        .append("\", \"label\": \"")
-        .append(m_devRootNode.label)
-        .append("\", \"partlabel\": \"")
-        .append(m_devRootNode.partlabel)
-        .append("\"},\n");
-#endif
-    str.append("    \"devNodes\": ");
-    if (m_devNodes.empty())
-    {
-        str.append("[]\n");
-    }
-    else
-    {
-        str.append("\n    [\n");
-        for (size_t i = 0; i < m_devNodes.size(); ++i)
-        {
-            auto mountpoint = m_devNodes[i].getMountpoint();
-            str.append("        {\"name\": \"").append(m_devNodes[i].name);
-            str.append("\", \"fstype\": \"")
-                .append(m_devNodes[i].fstype)
-                .append("\", \"label\": \"")
-                .append(m_devNodes[i].label)
-                .append("\", \"partlabel\": \"")
-                .append(m_devNodes[i].partlabel)
-                .append("\", \"mountpoint:\": \"")
-                .append(mountpoint);
-#ifdef _WIN32
-            if (!mountpoint.empty())
-            {
-                str.append("\\"); /* JSON字符串要再增加1个反斜杠"\"进行转义 */
-            }
-#endif
-            str.append("\"}");
-            if (i < m_devNodes.size() - 1)
-            {
-                str.append(",");
-            }
-            str.append("\n");
-        }
-        str.append("    ]\n");
-    }
-    str.append("}");
-    return str;
-}
-
-std::string Usb::describe(bool showPath, bool showDevNode, bool showChildren, int allIntend, int intend) const
+std::string Usb::describe(bool showChildren, int allIntend, int intend) const
 {
     std::string allIntendStr(allIntend, ' '), intendStr(intend, ' '), crlfStr(intend > 0 ? "\n" : "");
     std::string desc;
-    desc += allIntendStr + "{";
-    desc += crlfStr; /* 换行 */
-    if (showPath)
-    {
-        desc += allIntendStr + intendStr;
-        desc += "\"path\": \"" + m_path + "\"";
-        desc += ", ";
-        desc += crlfStr; /* 换行 */
-    }
-    desc += allIntendStr + intendStr;
-    desc += "\"busNum\": " + std::to_string(m_busNum);
-    desc += ", ";
-    desc += "\"portNum\": " + std::to_string(m_portNum);
-    desc += ", ";
-    desc += "\"address\": " + std::to_string(m_address);
-    desc += ", ";
-    desc += "\"classCode\": " + std::to_string(m_classCode);
-    desc += ", ";
-    desc += "\"classHex\": \"" + getClassHex() + "\"";
-    desc += ", ";
-    desc += "\"classDesc\": \"" + getClassDesc() + "\"";
-    desc += ", ";
-    desc += "\"subClass\": " + std::to_string(m_subClassCode);
-    desc += ", ";
-    desc += "\"protocol\": " + std::to_string(m_protocolCode);
-    desc += ", ";
+    desc += allIntendStr; /* 缩进 */
+    desc += "{";
+    desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
+    desc += "\"parentPath\": \"" + m_parentPath + "\", ";
+    desc += "\"path\": \"" + m_path + "\", ";
+    desc += "\"busNum\": " + std::to_string(m_busNum) + ", ";
+    desc += "\"portNum\": " + std::to_string(m_portNum) + ", ";
+    desc += "\"address\": " + std::to_string(m_address) + ", ";
+    desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
+    desc += "\"classCode\": " + std::to_string(m_classCode) + ", ";
+    desc += "\"classHex\": \"" + getClassHex() + "\", ";
+    desc += "\"classDesc\": \"" + getClassDesc() + "\", ";
+    desc += "\"subClass\": " + std::to_string(m_subClassCode) + ", ";
+    desc += "\"protocol\": " + std::to_string(m_protocolCode) + ", ";
     desc += "\"subProtocol\": [";
     for (size_t i = 0; i < m_subProtocolCode.size(); ++i)
     {
-        if (i > 0)
-        {
-            desc += ", ";
-        }
+        desc += (i > 0) ? ", " : "";
         desc += std::to_string(m_subProtocolCode[i]);
     }
-    desc += "]";
-    desc += ", ";
-    desc += "\"speed\": " + std::to_string(m_speedLevel);
-    desc += ", ";
-    desc += "\"speedDesc\": \"" + getSpeedDesc() + "\"";
-    desc += ",";
-    desc += crlfStr; /* 换行 */
-    desc += allIntendStr + intendStr;
-    desc += "\"vid\": \"" + m_vid + "\"";
-    desc += ", ";
-    desc += "\"pid\": \"" + m_pid + "\"";
-    desc += ", ";
-    desc += "\"serial\": \"" + m_serial + "\"";
-    desc += ", ";
-    desc += "\"product\": \"" + m_product + "\"";
-    desc += ", ";
-    desc += "\"manufacturer\": \"" + m_manufacturer + "\"";
-    desc += ", ";
-    desc += "\"model\": \"" + m_model + "\"";
-    desc += ", ";
-    desc += "\"vendor\": \"" + m_vendor + "\"";
-    desc += ", ";
+    desc += "], ";
+    desc += "\"speed\": " + std::to_string(m_speedLevel) + ", ";
+    desc += "\"speedDesc\": \"" + getSpeedDesc() + "\", ";
+    desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
+    desc += "\"vid\": \"" + m_vid + "\", ";
+    desc += "\"pid\": \"" + m_pid + "\", ";
+    desc += "\"serial\": \"" + m_serial + "\", ";
+    desc += "\"product\": \"" + m_product + "\", ";
+    desc += "\"manufacturer\": \"" + m_manufacturer + "\", ";
+    desc += "\"model\": \"" + m_model + "\", ";
+    desc += "\"vendor\": \"" + m_vendor + "\", ";
     desc += "\"group\": \"" + m_group + "\"";
-#ifdef _WIN32
-    if (isStorage())
-    {
-        desc += ", ";
-        desc += crlfStr; /* 换行 */
-        desc += allIntendStr + intendStr;
-        desc += "\"storageVolumes\": [";
-        for (size_t i = 0; i < m_devNodes.size(); ++i)
-        {
-            if (m_devNodes.size() > 1)
-            {
-                desc += crlfStr; /* 换行 */
-                desc += allIntendStr + intendStr + intendStr;
-            }
-            desc += "{";
-            desc += "\"fstype\": \"" + m_devNodes[i].fstype + "\", ";
-            desc += "\"label\": \"" + m_devNodes[i].label + "\", ";
-            desc += "\"mountpoint\": \"" + m_devNodes[i].getMountpoint() + "\\\""; /* JSON字符串要再增加1个反斜杠"\"进行转义 */
-            desc += "}";
-            if (i < m_devNodes.size() - 1)
-            {
-                desc += ",";
-            }
-        }
-        if (m_devNodes.size() > 1)
-        {
-            desc += crlfStr; /* 换行 */
-            desc += allIntendStr + intendStr;
-        }
-        desc += "]";
-    }
-#else
-    if (showDevNode && !m_devRootNode.name.empty())
+    if (!m_devRootNode.name.empty()) /* Linux平台才有根节点 */
     {
         desc += ",";
-        desc += crlfStr; /* 换行 */
-        desc += allIntendStr + intendStr;
+        desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
         desc += "\"devRootNode\": ";
         desc += "{";
         desc += "\"name\": \"" + m_devRootNode.name + "\"";
-        std::string temp;
         if (!m_devRootNode.fstype.empty())
         {
-            desc += ", ";
-            desc += "\"fstype\": \"" + m_devRootNode.fstype + "\"";
+            desc += ", \"fstype\": \"" + m_devRootNode.fstype + "\"";
         }
         if (!m_devRootNode.label.empty())
         {
-            desc += ", ";
-            desc += "\"label\": \"" + m_devRootNode.label + "\"";
+            desc += ", \"label\": \"" + m_devRootNode.label + "\"";
         }
         if (!m_devRootNode.partlabel.empty())
         {
-            desc += ", ";
-            desc += "\"partlabel\": \"" + m_devRootNode.partlabel + "\"";
+            desc += ", \"partlabel\": \"" + m_devRootNode.partlabel + "\"";
         }
         desc += "}";
     }
-    if (showDevNode && m_devNodes.size() > 0)
+    if (m_devNodes.size() > 0)
     {
         desc += ",";
-        desc += crlfStr; /* 换行 */
-        desc += allIntendStr + intendStr;
+        desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
         desc += "\"devNodes\": ";
         desc += "[";
         for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
-            if (i > 0)
-            {
-                desc += ",";
-            }
+            desc += (i > 0) ? "," : "";
             if (m_devNodes.size() > 1)
             {
-                desc += crlfStr; /* 换行 */
-                desc += allIntendStr + intendStr + intendStr;
+                desc += crlfStr + allIntendStr + intendStr + intendStr; /* 换行/缩进 */
             }
             desc += "{";
-            desc += "\"name\": \"" + m_devNodes[i].name + "\"";
-            std::string temp;
+            size_t fieldCount = 0;
+            if (!m_devNodes[i].name.empty())
+            {
+                ++fieldCount;
+                desc += "\"name\": \"" + m_devNodes[i].name + "\"";
+            }
             if (!m_devNodes[i].fstype.empty())
             {
-                desc += ", ";
+                desc += (++fieldCount > 1) ? ", " : "";
                 desc += "\"type\": \"" + m_devNodes[i].fstype + "\"";
             }
             if (!m_devNodes[i].label.empty())
             {
-                desc += ", ";
+                desc += (++fieldCount > 1) ? ", " : "";
                 desc += "\"label\": \"" + m_devNodes[i].label + "\"";
             }
             if (!m_devNodes[i].partlabel.empty())
             {
-                desc += ", ";
+                desc += (++fieldCount > 1) ? ", " : "";
                 desc += "\"partlabel\": \"" + m_devNodes[i].partlabel + "\"";
             }
             auto mountpoint = m_devNodes[i].getMountpoint();
             if (!mountpoint.empty())
             {
-                desc += ", ";
-                desc += "\"mountpoint\": \"" + mountpoint + "\"";
+                desc += (++fieldCount > 1) ? ", " : "";
+                desc += "\"mountpoint\": \"" + mountpoint;
+#ifdef _WIN32
+                if (!mountpoint.empty())
+                {
+                    desc += "\\"; /* JSON字符串要再增加1个反斜杠"\"进行转义 */
+                }
+                desc += "\"";
+#endif
             }
             desc += "}";
         }
         if (m_devNodes.size() > 1)
         {
-            desc += crlfStr; /* 换行 */
-            desc += allIntendStr + intendStr;
+            desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
         }
         desc += "]";
     }
-#endif
     if (showChildren && !m_children.empty())
     {
         desc += ",";
-        desc += crlfStr; /* 换行 */
-        desc += allIntendStr + intendStr;
+        desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
         desc += "\"children\": [";
         for (size_t i = 0; i < m_children.size(); ++i)
         {
-            if (i > 0)
-            {
-                desc += ",";
-            }
+            desc += (i > 0) ? "," : "";
             desc += crlfStr; /* 换行 */
-            desc += m_children[i]->describe(showPath, showDevNode, showChildren, allIntend + intend + intend, intend);
+            desc += m_children[i]->describe(showChildren, allIntend + intend + intend, intend);
         }
-        desc += crlfStr; /* 换行 */
-        desc += allIntendStr + intendStr;
+        desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
         desc += "]";
     }
-    desc += crlfStr; /* 换行 */
-    desc += allIntendStr;
+    desc += crlfStr + allIntendStr; /* 换行/缩进 */
     desc += "}";
     return desc;
 }
@@ -2177,16 +2020,9 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
                     info->m_group = item.group;
                 }
 #ifdef _WIN32
-                if (item.driverList.empty())
+                for (const auto& di : item.driverList)
                 {
-                    info->m_devNodes.emplace_back(DevNode("", "", "", "", ""));
-                }
-                else
-                {
-                    for (const auto& di : item.driverList)
-                    {
-                        info->m_devNodes.emplace_back(DevNode("", di.fstype, di.label, "", di.driver));
-                    }
+                    info->m_devNodes.emplace_back(DevNode("", di.fstype, di.label, "", di.driver));
                 }
 #else
                 info->m_devRootNode = item.devRootNode;

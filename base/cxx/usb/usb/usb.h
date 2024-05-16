@@ -223,20 +223,12 @@ public:
     bool isHub() const;
 
     /**
-     * @brief JSON字符串
-     */
-    std::string jsonString() const;
-
-    /**
      * @brief 描述信息
-     * @param showPath 显示路径
-     * @param showDevNode 是否显示设备节点
      * @param showChildren 是否显示子节点
      * @param allIntend 全局缩进字符数
-     * @param intend 缩进字符数
+     * @param intend 内部缩进字符数
      */
-    std::string describe(bool showPath = false, bool showDevNode = true, bool showChildren = false, int allIntend = 0,
-                         int intend = 4) const;
+    std::string describe(bool showChildren = false, int allIntend = 0, int intend = 4) const;
 
     /**
      * @brief 获取系统中USB设备列表
