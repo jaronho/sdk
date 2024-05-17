@@ -75,36 +75,30 @@ int main(int argc, char** argv)
     {
         if (parser.exist("verbose"))
         {
-            size_t totalFolderCount = 0, totalFileCount = 0, nowCount = 0;
             printf("[%s] 开始计算目录和文件数量\n", dtString().c_str());
+            size_t totalCount = 0, nowCount = 0;
             utility::PathInfo pi(target, true);
-            pi.traverse(
-                [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-                    ++totalFolderCount;
-                    return true;
-                },
-                [&](const std::string& name, const utility::FileAttribute& attr, int depth) { ++totalFileCount; }, nullptr, true, false);
-            printf("[%s] 目录数: %zu, 文件数: %zu\n", dtString().c_str(), totalFolderCount, totalFileCount);
             auto tp = std::chrono::steady_clock::now();
             value = toolkit::Tool::md5Directory(
                 target, type,
-                [&](const std::string& name, bool isDir, size_t fileSize) {
+                [&](size_t folderCount, size_t folderCalcCount, size_t fileCount, size_t totalSize) {
+                    printf("[%s] 文件夹数: %zu, 纳入计算的文件夹总数: %zu, 文件数: %zu, 文件总大小: %s\n", dtString().c_str(), folderCount,
+                           folderCalcCount, fileCount, convertBytesToAppropriateUnit(totalSize).c_str());
+                    totalCount = folderCalcCount + fileCount;
+                },
+                [&](const std::string& name, const std::string& relName, bool isDir, size_t fileSize) {
                     ++nowCount;
-                    auto totalCountStr = std::to_string(totalFolderCount + totalFileCount);
+                    auto totalCountStr = std::to_string(totalCount);
                     auto nowCountStr = std::to_string(nowCount);
                     auto progress = "[" + utility::StrTool::fillPlace(nowCountStr, ' ', totalCountStr.size()) + "/" + totalCountStr + "]";
-                    auto fileDesc = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
-                    if (!fileDesc.empty() && '/' == fileDesc[0])
-                    {
-                        fileDesc.erase(0);
-                    }
+                    auto fileDesc = relName;
                     if (!isDir)
                     {
                         fileDesc += " (" + convertBytesToAppropriateUnit(fileSize) += ")";
                     }
                     printf("[%s] %s [%c] %s\n", dtString().c_str(), progress.c_str(), (isDir ? 'D' : 'F'), fileDesc.c_str());
                 },
-                blockSize);
+                nullptr, blockSize);
             printf("\n");
             if (!value.empty())
             {
@@ -181,7 +175,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            value = toolkit::Tool::md5Directory(target, type, nullptr, blockSize);
+            value = toolkit::Tool::md5Directory(target, type, nullptr, nullptr, nullptr, blockSize);
         }
     }
     else if (attr.isFile) /* 文件 */
