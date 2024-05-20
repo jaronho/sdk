@@ -31,6 +31,7 @@ struct CdromInfo
 #ifdef _WIN32
     int can_write_CD_R = 0; /* 是否支持写入CD-R光盘 */
     int can_write_CD_RW = 0; /* 是否支持写入CD-RW光盘 */
+    int can_read_DVD = 0; /* 是否支持读取DVD光盘 */
     int can_write_DVD_R = 0; /* 是否支持写入DVD-R光盘 */
     int can_write_DVD_RAM = 0; /* 是否支持写入DVD-RAM光盘 */
 #else

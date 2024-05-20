@@ -1497,34 +1497,44 @@ std::vector<CdromInfo> getCdromInfoList()
                                 SafeArrayDestroy(volumePathNames);
                                 CdromInfo info;
                                 info.name = driver;
-                                SAFEARRAY* ppFeaturePages = NULL;
-                                if (SUCCEEDED(pDiscRecorder->get_SupportedFeaturePages(&ppFeaturePages)) && ppFeaturePages)
+                                SAFEARRAY* ppProfiles = NULL;
+                                if (SUCCEEDED(pDiscRecorder->get_SupportedProfiles(&ppProfiles)) && ppProfiles)
                                 {
                                     LONG lBound, uBound;
-                                    if (SUCCEEDED(::SafeArrayGetLBound(ppFeaturePages, 1, &lBound))
-                                        && SUCCEEDED(::SafeArrayGetUBound(ppFeaturePages, 1, &uBound)))
+                                    if (SUCCEEDED(::SafeArrayGetLBound(ppProfiles, 1, &lBound))
+                                        && SUCCEEDED(::SafeArrayGetUBound(ppProfiles, 1, &uBound)))
                                     {
                                         for (LONG i = lBound; i <= uBound; ++i)
                                         {
                                             VARIANT element;
-                                            if (FAILED(::SafeArrayGetElement(ppFeaturePages, &i, &element)))
+                                            if (FAILED(::SafeArrayGetElement(ppProfiles, &i, &element)))
                                             {
                                                 continue;
                                             }
-                                            IMAPI_FEATURE_PAGE_TYPE featPage = (IMAPI_FEATURE_PAGE_TYPE)element.lVal;
-                                            if (IMAPI_FEATURE_PAGE_TYPE_CDRW_CAV_WRITE == featPage)
+                                            IMAPI_PROFILE_TYPE profileType = (IMAPI_PROFILE_TYPE)element.lVal;
+                                            if (IMAPI_PROFILE_TYPE_CD_RECORDABLE == profileType)
                                             {
                                                 info.can_write_CD_R = 1;
+                                            }
+                                            else if (IMAPI_PROFILE_TYPE_CD_REWRITABLE == profileType)
+                                            {
                                                 info.can_write_CD_RW = 1;
                                             }
-                                            else if (IMAPI_FEATURE_PAGE_TYPE_DVD_DASH_WRITE == featPage)
+                                            else if (IMAPI_PROFILE_TYPE_DVDROM == profileType)
+                                            {
+                                                info.can_read_DVD = 1;
+                                            }
+                                            else if (IMAPI_PROFILE_TYPE_DVD_DASH_RECORDABLE == profileType)
                                             {
                                                 info.can_write_DVD_R = 1;
+                                            }
+                                            else if (IMAPI_PROFILE_TYPE_DVD_RAM == profileType)
+                                            {
                                                 info.can_write_DVD_RAM = 1;
                                             }
                                         }
                                     }
-                                    SafeArrayDestroy(ppFeaturePages);
+                                    SafeArrayDestroy(ppProfiles);
                                 }
                                 infoList.emplace_back(info);
                             }
@@ -2058,8 +2068,9 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
                 desc += ", ";
                 desc += "\"CD-R\": " + std::to_string(m_cdromInfo.can_write_CD_R) + ", ";
                 desc += "\"CD-RW\": " + std::to_string(m_cdromInfo.can_write_CD_RW) + ", ";
+                desc += "\"DVD-ROM\": " + std::to_string(m_cdromInfo.can_read_DVD) + ", ";
                 desc += "\"DVD-R\": " + std::to_string(m_cdromInfo.can_write_DVD_R) + ", ";
-                desc += "\"DVD-RW\": " + std::to_string(m_cdromInfo.can_write_DVD_RAM);
+                desc += "\"DVD-RAW\": " + std::to_string(m_cdromInfo.can_write_DVD_RAM);
             }
             desc += "}";
         }
