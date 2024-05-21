@@ -9,6 +9,7 @@
 
 #include "../toolkit/tool.h"
 #include "algorithm/md5/md5.h"
+#include "utility/charset/charset.h"
 #include "utility/cmdline/cmdline.h"
 #include "utility/datetime/datetime.h"
 #include "utility/filesystem/file_info.h"
@@ -54,8 +55,6 @@ int main(int argc, char** argv)
 #endif
     cmdline::parser parser;
     parser.add<std::string>("input", 'i', "输入指定文件路径或目录路径", false, "");
-    parser.add<int>("type", 't', "算法类型: 0-文件内容, 1-目录/文件名和文件内容, 2-(ASCII且同时符合所有平台命名规则)目录/文件名和文件内容",
-                    false, 0, cmdline::range(0, 1));
     parser.add<int>("block", 'b', "每次读文件的块大小(字节), 默认: 1Mb", false, 1024 * 1024);
     parser.add("verbose", 'v', "显示进度信息");
     parser.add("help", 'h', "显示帮助信息");
@@ -66,7 +65,6 @@ int main(int argc, char** argv)
         printf("%s\n", parser.usage().c_str());
         return 0;
     }
-    auto type = parser.get<int>("type");
     auto blockSize = parser.get<int>("block");
     utility::FileAttribute attr;
     utility::getFileAttribute(target, attr);
@@ -75,28 +73,37 @@ int main(int argc, char** argv)
     {
         if (parser.exist("verbose"))
         {
-            printf("[%s] 开始计算目录和文件数量\n", dtString().c_str());
-            size_t totalCount = 0, nowCount = 0;
+            printf("[%s] 开始计算文件数量和大小\n", dtString().c_str());
+            size_t totalCount = 0, totalSize = 0, nowCount = 0;
             utility::PathInfo pi(target, true);
+            pi.traverse(
+                nullptr,
+                [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+                    ++totalCount;
+                    totalSize += attr.size;
+                },
+                nullptr);
+            printf("[%s] 文件总数量: %zu, 文件总大小: %s\n", dtString().c_str(), totalCount,
+                   convertBytesToAppropriateUnit(totalSize).c_str());
             auto tp = std::chrono::steady_clock::now();
             value = toolkit::Tool::md5Directory(
-                target, type,
-                [&](size_t folderCount, size_t folderCalcCount, size_t fileCount, size_t totalSize) {
-                    printf("[%s] 文件夹数: %zu, 纳入计算的文件夹总数: %zu, 文件数: %zu, 文件总大小: %s\n", dtString().c_str(), folderCount,
-                           folderCalcCount, fileCount, convertBytesToAppropriateUnit(totalSize).c_str());
-                    totalCount = folderCalcCount + fileCount;
-                },
-                [&](const std::string& name, const std::string& relName, bool isDir, size_t fileSize) {
+                target,
+                [&](const std::string& name, size_t fileSize) {
+                    auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
+                    if (!relativeName.empty() && '/' == relativeName[0])
+                    {
+                        relativeName.erase(0);
+                    }
+                    if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
+                    {
+                        relativeName = utility::Charset::gbkToUtf8(relativeName);
+                    }
                     ++nowCount;
                     auto totalCountStr = std::to_string(totalCount);
                     auto nowCountStr = std::to_string(nowCount);
                     auto progress = "[" + utility::StrTool::fillPlace(nowCountStr, ' ', totalCountStr.size()) + "/" + totalCountStr + "]";
-                    auto fileDesc = relName;
-                    if (!isDir)
-                    {
-                        fileDesc += " (" + convertBytesToAppropriateUnit(fileSize) += ")";
-                    }
-                    printf("[%s] %s [%c] %s\n", dtString().c_str(), progress.c_str(), (isDir ? 'D' : 'F'), fileDesc.c_str());
+                    auto fileDesc = relativeName + " (" + convertBytesToAppropriateUnit(fileSize) + ")";
+                    printf("[%s] %s %s\n", dtString().c_str(), progress.c_str(), fileDesc.c_str());
                 },
                 nullptr, blockSize);
             printf("\n");
@@ -175,7 +182,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            value = toolkit::Tool::md5Directory(target, type, nullptr, nullptr, nullptr, blockSize);
+            value = toolkit::Tool::md5Directory(target, nullptr, nullptr, blockSize);
         }
     }
     else if (attr.isFile) /* 文件 */
