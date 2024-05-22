@@ -141,42 +141,42 @@ int shellCmd(const std::string& cmd, std::vector<std::string>* result = nullptr)
 }
 
 #ifdef _WIN32
-static std::string wstring2string(const std::wstring& wstr)
-{
-    if (wstr.empty())
-    {
-        return std::string();
-    }
-    int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-    char* buf = (char*)malloc(sizeof(char) * (len + (size_t)1));
-    if (!buf)
-    {
-        return std::string();
-    }
-    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
-    buf[len] = '\0';
-    std::string str(buf);
-    free(buf);
-    return str;
-}
-
 static std::wstring string2wstring(const std::string& str)
 {
     if (str.empty())
     {
         return std::wstring();
     }
-    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
+    int len = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), NULL, 0);
     wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + (size_t)1));
     if (!buf)
     {
         return std::wstring();
     }
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), buf, len);
     buf[len] = '\0';
     std::wstring wstr(buf);
     free(buf);
     return wstr;
+}
+
+static std::string wstring2string(const std::wstring& wstr)
+{
+    if (wstr.empty())
+    {
+        return std::string();
+    }
+    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+    char* buf = (char*)malloc(sizeof(char) * (len + (size_t)1));
+    if (!buf)
+    {
+        return std::string();
+    }
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
+    buf[len] = '\0';
+    std::string str(buf);
+    free(buf);
+    return str;
 }
 #endif
 
@@ -187,13 +187,9 @@ static std::wstring string2wstring(const std::string& str)
 std::string getProcFile()
 {
 #ifdef _WIN32
-    TCHAR exeFile[MAX_PATH + 1] = {0};
-    GetModuleFileName(NULL, exeFile, MAX_PATH);
-#ifdef UNICODE
+    WCHAR exeFile[MAX_PATH + 1] = {0};
+    GetModuleFileNameW(NULL, exeFile, MAX_PATH);
     return wstring2string(exeFile);
-#else
-    return exeFile;
-#endif
 #else
     char exeFile[261] = {0};
     unsigned int exeFileLen = readlink("/proc/self/exe", exeFile, sizeof(exeFile) - 1);
