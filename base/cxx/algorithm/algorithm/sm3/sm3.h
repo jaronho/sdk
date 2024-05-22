@@ -1,4 +1,5 @@
 #pragma once
+#include <stdio.h>
 
 #ifdef __cplusplus
 namespace algorithm
@@ -45,6 +46,14 @@ extern "C"
      * @param output SM3 checksum result
      */
     void sm3Sign(const unsigned char* input, int ilen, unsigned char output[32]);
+
+    /**
+     * @brief Output = SM3(file contents)
+     * @param handle input file handle
+     * @param output SM3 checksum result
+     * @return 0-if successful, 1-if fopen failed, 2-if fread failed
+     */
+    int sm3FileHandle(FILE* handle, unsigned char output[32]);
 
     /**
      * @brief Output = SM3(file contents)

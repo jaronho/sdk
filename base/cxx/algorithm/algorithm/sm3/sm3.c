@@ -1,6 +1,5 @@
 #include "sm3.h"
 
-#include <stdio.h>
 #include <string.h>
 
 #ifdef __cplusplus
@@ -220,30 +219,40 @@ void sm3Sign(const unsigned char* input, int ilen, unsigned char output[32])
     memset(&ctx, 0, sizeof(sm3_context_t));
 }
 
-int sm3File(char* path, unsigned char output[32])
+int sm3FileHandle(FILE* handle, unsigned char output[32])
 {
-    FILE* f;
     size_t n;
     sm3_context_t ctx;
     unsigned char buf[1024];
-    if ((f = fopen(path, "rb")) == NULL)
+    if (!handle)
     {
         return 1;
     }
     sm3Start(&ctx);
-    while ((n = fread(buf, 1, sizeof(buf), f)) > 0)
+    while ((n = fread(buf, 1, sizeof(buf), handle)) > 0)
     {
         sm3Update(&ctx, buf, (int)n);
     }
     sm3Finish(&ctx, output);
     memset(&ctx, 0, sizeof(sm3_context_t));
-    if (ferror(f) != 0)
+    if (ferror(handle) != 0)
     {
-        fclose(f);
         return 2;
     }
-    fclose(f);
     return 0;
+}
+
+int sm3File(char* path, unsigned char output[32])
+{
+    FILE* f;
+    int ret = 0;
+    if ((f = fopen(path, "rb")) == NULL)
+    {
+        return 1;
+    }
+    ret = sm3FileHandle(f, output);
+    fclose(f);
+    return ret;
 }
 
 void sm3HmacStart(sm3_context_t* ctx, const unsigned char* key, int keylen)
