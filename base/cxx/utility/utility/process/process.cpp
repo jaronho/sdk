@@ -1,5 +1,6 @@
 #include "process.h"
 
+#include <codecvt>
 #include <cstdint>
 #include <sstream>
 #include <string.h>
@@ -116,38 +117,6 @@ void Process::setThreadName(const std::string& name)
 #endif
 }
 
-#ifdef _WIN32
-static std::string wstring2string(const std::wstring& wstr)
-{
-    if (wstr.empty())
-    {
-        return std::string();
-    }
-    int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-    char* buf = (char*)malloc(sizeof(char) * (len + 1));
-    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
-    buf[len] = '\0';
-    std::string str(buf);
-    free(buf);
-    return str;
-}
-
-static std::wstring string2wstring(const std::string& str)
-{
-    if (str.empty())
-    {
-        return std::wstring();
-    }
-    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
-    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
-    buf[len] = '\0';
-    std::wstring wstr(buf);
-    free(buf);
-    return wstr;
-}
-#endif
-
 char** string2argv(const std::string& str, int& argvCount)
 {
     std::vector<std::string> argVec;
@@ -196,13 +165,9 @@ std::string Process::getProcessExeFile(int pid)
 #ifdef _WIN32
     if (pid <= 0)
     {
-        TCHAR exeFile[MAX_PATH + 1] = {0};
-        GetModuleFileName(NULL, exeFile, MAX_PATH);
-#ifdef UNICODE
-        return wstring2string(exeFile);
-#else
-        return exeFile;
-#endif
+        WCHAR exeFile[MAX_PATH + 1] = {0};
+        GetModuleFileNameW(NULL, exeFile, MAX_PATH);
+        return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(exeFile);
     }
     else
     {
@@ -210,15 +175,11 @@ std::string Process::getProcessExeFile(int pid)
         HANDLE moduleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
         if (INVALID_HANDLE_VALUE != moduleSnap)
         {
-            MODULEENTRY32 moduleEntry32;
+            MODULEENTRY32W moduleEntry32;
             moduleEntry32.dwSize = sizeof(MODULEENTRY32);
-            if (Module32First(moduleSnap, &moduleEntry32))
+            if (Module32FirstW(moduleSnap, &moduleEntry32))
             {
-#ifdef UNICODE
-                exeFile = wstring2string(moduleEntry32.szExePath);
-#else
-                exeFile = moduleEntry32.szExePath;
-#endif
+                exeFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(moduleEntry32.szExePath);
             }
             CloseHandle(moduleSnap);
         }
@@ -254,9 +215,9 @@ int Process::searchProcess(const std::string& exeFile, const std::function<bool(
     {
         return matchCount;
     }
-    PROCESSENTRY32 processEntry32;
+    PROCESSENTRY32W processEntry32;
     processEntry32.dwSize = sizeof(PROCESSENTRY32);
-    if (!Process32First(processSnap, &processEntry32))
+    if (!Process32FirstW(processSnap, &processEntry32))
     {
         CloseHandle(processSnap);
         return matchCount;
@@ -272,20 +233,15 @@ int Process::searchProcess(const std::string& exeFile, const std::function<bool(
         {
             continue;
         }
-        MODULEENTRY32 moduleEntry32;
+        MODULEENTRY32W moduleEntry32;
         moduleEntry32.dwSize = sizeof(MODULEENTRY32);
-        if (!Module32First(moduleSnap, &moduleEntry32))
+        if (!Module32FirstW(moduleSnap, &moduleEntry32))
         {
             CloseHandle(moduleSnap);
             continue;
         }
         CloseHandle(moduleSnap);
-        std::string exeFilePath;
-#ifdef UNICODE
-        exeFilePath = wstring2string(moduleEntry32.szExePath);
-#else
-        exeFilePath = moduleEntry32.szExePath;
-#endif
+        std::string exeFilePath = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(moduleEntry32.szExePath);
         unsigned int exeFilePathLen = exeFilePath.size();
         if (exeFile.size() > exeFilePathLen)
         {
@@ -314,7 +270,7 @@ int Process::searchProcess(const std::string& exeFile, const std::function<bool(
                 }
             }
         }
-    } while (Process32Next(processSnap, &processEntry32));
+    } while (Process32NextW(processSnap, &processEntry32));
     CloseHandle(processSnap);
 #else
     DIR* dir = opendir("/proc");
@@ -394,18 +350,8 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi;
     ZeroMemory(&pi, sizeof(pi));
-#ifdef UNICODE
-    std::wstring cmdlineW = string2wstring(cmdline);
-    if (cmdlineW.empty())
-    {
-        return -1;
-    }
-    if (!CreateProcess(NULL, (WCHAR*)cmdlineW.c_str(), NULL, NULL, FALSE,
-                       (0 == flag ? CREATE_NO_WINDOW : (1 == flag ? CREATE_NEW_CONSOLE : 0)), NULL, NULL, &si, &pi))
-#else
-    if (!CreateProcess(NULL, (CHAR*)(cmdline.c_str()), NULL, NULL, FALSE,
-                       (0 == flag ? CREATE_NO_WINDOW : (1 == flag ? CREATE_NEW_CONSOLE : 0)), NULL, NULL, &si, &pi))
-#endif
+    if (!CreateProcessA(NULL, (CHAR*)(cmdline.c_str()), NULL, NULL, FALSE,
+                        (0 == flag ? CREATE_NO_WINDOW : (1 == flag ? CREATE_NEW_CONSOLE : 0)), NULL, NULL, &si, &pi))
     {
         return -1;
     }

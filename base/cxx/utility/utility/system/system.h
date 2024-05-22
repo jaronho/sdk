@@ -19,6 +19,11 @@ public:
     static int runCmd(const std::string& cmd, std::string* outStr = nullptr, std::vector<std::string>* outVec = nullptr,
                       bool ignoreBlankLine = false);
 
+#ifdef _WIN32
+    typedef void* HANDLE;
+#else
+    typedef int HANDLE;
+#endif
     /**
      * @brief 对文件加锁/解锁
      * @param fd 文件句柄/描述符(注意: 如果fd被关闭了,则自动解锁)
@@ -26,12 +31,7 @@ public:
      * @param block true-阻塞(直到其他进程解锁), false-非阻塞
      * @return true-成功, false-失败
      */
-#ifdef _WIN32
-    typedef void* HANDLE;
     static bool tryLockUnlockFile(HANDLE fd, bool lock, bool block = true);
-#else
-    static bool tryLockUnlockFile(int fd, bool lock, bool block = true);
-#endif
 
     /**
      * @brief 对文件加锁

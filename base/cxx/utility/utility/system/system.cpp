@@ -1,6 +1,7 @@
 #include "system.h"
 
 #include <chrono>
+#include <codecvt>
 #include <string.h>
 #include <thread>
 
@@ -13,38 +14,6 @@
 
 namespace utility
 {
-#ifdef _WIN32
-static std::wstring string2wstring(const std::string& str)
-{
-    if (str.empty())
-    {
-        return std::wstring();
-    }
-    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
-    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
-    buf[len] = '\0';
-    std::wstring wstr(buf);
-    free(buf);
-    return wstr;
-}
-
-static std::string wstring2string(const std::wstring& wstr)
-{
-    if (wstr.empty())
-    {
-        return std::string();
-    }
-    int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-    char* buf = (char*)malloc(sizeof(char) * (len + 1));
-    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
-    buf[len] = '\0';
-    std::string str(buf);
-    free(buf);
-    return str;
-}
-#endif
-
 int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std::string>* outVec, bool ignoreBlankLine)
 {
     if (outStr)
@@ -121,11 +90,7 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
 #endif
 }
 
-#ifdef _WIN32
 bool System::tryLockUnlockFile(HANDLE fd, bool lock, bool block)
-#else
-bool System::tryLockUnlockFile(int fd, bool lock, bool block)
-#endif
 {
     if (fd <= 0) /* 文件不存在 */
     {
@@ -172,11 +137,7 @@ bool System::tryLockFile(const std::string& filename, bool block)
     }
     /* 打开要加锁的文件(注意: 这里文件句柄不做关闭处理) */
 #ifdef _WIN32
-#ifdef UNICODE
-    HANDLE fd = CreateFile(string2wstring(filename).c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
-#else
-    HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
-#endif
+    HANDLE fd = CreateFileA(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
     if (!fd)
     {
         return false;
@@ -201,11 +162,7 @@ bool System::tryLockFileTemporary(const std::string& filename, const std::functi
     std::string fileLockName = filename + (suffix.empty() ? ".lock" : ('.' == suffix[0] ? suffix : ("." + suffix)));
     /* 打开要加锁的文件 */
 #ifdef _WIN32
-#ifdef UNICODE
-    HANDLE fd = CreateFile(string2wstring(filename).c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
-#else
-    HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
-#endif
+    HANDLE fd = CreateFileA(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
     if (!fd)
     {
         return false;
@@ -272,11 +229,7 @@ bool System::checkFileLock(const std::string& filename)
 {
     bool ret = false;
 #ifdef _WIN32
-#ifdef UNICODE
-    HANDLE fd = CreateFile(string2wstring(filename).c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
-#else
-    HANDLE fd = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
-#endif
+    HANDLE fd = CreateFileA(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, (DWORD)0, NULL);
     if (fd)
     {
         ret = checkFileLock(fd);
@@ -357,14 +310,10 @@ void System::waitForCount(unsigned int maxCount, const std::function<bool()>& fu
 std::string System::getHostname()
 {
 #ifdef _WIN32
-    TCHAR hostname[MAX_COMPUTERNAME_LENGTH + 1] = {0};
+    WCHAR hostname[MAX_COMPUTERNAME_LENGTH + 1] = {0};
     DWORD hostnameLen = MAX_COMPUTERNAME_LENGTH;
-    GetComputerName(hostname, &hostnameLen);
-#ifdef UNICODE
-    return wstring2string(hostname);
-#else
-    return hostname;
-#endif
+    GetComputerNameW(hostname, &hostnameLen);
+    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(hostname);
 #else
     char hostname[32] = {0};
     gethostname(hostname, sizeof(hostname));

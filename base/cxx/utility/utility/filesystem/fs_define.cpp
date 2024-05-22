@@ -1,6 +1,7 @@
 #include "fs_define.h"
 
 #include <algorithm>
+#include <codecvt>
 #include <string.h>
 #include <sys/stat.h>
 #include <vector>
@@ -15,21 +16,6 @@
 namespace utility
 {
 #ifdef _WIN32
-static std::wstring string2wstring(const std::string& str)
-{
-    if (str.empty())
-    {
-        return std::wstring();
-    }
-    int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
-    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
-    buf[len] = '\0';
-    std::wstring wstr(buf);
-    free(buf);
-    return wstr;
-}
-
 static BOOL isShortcut(const std::string& filename)
 {
     HRESULT hr = (HRESULT)-1;
@@ -44,7 +30,8 @@ static BOOL isShortcut(const std::string& filename)
                 IPersistFile* ppf;
                 if (psl->QueryInterface(IID_IPersistFile, (LPVOID*)&ppf) >= 0)
                 {
-                    hr = ppf->Load(string2wstring(filename).c_str(), STGM_READ); /* 尝试加载快捷方式 */
+                    hr = ppf->Load(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(filename).c_str(),
+                                   STGM_READ); /* 尝试加载快捷方式 */
                     ppf->Release();
                 }
                 psl->Release();
@@ -86,12 +73,9 @@ bool getDiskAttribute(const std::string& name, DiskAttribute& attr)
     }
 #ifdef _WIN32
     DWORD dwSectPerClust = 0, dwbytesPerSect = 0, dwFreeClusters = 0, dwTotalClusters = 0;
-    BOOL result = FALSE;
-#ifdef UNICODE
-    result = GetDiskFreeSpaceW(string2wstring(name).c_str(), &dwSectPerClust, &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
-#else
-    result = GetDiskFreeSpaceA(name.c_str(), &dwSectPerClust, &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
-#endif
+    /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
+    BOOL result = GetDiskFreeSpaceW(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(name).c_str(), &dwSectPerClust,
+                                    &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
     if (result)
     {
         attr.blockSize = ((size_t)dwSectPerClust * dwbytesPerSect); /* 簇大小 = 每簇扇区数 * 每扇区字节数 */
@@ -129,12 +113,10 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
         return false;
     }
 #ifdef _WIN32
+    /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
+    std::wstring wname = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(name);
     struct _stat64 st;
-#ifdef UNICODE
-    int ret = _wstat64(string2wstring(name).c_str(), &st);
-#else
-    int ret = _stat64(name.c_str(), &st);
-#endif
+    int ret = _wstat64(wname.c_str(), &st);
 #else
     struct stat64 st;
     int ret = stat64(name.c_str(), &st);
@@ -150,11 +132,7 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
     attr.isDir = S_IFDIR & st.st_mode;
     attr.isFile = S_IFREG & st.st_mode;
 #ifdef _WIN32
-#ifdef UNICODE
-    DWORD dwAttrib = GetFileAttributesW(string2wstring(name).c_str());
-#else
-    DWORD dwAttrib = GetFileAttributesA(name.c_str());
-#endif
+    DWORD dwAttrib = GetFileAttributesW(wname.c_str());
     attr.isSymLink = isShortcut(name);
     if (INVALID_FILE_ATTRIBUTES != dwAttrib)
     {

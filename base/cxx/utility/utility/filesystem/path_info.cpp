@@ -1,5 +1,6 @@
 #include "path_info.h"
 
+#include <codecvt>
 #include <queue>
 #include <stdexcept>
 #include <string.h>
@@ -317,12 +318,14 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
 #endif
     }
 #ifdef _WIN32
+    /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
+    std::wstring wpath = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(path);
 #ifdef _WIN64
-    _finddatai64_t fileData;
-    __int64 handle = _findfirsti64((path + "*.*").c_str(), &fileData);
+    _wfinddatai64_t fileData;
+    __int64 handle = _wfindfirsti64((wpath + L"*.*").c_str(), &fileData);
 #else
-    _finddata_t fileData;
-    int handle = _findfirst((path + "*.*").c_str(), &fileData);
+    _wfinddata_t fileData;
+    int handle = _wfindfirst((wpath + L"*.*").c_str(), &fileData);
 #endif
     if (-1 == handle)
     {
@@ -334,16 +337,16 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
         return false;
     }
 #ifdef _WIN64
-    while (0 == _findnexti64(handle, &fileData))
+    while (0 == _wfindnexti64(handle, &fileData))
 #else
-    while (0 == _findnext(handle, &fileData))
+    while (0 == _wfindnext(handle, &fileData))
 #endif
     {
-        if (0 == strcmp(".", fileData.name) || 0 == strcmp("..", fileData.name))
+        if (0 == wcscmp(L".", fileData.name) || 0 == wcscmp(L"..", fileData.name))
         {
             continue;
         }
-        std::string subName = path + fileData.name;
+        std::string subName = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wpath + fileData.name);
         if (_A_SUBDIR & fileData.attrib)
         {
             clearImpl(subName, true);
@@ -427,12 +430,14 @@ void PathInfo::traverseBFS(const std::string& path, int depth,
 #endif
         }
 #ifdef _WIN32
+        /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
+        std::wstring wpath = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(info.path);
 #ifdef _WIN64
-        _finddatai64_t fileData;
-        __int64 handle = _findfirsti64((info.path + "*.*").c_str(), &fileData);
+        _wfinddatai64_t fileData;
+        __int64 handle = _wfindfirsti64((wpath + L"*.*").c_str(), &fileData);
 #else
-        _finddata_t fileData;
-        int handle = _findfirst((info.path + "*.*").c_str(), &fileData);
+        _wfinddata_t fileData;
+        int handle = _wfindfirst((wpath + L"*.*").c_str(), &fileData);
 #endif
         if (-1 == handle)
         {
@@ -444,9 +449,9 @@ void PathInfo::traverseBFS(const std::string& path, int depth,
             {
                 break;
             }
-            if (0 != strcmp(".", fileData.name) && 0 != strcmp("..", fileData.name))
+            if (0 != wcscmp(L".", fileData.name) && 0 != wcscmp(L"..", fileData.name))
             {
-                std::string subName = info.path + fileData.name;
+                std::string subName = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wpath + fileData.name);
                 int subDepth = info.depth + 1;
                 FileAttribute attr;
                 if (getFileAttribute(subName, attr))
@@ -473,9 +478,9 @@ void PathInfo::traverseBFS(const std::string& path, int depth,
                 }
             }
 #ifdef _WIN64
-            if (0 != _findnexti64(handle, &fileData))
+            if (0 != _wfindnexti64(handle, &fileData))
 #else
-            if (0 != _findnext(handle, &fileData))
+            if (0 != _wfindnext(handle, &fileData))
 #endif
             {
                 break;
@@ -554,12 +559,14 @@ void PathInfo::traverseDFS(std::string path, int depth,
 #endif
     }
 #ifdef _WIN32
+    /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
+    std::wstring wpath = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(path);
 #ifdef _WIN64
-    _finddatai64_t fileData;
-    __int64 handle = _findfirsti64((path + "*.*").c_str(), &fileData);
+    _wfinddatai64_t fileData;
+    __int64 handle = _wfindfirsti64((wpath + L"*.*").c_str(), &fileData);
 #else
-    _finddata_t fileData;
-    int handle = _findfirst((path + "*.*").c_str(), &fileData);
+    _wfinddata_t fileData;
+    int handle = _wfindfirst((wpath + L"*.*").c_str(), &fileData);
 #endif
     if (-1 == handle)
     {
@@ -571,9 +578,9 @@ void PathInfo::traverseDFS(std::string path, int depth,
         {
             break;
         }
-        if (0 != strcmp(".", fileData.name) && 0 != strcmp("..", fileData.name))
+        if (0 != wcscmp(L".", fileData.name) && 0 != wcscmp(L"..", fileData.name))
         {
-            std::string subName = path + fileData.name;
+            std::string subName = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wpath + fileData.name);
             FileAttribute attr;
             if (getFileAttribute(subName, attr))
             {
@@ -599,9 +606,9 @@ void PathInfo::traverseDFS(std::string path, int depth,
             }
         }
 #ifdef _WIN64
-        if (0 != _findnexti64(handle, &fileData))
+        if (0 != _wfindnexti64(handle, &fileData))
 #else
-        if (0 != _findnext(handle, &fileData))
+        if (0 != _wfindnext(handle, &fileData))
 #endif
         {
             break;

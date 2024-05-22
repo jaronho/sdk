@@ -39,6 +39,20 @@ public:
     static bool setLocale(const std::string& locale);
 
     /**
+     * @brief 窄字符串转为宽字符串(UTF8)
+     * @param str 窄字符串
+     * @return 宽字符串
+     */
+    static std::wstring string2wstring(const std::string& str);
+
+    /**
+     * @brief 宽字符串转为窄字符串(UTF8)
+     * @param wstr 宽字符串
+     * @return 窄字符串
+     */
+    static std::string wstring2string(const std::wstring& wstr);
+
+    /**
      * @brief 获取编码
      * @param str 字符串
      * @param nonAsciiChars 非ASCII字符列表, 列表size表示非ASCII字符总个数, value表示每个字符所占的字节数

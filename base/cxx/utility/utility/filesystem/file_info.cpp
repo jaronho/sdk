@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <codecvt>
 #include <stdexcept>
 #include <string.h>
 #ifndef _WIN32
@@ -144,7 +145,11 @@ bool FileInfo::create() const
     {
         return false;
     }
+#ifdef _WIN32
+    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"ab+");
+#else
     auto f = fopen(m_fullName.c_str(), "ab+");
+#endif
     if (f)
     {
         fclose(f);
@@ -179,7 +184,11 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         return CopyResult::src_open_failed;
     }
     /* 打开源文件 */
+#ifdef _WIN32
+    auto srcFile = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+#else
     auto srcFile = fopen(m_fullName.c_str(), "rb");
+#endif
     if (!srcFile)
     {
         if (errCode)
@@ -198,7 +207,11 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     fseeko64(srcFile, 0, SEEK_SET);
 #endif
     /* 打开目标文件 */
+#ifdef _WIN32
+    auto destFile = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(destFilename).c_str(), L"wb+");
+#else
     auto destFile = fopen(destFilename.c_str(), "wb+");
+#endif
     if (!destFile)
     {
         if (errCode)
@@ -292,7 +305,11 @@ long long FileInfo::size() const
     {
         return fileSize;
     }
+#ifdef _WIN32
+    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+#else
     auto f = fopen(m_fullName.c_str(), "rb");
+#endif
     if (f)
     {
 #ifdef _WIN32
@@ -314,7 +331,11 @@ char* FileInfo::readAll(long long& fileSize) const
         fileSize = -1;
         return NULL;
     }
+#ifdef _WIN32
+    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+#else
     auto f = fopen(m_fullName.c_str(), "rb");
+#endif
     if (!f)
     {
         fileSize = -1;
@@ -346,7 +367,11 @@ char* FileInfo::read(size_t offset, size_t& count) const
     {
         return NULL;
     }
+#ifdef _WIN32
+    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+#else
     auto f = fopen(m_fullName.c_str(), "rb");
+#endif
     if (!f)
     {
         return NULL;
@@ -374,7 +399,11 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
     {
         return false;
     }
+#ifdef _WIN32
+    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), isAppend ? L"ab+" : L"wb+");
+#else
     auto f = fopen(m_fullName.c_str(), isAppend ? "ab+" : "wb+");
+#endif
     if (!f)
     {
         if (errCode)
@@ -412,7 +441,11 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
         return false;
     }
     /* 如果文件不存在则需要先创建文件 */
+#ifdef _WIN32
+    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"ab+");
+#else
     auto f = fopen(m_fullName.c_str(), "ab+");
+#endif
     if (!f)
     {
         if (errCode)
@@ -422,7 +455,12 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
         return false;
     }
     fclose(f);
-    f = fopen(m_fullName.c_str(), "rb+"); /* 该模式允许在指定位置写入数据, 但需要文件已经创建 */
+    /* 该模式允许在指定位置写入数据, 但需要文件已经创建 */
+#ifdef _WIN32
+    f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb+");
+#else
+    f = fopen(m_fullName.c_str(), "rb+");
+#endif
     if (!f)
     {
         if (errCode)
@@ -451,7 +489,11 @@ bool FileInfo::edit(size_t offset, size_t count, const std::function<void(char* 
     {
         return false;
     }
+#ifdef _WIN32
+    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb+");
+#else
     auto f = fopen(m_fullName.c_str(), "rb+");
+#endif
     if (!f)
     {
         return false;
@@ -471,7 +513,11 @@ bool FileInfo::editLine(const std::function<bool(size_t num, std::string& line)>
     {
         return false;
     }
+#ifdef _WIN32
+    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb+");
+#else
     auto f = fopen(m_fullName.c_str(), "rb+");
+#endif
     if (!f)
     {
         return false;
@@ -506,7 +552,11 @@ bool FileInfo::editLine(const std::function<bool(size_t num, std::string& line)>
     if (changed)
     {
         fclose(f);
+#ifdef _WIN32
+        f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"wb+");
+#else
         f = fopen(m_fullName.c_str(), "wb+");
+#endif
         if (!f)
         {
             return false;
@@ -527,7 +577,11 @@ bool FileInfo::isTextFile() const
     {
         return false;
     }
+#ifdef _WIN32
+    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+#else
     auto f = fopen(m_fullName.c_str(), "rb");
+#endif
     if (!f)
     {
         return false;
