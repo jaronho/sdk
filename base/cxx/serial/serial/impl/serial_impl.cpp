@@ -48,26 +48,7 @@
 namespace serial
 {
 #ifdef _WIN32
-inline std::wstring string2wstring(const std::string& str)
-{
-    if (str.empty())
-    {
-        return std::wstring();
-    }
-    size_t len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
-    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + 1));
-    if (!buf)
-    {
-        return std::wstring();
-    }
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buf, len);
-    buf[len] = '\0';
-    std::wstring wstr(buf);
-    free(buf);
-    return wstr;
-}
-
-inline std::string getPrefixPortIfNeeded(const std::string& input)
+static std::string getPrefixPortIfNeeded(const std::string& input)
 {
     static const std::string winComPortPrefix = "\\\\.\\";
     if (0 != input.compare(0, winComPortPrefix.size(), winComPortPrefix))
@@ -162,12 +143,8 @@ int SerialImpl::open()
     }
 #ifdef _WIN32
     std::string portWithPrefix = getPrefixPortIfNeeded(m_port);
-#ifdef UNICODE
-    LPCWSTR portName = string2wstring(portWithPrefix).c_str();
-#else
     LPCSTR portName = portWithPrefix.c_str();
-#endif
-    m_fd = CreateFile(portName, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    m_fd = CreateFileA(portName, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         return 2;
