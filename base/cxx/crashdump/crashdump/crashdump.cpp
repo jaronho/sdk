@@ -1,12 +1,12 @@
 #include "crashdump.h"
 
+#include <codecvt>
 #include <sys/stat.h>
 #include <sys/timeb.h>
 #include <sys/types.h>
 #include <time.h>
 #include <vector>
 #ifdef _WIN32
-#include <Windows.h>
 #include <direct.h>
 #include <io.h>
 
@@ -140,46 +140,6 @@ int shellCmd(const std::string& cmd, std::vector<std::string>* result = nullptr)
 #endif
 }
 
-#ifdef _WIN32
-static std::wstring string2wstring(const std::string& str)
-{
-    if (str.empty())
-    {
-        return std::wstring();
-    }
-    int len = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), NULL, 0);
-    wchar_t* buf = (wchar_t*)malloc(sizeof(wchar_t) * (len + (size_t)1));
-    if (!buf)
-    {
-        return std::wstring();
-    }
-    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), buf, len);
-    buf[len] = '\0';
-    std::wstring wstr(buf);
-    free(buf);
-    return wstr;
-}
-
-static std::string wstring2string(const std::wstring& wstr)
-{
-    if (wstr.empty())
-    {
-        return std::string();
-    }
-    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-    char* buf = (char*)malloc(sizeof(char) * (len + (size_t)1));
-    if (!buf)
-    {
-        return std::string();
-    }
-    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
-    buf[len] = '\0';
-    std::string str(buf);
-    free(buf);
-    return str;
-}
-#endif
-
 /**
  * @brief 获取程序文件
  * @return 程序文件全路径
@@ -189,7 +149,7 @@ std::string getProcFile()
 #ifdef _WIN32
     WCHAR exeFile[MAX_PATH + 1] = {0};
     GetModuleFileNameW(NULL, exeFile, MAX_PATH);
-    return wstring2string(exeFile);
+    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(exeFile);
 #else
     char exeFile[261] = {0};
     unsigned int exeFileLen = readlink("/proc/self/exe", exeFile, sizeof(exeFile) - 1);
@@ -223,7 +183,8 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
 #endif
 {
 #ifdef _WIN32
-    std::string oldDumpFile = wstring2string(dump_dir + std::wstring(L"/") + minidump_id + std::wstring(L".dmp"));
+    std::string oldDumpFile =
+        std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(std::wstring(dump_dir) + L"/" + minidump_id + L".dmp");
 #else
     std::string oldDumpFile = descriptor.path();
 #endif
@@ -297,8 +258,8 @@ void start(const std::string& outputPath, const DumpCallback& callback)
     createPath(g_outputPath);
     /* 开始监听 */
 #ifdef _WIN32
-    g_execptionHandler = new google_breakpad::ExceptionHandler(string2wstring(g_outputPath), NULL, dumpHandler, NULL,
-                                                               google_breakpad::ExceptionHandler::HANDLER_ALL);
+    g_execptionHandler = new google_breakpad::ExceptionHandler(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(g_outputPath),
+                                                               NULL, dumpHandler, NULL, google_breakpad::ExceptionHandler::HANDLER_ALL);
 #else
     google_breakpad::MinidumpDescriptor descriptor(g_outputPath.c_str());
     g_execptionHandler = new google_breakpad::ExceptionHandler(descriptor, NULL, dumpHandler, NULL, true, -1);
