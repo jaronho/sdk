@@ -1,6 +1,7 @@
 #include "tool.h"
 
 #include <algorithm>
+#include <codecvt>
 
 #include "algorithm/md5/md5.h"
 #include "utility/filesystem/file_info.h"
@@ -23,7 +24,17 @@ std::string Tool::md5Directory(const std::string& path, const std::function<void
             {
                 progressCb(name, attr.size);
             }
-            auto buffer = algorithm::md5SignFile(name.c_str(), blockSize);
+            char* buffer = NULL;
+#ifdef _WIN32
+            FILE* f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(name).c_str(), L"rb");
+#else
+            FILE* f = fopen(name.c_str(), "rb");
+#endif
+            if (f)
+            {
+                buffer = algorithm::md5SignFileHandle(f, blockSize);
+                fclose(f);
+            }
             if (buffer)
             {
                 md5List.emplace_back(buffer);
