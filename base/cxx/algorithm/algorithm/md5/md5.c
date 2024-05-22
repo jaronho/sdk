@@ -1,7 +1,6 @@
 #include "md5.h"
 
 #include <memory.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -279,6 +278,37 @@ char* md5SignStr(const unsigned char* input, unsigned int inputLen)
     return md5Fini(&ctx, digest, 1);
 }
 
+char* md5SignFileHandle(FILE* handle, unsigned long long blockSize)
+{
+    blockSize = blockSize >= 1024 ? blockSize : 1024;
+    char* str = NULL;
+    if (handle)
+    {
+        char* buffer = (char*)malloc(blockSize);
+        if (buffer)
+        {
+            md5_context_t ctx;
+            md5Init(&ctx);
+            unsigned long long offset = 0, count = blockSize;
+            while (count > 0)
+            {
+#ifdef _WIN32
+                _fseeki64(handle, offset, SEEK_SET);
+#else
+                fseeko64(handle, offset, SEEK_SET);
+#endif
+                count = fread(buffer, 1, blockSize, handle);
+                offset += count;
+                md5Update(&ctx, (unsigned char*)buffer, count);
+            }
+            unsigned char digest[16];
+            str = md5Fini(&ctx, digest, 1);
+            free(buffer);
+        }
+    }
+    return str;
+}
+
 char* md5SignFile(const char* filename, unsigned long long blockSize)
 {
     blockSize = blockSize >= 1024 ? blockSize : 1024;
@@ -290,27 +320,7 @@ char* md5SignFile(const char* filename, unsigned long long blockSize)
     FILE* f = fopen(filename, "rb");
     if (f)
     {
-        char* buffer = (char*)malloc(blockSize);
-        if (buffer)
-        {
-            md5_context_t ctx;
-            md5Init(&ctx);
-            unsigned long long offset = 0, count = blockSize;
-            while (count > 0)
-            {
-#ifdef _WIN32
-                _fseeki64(f, offset, SEEK_SET);
-#else
-                fseeko64(f, offset, SEEK_SET);
-#endif
-                count = fread(buffer, 1, blockSize, f);
-                offset += count;
-                md5Update(&ctx, (unsigned char*)buffer, count);
-            }
-            unsigned char digest[16];
-            str = md5Fini(&ctx, digest, 1);
-            free(buffer);
-        }
+        str = md5SignFileHandle(f, blockSize);
         fclose(f);
     }
     return str;
