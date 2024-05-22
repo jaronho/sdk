@@ -77,6 +77,25 @@ struct UsbImpl
 };
 
 #ifdef _WIN32
+static std::string wstring2string(const std::wstring& wstr)
+{
+    if (wstr.empty())
+    {
+        return std::string();
+    }
+    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+    char* buf = (char*)malloc(sizeof(char) * (len + (size_t)1));
+    if (!buf)
+    {
+        return std::string();
+    }
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
+    buf[len] = '\0';
+    std::string str(buf);
+    free(buf);
+    return str;
+}
+
 std::string SafeArrayToString(SAFEARRAY* psa)
 {
     BSTR bstr = NULL;
@@ -106,16 +125,7 @@ std::string SafeArrayToString(SAFEARRAY* psa)
     {
         std::wstring wstr = bstr;
         SysFreeString(bstr);
-        size_t len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-        char* buf = (char*)malloc(sizeof(char) * (len + 1));
-        if (buf)
-        {
-            WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
-            buf[len] = '\0';
-            std::string str(buf);
-            free(buf);
-            return str;
-        }
+        return wstring2string(wstr);
     }
     return std::string();
 }
@@ -164,24 +174,6 @@ typedef struct _USB_IAD_DESCRIPTOR
 
 void enumerateHub(int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFORMATION_EX ConnectionInfo,
                   PUSB_DESCRIPTOR_REQUEST ConfigDesc, PSTRING_DESCRIPTOR_NODE stringDescs, std::vector<UsbImpl>& usbList);
-
-std::string wstring2string(const std::wstring& wstr)
-{
-    if (!wstr.empty())
-    {
-        size_t len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-        char* buf = (char*)malloc(sizeof(char) * (len + 1));
-        if (buf)
-        {
-            WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
-            buf[len] = '\0';
-            std::string str(buf);
-            free(buf);
-            return str;
-        }
-    }
-    return std::string();
-}
 
 std::string guid2string(GUID guid)
 {
@@ -302,7 +294,7 @@ BOOL getDeviceProperty(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD pro
     }
     *buffer = NULL;
     DWORD requiredSize = 0;
-    BOOL ret = SetupDiGetDeviceRegistryProperty(devInfo, devInfoData, property, NULL, NULL, 0, &requiredSize);
+    BOOL ret = SetupDiGetDeviceRegistryPropertyA(devInfo, devInfoData, property, NULL, NULL, 0, &requiredSize);
     if ((0 == requiredSize) || (FALSE != ret && ERROR_INSUFFICIENT_BUFFER != GetLastError()))
     {
         return FALSE;
@@ -312,7 +304,7 @@ BOOL getDeviceProperty(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD pro
     {
         return FALSE;
     }
-    if (FALSE == SetupDiGetDeviceRegistryProperty(devInfo, devInfoData, property, NULL, (PBYTE)*buffer, requiredSize, &requiredSize))
+    if (FALSE == SetupDiGetDeviceRegistryPropertyA(devInfo, devInfoData, property, NULL, (PBYTE)*buffer, requiredSize, &requiredSize))
     {
         GlobalFree(*buffer);
         *buffer = NULL;
@@ -329,7 +321,7 @@ void driverNameToDeviceInst(const std::string driveName, HDEVINFO* pDevInfo, PSP
     }
     *pDevInfo = INVALID_HANDLE_VALUE;
     memset(pDevInfoData, 0, sizeof(SP_DEVINFO_DATA));
-    HDEVINFO deviceInfo = SetupDiGetClassDevs(NULL, NULL, NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+    HDEVINFO deviceInfo = SetupDiGetClassDevsA(NULL, NULL, NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
     if (INVALID_HANDLE_VALUE != deviceInfo)
     {
         bool matchFlag = false;
@@ -628,7 +620,7 @@ std::string getDisplayString(UCHAR index, PSTRING_DESCRIPTOR_NODE stringDescs)
             memset(pString, 0, 512);
             if (stringDescs->StringDescriptor->bLength > sizeof(USHORT))
             {
-                ULONG nBytes = WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, stringDescs->StringDescriptor->bString,
+                ULONG nBytes = WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, stringDescs->StringDescriptor->bString,
                                                    (stringDescs->StringDescriptor->bLength - 2) / 2, pString, 512, NULL, NULL);
                 if (nBytes)
                 {
@@ -980,7 +972,7 @@ void enumerateHub(int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFOR
     do
     {
         std::string deviceName = "\\\\.\\" + hubName;
-        HANDLE hHubDevice = CreateFile(deviceName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+        HANDLE hHubDevice = CreateFileA(deviceName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
         if (INVALID_HANDLE_VALUE == hHubDevice)
         {
             break;
@@ -1007,7 +999,7 @@ void enumerateHub(int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFOR
 std::vector<UsbImpl> enumerateHostControllers()
 {
     std::vector<UsbImpl> usbList;
-    HDEVINFO devInfo = SetupDiGetClassDevs((LPGUID)&GUID_CLASS_USB_HOST_CONTROLLER, NULL, NULL, (DIGCF_PRESENT | DIGCF_DEVICEINTERFACE));
+    HDEVINFO devInfo = SetupDiGetClassDevsA((LPGUID)&GUID_CLASS_USB_HOST_CONTROLLER, NULL, NULL, (DIGCF_PRESENT | DIGCF_DEVICEINTERFACE));
     if (NULL == devInfo)
     {
         return usbList;
@@ -1023,7 +1015,7 @@ std::vector<UsbImpl> enumerateHostControllers()
             break;
         }
         ULONG requiredSize = 0;
-        BOOL ret = SetupDiGetDeviceInterfaceDetail(devInfo, &devInterfaceData, NULL, 0, &requiredSize, NULL);
+        BOOL ret = SetupDiGetDeviceInterfaceDetailA(devInfo, &devInterfaceData, NULL, 0, &requiredSize, NULL);
         if (FALSE == ret && ERROR_INSUFFICIENT_BUFFER != GetLastError())
         {
             break;
@@ -1034,9 +1026,9 @@ std::vector<UsbImpl> enumerateHostControllers()
             break;
         }
         devDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
-        if (SetupDiGetDeviceInterfaceDetail(devInfo, &devInterfaceData, devDetailData, requiredSize, &requiredSize, NULL))
+        if (SetupDiGetDeviceInterfaceDetailA(devInfo, &devInterfaceData, devDetailData, requiredSize, &requiredSize, NULL))
         {
-            HANDLE hHCDev = CreateFile(devDetailData->DevicePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+            HANDLE hHCDev = CreateFileA(devDetailData->DevicePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
             if (INVALID_HANDLE_VALUE != hHCDev)
             {
                 enumerateHub(index + 1, getRootHubName(hHCDev), NULL, NULL, NULL, usbList);
