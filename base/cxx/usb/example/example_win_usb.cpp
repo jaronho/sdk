@@ -5,27 +5,13 @@
 //
 #include <SetupAPI.h>
 #include <cfgmgr32.h>
+#include <codecvt>
 #include <devpkey.h>
 #include <stdio.h>
 #include <string>
 #include <tchar.h>
 
 #pragma comment(lib, "setupapi.lib")
-
-std::string wstring2string(const std::wstring& wstr)
-{
-    if (wstr.empty())
-    {
-        return std::string();
-    }
-    int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-    char* buf = (char*)malloc(sizeof(char) * (len + 1));
-    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
-    buf[len] = '\0';
-    std::string str(buf);
-    free(buf);
-    return str;
-}
 
 void printTextInfo(const char* head, WCHAR PropertyBuffer[4096], DWORD RequiredSize)
 {
@@ -39,7 +25,7 @@ void printTextInfo(const char* head, WCHAR PropertyBuffer[4096], DWORD RequiredS
         }
         buf.push_back(PropertyBuffer[i]);
     }
-    printf("%s", wstring2string(buf).c_str());
+    printf("%s", std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(buf).c_str());
     printf("\n");
 }
 

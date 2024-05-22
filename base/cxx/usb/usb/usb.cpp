@@ -1,6 +1,7 @@
 #include "usb.h"
 
 #include <algorithm>
+#include <codecvt>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -77,25 +78,6 @@ struct UsbImpl
 };
 
 #ifdef _WIN32
-static std::string wstring2string(const std::wstring& wstr)
-{
-    if (wstr.empty())
-    {
-        return std::string();
-    }
-    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-    char* buf = (char*)malloc(sizeof(char) * (len + (size_t)1));
-    if (!buf)
-    {
-        return std::string();
-    }
-    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), buf, len, NULL, NULL);
-    buf[len] = '\0';
-    std::string str(buf);
-    free(buf);
-    return str;
-}
-
 std::string SafeArrayToString(SAFEARRAY* psa)
 {
     BSTR bstr = NULL;
@@ -125,7 +107,7 @@ std::string SafeArrayToString(SAFEARRAY* psa)
     {
         std::wstring wstr = bstr;
         SysFreeString(bstr);
-        return wstring2string(wstr);
+        return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wstr);
     }
     return std::string();
 }
@@ -199,7 +181,7 @@ std::string guid2string(GUID guid)
     }
     oss << L"}";
     /* step5. 转为std::string */
-    return wstring2string(oss.str());
+    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(oss.str());
 }
 
 std::string getRootHubName(HANDLE hostController)
@@ -219,7 +201,8 @@ std::string getRootHubName(HANDLE hostController)
     std::string rootHubNameA;
     if (DeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, rootHubNameW, nBytes, &nBytes, NULL))
     {
-        rootHubNameA = wstring2string(std::wstring(rootHubNameW->RootHubName, nBytes - sizeof(USB_ROOT_HUB_NAME) + sizeof(WCHAR)));
+        rootHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
+            std::wstring(rootHubNameW->RootHubName, nBytes - sizeof(USB_ROOT_HUB_NAME) + sizeof(WCHAR)));
     }
     GlobalFree(rootHubNameW);
     return rootHubNameA;
@@ -249,7 +232,8 @@ std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
     std::string extHubNameA;
     if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, extHubNameW, nBytes, extHubNameW, nBytes, &nBytes, NULL))
     {
-        extHubNameA = wstring2string(std::wstring(extHubNameW->NodeName, nBytes - sizeof(USB_NODE_CONNECTION_NAME) + sizeof(WCHAR)));
+        extHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
+            std::wstring(extHubNameW->NodeName, nBytes - sizeof(USB_NODE_CONNECTION_NAME) + sizeof(WCHAR)));
     }
     GlobalFree(extHubNameW);
     return extHubNameA;
@@ -279,7 +263,7 @@ std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
     std::string driverKeyNameA;
     if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, driverKeyNameW, nBytes, driverKeyNameW, nBytes, &nBytes, NULL))
     {
-        driverKeyNameA = wstring2string(
+        driverKeyNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
             std::wstring(driverKeyNameW->DriverKeyName, nBytes - sizeof(USB_NODE_CONNECTION_DRIVERKEY_NAME) + sizeof(WCHAR)));
     }
     GlobalFree(driverKeyNameW);
@@ -891,7 +875,7 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
                 if (SetupDiGetDevicePropertyW(devInfo, &devInfoData, &DEVPKEY_Device_BusRelations, &propertyType,
                                               reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
                 {
-                    deviceId = wstring2string(propertyBuffer);
+                    deviceId = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(propertyBuffer);
                     parseBusRelations(deviceId, model, vendor, group, devicePath);
                     if (!devicePath.empty())
                     {
