@@ -10,14 +10,12 @@
 
 namespace usb
 {
-#ifndef _WIN32
 /**
  * @brief 判断路径是否已设置为挂载点
  * @param path 路径
  * @return true-是, false-否
  */
-bool isMountpoint(const std::string& path);
-#endif
+bool isMountpoint(std::string path);
 
 /**
  * @brief 光驱信息

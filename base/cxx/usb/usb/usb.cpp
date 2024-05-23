@@ -1424,23 +1424,56 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
     udev_enumerate_unref(enumerate);
     udev_unref(udev);
 }
+#endif
 
-bool isMountpoint(const std::string& path)
+bool isMountpoint(std::string path)
 {
+    path.erase(0, path.find_first_not_of(' '));
+    path.erase(path.find_last_not_of(' ') + 1);
     if (path.empty())
     {
         return false;
     }
-    std::string pathFlag = " " + path;
+    std::string::size_type pos = 0;
+    while (std::string::npos != (pos = path.find("\\", pos)))
+    {
+        path.replace(pos, 1, "/");
+        pos += 1;
+    }
+    if (path.size() > 1 && '/' == path[path.size() - 1])
+    {
+        path.erase(path.size() - 1, 1);
+    }
+#ifdef _WIN32
+    if (1 == path.size() || (2 == path.size() && ':' == path[path.size() - 1]))
+    {
+        char driverChar = toupper(path[0]);
+        DWORD drives = GetLogicalDrives();
+        int index = 0;
+        while (drives)
+        {
+            if (1 == (drives & 0x1))
+            {
+                if ('A' + index == driverChar)
+                {
+                    return true;
+                }
+            }
+            drives = drives >> 1;
+            ++index;
+        }
+    }
+#else
+    path.insert(0, " ");
     std::vector<std::string> outVec;
-    runCommand("lsblk | grep \"" + pathFlag + "\"", nullptr, &outVec);
-    if (1 == outVec.size() && (outVec[0].rfind(pathFlag) + pathFlag.size()) == outVec[0].size())
+    runCommand("lsblk | grep \"" + path + "\"", nullptr, &outVec);
+    if (1 == outVec.size() && (outVec[0].rfind(path) + path.size()) == outVec[0].size())
     {
         return true;
     }
+#endif
     return false;
 }
-#endif
 
 #ifdef _WIN32
 std::vector<CdromInfo> getCdromInfoList()
