@@ -334,10 +334,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 if (newLine)
                 {
                     newLine = false;
-                    if (showHex)
-                    {
-                        fprintf(stderr, "\n");
-                    }
+                    fprintf(stderr, "\n");
                     if (showTime)
                     {
                         fprintf(stderr, "[Rx][%s] ", getDateTime().c_str());
