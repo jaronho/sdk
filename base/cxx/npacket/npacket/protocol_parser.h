@@ -12,9 +12,13 @@ namespace npacket
  */
 enum ApplicationProtocol
 {
-    FTP,
-    HTTP,
-    IEC103,
+    NONE, /* 无 */
+    FTP, /* 文件传输协议 */
+    HTTP, /* 超文本传输协议 */
+    IEC103, /* 一种用于电力系统远程监控和控制的通信协议, 由国际电工委员会(IEC)制定 */
+    TPKT, /* 介于TCP和COTP协议之间, 属于传输服务类的协议, 主要用来在TCP和COTP之间建立桥梁, 一般与COTP一起发送, 当作Header段 */
+    COTP, /* 面向连接的传输协议(Connection-Oriented Transport Protocol), 上层协议为TPKT协议 */
+    S7COMM, /* (S7 Communication)是西门子S7通讯协议簇里的一种, 上层协议为COTP协议  */
 };
 
 /**
@@ -24,23 +28,10 @@ class ProtocolParser
 {
 public:
     /**
-     * @brief 添加子解析器
-     * @param parser 子解析器
-     * @return true-添加成功, false-添加失败
+     * @brief 获取父应用层协议
+     * @return 协议类型(ApplicationProtocol)
      */
-    bool addChild(const std::shared_ptr<ProtocolParser>& parser);
-
-    /**
-     * @brief 删除子解析器
-     * @param protocol 应用层协议
-     */
-    void removeChild(uint32_t protocol);
-
-    /**
-     * @brief 获取子解析器列表
-     * @param 子解析器列表
-     */
-    std::vector<std::shared_ptr<ProtocolParser>> getChildren();
+    virtual uint32_t getParentProtocol() const;
 
     /**
      * @brief 获取应用层协议
@@ -53,15 +44,11 @@ public:
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
-     * @param payload 层负载
-     * @param payloadLen 层负载长度
+     * @param payload 传输层负载
+     * @param payloadLen 传输层负载长度
      * @return true-成功, false-失败
      */
     virtual bool parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
                        const uint8_t* payload, uint32_t payloadLen) = 0;
-
-private:
-    std::mutex m_mutexChildren;
-    std::vector<std::shared_ptr<ProtocolParser>> m_children; /* 子解析器列表 */
 };
 } // namespace npacket

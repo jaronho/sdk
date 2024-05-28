@@ -67,8 +67,8 @@ public:
      * @param dataLen 数据长度
      */
     using DATA_PKT_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                                 const std::shared_ptr<ProtocolHeader>& header, const CtrlInfo& ctrl,
-                                                 const DataFlag& flag, const uint8_t* data, uint32_t dataLen)>;
+                                                 const std::shared_ptr<ProtocolHeader>& header, const CtrlInfo& ctrl, const DataFlag& flag,
+                                                 const uint8_t* data, uint32_t dataLen)>;
 
 public:
     /**
