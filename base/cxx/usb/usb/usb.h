@@ -34,7 +34,7 @@ struct CdromInfo
     int can_write_DVD_RAM = 0; /* 是否支持写入DVD-RAM光盘 */
 #else
     int speed = 0; /* 读取速度, 例如: 4表示驱动器可以以4倍速读取CD */
-    int slots = 0; /* 插槽数量, 对于大多数标准的单槽光驱, 这个值通常是1 */
+    int slotNum = 0; /* 插槽数量, 对于大多数标准的单槽光驱, 这个值通常是1 */
     int can_close_tray = 0; /* 是否支持关闭托盘的能力 */
     int can_open_tray = 0; /* 是否支持打开托盘的能力 */
     int can_lock_tray = 0; /* 是否支持锁定托盘, 防止用户手动打开 */

@@ -1613,7 +1613,7 @@ std::vector<CdromInfo> getCdromInfoList(std::string& outStr)
                     }
                     else if ("drive # of slots" == title)
                     {
-                        infoList[i].slots = std::atoi(valueList[i].c_str());
+                        infoList[i].slotNum = std::atoi(valueList[i].c_str());
                     }
                     else if ("Can close tray" == title)
                     {
