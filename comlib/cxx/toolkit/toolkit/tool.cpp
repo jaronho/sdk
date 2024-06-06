@@ -1,67 +1,106 @@
 #include "tool.h"
 
-#include <algorithm>
 #include <codecvt>
+#include <future>
+#include <mutex>
+#include <type_traits>
 
-#include "algorithm/md5/md5.h"
-#include "utility/filesystem/file_info.h"
+#include "algorithm/md5/md5ex.h"
 #include "utility/filesystem/path_info.h"
-#include "utility/strtool/strtool.h"
 
 namespace toolkit
 {
-std::string Tool::md5Directory(const std::string& path, const std::function<void(const std::string& name, size_t fileSize)>& progressCb,
-                               const std::function<bool()>& stopFunc, size_t blockSize)
+std::string
+Tool::md5Directory(const std::string& path, const std::function<void(size_t totalCount, size_t totalSize)>& beginCb,
+                   const std::function<void(const std::string& name, size_t fileSize, const std::function<std::string()>& calcFunc)>& func,
+                   const std::function<bool()>& stopFunc, size_t blockSize)
 {
     blockSize = blockSize <= 0 ? (1024 * 1024) : (blockSize > (50 * 1024 * 1024) ? (50 * 1024 * 1024) : blockSize);
-    std::vector<std::string> md5List;
-    /* ±È¿˙º∆À„Œƒº˛MD5 */
+    /* ËÆ°ÁÆóÊñá‰ª∂Êï∞ÈáèÂíåÊÄªÂ§ßÂ∞è */
+    size_t totalFileCount = 0, totalFileSize = 0;
     utility::PathInfo pi(path, true);
     pi.traverse(
         nullptr,
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-            if (progressCb)
-            {
-                progressCb(name, attr.size);
-            }
-            char* buffer = NULL;
+            ++totalFileCount;
+            totalFileSize += attr.size;
+        },
+        nullptr, true, false);
+    if (beginCb)
+    {
+        beginCb(totalFileCount, totalFileSize);
+    }
+    if (0 == totalFileCount || 0 == totalFileSize)
+    {
+        return std::string();
+    }
+    /* ÈÅçÂéÜËÆ°ÁÆóÊñá‰ª∂ */
+    auto mutexInner = std::make_shared<std::mutex>();
+    auto md5List = std::make_shared<std::vector<std::string>>();
+    auto result = std::make_shared<std::promise<void>>();
+    auto innerFunc = [&, stopFunc, blockSize, totalFileCount, mutexInner, md5List, result](const std::string& name,
+                                                                                           const utility::FileAttribute& attr) {
+        bool stopFlag = false;
+        std::string value;
 #ifdef _WIN32
-            FILE* f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(name).c_str(), L"rb");
+        FILE* f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(name).c_str(), L"rb");
 #else
-            FILE* f = fopen(name.c_str(), "rb");
+        FILE* f = fopen(name.c_str(), "rb");
 #endif
-            if (f)
+        if (f)
+        {
+            value = algorithm::md5SignFileHandleEx(f, blockSize, [&, stopFunc]() {
+                stopFlag = stopFunc ? stopFunc() : false;
+                return stopFlag;
+            });
+            fclose(f);
+        }
+        {
+            std::lock_guard<std::mutex> locker(*mutexInner);
+            if (stopFlag)
             {
-                buffer = algorithm::md5SignFileHandle(f, blockSize);
-                fclose(f);
-            }
-            if (buffer)
-            {
-                md5List.emplace_back(buffer);
-                free(buffer);
+                md5List->clear();
+                result->set_value();
             }
             else
             {
-                md5List.emplace_back(std::string());
+                md5List->emplace_back(value);
+                if (md5List->size() == totalFileCount)
+                {
+                    result->set_value();
+                }
+            }
+        }
+        return value;
+    };
+    pi.traverse(
+        nullptr,
+        [&, innerFunc](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (func)
+            {
+                func(name, attr.size, [&, innerFunc, name, attr]() { return innerFunc(name, attr); });
+            }
+            else
+            {
+                innerFunc(name, attr);
             }
         },
-        stopFunc, true, false);
-    /* ¥”–°µΩ¥Û≈≈–Ú */
-    std::sort(md5List.begin(), md5List.end(), [](const std::string& a, const std::string& b) { return (a < b); });
-    /* º∆À„◊‹µƒMD5÷µ */
-    algorithm::md5_context_t ctx;
-    md5Init(&ctx);
-    for (const auto& value : md5List)
-    {
-        md5Update(&ctx, (unsigned char*)value.c_str(), value.size());
-    }
+        [&, stopFunc]() {
+            auto stopFlag = stopFunc ? stopFunc() : false;
+            if (stopFlag)
+            {
+                std::lock_guard<std::mutex> locker(*mutexInner);
+                md5List->clear();
+                result->set_value();
+            }
+            return stopFlag;
+        },
+        true, false);
+    result->get_future().share().get();
     std::string value;
-    unsigned char digest[16];
-    auto buffer = md5Fini(&ctx, digest, 1);
-    if (buffer)
     {
-        value = buffer;
-        free(buffer);
+        std::lock_guard<std::mutex> locker(*mutexInner);
+        value = algorithm::md5SignStrList(*md5List, 1);
     }
     return value;
 }
