@@ -23,28 +23,31 @@ std::string md5SignStrEx(const unsigned char* input, size_t inputLen)
 
 std::string md5SignStrList(std::vector<std::string> strList, int sortFlag)
 {
-    if (1 == sortFlag) /* 从小到大排序 */
-    {
-        std::sort(strList.begin(), strList.end(), [](const std::string& a, const std::string& b) { return (a < b); });
-    }
-    else if (2 == sortFlag) /* 从大到小排序 */
-    {
-        std::sort(strList.begin(), strList.end(), [](const std::string& a, const std::string& b) { return (a > b); });
-    }
-    /* 计算总的MD5值 */
-    algorithm::md5_context_t ctx;
-    algorithm::md5Init(&ctx);
-    for (const auto& value : strList)
-    {
-        algorithm::md5Update(&ctx, (unsigned char*)value.c_str(), value.size());
-    }
     std::string value;
-    unsigned char digest[16];
-    auto buffer = algorithm::md5Fini(&ctx, digest, 1);
-    if (buffer)
+    if (!strList.empty())
     {
-        value = buffer;
-        free(buffer);
+        if (1 == sortFlag) /* 从小到大排序 */
+        {
+            std::sort(strList.begin(), strList.end(), [](const std::string& a, const std::string& b) { return (a < b); });
+        }
+        else if (2 == sortFlag) /* 从大到小排序 */
+        {
+            std::sort(strList.begin(), strList.end(), [](const std::string& a, const std::string& b) { return (a > b); });
+        }
+        /* 计算总的MD5值 */
+        algorithm::md5_context_t ctx;
+        algorithm::md5Init(&ctx);
+        for (const auto& value : strList)
+        {
+            algorithm::md5Update(&ctx, (unsigned char*)value.c_str(), value.size());
+        }
+        unsigned char digest[16];
+        auto buffer = algorithm::md5Fini(&ctx, digest, 1);
+        if (buffer)
+        {
+            value = buffer;
+            free(buffer);
+        }
     }
     return value;
 }
@@ -93,17 +96,16 @@ std::string md5SignFileHandleEx(FILE* handle, size_t blockSize, const std::funct
 std::string md5SignFileEx(const std::string& filename, size_t blockSize, const std::function<bool()>& stopFunc)
 {
     blockSize = blockSize >= 1024 ? blockSize : 1024;
-    if (filename.empty())
+    std::string value;
+    if (!filename.empty())
     {
-        return std::string();
+        FILE* f = fopen(filename.c_str(), "rb");
+        if (f)
+        {
+            value = md5SignFileHandleEx(f, blockSize, stopFunc);
+            fclose(f);
+        }
     }
-    std::string str;
-    FILE* f = fopen(filename.c_str(), "rb");
-    if (f)
-    {
-        str = md5SignFileHandleEx(f, blockSize, stopFunc);
-        fclose(f);
-    }
-    return str;
+    return value;
 }
 } // namespace algorithm
