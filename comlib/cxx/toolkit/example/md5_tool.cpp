@@ -99,7 +99,7 @@ int main(int argc, char** argv)
                     auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
                     if (!relativeName.empty() && '/' == relativeName[0])
                     {
-                        relativeName.erase(0);
+                        relativeName.erase(0, 1);
                     }
                     if (utility::Charset::Coding::gbk == utility::Charset::getCoding(relativeName))
                     {
