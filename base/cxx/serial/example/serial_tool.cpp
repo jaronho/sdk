@@ -375,23 +375,15 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 if (newLine) /* 打印换行符 */
                 {
                     fprintf(stderr, "\n");
-                    if (i == len - 1)
-                    {
-                        if (showTime)
-                        {
-                            fprintf(stderr, "[Rx][%s]", getDateTime().c_str());
-                            if (!autoLine)
-                            {
-                                fprintf(stderr, "\n");
-                            }
-                        }
-                    }
                 }
             }
             /* 打印后续格式 */
             if (autoLine)
             {
-                fprintf(stderr, "\n");
+                if (!newLine)
+                {
+                    fprintf(stderr, "\n");
+                }
             }
             else
             {
