@@ -284,6 +284,10 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         {
             char input[1024] = {0};
             std::cin.getline(input, sizeof(input));
+            if (strlen(input) == 0)
+            {
+                continue;
+            }
             if (sendHex)
             {
                 char* bytes;
@@ -321,20 +325,21 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         }
         if (!bytes.empty())
         {
-            if (autoLine && !newLine)
+            /* 打印接收时间 */
+            if (autoLine || newLine)
             {
-                fprintf(stderr, "\n");
+                newLine = false;
                 if (showTime)
                 {
                     fprintf(stderr, "[Rx][%s] ", getDateTime().c_str());
                 }
             }
+            /* 打印串口数据 */
             for (size_t i = 0, len = bytes.size(); i < len; ++i)
             {
-                if (newLine)
+                if (newLine) /* 打印接收时间 */
                 {
                     newLine = false;
-                    fprintf(stderr, "\n");
                     if (showTime)
                     {
                         fprintf(stderr, "[Rx][%s] ", getDateTime().c_str());
@@ -350,11 +355,49 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 }
                 else
                 {
-                    fprintf(stderr, "%c", bytes[i]);
+                    if ('\n' == bytes[i])
+                    {
+                        newLine = true;
+                    }
+                    else if ('\r' == bytes[i])
+                    {
+                        if (i < len - 1 && ('\n' == bytes[i + 1]))
+                        {
+                            ++i;
+                            newLine = true;
+                        }
+                    }
+                    else
+                    {
+                        fprintf(stderr, "%c", bytes[i]);
+                    }
                 }
-                if ('\n' == bytes[i] || '\r' == bytes[i])
+                if (newLine) /* 打印换行符 */
                 {
-                    newLine = true;
+                    fprintf(stderr, "\n");
+                    if (i == len - 1)
+                    {
+                        if (showTime)
+                        {
+                            fprintf(stderr, "[Rx][%s]", getDateTime().c_str());
+                            if (!autoLine)
+                            {
+                                fprintf(stderr, "\n");
+                            }
+                        }
+                    }
+                }
+            }
+            /* 打印后续格式 */
+            if (autoLine)
+            {
+                fprintf(stderr, "\n");
+            }
+            else
+            {
+                if (showHex)
+                {
+                    fprintf(stderr, " ");
                 }
             }
         }
@@ -685,6 +728,17 @@ int main(int argc, char** argv)
             errorStr += "错误: 不支持 " + key + " 选项\n";
         }
     }
+    /* 测试数据 */
+#if 0
+    flagPort = true;
+    portName = "COM207";
+    crlf = 1;
+    flagTime = false;
+    flagTxHex = false;
+    flagRxHex = false;
+    flagRxLine = false;
+    flagRxHide = false;
+#endif
     /* 参数判断 */
     if (flagList && errorStr.empty())
     {
