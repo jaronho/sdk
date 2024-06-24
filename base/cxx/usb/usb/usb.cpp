@@ -202,7 +202,7 @@ std::string getRootHubName(HANDLE hostController)
     if (DeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, rootHubNameW, nBytes, &nBytes, NULL))
     {
         rootHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
-            std::wstring(rootHubNameW->RootHubName, nBytes - sizeof(USB_ROOT_HUB_NAME) + sizeof(WCHAR)));
+            std::wstring(rootHubNameW->RootHubName, wcslen(rootHubNameW->RootHubName)));
     }
     GlobalFree(rootHubNameW);
     return rootHubNameA;
@@ -232,8 +232,8 @@ std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
     std::string extHubNameA;
     if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, extHubNameW, nBytes, extHubNameW, nBytes, &nBytes, NULL))
     {
-        extHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
-            std::wstring(extHubNameW->NodeName, nBytes - sizeof(USB_NODE_CONNECTION_NAME) + sizeof(WCHAR)));
+        extHubNameA =
+            std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(std::wstring(extHubNameW->NodeName, wcslen(extHubNameW->NodeName)));
     }
     GlobalFree(extHubNameW);
     return extHubNameA;
@@ -264,7 +264,7 @@ std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
     if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, driverKeyNameW, nBytes, driverKeyNameW, nBytes, &nBytes, NULL))
     {
         driverKeyNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
-            std::wstring(driverKeyNameW->DriverKeyName, nBytes - sizeof(USB_NODE_CONNECTION_DRIVERKEY_NAME) + sizeof(WCHAR)));
+            std::wstring(driverKeyNameW->DriverKeyName, wcslen(driverKeyNameW->DriverKeyName)));
     }
     GlobalFree(driverKeyNameW);
     return driverKeyNameA;
