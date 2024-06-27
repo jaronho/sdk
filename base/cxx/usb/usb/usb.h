@@ -335,12 +335,6 @@ private:
     static std::shared_ptr<usb::Usb> parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList,
                                               const std::vector<CdromInfo>& cdromList);
 
-    /**
-     * @brief 排序Usb信息列表
-     * @param usbList [输入/输出]USB列表
-     */
-    static void sortUsbList(std::vector<std::shared_ptr<Usb>>& usbList);
-
 private:
     libusb_device* m_dev = NULL;
     std::shared_ptr<usb::Usb> m_parent = nullptr; /* 父节点 */

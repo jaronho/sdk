@@ -154,7 +154,7 @@ typedef struct _USB_IAD_DESCRIPTOR
     UCHAR iFunction;
 } USB_IAD_DESCRIPTOR, *PUSB_IAD_DESCRIPTOR;
 
-void enumerateHub(int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFORMATION_EX ConnectionInfo,
+void enumerateHub(HDEVINFO devInfo, int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFORMATION_EX ConnectionInfo,
                   PUSB_DESCRIPTOR_REQUEST ConfigDesc, PSTRING_DESCRIPTOR_NODE stringDescs, std::vector<UsbImpl>& usbList);
 
 std::string guid2string(GUID guid)
@@ -277,12 +277,7 @@ BOOL getDeviceProperty(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD pro
         return FALSE;
     }
     *buffer = NULL;
-    DWORD requiredSize = 0;
-    BOOL ret = SetupDiGetDeviceRegistryPropertyA(devInfo, devInfoData, property, NULL, NULL, 0, &requiredSize);
-    if ((0 == requiredSize) || (FALSE != ret && ERROR_INSUFFICIENT_BUFFER != GetLastError()))
-    {
-        return FALSE;
-    }
+    DWORD requiredSize = 1024;
     *buffer = (LPTSTR)GlobalAlloc(GPTR, requiredSize);
     if (NULL == *buffer)
     {
@@ -297,43 +292,34 @@ BOOL getDeviceProperty(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD pro
     return TRUE;
 }
 
-void driverNameToDeviceInst(const std::string driveName, HDEVINFO* pDevInfo, PSP_DEVINFO_DATA pDevInfoData)
+BOOL driverNameToDeviceInst(HDEVINFO devInfo, const std::string driveName, PSP_DEVINFO_DATA pDevInfoData)
 {
-    if (driveName.empty() || NULL == pDevInfo || NULL == pDevInfoData)
-    {
-        return;
-    }
-    *pDevInfo = INVALID_HANDLE_VALUE;
     memset(pDevInfoData, 0, sizeof(SP_DEVINFO_DATA));
-    HDEVINFO deviceInfo = SetupDiGetClassDevsA(NULL, NULL, NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
-    if (INVALID_HANDLE_VALUE != deviceInfo)
+    if (INVALID_HANDLE_VALUE == devInfo || driveName.empty() || NULL == pDevInfoData)
     {
-        bool matchFlag = false;
-        SP_DEVINFO_DATA deviceInfoData;
-        deviceInfoData.cbSize = sizeof(deviceInfoData);
-        for (ULONG index = 0; SetupDiEnumDeviceInfo(deviceInfo, index, &deviceInfoData); ++index)
+        return FALSE;
+    }
+    bool matchFlag = false;
+    SP_DEVINFO_DATA deviceInfoData;
+    deviceInfoData.cbSize = sizeof(deviceInfoData);
+    for (ULONG index = 0; SetupDiEnumDeviceInfo(devInfo, index, &deviceInfoData); ++index)
+    {
+        PSTR buf = NULL;
+        if (getDeviceProperty(devInfo, &deviceInfoData, SPDRP_DRIVER, &buf))
         {
-            PSTR buf = NULL;
-            if (getDeviceProperty(deviceInfo, &deviceInfoData, SPDRP_DRIVER, &buf))
+            if (0 == _stricmp(driveName.c_str(), buf))
             {
-                if (0 == _stricmp(driveName.c_str(), buf))
-                {
-                    *pDevInfo = deviceInfo;
-                    CopyMemory(pDevInfoData, &deviceInfoData, sizeof(deviceInfoData));
-                    matchFlag = true;
-                }
-                GlobalFree(buf);
-                if (matchFlag)
-                {
-                    break;
-                }
+                CopyMemory(pDevInfoData, &deviceInfoData, sizeof(deviceInfoData));
+                matchFlag = true;
+            }
+            GlobalFree(buf);
+            if (matchFlag)
+            {
+                return TRUE;
             }
         }
-        if (!matchFlag)
-        {
-            SetupDiDestroyDeviceInfoList(deviceInfo);
-        }
     }
+    return FALSE;
 }
 
 PUSB_DESCRIPTOR_REQUEST getConfigDescriptor(HANDLE hHubDevice, ULONG connectionIndex, UCHAR descriptorIndex)
@@ -781,7 +767,7 @@ std::vector<LogicalDrive> getLogicalDriveList()
     return localDriveList;
 }
 
-void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::vector<UsbImpl>& usbList)
+void enumerateHubPorts(HDEVINFO devInfo, int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::vector<UsbImpl>& usbList)
 {
     auto localDriveList = getLogicalDriveList();
     bool recheckDriverFlag = false;
@@ -864,10 +850,8 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
             std::string dirverName = getDriverKeyName(hHubDevice, index);
             std::string deviceId, model, vendor, group, devicePath;
             std::vector<DriverInfo> driverList;
-            HDEVINFO devInfo = INVALID_HANDLE_VALUE;
             SP_DEVINFO_DATA devInfoData = {0};
-            driverNameToDeviceInst(dirverName, &devInfo, &devInfoData);
-            if (INVALID_HANDLE_VALUE != devInfo)
+            if (driverNameToDeviceInst(devInfo, dirverName, &devInfoData))
             {
                 DEVPROPTYPE propertyType = 0;
                 WCHAR propertyBuffer[1024] = {0};
@@ -886,7 +870,6 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
                         }
                     }
                 }
-                SetupDiDestroyDeviceInfoList(devInfo);
             }
             UsbImpl info;
             info.busNum = rootIndex;
@@ -907,7 +890,7 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
         }
         if (connectionInfoEx->DeviceIsHub) /* Hub Device */
         {
-            enumerateHub(rootIndex, getExternalHubName(hHubDevice, index), connectionInfoEx, configDesc, stringDescs, usbList);
+            enumerateHub(devInfo, rootIndex, getExternalHubName(hHubDevice, index), connectionInfoEx, configDesc, stringDescs, usbList);
         }
         if (configDesc)
         {
@@ -941,7 +924,7 @@ void enumerateHubPorts(int rootIndex, HANDLE hHubDevice, ULONG numPorts, std::ve
     }
 }
 
-void enumerateHub(int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo,
+void enumerateHub(HDEVINFO devInfo, int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo,
                   PUSB_DESCRIPTOR_REQUEST configDesc, PSTRING_DESCRIPTOR_NODE stringDescs, std::vector<UsbImpl>& usbList)
 {
     if (hubName.empty())
@@ -974,7 +957,7 @@ void enumerateHub(int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFOR
         else /* Extend Hub */
         {
         }
-        enumerateHubPorts(rootIndex, hHubDevice, hubInfo->u.HubInformation.HubDescriptor.bNumberOfPorts, usbList);
+        enumerateHubPorts(devInfo, rootIndex, hHubDevice, hubInfo->u.HubInformation.HubDescriptor.bNumberOfPorts, usbList);
         CloseHandle(hHubDevice);
     } while (0);
     GlobalFree(hubInfo);
@@ -983,13 +966,13 @@ void enumerateHub(int rootIndex, std::string hubName, PUSB_NODE_CONNECTION_INFOR
 std::vector<UsbImpl> enumerateHostControllers()
 {
     std::vector<UsbImpl> usbList;
-    HDEVINFO devInfo = SetupDiGetClassDevsA((LPGUID)&GUID_CLASS_USB_HOST_CONTROLLER, NULL, NULL, (DIGCF_PRESENT | DIGCF_DEVICEINTERFACE));
+    HDEVINFO devInfo = SetupDiGetClassDevsA(NULL, NULL, NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
     if (NULL == devInfo)
     {
         return usbList;
     }
     SP_DEVINFO_DATA devInfoData;
-    devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+    devInfoData.cbSize = sizeof(devInfoData);
     for (ULONG index = 0; SetupDiEnumDeviceInfo(devInfo, index, &devInfoData); ++index)
     {
         SP_DEVICE_INTERFACE_DATA devInterfaceData;
@@ -1015,7 +998,7 @@ std::vector<UsbImpl> enumerateHostControllers()
             HANDLE hHCDev = CreateFileA(devDetailData->DevicePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
             if (INVALID_HANDLE_VALUE != hHCDev)
             {
-                enumerateHub(index + 1, getRootHubName(hHCDev), NULL, NULL, NULL, usbList);
+                enumerateHub(devInfo, index + 1, getRootHubName(hHCDev), NULL, NULL, NULL, usbList);
                 CloseHandle(hHCDev);
             }
         }
@@ -2172,8 +2155,6 @@ std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
         libusb_free_device_list(devList, 1);
     }
     libusb_exit(NULL);
-    /* 排序 */
-    sortUsbList(usbList);
     return usbList;
 }
 
@@ -2355,31 +2336,5 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
         }
     }
     return info;
-}
-
-void Usb::sortUsbList(std::vector<std::shared_ptr<Usb>>& usbList)
-{
-    for (size_t i = 0; i < usbList.size(); ++i)
-    {
-        sortUsbList(usbList[i]->m_children);
-    }
-    std::sort(usbList.begin(), usbList.end(), [](std::shared_ptr<usb::Usb> a, std::shared_ptr<usb::Usb> b) {
-        if (a->getBusNum() < b->getBusNum())
-        {
-            return true;
-        }
-        else if (a->getBusNum() == b->getBusNum())
-        {
-            if (a->getPortNum() < b->getPortNum())
-            {
-                return true;
-            }
-            else if (a->getPortNum() == b->getPortNum())
-            {
-                return a->getAddress() < b->getAddress();
-            }
-        }
-        return false;
-    });
 }
 } // namespace usb
