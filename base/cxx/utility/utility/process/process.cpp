@@ -1,6 +1,5 @@
 #include "process.h"
 
-#include <codecvt>
 #include <cstdint>
 #include <sstream>
 #include <string.h>
@@ -165,9 +164,9 @@ std::string Process::getProcessExeFile(int pid)
 #ifdef _WIN32
     if (pid <= 0)
     {
-        WCHAR exeFile[MAX_PATH + 1] = {0};
-        GetModuleFileNameW(NULL, exeFile, MAX_PATH);
-        return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(exeFile);
+        CHAR exeFile[MAX_PATH + 1] = {0};
+        GetModuleFileNameA(NULL, exeFile, MAX_PATH);
+        return exeFile;
     }
     else
     {
@@ -175,11 +174,11 @@ std::string Process::getProcessExeFile(int pid)
         HANDLE moduleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
         if (INVALID_HANDLE_VALUE != moduleSnap)
         {
-            MODULEENTRY32W moduleEntry32;
+            MODULEENTRY32 moduleEntry32;
             moduleEntry32.dwSize = sizeof(MODULEENTRY32);
-            if (Module32FirstW(moduleSnap, &moduleEntry32))
+            if (Module32First(moduleSnap, &moduleEntry32))
             {
-                exeFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(moduleEntry32.szExePath);
+                exeFile = moduleEntry32.szExePath;
             }
             CloseHandle(moduleSnap);
         }
@@ -215,9 +214,9 @@ int Process::searchProcess(const std::string& exeFile, const std::function<bool(
     {
         return matchCount;
     }
-    PROCESSENTRY32W processEntry32;
+    PROCESSENTRY32 processEntry32;
     processEntry32.dwSize = sizeof(PROCESSENTRY32);
-    if (!Process32FirstW(processSnap, &processEntry32))
+    if (!Process32First(processSnap, &processEntry32))
     {
         CloseHandle(processSnap);
         return matchCount;
@@ -233,15 +232,15 @@ int Process::searchProcess(const std::string& exeFile, const std::function<bool(
         {
             continue;
         }
-        MODULEENTRY32W moduleEntry32;
+        MODULEENTRY32 moduleEntry32;
         moduleEntry32.dwSize = sizeof(MODULEENTRY32);
-        if (!Module32FirstW(moduleSnap, &moduleEntry32))
+        if (!Module32First(moduleSnap, &moduleEntry32))
         {
             CloseHandle(moduleSnap);
             continue;
         }
         CloseHandle(moduleSnap);
-        std::string exeFilePath = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(moduleEntry32.szExePath);
+        std::string exeFilePath = moduleEntry32.szExePath;
         unsigned int exeFilePathLen = exeFilePath.size();
         if (exeFile.size() > exeFilePathLen)
         {
@@ -270,7 +269,7 @@ int Process::searchProcess(const std::string& exeFile, const std::function<bool(
                 }
             }
         }
-    } while (Process32NextW(processSnap, &processEntry32));
+    } while (Process32Next(processSnap, &processEntry32));
     CloseHandle(processSnap);
 #else
     DIR* dir = opendir("/proc");

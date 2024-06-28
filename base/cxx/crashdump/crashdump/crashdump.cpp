@@ -1,6 +1,5 @@
 #include "crashdump.h"
 
-#include <codecvt>
 #include <sys/stat.h>
 #include <sys/timeb.h>
 #include <sys/types.h>
@@ -140,6 +139,97 @@ int shellCmd(const std::string& cmd, std::vector<std::string>* result = nullptr)
 #endif
 }
 
+#ifdef _WIN32
+bool isUTF8(const std::string& str)
+{
+    size_t i = 0;
+    if (str.size() >= 3 && (0xEF == (unsigned char)str[0] && 0xBB == (unsigned char)str[1] && 0xBF == (unsigned char)str[2])) /* BOM */
+    {
+        i = 3;
+    }
+    unsigned int byteCount = 0; /* UTF8可用1-6个字节编码, ASCII用1个字节 */
+    for (; i < str.size(); ++i)
+    {
+        unsigned char ch = str[i];
+        if ('\0' == ch)
+        {
+            break;
+        }
+        if (0 == byteCount)
+        {
+            if (ch >= 0x80) /* 如果不是ASCII码, 应该是多字节符, 计算字节数 */
+            {
+                if (ch >= 0xFC && ch <= 0xFD)
+                {
+                    byteCount = 6;
+                }
+                else if (ch >= 0xF8)
+                {
+                    byteCount = 5;
+                }
+                else if (ch >= 0xF0)
+                {
+                    byteCount = 4;
+                }
+                else if (ch >= 0xE0)
+                {
+                    byteCount = 3;
+                }
+                else if (ch >= 0xC0)
+                {
+                    byteCount = 2;
+                }
+                else
+                {
+                    return false;
+                }
+                byteCount--;
+            }
+        }
+        else
+        {
+            if (0x80 != (ch & 0xC0)) /* 多字节符的非首字节, 应为10xxxxxx */
+            {
+                return false;
+            }
+            byteCount--; /* 减到为零为止 */
+        }
+    }
+    return (0 == byteCount);
+}
+
+std::wstring string2wstring(const std::string& str, UINT& codePage)
+{
+    if (!str.empty())
+    {
+        codePage = isUTF8(str) ? CP_UTF8 : CP_ACP;
+        int count = MultiByteToWideChar(codePage, 0, str.c_str(), -1, NULL, 0);
+        if (count > 0)
+        {
+            std::wstring wstr(count, 0);
+            MultiByteToWideChar(codePage, 0, str.c_str(), -1, &wstr[0], count);
+            return wstr;
+        }
+    }
+    return std::wstring();
+}
+
+std::string wstring2string(const std::wstring& wstr, unsigned int codePage)
+{
+    if (!wstr.empty())
+    {
+        int count = WideCharToMultiByte(codePage, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+        if (count > 0)
+        {
+            std::string str(count, 0);
+            WideCharToMultiByte(codePage, 0, wstr.c_str(), -1, &str[0], count, NULL, NULL);
+            return str;
+        }
+    }
+    return std::string();
+}
+#endif
+
 /**
  * @brief 获取程序文件
  * @return 程序文件全路径
@@ -147,9 +237,9 @@ int shellCmd(const std::string& cmd, std::vector<std::string>* result = nullptr)
 std::string getProcFile()
 {
 #ifdef _WIN32
-    WCHAR exeFile[MAX_PATH + 1] = {0};
-    GetModuleFileNameW(NULL, exeFile, MAX_PATH);
-    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(exeFile);
+    CHAR exeFile[MAX_PATH + 1] = {0};
+    GetModuleFileNameA(NULL, exeFile, MAX_PATH);
+    return exeFile;
 #else
     char exeFile[261] = {0};
     unsigned int exeFileLen = readlink("/proc/self/exe", exeFile, sizeof(exeFile) - 1);
@@ -170,6 +260,9 @@ std::string g_procBasename; /* 当前程序文件基础名 */
 std::string g_procVersion; /* 当前程序版本 */
 std::string g_outputPath; /* 崩溃堆栈文件输出路径 */
 DumpCallback g_callback = nullptr; /* 崩溃回调 */
+#ifdef _WIN32
+UINT g_outputPathCodePage = 0; /* 输出路径代码页(编码) */
+#endif
 google_breakpad::ExceptionHandler* g_execptionHandler = nullptr; /* 异常句柄 */
 
 /**
@@ -183,8 +276,7 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
 #endif
 {
 #ifdef _WIN32
-    std::string oldDumpFile =
-        std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(std::wstring(dump_dir) + L"/" + minidump_id + L".dmp");
+    std::string oldDumpFile = wstring2string(std::wstring(dump_dir) + L"/" + minidump_id + L".dmp", g_outputPathCodePage);
 #else
     std::string oldDumpFile = descriptor.path();
 #endif
@@ -258,8 +350,8 @@ void start(const std::string& outputPath, const DumpCallback& callback)
     createPath(g_outputPath);
     /* 开始监听 */
 #ifdef _WIN32
-    g_execptionHandler = new google_breakpad::ExceptionHandler(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(g_outputPath),
-                                                               NULL, dumpHandler, NULL, google_breakpad::ExceptionHandler::HANDLER_ALL);
+    g_execptionHandler = new google_breakpad::ExceptionHandler(string2wstring(g_outputPath, g_outputPathCodePage), NULL, dumpHandler, NULL,
+                                                               google_breakpad::ExceptionHandler::HANDLER_ALL);
 #else
     google_breakpad::MinidumpDescriptor descriptor(g_outputPath.c_str());
     g_execptionHandler = new google_breakpad::ExceptionHandler(descriptor, NULL, dumpHandler, NULL, true, -1);

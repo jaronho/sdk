@@ -3,6 +3,9 @@
 #include <codecvt>
 #include <locale>
 #include <string.h>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 #include "charset_codes.h"
 
@@ -764,16 +767,6 @@ bool Charset::setLocale(const std::string& locale)
 {
     char* currLocale = setlocale(LC_ALL, locale.c_str());
     return (currLocale ? true : false);
-}
-
-std::wstring Charset::string2wstring(const std::string& str)
-{
-    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(str);
-}
-
-std::string Charset::wstring2string(const std::wstring& wstr)
-{
-    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wstr);
 }
 
 Charset::Coding Charset::getCoding(const std::string& str, std::vector<unsigned int>* nonAsciiChars)

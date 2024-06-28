@@ -1,7 +1,6 @@
 #include "system.h"
 
 #include <chrono>
-#include <codecvt>
 #include <string.h>
 #include <thread>
 
@@ -310,10 +309,10 @@ void System::waitForCount(unsigned int maxCount, const std::function<bool()>& fu
 std::string System::getHostname()
 {
 #ifdef _WIN32
-    WCHAR hostname[MAX_COMPUTERNAME_LENGTH + 1] = {0};
+    CHAR hostname[MAX_COMPUTERNAME_LENGTH + 1] = {0};
     DWORD hostnameLen = MAX_COMPUTERNAME_LENGTH;
-    GetComputerNameW(hostname, &hostnameLen);
-    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(hostname);
+    GetComputerNameA(hostname, &hostnameLen);
+    return hostname;
 #else
     char hostname[32] = {0};
     gethostname(hostname, sizeof(hostname));
