@@ -1,11 +1,11 @@
 #include "path_info.h"
 
-#include <codecvt>
 #include <queue>
 #include <stdexcept>
 #include <string.h>
 #include <sys/stat.h>
 #ifdef _WIN32
+#include <Windows.h>
 #include <direct.h>
 #include <io.h>
 #pragma warning(disable : 6031)
@@ -17,6 +17,97 @@
 
 namespace utility
 {
+#ifdef _WIN32
+static bool isutf8(const std::string& str)
+{
+    size_t i = 0;
+    if (str.size() >= 3 && (0xEF == (unsigned char)str[0] && 0xBB == (unsigned char)str[1] && 0xBF == (unsigned char)str[2])) /* BOM */
+    {
+        i = 3;
+    }
+    unsigned int byteCount = 0; /* UTF8可用1-6个字节编码, ASCII用1个字节 */
+    for (; i < str.size(); ++i)
+    {
+        auto ch = (unsigned char)str[i];
+        if ('\0' == ch)
+        {
+            break;
+        }
+        if (0 == byteCount)
+        {
+            if (ch >= 0x80) /* 如果不是ASCII码, 应该是多字节符, 计算字节数 */
+            {
+                if (ch >= 0xFC && ch <= 0xFD)
+                {
+                    byteCount = 6;
+                }
+                else if (ch >= 0xF8)
+                {
+                    byteCount = 5;
+                }
+                else if (ch >= 0xF0)
+                {
+                    byteCount = 4;
+                }
+                else if (ch >= 0xE0)
+                {
+                    byteCount = 3;
+                }
+                else if (ch >= 0xC0)
+                {
+                    byteCount = 2;
+                }
+                else
+                {
+                    return false;
+                }
+                byteCount--;
+            }
+        }
+        else
+        {
+            if (0x80 != (ch & 0xC0)) /* 多字节符的非首字节, 应为10xxxxxx */
+            {
+                return false;
+            }
+            byteCount--; /* 减到为零为止 */
+        }
+    }
+    return (0 == byteCount);
+}
+
+static std::wstring str2wstr(const std::string& str, size_t& codePage)
+{
+    if (!str.empty())
+    {
+        codePage = isutf8(str) ? CP_UTF8 : CP_ACP;
+        int count = MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), NULL, 0);
+        if (count > 0)
+        {
+            std::wstring wstr(count, 0);
+            MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), &wstr[0], count);
+            return wstr;
+        }
+    }
+    return std::wstring();
+}
+
+static std::string wstr2str(const std::wstring& wstr, size_t codePage)
+{
+    if (!wstr.empty())
+    {
+        int count = WideCharToMultiByte(codePage, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+        if (count > 0)
+        {
+            std::string str(count, 0);
+            WideCharToMultiByte(codePage, 0, wstr.c_str(), wstr.size(), &str[0], count, NULL, NULL);
+            return str;
+        }
+    }
+    return std::string();
+}
+#endif
+
 PathInfo::PathInfo(const std::string& path, bool autoEndWithSlash) : m_path(revise(path))
 {
     if (m_path.empty())
@@ -159,9 +250,11 @@ bool PathInfo::create() const
         if ('/' == ch || '\\' == ch || pathLen - 1 == i)
         {
 #ifdef _WIN32
-            if (0 != _access(parentPath.c_str(), 0))
+            size_t codePage = 0;
+            auto wpath = str2wstr(parentPath, codePage);
+            if (0 != _waccess(wpath.c_str(), 0))
             {
-                if (0 != _mkdir(parentPath.c_str()))
+                if (0 != _wmkdir(wpath.c_str()))
                 {
                     return false;
                 }
@@ -319,7 +412,8 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
     }
 #ifdef _WIN32
     /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
-    std::wstring wpath = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(path);
+    size_t codePage = 0;
+    auto wpath = str2wstr(path, codePage);
 #ifdef _WIN64
     _wfinddatai64_t fileData;
     __int64 handle = _wfindfirsti64((wpath + L"*.*").c_str(), &fileData);
@@ -346,14 +440,14 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
         {
             continue;
         }
-        std::string subName = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wpath + fileData.name);
+        auto subName = wpath + fileData.name;
         if (_A_SUBDIR & fileData.attrib)
         {
-            clearImpl(subName, true);
+            clearImpl(wstr2str(subName, codePage), true);
         }
         else
         {
-            ::remove(subName.c_str());
+            ::_wremove(subName.c_str());
         }
     }
     _findclose(handle);
@@ -370,7 +464,7 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
         {
             continue;
         }
-        std::string subName = path + dirp->d_name;
+        auto subName = path + dirp->d_name;
         DIR* subDir = opendir(subName.c_str());
         if (subDir)
         {
@@ -386,7 +480,11 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
 #endif
     if (rmSelf)
     {
+#ifdef _WIN32
+        _wrmdir(wpath.c_str());
+#else
         rmdir(path.c_str());
+#endif
     }
     return true;
 }
@@ -431,7 +529,8 @@ void PathInfo::traverseBFS(const std::string& path, int depth,
         }
 #ifdef _WIN32
         /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
-        std::wstring wpath = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(info.path);
+        size_t codePage = 0;
+        auto wpath = str2wstr(info.path, codePage);
 #ifdef _WIN64
         _wfinddatai64_t fileData;
         __int64 handle = _wfindfirsti64((wpath + L"*.*").c_str(), &fileData);
@@ -451,7 +550,7 @@ void PathInfo::traverseBFS(const std::string& path, int depth,
             }
             if (0 != wcscmp(L".", fileData.name) && 0 != wcscmp(L"..", fileData.name))
             {
-                std::string subName = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wpath + fileData.name);
+                auto subName = wstr2str(wpath + fileData.name, codePage);
                 int subDepth = info.depth + 1;
                 FileAttribute attr;
                 if (getFileAttribute(subName, attr))
@@ -504,7 +603,7 @@ void PathInfo::traverseBFS(const std::string& path, int depth,
             {
                 continue;
             }
-            std::string subName = info.path + dirp->d_name;
+            auto subName = info.path + dirp->d_name;
             int subDepth = info.depth + 1;
             FileAttribute attr;
             if (getFileAttribute(subName, attr))
@@ -560,7 +659,8 @@ void PathInfo::traverseDFS(std::string path, int depth,
     }
 #ifdef _WIN32
     /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
-    std::wstring wpath = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(path);
+    size_t codePage = 0;
+    auto wpath = str2wstr(path, codePage);
 #ifdef _WIN64
     _wfinddatai64_t fileData;
     __int64 handle = _wfindfirsti64((wpath + L"*.*").c_str(), &fileData);
@@ -580,7 +680,7 @@ void PathInfo::traverseDFS(std::string path, int depth,
         }
         if (0 != wcscmp(L".", fileData.name) && 0 != wcscmp(L"..", fileData.name))
         {
-            std::string subName = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wpath + fileData.name);
+            auto subName = wstr2str(wpath + fileData.name, codePage);
             FileAttribute attr;
             if (getFileAttribute(subName, attr))
             {
@@ -632,7 +732,7 @@ void PathInfo::traverseDFS(std::string path, int depth,
         {
             continue;
         }
-        std::string subName = path + dirp->d_name;
+        auto subName = path + dirp->d_name;
         FileAttribute attr;
         if (getFileAttribute(subName, attr))
         {

@@ -513,7 +513,7 @@ static bool is_gbk(const char* str, int len, std::vector<unsigned int>* nonAscii
         unsigned int byteCount = 0; /* GBK可用1-2个字节编码, 中文2个, 英文1个 */
         for (size_t i = 0; i < len; ++i)
         {
-            unsigned char ch = str[i];
+            auto ch = (unsigned char)str[i];
             if ('\0' == ch)
             {
                 break;
@@ -768,6 +768,38 @@ bool Charset::setLocale(const std::string& locale)
     char* currLocale = setlocale(LC_ALL, locale.c_str());
     return (currLocale ? true : false);
 }
+
+#ifdef _WIN32
+std::wstring Charset::string2wstring(const std::string& str, size_t codePage)
+{
+    if (!str.empty())
+    {
+        int count = MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), NULL, 0);
+        if (count > 0)
+        {
+            std::wstring wstr(count, 0);
+            MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), &wstr[0], count);
+            return wstr;
+        }
+    }
+    return std::wstring();
+}
+
+std::string Charset::wstring2string(const std::wstring& wstr, size_t codePage)
+{
+    if (!wstr.empty())
+    {
+        int count = WideCharToMultiByte(codePage, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+        if (count > 0)
+        {
+            std::string str(count, 0);
+            WideCharToMultiByte(codePage, 0, wstr.c_str(), wstr.size(), &str[0], count, NULL, NULL);
+            return str;
+        }
+    }
+    return std::string();
+}
+#endif
 
 Charset::Coding Charset::getCoding(const std::string& str, std::vector<unsigned int>* nonAsciiChars)
 {

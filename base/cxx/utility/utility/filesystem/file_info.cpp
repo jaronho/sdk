@@ -2,15 +2,92 @@
 
 #include <algorithm>
 #include <chrono>
-#include <codecvt>
 #include <stdexcept>
 #include <string.h>
-#ifndef _WIN32
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <unistd.h>
 #endif
 
 namespace utility
 {
+#ifdef _WIN32
+static bool isutf8(const std::string& str)
+{
+    size_t i = 0;
+    if (str.size() >= 3 && (0xEF == (unsigned char)str[0] && 0xBB == (unsigned char)str[1] && 0xBF == (unsigned char)str[2])) /* BOM */
+    {
+        i = 3;
+    }
+    unsigned int byteCount = 0; /* UTF8可用1-6个字节编码, ASCII用1个字节 */
+    for (; i < str.size(); ++i)
+    {
+        auto ch = (unsigned char)str[i];
+        if ('\0' == ch)
+        {
+            break;
+        }
+        if (0 == byteCount)
+        {
+            if (ch >= 0x80) /* 如果不是ASCII码, 应该是多字节符, 计算字节数 */
+            {
+                if (ch >= 0xFC && ch <= 0xFD)
+                {
+                    byteCount = 6;
+                }
+                else if (ch >= 0xF8)
+                {
+                    byteCount = 5;
+                }
+                else if (ch >= 0xF0)
+                {
+                    byteCount = 4;
+                }
+                else if (ch >= 0xE0)
+                {
+                    byteCount = 3;
+                }
+                else if (ch >= 0xC0)
+                {
+                    byteCount = 2;
+                }
+                else
+                {
+                    return false;
+                }
+                byteCount--;
+            }
+        }
+        else
+        {
+            if (0x80 != (ch & 0xC0)) /* 多字节符的非首字节, 应为10xxxxxx */
+            {
+                return false;
+            }
+            byteCount--; /* 减到为零为止 */
+        }
+    }
+    return (0 == byteCount);
+}
+
+static std::wstring str2wstr(const std::string& str)
+{
+    if (!str.empty())
+    {
+        auto codePage = isutf8(str) ? CP_UTF8 : CP_ACP;
+        int count = MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), NULL, 0);
+        if (count > 0)
+        {
+            std::wstring wstr(count, 0);
+            MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), &wstr[0], count);
+            return wstr;
+        }
+    }
+    return std::wstring();
+}
+#endif
+
 /**
  * @brief 计算块大小 
  * @param fileSize 文件大小
@@ -146,7 +223,7 @@ bool FileInfo::create() const
         return false;
     }
 #ifdef _WIN32
-    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"ab+");
+    auto f = _wfopen(str2wstr(m_fullName).c_str(), L"ab+");
 #else
     auto f = fopen(m_fullName.c_str(), "ab+");
 #endif
@@ -164,7 +241,11 @@ bool FileInfo::remove() const
     {
         return false;
     }
+#ifdef _WIN32
+    if (0 == ::_wremove(str2wstr(m_fullName).c_str()))
+#else
     if (0 == ::remove(m_fullName.c_str()))
+#endif
     {
         return true;
     }
@@ -185,7 +266,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     }
     /* 打开源文件 */
 #ifdef _WIN32
-    auto srcFile = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+    auto srcFile = _wfopen(str2wstr(m_fullName).c_str(), L"rb");
 #else
     auto srcFile = fopen(m_fullName.c_str(), "rb");
 #endif
@@ -208,7 +289,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
 #endif
     /* 打开目标文件 */
 #ifdef _WIN32
-    auto destFile = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(destFilename).c_str(), L"wb+");
+    auto destFile = _wfopen(str2wstr(destFilename).c_str(), L"wb+");
 #else
     auto destFile = fopen(destFilename.c_str(), "wb+");
 #endif
@@ -306,7 +387,7 @@ long long FileInfo::size() const
         return fileSize;
     }
 #ifdef _WIN32
-    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+    auto f = _wfopen(str2wstr(m_fullName).c_str(), L"rb");
 #else
     auto f = fopen(m_fullName.c_str(), "rb");
 #endif
@@ -332,7 +413,7 @@ char* FileInfo::readAll(long long& fileSize) const
         return NULL;
     }
 #ifdef _WIN32
-    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+    auto f = _wfopen(str2wstr(m_fullName).c_str(), L"rb");
 #else
     auto f = fopen(m_fullName.c_str(), "rb");
 #endif
@@ -368,7 +449,7 @@ char* FileInfo::read(size_t offset, size_t& count) const
         return NULL;
     }
 #ifdef _WIN32
-    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+    auto f = _wfopen(str2wstr(m_fullName).c_str(), L"rb");
 #else
     auto f = fopen(m_fullName.c_str(), "rb");
 #endif
@@ -400,7 +481,7 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
         return false;
     }
 #ifdef _WIN32
-    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), isAppend ? L"ab+" : L"wb+");
+    auto f = _wfopen(str2wstr(m_fullName).c_str(), isAppend ? L"ab+" : L"wb+");
 #else
     auto f = fopen(m_fullName.c_str(), isAppend ? "ab+" : "wb+");
 #endif
@@ -442,7 +523,7 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
     }
     /* 如果文件不存在则需要先创建文件 */
 #ifdef _WIN32
-    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"ab+");
+    auto f = _wfopen(str2wstr(m_fullName).c_str(), L"ab+");
 #else
     auto f = fopen(m_fullName.c_str(), "ab+");
 #endif
@@ -457,7 +538,7 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
     fclose(f);
     /* 该模式允许在指定位置写入数据, 但需要文件已经创建 */
 #ifdef _WIN32
-    f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb+");
+    f = _wfopen(str2wstr(m_fullName).c_str(), L"rb+");
 #else
     f = fopen(m_fullName.c_str(), "rb+");
 #endif
@@ -490,7 +571,7 @@ bool FileInfo::edit(size_t offset, size_t count, const std::function<void(char* 
         return false;
     }
 #ifdef _WIN32
-    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb+");
+    auto f = _wfopen(str2wstr(m_fullName).c_str(), L"rb+");
 #else
     auto f = fopen(m_fullName.c_str(), "rb+");
 #endif
@@ -514,7 +595,7 @@ bool FileInfo::editLine(const std::function<bool(size_t num, std::string& line)>
         return false;
     }
 #ifdef _WIN32
-    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb+");
+    auto f = _wfopen(str2wstr(m_fullName).c_str(), L"rb+");
 #else
     auto f = fopen(m_fullName.c_str(), "rb+");
 #endif
@@ -553,7 +634,7 @@ bool FileInfo::editLine(const std::function<bool(size_t num, std::string& line)>
     {
         fclose(f);
 #ifdef _WIN32
-        f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"wb+");
+        f = _wfopen(str2wstr(m_fullName).c_str(), L"wb+");
 #else
         f = fopen(m_fullName.c_str(), "wb+");
 #endif
@@ -578,7 +659,7 @@ bool FileInfo::isTextFile() const
         return false;
     }
 #ifdef _WIN32
-    auto f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(m_fullName).c_str(), L"rb");
+    auto f = _wfopen(str2wstr(m_fullName).c_str(), L"rb");
 #else
     auto f = fopen(m_fullName.c_str(), "rb");
 #endif

@@ -1,12 +1,12 @@
 #include "fs_define.h"
 
 #include <algorithm>
-#include <codecvt>
 #include <string.h>
 #include <sys/stat.h>
 #include <vector>
 #ifdef _WIN32
 #include <Shlobj.h>
+#include <Windows.h>
 #include <atlstr.h>
 #include <shellapi.h>
 #else
@@ -16,6 +16,80 @@
 namespace utility
 {
 #ifdef _WIN32
+static bool isutf8(const std::string& str)
+{
+    size_t i = 0;
+    if (str.size() >= 3 && (0xEF == (unsigned char)str[0] && 0xBB == (unsigned char)str[1] && 0xBF == (unsigned char)str[2])) /* BOM */
+    {
+        i = 3;
+    }
+    unsigned int byteCount = 0; /* UTF8可用1-6个字节编码, ASCII用1个字节 */
+    for (; i < str.size(); ++i)
+    {
+        auto ch = (unsigned char)str[i];
+        if ('\0' == ch)
+        {
+            break;
+        }
+        if (0 == byteCount)
+        {
+            if (ch >= 0x80) /* 如果不是ASCII码, 应该是多字节符, 计算字节数 */
+            {
+                if (ch >= 0xFC && ch <= 0xFD)
+                {
+                    byteCount = 6;
+                }
+                else if (ch >= 0xF8)
+                {
+                    byteCount = 5;
+                }
+                else if (ch >= 0xF0)
+                {
+                    byteCount = 4;
+                }
+                else if (ch >= 0xE0)
+                {
+                    byteCount = 3;
+                }
+                else if (ch >= 0xC0)
+                {
+                    byteCount = 2;
+                }
+                else
+                {
+                    return false;
+                }
+                byteCount--;
+            }
+        }
+        else
+        {
+            if (0x80 != (ch & 0xC0)) /* 多字节符的非首字节, 应为10xxxxxx */
+            {
+                return false;
+            }
+            byteCount--; /* 减到为零为止 */
+        }
+    }
+    return (0 == byteCount);
+}
+
+static std::wstring str2wstr(const std::string& str)
+{
+    if (!str.empty())
+    {
+        auto codePage = isutf8(str) ? CP_UTF8 : CP_ACP;
+        int count = MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), NULL, 0);
+        if (count > 0)
+        {
+            std::wstring wstr(count, 0);
+            MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), &wstr[0], count);
+            return wstr;
+        }
+    }
+    return std::wstring();
+}
+
 static BOOL isShortcut(const std::string& filename)
 {
     HRESULT hr = (HRESULT)-1;
@@ -30,8 +104,7 @@ static BOOL isShortcut(const std::string& filename)
                 IPersistFile* ppf;
                 if (psl->QueryInterface(IID_IPersistFile, (LPVOID*)&ppf) >= 0)
                 {
-                    hr = ppf->Load(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(filename).c_str(),
-                                   STGM_READ); /* 尝试加载快捷方式 */
+                    hr = ppf->Load(str2wstr(filename).c_str(), STGM_READ); /* 尝试加载快捷方式 */
                     ppf->Release();
                 }
                 psl->Release();
@@ -74,8 +147,7 @@ bool getDiskAttribute(const std::string& name, DiskAttribute& attr)
 #ifdef _WIN32
     DWORD dwSectPerClust = 0, dwbytesPerSect = 0, dwFreeClusters = 0, dwTotalClusters = 0;
     /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
-    BOOL result = GetDiskFreeSpaceW(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(name).c_str(), &dwSectPerClust,
-                                    &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
+    BOOL result = GetDiskFreeSpaceW(str2wstr(name).c_str(), &dwSectPerClust, &dwbytesPerSect, &dwFreeClusters, &dwTotalClusters);
     if (result)
     {
         attr.blockSize = ((size_t)dwSectPerClust * dwbytesPerSect); /* 簇大小 = 每簇扇区数 * 每扇区字节数 */
@@ -114,7 +186,7 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
     }
 #ifdef _WIN32
     /* 需要使用宽字节, 避免包含非ASCII乱码文件名失败问题 */
-    std::wstring wname = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(name);
+    std::wstring wname = str2wstr(name);
     struct _stat64 st;
     int ret = _wstat64(wname.c_str(), &st);
 #else

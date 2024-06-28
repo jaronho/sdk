@@ -38,6 +38,24 @@ public:
      */
     static bool setLocale(const std::string& locale);
 
+#ifdef _WIN32
+    /**
+     * @brief 字符串转为宽字符串
+     * @param str 字符串
+     * @param codePage 编码, 值: 0.CP_ACP, 1.CP_OEMCP, 65001.CP_UTF8
+     * @return 宽字符串
+     */
+    static std::wstring string2wstring(const std::string& str, size_t codePage = 65001);
+
+    /**
+     * @brief 宽字符串转为字符串)
+     * @param wstr 宽字符串
+     * @param codePage 编码, 值: 0.CP_ACP, 1.CP_OEMCP, 65001.CP_UTF8
+     * @return 字符串
+     */
+    static std::string wstring2string(const std::wstring& wstr, size_t codePage = 65001);
+#endif
+
     /**
      * @brief 获取编码
      * @param str 字符串
