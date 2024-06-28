@@ -162,20 +162,12 @@ public:
     std::string readAll(ssize_t* availableCount = nullptr);
 
     /**
-     * @brief 读行数据
-     * @param maxSize 指定行的最大长度(选填), 默认: 65536=2^16
-     * @param eol 行结尾标识
-     * @return 读到的行数据
+     * @brief 读数据直到命中标识或者超时
+     * @param flag 标识
+     * @param msec 超时时间(选填, 毫秒), 为0表示一直等待
+     * @return 读到的数据
      */
-    std::string readLine(size_t maxSize = 65536, const std::string& eol = "\n");
-
-    /**
-     * @brief 读多行数据直到超时, 需要设置超时时间>0
-     * @param maxSize 指定所有行之和的最大长度(选填), 默认: 65536=2^16
-     * @param eol 行结尾标识
-     * @return 多行列表
-     */
-    std::vector<std::string> readLines(size_t maxSize = 65536, const std::string& eol = "\n");
+    std::string readUntil(const std::string& flag, size_t msec = 0);
 
     /**
      * @brief 写数据
