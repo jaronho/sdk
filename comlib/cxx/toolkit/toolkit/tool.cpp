@@ -1,11 +1,14 @@
 #include "tool.h"
 
-#include <codecvt>
 #include <future>
 #include <mutex>
 #include <type_traits>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 #include "algorithm/md5/md5ex.h"
+#include "utility/charset/charset.h"
 #include "utility/filesystem/path_info.h"
 
 namespace toolkit
@@ -43,7 +46,13 @@ Tool::md5Directory(const std::string& path, const std::function<void(size_t tota
         bool stopFlag = false;
         std::string value;
 #ifdef _WIN32
-        FILE* f = _wfopen(std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(name).c_str(), L"rb");
+        size_t codePage = CP_ACP;
+        auto coding = utility::Charset::getCoding(name);
+        if (utility::Charset::Coding::utf8 == coding || utility::Charset::Coding::utf8_bom == coding)
+        {
+            codePage = CP_UTF8;
+        }
+        FILE* f = _wfopen(utility::Charset::string2wstring(name, codePage).c_str(), L"rb");
 #else
         FILE* f = fopen(name.c_str(), "rb");
 #endif
