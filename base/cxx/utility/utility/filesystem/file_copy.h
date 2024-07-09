@@ -86,23 +86,24 @@ public:
 
     /**
      * @brief 开始
-     * @param srcFilelist 源文件列表(可传空列表, 表示对源目录进行全部拷贝), 注意: 所有源文件都必须具有相同的源目录srcPath
+     * @param srcFilelist [输入/输出]源文件列表(可传空列表, 表示对源目录进行全部拷贝), 注意: 所有源文件都必须具有相同的源目录srcPath
      * @param destFilelist [输出]目标文件列表(选填)
      * @param failSrcFile [输出]失败时源文件(选填)
      * @param failDestFile [输出]失败时目标文件(选填)
      * @param errCode [输出]失败时错误码(选填), 可用于strerror函数获取描述信息
      * @return 拷贝结果
      */
-    FileInfo::CopyResult start(const std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist,
+    FileInfo::CopyResult start(std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist,
                                std::string* failSrcFile = nullptr, std::string* failDestFile = nullptr, int* errCode = nullptr);
 
 private:
     /**
      * @brief 拷贝所有文件
+     * @param srcFilelist [输出]源文件列表
      * @param destFilelist [输出]目标文件列表
      * @return 拷贝结果
      */
-    FileInfo::CopyResult copyAllFiles(std::vector<std::string>* destFilelist);
+    FileInfo::CopyResult copyAllFiles(std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist);
 
     /**
      * @brief 拷贝指定文件

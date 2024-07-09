@@ -37,7 +37,7 @@ void FileCopy::setCallback(const FileCopyBeginCallback& beginCb, const FileCopyT
     m_singleOkCallback = singleOkCb;
 }
 
-FileInfo::CopyResult FileCopy::start(const std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist,
+FileInfo::CopyResult FileCopy::start(std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist,
                                      std::string* failSrcFile, std::string* failDestFile, int* errCode)
 {
     if (destFilelist)
@@ -66,7 +66,7 @@ FileInfo::CopyResult FileCopy::start(const std::vector<std::string>& srcFilelist
     FileInfo::CopyResult result;
     if (srcFilelist.empty())
     {
-        result = copyAllFiles(destFilelist);
+        result = copyAllFiles(srcFilelist, destFilelist);
     }
     else
     {
@@ -90,9 +90,8 @@ FileInfo::CopyResult FileCopy::start(const std::vector<std::string>& srcFilelist
     return result;
 }
 
-FileInfo::CopyResult FileCopy::copyAllFiles(std::vector<std::string>* destFilelist)
+FileInfo::CopyResult FileCopy::copyAllFiles(std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist)
 {
-    std::vector<std::string> srcFilelist;
     size_t totalFileSize = 0;
     m_srcPathInfo.traverse(
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
