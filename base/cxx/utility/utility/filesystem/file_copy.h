@@ -59,7 +59,6 @@ public:
     /**
      * @brief 构造函数
      * @param srcPath 源目录
-     * @param srcFilelist 源文件列表(可传空列表, 表示对源目录进行全部拷贝), 注意: 所有源文件都必须具有相同的源目录srcPath
      * @param destPath 目标目录
      * @param clearDest 拷贝前是否对目标目录进行清空
      * @param coverDest 若目标目录已存在同名文件是否覆盖, true-覆盖, false-重命名要拷贝的文件
@@ -69,9 +68,9 @@ public:
      * @param blocks 拷贝块大小, 为空时表示使用默认(最大64Kb)
      * @param retryTime 读写失败时重试时间(毫秒)
      */
-    FileCopy(const std::string& srcPath, const std::vector<std::string>& srcFilelist, const std::string& destPath, bool clearDest,
-             bool coverDest, const FileCopyFilterFunc& filterFunc, const FileCopyStopFunc& stopFunc = nullptr,
-             const std::string& tmpSuffix = "", const std::vector<FileInfo::CopyBlock>& blocks = {}, unsigned int retryTime = 3000);
+    FileCopy(const std::string& srcPath, const std::string& destPath, bool clearDest, bool coverDest, const FileCopyFilterFunc& filterFunc,
+             const FileCopyStopFunc& stopFunc = nullptr, const std::string& tmpSuffix = "",
+             const std::vector<FileInfo::CopyBlock>& blocks = {}, unsigned int retryTime = 3000);
     FileCopy() = default;
     virtual ~FileCopy() = default;
 
@@ -87,14 +86,15 @@ public:
 
     /**
      * @brief 开始
+     * @param srcFilelist 源文件列表(可传空列表, 表示对源目录进行全部拷贝), 注意: 所有源文件都必须具有相同的源目录srcPath
      * @param destFilelist [输出]目标文件列表(选填)
      * @param failSrcFile [输出]失败时源文件(选填)
      * @param failDestFile [输出]失败时目标文件(选填)
      * @param errCode [输出]失败时错误码(选填), 可用于strerror函数获取描述信息
      * @return 拷贝结果
      */
-    FileInfo::CopyResult start(std::vector<std::string>* destFilelist, std::string* failSrcFile = nullptr,
-                               std::string* failDestFile = nullptr, int* errCode = nullptr);
+    FileInfo::CopyResult start(const std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist,
+                               std::string* failSrcFile = nullptr, std::string* failDestFile = nullptr, int* errCode = nullptr);
 
 private:
     /**
@@ -106,10 +106,11 @@ private:
 
     /**
      * @brief 拷贝指定文件
+     * @param srcFilelist 源文件列表
      * @param destFilelist [输出]目标文件列表
      * @return 拷贝结果
      */
-    FileInfo::CopyResult copyAssignFiles(std::vector<std::string>* destFilelist);
+    FileInfo::CopyResult copyAssignFiles(const std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist);
 
     /**
      * @brief 拷贝源文件列表
@@ -131,7 +132,6 @@ private:
 
 private:
     utility::PathInfo m_srcPathInfo; /* 源目录 */
-    std::vector<std::string> m_srcFilelist; /* 源文件列表 */
     utility::PathInfo m_destPathInfo; /* 目标目录 */
     bool m_clearDestPath; /* 拷贝前是否清空目标目录 */
     bool m_coverDestFile; /* 当目标目录已有同名文件时是否覆盖 */
