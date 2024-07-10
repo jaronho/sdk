@@ -185,6 +185,10 @@ std::string Serial::readAll(ssize_t* availableCount)
 
 std::string Serial::readUntil(const std::string& flag, size_t msec)
 {
+    if (flag.empty() && msec <= 0)
+    {
+        return std::string();
+    }
     char buf[2] = {0};
     auto stp = std::chrono::steady_clock::now();
     std::string bytes;

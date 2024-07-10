@@ -162,7 +162,7 @@ public:
     std::string readAll(ssize_t* availableCount = nullptr);
 
     /**
-     * @brief 读数据直到命中标识或者超时
+     * @brief 读数据直到命中标识或者超时(注意: 如果标识为空且超时为0则直接返回)
      * @param flag 标识, 为空时表示一直读取直到超时
      * @param msec 超时时间(选填, 毫秒), 为0表示一直等待
      * @return 读到的数据
