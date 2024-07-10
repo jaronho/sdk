@@ -185,10 +185,6 @@ std::string Serial::readAll(ssize_t* availableCount)
 
 std::string Serial::readUntil(const std::string& flag, size_t msec)
 {
-    if (flag.empty())
-    {
-        return std::string();
-    }
     char buf[2] = {0};
     auto stp = std::chrono::steady_clock::now();
     std::string bytes;
@@ -199,7 +195,7 @@ std::string Serial::readUntil(const std::string& flag, size_t msec)
         if (1 == len)
         {
             bytes.push_back(buf[0]);
-            if (bytes.size() >= flag.size() && std::equal(flag.rbegin(), flag.rend(), bytes.rbegin())) /* 读完 */
+            if (!flag.empty() && bytes.size() >= flag.size() && std::equal(flag.rbegin(), flag.rend(), bytes.rbegin())) /* 读完 */
             {
                 break;
             }
