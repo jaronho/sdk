@@ -425,29 +425,31 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
     {
         return false;
     }
-    if (!(_A_SUBDIR & fileData.attrib))
+    while (handle)
     {
-        _findclose(handle);
-        return false;
-    }
+        if (0 != wcscmp(L".", fileData.name) && 0 != wcscmp(L"..", fileData.name))
+        {
+            auto subName = wstr2str(wpath + fileData.name, codePage);
+            FileAttribute attr;
+            if (getFileAttribute(subName, attr))
+            {
+                if (attr.isDir) /* 目录 */
+                {
+                    clearImpl(subName, true);
+                }
+                else if (attr.isFile) /* 文件 */
+                {
+                    ::_wremove((wpath + fileData.name).c_str());
+                }
+            }
+        }
 #ifdef _WIN64
-    while (0 == _wfindnexti64(handle, &fileData))
+        if (0 != _wfindnexti64(handle, &fileData))
 #else
-    while (0 == _wfindnext(handle, &fileData))
+        if (0 != _wfindnext(handle, &fileData))
 #endif
-    {
-        if (0 == wcscmp(L".", fileData.name) || 0 == wcscmp(L"..", fileData.name))
         {
-            continue;
-        }
-        auto subName = wpath + fileData.name;
-        if (_A_SUBDIR & fileData.attrib)
-        {
-            clearImpl(wstr2str(subName, codePage), true);
-        }
-        else
-        {
-            ::_wremove(subName.c_str());
+            break;
         }
     }
     _findclose(handle);
@@ -465,15 +467,17 @@ bool PathInfo::clearImpl(std::string path, bool rmSelf)
             continue;
         }
         auto subName = path + dirp->d_name;
-        DIR* subDir = opendir(subName.c_str());
-        if (subDir)
+        FileAttribute attr;
+        if (getFileAttribute(subName, attr))
         {
-            closedir(subDir);
-            clearImpl(subName, true);
-        }
-        else
-        {
-            ::remove(subName.c_str());
+            if (attr.isDir) /* 目录 */
+            {
+                clearImpl(subName, true);
+            }
+            else if (attr.isFile) /* 文件 */
+            {
+                ::remove(subName.c_str());
+            }
         }
     }
     closedir(dir);
