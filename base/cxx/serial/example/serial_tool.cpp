@@ -462,7 +462,6 @@ int main(int argc, char** argv)
     serial::FlowcontrolType flowcontrol = serial::FlowcontrolType::none;
     int crlf = 0;
     /* 解析参数 */
-    auto portList = serial::Serial::getAllPorts();
     std::string errorStr;
     for (int i = 1; i < argc; ++i)
     {
@@ -485,18 +484,7 @@ int main(int argc, char** argv)
                 }
                 else
                 {
-                    for (size_t i = 0; i < portList.size(); ++i)
-                    {
-                        if (0 == val.compare(portList[i].port))
-                        {
-                            portName = val;
-                            break;
-                        }
-                    }
-                    if (portName.empty())
-                    {
-                        errorStr += "错误: 串口 " + val + " 不存在\n";
-                    }
+                    portName = val;
                 }
             }
         }
@@ -693,7 +681,7 @@ int main(int argc, char** argv)
         else if (0 == key.compare("--list")) /* 显示列表 */
         {
             flagList = true;
-            showAllPorts(portList);
+            showAllPorts(serial::Serial::getAllPorts());
         }
         else if (0 == key.compare("--time")) /* 发送/接收显示时间 */
         {

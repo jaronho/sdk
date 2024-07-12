@@ -1,5 +1,6 @@
 #ifdef __linux__
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -94,7 +95,7 @@ std::vector<std::string> getGlobInfo(const std::vector<std::string>& patterns)
     }
     for (int path_index = 0; path_index < glob_results.gl_pathc; path_index++)
     {
-        deviceList.push_back(glob_results.gl_pathv[path_index]);
+        deviceList.emplace_back(glob_results.gl_pathv[path_index]);
     }
     globfree(&glob_results);
     return deviceList;
@@ -209,9 +210,9 @@ std::vector<std::string> getSysfsInfo(const std::string& device_path)
         }
     }
     std::vector<std::string> result;
-    result.push_back(hardwareId);
-    result.push_back(friendlyName);
-    result.push_back(location);
+    result.emplace_back(hardwareId);
+    result.emplace_back(friendlyName);
+    result.emplace_back(location);
     return result;
 }
 
@@ -219,27 +220,30 @@ std::vector<PortInfo> Serial::getAllPorts()
 {
     std::vector<PortInfo> portList;
     std::vector<std::string> globList;
-    globList.push_back("/dev/ttyACM*");
-    globList.push_back("/dev/ttyS*");
-    globList.push_back("/dev/ttyUSB*");
-    globList.push_back("/dev/tty.*");
-    globList.push_back("/dev/cu.*");
-    globList.push_back("/dev/rfcomm*");
+    globList.emplace_back("/dev/ttyACM*");
+    globList.emplace_back("/dev/ttyS*");
+    globList.emplace_back("/dev/tty*USB*");
+    globList.emplace_back("/dev/tty.*");
+    globList.emplace_back("/dev/cu.*");
+    globList.emplace_back("/dev/rfcomm*");
     std::vector<std::string> deviceList = getGlobInfo(globList);
     std::vector<std::string>::iterator iter = deviceList.begin();
     while (iter != deviceList.end())
     {
         std::string device = *iter++;
-        std::vector<std::string> info = getSysfsInfo(device);
-        std::string hardwareId = info[0];
-        std::string friendlyName = info[1];
-        std::string location = info[2];
-        PortInfo entry;
-        entry.port = device;
-        entry.hardwareId = hardwareId;
-        entry.description = friendlyName;
-        entry.location = location;
-        portList.emplace_back(entry);
+        if (portList.end() == std::find_if(portList.begin(), portList.end(), [&](const PortInfo& info) { return (info.port == device); }))
+        {
+            std::vector<std::string> info = getSysfsInfo(device);
+            std::string hardwareId = info[0];
+            std::string friendlyName = info[1];
+            std::string location = info[2];
+            PortInfo entry;
+            entry.port = device;
+            entry.hardwareId = hardwareId;
+            entry.description = friendlyName;
+            entry.location = location;
+            portList.emplace_back(entry);
+        }
     }
     return portList;
 }
