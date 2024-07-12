@@ -168,11 +168,11 @@ int main(int argc, char** argv)
     s_usbList = usb::Usb::getAllUsbs(true);
     if (monitorFlag)
     {
+        std::vector<std::shared_ptr<usb::Usb>> addedUsbList, removedUsbList;
         while (1)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             auto nowUsbList = usb::Usb::getAllUsbs(true);
-            std::vector<std::shared_ptr<usb::Usb>> addedUsbList, removedUsbList;
             diffUsbList(s_usbList, nowUsbList, addedUsbList, removedUsbList);
             s_usbList = nowUsbList;
             if (!addedUsbList.empty())

@@ -114,7 +114,7 @@ public:
      * @brief 获取子节点
      * @return 子节点
      */
-    std::vector<std::shared_ptr<usb::Usb>> getChildren() const;
+    std::vector<std::weak_ptr<usb::Usb>> getChildren() const;
 
     /**
      * @brief 获取父路径
@@ -338,7 +338,7 @@ private:
 private:
     libusb_device* m_dev = NULL;
     std::shared_ptr<usb::Usb> m_parent = nullptr; /* 父节点 */
-    std::vector<std::shared_ptr<usb::Usb>> m_children; /* 子节点 */
+    std::vector<std::weak_ptr<usb::Usb>> m_children; /* 子节点(注意: 需要用弱引用否则会内存泄漏) */
     std::string m_parentPath; /* 父路径 */
     std::string m_path; /* 路径 */
     int m_busNum = -1; /* 总线编号 */
