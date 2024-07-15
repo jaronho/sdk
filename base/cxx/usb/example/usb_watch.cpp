@@ -92,13 +92,17 @@ void displayUsbList(const std::vector<std::shared_ptr<usb::Usb>>& usbList, bool 
  * @param preList 之前的USB设备列表
  * @param nowList 当前的USB设备列表
  * @param addedList 新增的USB设备列表
+ * @param updatedList 更新的USB设备列表
  * @param removedList 移除的USB设备列表
  */
 void diffUsbList(const std::vector<std::shared_ptr<usb::Usb>>& preList, const std::vector<std::shared_ptr<usb::Usb>>& nowList,
-                 std::vector<std::shared_ptr<usb::Usb>>& addedList, std::vector<std::shared_ptr<usb::Usb>>& removedList)
+                 std::vector<std::shared_ptr<usb::Usb>>& addedList, std::vector<std::shared_ptr<usb::Usb>>& updatedList,
+                 std::vector<std::shared_ptr<usb::Usb>>& removedList)
 {
-    /* 计算新插入 */
     addedList.clear();
+    updatedList.clear();
+    removedList.clear();
+    /* 计算新插入 */
     for (const auto& now : nowList)
     {
         auto iter = std::find_if(preList.begin(), preList.end(), [&](const std::shared_ptr<usb::Usb>& info) {
@@ -109,9 +113,37 @@ void diffUsbList(const std::vector<std::shared_ptr<usb::Usb>>& preList, const st
         {
             addedList.emplace_back(now);
         }
+        else
+        {
+            const auto& preDevNodeList = (*iter)->getDevNodes();
+            const auto& nowDevNodeList = now->getDevNodes();
+            bool sameDevNode = true;
+            if (nowDevNodeList.size() == preDevNodeList.size())
+            {
+                for (size_t i = 0; i < nowDevNodeList.size(); ++i)
+                {
+#ifdef _WIN32
+                    if (nowDevNodeList[i].getMountpoint() != preDevNodeList[i].getMountpoint())
+
+#else
+                    if (nowDevNodeList[i].name != preDevNodeList[i].name)
+#endif
+                    {
+                        sameDevNode = false;
+                    }
+                }
+            }
+            else
+            {
+                sameDevNode = false;
+            }
+            if (!sameDevNode)
+            {
+                updatedList.emplace_back(now);
+            }
+        }
     }
     /* 计算已拔出 */
-    removedList.clear();
     for (const auto& info : preList)
     {
         auto iter = std::find_if(nowList.begin(), nowList.end(),
@@ -168,17 +200,23 @@ int main(int argc, char** argv)
     s_usbList = usb::Usb::getAllUsbs(true);
     if (monitorFlag)
     {
-        std::vector<std::shared_ptr<usb::Usb>> addedUsbList, removedUsbList;
+        std::vector<std::shared_ptr<usb::Usb>> addedUsbList, updatedList, removedUsbList;
         while (1)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             auto nowUsbList = usb::Usb::getAllUsbs(true);
-            diffUsbList(s_usbList, nowUsbList, addedUsbList, removedUsbList);
+            diffUsbList(s_usbList, nowUsbList, addedUsbList, updatedList, removedUsbList);
             s_usbList = nowUsbList;
             if (!addedUsbList.empty())
             {
                 printf("[%s] ++++++++++++++++++++ USB设备插入 ++++++++++++++++++++\n", getDateTime().c_str());
                 displayUsbList(addedUsbList, false);
+                printf("\n");
+            }
+            if (!updatedList.empty())
+            {
+                printf("[%s] ++++++++++++++++++++ USB设备更新 ++++++++++++++++++++\n", getDateTime().c_str());
+                displayUsbList(updatedList, false);
                 printf("\n");
             }
             if (!removedUsbList.empty())

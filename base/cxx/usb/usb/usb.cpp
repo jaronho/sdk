@@ -155,7 +155,8 @@ typedef struct _USB_IAD_DESCRIPTOR
 } USB_IAD_DESCRIPTOR, *PUSB_IAD_DESCRIPTOR;
 
 void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
-                  PUSB_NODE_CONNECTION_INFORMATION_EX ConnectionInfo, std::vector<UsbImpl>& usbList);
+                  PUSB_NODE_CONNECTION_INFORMATION_EX ConnectionInfo, std::vector<LogicalDrive>& localDriveList,
+                  std::vector<UsbImpl>& usbList);
 
 std::string guid2string(GUID guid)
 {
@@ -728,9 +729,8 @@ std::vector<LogicalDrive> getLogicalDriveList()
 }
 
 void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, HANDLE hHubDevice,
-                       ULONG numPorts, std::vector<UsbImpl>& usbList)
+                       ULONG numPorts, std::vector<LogicalDrive>& localDriveList, std::vector<UsbImpl>& usbList)
 {
-    auto localDriveList = getLogicalDriveList();
     bool recheckDriverFlag = false;
     for (ULONG index = 1; index <= numPorts; ++index)
     {
@@ -851,7 +851,8 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
         }
         if (connectionInfoEx->DeviceIsHub) /* Hub Device */
         {
-            enumerateHub(devInfo, devInfoDataList, rootIndex, getExternalHubName(hHubDevice, index), connectionInfoEx, usbList);
+            enumerateHub(devInfo, devInfoDataList, rootIndex, getExternalHubName(hHubDevice, index), connectionInfoEx, localDriveList,
+                         usbList);
         }
         if (configDesc)
         {
@@ -886,7 +887,8 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
 }
 
 void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
-                  PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<UsbImpl>& usbList)
+                  PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<LogicalDrive>& localDriveList,
+                  std::vector<UsbImpl>& usbList)
 {
     if (hubName.empty())
     {
@@ -918,7 +920,8 @@ void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devIn
     else /* Extend Hub */
     {
     }
-    enumerateHubPorts(devInfo, devInfoDataList, rootIndex, hHubDevice, hubInfo->u.HubInformation.HubDescriptor.bNumberOfPorts, usbList);
+    enumerateHubPorts(devInfo, devInfoDataList, rootIndex, hHubDevice, hubInfo->u.HubInformation.HubDescriptor.bNumberOfPorts,
+                      localDriveList, usbList);
     CloseHandle(hHubDevice);
     GlobalFree(hubInfo);
 }
@@ -945,6 +948,7 @@ std::vector<UsbImpl> enumerateHostControllers()
         }
     }
     /* 遍历获取USB设备详情 */
+    auto localDriveList = getLogicalDriveList();
     for (ULONG index = 0; index < totalCount; ++index)
     {
         SP_DEVICE_INTERFACE_DATA devInterfaceData;
@@ -968,7 +972,7 @@ std::vector<UsbImpl> enumerateHostControllers()
                 HANDLE hHCDev = CreateFileA(devDetailData->DevicePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
                 if (INVALID_HANDLE_VALUE != hHCDev)
                 {
-                    enumerateHub(devInfo, devInfoDataList, index + 1, getRootHubName(hHCDev), NULL, usbList);
+                    enumerateHub(devInfo, devInfoDataList, index + 1, getRootHubName(hHCDev), NULL, localDriveList, usbList);
                     CloseHandle(hHCDev);
                 }
             }
