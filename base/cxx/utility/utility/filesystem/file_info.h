@@ -147,7 +147,7 @@ public:
      * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
      * @param progressCb 进度回调, 参数: now-已拷贝字节数, total-总字节数, 返回值: true-继续, false-停止拷贝
      * @param blocks 拷贝块大小, 为空时表示使用默认(最大64Kb)
-     * @param retryTime 读写失败时重试时间(毫秒)
+     * @param retryTime 读写失败时重试时间(毫秒), 为0表示一直重试
      * @return 拷贝结果
      */
     CopyResult copy(const std::string& destFilename, int* errCode = nullptr,

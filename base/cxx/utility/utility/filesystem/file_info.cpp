@@ -336,7 +336,8 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         readSize = fread(block, 1, blockSize, srcFile);
         if (0 == readSize)
         {
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
+            if (retryTime > 0
+                && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
             {
                 result = CopyResult::src_read_failed;
                 break;
@@ -346,7 +347,8 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         writeSize = fwrite(block, 1, readSize, destFile);
         if (0 == writeSize)
         {
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
+            if (retryTime > 0
+                && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
             {
                 result = CopyResult::dest_write_failed;
                 break;
