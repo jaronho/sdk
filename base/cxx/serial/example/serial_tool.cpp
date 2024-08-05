@@ -359,15 +359,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                     {
                         newLine = true;
                     }
-                    else if ('\r' == bytes[i])
-                    {
-                        newLine = true;
-                        if (i < len - 1 && ('\n' == bytes[i + 1]))
-                        {
-                            ++i;
-                        }
-                    }
-                    else
+                    else if ('\r' != bytes[i])
                     {
                         fprintf(stderr, "%c", bytes[i]);
                     }
