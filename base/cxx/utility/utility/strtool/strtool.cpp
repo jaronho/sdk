@@ -63,27 +63,34 @@ std::string StrTool::toUpper(std::string str)
     return str;
 }
 
-std::string StrTool::replace(std::string str, const std::string& rep, const std::string& dest)
+std::string StrTool::replace(std::string str, const std::string& rep, const std::function<std::string(size_t index)>& destFunc)
 {
-    if (str.empty() || rep.empty())
+    if (str.empty() || rep.empty() || !destFunc)
     {
         return str;
     }
+    size_t index = 0;
     std::string::size_type pos = 0;
     while (std::string::npos != (pos = str.find(rep, pos)))
     {
+        const auto& dest = destFunc(index++);
         str.replace(pos, rep.size(), dest);
         pos += dest.size();
     }
     return str;
 }
 
-std::vector<std::string> StrTool::split(const std::string& str, const std::string& sep)
+std::string StrTool::replace(std::string str, const std::string& rep, const std::string& dest)
+{
+    return replace(str, rep, [dest](size_t index) { return dest; });
+}
+
+void StrTool::split(const std::string& str, const std::string& sep, const std::function<void(const std::string& item)>& itemFunc)
 {
     std::vector<std::string> strList;
-    if (str.empty() || sep.empty())
+    if (str.empty() || sep.empty() || !itemFunc)
     {
-        return strList;
+        return;
     }
     for (size_t i = 0; i <= str.size();)
     {
@@ -92,18 +99,23 @@ std::vector<std::string> StrTool::split(const std::string& str, const std::strin
         {
             pos = str.size();
         }
-        strList.emplace_back(str.substr(i, pos - i));
+        itemFunc(str.substr(i, pos - i));
         i = pos + sep.size();
     }
+}
+
+std::vector<std::string> StrTool::split(const std::string& str, const std::string& sep)
+{
+    std::vector<std::string> strList;
+    split(str, sep, [&strList](const std::string& item) { strList.emplace_back(item); });
     return strList;
 }
 
-std::vector<std::string> StrTool::split(const std::string& str, int sepNum)
+void StrTool::split(const std::string& str, int sepNum, const std::function<void(const std::string& item)>& itemFunc)
 {
-    std::vector<std::string> strList;
-    if (str.empty())
+    if (str.empty() || !itemFunc)
     {
-        return strList;
+        return;
     }
     if (sepNum > 0)
     {
@@ -112,20 +124,26 @@ std::vector<std::string> StrTool::split(const std::string& str, int sepNum)
         {
             if (sepStr.size() == sepNum)
             {
-                strList.emplace_back(sepStr);
+                itemFunc(sepStr);
                 sepStr.clear();
             }
             sepStr.push_back(str[i]);
         }
         if (!sepStr.empty())
         {
-            strList.emplace_back(sepStr);
+            itemFunc(sepStr);
         }
     }
     else
     {
-        strList.emplace_back(str);
+        itemFunc(str);
     }
+}
+
+std::vector<std::string> StrTool::split(const std::string& str, int sepNum)
+{
+    std::vector<std::string> strList;
+    split(str, sepNum, [&strList](const std::string& item) { strList.emplace_back(item); });
     return strList;
 }
 
@@ -156,16 +174,8 @@ uint32_t StrTool::split(char* str, const char* sep, uint32_t maxCount, char* out
 
 std::string StrTool::join(const std::vector<std::string>& strList, const std::string& sep, size_t count)
 {
-    if (0 == count || count > strList.size())
-    {
-        count = strList.size();
-    }
-    std::string str;
-    for (size_t i = 0; i < count; ++i)
-    {
-        str += (i > 0 ? sep : "") + strList[i];
-    }
-    return str;
+    return join<std::string>(
+        strList, [](const std::string& item) { return item; }, sep, count);
 }
 
 bool StrTool::equal(std::string str1, std::string str2, bool caseSensitive)

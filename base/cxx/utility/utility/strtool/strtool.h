@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -53,10 +54,27 @@ public:
      * @brief 内容替换
      * @param str 字符串
      * @param rep 被替换的内容
+     * @param destFunc 目标函数, 参数: index-当前要替换的索引(从0开始), 返回值: 替换后的内容
+     * @return 替换后的字符串
+     */
+    static std::string replace(std::string str, const std::string& rep, const std::function<std::string(size_t index)>& destFunc);
+
+    /**
+     * @brief 内容替换
+     * @param str 字符串
+     * @param rep 被替换的内容
      * @param dest 替换后的内容
      * @return 替换后的字符串
      */
     static std::string replace(std::string str, const std::string& rep, const std::string& dest);
+
+    /**
+     * @brief 分割
+     * @param str 字符串
+     * @param sep 分割的符号
+     * @param itemFunc 项函数, 参数: item-子字符串
+     */
+    static void split(const std::string& str, const std::string& sep, const std::function<void(const std::string& item)>& itemFunc);
 
     /**
      * @brief 分割
@@ -69,20 +87,56 @@ public:
     /**
      * @brief 分割
      * @param str 字符串
-     * @param sepNum 分割的数量
+     * @param sepNum 要分割的子字符串字符数, 例如: 每4个字符组成为一个子字符串
+     * @param itemFunc 项函数, 参数: item-子字符串
+     */
+    static void split(const std::string& str, int sepNum, const std::function<void(const std::string& item)>& itemFunc);
+
+    /**
+     * @brief 分割
+     * @param str 字符串
+     * @param sepNum 要分割的子字符串字符数, 例如: 每4个字符组成为一个子字符串
      * @return 分割后的子字符串列表
      */
     static std::vector<std::string> split(const std::string& str, int sepNum);
 
     /**
-     * @breif 截取字符串
+     * @breif 截取字符串(主要提供给纯C语言使用)
      * @param str 原始字符串
      * @param sep 分割符
      * @param maxCount 允许的最多个数
-     * @param output [输出]分割后的字符串列表
+     * @param output [输出]分割后的字符串列表(外部自行分配内存空间)
      * @return 最终分割个数
      */
     static uint32_t split(char* str, const char* sep, uint32_t maxCount, char* output[]);
+
+    /**
+     * @brief 组合
+     * @param itemList 项列表
+     * @param itemFunc 项函数, 参数: item-项, 返回值: 项的字符串形态
+     * @param sep 组合的符号(选填), 默认为空
+     * @param count 指定要组合字符串列表中的元素个数(选填), 默认为0表示组合所有元素
+     * @return 组合后的字符串
+     */
+    template<typename T>
+    static std::string join(const std::vector<T>& itemList, const std::function<std::string(const T& item)>& itemFunc,
+                            const std::string& sep = "", size_t count = 0)
+    {
+        if (itemList.empty() || !itemFunc)
+        {
+            return std::string();
+        }
+        if (0 == count || count > itemList.size())
+        {
+            count = itemList.size();
+        }
+        std::string str;
+        for (size_t i = 0; i < count; ++i)
+        {
+            str += (i > 0 ? sep : "") + itemFunc(itemList[i]);
+        }
+        return str;
+    }
 
     /**
      * @brief 组合
