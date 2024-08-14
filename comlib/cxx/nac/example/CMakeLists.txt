@@ -42,6 +42,9 @@ else()
     message(WARNING "Boost not found")
     return()
 endif()
+if (CMAKE_SYSTEM_NAME MATCHES "Windows") # 增加`WIN32_LEAN_AND_MEAN`宏定义避免平台头文件重复引用导致错误
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+endif()
 ##########################################################################################
 
 # 添加algorithm基础库

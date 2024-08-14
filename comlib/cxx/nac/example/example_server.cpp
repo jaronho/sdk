@@ -1,6 +1,9 @@
 #include <atomic>
 #include <iostream>
 #include <thread>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 #include "access_def.h"
 #include "logger/logger_manager.h"
@@ -74,6 +77,9 @@ void handleNewConnection(const std::shared_ptr<nsocket::TcpConnection>& conn)
 
 int main(int argc, char* argv[])
 {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
     printf("***********************************************************************************************************\n");
     printf("** This is NAC server                                                                                    **\n");
     printf("** Options:                                                                                              **\n");
@@ -221,7 +227,7 @@ int main(int argc, char* argv[])
     lcfg.fileMaxSize = 10 * 1024 * 1024;
     lcfg.fileMaxCount = 5;
     lcfg.newFolderDaily = true;
-    lcfg.consoleEnable = true;
+    lcfg.consoleMode = 1;
     logger::LoggerManager::start(lcfg);
     s_logger = logger::LoggerManager::getLogger();
     /* 创建服务器 */

@@ -260,12 +260,20 @@ bool AccessCtrl::connect(const AccessConfig& cfg)
                 "nac.tcli.connect.retry", std::chrono::seconds(cfg.retryInterval[0]),
                 [&](const std::chrono::steady_clock::time_point& tp) { onRetryTimer(); }, s_dataChannel->getPktExecutor().lock());
         }
-        s_retryTimer->start();
     }
     /* 首次连接 */
-    return s_connectService->connect(cfg.localPort, cfg.address, cfg.port, cfg.sslOn, cfg.sslWay, cfg.certFmt, cfg.certFile, cfg.pkFile,
-                                     cfg.pkPwd, cfg.connectTimeout, (int32_t)cfg.authBizCode, cfg.authTimeout,
-                                     (int32_t)cfg.heartbeatBizCode, cfg.heartbeatInterval, cfg.heartbeatFixedSend, cfg.offlineTime);
+    bool ret = s_connectService->connect(cfg.localPort, cfg.address, cfg.port, cfg.sslOn, cfg.sslWay, cfg.certFmt, cfg.certFile, cfg.pkFile,
+                                         cfg.pkPwd, cfg.connectTimeout, (int32_t)cfg.authBizCode, cfg.authTimeout,
+                                         (int32_t)cfg.heartbeatBizCode, cfg.heartbeatInterval, cfg.heartbeatFixedSend, cfg.offlineTime);
+    if (!ret)
+    {
+        std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
+        if (s_retryTimer)
+        {
+            s_retryTimer->start();
+        }
+    }
+    return ret;
 }
 
 void AccessCtrl::disconnect()

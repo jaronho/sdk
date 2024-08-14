@@ -1,6 +1,9 @@
 #include <atomic>
 #include <iostream>
 #include <thread>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 #include "../nac/tclient/access_ctrl.h"
 #include "access_def.h"
@@ -48,6 +51,9 @@ private:
 
 int main(int argc, char* argv[])
 {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
     printf("***********************************************************************************************************\n");
     printf("** This is NAC client                                                                                    **\n");
     printf("** Options:                                                                                              **\n");
@@ -63,6 +69,8 @@ int main(int argc, char* argv[])
     printf("** [-pkp]                 specify private key file password, e.g. qq123456                               **\n");
 #endif
     printf("**                                                                                                       **\n");
+    printf("** Input: BizCode BizData SendCount SendInterval(millisecond)                                            **\n");
+    printf("** e.g: '1005 hello 500 1'                                                                               **\n");
     printf("***********************************************************************************************************\n");
     printf("\n");
     std::string serverHost;
@@ -195,7 +203,7 @@ int main(int argc, char* argv[])
     lcfg.fileMaxSize = 10 * 1024 * 1024;
     lcfg.fileMaxCount = 5;
     lcfg.newFolderDaily = true;
-    lcfg.consoleEnable = true;
+    lcfg.consoleMode = 1;
     logger::LoggerManager::start(lcfg);
     s_logger = logger::LoggerManager::getLogger();
     /* 业务模块 */
@@ -215,6 +223,10 @@ int main(int argc, char* argv[])
     acfg.pkFile = pkFile;
     acfg.pkPwd = pkPwd;
     acfg.connectTimeout = 3;
+    acfg.heartbeatBizCode = (int32_t)BizCode::req_hearbeat;
+    acfg.heartbeatInterval = 3;
+    acfg.heartbeatFixedSend = true;
+    acfg.offlineTime = 13;
     acfg.retryInterval = {1};
     while (!nac::tcli::AccessCtrl::connect(acfg))
     {
@@ -246,30 +258,40 @@ int main(int argc, char* argv[])
         }
         try
         {
+            /* 第1个字段: 业务码 */
             auto bizCode = std::atoi(vec[0].c_str());
             std::string data;
-            long long fileSize = 0;
+            size_t totalCount = 0, interval = 0;
             if (vec.size() > 1)
             {
-                auto fileData = utility::FileInfo(vec[1]).readAll(fileSize);
-                if (fileData)
+                /* 第2个字段: 业务数据 */
+                data = utility::FileInfo(vec[1]).readAll();
+                if (4 == vec.size())
                 {
-                    data = fileData;
-                    free(fileData);
-                }
-                else
-                {
-                    fileSize = 0;
+                    /* 第3个字段: 发送次数 */
+                    totalCount = std::atol(vec[2].c_str());
+                    totalCount = totalCount > 0 ? totalCount : 1;
+                    /* 第4个字段: 发送间隔(毫秒) */
+                    interval = interval > 0 ? interval : 1;
                 }
             }
-            auto seqId = nac::tcli::AccessCtrl::sendMsg(
-                bizCode, 0, data,
-                [&, bizCode](bool ok, const std::string& data) {
-                    INFO_LOG(s_logger, "响应消息, bizCode: {} {}", bizCode, ok ? "成功." : "失败.");
-                },
-                10);
-            INFO_LOG(s_logger, "发送消息, 包大小: {}, bizCode: {} {}", (size_t)16 + fileSize, bizCode,
-                     seqId > 0 ? "成功, seqId: " + std::to_string(seqId) + "." : "失败.");
+            size_t count = 1;
+            while (count <= totalCount)
+            {
+                if (count > 1)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+                }
+                auto seqId = nac::tcli::AccessCtrl::sendMsg(
+                    bizCode, 0, data,
+                    [&, bizCode, count](bool ok, const std::string& data) {
+                        INFO_LOG(s_logger, "响应第[{:5d}]次消息, bizCode: {} {}", count, bizCode, ok ? "成功." : "失败.");
+                    },
+                    10);
+                INFO_LOG(s_logger, "发送第[{:5d}]次消息, 包大小: {}, bizCode: {} {}", count, (size_t)16 + data.size(), bizCode,
+                         seqId > 0 ? "成功, seqId: " + std::to_string(seqId) + "." : "失败.");
+                ++count;
+            }
         }
         catch (...)
         {
