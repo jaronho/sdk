@@ -28,33 +28,40 @@ void SteadyTimer::setInterval(const std::chrono::steady_clock::duration& interva
 
 void SteadyTimer::start()
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
-    if (!m_started)
+    bool triggered = false;
     {
-        m_started = true;
-        if (std::chrono::steady_clock::duration::zero() == m_delay)
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        if (!m_started)
         {
-            onTrigger();
-        }
-        else
-        {
-            const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
-            m_timer->expires_from_now(m_delay);
-            m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
-                const auto self = wpSelf.lock();
-                if (self)
-                {
-                    if (code) /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
+            m_started = true;
+            if (std::chrono::steady_clock::duration::zero() == m_delay)
+            {
+                triggered = true;
+            }
+            else
+            {
+                const std::weak_ptr<SteadyTimer>& wpSelf = shared_from_this();
+                m_timer->expires_from_now(m_delay);
+                m_timer->async_wait([wpSelf](const boost::system::error_code& code) {
+                    const auto self = wpSelf.lock();
+                    if (self)
                     {
-                        self->onRecover();
+                        if (code) /* 说明: `cancel`后立即调用`async_wait`, `cancel`的回调可能会晚于`async_wait`执行 */
+                        {
+                            self->onRecover();
+                        }
+                        else
+                        {
+                            self->onTrigger();
+                        }
                     }
-                    else
-                    {
-                        self->onTrigger();
-                    }
-                }
-            });
+                });
+            }
         }
+    }
+    if (triggered)
+    {
+        onTrigger();
     }
 }
 
@@ -63,8 +70,8 @@ void SteadyTimer::stop()
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started)
     {
-        m_timer->cancel();
         m_started = false;
+        m_timer->cancel();
     }
 }
 

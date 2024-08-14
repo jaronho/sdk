@@ -52,8 +52,8 @@ void DeadlineTimer::stop()
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_started)
     {
-        m_timer->cancel();
         m_started = false;
+        m_timer->cancel();
     }
 }
 
