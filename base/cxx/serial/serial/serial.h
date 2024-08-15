@@ -141,7 +141,7 @@ public:
      *        (1)读到了请求的字节数, 这种情况下, 已读的字节数将匹配请求的字节数
      *        (2)超时, 这种情况下, 读到的字节数不匹配请求的字节数, 且没有触发异常, 但是触发了超时条件
      *        (3)触发异常
-     * @param buffer 缓冲区
+     * @param buffer [输出]缓冲区
      * @param size 缓冲区大小(要读的字节数)
      * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
      */
@@ -149,25 +149,27 @@ public:
 
     /**
      * @brief 读数据
-     * @param size 要读的字节数
-     * @return 读到的数据
+     * @param count 要读的字节数
+     * @param bytes [输出]读到的数据
+     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
      */
-    std::string read(size_t size);
+    ssize_t read(size_t count, std::string& bytes);
 
     /**
      * @brief 读取所有数据
-     * @param availableCount [输出]可读数据长度
-     * @return 所有数据
+     * @param bytes [输出]读到的数据
+     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
      */
-    std::string readAll(ssize_t* availableCount = nullptr);
+    ssize_t readAll(std::string& bytes);
 
     /**
      * @brief 读数据直到命中标识或者超时(注意: 如果标识为空且超时为0则直接返回)
      * @param flag 标识, 为空时表示一直读取直到超时
-     * @param msec 超时时间(选填, 毫秒), 为0表示一直等待
-     * @return 读到的数据
+     * @param msec 超时时间(毫秒), 为0表示一直等待
+     * @param bytes [输出]读到的数据
+     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
      */
-    std::string readUntil(const std::string& flag, size_t msec = 0);
+    ssize_t readUntil(const std::string& flag, size_t msec, std::string& bytes);
 
     /**
      * @brief 写数据

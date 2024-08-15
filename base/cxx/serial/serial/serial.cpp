@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <string.h>
 #include <thread>
 
 #if !defined(_WIN32) && !defined(__OpenBSD__) && !defined(__FreeBSD__)
@@ -129,91 +130,113 @@ ssize_t Serial::availableForRead()
 
 ssize_t Serial::read(char* buffer, size_t size)
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
-    return m_impl->read(buffer, size);
-}
-
-std::string Serial::read(size_t size)
-{
-    std::string bytes;
-    if (0 == size)
+    if (!buffer || 0 == size)
     {
-        return bytes;
+        return 0;
     }
-    std::lock_guard<std::mutex> locker(m_mutex);
-    char* buf = (char*)malloc(size);
-    if (buf)
-    {
-        auto len = m_impl->read(buf, size);
-        if (len > 0)
-        {
-            bytes.append(buf, len);
-        }
-        free(buf);
-    }
-    return bytes;
-}
-
-std::string Serial::readAll(ssize_t* availableCount)
-{
-    static const size_t BUF_SIZE = 1025;
-    char buf[BUF_SIZE] = {0};
-    std::string bytes;
+    memset(buffer, 0, size);
     std::lock_guard<std::mutex> locker(m_mutex);
     auto canReadCount = m_impl->availableForRead();
-    if (availableCount)
+    if (canReadCount > 0)
     {
-        *availableCount = canReadCount;
+        return m_impl->read(buffer, size);
     }
-    while (canReadCount > 0)
-    {
-        size_t willReadCount = BUF_SIZE - 1;
-        if (canReadCount < willReadCount)
-        {
-            willReadCount = canReadCount;
-        }
-        auto len = m_impl->read(buf, willReadCount);
-        if (willReadCount != len)
-        {
-            break;
-        }
-        bytes.append(buf, len);
-        canReadCount -= len;
-    }
-    return bytes;
+    return canReadCount;
 }
 
-std::string Serial::readUntil(const std::string& flag, size_t msec)
+ssize_t Serial::read(size_t count, std::string& bytes)
 {
+    bytes.clear();
+    if (0 == count)
+    {
+        return 0;
+    }
+    std::lock_guard<std::mutex> locker(m_mutex);
+    auto canReadCount = m_impl->availableForRead();
+    if (canReadCount > 0)
+    {
+        ssize_t len = 0;
+        char* buf = (char*)malloc(count);
+        if (buf)
+        {
+            len = m_impl->read(buf, count);
+            if (len > 0)
+            {
+                bytes.append(buf, len);
+            }
+            free(buf);
+        }
+        return len;
+    }
+    return canReadCount;
+}
+
+ssize_t Serial::readAll(std::string& bytes)
+{
+    bytes.clear();
+    static const size_t BUF_SIZE = 1025;
+    std::lock_guard<std::mutex> locker(m_mutex);
+    auto canReadCount = m_impl->availableForRead();
+    if (canReadCount > 0)
+    {
+        char buf[BUF_SIZE] = {0};
+        while (1)
+        {
+            auto len = m_impl->read(buf, BUF_SIZE - 1);
+            if (len < 0)
+            {
+                return len;
+            }
+            else if (0 == len)
+            {
+                return bytes.size();
+            }
+            bytes.append(buf, len);
+        }
+    }
+    return canReadCount;
+}
+
+ssize_t Serial::readUntil(const std::string& flag, size_t msec, std::string& bytes)
+{
+    bytes.clear();
     if (flag.empty() && msec <= 0)
     {
-        return std::string();
+        return 0;
     }
-    char buf[2] = {0};
     auto stp = std::chrono::steady_clock::now();
-    std::string bytes;
     std::lock_guard<std::mutex> locker(m_mutex);
-    while (1)
+    auto canReadCount = m_impl->availableForRead();
+    if (canReadCount >= 0)
     {
-        auto len = m_impl->read(buf, 1);
-        if (1 == len)
+        char buf[2] = {0};
+        while (1)
         {
-            bytes.push_back(buf[0]);
-            if (!flag.empty() && bytes.size() >= flag.size() && std::equal(flag.rbegin(), flag.rend(), bytes.rbegin())) /* 读完 */
+            auto len = m_impl->read(buf, 1);
+            if (len < 0)
+            {
+                return len;
+            }
+            else if (len > 0)
+            {
+                bytes.push_back(buf[0]);
+                if (!flag.empty() && bytes.size() >= flag.size() && std::equal(flag.rbegin(), flag.rend(), bytes.rbegin())) /* 读完 */
+                {
+                    break;
+                }
+            }
+            if (msec > 0 && (std::chrono::steady_clock::now() - stp >= std::chrono::milliseconds(msec))) /* 超时 */
             {
                 break;
             }
+            if (0 == len)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
         }
-        if (msec > 0 && (std::chrono::steady_clock::now() - stp >= std::chrono::milliseconds(msec))) /* 超时 */
-        {
-            break;
-        }
-        if (1 != len)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
+        return bytes.size();
     }
-    return bytes;
+    return canReadCount;
 }
 
 ssize_t Serial::write(const char* data, size_t size)

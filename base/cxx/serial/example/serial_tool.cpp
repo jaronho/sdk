@@ -1,4 +1,5 @@
-﻿#include <chrono>
+﻿#include <atomic>
+#include <chrono>
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
@@ -11,6 +12,7 @@
 #include "../serial/serial.h"
 
 serial::Serial g_com; /* 串口对象 */
+std::atomic_bool g_opened = {false}; /* 串口是否打开 */
 std::chrono::steady_clock::time_point g_lastRecvTimestamp; /* 上次接收的时间戳 */
 size_t g_totalRecvLength = 0; /* 总的接收长度(字节) */
 
@@ -42,26 +44,30 @@ std::string getDateTime()
  * @param hexStr 待转换的十六进制字符串
  * @param bytes 保存转换后的字节流
  */
-int hexStrToBytes(const std::string& hexStr, char** bytes)
+int hexStrToBytes(const std::string& hexStr, std::string& bytes)
 {
-    *bytes = nullptr;
+    bytes.clear();
     std::string str;
-    for (size_t i = 0; i < hexStr.size(); ++i)
+    for (const auto& ch : hexStr)
     {
-        if (' ' != hexStr[i])
+        if (' ' == ch)
         {
-            str.push_back(hexStr[i]);
+            continue;
+        }
+        else if ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f'))
+        {
+            str.push_back(ch);
+        }
+        else
+        {
+            return 0;
         }
     }
     if (0 != (str.size() % 2))
     {
         return 0;
     }
-    *bytes = (char*)malloc(str.size() / 2);
-    if (!(*bytes))
-    {
-        return 0;
-    }
+    bytes.resize(str.size() / 2);
     unsigned char highByte, lowByte;
     for (size_t i = 0; i < str.size(); i += 2)
     {
@@ -86,7 +92,7 @@ int hexStrToBytes(const std::string& hexStr, char** bytes)
             lowByte -= 0x30;
         }
         /* 高4位和低4位合并成一个字节 */
-        (*bytes)[i / 2] = (highByte << 4) | lowByte;
+        bytes[i / 2] = (highByte << 4) | lowByte;
     }
     return (str.size() / 2);
 }
@@ -262,6 +268,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         return;
     }
     printf("串口打开成功.\n");
+    g_opened = true;
     /* 开线程用于发送 */
     std::thread th([&, crlf]() {
         std::string endFlag, endFlagHex;
@@ -280,7 +287,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
             endFlag = "\r\n";
             endFlagHex = "0D0A";
         }
-        while (g_com.isOpened())
+        while (g_opened.load())
         {
             char input[1024] = {0};
             std::cin.getline(input, sizeof(input));
@@ -290,16 +297,18 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
             }
             if (sendHex)
             {
-                char* bytes;
-                auto len = hexStrToBytes(std::string(input) + endFlagHex, &bytes);
-                if (bytes)
+                std::string bytes;
+                if (0 == hexStrToBytes(std::string(input) + endFlagHex, bytes))
                 {
-                    if (showTime)
-                    {
-                        fprintf(stderr, "[Tx][%s] %s\n", getDateTime().c_str(), input);
-                    }
-                    g_com.write(bytes, len);
-                    free(bytes);
+                    fprintf(stderr, "[Error][%s] input format not match hex!\n", getDateTime().c_str());
+                }
+                if (showTime)
+                {
+                    fprintf(stderr, "[Tx][%s] %s\n", getDateTime().c_str(), input);
+                }
+                if (g_com.write(bytes.c_str(), bytes.size()) < 0)
+                {
+                    break;
                 }
             }
             else
@@ -308,16 +317,19 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 {
                     fprintf(stderr, "[Tx][%s] %s\n", getDateTime().c_str(), input);
                 }
-                g_com.write(std::string(input) + endFlag);
+                if (g_com.write(std::string(input) + endFlag) < 0)
+                {
+                    break;
+                }
             }
         }
     });
     th.detach();
     /* 监听串口数据, 坑: 这里打印只能输出到stderr, 用stdout的话会阻塞(不知道啥原因) */
     bool newLine = true;
-    while (g_com.isOpened())
+    std::string bytes;
+    while (g_com.readAll(bytes) >= 0)
     {
-        auto bytes = g_com.readAll();
         if (hideRecv)
         {
             std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -388,6 +400,8 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     fprintf(stderr, "串口被关闭.\n");
+    g_opened = false;
+    exit(0);
 }
 
 bool isOptionName(const std::string& str)

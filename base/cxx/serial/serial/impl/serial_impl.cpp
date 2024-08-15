@@ -330,7 +330,7 @@ ssize_t SerialImpl::availableForRead()
     return cs.cbInQue;
 #else
     int count = 0;
-    if (-1 == ioctl(m_fd, TIOCINQ, &count))
+    if (ioctl(m_fd, FIONREAD, &count) < 0)
     {
         m_fd = INVALID_HANDLE_VALUE;
         return -1;
@@ -490,7 +490,7 @@ bool SerialImpl::getCD()
     return 0 != (MS_RLSD_ON & dwModemStatus);
 #else
     int status;
-    if (-1 == ioctl(m_fd, TIOCMGET, &status))
+    if (ioctl(m_fd, TIOCMGET, &status) < 0)
     {
         return false;
     }
@@ -513,7 +513,7 @@ bool SerialImpl::getCTS()
     return 0 != (MS_CTS_ON & dwModemStatus);
 #else
     int status;
-    if (INVALID_HANDLE_VALUE == ioctl(m_fd, TIOCMGET, &status))
+    if (ioctl(m_fd, TIOCMGET, &status) < 0)
     {
         return false;
     }
@@ -537,7 +537,7 @@ bool SerialImpl::getDSR()
     return 0 != (MS_DSR_ON & dwModemStatus);
 #else
     int status;
-    if (-1 == ioctl(m_fd, TIOCMGET, &status))
+    if (ioctl(m_fd, TIOCMGET, &status) < 0)
     {
         return false;
     }
@@ -560,7 +560,7 @@ bool SerialImpl::getRI()
     return 0 != (MS_RING_ON & dwModemStatus);
 #else
     int status;
-    if (-1 == ioctl(m_fd, TIOCMGET, &status))
+    if (ioctl(m_fd, TIOCMGET, &status) < 0)
     {
         return false;
     }
@@ -720,7 +720,7 @@ bool SerialImpl::waitForChange()
     while (1)
     {
         int status;
-        if (-1 == ioctl(m_fd, TIOCMGET, &status))
+        if (ioctl(m_fd, TIOCMGET, &status) < 0)
         {
             break;
         }
@@ -733,7 +733,7 @@ bool SerialImpl::waitForChange()
     return false;
 #else
     int command = (TIOCM_CD | TIOCM_CTS | TIOCM_DSR | TIOCM_RI);
-    if (-1 == ioctl(m_fd, TIOCMIWAIT, &command))
+    if (ioctl(m_fd, TIOCMIWAIT, &command) < 0)
     {
         return false;
     }
@@ -1419,13 +1419,13 @@ int SerialImpl::reconfig()
            The driver for the underlying serial hardware ultimately determines which baud rates can be used. This ioctl sets both 
            the input and output speed. */
         speed_t newBaudrate = static_cast<speed_t>(m_baudrate);
-        if (-1 == ioctl(m_fd, IOSSIOSPEED, &newBaudrate, 1)) /* PySerial uses IOSSIOSPEED=0x80045402 */
+        if (ioctl(m_fd, IOSSIOSPEED, &newBaudrate, 1) < 0) /* PySerial uses IOSSIOSPEED=0x80045402 */
         {
             return 8; /* 自定义波特率设置失败 */
         }
 #elif defined(__linux__) && defined(TIOCSSERIAL) /* Linux支持 */
         struct serial_struct ser;
-        if (-1 == ioctl(m_fd, TIOCGSERIAL, &ser))
+        if (ioctl(m_fd, TIOCGSERIAL, &ser) < 0)
         {
             return 8; /* 自定义波特率设置失败 */
         }
@@ -1434,7 +1434,7 @@ int SerialImpl::reconfig()
         /* 更新标志位 */
         ser.flags &= ~ASYNC_SPD_MASK;
         ser.flags |= ASYNC_SPD_CUST;
-        if (-1 == ioctl(m_fd, TIOCSSERIAL, &ser))
+        if (ioctl(m_fd, TIOCSSERIAL, &ser) < 0)
         {
             return 8; /* 自定义波特率设置失败 */
         }
