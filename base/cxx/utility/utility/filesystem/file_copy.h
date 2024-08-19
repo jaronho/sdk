@@ -8,6 +8,22 @@
 namespace utility
 {
 /**
+ * @brief 目标文件信息
+ */
+struct FileCopyDestInfo
+{
+    std::string showFile; /* 展示的文件(全路径) */
+    std::string realFile; /* 实际的文件(全路径) */
+};
+
+/**
+ * @brief 文件拷贝目标文件名变更函数
+ * @param relativePath 目标文件名(包含相对路径)
+ * @return 变更后的目标文件名
+ */
+using FileCopyDestNameAlterFunc = std::function<std::string(const std::string& relativePath)>;
+
+/**
  * @brief 文件拷贝过滤函数
  * @param name 文件/目录名(全路径)
  * @param attr 文件/目录属性
@@ -51,8 +67,12 @@ using FileCopySingleProgressCallback = std::function<void(const std::string& src
  * @param srcAttr 当前拷贝的源文件属性
  * @param destFile 目标文件
  */
-using FileCopySingleOkCallback = std::function<void(const std::string& srcFile, const FileAttribute& srcAttr, const std::string& destFile)>;
+using FileCopySingleOkCallback =
+    std::function<void(const std::string& srcFile, const FileAttribute& srcAttr, const FileCopyDestInfo& destFile)>;
 
+/**
+ * @brief 文件拷贝
+ */
 class FileCopy
 {
 public:
@@ -62,13 +82,15 @@ public:
      * @param destPath 目标目录
      * @param clearDest 拷贝前是否对目标目录进行清空
      * @param coverDest 若目标目录已存在同名文件是否覆盖, true-覆盖, false-重命名要拷贝的文件
+     * @param destNameAlterFunc 目标文件名变更函数
      * @param filterFunc 过滤函数
      * @param stopFunc 停止函数(选填)
      * @param tmpSuffix 临时后缀名(选填), 默认不使用临时文件
      * @param blocks 拷贝块大小, 为空时表示使用默认(最大64Kb)
      * @param retryTime 读写失败时重试时间(毫秒), 为0表示一直重试
      */
-    FileCopy(const std::string& srcPath, const std::string& destPath, bool clearDest, bool coverDest, const FileCopyFilterFunc& filterFunc,
+    FileCopy(const std::string& srcPath, const std::string& destPath, bool clearDest, bool coverDest,
+             const FileCopyDestNameAlterFunc& destNameAlterFunc, const FileCopyFilterFunc& filterFunc,
              const FileCopyStopFunc& stopFunc = nullptr, const std::string& tmpSuffix = "",
              const std::vector<FileInfo::CopyBlock>& blocks = {}, unsigned int retryTime = 3000);
     FileCopy() = default;
@@ -93,8 +115,8 @@ public:
      * @param errCode [输出]失败时错误码(选填), 可用于strerror函数获取描述信息
      * @return 拷贝结果
      */
-    FileInfo::CopyResult start(std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist,
-                               std::string* failSrcFile = nullptr, std::string* failDestFile = nullptr, int* errCode = nullptr);
+    FileInfo::CopyResult start(std::vector<std::string>& srcFilelist, std::vector<FileCopyDestInfo>* destFilelist,
+                               std::string* failSrcFile = nullptr, FileCopyDestInfo* failDestFile = nullptr, int* errCode = nullptr);
 
 private:
     /**
@@ -103,7 +125,7 @@ private:
      * @param destFilelist [输出]目标文件列表
      * @return 拷贝结果
      */
-    FileInfo::CopyResult copyAllFiles(std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist);
+    FileInfo::CopyResult copyAllFiles(std::vector<std::string>& srcFilelist, std::vector<FileCopyDestInfo>* destFilelist);
 
     /**
      * @brief 拷贝指定文件
@@ -111,7 +133,7 @@ private:
      * @param destFilelist [输出]目标文件列表
      * @return 拷贝结果
      */
-    FileInfo::CopyResult copyAssignFiles(const std::vector<std::string>& srcFilelist, std::vector<std::string>* destFilelist);
+    FileInfo::CopyResult copyAssignFiles(const std::vector<std::string>& srcFilelist, std::vector<FileCopyDestInfo>* destFilelist);
 
     /**
      * @brief 拷贝源文件列表
@@ -122,7 +144,7 @@ private:
      * @return 拷贝结果
      */
     FileInfo::CopyResult copySrcFileList(const std::vector<std::string>& srcFilelist, size_t totalFileSize,
-                                         const std::vector<FileInfo::CopyBlock>& blocks, std::vector<std::string>* destFilelist);
+                                         const std::vector<FileInfo::CopyBlock>& blocks, std::vector<FileCopyDestInfo>* destFilelist);
 
     /**
      * @brief 检测目标文件是否存在同名
@@ -139,6 +161,7 @@ private:
     std::string m_tmpSuffix; /* 临时后缀名 */
     std::vector<FileInfo::CopyBlock> m_blocks; /* 文件块列表 */
     unsigned int m_retryTime; /* 重试时间 */
+    FileCopyDestNameAlterFunc m_destNameAlterFunc; /* 目标文件名变更函数 */
     FileCopyFilterFunc m_filterFunc; /* 过滤函数 */
     FileCopyStopFunc m_stopFunc; /* 停止函数 */
     FileCopyBeginCallback m_beginCallback; /* 开始回调 */
@@ -146,7 +169,7 @@ private:
     FileCopySingleProgressCallback m_singleProgressCallback; /* 单个进度回调 */
     FileCopySingleOkCallback m_singleOkCallback; /* 单个成功回调 */
     std::string m_failSrcFile; /* 失败时的源文件 */
-    std::string m_failDestFile; /* 失败时的目标文件 */
+    FileCopyDestInfo m_failDestFile; /* 失败时的目标文件 */
     int m_errCode; /* 失败时的错误码 */
 };
 } // namespace utility

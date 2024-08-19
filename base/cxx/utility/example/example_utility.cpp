@@ -14,12 +14,12 @@
 
 int main(int argc, char** argv)
 {
+#if 0
+    testFileCopy(argc, argv);
+#else
     testBytearry();
 #if 0
-        testFileCopy(argc, argv);
-#else
-#if 0
-        testCharset(argc, argv);
+    testCharset(argc, argv);
 #else
     testDateTime();
     testFilesystem();
