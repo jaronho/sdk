@@ -1424,7 +1424,7 @@ bool isMountpoint(std::string path)
 #else
     path.insert(0, " ");
     std::vector<std::string> outVec;
-    runCommand("lsblk | grep \"" + path + "\"", nullptr, &outVec);
+    runCommand("df | grep \"" + path + "\"", nullptr, &outVec);
     if (1 == outVec.size() && (outVec[0].rfind(path) + path.size()) == outVec[0].size())
     {
         return true;
