@@ -119,7 +119,7 @@ int64_t SessionWrapper::sendMsg(int32_t bizCode, int64_t seqId, const std::strin
     }
     /* 发送数据包 */
     const std::weak_ptr<SessionWrapper> wpSelf = shared_from_this();
-    return sendImpl(bizCode, seqId, data,
+    return sendImpl(bizCode, seqId, data, timeout,
                     [wpSelf, bizCode, seqId, timeout, callback](const boost::system::error_code& code, size_t sentLength) {
                         const auto self = wpSelf.lock();
                         if (self)

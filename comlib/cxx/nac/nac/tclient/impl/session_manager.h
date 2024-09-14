@@ -60,10 +60,11 @@ private:
      * @param bizCode 业务码
      * @param seqId 序列ID
      * @param data 数据
+     * @param timeout 超时, 大于0时表示需要等待响应数据, 小等于0表示不需要等待响应数据
      * @param callback 发送回调
      * @return 序列ID, -1表示失败
      */
-    int64_t sendImpl(int32_t bizCode, int64_t seqId, const std::string& data, const SendCallback& callback) override;
+    int64_t sendImpl(int32_t bizCode, int64_t seqId, const std::string& data, int timeout, const SendCallback& callback) override;
 
     /**
      * @brief 响应数据包
