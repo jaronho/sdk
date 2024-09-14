@@ -51,7 +51,7 @@ int64_t SessionManager::sendImpl(int32_t bizCode, int64_t seqId, const std::stri
     if (adapter)
     {
         auto pkt = adapter->createPacket(bizCode, seqId, data);
-        TRACE_LOG(m_logger, "准备发送数据, bizCode[{}], seqId[{}], length[{}], 等待响应超时[{}]", bizCode, seqId, pkt->size(), timeout);
+        TRACE_LOG(m_logger, "准备发送数据, bizCode[{}], seqId[{}], length[{}], timeout[{}]", bizCode, seqId, pkt->size(), timeout);
         if (adapter->sendPacket(pkt, callback)) /* 发送成功, 返回seqId */
         {
             return seqId;
