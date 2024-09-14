@@ -152,7 +152,7 @@ public:
      * @return 消息序列ID, -1表示发送失败
      */
     static int64_t sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, const RespCallback& callback = nullptr,
-                           unsigned int timeout = 30);
+                           unsigned int timeout = 5);
 
     /**
      * @brief 获取本端端点
