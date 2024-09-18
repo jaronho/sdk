@@ -145,6 +145,10 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, int crlf, bool showTime, bool sendHex,
                 bool showHex, bool autoLine, bool hideRecv)
 {
+    if (showTime) /* 显示时间时则设置接收自动换行 */
+    {
+        autoLine = true;
+    }
     /* 串口设置及打开 */
     g_com.setPort(port);
     g_com.setBaudrate(baudrate);
@@ -332,7 +336,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     {
         if (hideRecv)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
             continue;
         }
         if (!bytes.empty())
@@ -436,10 +440,10 @@ int main(int argc, char** argv)
     printf("** [-flow 流控]        流控(选填), 值: [None: N|n, Software: S|s, Hardware: H|h], 默认: N.                 **\n");
     printf("** [-crlf 结束符]      发送结束符(选填), 值: [0: 无, 1: CR(回车), 2: LF(换行), 3: CRLF(回车换行)], 默认: 0.**\n");
     printf("** [--list]            显示所有串口, 默认: 不显示.                                                         **\n");
-    printf("** [--time]            显示发送/接收数据时间(选填), 默认: 不显示.                                          **\n");
+    printf("** [--time]            显示发送/接收数据时间(选填), 显示时自动换行接收数据, 默认: 不显示.                  **\n");
     printf("** [--txhex]           使用十六进制格式发送数据(选填), 默认: ASCII.                                        **\n");
     printf("** [--rxhex]           使用十六进制格式显示接收数据(选填), 默认: ASCII.                                    **\n");
-    printf("** [--rxline]          自动换行接收数据(选填), 默认: 不自动换行.                                           **\n");
+    printf("** [--rxline]          自动换行接收数据(选填), 受显示时间影响, 默认: 不自动换行.                           **\n");
     printf("** [--rxhide]          不显示接收到的数据(选填), 默认: 显示.                                               **\n");
     printf("**                                                                                                         **\n");
     printf("** 示例:                                                                                                   **\n");
