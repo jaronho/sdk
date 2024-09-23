@@ -108,7 +108,7 @@ endfunction()
 # @param: SOURCE_LIST [输出]文件列表
 ###############################################################################
 function(get_cxx_files SEARCH_PATH SOURCE_LIST)
-    set(SOURCE_EXP *.h *.hpp *.c *.cc *.cpp)
+    set(SOURCE_EXP *.h *.hpp *.hxx *.c *.cc *.cpp *.cxx)
     set(SOURCE_EXP_WITH_PATH)
     foreach(EXP ${SOURCE_EXP})
         list(APPEND SOURCE_EXP_WITH_PATH ${SEARCH_PATH}/${EXP})
