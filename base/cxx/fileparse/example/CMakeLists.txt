@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 14) # `std::make_unique`要求最低C++14
 include(../cmake/tools.cmake)
 
 # 添加fileparse基础库
+add_definitions(-DXLNT_STATIC)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/.. 3rdparty/base/fileparse)
 include_directories(${base_fileparse_dir})
 source_group(TREE ${base_fileparse_dir} PREFIX 3rdparty/base FILES ${base_fileparse_files})
