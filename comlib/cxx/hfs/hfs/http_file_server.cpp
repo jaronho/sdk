@@ -10,16 +10,16 @@
 namespace hfs
 {
 /**
- * @brief ÏîĞÅÏ¢
+ * @brief é¡¹ä¿¡æ¯
  */
 struct ItemInfo
 {
-    std::string name; /* Ãû³Æ */
-    utility::FileAttribute attr; /* ÊôĞÔ */
+    std::string name; /* åç§° */
+    utility::FileAttribute attr; /* å±æ€§ */
 };
 
 /**
- * @brief Ä¬ÈÏHTML
+ * @brief é»˜è®¤HTML
  */
 std::string htmlString(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const std::string& title)
 {
@@ -68,32 +68,32 @@ std::string htmlString(uint64_t cid, const nsocket::http::REQUEST_PTR& req, cons
 }
 
 /**
- * @brief ÎÄ¼ş´óĞ¡µ¥Î»
+ * @brief æ–‡ä»¶å¤§å°å•ä½
  */
 std::string fileSizeUnit(size_t fileSize)
 {
     char buf[64] = {0};
-    if (fileSize >= 1024 * 1024 * 1024) /* ´óÓÚ1G */
+    if (fileSize >= 1024 * 1024 * 1024) /* å¤§äº1G */
     {
         sprintf(buf, "<font color=\"#FF0000\">%.2f G</font>", fileSize / 1024.f / 1024.f / 1024.f);
     }
-    else if (fileSize >= 512 * 1024 * 1024) /* ´óÓÚ512M */
+    else if (fileSize >= 512 * 1024 * 1024) /* å¤§äº512M */
     {
         sprintf(buf, "<font color=\"#E0670B\">%.1f M</font>", fileSize / 1024.f / 1024.f);
     }
-    else if (fileSize >= 100 * 1024 * 1024) /* ´óÓÚ100M */
+    else if (fileSize >= 100 * 1024 * 1024) /* å¤§äº100M */
     {
         sprintf(buf, "<font color=\"#0000FF\">%.1f M</font>", fileSize / 1024.f / 1024.f);
     }
-    else if (fileSize >= 1024 * 1024) /* ´óÓÚ1M */
+    else if (fileSize >= 1024 * 1024) /* å¤§äº1M */
     {
         sprintf(buf, "<font color=\"#30BF50\">%.1f M</font>", fileSize / 1024.f / 1024.f);
     }
-    else if (fileSize >= 1024) /* ´óÓÚ1K */
+    else if (fileSize >= 1024) /* å¤§äº1K */
     {
         sprintf(buf, "%.1f K", fileSize / 1024.f);
     }
-    else /* Ğ¡ÓÚ1K */
+    else /* å°äº1K */
     {
         sprintf(buf, "%zu B", fileSize);
     }
@@ -225,7 +225,7 @@ bool HttpFileServer::isRunning()
 void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn,
                                              bool keepAlive, const std::string& rootDir, const std::string& uri)
 {
-    /* Ò³ÃæÍ·²¿ */
+    /* é¡µé¢å¤´éƒ¨ */
     std::string str;
     str.append("<html>");
     str.append("\n");
@@ -239,14 +239,14 @@ void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::
     str.append("\n");
     str.append("<pre>");
     str.append("\n");
-    /* ·µ»ØÉÏÒ»¼¶ */
+    /* è¿”å›ä¸Šä¸€çº§ */
     bool newLine = false;
-    if ("/" != uri) /* µ±Ç°ÔÚ×ÓÄ¿Â¼ */
+    if ("/" != uri) /* å½“å‰åœ¨å­ç›®å½• */
     {
         str.append("<a href=\"../\">../</a>");
         newLine = true;
     }
-    /* ÄÚÈİËÑË÷ */
+    /* å†…å®¹æœç´¢ */
     std::vector<ItemInfo> itemList;
     utility::PathInfo pi(rootDir + "/" + uri);
     pi.traverse(
@@ -264,7 +264,7 @@ void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::
             itemList.emplace_back(info);
         },
         nullptr, false, false);
-    /* ÄÚÈİÅÅĞò */
+    /* å†…å®¹æ’åº */
     std::sort(itemList.begin(), itemList.end(), [&](const ItemInfo& a, const ItemInfo& b) {
         if (a.attr.isDir && b.attr.isFile)
         {
@@ -276,7 +276,7 @@ void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::
         }
         return a.name < b.name;
     });
-    /* ÄÚÈİäÖÈ¾ */
+    /* å†…å®¹æ¸²æŸ“ */
     for (const auto& info : itemList)
     {
         auto target = utility::FileInfo(info.name).filename();
@@ -287,7 +287,7 @@ void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::
         newLine = true;
         static const int MAX_TARGET_NAME_LENGTH = 80;
         auto length = target.size();
-        /* ¹Ì¶¨³¤¶È²¢»»ĞĞ */
+        /* å›ºå®šé•¿åº¦å¹¶æ¢è¡Œ */
         std::string tmpTarget = target;
         std::string lines;
         while (tmpTarget.size() >= MAX_TARGET_NAME_LENGTH - 1)
@@ -303,7 +303,7 @@ void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::
             lines += "\n";
             lines += tmpTarget;
         }
-        /* Á´½ÓÄÚÈİ */
+        /* é“¾æ¥å†…å®¹ */
         if (info.attr.isDir)
         {
             str.append("<a href=\"" + target + "/\">" + (lines.empty() ? target : lines) + "/</a>");
@@ -312,7 +312,7 @@ void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::
         {
             str.append("<a href=\"" + target + "\">" + (lines.empty() ? target : lines) + +"</a>");
         }
-        /* ²¹Î»¿Õ¸ñ */
+        /* è¡¥ä½ç©ºæ ¼ */
         auto spaceCount = MAX_TARGET_NAME_LENGTH - length - (info.attr.isDir ? 1 : 0);
         spaceCount = spaceCount > 0 ? spaceCount : 1;
         std::vector<unsigned int> nonAsciiChars;
@@ -324,11 +324,11 @@ void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::
                 spaceCount += byteCount - 2;
             }
         }
-        /* ×îºóĞŞ¸ÄÊ±¼ä/ÎÄ¼ş´óĞ¡ */
+        /* æœ€åä¿®æ”¹æ—¶é—´/æ–‡ä»¶å¤§å° */
         str.append(std::string(spaceCount, ' ')).append(info.attr.modifyTimeFmt());
         str.append(std::string(6, ' ')).append(info.attr.isDir ? "-" : fileSizeUnit(info.attr.size));
     }
-    /* Ò³ÃæÎ²²¿ */
+    /* é¡µé¢å°¾éƒ¨ */
     str.append("\n");
     str.append("</pre>");
     str.append("\n");
@@ -337,7 +337,7 @@ void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::
     str.append("</body>");
     str.append("\n");
     str.append("</html>");
-    /* ·¢ËÍÏìÓ¦ */
+    /* å‘é€å“åº” */
     auto resp = nsocket::http::makeResponse200();
 #ifdef _WIN32
     resp->headers.insert(std::make_pair("Content-Type", "text/html; charset=gb2312"));
@@ -346,7 +346,7 @@ void HttpFileServer::defaultDirAccessHandler(uint64_t cid, const nsocket::http::
 #endif
     resp->body.insert(resp->body.end(), str.begin(), str.end());
     conn.send(resp->pack());
-    if (!keepAlive) /* ·Ç±£»î²Å¹Ø±ÕÁ¬½Ó */
+    if (!keepAlive) /* éä¿æ´»æ‰å…³é—­è¿æ¥ */
     {
         conn.close();
     }
@@ -358,7 +358,7 @@ void HttpFileServer::defaultFileGetHandler(uint64_t cid, const nsocket::http::RE
     utility::FileInfo fi(fileName);
     auto mimeType = nsocket::http::getFileMimeType(fileName);
     std::string textFileData;
-    if (fi.isTextFile()) /* ¼ì²âÎÄ±¾ÎÄ¼ş±àÂë */
+    if (fi.isTextFile()) /* æ£€æµ‹æ–‡æœ¬æ–‡ä»¶ç¼–ç  */
     {
         textFileData = fi.readAll();
         switch (utility::Charset::getCoding(textFileData))
@@ -371,12 +371,12 @@ void HttpFileServer::defaultFileGetHandler(uint64_t cid, const nsocket::http::RE
             break;
         }
     }
-    /* ·¢ËÍÍ·²¿ */
+    /* å‘é€å¤´éƒ¨ */
     auto resp = nsocket::http::makeResponse200();
     resp->headers.insert(std::make_pair("Content-Type", mimeType));
     resp->headers.insert(std::make_pair("Content-Length", std::to_string(fileSize)));
     conn.send(resp->pack());
-    /* ·¢ËÍÎÄ¼ş */
+    /* å‘é€æ–‡ä»¶ */
     if (fileSize <= 0)
     {
         return;
@@ -401,7 +401,7 @@ void HttpFileServer::defaultFileGetHandler(uint64_t cid, const nsocket::http::RE
     {
         conn.send(std::vector<unsigned char>(textFileData.c_str(), textFileData.c_str() + fileSize));
     }
-    if (!keepAlive) /* ·Ç±£»î²Å¹Ø±ÕÁ¬½Ó */
+    if (!keepAlive) /* éä¿æ´»æ‰å…³é—­è¿æ¥ */
     {
         conn.close();
     }
@@ -426,7 +426,7 @@ void HttpFileServer::handleDefaultRouter(uint64_t cid, const nsocket::http::REQU
 #ifdef _WIN32
     uri = utility::Charset::utf8ToGbk(uri);
 #endif
-    if ("GET" != req->method) /* ·½·¨²»ÔÊĞí */
+    if ("GET" != req->method) /* æ–¹æ³•ä¸å…è®¸ */
     {
         NotHandler handler = nullptr;
         {
@@ -468,7 +468,7 @@ void HttpFileServer::handleDefaultRouter(uint64_t cid, const nsocket::http::REQU
         }
         return;
     }
-    if (attr.isDir) /* Ä¿Â¼ */
+    if (attr.isDir) /* ç›®å½• */
     {
         DirAccessHandler handler = nullptr;
         {
@@ -484,7 +484,7 @@ void HttpFileServer::handleDefaultRouter(uint64_t cid, const nsocket::http::REQU
             defaultDirAccessHandler(cid, req, conn, keeyAlive, m_rootDir, uri);
         }
     }
-    else if (attr.isFile) /* ÎÄ¼ş */
+    else if (attr.isFile) /* æ–‡ä»¶ */
     {
         FileGetHandler handler = nullptr;
         {

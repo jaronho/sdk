@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <boost/system/system_error.hpp>
 #include <functional>
 #include <memory>

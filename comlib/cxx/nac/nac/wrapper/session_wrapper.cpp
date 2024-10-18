@@ -1,4 +1,4 @@
-﻿#include "session_wrapper.h"
+#include "session_wrapper.h"
 
 #include "algorithm/snowflake/snowflake.h"
 #include "threading/timer/steady_timer.h"

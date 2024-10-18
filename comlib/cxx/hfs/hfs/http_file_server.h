@@ -9,56 +9,56 @@
 namespace hfs
 {
 /**
- * @brief ×ÊÔ´²»´æÔÚ(404)/·½·¨²»ÔÊĞí(405)´¦ÀíÆ÷
- * @param cid Á¬½ÓID
- * @param req ÇëÇó¶ÔÏó
- * @param conn Á¬½ÓÆ÷, ÓÃÓÚ´¦ÀíÆ÷ÄÚÊı¾İ·¢ËÍºÍÁ¬½Ó¶Ï¿ª
- * @param uri ×ÊÔ´URI
+ * @brief èµ„æºä¸å­˜åœ¨(404)/æ–¹æ³•ä¸å…è®¸(405)å¤„ç†å™¨
+ * @param cid è¿æ¥ID
+ * @param req è¯·æ±‚å¯¹è±¡
+ * @param conn è¿æ¥å™¨, ç”¨äºå¤„ç†å™¨å†…æ•°æ®å‘é€å’Œè¿æ¥æ–­å¼€
+ * @param uri èµ„æºURI
  */
 using NotHandler =
     std::function<void(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn, const std::string& uri)>;
 
 /**
- * @brief Ä¿Â¼·ÃÎÊ´¦ÀíÆ÷
- * @param cid Á¬½ÓID
- * @param req ÇëÇó¶ÔÏó
- * @param conn Á¬½ÓÆ÷, ÓÃÓÚ´¦ÀíÆ÷ÄÚÊı¾İ·¢ËÍºÍÁ¬½Ó¶Ï¿ª
- * @param keepAlive Á¬½ÓÊÇ·ñ±£»î, Èç¹û·Ç±£»îÔòĞèÒª´¦ÀíÆ÷×îºó¶Ï¿ªÁ¬½Ó
- * @param rootDir ×ÊÔ´¸ùÄ¿Â¼
- * @param uri µ±Ç°·ÃÎÊµÄÏà¶ÔÄ¿Â¼(²»°üº¬¸ùÄ¿Â¼)
+ * @brief ç›®å½•è®¿é—®å¤„ç†å™¨
+ * @param cid è¿æ¥ID
+ * @param req è¯·æ±‚å¯¹è±¡
+ * @param conn è¿æ¥å™¨, ç”¨äºå¤„ç†å™¨å†…æ•°æ®å‘é€å’Œè¿æ¥æ–­å¼€
+ * @param keepAlive è¿æ¥æ˜¯å¦ä¿æ´», å¦‚æœéä¿æ´»åˆ™éœ€è¦å¤„ç†å™¨æœ€åæ–­å¼€è¿æ¥
+ * @param rootDir èµ„æºæ ¹ç›®å½•
+ * @param uri å½“å‰è®¿é—®çš„ç›¸å¯¹ç›®å½•(ä¸åŒ…å«æ ¹ç›®å½•)
  */
 using DirAccessHandler = std::function<void(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn,
                                             bool keepAlive, const std::string& rootDir, const std::string& uri)>;
 
 /**
- * @brief ÎÄ¼ş»ñÈ¡´¦ÀíÆ÷
- * @param cid Á¬½ÓID
- * @param req ÇëÇó¶ÔÏó
- * @param conn Á¬½ÓÆ÷, ÓÃÓÚ´¦ÀíÆ÷ÄÚÊı¾İ·¢ËÍºÍÁ¬½Ó¶Ï¿ª
- * @param keepAlive Á¬½ÓÊÇ·ñ±£»î, Èç¹û·Ç±£»îÔòĞèÒª´¦ÀíÆ÷×îºó¶Ï¿ªÁ¬½Ó
- * @param fileName ÎÄ¼şÍêÕûÂ·¾¶
- * @param fileSize ÎÄ¼ş´óĞ¡(×Ö½Ú)
+ * @brief æ–‡ä»¶è·å–å¤„ç†å™¨
+ * @param cid è¿æ¥ID
+ * @param req è¯·æ±‚å¯¹è±¡
+ * @param conn è¿æ¥å™¨, ç”¨äºå¤„ç†å™¨å†…æ•°æ®å‘é€å’Œè¿æ¥æ–­å¼€
+ * @param keepAlive è¿æ¥æ˜¯å¦ä¿æ´», å¦‚æœéä¿æ´»åˆ™éœ€è¦å¤„ç†å™¨æœ€åæ–­å¼€è¿æ¥
+ * @param fileName æ–‡ä»¶å®Œæ•´è·¯å¾„
+ * @param fileSize æ–‡ä»¶å¤§å°(å­—èŠ‚)
  */
 using FileGetHandler = std::function<void(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn,
                                           bool keepAlive, const std::string& fileName, size_t fileSize)>;
 
 /**
- * @brief HTTPÎÄ¼ş·şÎñ(×¢Òâ: ĞèÒªÊµÀı»¯Îª¹²ÏíÖ¸Õë·ñÔò»á±¨´í)
+ * @brief HTTPæ–‡ä»¶æœåŠ¡(æ³¨æ„: éœ€è¦å®ä¾‹åŒ–ä¸ºå…±äº«æŒ‡é’ˆå¦åˆ™ä¼šæŠ¥é”™)
  */
 class HttpFileServer final : public std::enable_shared_from_this<HttpFileServer>
 {
 public:
     /**
-     * @brief ¹¹Ôìº¯Êı
-     * @param name ·şÎñÆ÷Ãû³Æ
-     * @param threadCount Ïß³Ì¸öÊı
-     * @param host Ö÷»úµØÖ·
-     * @param port ¶Ë¿Ú
-     * @param rootDir ×ÊÔ´¸ùÄ¿Â¼, Ä¬ÈÏÊ¹ÓÃ³ÌĞòËùÔÚÄ¿Â¼, Ä¬ÈÏ³ÌĞòÎÄ¼şËùÔÚÄ¿Â¼
-     * @param fileBlockSize Ã¿´Î¶ÁÈ¡µÄÎÄ¼ş¿é´óĞ¡(×Ö½Ú), È¡Öµ·¶Î§[4Kb - 16Mb], Ä¬ÈÏ1Mb
-     * @param reuseAddr ÊÇ·ñÔÊĞí¸´ÓÃ¶Ë¿Ú, Ä¬ÈÏ²»¸´ÓÃ
-     * @param bz Êı¾İ»º³åÇø´óĞ¡(×Ö½Ú)
-     * @param handshakeTimeout ÎÕÊÖ³¬Ê±Ê±¼ä
+     * @brief æ„é€ å‡½æ•°
+     * @param name æœåŠ¡å™¨åç§°
+     * @param threadCount çº¿ç¨‹ä¸ªæ•°
+     * @param host ä¸»æœºåœ°å€
+     * @param port ç«¯å£
+     * @param rootDir èµ„æºæ ¹ç›®å½•, é»˜è®¤ä½¿ç”¨ç¨‹åºæ‰€åœ¨ç›®å½•, é»˜è®¤ç¨‹åºæ–‡ä»¶æ‰€åœ¨ç›®å½•
+     * @param fileBlockSize æ¯æ¬¡è¯»å–çš„æ–‡ä»¶å—å¤§å°(å­—èŠ‚), å–å€¼èŒƒå›´[4Kb - 16Mb], é»˜è®¤1Mb
+     * @param reuseAddr æ˜¯å¦å…è®¸å¤ç”¨ç«¯å£, é»˜è®¤ä¸å¤ç”¨
+     * @param bz æ•°æ®ç¼“å†²åŒºå¤§å°(å­—èŠ‚)
+     * @param handshakeTimeout æ¡æ‰‹è¶…æ—¶æ—¶é—´
      */
     HttpFileServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, std::string rootDir = "",
                    size_t fileBlockSize = 1024 * 1024, bool reuseAddr = false, size_t bz = 4096,
@@ -67,122 +67,122 @@ public:
     virtual ~HttpFileServer();
 
     /**
-     * @brief »ñÈ¡×ÊÔ´¸ùÄ¿Â¼
-     * @return ×ÊÔ´¸ùÄ¿Â¼
+     * @brief è·å–èµ„æºæ ¹ç›®å½•
+     * @return èµ„æºæ ¹ç›®å½•
      */
     std::string getRootDir() const;
 
     /**
-     * @brief ÉèÖÃ·½·¨²»ÔÊĞí´¦ÀíÆ÷(Èô²»ÉèÖÃµÄ»°ÔòÊ¹ÓÃÄÚ²¿Ä¬ÈÏ´¦ÀíÆ÷)
-     * @param handler ´¦ÀíÆ÷
+     * @brief è®¾ç½®æ–¹æ³•ä¸å…è®¸å¤„ç†å™¨(è‹¥ä¸è®¾ç½®çš„è¯åˆ™ä½¿ç”¨å†…éƒ¨é»˜è®¤å¤„ç†å™¨)
+     * @param handler å¤„ç†å™¨
      */
     void setNotAllowHandler(const NotHandler& handler);
 
     /**
-     * @brief ÉèÖÃ×ÊÔ´²»´æÔÚ´¦ÀíÆ÷(Èô²»ÉèÖÃµÄ»°ÔòÊ¹ÓÃÄÚ²¿Ä¬ÈÏ´¦ÀíÆ÷)
-     * @param handler ´¦ÀíÆ÷
+     * @brief è®¾ç½®èµ„æºä¸å­˜åœ¨å¤„ç†å™¨(è‹¥ä¸è®¾ç½®çš„è¯åˆ™ä½¿ç”¨å†…éƒ¨é»˜è®¤å¤„ç†å™¨)
+     * @param handler å¤„ç†å™¨
      */
     void setNotFoundHandler(const NotHandler& handler);
 
     /**
-     * @brief ÉèÖÃÄ¿Â¼·ÃÎÊ´¦ÀíÆ÷(Èô²»ÉèÖÃµÄ»°ÔòÊ¹ÓÃÄÚ²¿Ä¬ÈÏ´¦ÀíÆ÷)
-     * @param handler ´¦ÀíÆ÷
+     * @brief è®¾ç½®ç›®å½•è®¿é—®å¤„ç†å™¨(è‹¥ä¸è®¾ç½®çš„è¯åˆ™ä½¿ç”¨å†…éƒ¨é»˜è®¤å¤„ç†å™¨)
+     * @param handler å¤„ç†å™¨
      */
     void setDirAccessHandler(const DirAccessHandler& handler);
 
     /**
-     * @brief ÉèÖÃÎÄ¼ş»ñÈ¡´¦ÀíÆ÷(Èô²»ÉèÖÃµÄ»°ÔòÊ¹ÓÃÄÚ²¿Ä¬ÈÏ´¦ÀíÆ÷)
-     * @param handler ´¦ÀíÆ÷
+     * @brief è®¾ç½®æ–‡ä»¶è·å–å¤„ç†å™¨(è‹¥ä¸è®¾ç½®çš„è¯åˆ™ä½¿ç”¨å†…éƒ¨é»˜è®¤å¤„ç†å™¨)
+     * @param handler å¤„ç†å™¨
      */
     void setFileGetHandler(const FileGetHandler& handler);
 
     /**
-     * @brief Ìí¼ÓÂ·ÓÉ
-     * @param methods ·½·¨ÁĞ±í, Îª¿ÕÊ±±íÊ¾Ö§³ÖËùÓĞ·½·¨(×¢Òâ: Õı³£ÓĞÇÒÖ§³Ö1ÖÖ), ÀıÈç: {Method::GET}, {Method::POST}
-     * @param uriList ·şÎñURIÁĞ±í, ÀıÈç: {"/", "/index","/index.htm", "/index.html"}
-     * @param router Â·ÓÉ
-     * @return ·µ»ØÒÑÌí¼Ó¹ıµÄURIÁĞ±í
+     * @brief æ·»åŠ è·¯ç”±
+     * @param methods æ–¹æ³•åˆ—è¡¨, ä¸ºç©ºæ—¶è¡¨ç¤ºæ”¯æŒæ‰€æœ‰æ–¹æ³•(æ³¨æ„: æ­£å¸¸æœ‰ä¸”æ”¯æŒ1ç§), ä¾‹å¦‚: {Method::GET}, {Method::POST}
+     * @param uriList æœåŠ¡URIåˆ—è¡¨, ä¾‹å¦‚: {"/", "/index","/index.htm", "/index.html"}
+     * @param router è·¯ç”±
+     * @return è¿”å›å·²æ·»åŠ è¿‡çš„URIåˆ—è¡¨
      */
     std::vector<std::string> addRouter(const std::vector<nsocket::http::Method>& methods, const std::vector<std::string>& uriList,
                                        const std::shared_ptr<nsocket::http::Router>& router);
 
     /**
-     * @brief ÔËĞĞ(·Ç×èÈû)
-     * @param sslOn ÊÇ·ñ¿ªÆôSSL, true-ÊÇ, false-·ñ
-     * @param sslWay SSLÑéÖ¤·½Ê½, 1-µ¥Ïò, 2-Ë«Ïò
-     * @param certFmt (Ö¤Êé/Ë½Ô¿)ÎÄ¼ş¸ñÊ½, 1-DER, 2-PEM
-     * @param certFile Ö¤ÊéÎÄ¼ş, ÀıÈç: client.crt
-     * @param pkFile Ë½Ô¿ÎÄ¼ş, ÀıÈç; client.key
-     * @param pkPwd Ë½Ô¿ÎÄ¼şÃÜÂë, ÀıÈç: 123456
-     * @param errDesc [Êä³ö]´íÎóÃèÊö
-     * @return true-ÔËĞĞÖĞ, false-ÔËĞĞÊ§°Ü
+     * @brief è¿è¡Œ(éé˜»å¡)
+     * @param sslOn æ˜¯å¦å¼€å¯SSL, true-æ˜¯, false-å¦
+     * @param sslWay SSLéªŒè¯æ–¹å¼, 1-å•å‘, 2-åŒå‘
+     * @param certFmt (è¯ä¹¦/ç§é’¥)æ–‡ä»¶æ ¼å¼, 1-DER, 2-PEM
+     * @param certFile è¯ä¹¦æ–‡ä»¶, ä¾‹å¦‚: client.crt
+     * @param pkFile ç§é’¥æ–‡ä»¶, ä¾‹å¦‚; client.key
+     * @param pkPwd ç§é’¥æ–‡ä»¶å¯†ç , ä¾‹å¦‚: 123456
+     * @param errDesc [è¾“å‡º]é”™è¯¯æè¿°
+     * @return true-è¿è¡Œä¸­, false-è¿è¡Œå¤±è´¥
      */
     bool run(bool sslOn = false, int sslWay = 1, int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "",
              const std::string& pkPwd = "", std::string* errDesc = nullptr);
 
     /**
-     * @brief Í£Ö¹
+     * @brief åœæ­¢
      */
     void stop();
 
     /**
-     * @brief ÊÇ·ñÔËĞĞÖĞ
-     * @return true-ÔËĞĞÖĞ, false-·ÇÔËĞĞÖĞ
+     * @brief æ˜¯å¦è¿è¡Œä¸­
+     * @return true-è¿è¡Œä¸­, false-éè¿è¡Œä¸­
      */
     bool isRunning();
 
     /**
-     * @brief Ä¬ÈÏÄ¿Â¼·ÃÎÊ´¦ÀíÆ÷
-     * @param cid Á¬½ÓID
-     * @param req ÇëÇó¶ÔÏó
-     * @param conn Á¬½ÓÆ÷, ÓÃÓÚ´¦ÀíÆ÷ÄÚÊı¾İ·¢ËÍºÍÁ¬½Ó¶Ï¿ª
-     * @param keepAlive Á¬½ÓÊÇ·ñ±£»î, Èç¹û·Ç±£»îÔò´¦ÀíÆ÷×îºó½«¶Ï¿ªÁ¬½Ó
-     * @param rootDir ×ÊÔ´¸ùÄ¿Â¼
-     * @param uri µ±Ç°·ÃÎÊµÄÏà¶ÔÄ¿Â¼(²»°üº¬¸ùÄ¿Â¼)
+     * @brief é»˜è®¤ç›®å½•è®¿é—®å¤„ç†å™¨
+     * @param cid è¿æ¥ID
+     * @param req è¯·æ±‚å¯¹è±¡
+     * @param conn è¿æ¥å™¨, ç”¨äºå¤„ç†å™¨å†…æ•°æ®å‘é€å’Œè¿æ¥æ–­å¼€
+     * @param keepAlive è¿æ¥æ˜¯å¦ä¿æ´», å¦‚æœéä¿æ´»åˆ™å¤„ç†å™¨æœ€åå°†æ–­å¼€è¿æ¥
+     * @param rootDir èµ„æºæ ¹ç›®å½•
+     * @param uri å½“å‰è®¿é—®çš„ç›¸å¯¹ç›®å½•(ä¸åŒ…å«æ ¹ç›®å½•)
      */
     void defaultDirAccessHandler(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn, bool keepAlive,
                                  const std::string& rootDir, const std::string& uri);
 
     /**
-     * @brief Ä¬ÈÏÎÄ¼ş»ñÈ¡´¦ÀíÆ÷
-     * @param cid Á¬½ÓID
-     * @param req ÇëÇó¶ÔÏó
-     * @param conn Á¬½ÓÆ÷, ÓÃÓÚ´¦ÀíÆ÷ÄÚÊı¾İ·¢ËÍºÍÁ¬½Ó¶Ï¿ª
-     * @param keepAlive Á¬½ÓÊÇ·ñ±£»î, Èç¹û·Ç±£»îÔò´¦ÀíÆ÷×îºó½«¶Ï¿ªÁ¬½Ó
-     * @param fileName ÎÄ¼şÍêÕûÂ·¾¶
-     * @param fileSize ÎÄ¼ş´óĞ¡(×Ö½Ú)
+     * @brief é»˜è®¤æ–‡ä»¶è·å–å¤„ç†å™¨
+     * @param cid è¿æ¥ID
+     * @param req è¯·æ±‚å¯¹è±¡
+     * @param conn è¿æ¥å™¨, ç”¨äºå¤„ç†å™¨å†…æ•°æ®å‘é€å’Œè¿æ¥æ–­å¼€
+     * @param keepAlive è¿æ¥æ˜¯å¦ä¿æ´», å¦‚æœéä¿æ´»åˆ™å¤„ç†å™¨æœ€åå°†æ–­å¼€è¿æ¥
+     * @param fileName æ–‡ä»¶å®Œæ•´è·¯å¾„
+     * @param fileSize æ–‡ä»¶å¤§å°(å­—èŠ‚)
      */
     void defaultFileGetHandler(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn, bool keepAlive,
                                const std::string& fileName, size_t fileSize);
 
 private:
     /**
-     * @brief ´¦ÀíÄ¬ÈÏÂ·ÓÉ
-     * @param cid Á¬½ÓID
-     * @param req ÇëÇó¶ÔÏó
-     * @param conn Á¬½ÓÆ÷
+     * @brief å¤„ç†é»˜è®¤è·¯ç”±
+     * @param cid è¿æ¥ID
+     * @param req è¯·æ±‚å¯¹è±¡
+     * @param conn è¿æ¥å™¨
      */
     void handleDefaultRouter(uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn);
 
 private:
-    const std::string m_name; /* ·şÎñÃû */
-    const size_t m_threadCount; /* Ïß³Ì¸öÊı */
-    const std::string m_host; /* Ö÷»úµØÖ· */
-    const uint16_t m_port; /* ¶Ë¿Ú */
-    const bool m_reuseAddr; /* /* ÊÇ·ñÔÊĞí¸´ÓÃ¶Ë¿Ú */
-    const size_t m_bufferSize; /* »º³åÇø´óĞ¡ */
-    const std::chrono::steady_clock::duration m_handshakeTimeout; /* SSLÎÕÊÖ³¬Ê±Ê±¼ä */
-    std::string m_rootDir; /* ÎÄ¼ş×ÊÔ´¸ùÄ¿Â¼ */
-    size_t m_fileBlockSize; /* Ã¿´Î¶ÁÈ¡µÄÎÄ¼ş¿é´óĞ¡ */
+    const std::string m_name; /* æœåŠ¡å */
+    const size_t m_threadCount; /* çº¿ç¨‹ä¸ªæ•° */
+    const std::string m_host; /* ä¸»æœºåœ°å€ */
+    const uint16_t m_port; /* ç«¯å£ */
+    const bool m_reuseAddr; /* /* æ˜¯å¦å…è®¸å¤ç”¨ç«¯å£ */
+    const size_t m_bufferSize; /* ç¼“å†²åŒºå¤§å° */
+    const std::chrono::steady_clock::duration m_handshakeTimeout; /* SSLæ¡æ‰‹è¶…æ—¶æ—¶é—´ */
+    std::string m_rootDir; /* æ–‡ä»¶èµ„æºæ ¹ç›®å½• */
+    size_t m_fileBlockSize; /* æ¯æ¬¡è¯»å–çš„æ–‡ä»¶å—å¤§å° */
     std::mutex m_mutexHttpServer;
-    std::shared_ptr<nsocket::http::Server> m_httpServer = nullptr; /* HTTP·şÎñÆ÷ */
+    std::shared_ptr<nsocket::http::Server> m_httpServer = nullptr; /* HTTPæœåŠ¡å™¨ */
     std::mutex m_mutexNotAllowHandler;
-    NotHandler m_notAllowHandler = nullptr; /* ·½·¨²»ÔÊĞí´¦ÀíÆ÷ */
+    NotHandler m_notAllowHandler = nullptr; /* æ–¹æ³•ä¸å…è®¸å¤„ç†å™¨ */
     std::mutex m_mutexNotFoundHandler;
-    NotHandler m_notFoundHandler = nullptr; /* ×ÊÔ´²»´æÔÚ´¦ÀíÆ÷ */
+    NotHandler m_notFoundHandler = nullptr; /* èµ„æºä¸å­˜åœ¨å¤„ç†å™¨ */
     std::mutex m_mutexDirAccessHandler;
-    DirAccessHandler m_dirAccessHandler = nullptr; /* Ä¿Â¼·ÃÎÊ´¦ÀíÆ÷ */
+    DirAccessHandler m_dirAccessHandler = nullptr; /* ç›®å½•è®¿é—®å¤„ç†å™¨ */
     std::mutex m_mutexFileGetHandler;
-    FileGetHandler m_fileGetHandler = nullptr; /* ÎÄ¼ş»ñÈ¡´¦ÀíÆ÷ */
+    FileGetHandler m_fileGetHandler = nullptr; /* æ–‡ä»¶è·å–å¤„ç†å™¨ */
 };
 } // namespace hfs
