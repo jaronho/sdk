@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-#include "utility/filesystem/file_info.h"
 #include "utility/strtool/strtool.h"
 #include "utility/system/system.h"
 
@@ -25,12 +24,12 @@ bool NetConfig::BridgeInfo::diffPorts(const std::vector<std::string>& portList, 
     std::vector<std::string> newPortList;
     std::vector<std::string> notPortList;
     /* 获取新增加的接口 */
-    for (size_t i = 0; i < portList.size(); ++i)
+    for (const auto& other : portList)
     {
         bool existFlag = false;
-        for (size_t j = 0; j < ports.size(); ++j)
+        for (const auto& port : ports)
         {
-            if (portList[i] == ports[j])
+            if (other == port)
             {
                 existFlag = true;
                 break;
@@ -38,16 +37,16 @@ bool NetConfig::BridgeInfo::diffPorts(const std::vector<std::string>& portList, 
         }
         if (!existFlag)
         {
-            newPortList.emplace_back(portList[i]);
+            newPortList.emplace_back(other);
         }
     }
     /* 获取不存在的接口 */
-    for (size_t i = 0; i < ports.size(); ++i)
+    for (const auto& port : ports)
     {
         bool existFlag = false;
-        for (size_t j = 0; j < portList.size(); ++j)
+        for (const auto& other : portList)
         {
-            if (ports[i] == portList[j])
+            if (port == other)
             {
                 existFlag = true;
                 break;
@@ -55,7 +54,7 @@ bool NetConfig::BridgeInfo::diffPorts(const std::vector<std::string>& portList, 
         }
         if (!existFlag)
         {
-            notPortList.emplace_back(ports[i]);
+            notPortList.emplace_back(port);
         }
     }
     /* 差异判断 */
@@ -99,9 +98,9 @@ bool NetConfig::isNetcardExist(const std::string& name)
         return false;
     }
     auto interfaceList = utility::Net::getAllInterfaces();
-    for (size_t i = 0; i < interfaceList.size(); ++i)
+    for (const auto& iface : interfaceList)
     {
-        if (0 == name.compare(interfaceList[i].name))
+        if (name == iface.name)
         {
             return true;
         }
@@ -137,16 +136,15 @@ std::vector<NetConfig::BridgeInfo> NetConfig::getBridgeInfos()
     std::vector<std::string> outVec;
     utility::System::runCmd("brctl show", nullptr, &outVec, true);
     BridgeInfo bi;
-    for (size_t i = 1, len = outVec.size(); i < len; ++i)
+    for (auto line : outVec)
     {
-        auto line = outVec[i];
         /* 把非可显ASCII字符替换为空格 */
-        for (size_t k = 0; k < line.size(); ++k)
+        for (size_t i = 0; i < line.size(); ++i)
         {
-            char ch = line[k];
+            char ch = line[i];
             if (ch < 32 || 127 == ch) /* 非可显字符 */
             {
-                line[k] = ' ';
+                line[i] = ' ';
             }
         }
         /* 去除左右空格, 去除多余的空格 */
@@ -191,9 +189,8 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
     auto bridgeList = getBridgeInfos();
     std::vector<utility::Net::IfaceInfo> netcardList;
     auto interfaceList = utility::Net::getAllInterfaces();
-    for (size_t i = 0; i < interfaceList.size(); ++i)
+    for (const auto& iface : interfaceList)
     {
-        const auto& iface = interfaceList[i];
         /* 判断是否以太网 */
         if (utility::Net::IfaceInfo::Type::ethernet != iface.type) /* 非以太网 */
         {
@@ -201,9 +198,9 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
         }
         /* 判断是否网桥 */
         bool bridgeFlag = false;
-        for (size_t j = 0; j < bridgeList.size(); ++j)
+        for (const auto& bi : bridgeList)
         {
-            if (0 == iface.name.compare(bridgeList[j].name))
+            if (iface.name == bi.name)
             {
                 bridgeFlag = true;
                 break;
@@ -240,23 +237,17 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
     auto interfaceList = getEthernetCards();
     /* 设置网卡新名称的持久化字符串, 使用命令暂时重命名网卡 */
     static const std::string TMP_PREFIX = "tmp_";
-    std::vector<std::string> lineList;
     std::vector<ModifyInfo> modifyList;
-    for (auto iter = macNameMap.begin(); macNameMap.end() != iter; ++iter)
+    for (const auto& kv : macNameMap)
     {
-        const auto& mac = iter->first;
-        const auto& name = iter->second;
-        for (size_t j = 0; j < interfaceList.size(); ++j)
+        const auto& mac = kv.first;
+        const auto& name = kv.second;
+        for (const auto& iface : interfaceList)
         {
-            const auto& iface = interfaceList[j];
-            auto macFmt1 = utility::StrTool::toLower(utility::StrTool::join(iface.mac, ":"));
-            auto macFmt2 = utility::StrTool::toLower(utility::StrTool::join(iface.mac, "-"));
+            auto macFmt1 = utility::StrTool::join(iface.mac, ":"), macFmt2 = utility::StrTool::join(iface.mac, "-");
             if (utility::StrTool::equal(mac, macFmt1, false) || utility::StrTool::equal(mac, macFmt2, false))
             {
-                /* 设置配置行字符串 */
-                auto line = "SUBSYSTEM==\"net\", ACTION==\"add\", ATTR{address}==\"" + macFmt1 + "\", NAME=\"" + name + "\"";
-                lineList.emplace_back(line);
-                if (0 != iface.name.compare(name)) /* 网卡名有变更才进行命令操作 */
+                if (!name.empty() && name != iface.name) /* 网卡名有变更才进行命令操作 */
                 {
                     ModifyInfo mi;
                     mi.iface = iface;
@@ -266,6 +257,7 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
                     auto command = "ip link set " + iface.name + " down && ip link set " + iface.name + " name " + TMP_PREFIX + name;
                     utility::System::runCmd(command);
                 }
+                break;
             }
         }
     }
@@ -273,12 +265,9 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
     {
         return false;
     }
-    /* 写配置文件, 注意: 该文件修改完需要重启系统或网络才能生效 */
-    utility::FileInfo("/etc/udev/rules.d/70-persistent-net.rules").write(utility::StrTool::join(lineList, "\n"));
     /* 使用命令操作 */
-    for (size_t i = 0; i < modifyList.size(); ++i)
+    for (const auto& mi : modifyList)
     {
-        const auto& mi = modifyList[i];
         /* step1: 修改网卡名(命名为正式名称) */
         std::string command = "ip link set " + TMP_PREFIX + mi.name + " name " + mi.name;
         /* step2: 启动网卡 */
@@ -286,7 +275,7 @@ bool NetConfig::configEthernetCardName(const std::map<std::string, std::string>&
         /* step3: 同步IP地址, 子网掩码, 广播地址 */
         if (mi.iface.ipv4.empty())
         {
-            command += " && ip addr flush dev  " + mi.name;
+            command += " && ip addr flush dev " + mi.name;
         }
         else
         {
@@ -319,14 +308,13 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
     std::vector<std::string> addList;
     /* step1: 判断当前网桥 */
     auto bridgeList = getBridgeInfos();
-    for (size_t i = 0; i < bridgeList.size(); ++i)
+    for (const auto& bi : bridgeList)
     {
-        const auto& bridgeInfo = bridgeList[i];
-        if (0 == name.compare(bridgeInfo.name)) /* 存在网桥 */
+        if (name == bi.name) /* 存在网桥 */
         {
             existBridge = true;
             std::vector<std::string> delList;
-            if (!bridgeInfo.diffPorts(ports, &addList, &delList)) /* 网桥端口无差异 */
+            if (!bi.diffPorts(ports, &addList, &delList)) /* 网桥端口无差异 */
             {
                 if (recfg)
                 {
@@ -338,20 +326,20 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
                 }
             }
             /* 删除网络接口 */
-            for (size_t j = 0; j < delList.size(); ++j)
+            for (const auto& port : delList)
             {
-                utility::System::runCmd("brctl delif " + bridgeInfo.name + " " + delList[j]);
+                utility::System::runCmd("brctl delif " + bi.name + " " + port);
             }
         }
         else /* 其他网桥 */
         {
-            for (size_t j = 0; j < bridgeInfo.ports.size(); ++j) /* 判断网络接口是否被当前网桥占用 */
+            for (const auto& port1 : bi.ports) /* 判断网络接口是否被当前网桥占用 */
             {
-                for (size_t k = 0; k < ports.size(); ++k)
+                for (const auto& port2 : ports)
                 {
-                    if (0 == bridgeInfo.ports[j].compare(ports[k])) /* 被占用, 删除网络接口 */
+                    if (port1 == port2) /* 被占用, 删除网络接口 */
                     {
-                        utility::System::runCmd("brctl delif " + bridgeInfo.name + " " + bridgeInfo.ports[j]);
+                        utility::System::runCmd("brctl delif " + bi.name + " " + port1);
                         break;
                     }
                 }
@@ -364,9 +352,9 @@ bool NetConfig::configBridge(const std::string& name, const std::vector<std::str
         utility::System::runCmd("brctl addbr " + name);
         addList = ports;
     }
-    for (size_t i = 0; i < addList.size(); ++i)
+    for (const auto& port : addList)
     {
-        utility::System::runCmd("brctl addif " + name + " " + addList[i]);
+        utility::System::runCmd("brctl addif " + name + " " + port);
     }
     return true;
 #endif
