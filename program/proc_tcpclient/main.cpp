@@ -17,10 +17,23 @@ boost::asio::ip::tcp::endpoint g_localEndpoint; /* 本地端点 */
 /**
  * @brief 发送数据
  */
-bool sendData(const std::vector<unsigned char>& data)
+bool sendData(std::vector<unsigned char>& data, int crlf)
 {
     if (g_client)
     {
+        if (1 == crlf)
+        {
+            data.push_back('\r');
+        }
+        else if (2 == crlf)
+        {
+            data.push_back('\n');
+        }
+        else if (3 == crlf)
+        {
+            data.push_back('\r');
+            data.push_back('\n');
+        }
         /* 发送数据 */
         std::size_t length;
         auto code = g_client->send(data, length);
@@ -67,6 +80,8 @@ int main(int argc, char* argv[])
     parser.add<int>("data-type", 'd',
                     "数据类型, 值: 1-输入(原始), 2-输入(十六进制), 3-文件(原始, 全部), 4-文件(原始, 单行), 5-文件(十六进制, 单行), 默认:",
                     false, 1, cmdline::oneof<int>(1, 2, 3, 4, 5));
+    parser.add<int>("crlf", 'e', "发送结束符(选填), 值: [0: 无, 1: CR(回车), 2: LF(换行), 3: CRLF(回车换行)], 默认:", false, 0,
+                    cmdline::oneof<int>(0, 1, 2, 3));
     parser.add<int>("interval", 'i', "按行发送文件数据时, 每行的发送间隔(毫秒), 默认:", false, 500);
     parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
     printf("%s\n", parser.usage().c_str());
@@ -83,6 +98,7 @@ int main(int argc, char* argv[])
     auto pkPwd = parser.get<std::string>("pk-pwd");
 #endif
     auto dataType = parser.get<int>("data-type");
+    auto crlf = parser.get<int>("crlf");
     auto interval = parser.get<int>("interval");
     interval = interval < 0 ? 0 : interval;
     std::string dataTypeDesc, lineIntervalDesc;
@@ -107,6 +123,23 @@ int main(int argc, char* argv[])
     {
         dataTypeDesc = "发送文件(十六进制, 单行)";
         lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
+    }
+    std::string crlfDesc;
+    if (0 == crlf)
+    {
+        crlfDesc = "无";
+    }
+    else if (1 == crlf)
+    {
+        crlfDesc = "CR(回车)";
+    }
+    else if (2 == crlf)
+    {
+        crlfDesc = "LF(换行)";
+    }
+    else if (3 == crlf)
+    {
+        crlfDesc = "CRLF(回车换行)";
     }
     g_client = std::make_shared<nsocket::TcpClient>(localPort);
     /* 设置连接回调 */
@@ -163,17 +196,18 @@ int main(int argc, char* argv[])
         {
             if (1 == sslOn && 1 == sslWay)
             {
-                printf("连接服务器: %s:%d, SSL验证: 单向, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(),
-                       lineIntervalDesc.c_str());
+                printf("连接服务器: %s:%d, SSL验证: 单向, 数据类型: %s%s, 发送结束符: %s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                       lineIntervalDesc.c_str(), crlfDesc.c_str());
             }
             else if (1 == sslOn && 2 == sslWay && !certFile.empty() && !pkFile.empty())
             {
-                printf("连接服务器: %s:%d, SSL验证: 双向, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(),
-                       lineIntervalDesc.c_str());
+                printf("连接服务器: %s:%d, SSL验证: 双向, 数据类型: %s%s, 发送结束符: %s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                       lineIntervalDesc.c_str(), crlfDesc.c_str());
             }
             else
             {
-                printf("连接服务器: %s:%d, 数据类型: %s%s\n", server.c_str(), port, dataTypeDesc.c_str(), lineIntervalDesc.c_str());
+                printf("连接服务器: %s:%d, 数据类型: %s%s, 发送结束符: %s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                       lineIntervalDesc.c_str(), crlfDesc.c_str());
             }
             g_client->run(server, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
         }
@@ -205,7 +239,7 @@ int main(int argc, char* argv[])
         {
             std::vector<unsigned char> data;
             data.insert(data.end(), input, input + strlen(input));
-            sendData(data);
+            sendData(data, crlf);
         }
         else if (2 == dataType) /* 把十六进制转为字节流 */
         {
@@ -226,7 +260,7 @@ int main(int argc, char* argv[])
             }
             std::vector<unsigned char> data;
             data.insert(data.end(), bytes.begin(), bytes.end());
-            sendData(data);
+            sendData(data, crlf);
         }
         else if (3 == dataType || 4 == dataType || 5 == dataType) /* 读取文件内容 */
         {
@@ -249,7 +283,7 @@ int main(int argc, char* argv[])
                     {
                         std::vector<unsigned char> data;
                         data.insert(data.end(), buf, buf + count);
-                        sendData(data);
+                        sendData(data, crlf);
                         free(buf);
                     }
                 }
@@ -280,7 +314,7 @@ int main(int argc, char* argv[])
                         offset += count;
                         std::vector<unsigned char> data;
                         data.insert(data.end(), buf.begin(), buf.end());
-                        ret = sendData(data);
+                        ret = sendData(data, crlf);
                     }
                     if (interval > 0 && ret)
                     {
@@ -329,7 +363,7 @@ int main(int argc, char* argv[])
                         auto bytes = utility::StrTool::fromHex(tmp);
                         std::vector<unsigned char> data;
                         data.insert(data.end(), bytes.begin(), bytes.end());
-                        ret = sendData(data);
+                        ret = sendData(data, crlf);
                     }
                     if (interval > 0 && ret)
                     {
