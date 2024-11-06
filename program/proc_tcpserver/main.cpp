@@ -1,14 +1,75 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <chrono>
+#include <map>
 #include <mutex>
 #include <thread>
-#include <unordered_map>
 
 #include "nsocket/tcp/tcp_server.h"
 #include "utility/cmdline/cmdline.h"
+#include "utility/digit/digit.h"
+#include "utility/filesystem/file_info.h"
+#include "utility/strtool/strtool.h"
 
 std::shared_ptr<nsocket::TcpServer> g_server = nullptr; /* 服务器 */
+std::mutex g_mutexConnList;
+std::map<uint64_t, std::weak_ptr<nsocket::TcpConnection>> g_connList; /* 连接列表 */
+
+/**
+ * @brief 发送数据
+ */
+bool sendData(std::vector<unsigned char>& data, int crlf)
+{
+    std::map<uint64_t, std::weak_ptr<nsocket::TcpConnection>> connList;
+    {
+        std::lock_guard<std::mutex> locker(g_mutexConnList);
+        connList = g_connList;
+    }
+    if (connList.empty())
+    {
+        printf("-------------------- 发送失败: 当前没有客户端连接\n");
+        return false;
+    }
+    if (1 == crlf)
+    {
+        data.push_back('\r');
+    }
+    else if (2 == crlf)
+    {
+        data.push_back('\n');
+    }
+    else if (3 == crlf)
+    {
+        data.push_back('\r');
+        data.push_back('\n');
+    }
+    for (auto kv : connList)
+    {
+        auto conn = kv.second.lock();
+        if (conn)
+        {
+            conn->send(data, [&, wpConn = kv.second](const boost::system::error_code& code, std::size_t length) {
+                const auto conn = wpConn.lock();
+                if (conn)
+                {
+                    auto point = conn->getRemoteEndpoint();
+                    std::string clientHost = point.address().to_string().c_str();
+                    int clientPort = (int)point.port();
+                    if (code)
+                    {
+                        printf("---------- 发送 [%lld][%s:%d] 失败: %d, %s\n", conn->getId(), clientHost.c_str(), clientPort, code.value(),
+                               code.message().c_str());
+                    }
+                    else
+                    {
+                        printf("---------- 发送 [%lld][%s:%d] 成功, 长度: %zu\n", conn->getId(), clientHost.c_str(), clientPort, length);
+                    }
+                }
+            });
+        }
+    }
+    return true;
+}
 
 int main(int argc, char* argv[])
 {
@@ -32,7 +93,14 @@ int main(int argc, char* argv[])
     parser.add<std::string>("pk-file", 'k', "私钥文件名, 例如: server.key, 默认:", false, "");
     parser.add<std::string>("pk-pwd", 'P', "私钥文件密码, 例如: 123456, 默认:", false, "");
 #endif
-    parser.add<int>("reply", 'r', "应答方式, 值: 0-不应答, 1-原数据返回, 默认:", false, 0, cmdline::oneof<int>(0, 1));
+    parser.add<int>("reply", 'r', "应答数据, 值: 0-无(不应答), 1-原数据, 默认:", false, 0, cmdline::oneof<int>(0, 1));
+    parser.add<int>(
+        "data-type", 'd',
+        "通知数据类型, 值: 1-输入(原始), 2-输入(十六进制), 3-文件(原始, 全部), 4-文件(原始, 单行), 5-文件(十六进制, 单行), 默认:", false, 1,
+        cmdline::oneof<int>(1, 2, 3, 4, 5));
+    parser.add<int>("crlf", 'e', "通知数据结束符(选填), 值: [0: 无, 1: CR(回车), 2: LF(换行), 3: CRLF(回车换行)], 默认:", false, 0,
+                    cmdline::oneof<int>(0, 1, 2, 3));
+    parser.add<int>("interval", 'i', "按行发送文件数据时, 每行的发送间隔(毫秒), 默认:", false, 500);
     parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
@@ -50,11 +118,55 @@ int main(int argc, char* argv[])
     std::string replyDesc;
     if (0 == reply)
     {
-        replyDesc = "不应答";
+        replyDesc = "无(不应答)";
     }
     else if (1 == reply)
     {
-        replyDesc = "原数据返回";
+        replyDesc = "原数据";
+    }
+    auto dataType = parser.get<int>("data-type");
+    auto crlf = parser.get<int>("crlf");
+    auto interval = parser.get<int>("interval");
+    interval = interval < 0 ? 0 : interval;
+    std::string dataTypeDesc, lineIntervalDesc;
+    if (1 == dataType)
+    {
+        dataTypeDesc = "原始";
+    }
+    else if (2 == dataType)
+    {
+        dataTypeDesc = "十六进制";
+    }
+    else if (3 == dataType)
+    {
+        dataTypeDesc = "文件(原始, 全部)";
+    }
+    else if (4 == dataType)
+    {
+        dataTypeDesc = "文件(原始, 单行)";
+        lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
+    }
+    else if (5 == dataType)
+    {
+        dataTypeDesc = "文件(十六进制, 单行)";
+        lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
+    }
+    std::string crlfDesc;
+    if (0 == crlf)
+    {
+        crlfDesc = "无";
+    }
+    else if (1 == crlf)
+    {
+        crlfDesc = "CR(回车)";
+    }
+    else if (2 == crlf)
+    {
+        crlfDesc = "LF(换行)";
+    }
+    else if (3 == crlf)
+    {
+        crlfDesc = "CRLF(回车换行)";
     }
     g_server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, server, port);
     std::string errDesc;
@@ -68,10 +180,18 @@ int main(int argc, char* argv[])
         const auto conn = wpConn.lock();
         if (conn)
         {
+            auto cid = conn->getId();
             auto point = conn->getRemoteEndpoint();
             std::string clientHost = point.address().to_string().c_str();
             int clientPort = (int)point.port();
             printf("============================== 新连接 [%lld][%s:%d]\n", conn->getId(), clientHost.c_str(), clientPort);
+            {
+                std::lock_guard<std::mutex> locker(g_mutexConnList);
+                if (g_connList.end() == g_connList.find(cid))
+                {
+                    g_connList.insert(std::make_pair(cid, wpConn));
+                }
+            }
         }
     });
     /* 设置握手成功回调 */
@@ -153,23 +273,179 @@ int main(int argc, char* argv[])
             {
                 printf("-------------------- 关闭 [%lld][%s:%d] 连接\n", cid, clientHost.c_str(), clientPort);
             }
+            {
+                std::lock_guard<std::mutex> locker(g_mutexConnList);
+                auto iter = g_connList.find(cid);
+                if (g_connList.end() == iter)
+                {
+                    g_connList.erase(iter);
+                }
+            }
         });
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
     {
         if (1 == sslOn && !certFile.empty() && !pkFile.empty())
         {
-            printf("启动服务器: %s:%d, SSL验证: %s, 应答: %s\n", server.c_str(), port, 1 == sslWay ? "单向" : "双向", replyDesc.c_str());
+            printf("启动服务器: %s:%d, SSL验证: %s, 应答数据: %s, 通知数据: 类型-%s%s, 结束符-%s\n", server.c_str(), port,
+                   1 == sslWay ? "单向" : "双向", replyDesc.c_str(), dataTypeDesc.c_str(), lineIntervalDesc.c_str(), crlfDesc.c_str());
         }
         else
         {
-            printf("启动服务器: %s:%d, 应答: %s\n", server.c_str(), port, replyDesc.c_str());
+            printf("启动服务器: %s:%d, 应答数据: %s, 通知数据: 类型-%s%s, 结束符-%s\n", server.c_str(), port, replyDesc.c_str(),
+                   dataTypeDesc.c_str(), lineIntervalDesc.c_str(), crlfDesc.c_str());
         }
         g_server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
         /* 主线程 */
+        static const int MAX_PAYLOAD = 65495;
         while (1)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            /* 接收输入数据 */
+            char input[4096] = {0};
+            std::cin.getline(input, sizeof(input));
+            if (0 == strlen(input)) /* 输入为空继续等待 */
+            {
+                continue;
+            }
+            printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n"); /* 数据预处理 */
+            if (1 == dataType)
+            {
+                std::vector<unsigned char> data;
+                data.insert(data.end(), input, input + strlen(input));
+                sendData(data, crlf);
+            }
+            else if (2 == dataType) /* 把十六进制转为字节流 */
+            {
+                std::string str = input;
+                str = utility::StrTool::toLower(str);
+                str = utility::StrTool::replace(str, "0x", "");
+                str = utility::StrTool::replace(str, " ", "");
+                if (!utility::Digit::isHex(str)) /* 非十六进制 */
+                {
+                    printf("-------------------- 发送失败: 数据格式错误(非十六进制), %s\n", input);
+                    continue;
+                }
+                auto bytes = utility::StrTool::fromHex(str);
+                if (bytes.empty())
+                {
+                    printf("-------------------- 发送失败: 数据格式错误(非十六进制), %s\n", input);
+                    continue;
+                }
+                std::vector<unsigned char> data;
+                data.insert(data.end(), bytes.begin(), bytes.end());
+                sendData(data, crlf);
+            }
+            else if (3 == dataType || 4 == dataType || 5 == dataType) /* 读取文件内容 */
+            {
+                auto f = fopen(input, "rb"); /* 打开文件 */
+                if (!f)
+                {
+                    printf("-------------------- 发送失败: 文件 %s 不存在\n", input);
+                    continue;
+                }
+                if (3 == dataType) /* 发送文件(原始), 全部 */
+                {
+                    auto fileSize = utility::FileInfo(input).size();
+                    size_t offset = 0;
+                    while (offset < fileSize)
+                    {
+                        size_t count = MAX_PAYLOAD;
+                        auto buf = utility::FileInfo::read(f, offset, count);
+                        offset += count;
+                        if (buf)
+                        {
+                            std::vector<unsigned char> data;
+                            data.insert(data.end(), buf, buf + count);
+                            sendData(data, crlf);
+                            free(buf);
+                        }
+                    }
+                }
+                else if (4 == dataType) /* 发送文件(原始), 单行 */
+                {
+                    while (!feof(f))
+                    {
+                        std::string line, bomFlag, endFlag;
+                        if (!utility ::FileInfo::readLine(f, line, bomFlag, endFlag))
+                        {
+                            break;
+                        }
+                        if (line.empty())
+                        {
+                            continue;
+                        }
+                        size_t offset = 0;
+                        bool ret = false;
+                        while (offset < line.size())
+                        {
+                            size_t count = MAX_PAYLOAD;
+                            if (count > line.size() - offset)
+                            {
+                                count = line.size() - offset;
+                            }
+                            auto buf = line.substr(offset, count);
+                            offset += count;
+                            std::vector<unsigned char> data;
+                            data.insert(data.end(), buf.begin(), buf.end());
+                            ret = sendData(data, crlf);
+                        }
+                        if (interval > 0 && ret)
+                        {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+                        }
+                    }
+                }
+                else if (5 == dataType) /* 发送文件(十六进制), 单行 */
+                {
+                    while (!feof(f))
+                    {
+                        std::string line, bomFlag, endFlag;
+                        if (!utility ::FileInfo::readLine(f, line, bomFlag, endFlag))
+                        {
+                            break;
+                        }
+                        if (line.empty())
+                        {
+                            continue;
+                        }
+                        auto buf = utility::StrTool::toLower(line);
+                        buf = utility::StrTool::replace(buf, "0x", "");
+                        buf = utility::StrTool::replace(buf, " ", "");
+                        if (!utility::Digit::isHex(buf)) /* 非十六进制 */
+                        {
+                            printf("-------------------- 发送失败: 数据格式错误(非十六进制), %s\n", line.c_str());
+                            break;
+                        }
+                        auto bytes = utility::StrTool::fromHex(buf);
+                        if (bytes.empty())
+                        {
+                            printf("-------------------- 发送失败: 数据格式错误(非十六进制), %s\n", line.c_str());
+                            continue;
+                        }
+                        size_t offset = 0;
+                        bool ret = false;
+                        while (offset < buf.size())
+                        {
+                            size_t count = MAX_PAYLOAD - 1;
+                            if (count > buf.size() - offset)
+                            {
+                                count = buf.size() - offset;
+                            }
+                            auto tmp = buf.substr(offset, count);
+                            offset += count;
+                            auto bytes = utility::StrTool::fromHex(tmp);
+                            std::vector<unsigned char> data;
+                            data.insert(data.end(), bytes.begin(), bytes.end());
+                            ret = sendData(data, crlf);
+                        }
+                        if (interval > 0 && ret)
+                        {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+                        }
+                    }
+                }
+                fclose(f); /* 关闭文件句柄 */
+            }
         }
     }
     catch (const std::exception& e)

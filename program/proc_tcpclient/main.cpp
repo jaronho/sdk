@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
     parser.add<int>("data-type", 'd',
                     "数据类型, 值: 1-输入(原始), 2-输入(十六进制), 3-文件(原始, 全部), 4-文件(原始, 单行), 5-文件(十六进制, 单行), 默认:",
                     false, 1, cmdline::oneof<int>(1, 2, 3, 4, 5));
-    parser.add<int>("crlf", 'e', "发送结束符(选填), 值: [0: 无, 1: CR(回车), 2: LF(换行), 3: CRLF(回车换行)], 默认:", false, 0,
+    parser.add<int>("crlf", 'e', "数据结束符(选填), 值: [0: 无, 1: CR(回车), 2: LF(换行), 3: CRLF(回车换行)], 默认:", false, 0,
                     cmdline::oneof<int>(0, 1, 2, 3));
     parser.add<int>("interval", 'i', "按行发送文件数据时, 每行的发送间隔(毫秒), 默认:", false, 500);
     parser.parse_check(argc, argv, "用法", "选项", "显示帮助信息并退出");
@@ -104,24 +104,24 @@ int main(int argc, char* argv[])
     std::string dataTypeDesc, lineIntervalDesc;
     if (1 == dataType)
     {
-        dataTypeDesc = "发送输入(原始)";
+        dataTypeDesc = "原始";
     }
     else if (2 == dataType)
     {
-        dataTypeDesc = "发送输入(十六进制)";
+        dataTypeDesc = "十六进制";
     }
     else if (3 == dataType)
     {
-        dataTypeDesc = "发送文件(原始, 全部)";
+        dataTypeDesc = "文件(原始, 全部)";
     }
     else if (4 == dataType)
     {
-        dataTypeDesc = "发送文件(原始, 单行)";
+        dataTypeDesc = "文件(原始, 单行)";
         lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
     }
     else if (5 == dataType)
     {
-        dataTypeDesc = "发送文件(十六进制, 单行)";
+        dataTypeDesc = "文件(十六进制, 单行)";
         lineIntervalDesc = ", 行发送间隔: " + std::to_string(interval) + "(毫秒)";
     }
     std::string crlfDesc;
@@ -196,17 +196,17 @@ int main(int argc, char* argv[])
         {
             if (1 == sslOn && 1 == sslWay)
             {
-                printf("连接服务器: %s:%d, SSL验证: 单向, 数据类型: %s%s, 发送结束符: %s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                printf("连接服务器: %s:%d, SSL验证: 单向, 数据: 类型-%s%s, 结束符-%s\n", server.c_str(), port, dataTypeDesc.c_str(),
                        lineIntervalDesc.c_str(), crlfDesc.c_str());
             }
             else if (1 == sslOn && 2 == sslWay && !certFile.empty() && !pkFile.empty())
             {
-                printf("连接服务器: %s:%d, SSL验证: 双向, 数据类型: %s%s, 发送结束符: %s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                printf("连接服务器: %s:%d, SSL验证: 双向, 数据: 类型-%s%s, 结束符-%s\n", server.c_str(), port, dataTypeDesc.c_str(),
                        lineIntervalDesc.c_str(), crlfDesc.c_str());
             }
             else
             {
-                printf("连接服务器: %s:%d, 数据类型: %s%s, 发送结束符: %s\n", server.c_str(), port, dataTypeDesc.c_str(),
+                printf("连接服务器: %s:%d, 数据: 类型-%s%s, 结束符-%s\n", server.c_str(), port, dataTypeDesc.c_str(),
                        lineIntervalDesc.c_str(), crlfDesc.c_str());
             }
             g_client->run(server, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
