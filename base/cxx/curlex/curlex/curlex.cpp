@@ -41,6 +41,7 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
     }
     /* step2: 设置公共属性 */
     obj->setUrl(req->getUrl());
+    obj->setLocalPort(req->getLocalPort());
     if (req->isEnableRedirect())
     {
         obj->setEnableRedirect(req->getMaxRedirects());

@@ -2,11 +2,16 @@
 
 namespace curlex
 {
-Request::Request(const std::string& url) : m_url(url) {}
+Request::Request(const std::string& url, unsigned int localPort) : m_url(url), m_localPort(localPort) {}
 
 std::string Request::getUrl() const
 {
     return m_url;
+}
+
+unsigned int Request::getLocalPort() const
+{
+    return m_localPort;
 }
 
 bool Request::isEnableRedirect() const
@@ -106,14 +111,17 @@ void Request::setData(const RequestDataPtr& data)
     m_data = data;
 }
 
-SimpleRequest::SimpleRequest(const std::string& url) : Request(url) {}
+SimpleRequest::SimpleRequest(const std::string& url, unsigned int localPort) : Request(url, localPort) {}
 
 Request::Type SimpleRequest::getType() const
 {
     return Type::simple;
 }
 
-Ssl1WayRequest::Ssl1WayRequest(const std::string& caFile, const std::string& url) : Request(url), m_caFile(caFile) {}
+Ssl1WayRequest::Ssl1WayRequest(const std::string& caFile, const std::string& url, unsigned int localPort)
+    : Request(url, localPort), m_caFile(caFile)
+{
+}
 
 Request::Type Ssl1WayRequest::getType() const
 {
@@ -126,8 +134,12 @@ std::string Ssl1WayRequest::getCaFile() const
 }
 
 Ssl2WayRequest::Ssl2WayRequest(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
-                               const std::string& privateKeyFilePwd, const std::string& url)
-    : Request(url), m_fileFormat(fileFmt), m_certFile(certFile), m_privateKeyFile(privateKeyFile), m_privateKeyFilePwd(privateKeyFilePwd)
+                               const std::string& privateKeyFilePwd, const std::string& url, unsigned int localPort)
+    : Request(url, localPort)
+    , m_fileFormat(fileFmt)
+    , m_certFile(certFile)
+    , m_privateKeyFile(privateKeyFile)
+    , m_privateKeyFilePwd(privateKeyFilePwd)
 {
 }
 
@@ -156,8 +168,8 @@ std::string Ssl2WayRequest::getPrivateKeyFilePwd() const
     return m_privateKeyFilePwd;
 }
 
-UserpwdRequest::UserpwdRequest(const std::string& username, const std::string& password, const std::string& url)
-    : Request(url), m_username(username), m_password(password)
+UserpwdRequest::UserpwdRequest(const std::string& username, const std::string& password, const std::string& url, unsigned int localPort)
+    : Request(url, localPort), m_username(username), m_password(password)
 {
 }
 

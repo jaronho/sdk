@@ -465,6 +465,12 @@ bool CurlObject::setUrl(const std::string& url)
     return CURLE_OK == code;
 }
 
+bool CurlObject::setLocalPort(unsigned int port)
+{
+    auto code = setOption(CURLOPT_LOCALPORT, port);
+    return CURLE_OK == code;
+}
+
 bool CurlObject::setEnableRedirect(int maxRedirects)
 {
     auto code = setOption(CURLOPT_FOLLOWLOCATION, 1L);

@@ -114,6 +114,13 @@ public:
     bool setUrl(const std::string& url);
 
     /**
+     * @brief 设置本地端口
+     * @param port 本地端口L
+     * @return true-成功, false-失败
+     */
+    bool setLocalPort(unsigned int port);
+
+    /**
      * @brief 设置支持重定向
      * @param maxRedirects 可以递归返回的数量, -1无限制
      * @return true-成功, false-失败

@@ -29,8 +29,9 @@ public:
     /**
      * @brief 构造函数
      * @param url 资源地址
+     * @para localPort 本地端口, 填0表示自动分配
      */
-    Request(const std::string& url);
+    Request(const std::string& url, unsigned int localPort = 0);
 
     virtual ~Request() = default;
 
@@ -45,6 +46,12 @@ public:
      * @return url
      */
     std::string getUrl() const;
+
+    /**
+     * @brief 获取本地端口
+     * @return 本地端口
+     */
+    unsigned int getLocalPort() const;
 
     /**
      * @brief 是否支持重定向
@@ -159,6 +166,7 @@ public:
 private:
     Type m_type = Type::simple; /* 类型 */
     std::string m_url; /* 资源地址 */
+    unsigned int m_localPort; /* 本地端口 */
     bool m_redirect = true; /* 是否支持重定向 */
     int m_maxRedirects = -1; /* 可以递归返回的数量 */
     int m_connectTimeout = -1; /* 连接超时时间(秒) */
@@ -179,7 +187,7 @@ using RequestPtr = std::shared_ptr<Request>;
 class SimpleRequest final : public Request
 {
 public:
-    SimpleRequest(const std::string& url);
+    SimpleRequest(const std::string& url, unsigned int localPort = 0);
 
     virtual ~SimpleRequest() = default;
 
@@ -194,7 +202,7 @@ using SimpleRequestPtr = std::shared_ptr<SimpleRequest>;
 class Ssl1WayRequest final : public Request
 {
 public:
-    Ssl1WayRequest(const std::string& caFile, const std::string& url);
+    Ssl1WayRequest(const std::string& caFile, const std::string& url, unsigned int localPort = 0);
 
     virtual ~Ssl1WayRequest() = default;
 
@@ -219,7 +227,7 @@ class Ssl2WayRequest final : public Request
 {
 public:
     Ssl2WayRequest(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
-                   const std::string& privateKeyFilePwd, const std::string& url);
+                   const std::string& privateKeyFilePwd, const std::string& url, unsigned int localPort = 0);
 
     virtual ~Ssl2WayRequest() = default;
 
@@ -264,7 +272,7 @@ using Ssl2WayRequestPtr = std::shared_ptr<Ssl2WayRequest>;
 class UserpwdRequest final : public Request
 {
 public:
-    UserpwdRequest(const std::string& username, const std::string& password, const std::string& url);
+    UserpwdRequest(const std::string& username, const std::string& password, const std::string& url, unsigned int localPort = 0);
 
     virtual ~UserpwdRequest() = default;
 
