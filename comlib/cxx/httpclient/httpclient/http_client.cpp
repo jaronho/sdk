@@ -34,26 +34,27 @@ void HttpClient::stop()
     }
 }
 
-curlex::SimpleRequestPtr HttpClient::makeSimpleRequest(const std::string& url)
+curlex::SimpleRequestPtr HttpClient::makeSimpleRequest(const std::string& url, unsigned int localPort)
 {
-    return std::make_shared<curlex::SimpleRequest>(url);
+    return std::make_shared<curlex::SimpleRequest>(url, localPort);
 }
 
-curlex::Ssl1WayRequestPtr HttpClient::makeSsl1WayRequest(const std::string& caFile, const std::string& url)
+curlex::Ssl1WayRequestPtr HttpClient::makeSsl1WayRequest(const std::string& caFile, const std::string& url, unsigned int localPort)
 {
-    return std::make_shared<curlex::Ssl1WayRequest>(caFile, url);
+    return std::make_shared<curlex::Ssl1WayRequest>(caFile, url, localPort);
 }
 
 curlex::Ssl2WayRequestPtr HttpClient::makeSsl2WayRequest(const curlex::FileFormat& fileFmt, const std::string& certFile,
                                                          const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
-                                                         const std::string& url)
+                                                         const std::string& url, unsigned int localPort)
 {
-    return std::make_shared<curlex::Ssl2WayRequest>(fileFmt, certFile, privateKeyFile, privateKeyFilePwd, url);
+    return std::make_shared<curlex::Ssl2WayRequest>(fileFmt, certFile, privateKeyFile, privateKeyFilePwd, url, localPort);
 }
 
-curlex::UserpwdRequestPtr HttpClient::makeUserpwdRequest(const std::string& username, const std::string& password, const std::string& url)
+curlex::UserpwdRequestPtr HttpClient::makeUserpwdRequest(const std::string& username, const std::string& password, const std::string& url,
+                                                         unsigned int localPort)
 {
-    return std::make_shared<curlex::UserpwdRequest>(username, password, url);
+    return std::make_shared<curlex::UserpwdRequest>(username, password, url, localPort);
 }
 
 curlex::RawRequestDataPtr HttpClient::makeRawData(const char* bytes, size_t count, bool chunk)

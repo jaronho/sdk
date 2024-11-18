@@ -16,15 +16,17 @@ public:
     /**
      * @brief 构造函数
      * @param url 服务器URL
+     * @param localPort 本地端口, 填0表示自动分配
      */
-    Connection(const std::string& url);
+    Connection(const std::string& url, unsigned int localPort = 0);
 
     /**
      * @brief 构造函数(SSL单向验证)
      * @param caFile (根)证书文件, 例如: ca.crt
      * @param url 服务器URL
+     * @param localPort 本地端口, 填0表示自动分配
      */
-    Connection(const std::string& caFile, const std::string& url);
+    Connection(const std::string& caFile, const std::string& url, unsigned int localPort = 0);
 
     /**
      * @brief 构造函数(SSL双向验证)
@@ -33,17 +35,19 @@ public:
      * @param privateKeyFile 私钥文件, 例如: client.key
      * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
      * @param url 服务器URL
+     * @param localPort 本地端口, 填0表示自动分配
      */
     Connection(const curlex::FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
-               const std::string& privateKeyFilePwd, const std::string& url);
+               const std::string& privateKeyFilePwd, const std::string& url, unsigned int localPort = 0);
 
     /**
      * @brief 构造函数
      * @param username 用户名
      * @param password 密码
      * @param url 服务器URL
+     * @param localPort 本地端口, 填0表示自动分配
      */
-    Connection(const std::string& username, const std::string& password, const std::string& url);
+    Connection(const std::string& username, const std::string& password, const std::string& url, unsigned int localPort = 0);
 
     virtual ~Connection() = default;
 

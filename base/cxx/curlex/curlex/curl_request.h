@@ -29,7 +29,7 @@ public:
     /**
      * @brief 构造函数
      * @param url 资源地址
-     * @para localPort 本地端口, 填0表示自动分配
+     * @param localPort 本地端口, 填0表示自动分配
      */
     Request(const std::string& url, unsigned int localPort = 0);
 

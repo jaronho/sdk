@@ -45,17 +45,19 @@ public:
     /**
      * @brief 创建简单请求对象
      * @param url 资源地址
+     * @param localPort 本地端口, 填0表示自动分配
      * @return 请求对象
      */
-    static curlex::SimpleRequestPtr makeSimpleRequest(const std::string& url);
+    static curlex::SimpleRequestPtr makeSimpleRequest(const std::string& url, unsigned int localPort = 0);
 
     /**
      * @brief 创建SSL(单向验证)请求对象
      * @param caFile (根)证书文件, 例如: ca.crt
      * @param url 资源地址
+     * @param localPort 本地端口, 填0表示自动分配
      * @return 请求对象
      */
-    static curlex::Ssl1WayRequestPtr makeSsl1WayRequest(const std::string& caFile, const std::string& url);
+    static curlex::Ssl1WayRequestPtr makeSsl1WayRequest(const std::string& caFile, const std::string& url, unsigned int localPort = 0);
 
     /**
      * @brief 创建SSL(双向验证)请求对象
@@ -64,20 +66,23 @@ public:
      * @param privateKeyFile 私钥文件, 例如: client.key
      * @param privateKeyFilePwd 私钥文件密码, 例如: qq123456
      * @param url 资源地址
+     * @param localPort 本地端口, 填0表示自动分配
      * @return 请求对象
      */
     static curlex::Ssl2WayRequestPtr makeSsl2WayRequest(const curlex::FileFormat& fileFmt, const std::string& certFile,
                                                         const std::string& privateKeyFile, const std::string& privateKeyFilePwd,
-                                                        const std::string& url);
+                                                        const std::string& url, unsigned int localPort = 0);
 
     /**
      * @brief 创建带用户名密码请求对象
      * @param username 用户名
      * @param password 密码
      * @param url 资源地址
+     * @param localPort 本地端口, 填0表示自动分配
      * @return 请求对象
      */
-    static curlex::UserpwdRequestPtr makeUserpwdRequest(const std::string& username, const std::string& password, const std::string& url);
+    static curlex::UserpwdRequestPtr makeUserpwdRequest(const std::string& username, const std::string& password, const std::string& url,
+                                                        unsigned int localPort = 0);
 
     /**
      * @brief 创建字节流数据对象

@@ -4,25 +4,25 @@
 
 namespace http
 {
-Connection::Connection(const std::string& url)
+Connection::Connection(const std::string& url, unsigned int localPort)
 {
-    m_req = HttpClient::makeSimpleRequest(url);
+    m_req = HttpClient::makeSimpleRequest(url, localPort);
 }
 
-Connection::Connection(const std::string& caFile, const std::string& url)
+Connection::Connection(const std::string& caFile, const std::string& url, unsigned int localPort)
 {
-    m_req = HttpClient::makeSsl1WayRequest(caFile, url);
+    m_req = HttpClient::makeSsl1WayRequest(caFile, url, localPort);
 }
 
 Connection::Connection(const curlex::FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
-                       const std::string& privateKeyFilePwd, const std::string& url)
+                       const std::string& privateKeyFilePwd, const std::string& url, unsigned int localPort)
 {
-    m_req = HttpClient::makeSsl2WayRequest(fileFmt, certFile, privateKeyFile, privateKeyFilePwd, url);
+    m_req = HttpClient::makeSsl2WayRequest(fileFmt, certFile, privateKeyFile, privateKeyFilePwd, url, localPort);
 }
 
-Connection::Connection(const std::string& username, const std::string& password, const std::string& url)
+Connection::Connection(const std::string& username, const std::string& password, const std::string& url, unsigned int localPort)
 {
-    m_req = HttpClient::makeUserpwdRequest(username, password, url);
+    m_req = HttpClient::makeUserpwdRequest(username, password, url, localPort);
 }
 
 void Connection::setConnectTimeout(size_t seconds)
