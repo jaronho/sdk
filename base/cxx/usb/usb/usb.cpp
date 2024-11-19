@@ -1381,14 +1381,6 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
     }
     udev_enumerate_unref(enumerate);
     udev_unref(udev);
-    for (auto& item : usbList)
-    {
-        if (item.devNodes.empty() && !item.devRootNode.name.empty()) /* 没有设备节点, 尝试把超快作为设备节点 */
-        {
-            item.devNodes.emplace_back(item.devRootNode);
-            item.devRootNode = DevNode();
-        }
-    }
 }
 #endif
 
