@@ -217,12 +217,6 @@ int main(int argc, char* argv[])
         crlfDesc = "CRLF(回车换行)";
     }
     g_server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, server, port);
-    std::string errDesc;
-    if (!g_server->isValid(&errDesc))
-    {
-        printf("[%s] 启动服务器失败, 请检查地址[%s]和端口[%d]是否可用, %s\n", getDateTime().c_str(), server.c_str(), port, errDesc.c_str());
-        return 0;
-    }
     /* 设置新连接回调 */
     g_server->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
         const auto conn = wpConn.lock();
@@ -361,7 +355,13 @@ int main(int argc, char* argv[])
                    getDateTime().c_str(), server.c_str(), port, formatDesc.c_str(), heartbeat.c_str(), period, replyDesc.c_str(),
                    inputTypeDesc.c_str(), lineIntervalDesc.c_str(), crlfDesc.c_str());
         }
-        g_server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
+        std::string errDesc;
+        if (!g_server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, &errDesc))
+        {
+            printf("[%s] 启动服务器失败, 请检查地址[%s]和端口[%d]是否可用, %s\n", getDateTime().c_str(), server.c_str(), port,
+                   errDesc.c_str());
+            return 0;
+        }
         /* 心跳线程 */
         if (!heartbeat.empty() && period > 0)
         {

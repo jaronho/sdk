@@ -254,15 +254,6 @@ Broker::Broker(const std::string& name, size_t threadCount, const std::string& s
     m_privateKeyFilePwd = privateKeyFilePwd;
 }
 
-bool Broker::isValid() const
-{
-    if (m_tcpServer && m_tcpServer->isValid())
-    {
-        return true;
-    }
-    return false;
-}
-
 bool Broker::isRunning() const
 {
     if (m_tcpServer && m_tcpServer->isRunning())
@@ -272,7 +263,7 @@ bool Broker::isRunning() const
     return false;
 }
 
-bool Broker::run()
+bool Broker::run(std::string* errorMsg)
 {
     if (!s_executor)
     {
@@ -281,7 +272,7 @@ bool Broker::run()
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
     {
-        return m_tcpServer->run(m_sslOn, m_sslWay, m_certFmt, m_certFile, m_privateKeyFile, m_privateKeyFilePwd);
+        return m_tcpServer->run(m_sslOn, m_sslWay, m_certFmt, m_certFile, m_privateKeyFile, m_privateKeyFilePwd, errorMsg);
     }
     catch (const std::exception& e)
     {

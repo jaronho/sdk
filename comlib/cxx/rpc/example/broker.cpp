@@ -139,15 +139,15 @@ int main(int argc, char* argv[])
     {
         certFmt = 2;
     }
-    printf("broker: %s:%d, ssl: %d, way: %d, certFmt: %d, certFile: %s, pkFile: %s\n", serverHost.c_str(), serverPort, sslOn, sslWay,
-           certFmt, certFile.c_str(), privateKeyFile.c_str());
     rpc::Broker broker("rpc_broker", 2, serverHost, serverPort, sslOn, sslWay, certFmt, certFile, privateKeyFile, privateKeyFilePwd);
-    if (!broker.isValid())
+    std::string errorMsg;
+    if (!broker.run(&errorMsg))
     {
-        printf("broker invalid, please check host or port\n");
+        printf("broker run failed: %s, please check host or port\n", errorMsg.c_str());
         return 0;
     }
-    broker.run();
+    printf("broker: %s:%d, ssl: %d, way: %d, certFmt: %d, certFile: %s, pkFile: %s\n", serverHost.c_str(), serverPort, sslOn, sslWay,
+           certFmt, certFile.c_str(), privateKeyFile.c_str());
     while (1)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
