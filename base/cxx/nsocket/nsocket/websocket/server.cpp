@@ -8,19 +8,13 @@ namespace ws
 {
 Server::Server(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr, size_t bz,
                const std::chrono::steady_clock::duration& handshakeTimeout)
-    : m_name(name)
-    , m_threadCount(threadCount)
-    , m_host(host)
-    , m_port(port)
-    , m_reuseAddr(reuseAddr)
-    , m_bufferSize(bz)
-    , m_handshakeTimeout(handshakeTimeout)
 {
+    m_tcpServer = std::make_shared<TcpServer>(name, threadCount, host, port, reuseAddr, bz, handshakeTimeout);
 }
 
 Server::~Server()
 {
-    stop();
+    m_tcpServer->stop();
 }
 
 void Server::setConnectingCallback(const WS_SRV_CONNECTING_CALLBACK& cb)
@@ -56,37 +50,32 @@ void Server::setCloseCallback(const WS_SRV_CLOSE_CALLBACK& cb)
 bool Server::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile, const std::string& pkPwd,
                  std::string* errDesc)
 {
-    auto tcpServer = std::make_shared<TcpServer>(m_name, m_threadCount, m_host, m_port, m_reuseAddr, m_bufferSize, m_handshakeTimeout);
-    if (!tcpServer->isValid(errDesc))
-    {
-        return false;
-    }
     const std::weak_ptr<Server> wpSelf = shared_from_this();
-    tcpServer->setNewConnectionCallback([wpSelf, tcpServer](const std::weak_ptr<TcpConnection>& wpConn) {
+    m_tcpServer->setNewConnectionCallback([wpSelf](const std::weak_ptr<TcpConnection>& wpConn) {
         const auto self = wpSelf.lock();
         if (self)
         {
-            if (!tcpServer->isEnableSSL())
+            if (!self->m_tcpServer->isEnableSSL())
             {
                 self->handleNewConnection(wpConn);
             }
         }
     });
-    tcpServer->setHandshakeOkCallback([wpSelf](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
+    m_tcpServer->setHandshakeOkCallback([wpSelf](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
         const auto self = wpSelf.lock();
         if (self)
         {
             self->handleNewConnection(wpConn);
         }
     });
-    tcpServer->setConnectionDataCallback([wpSelf](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) {
+    m_tcpServer->setConnectionDataCallback([wpSelf](const std::weak_ptr<TcpConnection>& wpConn, const std::vector<unsigned char>& data) {
         const auto self = wpSelf.lock();
         if (self)
         {
             self->handleConnectionData(wpConn, data);
         }
     });
-    tcpServer->setConnectionCloseCallback(
+    m_tcpServer->setConnectionCloseCallback(
         [wpSelf](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
             const auto self = wpSelf.lock();
             if (self)
@@ -94,39 +83,17 @@ bool Server::run(bool sslOn, int sslWay, int certFmt, const std::string& certFil
                 self->handleConnectionClose(cid, point, code);
             }
         });
-    {
-        std::lock_guard<std::mutex> locker(m_mutexTcpServer);
-        m_tcpServer = tcpServer;
-    }
-    return tcpServer->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
+    return m_tcpServer->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, errDesc);
 }
 
 void Server::stop()
 {
-    std::shared_ptr<TcpServer> tcpServer = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(m_mutexTcpServer);
-        tcpServer = m_tcpServer;
-        m_tcpServer.reset();
-    }
-    if (tcpServer)
-    {
-        tcpServer->stop();
-    }
+    m_tcpServer->stop();
 }
 
 bool Server::isRunning()
 {
-    std::shared_ptr<TcpServer> tcpServer = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(m_mutexTcpServer);
-        tcpServer = m_tcpServer;
-    }
-    if (tcpServer && tcpServer->isRunning())
-    {
-        return true;
-    }
-    return false;
+    return m_tcpServer->isRunning();
 }
 
 std::unordered_map<uint64_t, std::weak_ptr<Session>> Server::getSessionMap()

@@ -147,22 +147,16 @@ public:
      * @param certFile 证书文件, 例如: client.crt
      * @param pkFile 私钥文件, 例如; client.key
      * @param pkPwd 私钥文件密码, 例如: 123456
+     * @param errorMsg [输出]错误消息
      * @return true-运行中, false-运行失败(服务对象无效导致)
      */
     bool run(bool sslOn = false, int sslWay = 1, int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "",
-             const std::string& pkPwd = "");
+             const std::string& pkPwd = "", std::string* errorMsg = nullptr);
 
     /**
      * @brief 停止
      */
     void stop();
-
-    /**
-     * @brief 是否有效
-     * @param errorMsg 错误消息
-     * @return true-有效, false-无效
-     */
-    bool isValid(std::string* errorMsg = nullptr);
 
     /**
      * @brief 是否启用SSL
@@ -174,7 +168,7 @@ public:
      * @brief 是否运行中
      * @return true-运行中, false-非运行中
      */
-    bool isRunning() const;
+    bool isRunning();
 
 private:
     /**
@@ -205,25 +199,24 @@ private:
                                const boost::system::error_code& code);
 
 private:
+    const std::shared_ptr<io_context_pool> m_contextPool; /* 上下文线程池 */
+    const std::string m_host; /* 主机 */
+    const uint16_t m_port; /* 端口 */
+    const bool m_reuseAddr; /* 是否复用端口 */
+    const uint32_t m_bufferSize; /* 数据接收缓冲区大小 */
+    const std::chrono::steady_clock::duration m_handshakeTimeout; /* 握手超时时间 */
     std::mutex m_mutex;
-    std::shared_ptr<io_context_pool> m_contextPool = nullptr; /* 上下文线程池 */
     std::shared_ptr<boost::asio::ip::tcp::acceptor> m_acceptor = nullptr; /* 接收器 */
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     std::shared_ptr<boost::asio::ssl::context> m_sslContext = nullptr; /* TLS上下文 */
-    std::chrono::steady_clock::duration m_handshakeTimeout = std::chrono::seconds(1); /* 握手超时时间 */
 #endif
-    std::atomic<uint32_t> m_bufferSize; /* 数据接收缓冲区大小 */
-    std::mutex m_mutexConnectionMap;
     std::unordered_map<uint64_t, std::shared_ptr<TcpConnection>> m_connectionMap; /* 连接表 */
-    std::mutex m_mutexHandshakeMap;
     std::unordered_map<uint64_t, std::shared_ptr<boost::asio::steady_timer>> m_handshakeMap; /* 握手表 */
     TCP_SRV_CONN_NEW_CALLBACK m_onNewConnectionCallback = nullptr; /* 新连接回调 */
     TLS_SRV_HANDSHAKE_OK_CALLBACK m_onHandshakeOkCallback = nullptr; /* 握手成功回调 */
     TLS_SRV_HANDSHAKE_FAIL_CALLBACK m_onHandshakeFailCallback = nullptr; /* 握手成失败回调 */
     TCP_SRV_CONN_DATA_CALLBACK m_onConnectionDataCallback = nullptr; /* 连接数据回调 */
     TCP_SRV_CONN_CLOSE_CALLBACK m_onConnectionCloseCallback = nullptr; /* 连接关闭回调 */
-    std::string m_host; /* 主机 */
-    std::atomic_bool m_running = {false}; /* 是否运行中 */
-    std::string m_errorMsg; /* 错误消息 */
+    bool m_running = false; /* 是否运行中 */
 };
 } // namespace nsocket

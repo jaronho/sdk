@@ -66,20 +66,25 @@ io_context_pool::~io_context_pool()
 
 void io_context_pool::start()
 {
-    for (size_t i = 0; i < m_contexts.size(); ++i)
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_threads.empty())
     {
-        auto th = std::make_shared<std::thread>([name = m_name, i, context = m_contexts[i]]() {
-            /* 设置线程名称 */
-            auto threadName = name + "-" + std::to_string(i + 1);
-            setThreadName(threadName);
-            context->run();
-        });
-        m_threads.emplace_back(th);
+        for (size_t i = 0, count = m_contexts.size(); i < count; ++i)
+        {
+            auto th = std::make_shared<std::thread>([name = m_name, i, count, context = m_contexts[i]]() {
+                /* 设置线程名称 */
+                auto threadName = name + (count > 1 ? "-" + std::to_string(i + 1) : "");
+                setThreadName(threadName);
+                context->run();
+            });
+            m_threads.emplace_back(th);
+        }
     }
 }
 
 void io_context_pool::join()
 {
+    std::lock_guard<std::mutex> locker(m_mutex);
     for (size_t i = 0; i < m_contexts.size(); ++i)
     {
         m_contexts[i]->stop();
@@ -117,53 +122,41 @@ std::unique_ptr<std::thread> s_handshakeCheckThread = nullptr; /* 握手检测�
 TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr, size_t bz,
                      const std::chrono::steady_clock::duration& handshakeTimeout)
     : m_contextPool(std::make_shared<io_context_pool>(name, threadCount))
+    , m_host(host)
+    , m_port(port)
+    , m_reuseAddr(reuseAddr)
+    , m_bufferSize(bz)
+    , m_handshakeTimeout(handshakeTimeout > std::chrono::seconds(1) ? handshakeTimeout : std::chrono::seconds(1))
 {
-    m_bufferSize = bz;
-    try
-    {
-        m_acceptor = std::make_shared<boost::asio::ip::tcp::acceptor>(
-            m_contextPool->getContext(), boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(host.c_str()), port), reuseAddr);
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-        {
-            /* 创建定时器线程 */
-            std::lock_guard<std::mutex> locker(s_mutexHandshakeCheck);
-            if (!s_handshakeCheckContext)
-            {
-                s_handshakeCheckContext = std::make_unique<boost::asio::io_context>();
-            }
-            if (!s_handshakeCheckWorker)
-            {
-                s_handshakeCheckWorker = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
-                    boost::asio::make_work_guard(*s_handshakeCheckContext));
-            }
-            if (!s_handshakeCheckThread)
-            {
-                s_handshakeCheckThread = std::make_unique<std::thread>([name] {
-                    setThreadName(name + "::hs"); /* 设置线程名称 */
-                    s_handshakeCheckContext->run();
-                });
-                s_handshakeCheckThread->detach();
-            }
-        }
-        m_handshakeTimeout = handshakeTimeout > std::chrono::seconds(1) ? handshakeTimeout : std::chrono::seconds(1);
+    if (!s_handshakeCheckContext)
+    {
+        s_handshakeCheckContext = std::make_unique<boost::asio::io_context>();
+    }
+    if (!s_handshakeCheckWorker)
+    {
+        s_handshakeCheckWorker = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
+            boost::asio::make_work_guard(*s_handshakeCheckContext));
+    }
+    if (!s_handshakeCheckThread)
+    {
+        s_handshakeCheckThread = std::make_unique<std::thread>([name] {
+            setThreadName(name + "::hs"); /* 设置线程名称 */
+            s_handshakeCheckContext->run();
+        });
+        s_handshakeCheckThread->detach();
+    }
 #endif
-        m_host = host;
-    }
-    catch (const std::exception& e)
-    {
-        m_acceptor = nullptr;
-        m_errorMsg = std::string("exception: ") + e.what();
-    }
-    catch (...)
-    {
-        m_acceptor = nullptr;
-        m_errorMsg = "unknown exception";
-    }
 }
 
 TcpServer::~TcpServer()
 {
-    stop();
+    std::lock_guard<std::mutex> locker(m_mutex);
+    m_acceptor->close();
+    m_contextPool->join();
+    m_connectionMap.clear();
+    m_handshakeMap.clear();
+    m_running = false;
 }
 
 void TcpServer::setNewConnectionCallback(const TCP_SRV_CONN_NEW_CALLBACK& onNewCb)
@@ -191,156 +184,125 @@ void TcpServer::setConnectionCloseCallback(const TCP_SRV_CONN_CLOSE_CALLBACK& on
     m_onConnectionCloseCallback = onCloseCb;
 }
 
-bool TcpServer::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile, const std::string& pkPwd)
+bool TcpServer::run(bool sslOn, int sslWay, int certFmt, const std::string& certFile, const std::string& pkFile, const std::string& pkPwd,
+                    std::string* errorMsg)
 {
     sslWay = (1 == sslWay || 2 == sslWay) ? sslWay : 1;
     certFmt = (1 == certFmt || 2 == certFmt) ? certFmt : 2;
-    if (m_running)
+    if (errorMsg)
     {
-        return true;
+        errorMsg->clear();
     }
-    std::shared_ptr<io_context_pool> contextPool = nullptr;
-    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor = nullptr;
+    bool runFlag = false;
     {
         std::lock_guard<std::mutex> locker(m_mutex);
-        contextPool = m_contextPool;
-        acceptor = m_acceptor;
-    }
-    if (acceptor)
-    {
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-        if (sslOn)
+        if (m_running)
         {
-            std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
-            if (1 == sslWay)
+            return true;
+        }
+        try
+        {
+            m_acceptor = std::make_shared<boost::asio::ip::tcp::acceptor>(
+                m_contextPool->getContext(), boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(m_host.c_str()), m_port),
+                m_reuseAddr);
+#if (1 == ENABLE_NSOCKET_OPENSSL)
+            if (sslOn)
             {
-                sslContext = TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::sslv23_server,
+                if (1 == sslWay)
+                {
+                    m_sslContext = TcpConnection::makeSsl1WayContextServer(boost::asio::ssl::context::sslv23_server,
+                                                                           1 == certFmt ? boost::asio::ssl::context::file_format::asn1
+                                                                                        : boost::asio::ssl::context::file_format::pem,
+                                                                           certFile, pkFile, pkPwd, true);
+                }
+                else
+                {
+                    m_sslContext = TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_server,
                                                                      1 == certFmt ? boost::asio::ssl::context::file_format::asn1
                                                                                   : boost::asio::ssl::context::file_format::pem,
                                                                      certFile, pkFile, pkPwd, true);
-            }
-            else
-            {
-                sslContext = TcpConnection::makeSsl2WayContext(boost::asio::ssl::context::sslv23_server,
-                                                               1 == certFmt ? boost::asio::ssl::context::file_format::asn1
-                                                                            : boost::asio::ssl::context::file_format::pem,
-                                                               certFile, pkFile, pkPwd, true);
-            }
-            if (sslContext)
-            {
-                auto sessionIdCtx = std::to_string(acceptor->local_endpoint().port()) + ':';
+                }
+                auto sessionIdCtx = std::to_string(m_acceptor->local_endpoint().port()) + ':';
                 sessionIdCtx.append(m_host.rbegin(), m_host.rend());
-                SSL_CTX_set_session_id_context(sslContext->native_handle(), (const unsigned char*)sessionIdCtx.data(),
+                SSL_CTX_set_session_id_context(m_sslContext->native_handle(), (const unsigned char*)sessionIdCtx.data(),
                                                std::min<size_t>(sessionIdCtx.size(), SSL_MAX_SSL_SESSION_ID_LENGTH));
             }
+#endif
+            m_contextPool->start();
+            m_running = true;
+            runFlag = true;
+        }
+        catch (const std::exception& e)
+        {
+            m_acceptor = nullptr;
+            if (errorMsg)
             {
-                std::lock_guard<std::mutex> locker(m_mutex);
-                m_sslContext = sslContext;
+                *errorMsg = std::string("exception: ") + e.what();
             }
         }
-#endif
-        if (contextPool)
+        catch (...)
         {
-            contextPool->start();
-            doAccept();
-            m_running = true;
-            return true;
+            m_acceptor = nullptr;
+            if (errorMsg)
+            {
+                *errorMsg = "unknown exception";
+            }
         }
     }
-    return false;
+    if (runFlag)
+    {
+        doAccept();
+    }
+    return runFlag;
 }
 
 void TcpServer::stop()
 {
-    if (!m_running)
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_running)
     {
-        return;
-    }
-    std::shared_ptr<io_context_pool> contextPool = nullptr;
-    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        contextPool = m_contextPool;
-        m_contextPool.reset();
-        acceptor = m_acceptor;
-        m_acceptor.reset();
-    }
-    if (acceptor)
-    {
-        acceptor->close();
-    }
-    if (contextPool)
-    {
-        contextPool->join();
-    }
-    {
-        std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
+        m_acceptor->close();
         m_connectionMap.clear();
-    }
-    {
-        std::lock_guard<std::mutex> locker(m_mutexHandshakeMap);
         m_handshakeMap.clear();
+        m_running = false;
     }
-    m_running = false;
-}
-
-bool TcpServer::isValid(std::string* errorMsg)
-{
-    if (errorMsg)
-    {
-        (*errorMsg) = m_errorMsg;
-    }
-    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        acceptor = m_acceptor;
-    }
-    return (acceptor ? true : false);
 }
 
 bool TcpServer::isEnableSSL()
 {
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        sslContext = m_sslContext;
-    }
-    return (sslContext ? true : false);
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return (m_sslContext ? true : false);
 #else
     return false;
 #endif
 }
 
-bool TcpServer::isRunning() const
+bool TcpServer::isRunning()
 {
+    std::lock_guard<std::mutex> locker(m_mutex);
     return m_running;
 }
 
 void TcpServer::doAccept()
 {
-    std::shared_ptr<io_context_pool> contextPool = nullptr;
-    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        contextPool = m_contextPool;
-        acceptor = m_acceptor;
-    }
-    if (contextPool && acceptor)
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_acceptor)
     {
         const std::weak_ptr<TcpServer> wpSelf = shared_from_this();
-        acceptor->async_accept(contextPool->getContext(), [wpSelf](boost::system::error_code code, boost::asio::ip::tcp::socket socket) {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                if (!code) /* 有新连接请求 */
-                {
-                    self->handleNewConnection(std::move(socket));
-                }
-                /* 继续接收下一个连接 */
-                self->doAccept();
-            }
-        });
+        m_acceptor->async_accept(m_contextPool->getContext(),
+                                 [wpSelf](boost::system::error_code code, boost::asio::ip::tcp::socket socket) {
+                                     const auto self = wpSelf.lock();
+                                     if (self)
+                                     {
+                                         if (!code) /* 有新连接请求 */
+                                         {
+                                             self->handleNewConnection(std::move(socket));
+                                         }
+                                         /* 继续接收下一个连接 */
+                                         self->doAccept();
+                                     }
+                                 });
     }
 }
 
@@ -349,14 +311,12 @@ void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)
     /* 创建新连接 */
     std::shared_ptr<SocketTcpBase> socketPtr = nullptr;
 #if (1 == ENABLE_NSOCKET_OPENSSL)
-    std::shared_ptr<boost::asio::ssl::context> sslContext = nullptr;
     {
         std::lock_guard<std::mutex> locker(m_mutex);
-        sslContext = m_sslContext;
-    }
-    if (sslContext) /* 启用TLS */
-    {
-        socketPtr = std::make_shared<SocketTls>(std::move(socket), *sslContext);
+        if (m_sslContext) /* 启用TLS */
+        {
+            socketPtr = std::make_shared<SocketTls>(std::move(socket), *m_sslContext);
+        }
     }
 #endif
     if (!socketPtr)
@@ -365,7 +325,7 @@ void TcpServer::handleNewConnection(boost::asio::ip::tcp::socket socket)
     }
     auto conn = std::make_shared<TcpConnection>(socketPtr, true, m_bufferSize);
     {
-        std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
+        std::lock_guard<std::mutex> locker(m_mutex);
         if (m_connectionMap.end() == m_connectionMap.find(conn->getId()))
         {
             m_connectionMap.insert(std::make_pair(conn->getId(), conn));
@@ -401,7 +361,7 @@ void TcpServer::handleConnectionResult(const std::shared_ptr<TcpConnection>& con
     if (code) /* 断开连接 */
     {
         {
-            std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
+            std::lock_guard<std::mutex> locker(m_mutex);
             auto iter = m_connectionMap.find(conn->getId());
             if (m_connectionMap.end() == iter)
             {
@@ -436,7 +396,7 @@ void TcpServer::handleHandshake(const std::shared_ptr<TcpConnection>& conn, cons
         tm = std::make_shared<boost::asio::steady_timer>(*s_handshakeCheckContext);
     }
     {
-        std::lock_guard<std::mutex> locker(m_mutexHandshakeMap);
+        std::lock_guard<std::mutex> locker(m_mutex);
         if (m_handshakeMap.end() == m_handshakeMap.find(conn->getId()))
         {
             m_handshakeMap.insert(std::make_pair(conn->getId(), tm));
@@ -479,7 +439,7 @@ void TcpServer::handleHandshakeResult(const std::shared_ptr<TcpConnection>& conn
 {
     std::shared_ptr<boost::asio::steady_timer> tm = nullptr;
     {
-        std::lock_guard<std::mutex> locker(m_mutexHandshakeMap);
+        std::lock_guard<std::mutex> locker(m_mutex);
         auto iter = m_handshakeMap.find(conn->getId());
         if (m_handshakeMap.end() == iter)
         {
@@ -505,7 +465,7 @@ void TcpServer::handleHandshakeResult(const std::shared_ptr<TcpConnection>& conn
         else
         {
             {
-                std::lock_guard<std::mutex> locker(m_mutexConnectionMap);
+                std::lock_guard<std::mutex> locker(m_mutex);
                 auto iter = m_connectionMap.find(conn->getId());
                 if (m_connectionMap.end() == iter)
                 {

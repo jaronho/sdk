@@ -148,12 +148,6 @@ int main(int argc, char* argv[])
         certFmt = 2;
     }
     auto server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, serverHost, serverPort);
-    std::string errDesc;
-    if (!server->isValid(&errDesc))
-    {
-        printf("server invalid, please check host[%s] or port[%d], %s\n", serverHost.c_str(), serverPort, errDesc.c_str());
-        return 0;
-    }
     /* 设置新连接回调 */
     server->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
         const auto conn = wpConn.lock();
@@ -250,6 +244,12 @@ int main(int argc, char* argv[])
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
     try
     {
+        std::string errDesc;
+        if (!server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, &errDesc))
+        {
+            printf("server invalid, please check host[%s] or port[%d], %s\n", serverHost.c_str(), serverPort, errDesc.c_str());
+            return 0;
+        }
         if (1 == sslOn && !certFile.empty() && !pkFile.empty())
         {
             printf("server: %s:%d, ssl way: %d, certFile: %s, pkFile: %s\n", serverHost.c_str(), serverPort, sslWay, certFile.c_str(),
@@ -259,7 +259,6 @@ int main(int argc, char* argv[])
         {
             printf("server: %s:%d\n", serverHost.c_str(), serverPort);
         }
-        server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
         /* 主线程 */
         while (1)
         {

@@ -126,14 +126,6 @@ private:
     void closeConnection(const std::weak_ptr<TcpConnection>& wpConn);
 
 private:
-    const std::string m_name; /* 服务名 */
-    const size_t m_threadCount; /* 线程个数 */
-    const std::string m_host; /* 主机地址 */
-    const uint16_t m_port; /* 端口 */
-    const bool m_reuseAddr; /* /* 是否允许复用端口 */
-    const size_t m_bufferSize; /* 缓冲区大小 */
-    const std::chrono::steady_clock::duration m_handshakeTimeout; /* SSL握手超时时间 */
-    std::mutex m_mutexTcpServer;
     std::shared_ptr<TcpServer> m_tcpServer = nullptr; /* TCP服务器 */
     std::mutex m_mutexSessionMap;
     std::unordered_map<uint64_t, std::shared_ptr<Session>> m_sessionMap; /* 会话表 */
