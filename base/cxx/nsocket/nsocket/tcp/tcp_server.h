@@ -57,9 +57,9 @@ public:
     /**
      * @brief 构造函数
      * @param name 池名称
-     * @param poolSize 池大小(线程个数)
+     * @param connPoolSize 连接池大小(线程个数)
      */
-    explicit io_context_pool(const std::string& name, size_t poolSize = 1);
+    explicit io_context_pool(const std::string& name, size_t connPoolSize = 1);
 
     virtual ~io_context_pool();
 
@@ -74,18 +74,27 @@ public:
     void join();
 
     /**
-     * @brief 获取IO上下文
-     * @return IO上下文
+     * @brief 获取处理I/O的上下文
+     * @return 上下文
      */
-    boost::asio::io_context& getContext();
+    boost::asio::io_context& getIoContext();
+
+    /**
+     * @brief 获取处理连接的上下文
+     * @return 上下文
+     */
+    boost::asio::io_context& getConnContext();
 
 private:
+    const std::string m_name; /* 名称 */
     std::mutex m_mutex;
-    std::vector<std::shared_ptr<boost::asio::io_context>> m_contexts; /* 上下文列表 */
-    std::vector<std::shared_ptr<boost::asio::io_context::work>> m_workers; /* 工作列表 */
-    std::vector<std::shared_ptr<std::thread>> m_threads; /* 线程列表 */
-    size_t m_index = 0; /* 当前上下文索引 */
-    std::string m_name; /* 名称 */
+    std::shared_ptr<boost::asio::io_context> m_ioContext = nullptr; /* 用于处理I/O的上下文 */
+    std::shared_ptr<boost::asio::io_context::work> m_ioWorker = nullptr; /* 用于处理I/O的工作 */
+    std::shared_ptr<std::thread> m_ioThread = nullptr; /* 用于处理I/O的线程 */
+    std::vector<std::shared_ptr<boost::asio::io_context>> m_connContexts; /* 用于处理连接的上下文 */
+    std::vector<std::shared_ptr<boost::asio::io_context::work>> m_connWorkers; /* 用于处理连接的工作 */
+    std::vector<std::shared_ptr<std::thread>> m_connThreads; /* 用于处理连接的线程 */
+    size_t m_connIndex = 0; /* 当前处理连接的上下文索引 */
 };
 
 /**
@@ -107,6 +116,9 @@ public:
     TcpServer(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr = false, size_t bz = 4096,
               const std::chrono::steady_clock::duration& handshakeTimeout = std::chrono::seconds(3));
 
+    /**
+     * @brief 析构函数, 注意: 不能在回调所在线程中销毁服务端对象(会有线程中销毁所在线程的问题, 将导致程序崩溃)
+     */
     virtual ~TcpServer();
 
     /**

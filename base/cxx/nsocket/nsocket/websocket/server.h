@@ -65,6 +65,9 @@ public:
     Server(const std::string& name, size_t threadCount, const std::string& host, uint16_t port, bool reuseAddr = false, size_t bz = 4096,
            const std::chrono::steady_clock::duration& handshakeTimeout = std::chrono::seconds(3));
 
+    /**
+     * @brief 析构函数, 注意: 不能在回调所在线程中销毁服务端对象(会有线程中销毁所在线程的问题, 将导致程序崩溃)
+     */
     virtual ~Server();
 
     /**
