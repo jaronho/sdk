@@ -72,6 +72,22 @@ void Request::setKeepAlive(size_t idle, size_t interval)
     m_keepAliveInterval = interval;
 }
 
+size_t Request::getMaxSendSpeed() const
+{
+    return m_maxSendSpeed;
+}
+
+size_t Request::getMaxRecvSpeed() const
+{
+    return m_maxRecvSpeed;
+}
+
+void Request::setLimitSpeed(size_t sendSpeed, size_t recvSpeed)
+{
+    m_maxSendSpeed = sendSpeed;
+    m_maxRecvSpeed = recvSpeed;
+}
+
 std::map<std::string, std::string> Request::getHeaders() const
 {
     return m_headers;

@@ -150,6 +150,14 @@ public:
     bool setKeepAlive(size_t idle = 60, size_t interval = 60);
 
     /**
+     * @brief 设置数据传输速度上限
+     * @param sendSpeed 发送速度(字节/秒), 0表示自动
+     * @param recvSpeed 接收速度(字节/秒), 0表示自动
+     * @return true-成功, false-失败
+     */
+    bool setLimitSpeed(size_t sendSpeed = 0, size_t recvSpeed = 0);
+
+    /**
      * @brief 设置请求头部
      * @param headers 头部
      * @return true-成功, false-失败

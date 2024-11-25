@@ -514,6 +514,21 @@ bool CurlObject::setKeepAlive(size_t idle, size_t interval)
     return true;
 }
 
+bool CurlObject::setLimitSpeed(size_t sendSpeed, size_t recvSpeed)
+{
+    auto code = setOption(CURLOPT_MAX_SEND_SPEED_LARGE, sendSpeed);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_MAX_RECV_SPEED_LARGE, recvSpeed);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    return true;
+}
+
 bool CurlObject::setHeaders(const std::map<std::string, std::string>& headers)
 {
     if (headers.empty())

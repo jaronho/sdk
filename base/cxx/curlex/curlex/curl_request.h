@@ -121,6 +121,25 @@ public:
     void setKeepAlive(size_t idel, size_t interval);
 
     /**
+     * @brief 获取最大发送速度
+     * @return 最大发送速度
+     */
+    size_t getMaxSendSpeed() const;
+
+    /**
+     * @brief 获取最大接收速度
+     * @return 最大接收速度
+     */
+    size_t getMaxRecvSpeed() const;
+
+    /**
+     * @brief 设置数据传输速度上限
+     * @param sendSpeed 发送速度(字节/秒), 0表示自动
+     * @param recvSpeed 接收速度(字节/秒), 0表示自动
+     */
+    void setLimitSpeed(size_t sendSpeed, size_t recvSpeed);
+
+    /**
      * @brief 获取头部
      * @return 头部
      */
@@ -174,6 +193,8 @@ private:
     bool m_keepAlive = false; /* 是否保活 */
     size_t m_keepAliveIdle = 60; /* 保活空闲时间 */
     size_t m_keepAliveInterval = 60; /* 保活探测间隔 */
+    size_t m_maxSendSpeed = 0; /* 最大发送速度(字节/秒) */
+    size_t m_maxRecvSpeed = 0; /* 最大接收速度(字节/秒) */
     std::map<std::string, std::string> m_headers; /* 头部 */
     std::string m_cookieFilename; /* cookie文件名 */
     RequestDataPtr m_data; /* 数据 */

@@ -60,6 +60,7 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
     {
         obj->setKeepAlive(req->getKeepAliveIdle(), req->getKeepAliveInterval());
     }
+    obj->setLimitSpeed(req->getMaxSendSpeed(), req->getMaxRecvSpeed());
     auto headers = req->getHeaders();
     if (!headers.empty())
     {

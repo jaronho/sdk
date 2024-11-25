@@ -64,6 +64,13 @@ public:
     void setTimeout(size_t seconds);
 
     /**
+     * @brief 设置数据传输速度上限
+     * @param sendSpeed 发送速度(字节/秒), 0表示自动
+     * @param recvSpeed 接收速度(字节/秒), 0表示自动
+     */
+    void setLimitSpeed(size_t sendSpeed, size_t recvSpeed);
+
+    /**
      * @brief 添加头部
      * @param key 键
      * @param value 值

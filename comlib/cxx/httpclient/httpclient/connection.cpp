@@ -35,6 +35,11 @@ void Connection::setTimeout(size_t seconds)
     m_req->setTimeout(seconds);
 }
 
+void Connection::setLimitSpeed(size_t sendSpeed, size_t recvSpeed)
+{
+    m_req->setLimitSpeed(sendSpeed, recvSpeed);
+}
+
 void Connection::appendHeader(const std::string& key, const std::string& value)
 {
     m_req->appendHeader(key, value);
