@@ -17,91 +17,13 @@ struct InfoInner
     int depth;
 };
 
-void FileDeleter::deleteOccupy(const OccupyConfig& cfg, const DeleteCheckFunc& folderCheckFunc, const DeletedCallback& folderDeletedCb,
-                               const DeleteCheckFunc& fileCheckFunc, const DeletedCallback& fileDeletedCb)
+void FileDeleter::tryOnce(const std::vector<Config>& cfgList, const DeleteCheckFunc& folderCheckFunc,
+                          const DeletedCallback& folderDeletedCb, const DeleteCheckFunc& fileCheckFunc,
+                          const DeletedCallback& fileDeletedCb)
 {
-    if (cfg.clearSize <= 0) /* 不需要清除 */
+    for (const auto& cfg : cfgList)
     {
-        return;
-    }
-    utility::PathInfo pi(cfg.folder);
-    if (!pi.exist()) /* 目录不存在 */
-    {
-        return;
-    }
-    std::vector<InfoInner> folderList;
-    std::vector<InfoInner> fileList;
-    auto folderCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-        if (1 == depth)
-        {
-            auto dirName = utility::FileInfo(name).filename();
-            if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
-            {
-                return false;
-            }
-        }
-        if (!folderCheckFunc || folderCheckFunc(name, attr, depth))
-        {
-            folderList.emplace_back(InfoInner(name, attr, depth));
-        }
-        return true;
-    };
-    auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-        for (auto ignoreFile : cfg.ignoreFileList)
-        {
-            if (name == ignoreFile) /* 忽略 */
-            {
-                return;
-            }
-        }
-        if (fileCheckFunc && !fileCheckFunc(name, attr, depth))
-        {
-            return;
-        }
-        fileList.emplace_back(InfoInner(name, attr, depth));
-    };
-    pi.traverse(folderCb, fileCb, nullptr, true);
-    /* 删除最早的文件 */
-    std::sort(fileList.begin(), fileList.end(), [](InfoInner a, InfoInner b) { return a.attr.modifyTime < b.attr.modifyTime; });
-    size_t deletedSize = 0;
-    for (auto file : fileList)
-    {
-        if (deletedSize >= cfg.clearSize)
-        {
-            break;
-        }
-        auto ok = utility::FileInfo(file.name).remove();
-        if (fileDeletedCb)
-        {
-            fileDeletedCb(file.name, file.attr, file.depth, ok);
-        }
-        if (ok)
-        {
-            deletedSize += file.attr.size;
-        }
-    }
-    /* 删除空目录 */
-    for (auto folder : folderList)
-    {
-        auto pi = utility::PathInfo(folder.name);
-        if (pi.exist() && pi.empty(true))
-        {
-            auto ok = pi.remove();
-            if (folderDeletedCb)
-            {
-                folderDeletedCb(folder.name, folder.attr, folder.depth, ok);
-            }
-        }
-    }
-}
-
-void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const DeleteCheckFunc& folderCheckFunc,
-                                const DeletedCallback& folderDeletedCb, const DeleteCheckFunc& fileCheckFunc,
-                                const DeletedCallback& fileDeletedCb)
-{
-    for (auto cfg : cfgList)
-    {
-        if (cfg.expireTime <= 0) /* 过期时间无效 */
+        if (cfg.expireTime <= 0 && cfg.occupySize <= 0) /* 无过期时间限制, 且无分配空间限制 */
         {
             continue;
         }
@@ -111,36 +33,29 @@ void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const 
             continue;
         }
         auto nowTimestamp = (int64_t)utility::DateTime::getNowTimestamp();
-        std::vector<InfoInner> folderList;
+        std::vector<InfoInner> folderList, fileList;
         auto folderCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-            if (1 == depth)
+            if (folderCheckFunc && !folderCheckFunc(name, attr, depth)) /* 目录不允许删除 */
             {
-                auto dirName = utility::FileInfo(name).filename();
-                if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
-                {
-                    return false;
-                }
+                return false;
             }
-            if (!folderCheckFunc || folderCheckFunc(name, attr, depth))
-            {
-                folderList.emplace_back(InfoInner(name, attr, depth));
-            }
+            folderList.emplace_back(InfoInner(name, attr, depth));
             return true;
         };
         auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
-            for (auto ignoreFile : cfg.ignoreFileList)
+            for (const auto& ignoreFile : cfg.ignoreFileList)
             {
-                if (name == ignoreFile) /* 忽略 */
+                if (name == ignoreFile) /* 文件被过滤 */
                 {
                     return;
                 }
             }
-            if (fileCheckFunc && !fileCheckFunc(name, attr, depth))
+            if (fileCheckFunc && !fileCheckFunc(name, attr, depth)) /* 文件不允许删除 */
             {
                 return;
             }
             auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
-            if (nowTimestamp - modifyTimestamp >= cfg.expireTime) /* 过期, 需要删除 */
+            if (cfg.expireTime > 0 && nowTimestamp - modifyTimestamp >= cfg.expireTime) /* 有过期时间限制, 且文件过期 */
             {
                 auto ok = utility::FileInfo(name).remove();
                 if (fileDeletedCb)
@@ -148,8 +63,34 @@ void FileDeleter::deleteExpired(const std::vector<ExpireConfig>& cfgList, const 
                     fileDeletedCb(name, attr, depth, ok);
                 }
             }
+            else if (cfg.occupySize > 0) /* 有分配空间限制 */
+            {
+                fileList.emplace_back(InfoInner(name, attr, depth));
+            }
         };
-        pi.traverse(folderCb, fileCb, nullptr, true);
+        pi.traverse(folderCb, fileCb, nullptr, true, false);
+        /* 删除超出分配空间的最早的文件 */
+        if (cfg.occupySize > 0 && !fileList.empty())
+        {
+            std::sort(fileList.begin(), fileList.end(), [&](InfoInner a, InfoInner b) { return a.attr.modifyTime < b.attr.modifyTime; });
+            size_t deletedSize = 0;
+            for (auto file : fileList)
+            {
+                if (deletedSize >= cfg.occupySize * cfg.occupyLine) /* 判断分配空间的删除线是否已完全释放 */
+                {
+                    break;
+                }
+                auto ok = utility::FileInfo(file.name).remove();
+                if (fileDeletedCb)
+                {
+                    fileDeletedCb(file.name, file.attr, file.depth, ok);
+                }
+                if (ok)
+                {
+                    deletedSize += file.attr.size;
+                }
+            }
+        }
         /* 删除空目录 */
         for (auto folder : folderList)
         {

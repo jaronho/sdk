@@ -41,6 +41,7 @@ include_directories(${base_algorithm_dir})
 source_group(TREE ${base_algorithm_dir} PREFIX 3rdparty/base FILES ${base_algorithm_files})
 
 # 添加fileparse基础库
+add_definitions(-DXLNT_STATIC)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/fileparse 3rdparty/base/fileparse)
 include_directories(${base_fileparse_dir})
 source_group(TREE ${base_fileparse_dir} PREFIX 3rdparty/base FILES ${base_fileparse_files})

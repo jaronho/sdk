@@ -13,34 +13,25 @@ class FileDeleter final
 {
 public:
     /**
-     * @brief 占满配置
+     * @brief 配置
      */
-    struct OccupyConfig
+    struct Config
     {
-        OccupyConfig() = default;
-        OccupyConfig(const std::string& folder, size_t clearSize, const std::vector<std::string>& ignoreFileList = {})
-            : folder(folder), clearSize(clearSize), ignoreFileList(ignoreFileList)
-        {
-        }
-
-        std::string folder; /* 目录 */
-        size_t clearSize = 0; /* 要删除的文件总大小(字节) */
-        std::vector<std::string> ignoreFileList; /* 忽略文件列表(此列表中的文件不删除) */
-    };
-
-    /**
-     * @brief 过期配置
-     */
-    struct ExpireConfig
-    {
-        ExpireConfig() = default;
-        ExpireConfig(const std::string& folder, size_t expireTime, const std::vector<std::string>& ignoreFileList = {})
-            : folder(folder), expireTime(expireTime), ignoreFileList(ignoreFileList)
+        Config() = default;
+        Config(const std::string& folder, size_t expireTime, size_t occupySize = 0, float occupyLine = 0.0f,
+               const std::vector<std::string>& ignoreFileList = {})
+            : folder(folder)
+            , expireTime(expireTime)
+            , occupySize(occupySize)
+            , occupyLine((occupyLine < 0.0f) ? 0.0f : ((occupyLine > 1.0f) ? 1.0f : occupyLine))
+            , ignoreFileList(ignoreFileList)
         {
         }
 
         std::string folder; /* 目录 */
         size_t expireTime = (3600 * 24 * 30); /* 过期时间(秒), 文件最后修改时间过期则删除, 默认30天 */
+        size_t occupySize = 0; /* 最大分配空间(字节) */
+        float occupyLine = 0.0f; /* 分配空间删除线(百分比), 值: [0.0, 1.0] */
         std::vector<std::string> ignoreFileList; /* 忽略文件列表(此列表中的文件不删除) */
     };
 
@@ -49,7 +40,7 @@ public:
      * @param name 目录名/文件名(全路径)
      * @param attr 属性
      * @param depth 深度
-     * @return true-删除, false-不删除
+     * @return true-允许删除, false-不允许删除
      */
     using DeleteCheckFunc = std::function<bool(const std::string& name, const utility::FileAttribute& attr, int depth)>;
 
@@ -64,26 +55,14 @@ public:
 
 public:
     /**
-     * @brief 删除占满的文件
-     * @param cfg 配置
-     * @param folderCheckFunc 目录检测函数
-     * @param folderDeletedCb 目录被删除回调
-     * @param fileCheckFunc 文件检测函数
-     * @param fileDeletedCb 文件被删除回调
-     */
-    static void deleteOccupy(const OccupyConfig& cfg, const DeleteCheckFunc& folderCheckFunc, const DeletedCallback& folderDeletedCb,
-                             const DeleteCheckFunc& fileCheckFunc, const DeletedCallback& fileDeletedCb);
-
-    /**
-     * @brief 删除过期的文件
+     * @brief 尝试执行一次
      * @param cfgList 配置列表
      * @param folderCheckFunc 目录检测函数
      * @param folderDeletedCb 目录被删除回调
      * @param fileCheckFunc 文件检测函数
      * @param fileDeletedCb 文件被删除回调
      */
-    static void deleteExpired(const std::vector<ExpireConfig>& cfgList, const DeleteCheckFunc& folderCheckFunc,
-                              const DeletedCallback& folderDeletedCb, const DeleteCheckFunc& fileCheckFunc,
-                              const DeletedCallback& fileDeletedCb);
+    static void tryOnce(const std::vector<Config>& cfgList, const DeleteCheckFunc& folderCheckFunc, const DeletedCallback& folderDeletedCb,
+                        const DeleteCheckFunc& fileCheckFunc, const DeletedCallback& fileDeletedCb);
 };
 } // namespace toolkit
