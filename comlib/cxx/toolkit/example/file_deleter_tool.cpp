@@ -31,12 +31,22 @@ static void fileDeleterWatch()
             {
                 lastWatchTimepoint = ntp;
                 firstFlag = false;
+                auto ndt = utility::DateTime::getNow().yyyyMMdd();
+                auto isToday = [&](const utility::FileAttribute& attr) { return (ndt == attr.modifyTimeFmt("%Y-%m-%d")); };
                 toolkit::FileDeleter::tryOnce(
-                    s_configList, nullptr,
+                    s_configList,
+                    [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+                        auto dirName = utility::FileInfo(name).filename();
+                        if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
+                        {
+                            return false;
+                        }
+                        return !isToday(attr);
+                    },
                     [&](const std::string& name, const utility::FileAttribute& attr, int depth, bool ok) {
                         printf("[%s] delete folder: %s, %s\n", dtString().c_str(), name.c_str(), ok ? "success" : "fail");
                     },
-                    nullptr,
+                    [&](const std::string& name, const utility::FileAttribute& attr, int depth) { return !isToday(attr); },
                     [&](const std::string& name, const utility::FileAttribute& attr, int depth, bool ok) {
                         printf("[%s] delete file: %s, %s\n", dtString().c_str(), name.c_str(), ok ? "success" : "fail");
                     });
