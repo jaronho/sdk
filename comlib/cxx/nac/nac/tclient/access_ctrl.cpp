@@ -1,5 +1,6 @@
 #include "access_ctrl.h"
 
+#include <atomic>
 #include <list>
 #include <map>
 #include <stdexcept>
@@ -105,6 +106,7 @@ static std::mutex s_mutexCfg;
 static AccessConfig s_cfg; /* 接入配置 */
 static std::mutex s_mutexRetryTimer;
 static threading::SteadyTimerPtr s_retryTimer = nullptr; /* 重试(自动重连)定时器 */
+static std::atomic<ConnectState> s_connectState = {ConnectState::idle}; /* 连接状态 */
 
 void AccessCtrl::start(const std::shared_ptr<ProtocolAdapter>& adapter, const threading::ExecutorPtr& bizExecutor,
                        const BizExecutorHook& bizExecutorHook)
@@ -299,6 +301,10 @@ int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& d
     {
         return -1;
     }
+    if (ConnectState::connected != s_connectState)
+    {
+        return -1;
+    }
     AccessConfig cfg;
     {
         std::lock_guard<std::mutex> locker(s_mutexCfg);
@@ -458,6 +464,7 @@ void AccessCtrl::onReceiveMsg(int32_t bizCode, int64_t seqId, const std::string&
 
 void AccessCtrl::onConnectStateChanged(const ConnectState& state)
 {
+    s_connectState = state;
     if (!s_bizExecutor)
     {
         return;

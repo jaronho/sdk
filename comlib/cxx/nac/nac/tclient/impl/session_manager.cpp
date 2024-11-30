@@ -60,6 +60,10 @@ int64_t SessionManager::sendImpl(int32_t bizCode, int64_t seqId, const std::stri
     else
     {
         ERROR_LOG(m_logger, "消息发送错误: 协议适配器为空.");
+        if (callback)
+        {
+            callback(boost::system::errc::make_error_code(boost::system::errc::function_not_supported), 0);
+        }
     }
     return -1;
 }
