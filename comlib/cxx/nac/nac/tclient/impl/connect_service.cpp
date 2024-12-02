@@ -4,6 +4,22 @@ namespace nac
 {
 namespace tcli
 {
+std::string ConnectStateName(const ConnectState& state)
+{
+    switch (state)
+    {
+    case ConnectState::idle:
+        return "idle";
+    case ConnectState::connecting:
+        return "connecting";
+    case ConnectState::connected:
+        return "connected";
+    case ConnectState::disconnected:
+        return "disconnected";
+    }
+    return std::to_string((int)state);
+}
+
 void ConnectService::setDataChannel(const std::shared_ptr<DataChannel>& dataChannel)
 {
     m_connections.clear();

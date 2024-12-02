@@ -25,21 +25,7 @@ enum class ConnectState
  * @param state 连接状态
  * @return 状态名称
  */
-std::string ConnectStateName(const ConnectState& state)
-{
-    switch (state)
-    {
-    case ConnectState::idle:
-        return "idle";
-    case ConnectState::connecting:
-        return "connecting";
-    case ConnectState::connected:
-        return "connected";
-    case ConnectState::disconnected:
-        return "disconnected";
-    }
-    return std::to_string((int)state);
-}
+std::string ConnectStateName(const ConnectState& state);
 
 /**
  * @brief 接入服务
