@@ -21,6 +21,27 @@ enum class ConnectState
 };
 
 /**
+ * @brief 连接状态名称
+ * @param state 连接状态
+ * @return 状态名称
+ */
+std::string ConnectStateName(const ConnectState& state)
+{
+    switch (state)
+    {
+    case ConnectState::idle:
+        return "idle";
+    case ConnectState::connecting:
+        return "connecting";
+    case ConnectState::connected:
+        return "connected";
+    case ConnectState::disconnected:
+        return "disconnected";
+    }
+    return std::to_string((int)state);
+}
+
+/**
  * @brief 接入服务
  */
 class ConnectService final : public std::enable_shared_from_this<ConnectService>

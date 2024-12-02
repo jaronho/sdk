@@ -129,7 +129,7 @@ bool ConnectService::reconnect()
 {
     if (ConnectState::disconnected != m_connectState)
     {
-        WARN_LOG(m_logger, "重连失败: 当前状态 {} 不对.", m_connectState.load());
+        WARN_LOG(m_logger, "重连失败: 当前状态 {} 不对.", ConnectStateName(m_connectState.load()));
         return false;
     }
     INFO_LOG(m_logger, "重新连接.");
@@ -149,7 +149,7 @@ void ConnectService::disconnect()
 {
     if (ConnectState::idle == m_connectState)
     {
-        WARN_LOG(m_logger, "断开连接失败: 当前状态 {} 不对.", m_connectState.load());
+        WARN_LOG(m_logger, "断开连接失败: 当前状态 {} 不对.", ConnectStateName(m_connectState.load()));
         return;
     }
     INFO_LOG(m_logger, "断开连接.");
@@ -496,7 +496,7 @@ void ConnectService::stopAllTimer()
 
 void ConnectService::updateConnectState(const ConnectState& state)
 {
-    INFO_LOG(m_logger, "更新连接状态: {} => {}.", m_connectState.load(), state);
+    INFO_LOG(m_logger, "更新连接状态: {} -> {}.", ConnectStateName(m_connectState.load()), ConnectStateName(state));
     if (state == m_connectState)
     {
         return;
