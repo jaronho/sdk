@@ -297,12 +297,38 @@ void AccessCtrl::disconnect()
 
 int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, const RespCallback& callback, unsigned int timeout)
 {
+    auto func = [&, callback](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
+        if (!s_bizExecutor)
+        {
+            if (callback)
+            {
+                callback(sendOk, data);
+            }
+            return;
+        }
+        auto name = "nac.tcli.api.resp|" + std::to_string(sendOk) + "|" + std::to_string(bizCode) + "|" + std::to_string(seqId);
+        s_bizExecutor->post(name, [&, name, sendOk, bizCode, seqId, data, callback]() {
+            if (callback)
+            {
+                if (s_bizExecutorHook)
+                {
+                    s_bizExecutorHook(name, [sendOk, data, callback]() { callback(sendOk, data); });
+                }
+                else
+                {
+                    callback(sendOk, data);
+                }
+            }
+        });
+    };
     if (!s_sessionManager)
     {
+        func(false, bizCode, seqId, "");
         return -1;
     }
     if (ConnectState::connected != s_connectState)
     {
+        func(false, bizCode, seqId, "");
         return -1;
     }
     AccessConfig cfg;
@@ -312,29 +338,10 @@ int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& d
     }
     if (bizCode == cfg.authBizCode || bizCode == cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
     {
+        func(false, bizCode, seqId, "");
         return -1;
     }
-    return s_sessionManager->sendMsg(
-        bizCode, seqId, data, timeout, [&, callback](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
-            if (!s_bizExecutor)
-            {
-                return;
-            }
-            auto name = "nac.tcli.api.resp|" + std::to_string(sendOk) + "|" + std::to_string(bizCode) + "|" + std::to_string(seqId);
-            s_bizExecutor->post(name, [&, name, sendOk, bizCode, seqId, data, callback]() {
-                if (callback)
-                {
-                    if (s_bizExecutorHook)
-                    {
-                        s_bizExecutorHook(name, [sendOk, data, callback]() { callback(sendOk, data); });
-                    }
-                    else
-                    {
-                        callback(sendOk, data);
-                    }
-                }
-            });
-        });
+    return s_sessionManager->sendMsg(bizCode, seqId, data, timeout, func);
 }
 
 boost::asio::ip::tcp::endpoint AccessCtrl::getLocalEndpoint()
