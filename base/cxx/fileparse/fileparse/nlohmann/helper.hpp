@@ -113,10 +113,11 @@ static json parse(const std::string& str, std::string* errDesc = nullptr)
  * @param j json对象
  * @param value [输出]类型值
  * @param errDesc [输出]错误描述(选填)
+ * @param defVal 默认值(选填)
  * @return true-成功, false-失败
  */
 template<typename ValueType>
-static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errDesc = nullptr)
+static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errDesc = nullptr, ValueType defVal = ValueType{})
 {
     std::string errorDescribe;
     try
@@ -140,6 +141,7 @@ static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errD
     {
         *errDesc = errorDescribe;
     }
+    value = defVal;
     return false;
 }
 
@@ -148,13 +150,14 @@ static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errD
  * @tparam ValueType 类型名
  * @param j json对象
  * @param errDesc [输出]错误描述(选填)
+ * @param defVal 默认值(选填)
  * @return 对应类型值
  */
 template<typename ValueType>
-static ValueType toValue(const nlohmann::json& j, std::string* errDesc = nullptr)
+static ValueType toValue(const nlohmann::json& j, std::string* errDesc = nullptr, ValueType defVal = ValueType{})
 {
-    ValueType value = ValueType{};
-    toValue(j, value, errDesc);
+    ValueType value = defVal;
+    toValue(j, value, errDesc, defVal);
     return value;
 }
 
@@ -208,10 +211,11 @@ static bool exist(const json& j, const std::string& key, std::string* errDesc = 
  * @param key 子项的key
  * @param value [输出]子项值
  * @param errDesc [输出]错误描述(选填)
+ * @param defVal 默认值(选填)
  * @return true-成功, false-失败
  */
 template<typename ValueType>
-static bool getter(const json& j, const std::string& key, ValueType& value, std::string* errDesc = nullptr)
+static bool getter(const json& j, const std::string& key, ValueType& value, std::string* errDesc = nullptr, ValueType defVal = ValueType{})
 {
     std::string errorDescribe;
     try
@@ -243,6 +247,7 @@ static bool getter(const json& j, const std::string& key, ValueType& value, std:
     {
         *errDesc = errorDescribe;
     }
+    value = defVal;
     return false;
 }
 
@@ -252,13 +257,14 @@ static bool getter(const json& j, const std::string& key, ValueType& value, std:
  * @param j json对象
  * @param key 子项的key
  * @param errDesc [输出]错误描述(选填)
+ * @param defVal 默认值(选填)
  * @return 子项值
  */
 template<typename ValueType>
-static ValueType getter(const json& j, const std::string& key, std::string* errDesc = nullptr)
+static ValueType getter(const json& j, const std::string& key, std::string* errDesc = nullptr, ValueType defVal = ValueType{})
 {
-    ValueType value = ValueType{};
-    getter(j, key, value, errDesc);
+    ValueType value = defVal;
+    getter(j, key, value, errDesc, defVal);
     return value;
 }
 
