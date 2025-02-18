@@ -92,7 +92,7 @@ public:
         }
         else
         {
-            m_repeatCount = 0;
+            m_repeatCount = 1;
         }
         /* step3: 更新缓存的值 */
         m_tempValue = nowValue;
@@ -111,13 +111,13 @@ public:
             }
             if (!isRealEqualNow) /* 真实的值和当前值不相等, 更新真实的值 */
             {
-                m_repeatCount = 0;
+                m_repeatCount = 1;
                 m_realValue = nowValue;
                 return 0;
             }
             else /* 真实的值和当前值相等, 不更新真实值, 重复次数减1 */
             {
-                if (m_repeatCount > 0)
+                if (m_repeatCount > 1)
                 {
                     --m_repeatCount;
                 }
