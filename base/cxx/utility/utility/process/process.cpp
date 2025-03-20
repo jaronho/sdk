@@ -116,7 +116,7 @@ void Process::setThreadName(const std::string& name)
 #endif
 }
 
-char** string2argv(const std::string& str, int& argvCount)
+static char** string2argv(const std::string& str, int& argvCount)
 {
     std::vector<std::string> argVec;
     std::string arg;

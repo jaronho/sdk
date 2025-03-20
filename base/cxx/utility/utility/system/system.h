@@ -11,6 +11,14 @@ public:
     /**
      * @brief 执行命令
      * @param cmd 命令内容
+     * @param outputFunc 输出回调, 参数: data-数据, count-数据长度, 返回值: true-继续获取数据, false-停止获取数据
+     * @return 执行结果, 0-成功, 非0-失败
+     */
+    static int runCmd(const std::string& cmd, const std::function<bool(const char* data, size_t count)>& outputFunc);
+
+    /**
+     * @brief 执行命令
+     * @param cmd 命令内容
      * @param outStr [输出]过程输出的可打印内容(选填, 字符串)
      * @param outVec [输出]过程输出的可打印内容(选填, 行列表)
      * @param ignoreBlankLine 是否忽略空行(选填), 为true时空行将不会添加到outVec行列表中

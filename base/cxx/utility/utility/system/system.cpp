@@ -6,6 +6,7 @@
 
 #ifdef _WIN32
 #include <Windows.h>
+#include <io.h>
 #else
 #include <fcntl.h>
 #include <unistd.h>
@@ -13,68 +14,58 @@
 
 namespace utility
 {
-int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std::string>* outVec, bool ignoreBlankLine)
+int System::runCmd(const std::string& cmd, const std::function<bool(const char* data, size_t count)>& outputFunc)
 {
-    if (outStr)
-    {
-        (*outStr).clear();
-    }
-    if (outVec)
-    {
-        (*outVec).clear();
-    }
     if (cmd.empty())
     {
         return -1;
     }
-    FILE* stream = NULL;
 #ifdef _WIN32
-    stream = _popen(cmd.c_str(), "r");
+    FILE* stream = _popen(cmd.c_str(), "r");
 #else
-    stream = popen(cmd.c_str(), "r");
+    FILE* stream = popen(cmd.c_str(), "r");
 #endif
     if (!stream)
     {
         return -2;
     }
-    if (outStr || outVec)
+    setvbuf(stream, NULL, _IONBF, 0); /* 设置无缓冲 */
+#ifdef _WIN32
+    int fd = _fileno(stream);
+#else
+    int fd = fileno(stream);
+#endif
+    if (fd < 0)
     {
-        const size_t bufferSize = 1025;
-        char buffer[bufferSize] = {0};
-        std::string line;
-        while (fread(buffer, 1, bufferSize - 1, stream) > 0)
+#ifdef _WIN32
+        _pclose(stream);
+#else
+        pclose(stream);
+#endif
+        return -3;
+    }
+    if (outputFunc)
+    {
+        char data[1024] = {0};
+        while (1)
         {
-            if (outStr)
+            memset(data, 0, sizeof(data));
+            auto count = read(fd, data, sizeof(data));
+            if (count > 0) /* 有数据 */
             {
-                (*outStr).append(buffer);
-            }
-            if (outVec)
-            {
-                line += buffer;
-                while (1)
+                if (!outputFunc(data, count))
                 {
-                    size_t pos = line.find("\r\n"), offset = 2;
-                    if (std::string::npos == pos)
-                    {
-                        pos = line.find("\n"), offset = 1;
-                    }
-                    if (std::string::npos == pos)
-                    {
-                        break;
-                    }
-                    auto outLine = line.substr(0, pos);
-                    if (!outLine.empty() || !ignoreBlankLine)
-                    {
-                        (*outVec).emplace_back(outLine);
-                    }
-                    line = line.substr(pos + offset, line.size() - pos - offset);
+                    break;
                 }
             }
-            memset(buffer, 0, bufferSize);
-        }
-        if (outVec && !line.empty())
-        {
-            (*outVec).emplace_back(line);
+            else if (count < 0 && (EAGAIN == errno || EWOULDBLOCK == errno)) /* 无数据 */
+            {
+                continue;
+            }
+            else if (0 == count) /* 管道关闭 */
+            {
+                break;
+            }
         }
     }
 #ifdef _WIN32
@@ -87,6 +78,48 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
     }
     return ret;
 #endif
+}
+
+int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std::string>* outVec, bool ignoreBlankLine)
+{
+    if (outStr)
+    {
+        (*outStr).clear();
+    }
+    if (outVec)
+    {
+        (*outVec).clear();
+    }
+    std::string line;
+    return runCmd(cmd, [&](const char* data, size_t count) {
+        if (outStr)
+        {
+            (*outStr).append(data, count);
+        }
+        if (outVec)
+        {
+            line.append(data, count);
+            while (1)
+            {
+                size_t pos = line.find("\r\n"), offset = 2;
+                if (std::string::npos == pos)
+                {
+                    pos = line.find("\n"), offset = 1;
+                }
+                if (std::string::npos == pos)
+                {
+                    break;
+                }
+                auto outLine = line.substr(0, pos);
+                if (!outLine.empty() || !ignoreBlankLine)
+                {
+                    (*outVec).emplace_back(outLine);
+                }
+                line = line.substr(pos + offset, line.size() - pos - offset);
+            }
+        }
+        return true;
+    });
 }
 
 bool System::tryLockUnlockFile(HANDLE fd, bool lock, bool block)
