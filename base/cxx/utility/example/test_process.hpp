@@ -16,8 +16,8 @@ void testProcess()
 #else
     std::string filename = "example_utilitiy";
 #endif
-    int count = utility::Process::searchProcess(filename, [](const std::string& exeFile, int pid) {
-        printf("--- pid: %d, exeFile: %s\n", pid, exeFile.c_str());
+    int count = utility::Process::searchProcess(filename, [](const std::string& exeFile, int pid, int ppid) {
+        printf("--- pid: %d, ppid: %d, exeFile: %s\n", pid, ppid, exeFile.c_str());
         return true;
     });
     printf("----- count: %d\n", count);
