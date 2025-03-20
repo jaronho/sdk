@@ -84,17 +84,17 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
 {
     if (outStr)
     {
-        (*outStr).clear();
+        outStr->clear();
     }
     if (outVec)
     {
-        (*outVec).clear();
+        outVec->clear();
     }
     std::string line;
-    return runCmd(cmd, [&](const char* data, size_t count) {
+    auto ret = runCmd(cmd, [&](const char* data, size_t count) {
         if (outStr)
         {
-            (*outStr).append(data, count);
+            outStr->append(data, count);
         }
         if (outVec)
         {
@@ -113,13 +113,18 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
                 auto outLine = line.substr(0, pos);
                 if (!outLine.empty() || !ignoreBlankLine)
                 {
-                    (*outVec).emplace_back(outLine);
+                    outVec->emplace_back(outLine);
                 }
                 line = line.substr(pos + offset, line.size() - pos - offset);
             }
         }
         return true;
     });
+    if (outVec && !line.empty())
+    {
+        outVec->emplace_back(line);
+    }
+    return ret;
 }
 
 bool System::tryLockUnlockFile(HANDLE fd, bool lock, bool block)
