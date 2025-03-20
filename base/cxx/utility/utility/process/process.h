@@ -43,11 +43,11 @@ public:
     /**
      * @brief 根据程序文件名搜索进程
      * @param exeFile 程序文件名(可包含全路径), 为空时表示查找所有进程
-     * @param callback 匹配时的回调函数, exeFile-程序全路径文件名, pid-匹配到的进程ID, 返回值: true-继续, false-停止
+     * @param callback 匹配时的回调函数, exeFile-程序全路径文件名, pid-匹配到的进程ID, ppid-父进程ID, 返回值: true-继续, false-停止
      * @return 匹配到的进程数
      */
     static int searchProcess(const std::string& exeFile,
-                             const std::function<bool(const std::string& exeFile, int pid)>& callback = nullptr);
+                             const std::function<bool(const std::string& exeFile, int pid, int ppid)>& callback = nullptr);
 
     /**
      * @brief 启动进程
