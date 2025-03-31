@@ -59,6 +59,16 @@ public:
     static int runProcess(const std::string& exeFile, const std::string& args = "", int flag = 1);
 
     /**
+     * @brief 启动进程
+     * @param cmdline 命令行
+     * @param startFunc 进程启动回调, 参数: pid-进程ID, >=0-进程创建成功, <0-进程创建失败
+     * @param outputFunc 进程输出回调, 参数: data-数据, count-数据长度, 返回值: true-继续获取数据, false-停止获取数据且停止进程
+     * @param waitProcessDead 是否等待进程退出, true-等待, false-不等待
+     */
+    static void runProcess(const std::string& cmdline, const std::function<void(int pid)>& startFunc,
+                           const std::function<bool(const char* data, size_t count)>& outputFunc, bool waitProcessDead = true);
+
+    /**
      * @brief 杀死进程
      * @param pid 进程ID
      * @return true-成功, false-失败

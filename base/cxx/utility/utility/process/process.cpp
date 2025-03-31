@@ -1,17 +1,18 @@
 #include "process.h"
 
 #include <cstdint>
+#include <fcntl.h>
 #include <sstream>
 #include <string.h>
 #include <thread>
 #include <vector>
 #ifdef _WIN32
 #include <Windows.h>
+#include <io.h>
 #include <process.h>
 #pragma warning(disable : 4996)
 #else
 #include <dirent.h>
-#include <fcntl.h>
 #include <pthread.h>
 #include <sched.h>
 #include <sys/syscall.h>
@@ -413,6 +414,200 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
     }
     /* 父进程空间 */
     return pid;
+#endif
+}
+
+void Process::runProcess(const std::string& cmdline, const std::function<void(int pid)>& startFunc,
+                         const std::function<bool(const char* data, size_t count)>& outputFunc, bool waitProcessDead)
+{
+    int pid = -1, readfd = -1;
+    FILE* stream = nullptr;
+#ifdef _WIN32
+    HANDLE hRead = INVALID_HANDLE_VALUE;
+    HANDLE hWrite = INVALID_HANDLE_VALUE;
+    SECURITY_ATTRIBUTES sa = {sizeof(sa), NULL, TRUE};
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0))
+    {
+        if (startFunc)
+        {
+            startFunc(pid);
+        }
+        return;
+    }
+    STARTUPINFO si;
+    ZeroMemory(&si, sizeof(si));
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = hWrite;
+    si.hStdError = hWrite;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&pi, sizeof(pi));
+    if (!CreateProcessA(NULL, (CHAR*)(cmdline.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+    {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
+        if (startFunc)
+        {
+            startFunc(pid);
+        }
+        return;
+    }
+    readfd = _open_osfhandle((intptr_t)hRead, _O_RDONLY); /* 转换句柄为文件流 */
+    if (readfd < 0)
+    {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        if (startFunc)
+        {
+            startFunc(pid);
+        }
+        return;
+    }
+    pid = pi.dwProcessId;
+    stream = _fdopen(readfd, "r");
+    CloseHandle(hWrite);
+    CloseHandle(pi.hThread);
+#else
+    int pipefd[2];
+    if (pipe(pipefd) < 0)
+    {
+        if (startFunc)
+        {
+            startFunc(pid);
+        }
+        return;
+    }
+    readfd = pipefd[0];
+    std::string exeFile, args;
+    auto pos = cmdline.find(' ');
+    if (std::string::npos == pos)
+    {
+        exeFile = cmdline;
+    }
+    else
+    {
+        exeFile = cmdline.substr(0, pos);
+        args = cmdline.substr(pos + 1);
+    }
+    signal(SIGCHLD, SIG_IGN); /* 重要: 设置父进程不关心子进程什么时候结束, 通知内核在子进程结束时进行回收, 避免子进程成为僵尸进程 */
+    pid = fork(); /* 创建子进程 */
+    if (pid < 0) /* 子进程创建失败 */
+    {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        if (startFunc)
+        {
+            startFunc(pid);
+        }
+        return;
+    }
+    else if (0 == pid) /* 创建成功, 进入子进程空间 */
+    {
+        setpgid(0, 0);
+        close(pipefd[0]); /* 关闭读端 */
+        dup2(pipefd[1], STDOUT_FILENO); /* 正确重定向写端 */
+        close(pipefd[1]); /* 关闭原始写端 */
+        /* 在子进程中执行该程序 */
+        if (args.empty()) /* 无进程参数 */
+        {
+            int ret = execlp(exeFile.c_str(), exeFile.c_str(), NULL);
+            if (-1 == ret) /* 注意: 子进程执行失败, 需要退出子进程空间, 否则会在子进程中继续执行父进程的后续逻辑 */
+            {
+                exit(0);
+            }
+        }
+        else /* 有进程参数 */
+        {
+            int argvCount;
+            char** argv = string2argv(cmdline, argvCount);
+            int ret = execvp(exeFile.c_str(), argv);
+            if (argv)
+            {
+                for (int i = 0; i < argvCount; ++i)
+                {
+                    if (argv[i])
+                    {
+                        free(argv[i]);
+                    }
+                }
+                free(argv);
+            }
+            if (-1 == ret) /* 注意: 子进程执行失败, 需要退出子进程空间, 否则会在子进程中继续执行父进程的后续逻辑 */
+            {
+                exit(0);
+            }
+        }
+    }
+    else /* 父进程空间 */
+    {
+        close(pipefd[1]); /* 关闭父进程写端 */
+        stream = fdopen(pipefd[0], "r");
+    }
+#endif
+    if (stream)
+    {
+        setvbuf(stream, NULL, _IONBF, 0); /* 设置无缓冲 */
+    }
+    if (startFunc)
+    {
+        startFunc(pid);
+    }
+    bool stopFlag = false;
+    if (outputFunc && readfd > 0)
+    {
+        char buffer[1024];
+        while (1)
+        {
+            memset(buffer, 0, sizeof(buffer));
+            auto count = read(readfd, buffer, sizeof(buffer));
+            if (count > 0) /* 有数据 */
+            {
+                if (!outputFunc(buffer, count))
+                {
+                    stopFlag = true;
+                    break;
+                }
+            }
+            else if (count < 0 && (EAGAIN == errno || EWOULDBLOCK == errno)) /* 无数据 */
+            {
+                continue;
+            }
+            else if (0 == count) /* 管道关闭 */
+            {
+                break;
+            }
+        }
+    }
+    if (stream)
+    {
+        fclose(stream);
+    }
+#ifdef _WIN32
+    if (pi.hProcess)
+    {
+        if (stopFlag) /* 停止进程 */
+        {
+            TerminateProcess(pi.hProcess, 0);
+        }
+        else if (waitProcessDead) /* 等待进程退出 */
+        {
+            WaitForSingleObject(pi.hProcess, INFINITE);
+        }
+        CloseHandle(pi.hProcess);
+    }
+#else
+    if (pid >= 0)
+    {
+        if (stopFlag) /* 停止进程 */
+        {
+            kill(pid, SIGKILL);
+        }
+        else if (waitProcessDead) /* 等待进程退出 */
+        {
+            waitpid(pid, nullptr, 0);
+        }
+    }
 #endif
 }
 
