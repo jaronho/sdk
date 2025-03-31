@@ -40,6 +40,9 @@ ${base_utility_digit_files}
 ${base_utility_filesystem_files}
 
 [源文件]
+${base_utility_mmfile_files}
+
+[源文件]
 ${base_utility_module_files}
 
 [源文件]
@@ -82,6 +85,9 @@ set(base_utility_digit_files ${src_list} CACHE INTERNAL "")
 get_cxx_files(utility/filesystem src_list)
 set(base_utility_filesystem_files ${src_list} CACHE INTERNAL "")
 
+get_cxx_files(utility/mmfile src_list)
+set(base_utility_mmfile_files ${src_list} CACHE INTERNAL "")
+
 get_cxx_files(utility/module src_list)
 set(base_utility_module_files ${src_list} CACHE INTERNAL "")
 
@@ -111,6 +117,7 @@ set(base_utility_files
     ${base_utility_datetime_files}
     ${base_utility_digit_files}
     ${base_utility_filesystem_files}
+    ${base_utility_mmfile_files}
     ${base_utility_module_files}
     ${base_utility_net_files}
     ${base_utility_process_files}
