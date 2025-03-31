@@ -5,6 +5,7 @@
 #include "test_datetime.hpp"
 #include "test_filecopy.hpp"
 #include "test_filesystem.hpp"
+#include "test_mmfile.hpp"
 #include "test_module.hpp"
 #include "test_net.hpp"
 #include "test_process.hpp"
@@ -23,6 +24,7 @@ int main(int argc, char** argv)
 #else
     testDateTime();
     testFilesystem();
+    testMmfile();
     testModule();
     testNet();
     testProcess();

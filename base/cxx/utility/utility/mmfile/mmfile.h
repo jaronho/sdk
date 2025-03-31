@@ -37,13 +37,6 @@ public:
     bool open(const std::string& fullName, const AccessMode& mode, size_t blockSize = 1024, size_t initialSize = 0);
 
     /**
-     * @brief 重新调整文件大小
-     * @param newSize 新的大小
-     * @return true-成功, false-失败
-     */
-    bool resize(size_t newSize);
-
-    /**
      * @brief 定位到指定位置
      * @param offset 偏移量
      * @param whence 定位方式, 值: SEEK_CUR, SEEK_END, SEEK_SET
@@ -55,7 +48,7 @@ public:
      * @brief 写文件
      * @param data 数据内容
      * @param size 数据长度
-     * @return 已写长度, =0-写失败, >0-写成功
+     * @return 已写长度, !=size-写失败, =size-写成功
      */
     size_t write(const void* data, size_t size);
 
@@ -66,12 +59,6 @@ public:
      * @return 已读长度, =0-读失败, >0-读成功
      */
     size_t read(void* data, size_t size);
-
-    /**
-     * @brief 同步到磁盘
-     * @return true-成功, false-失败
-     */
-    bool sync();
 
     /**
      * @brief 关闭
@@ -97,10 +84,10 @@ public:
     void* getBlockData() const;
 
     /**
-     * @brief 获取当前写位置
-     * @return 当前写位置
+     * @brief 获取当前位置
+     * @return 当前位置
      */
-    size_t getCurrentWritePositon() const;
+    size_t getCurrentPositon() const;
 
     /**
      * @brief 获取最后出错信息
@@ -110,23 +97,24 @@ public:
 
 private:
     /**
-     * @brief 是否可写
-     * @return true-可写, false-不可写
-     */
-    bool isWritable() const;
-
-    /**
      * @brief 映射块
      * @param offset 偏移值
      * @param blockSize 块大小
+     * @param mode 访问模式
      * @return 块数据
      */
-    void* mapBlock(size_t offset, size_t blockSize);
+    void* mapBlock(size_t offset, size_t blockSize, const AccessMode& mode);
 
     /**
      * @brief 取消映射
      */
     void unmapBlock();
+
+    /**
+     * @brief 同步到磁盘
+     * @return true-成功, false-失败
+     */
+    bool sync();
 
 #ifdef _WIN32
     typedef void* HANDLE;
@@ -135,11 +123,10 @@ private:
 #else
     int m_fd = -1;
 #endif
-    size_t m_fileSize = 0; /* 文件大小 */
+    size_t m_fileSize = 0; /* 文件大小(单位: 字节) */
     size_t m_blockSize = 0; /* 默认读写块大小(单位: 字节) */
     void* m_blockData = 0; /* 块数据 */
-    size_t m_currentWritePositon = 0; /* 当前写位置 */
-    size_t m_currentBlockOffset = 0; /* 当前映射块的起始偏移量 */
+    size_t m_currentPositon = 0; /* 当前位置 */
     int m_lastError = 0; /* 最后出错信息 */
 };
 } // namespace utility
