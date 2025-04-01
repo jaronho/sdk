@@ -8,6 +8,7 @@
 #endif
 
 #include "algorithm/md5/md5ex.h"
+#include "algorithm/xxhash/xxhashex.h"
 #include "utility/charset/charset.h"
 #include "utility/filesystem/path_info.h"
 
@@ -106,11 +107,114 @@ Tool::md5Directory(const std::string& path, const std::function<void(size_t tota
         },
         true, false);
     result->get_future().share().get();
-    std::string value;
+    std::string output;
     {
         std::lock_guard<std::mutex> locker(*mutexInner);
-        value = algorithm::md5SignStrList(*md5List, 1);
+        output = algorithm::md5SignStrList(*md5List, 1);
     }
-    return value;
+    return output;
+}
+
+uint64_t
+Tool::xxhashDirectory(const std::string& path, const std::function<void(size_t totalCount, size_t totalSize)>& beginCb,
+                      const std::function<void(const std::string& name, size_t fileSize, const std::function<uint64_t()>& calcFunc)>& func,
+                      const std::function<bool()>& stopFunc, size_t blockSize)
+{
+    blockSize = blockSize <= 0 ? (1024 * 1024) : (blockSize > (50 * 1024 * 1024) ? (50 * 1024 * 1024) : blockSize);
+    /* 计算文件数量和总大小 */
+    size_t totalFileCount = 0, totalFileSize = 0;
+    utility::PathInfo pi(path, true);
+    pi.traverse(
+        nullptr,
+        [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            ++totalFileCount;
+            totalFileSize += attr.size;
+        },
+        nullptr, true, false);
+    if (beginCb)
+    {
+        beginCb(totalFileCount, totalFileSize);
+    }
+    if (0 == totalFileCount || 0 == totalFileSize)
+    {
+        return 0;
+    }
+    /* 遍历计算文件 */
+    auto mutexInner = std::make_shared<std::mutex>();
+    auto xxhashList = std::make_shared<std::vector<std::string>>();
+    auto result = std::make_shared<std::promise<void>>();
+    auto innerFunc = [&, stopFunc, blockSize, totalFileCount, mutexInner, xxhashList, result](const std::string& name,
+                                                                                              const utility::FileAttribute& attr) {
+        bool stopFlag = false;
+        uint64_t value = 0;
+#ifdef _WIN32
+        size_t codePage = CP_ACP;
+        auto coding = utility::Charset::getCoding(name);
+        if (utility::Charset::Coding::utf8 == coding || utility::Charset::Coding::utf8_bom == coding)
+        {
+            codePage = CP_UTF8;
+        }
+        FILE* f = _wfopen(utility::Charset::string2wstring(name, codePage).c_str(), L"rb");
+#else
+        FILE* f = fopen(name.c_str(), "rb");
+#endif
+        if (f)
+        {
+            value = algorithm::xxhash64SignFileHandle(f, blockSize, [&, stopFunc]() {
+                stopFlag = stopFunc ? stopFunc() : false;
+                return stopFlag;
+            });
+            fclose(f);
+        }
+        {
+            std::lock_guard<std::mutex> locker(*mutexInner);
+            if (stopFlag)
+            {
+                xxhashList->clear();
+                result->set_value();
+            }
+            else
+            {
+                char tmp[48] = {0};
+                sprintf(tmp, "%llx", value);
+                xxhashList->emplace_back(tmp);
+                if (xxhashList->size() == totalFileCount)
+                {
+                    result->set_value();
+                }
+            }
+        }
+        return value;
+    };
+    pi.traverse(
+        nullptr,
+        [&, innerFunc](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (func)
+            {
+                func(name, attr.size, [&, innerFunc, name, attr]() { return innerFunc(name, attr); });
+            }
+            else
+            {
+                innerFunc(name, attr);
+            }
+        },
+        [&, stopFunc]() {
+            auto stopFlag = stopFunc ? stopFunc() : false;
+            if (stopFlag)
+            {
+                std::lock_guard<std::mutex> locker(*mutexInner);
+                xxhashList->clear();
+                result->set_value();
+            }
+            return stopFlag;
+        },
+        true, false);
+    result->get_future().share().get();
+    uint64_t output;
+    {
+        std::lock_guard<std::mutex> locker(*mutexInner);
+        output = algorithm::xxhash64SignList(*xxhashList, 1);
+    }
+    return output;
 }
 } // namespace toolkit

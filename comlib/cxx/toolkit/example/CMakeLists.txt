@@ -104,8 +104,20 @@ add_executable(md5_tool
 			   ${comlib_toolkit_tool_files}
 			   md5_tool.cpp)
 
+add_executable(xxhash_tool
+			   ${base_algorithm_files}
+			   ${base_threading_files}
+			   ${base_utility_charset_files}
+			   ${base_utility_cmdline_files}
+			   ${base_utility_datetime_files}
+			   ${base_utility_filesystem_files}
+			   ${base_utility_strtool_files}
+			   ${comlib_toolkit_tool_files}
+			   xxhash_tool.cpp)
+
 # 链接依赖库
 target_link_libraries(example_app_singleton Threads::Threads)
 target_link_libraries(example_toolkit Threads::Threads)
 target_link_libraries(file_deleter_tool Threads::Threads)
 target_link_libraries(md5_tool Threads::Threads)
+target_link_libraries(xxhash_tool Threads::Threads)
