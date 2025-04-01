@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "md5.h"
+
 namespace algorithm
 {
 /** 

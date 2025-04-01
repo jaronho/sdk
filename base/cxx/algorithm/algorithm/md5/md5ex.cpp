@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "md5.h"
-
 namespace algorithm
 {
 std::string md5SignStrEx(const unsigned char* data, size_t dataLen)

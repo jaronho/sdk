@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "xxhash.h"
-
 namespace algorithm
 {
 uint64_t xxhash64Sign(const char* data, size_t dataLen)
@@ -17,11 +15,9 @@ uint64_t xxhash64Sign(const char* data, size_t dataLen)
         XXH3_state_t* state = XXH3_createState();
         if (state)
         {
-            if (XXH_OK == XXH3_64bits_reset(state))
-            {
-                XXH3_64bits_update(state, data, dataLen);
-                output = XXH3_64bits_digest(state);
-            }
+            XXH3_64bits_reset(state);
+            XXH3_64bits_update(state, data, dataLen);
+            output = XXH3_64bits_digest(state);
             XXH3_freeState(state);
         }
     }
@@ -45,14 +41,12 @@ uint64_t xxhash64SignList(std::vector<std::string> dataList, int sortFlag)
         XXH3_state_t* state = XXH3_createState();
         if (state)
         {
-            if (XXH_OK == XXH3_64bits_reset(state))
+            XXH3_64bits_reset(state);
+            for (const auto& data : dataList)
             {
-                for (const auto& data : dataList)
-                {
-                    XXH3_64bits_update(state, data.data(), data.size());
-                }
-                output = XXH3_64bits_digest(state);
+                XXH3_64bits_update(state, data.data(), data.size());
             }
+            output = XXH3_64bits_digest(state);
             XXH3_freeState(state);
         }
     }
@@ -71,28 +65,26 @@ uint64_t xxhash64SignFileHandle(FILE* handle, size_t blockSize, const std::funct
             XXH3_state_t* state = XXH3_createState();
             if (state)
             {
-                if (XXH_OK == XXH3_64bits_reset(state))
+                XXH3_64bits_reset(state);
+                unsigned long long offset = 0, count = blockSize;
+                while (count > 0)
                 {
-                    unsigned long long offset = 0, count = blockSize;
-                    while (count > 0)
+                    if (stopFunc && stopFunc())
                     {
-                        if (stopFunc && stopFunc())
-                        {
-                            XXH3_freeState(state);
-                            free(blockBuffer);
-                            return output;
-                        }
-#ifdef _WIN32
-                        _fseeki64(handle, offset, SEEK_SET);
-#else
-                        fseeko64(handle, offset, SEEK_SET);
-#endif
-                        count = fread(blockBuffer, 1, blockSize, handle);
-                        offset += count;
-                        XXH3_64bits_update(state, blockBuffer, count);
+                        XXH3_freeState(state);
+                        free(blockBuffer);
+                        return output;
                     }
-                    output = XXH3_64bits_digest(state);
+#ifdef _WIN32
+                    _fseeki64(handle, offset, SEEK_SET);
+#else
+                    fseeko64(handle, offset, SEEK_SET);
+#endif
+                    count = fread(blockBuffer, 1, blockSize, handle);
+                    offset += count;
+                    XXH3_64bits_update(state, blockBuffer, count);
                 }
+                output = XXH3_64bits_digest(state);
                 XXH3_freeState(state);
             }
             free(blockBuffer);
