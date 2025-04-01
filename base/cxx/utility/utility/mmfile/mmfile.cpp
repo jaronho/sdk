@@ -193,14 +193,22 @@ size_t MMFile::read(void* data, size_t size)
         return 0;
     }
     size_t readSize = 0;
-    while (size > 0)
+    while (size > 0 && m_currentPositon < m_fileSize)
     {
         size_t blockSize = size < m_blockSize ? size : m_blockSize;
+        auto remainSize = m_fileSize - m_currentPositon;
+        if (blockSize > remainSize)
+        {
+            blockSize = remainSize;
+        }
         if (!mapBlock(m_currentPositon, blockSize, AccessMode::read_only))
         {
             return readSize;
         }
-        memcpy(data, m_blockData, blockSize);
+        /* 计算实际偏移 */
+        size_t adjustedOffset = (m_currentPositon / m_pageSize) * m_pageSize;
+        size_t offsetInBlock = m_currentPositon - adjustedOffset;
+        memcpy(data, static_cast<char*>(m_blockData) + offsetInBlock, blockSize);
         unmapBlock(blockSize);
         m_currentPositon += blockSize;
         data = static_cast<char*>(data) + blockSize;
@@ -266,17 +274,23 @@ void* MMFile::mapBlock(size_t offset, size_t blockSize, const AccessMode& mode)
     }
     size_t adjustedOffset = (offset / m_pageSize) * m_pageSize; /* 调整offset为页面大小的倍数 */
     size_t adjustedSize = blockSize + (offset - adjustedOffset); /* 调整blockSize */
+    if (adjustedOffset + adjustedSize > m_fileSize)
+    {
+        adjustedSize = m_fileSize - adjustedOffset; /* 确保不超出文件末尾 */
+    }
 #ifdef _WIN32
+    DWORD protection = (mode == AccessMode::read_write) ? PAGE_READWRITE : PAGE_READONLY;
+    DWORD mapAccess = (mode == AccessMode::read_write) ? FILE_MAP_WRITE : FILE_MAP_READ;
     DWORD offsetHigh = static_cast<DWORD>((adjustedOffset >> 32) & 0xFFFFFFFF);
     DWORD offsetLow = static_cast<DWORD>(adjustedOffset & 0xFFFFFFFF);
-    m_mapping =
-        CreateFileMapping(m_file, nullptr, AccessMode::read_write == mode ? PAGE_READWRITE : PAGE_READONLY, 0, adjustedSize, nullptr);
+    /* dwMaximumSizeHigh和dwMaximumSizeLow设置为0表示映射对象的大小由文件的实际大小决定 */
+    m_mapping = CreateFileMapping(m_file, nullptr, protection, 0, 0, nullptr);
     if (!m_mapping)
     {
         m_lastError = GetLastError();
         return nullptr;
     }
-    m_blockData = MapViewOfFile(m_mapping, AccessMode::read_write == mode ? FILE_MAP_WRITE : FILE_MAP_READ, 0, 0, adjustedSize);
+    m_blockData = MapViewOfFile(m_mapping, mapAccess, offsetHigh, offsetLow, adjustedSize);
     if (!m_blockData)
     {
         m_lastError = GetLastError();
