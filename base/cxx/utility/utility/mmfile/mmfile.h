@@ -21,6 +21,12 @@ public:
 
 public:
     /**
+     * @brief 获取系统页大小
+     * @return 页大小(单位: 字节)
+     */
+    static size_t getPageSize();
+
+    /**
      * @brief 构造函数
      */
     MMFile() = default;
@@ -107,14 +113,16 @@ private:
 
     /**
      * @brief 取消映射
+     * @param blockSize 块大小
      */
-    void unmapBlock();
+    void unmapBlock(size_t blockSize);
 
     /**
      * @brief 同步到磁盘
+     * @param blockSize 块大小
      * @return true-成功, false-失败
      */
-    bool sync();
+    bool sync(size_t blockSize);
 
 #ifdef _WIN32
     typedef void* HANDLE;
@@ -123,6 +131,7 @@ private:
 #else
     int m_fd = -1;
 #endif
+    size_t m_pageSize; /* 页大小 */
     size_t m_fileSize = 0; /* 文件大小(单位: 字节) */
     size_t m_blockSize = 0; /* 默认读写块大小(单位: 字节) */
     void* m_blockData = 0; /* 块数据 */

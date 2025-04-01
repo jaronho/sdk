@@ -12,6 +12,17 @@
 
 namespace utility
 {
+size_t MMFile::getPageSize()
+{
+#ifdef _WIN32
+    SYSTEM_INFO si;
+    GetSystemInfo(&si);
+    return si.dwPageSize;
+#else
+    return sysconf(_SC_PAGESIZE);
+#endif
+}
+
 MMFile::~MMFile()
 {
     close();
@@ -20,6 +31,7 @@ MMFile::~MMFile()
 bool MMFile::open(const std::string& fullName, const AccessMode& mode, size_t blockSize, size_t initialSize)
 {
     close();
+    m_pageSize = getPageSize();
     m_blockSize = blockSize > 0 ? blockSize : 1024;
     m_fileSize = initialSize > 0 ? initialSize : 1024;
 #ifdef _WIN32
@@ -86,7 +98,7 @@ bool MMFile::open(const std::string& fullName, const AccessMode& mode, size_t bl
         flags |= O_RDWR | O_CREAT | O_TRUNC;
         break;
     }
-    m_fd = open(fullName.c_str(), flags, permission);
+    m_fd = ::open(fullName.c_str(), flags, permission);
     if (m_fd < 0)
     {
         m_lastError = errno;
@@ -97,7 +109,7 @@ bool MMFile::open(const std::string& fullName, const AccessMode& mode, size_t bl
         if (ftruncate(m_fd, m_fileSize) < 0)
         {
             m_lastError = errno;
-            close(m_fd);
+            ::close(m_fd);
             return false;
         }
     }
@@ -107,7 +119,7 @@ bool MMFile::open(const std::string& fullName, const AccessMode& mode, size_t bl
         if (fstat(m_fd, &st) < 0)
         {
             m_lastError = errno;
-            close(m_fd);
+            ::close(m_fd);
             return false;
         }
         m_fileSize = st.st_size;
@@ -122,20 +134,26 @@ bool MMFile::seek(size_t offset, int whence)
     {
         return false;
     }
+    size_t newPos = 0;
     switch (whence)
     {
     case SEEK_SET:
-        m_currentPositon = offset;
+        newPos = offset;
         break;
     case SEEK_CUR:
-        m_currentPositon += offset;
+        newPos = m_currentPositon + offset;
         break;
     case SEEK_END:
-        m_currentPositon = m_fileSize - offset;
+        newPos = m_fileSize - offset;
         break;
     default:
         return false;
     }
+    if (newPos < 0 || newPos > m_fileSize)
+    {
+        return false;
+    }
+    m_currentPositon = newPos;
     return true;
 }
 
@@ -148,17 +166,18 @@ size_t MMFile::write(const void* data, size_t size)
     size_t written = 0;
     while (size > 0)
     {
-        size_t blockSize = min(size, m_blockSize);
+        size_t blockSize = size < m_blockSize ? size : m_blockSize;
         if (!mapBlock(m_currentPositon, blockSize, AccessMode::read_write))
         {
             return written;
         }
         memcpy(static_cast<char*>(m_blockData), data, blockSize);
-        if (!sync())
+        if (!sync(blockSize))
         {
+            unmapBlock(blockSize);
             return written;
         }
-        unmapBlock();
+        unmapBlock(blockSize);
         m_currentPositon += blockSize;
         data = static_cast<const char*>(data) + blockSize;
         size -= blockSize;
@@ -176,13 +195,13 @@ size_t MMFile::read(void* data, size_t size)
     size_t readSize = 0;
     while (size > 0)
     {
-        size_t blockSize = min(size, m_blockSize);
+        size_t blockSize = size < m_blockSize ? size : m_blockSize;
         if (!mapBlock(m_currentPositon, blockSize, AccessMode::read_only))
         {
             return readSize;
         }
         memcpy(data, m_blockData, blockSize);
-        unmapBlock();
+        unmapBlock(blockSize);
         m_currentPositon += blockSize;
         data = static_cast<char*>(data) + blockSize;
         size -= blockSize;
@@ -193,7 +212,6 @@ size_t MMFile::read(void* data, size_t size)
 
 void MMFile::close()
 {
-    unmapBlock();
 #ifdef _WIN32
     if (INVALID_HANDLE_VALUE != m_file)
     {
@@ -203,7 +221,7 @@ void MMFile::close()
 #else
     if (m_fd >= 0)
     {
-        close(m_fd);
+        ::close(m_fd);
         m_fd = -1;
     }
 #endif
@@ -246,7 +264,6 @@ void* MMFile::mapBlock(size_t offset, size_t blockSize, const AccessMode& mode)
     {
         return nullptr;
     }
-    unmapBlock();
 #ifdef _WIN32
     m_mapping = CreateFileMapping(m_file, nullptr, AccessMode::read_write == mode ? PAGE_READWRITE : PAGE_READONLY, 0, blockSize, nullptr);
     if (!m_mapping)
@@ -263,7 +280,10 @@ void* MMFile::mapBlock(size_t offset, size_t blockSize, const AccessMode& mode)
         return nullptr;
     }
 #else
-    m_blockData = mmap(nullptr, blockSize, AccessMode::read_write == mode ? PROT_READ | PROT_WRITE : PROT_READ, MAP_SHARED, m_fd, offset);
+    size_t adjustedOffset = offset / m_pageSize * m_pageSize; /* 调整offset为页面大小的倍数 */
+    size_t adjustedSize = blockSize + (offset - adjustedOffset); /* 调整blockSize */
+    m_blockData =
+        mmap(nullptr, adjustedSize, AccessMode::read_write == mode ? PROT_READ | PROT_WRITE : PROT_READ, MAP_SHARED, m_fd, adjustedOffset);
     if (MAP_FAILED == m_blockData)
     {
         m_lastError = errno;
@@ -273,14 +293,14 @@ void* MMFile::mapBlock(size_t offset, size_t blockSize, const AccessMode& mode)
     return m_blockData;
 }
 
-void MMFile::unmapBlock()
+void MMFile::unmapBlock(size_t blockSize)
 {
     if (m_blockData)
     {
 #ifdef _WIN32
         UnmapViewOfFile(m_blockData);
 #else
-        munmap(m_blockData, m_blockSize);
+        munmap(m_blockData, blockSize);
 #endif
         m_blockData = nullptr;
     }
@@ -293,16 +313,16 @@ void MMFile::unmapBlock()
 #endif
 }
 
-bool MMFile::sync()
+bool MMFile::sync(size_t blockSize)
 {
     if (!m_blockData)
     {
         return false;
     }
 #ifdef _WIN32
-    return (FlushViewOfFile(m_blockData, m_currentPositon) && FlushFileBuffers(m_file));
+    return (FlushViewOfFile(m_blockData, blockSize) && FlushFileBuffers(m_file));
 #else
-    return (0 == msync(m_blockData, m_currentPositon, MS_SYNC));
+    return (0 == msync(m_blockData, blockSize, MS_SYNC));
 #endif
 }
 } // namespace utility
