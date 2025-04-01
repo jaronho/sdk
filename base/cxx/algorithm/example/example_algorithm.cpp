@@ -7,6 +7,7 @@
 #include "test_sm3.hpp"
 #include "test_sm4.hpp"
 #include "test_snowflake.hpp"
+#include "test_xxhash.hpp"
 
 int main(int argc, char** argv)
 {
@@ -17,5 +18,6 @@ int main(int argc, char** argv)
     testSm3();
     testSm4();
     testSnowflake();
+    testXxhash();
     return 0;
 }

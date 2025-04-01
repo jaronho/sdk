@@ -41,6 +41,9 @@ ${base_algorithm_snowflake_files}
 
 [源文件]
 ${base_algorithm_tvalue_files}
+
+[源文件]
+${base_algorithm_xxhash_files}
 ]]
 
 ##################################### 添加algorithm库 ####################################
@@ -76,6 +79,9 @@ set(base_algorithm_snowflake_files ${src_list} CACHE INTERNAL "")
 get_cxx_files(algorithm/tvalue src_list)
 set(base_algorithm_tvalue_files ${src_list} CACHE INTERNAL "")
 
+get_cxx_files(algorithm/xxhash src_list)
+set(base_algorithm_xxhash_files ${src_list} CACHE INTERNAL "")
+
 # 组装文件列表
 set(base_algorithm_files
     ${base_algorithm_atomic_files}
@@ -88,6 +94,7 @@ set(base_algorithm_files
     ${base_algorithm_sm4_files}
     ${base_algorithm_snowflake_files}
     ${base_algorithm_tvalue_files}
+    ${base_algorithm_xxhash_files}
     CACHE INTERNAL "")
 
 # 打印文件列表
