@@ -170,7 +170,7 @@ Tool::md5Directory(const std::string& path, const std::function<void(size_t tota
 uint64_t Tool::xxhashFile(const std::string& fullName, const std::function<bool()>& stopFunc, size_t blockSize, bool enableMMFile)
 {
     blockSize = blockSize <= 0 ? (1024 * 1024) : (blockSize > (50 * 1024 * 1024) ? (50 * 1024 * 1024) : blockSize);
-    uint64_t output;
+    uint64_t output = 0;
     if (enableMMFile) /* 启用内存映射文件 */
     {
         utility::MMFile mf;

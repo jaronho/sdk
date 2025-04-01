@@ -72,7 +72,7 @@ int main(int argc, char** argv)
     threadCount = threadCount >= 0 ? threadCount : 0;
     auto blockSize = parser.get<int>("block");
     blockSize = blockSize >= 1024 ? blockSize : 1024;
-    auto mapFile = parser.get<int>("mapfile");
+    auto mapFile = (parser.get<int>("mapfile") > 0);
     utility::FileAttribute attr;
     utility::getFileAttribute(target, attr);
     std::string value;
