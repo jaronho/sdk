@@ -9,53 +9,53 @@
 
 namespace algorithm
 {
-std::string md5SignStrEx(const unsigned char* input, size_t inputLen)
+std::string md5SignStrEx(const unsigned char* data, size_t dataLen)
 {
-    std::string value;
-    char* buffer = md5SignStr(input, inputLen);
+    std::string output;
+    char* buffer = md5SignStr(data, dataLen);
     if (buffer)
     {
-        value = buffer;
+        output = buffer;
         free(buffer);
     }
-    return value;
+    return output;
 }
 
-std::string md5SignStrList(std::vector<std::string> strList, int sortFlag)
+std::string md5SignStrList(std::vector<std::string> dataList, int sortFlag)
 {
-    std::string value;
-    if (!strList.empty())
+    std::string output;
+    if (!dataList.empty())
     {
         if (1 == sortFlag) /* 从小到大排序 */
         {
-            std::sort(strList.begin(), strList.end(), [](const std::string& a, const std::string& b) { return (a < b); });
+            std::sort(dataList.begin(), dataList.end(), [](const std::string& a, const std::string& b) { return (a < b); });
         }
         else if (2 == sortFlag) /* 从大到小排序 */
         {
-            std::sort(strList.begin(), strList.end(), [](const std::string& a, const std::string& b) { return (a > b); });
+            std::sort(dataList.begin(), dataList.end(), [](const std::string& a, const std::string& b) { return (a > b); });
         }
         /* 计算总的MD5值 */
         algorithm::md5_context_t ctx;
         algorithm::md5Init(&ctx);
-        for (const auto& value : strList)
+        for (const auto& data : dataList)
         {
-            algorithm::md5Update(&ctx, (unsigned char*)value.c_str(), value.size());
+            algorithm::md5Update(&ctx, (unsigned char*)data.c_str(), data.size());
         }
         unsigned char digest[16];
         auto buffer = algorithm::md5Fini(&ctx, digest, 1);
         if (buffer)
         {
-            value = buffer;
+            output = buffer;
             free(buffer);
         }
     }
-    return value;
+    return output;
 }
 
 std::string md5SignFileHandleEx(FILE* handle, size_t blockSize, const std::function<bool()>& stopFunc)
 {
     blockSize = blockSize >= 1024 ? blockSize : 1024;
-    std::string value;
+    std::string output;
     if (handle)
     {
         char* blockBuffer = (char*)malloc(blockSize);
@@ -69,7 +69,7 @@ std::string md5SignFileHandleEx(FILE* handle, size_t blockSize, const std::funct
                 if (stopFunc && stopFunc())
                 {
                     free(blockBuffer);
-                    return value;
+                    return output;
                 }
 #ifdef _WIN32
                 _fseeki64(handle, offset, SEEK_SET);
@@ -84,28 +84,28 @@ std::string md5SignFileHandleEx(FILE* handle, size_t blockSize, const std::funct
             char* buffer = md5Fini(&ctx, digest, 1);
             if (buffer)
             {
-                value = buffer;
+                output = buffer;
                 free(buffer);
             }
             free(blockBuffer);
         }
     }
-    return value;
+    return output;
 }
 
 std::string md5SignFileEx(const std::string& filename, size_t blockSize, const std::function<bool()>& stopFunc)
 {
     blockSize = blockSize >= 1024 ? blockSize : 1024;
-    std::string value;
+    std::string output;
     if (!filename.empty())
     {
         FILE* f = fopen(filename.c_str(), "rb");
         if (f)
         {
-            value = md5SignFileHandleEx(f, blockSize, stopFunc);
+            output = md5SignFileHandleEx(f, blockSize, stopFunc);
             fclose(f);
         }
     }
-    return value;
+    return output;
 }
 } // namespace algorithm
