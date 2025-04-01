@@ -17,7 +17,7 @@ size_t MMFile::getPageSize()
 #ifdef _WIN32
     SYSTEM_INFO si;
     GetSystemInfo(&si);
-    return si.dwPageSize;
+    return si.dwAllocationGranularity;
 #else
     return sysconf(_SC_PAGESIZE);
 #endif
@@ -264,14 +264,19 @@ void* MMFile::mapBlock(size_t offset, size_t blockSize, const AccessMode& mode)
     {
         return nullptr;
     }
+    size_t adjustedOffset = (offset / m_pageSize) * m_pageSize; /* 调整offset为页面大小的倍数 */
+    size_t adjustedSize = blockSize + (offset - adjustedOffset); /* 调整blockSize */
 #ifdef _WIN32
-    m_mapping = CreateFileMapping(m_file, nullptr, AccessMode::read_write == mode ? PAGE_READWRITE : PAGE_READONLY, 0, blockSize, nullptr);
+    DWORD offsetHigh = static_cast<DWORD>((adjustedOffset >> 32) & 0xFFFFFFFF);
+    DWORD offsetLow = static_cast<DWORD>(adjustedOffset & 0xFFFFFFFF);
+    m_mapping =
+        CreateFileMapping(m_file, nullptr, AccessMode::read_write == mode ? PAGE_READWRITE : PAGE_READONLY, 0, adjustedSize, nullptr);
     if (!m_mapping)
     {
         m_lastError = GetLastError();
         return nullptr;
     }
-    m_blockData = MapViewOfFile(m_mapping, AccessMode::read_write == mode ? FILE_MAP_WRITE : FILE_MAP_READ, 0, 0, blockSize);
+    m_blockData = MapViewOfFile(m_mapping, AccessMode::read_write == mode ? FILE_MAP_WRITE : FILE_MAP_READ, 0, 0, adjustedSize);
     if (!m_blockData)
     {
         m_lastError = GetLastError();
@@ -280,8 +285,6 @@ void* MMFile::mapBlock(size_t offset, size_t blockSize, const AccessMode& mode)
         return nullptr;
     }
 #else
-    size_t adjustedOffset = offset / m_pageSize * m_pageSize; /* 调整offset为页面大小的倍数 */
-    size_t adjustedSize = blockSize + (offset - adjustedOffset); /* 调整blockSize */
     m_blockData =
         mmap(nullptr, adjustedSize, AccessMode::read_write == mode ? PROT_READ | PROT_WRITE : PROT_READ, MAP_SHARED, m_fd, adjustedOffset);
     if (MAP_FAILED == m_blockData)
