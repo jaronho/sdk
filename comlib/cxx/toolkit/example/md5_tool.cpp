@@ -8,13 +8,13 @@
 #endif
 
 #include "../toolkit/tool.h"
-#include "algorithm/md5/md5.h"
 #include "threading/thread_proxy.hpp"
 #include "utility/charset/charset.h"
 #include "utility/cmdline/cmdline.h"
 #include "utility/datetime/datetime.h"
 #include "utility/filesystem/file_info.h"
 #include "utility/filesystem/path_info.h"
+#include "utility/mmfile/mmfile.h"
 #include "utility/strtool/strtool.h"
 
 /* 转换字节到合适的单位 */
@@ -58,6 +58,7 @@ int main(int argc, char** argv)
     parser.add<std::string>("input", 'i', "输入指定文件路径或目录路径", false, "");
     parser.add<int>("thread", 't', "并发计算线程数量, 小等于1表示单线程, 默认: 1", false, 1);
     parser.add<int>("block", 'b', "每次读文件的块大小(字节), 默认: 1Mb", false, 1024 * 1024);
+    parser.add<int>("mapfile", 'm', "是否启用内存映射文件, 默认: 0", false, 0);
     parser.add("verbose", 'v', "显示进度信息");
     parser.add("help", 'h', "显示帮助信息");
     parser.parse_check(argc, argv);
@@ -70,6 +71,8 @@ int main(int argc, char** argv)
     auto threadCount = parser.get<int>("thread");
     threadCount = threadCount >= 0 ? threadCount : 0;
     auto blockSize = parser.get<int>("block");
+    blockSize = blockSize >= 1024 ? blockSize : 1024;
+    auto mapFile = parser.get<int>("mapfile");
     utility::FileAttribute attr;
     utility::getFileAttribute(target, attr);
     std::string value;
@@ -132,7 +135,7 @@ int main(int argc, char** argv)
                         calcFunc();
                     }
                 },
-                nullptr, blockSize);
+                nullptr, blockSize, mapFile);
             printf("\n");
             if (!value.empty())
             {
@@ -221,17 +224,12 @@ int main(int argc, char** argv)
                         calcFunc();
                     }
                 },
-                nullptr, blockSize);
+                nullptr, blockSize, mapFile);
         }
     }
     else if (attr.isFile) /* 文件 */
     {
-        auto buf = algorithm::md5SignFile(target.c_str(), blockSize);
-        if (buf)
-        {
-            value = buf;
-            free(buf);
-        }
+        value = toolkit::Tool::md5File(target, nullptr, blockSize, mapFile);
     }
     if (!value.empty())
     {

@@ -100,6 +100,7 @@ add_executable(md5_tool
 			   ${base_utility_cmdline_files}
 			   ${base_utility_datetime_files}
 			   ${base_utility_filesystem_files}
+			   ${base_utility_mmfile_files}
 			   ${base_utility_strtool_files}
 			   ${comlib_toolkit_tool_files}
 			   md5_tool.cpp)
@@ -111,6 +112,7 @@ add_executable(xxhash_tool
 			   ${base_utility_cmdline_files}
 			   ${base_utility_datetime_files}
 			   ${base_utility_filesystem_files}
+			   ${base_utility_mmfile_files}
 			   ${base_utility_strtool_files}
 			   ${comlib_toolkit_tool_files}
 			   xxhash_tool.cpp)
