@@ -15,7 +15,6 @@ template<typename T>
 class SafeQueue
 {
 public:
-    SafeQueue() = default;
     SafeQueue(const SafeQueue&) = delete;
     SafeQueue& operator=(const SafeQueue&) = delete;
 
@@ -43,10 +42,7 @@ public:
       * @brief 使用队列个数上限为参数的构造函数
       * @param maxCount 队列个数上限, 0-表示不限制
       */
-    SafeQueue(size_t maxCount)
-    {
-        m_maxCount.store(maxCount);
-    }
+    SafeQueue(size_t maxCount = 0) : m_maxCount(maxCount) {}
 
     /**
       * @brief 入队列
