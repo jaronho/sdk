@@ -49,17 +49,19 @@ public:
     /**
      * @brief 把任务加入当前队列
      * @param task 任务
+     * @param wait 队列满时是否等待, true-等待, false-丢弃
      * @return 任务(和入参一致)
      */
-    virtual TaskPtr post(const TaskPtr& task) = 0;
+    virtual TaskPtr post(const TaskPtr& task, bool wait = true) = 0;
 
     /**
      * @brief 把函数作为任务加入当前队列
      * @param name 任务名称
      * @param func 需要执行的函数
+     * @param wait 队列满时是否等待, true-等待, false-丢弃
      * @return 基于传入函数创建的任务
      */
-    virtual TaskPtr post(const std::string& name, const std::function<void()>& func);
+    virtual TaskPtr post(const std::string& name, const std::function<void()>& func, bool wait = true);
 
     /**
      * @brief 扩展任务数

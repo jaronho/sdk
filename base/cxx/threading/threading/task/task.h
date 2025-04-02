@@ -34,7 +34,8 @@ public:
         created, /* 已创建 */
         queuing, /* 排队中 */
         running, /* 运行中 */
-        finished /* 已完成 */
+        finished, /* 已完成 */
+        discard /* 被丢弃 */
     };
 
     /**

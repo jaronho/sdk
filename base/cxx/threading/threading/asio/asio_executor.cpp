@@ -32,8 +32,13 @@ void AsioExecutor::join()
     m_threads.join();
 }
 
-TaskPtr AsioExecutor::post(const TaskPtr& task)
+TaskPtr AsioExecutor::post(const TaskPtr& task, bool wait)
 {
+    if (m_busyCount >= getMaxCount() && !wait) /* 队列已满且不等待, 则丢弃该任务 */
+    {
+        task->setState(Task::State::discard);
+        return task;
+    }
     task->setState(Task::State::queuing);
     Diagnose::onTaskCreated(this, task.get());
     std::unordered_map<int, std::string> threadIdNameMap;

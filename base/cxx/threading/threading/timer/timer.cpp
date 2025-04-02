@@ -124,25 +124,28 @@ void Timer::onTriggerFunc(const std::shared_ptr<Timer>& timer)
     }
     auto ntp = std::chrono::steady_clock::now();
     const std::weak_ptr<Timer> wpTimer = timer;
-    executor->post(getName(), [wpTimer, func = m_func, hook, ntp]() {
-        const auto timer = wpTimer.lock();
-        if (timer && func)
-        {
-            if (hook)
+    executor->post(
+        getName(),
+        [wpTimer, func = m_func, hook, ntp]() {
+            const auto timer = wpTimer.lock();
+            if (timer && func)
             {
-                hook(timer->getName(), [wpTimer, func, ntp] {
-                    const auto timer = wpTimer.lock();
-                    if (timer && func)
-                    {
-                        func(ntp);
-                    }
-                });
+                if (hook)
+                {
+                    hook(timer->getName(), [wpTimer, func, ntp] {
+                        const auto timer = wpTimer.lock();
+                        if (timer && func)
+                        {
+                            func(ntp);
+                        }
+                    });
+                }
+                else
+                {
+                    func(ntp);
+                }
             }
-            else
-            {
-                func(ntp);
-            }
-        }
-    });
+        },
+        true);
 }
 } // namespace threading

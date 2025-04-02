@@ -110,18 +110,18 @@ size_t AsyncProxy::extend(size_t threadCount)
     return 0;
 }
 
-void AsyncProxy::execute(const std::shared_ptr<AsyncTask>& task)
+void AsyncProxy::execute(const std::shared_ptr<AsyncTask>& task, bool wait)
 {
     if (!s_workerThreads)
     {
         throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
                                + "] var 's_workerThreads' is null");
     }
-    s_workerThreads->post(task);
+    s_workerThreads->post(task, wait);
 }
 
 void AsyncProxy::execute(const std::string& name, const std::function<void()>& func, const std::function<void()>& finishCb,
-                         const ExecutorPtr& finishExecutor)
+                         const ExecutorPtr& finishExecutor, bool wait)
 {
     if (!s_workerThreads)
     {
@@ -134,7 +134,7 @@ void AsyncProxy::execute(const std::string& name, const std::function<void()>& f
         task->func = func;
         task->finishCb = finishCb;
         task->finishExecutor = finishExecutor;
-        execute(task);
+        execute(task, wait);
     }
 }
 } // namespace threading

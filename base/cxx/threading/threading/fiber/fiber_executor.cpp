@@ -71,8 +71,13 @@ void FiberExecutor::join()
     m_thread->join();
 }
 
-TaskPtr FiberExecutor::post(const TaskPtr& task)
+TaskPtr FiberExecutor::post(const TaskPtr& task, bool wait)
 {
+    if (m_busyCount >= getMaxCount() && !wait) /* 队列已满且不等待, 则丢弃该任务 */
+    {
+        task->setState(Task::State::discard);
+        return task;
+    }
     auto threadId = Platform::getThreadId();
     task->setState(Task::State::queuing);
     Diagnose::onTaskCreated(this, task.get());

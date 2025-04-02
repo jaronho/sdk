@@ -37,10 +37,11 @@ public:
     /**
      * @brief 把异步任务加入当前队列
      * @param task 异步任务
+     * @param wait 队列满时是否等待, true-等待, false-丢弃
      * @return 异步任务(和入参一致)
      */
-    TaskPtr post(const TaskPtr& task) override;
-    
+    TaskPtr post(const TaskPtr& task, bool wait = true) override;
+
     /**
      * @brief 扩展队列大小(说明: 调用该接口无用, 对于fiber暂时不支持扩展)
      * @param count 队列大小

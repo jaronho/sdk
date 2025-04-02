@@ -16,10 +16,10 @@ size_t Executor::getMaxCount() const
     return m_maxCount;
 }
 
-TaskPtr Executor::post(const std::string& name, const std::function<void()>& func)
+TaskPtr Executor::post(const std::string& name, const std::function<void()>& func, bool wait)
 {
     auto taskPtr = std::make_shared<SimpleTask>(name, func);
-    return post(taskPtr);
+    return post(taskPtr, wait);
 }
 
 size_t Executor::extend(size_t count)

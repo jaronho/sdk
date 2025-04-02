@@ -92,10 +92,11 @@ public:
      * @brief 异步接口
      * @param task 任务
      * @param executor 指定要执行的线程
+     * @param wait 无可用线程时是否等待, true-等待, false-丢弃
      */
-    static void async(const TaskPtr& task, const ExecutorPtr& executor)
+    static void async(const TaskPtr& task, const ExecutorPtr& executor, bool wait = true)
     {
-        executor->post(task);
+        executor->post(task, wait);
     }
 
     /**
@@ -103,10 +104,11 @@ public:
      * @param taskName 任务名称(强烈建议设置唯一标识, 以方便后续诊断)
      * @param function 任务逻辑函数
      * @param executor 指定要执行的线程
+     * @param wait 无可用线程时是否等待, true-等待, false-丢弃
      */
-    static void async(const std::string& taskName, const std::function<void()>& function, const ExecutorPtr& executor)
+    static void async(const std::string& taskName, const std::function<void()>& function, const ExecutorPtr& executor, bool wait = true)
     {
-        executor->post(taskName, function);
+        executor->post(taskName, function, wait);
     }
 
 #if 1 == ENABLE_THREADING_FIBER

@@ -75,8 +75,9 @@ public:
     /**
      * @brief 执行异步任务
      * @param task 异步任务
+     * @param wait 无可用线程时是否等待, true-等待, false-丢弃
      */
-    static void execute(const std::shared_ptr<AsyncTask>& task);
+    static void execute(const std::shared_ptr<AsyncTask>& task, bool wait = true);
 
     /**
      * @brief 执行异步任务
@@ -84,8 +85,9 @@ public:
      * @param func 异步任务执行函数(在worker线程调用)
      * @param finishCb 结束回调(在主逻辑线程调用)
      * @param finishExecutor 指定结束回调的执行线程(选填), 当为空时将在默认执行器执行结束回调
+     * @param wait 无可用线程时是否等待, true-等待, false-丢弃
      */
     static void execute(const std::string& name, const std::function<void()>& func, const std::function<void()>& finishCb = nullptr,
-                        const ExecutorPtr& finishExecutor = nullptr);
+                        const ExecutorPtr& finishExecutor = nullptr, bool wait = true);
 };
 } // namespace threading
