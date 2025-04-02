@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <string>
 
 namespace utility
@@ -60,11 +61,11 @@ public:
 
     /**
      * @brief 读文件
-     * @param data 缓存区
      * @param size 读取长度
-     * @return 已读长度, =0-读失败, >0-读成功
+     * @param func 数据回调, 参数: data-数据, count-数据长度
+     * @return true-成功, false-失败
      */
-    size_t read(void* data, size_t size);
+    bool read(size_t size, const std::function<void(const void* data, size_t count)>& func);
 
     /**
      * @brief 关闭

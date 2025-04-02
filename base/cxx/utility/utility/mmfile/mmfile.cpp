@@ -56,12 +56,21 @@ bool MMFile::open(const std::string& fullName, const AccessMode& mode, size_t bl
         dwCreationDisposition = CREATE_ALWAYS;
         break;
     }
-    m_file =
-        CreateFileA(fullName.c_str(), dwDesiredAccess, FILE_SHARE_READ, nullptr, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, nullptr);
+    m_file = CreateFileA(fullName.c_str(), dwDesiredAccess, FILE_SHARE_READ, nullptr, dwCreationDisposition,
+                         FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
     if (INVALID_HANDLE_VALUE == m_file)
     {
         m_lastError = GetLastError();
         return false;
+    }
+    DWORD protection = (mode == AccessMode::read_write) ? PAGE_READWRITE : PAGE_READONLY;
+    /* dwMaximumSizeHigh和dwMaximumSizeLow设置为0表示映射对象的大小由文件的实际大小决定 */
+    m_mapping = CreateFileMapping(m_file, nullptr, protection, 0, 0, nullptr);
+    if (!m_mapping)
+    {
+        m_lastError = GetLastError();
+        CloseHandle(m_file);
+        return nullptr;
     }
     LARGE_INTEGER li;
     if (AccessMode::create == mode)
@@ -70,7 +79,10 @@ bool MMFile::open(const std::string& fullName, const AccessMode& mode, size_t bl
         if (!SetFilePointerEx(m_file, li, nullptr, FILE_BEGIN) || !SetEndOfFile(m_file))
         {
             m_lastError = GetLastError();
+            CloseHandle(m_mapping);
+            m_mapping = nullptr;
             CloseHandle(m_file);
+            m_file = INVALID_HANDLE_VALUE;
             return false;
         }
     }
@@ -78,7 +90,11 @@ bool MMFile::open(const std::string& fullName, const AccessMode& mode, size_t bl
     {
         if (!GetFileSizeEx(m_file, &li))
         {
+            m_lastError = GetLastError();
+            CloseHandle(m_mapping);
+            m_mapping = nullptr;
             CloseHandle(m_file);
+            m_file = INVALID_HANDLE_VALUE;
             return false;
         }
         m_fileSize = li.QuadPart;
@@ -171,7 +187,7 @@ size_t MMFile::write(const void* data, size_t size)
         {
             return written;
         }
-        memcpy(static_cast<char*>(m_blockData), data, blockSize);
+        memcpy((char*)(m_blockData), data, blockSize);
         if (!sync(blockSize))
         {
             unmapBlock(blockSize);
@@ -179,48 +195,53 @@ size_t MMFile::write(const void* data, size_t size)
         }
         unmapBlock(blockSize);
         m_currentPositon += blockSize;
-        data = static_cast<const char*>(data) + blockSize;
+        data = (const char*)(data) + blockSize;
         size -= blockSize;
         written += blockSize;
     }
     return written;
 }
 
-size_t MMFile::read(void* data, size_t size)
+bool MMFile::read(size_t size, const std::function<void(const void* data, size_t count)>& func)
 {
     if (!isOpen())
     {
-        return 0;
+        return false;
     }
-    size_t readSize = 0;
-    while (size > 0 && m_currentPositon < m_fileSize)
+    if (size <= 0 || m_currentPositon >= m_fileSize)
     {
-        size_t blockSize = size < m_blockSize ? size : m_blockSize;
-        auto remainSize = m_fileSize - m_currentPositon;
-        if (blockSize > remainSize)
-        {
-            blockSize = remainSize;
-        }
-        if (!mapBlock(m_currentPositon, blockSize, AccessMode::read_only))
-        {
-            return readSize;
-        }
-        /* 计算实际偏移 */
-        size_t adjustedOffset = (m_currentPositon / m_pageSize) * m_pageSize;
-        size_t offsetInBlock = m_currentPositon - adjustedOffset;
-        memcpy(data, static_cast<char*>(m_blockData) + offsetInBlock, blockSize);
-        unmapBlock(blockSize);
-        m_currentPositon += blockSize;
-        data = static_cast<char*>(data) + blockSize;
-        size -= blockSize;
-        readSize += blockSize;
+        return false;
     }
-    return readSize;
+    size_t blockSize = size < m_blockSize ? size : m_blockSize;
+    auto remainSize = m_fileSize - m_currentPositon;
+    if (blockSize > remainSize)
+    {
+        blockSize = remainSize;
+    }
+    if (!mapBlock(m_currentPositon, blockSize, AccessMode::read_only))
+    {
+        return false;
+    }
+    /* 计算实际偏移 */
+    size_t adjustedOffset = (m_currentPositon / m_pageSize) * m_pageSize;
+    size_t offsetInBlock = m_currentPositon - adjustedOffset;
+    if (func)
+    {
+        func((char*)(m_blockData) + offsetInBlock, blockSize);
+    }
+    unmapBlock(blockSize);
+    m_currentPositon += blockSize;
+    return true;
 }
 
 void MMFile::close()
 {
 #ifdef _WIN32
+    if (m_mapping)
+    {
+        CloseHandle(m_mapping);
+        m_mapping = nullptr;
+    }
     if (INVALID_HANDLE_VALUE != m_file)
     {
         CloseHandle(m_file);
@@ -240,7 +261,7 @@ void MMFile::close()
 bool MMFile::isOpen() const
 {
 #ifdef _WIN32
-    return (INVALID_HANDLE_VALUE != m_file);
+    return (INVALID_HANDLE_VALUE != m_file && m_mapping);
 #else
     return (m_fd >= 0);
 #endif
@@ -279,23 +300,13 @@ void* MMFile::mapBlock(size_t offset, size_t blockSize, const AccessMode& mode)
         adjustedSize = m_fileSize - adjustedOffset; /* 确保不超出文件末尾 */
     }
 #ifdef _WIN32
-    DWORD protection = (mode == AccessMode::read_write) ? PAGE_READWRITE : PAGE_READONLY;
     DWORD mapAccess = (mode == AccessMode::read_write) ? FILE_MAP_WRITE : FILE_MAP_READ;
-    DWORD offsetHigh = static_cast<DWORD>((adjustedOffset >> 32) & 0xFFFFFFFF);
-    DWORD offsetLow = static_cast<DWORD>(adjustedOffset & 0xFFFFFFFF);
-    /* dwMaximumSizeHigh和dwMaximumSizeLow设置为0表示映射对象的大小由文件的实际大小决定 */
-    m_mapping = CreateFileMapping(m_file, nullptr, protection, 0, 0, nullptr);
-    if (!m_mapping)
-    {
-        m_lastError = GetLastError();
-        return nullptr;
-    }
+    DWORD offsetHigh = (DWORD)((adjustedOffset >> 32) & 0xFFFFFFFF);
+    DWORD offsetLow = (DWORD)(adjustedOffset & 0xFFFFFFFF);
     m_blockData = MapViewOfFile(m_mapping, mapAccess, offsetHigh, offsetLow, adjustedSize);
     if (!m_blockData)
     {
         m_lastError = GetLastError();
-        CloseHandle(m_mapping);
-        m_mapping = nullptr;
         return nullptr;
     }
 #else
@@ -321,13 +332,6 @@ void MMFile::unmapBlock(size_t blockSize)
 #endif
         m_blockData = nullptr;
     }
-#ifdef _WIN32
-    if (m_mapping)
-    {
-        CloseHandle(m_mapping);
-        m_mapping = nullptr;
-    }
-#endif
 }
 
 bool MMFile::sync(size_t blockSize)
