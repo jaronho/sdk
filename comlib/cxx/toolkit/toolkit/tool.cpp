@@ -25,35 +25,26 @@ std::string Tool::md5File(const std::string& fullName, const std::function<bool(
         utility::MMFile mf;
         if (mf.open(fullName.c_str(), utility::MMFile::AccessMode::read_only, blockSize))
         {
-            char* blockBuffer = (char*)malloc(blockSize);
-            if (blockBuffer)
+            algorithm::md5_context_t ctx;
+            algorithm::md5Init(&ctx);
+            while (1)
             {
-                algorithm::md5_context_t ctx;
-                algorithm::md5Init(&ctx);
-                while (1)
+                if (stopFunc && stopFunc())
                 {
-                    if (stopFunc && stopFunc())
-                    {
-                        free(blockBuffer);
-                        mf.close();
-                        return output;
-                    }
-                    memset(blockBuffer, 0, blockSize);
-                    auto count = mf.read(blockBuffer, blockSize);
-                    if (0 == count)
-                    {
-                        break;
-                    }
-                    md5Update(&ctx, (unsigned char*)blockBuffer, count);
+                    mf.close();
+                    return output;
                 }
-                unsigned char digest[16];
-                char* buffer = md5Fini(&ctx, digest, 1);
-                if (buffer)
+                if (!mf.read(blockSize, [&](const void* data, size_t count) { md5Update(&ctx, (const unsigned char*)data, count); }))
                 {
-                    output = buffer;
-                    free(buffer);
+                    break;
                 }
-                free(blockBuffer);
+            }
+            unsigned char digest[16];
+            char* buffer = md5Fini(&ctx, digest, 1);
+            if (buffer)
+            {
+                output = buffer;
+                free(buffer);
             }
             mf.close();
         }
@@ -176,33 +167,24 @@ uint64_t Tool::xxhashFile(const std::string& fullName, const std::function<bool(
         utility::MMFile mf;
         if (mf.open(fullName.c_str(), utility::MMFile::AccessMode::read_only, blockSize))
         {
-            char* blockBuffer = (char*)malloc(blockSize);
-            if (blockBuffer)
+            XXH3_state_t* state = XXH3_createState();
+            if (state)
             {
-                XXH3_state_t* state = XXH3_createState();
-                if (state)
+                XXH3_64bits_reset(state);
+                while (1)
                 {
-                    XXH3_64bits_reset(state);
-                    while (1)
+                    if (stopFunc && stopFunc())
                     {
-                        if (stopFunc && stopFunc())
-                        {
-                            free(blockBuffer);
-                            mf.close();
-                            return output;
-                        }
-                        memset(blockBuffer, 0, blockSize);
-                        auto count = mf.read(blockBuffer, blockSize);
-                        if (0 == count)
-                        {
-                            break;
-                        }
-                        XXH3_64bits_update(state, blockBuffer, count);
+                        mf.close();
+                        return output;
                     }
-                    output = XXH3_64bits_digest(state);
-                    XXH3_freeState(state);
+                    if (!mf.read(blockSize, [&](const void* data, size_t count) { XXH3_64bits_update(state, data, count); }))
+                    {
+                        break;
+                    }
                 }
-                free(blockBuffer);
+                output = XXH3_64bits_digest(state);
+                XXH3_freeState(state);
             }
             mf.close();
         }

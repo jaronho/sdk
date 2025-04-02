@@ -49,6 +49,72 @@ static std::string dtString()
     return utility::DateTime::getNow().yyyyMMddhhmmss("-", " ", ":", ".");
 }
 
+static void printElapsedTime(const std::chrono::steady_clock::time_point& old, const std::chrono::steady_clock::time_point& now)
+{
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - old).count();
+    std::ostringstream timeStr;
+    if (elapsed < 1000) /* 1秒内 */
+    {
+        timeStr << elapsed << " ms";
+    }
+    else if (elapsed < 60000) /* 1分钟内 */
+    {
+        auto second = elapsed / 1000;
+        auto millisecond = elapsed % 1000;
+        timeStr << second;
+        if (millisecond > 0)
+        {
+            timeStr << "." << std::setw(3) << std::setfill('0') << millisecond;
+        }
+        timeStr << " s";
+    }
+    else if (elapsed < 3600000) /* 1小时内 */
+    {
+        auto minute = elapsed / 60000;
+        auto second = (elapsed % 60000) / 1000;
+        auto millisecond = elapsed % 1000;
+        timeStr << minute << ":";
+        timeStr << std::setw(2) << std::setfill('0') << second;
+        if (millisecond > 0)
+        {
+            timeStr << "." << std::setw(3) << std::setfill('0') << millisecond;
+        }
+        timeStr << " m";
+    }
+    else if (elapsed < 86400000) /* 1天内 */
+    {
+        auto hour = elapsed / 3600000;
+        auto minute = (elapsed % 3600000) / 60000;
+        auto second = (elapsed % 60000) / 1000;
+        auto millisecond = elapsed % 1000;
+        timeStr << hour << ":";
+        timeStr << std::setw(2) << std::setfill('0') << minute << ":";
+        timeStr << std::setw(2) << std::setfill('0') << second;
+        if (millisecond > 0)
+        {
+            timeStr << "." << std::setw(3) << std::setfill('0') << millisecond;
+        }
+        timeStr << " h";
+    }
+    else
+    {
+        auto day = elapsed / 86400000;
+        auto hour = (elapsed % 86400000) / 3600000;
+        auto minute = (elapsed % 3600000) / 60000;
+        auto second = (elapsed % 60000) / 1000;
+        auto millisecond = elapsed % 1000;
+        timeStr << day << "d ";
+        timeStr << std::setw(2) << std::setfill('0') << hour << ":";
+        timeStr << std::setw(2) << std::setfill('0') << minute << ":";
+        timeStr << std::setw(2) << std::setfill('0') << second;
+        if (millisecond > 0)
+        {
+            timeStr << "." << std::setw(3) << std::setfill('0') << millisecond;
+        }
+    }
+    printf("[%s] 耗时 (%zu ms): %s\n", dtString().c_str(), elapsed, timeStr.str().c_str());
+}
+
 int main(int argc, char** argv)
 {
 #ifdef _WIN32
@@ -139,74 +205,7 @@ int main(int argc, char** argv)
             printf("\n");
             if (!value.empty())
             {
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
-                std::string timeStr;
-                if (elapsed < 1000) /* 1秒内 */
-                {
-                    timeStr = std::to_string(elapsed) + " ms";
-                }
-                else if (elapsed < 60000) /* 1分钟内 */
-                {
-                    auto second = elapsed / 1000;
-                    auto millsecond = (elapsed - second * 1000) % 1000;
-                    timeStr = std::to_string(second);
-                    if (millsecond > 0)
-                    {
-                        timeStr += "." + std::to_string(millsecond);
-                    }
-                    timeStr += " s";
-                }
-                else if (elapsed < 3600000) /* 1小时内 */
-                {
-                    auto minute = elapsed / 60000;
-                    auto second = (elapsed % 60000) / 1000;
-                    auto millsecond = (elapsed - second * 1000) % 1000;
-                    timeStr = std::to_string(minute);
-                    if (second > 0 || millsecond > 0)
-                    {
-                        timeStr += ":";
-                        char buf[16] = {0};
-                        sprintf(buf, "%02zu", second);
-                        timeStr += buf;
-                        if (millsecond > 0)
-                        {
-                            timeStr += "." + std::to_string(millsecond);
-                        }
-                    }
-                    timeStr += " m";
-                }
-                else if (elapsed < 86400000) /* 1天内 */
-                {
-                    auto hour = elapsed / 3600000;
-                    auto minute = (elapsed % 3600000) / 60000;
-                    auto second = (elapsed % 60000) / 1000;
-                    auto millsecond = (elapsed - second * 1000) % 1000;
-                    timeStr = std::to_string(hour);
-                    if (minute > 0 || second > 0 || millsecond > 0)
-                    {
-                        timeStr += ":";
-                        char buf1[16] = {0};
-                        sprintf(buf1, "%02zu", minute);
-                        timeStr += buf1;
-                        timeStr += ":";
-                        if (second > 0 || millsecond > 0)
-                        {
-                            char buf2[16] = {0};
-                            sprintf(buf2, "%02zu", second);
-                            timeStr += buf2;
-                            if (millsecond > 0)
-                            {
-                                timeStr += "." + std::to_string(millsecond);
-                            }
-                        }
-                    }
-                    timeStr += " h";
-                }
-                else
-                {
-                    timeStr = std::to_string(elapsed / 60000) + " m";
-                }
-                printf("[%s] 耗时 (%zu ms): %s\n", dtString().c_str(), elapsed, timeStr.c_str());
+                printElapsedTime(tp, std::chrono::steady_clock::now());
                 printf("\n");
             }
         }
@@ -229,7 +228,17 @@ int main(int argc, char** argv)
     }
     else if (attr.isFile) /* 文件 */
     {
+        if (parser.exist("verbose"))
+        {
+            printf("[%s] 开始计算文件HASH值\n", dtString().c_str());
+        }
+        auto tp = std::chrono::steady_clock::now();
         value = toolkit::Tool::md5File(target, nullptr, blockSize, mapFile);
+        if (parser.exist("verbose"))
+        {
+            printElapsedTime(tp, std::chrono::steady_clock::now());
+            printf("\n");
+        }
     }
     if (!value.empty())
     {
