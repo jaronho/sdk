@@ -310,8 +310,8 @@ void* MMFile::mapBlock(size_t offset, size_t blockSize, const AccessMode& mode)
         return nullptr;
     }
 #else
-    m_blockData =
-        mmap(nullptr, adjustedSize, AccessMode::read_write == mode ? PROT_READ | PROT_WRITE : PROT_READ, MAP_SHARED, m_fd, adjustedOffset);
+    m_blockData = mmap(nullptr, adjustedSize, AccessMode::read_write == mode ? PROT_READ | PROT_WRITE : PROT_READ,
+                       MAP_SHARED | MAP_POPULATE, m_fd, adjustedOffset);
     if (MAP_FAILED == m_blockData)
     {
         m_lastError = errno;
