@@ -1,17 +1,18 @@
 #include "crashdump.h"
 
 #include <sys/stat.h>
-#include <sys/timeb.h>
 #include <sys/types.h>
 #include <time.h>
 #include <vector>
 #ifdef _WIN32
+#include <Windows.h>
 #include <direct.h>
 #include <io.h>
 
 #include "client/windows/handler/exception_handler.h"
 #else
 #include <dirent.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "client/linux/handler/exception_handler.h"
@@ -281,23 +282,35 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     std::string oldDumpFile = descriptor.path();
 #endif
     /* 获取当前时间戳 */
-    time_t now;
-    time(&now);
-    struct tm t = *localtime(&now);
+    struct tm t;
+#ifdef _WIN32
+    SYSTEMTIME now;
+    GetLocalTime(&now);
+    t.tm_year = now.wYear - 1900;
+    t.tm_mon = now.wMonth - 1;
+    t.tm_mday = now.wDay;
+    t.tm_hour = now.wHour;
+    t.tm_min = now.wMinute;
+    t.tm_sec = now.wSecond;
+    long milliseconds = now.wMilliseconds;
+#else
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    localtime_r(&now.tv_sec, &t);
+    long milliseconds = now.tv_usec / 1000;
+#endif
     char datetime[16] = {0};
     strftime(datetime, sizeof(datetime), "%Y%m%d%H%M%S", &t);
-    struct timeb tb;
-    ftime(&tb);
-    char ms[4] = {0};
+    char msBuf[4] = {0};
 #ifdef _WIN32
-    sprintf_s(ms, sizeof(ms), "%03d", tb.millitm);
+    sprintf_s(msBuf, sizeof(msBuf), "%03d", milliseconds);
 #else
-    sprintf(ms, "%03d", tb.millitm);
+    sprintf(msBuf, "%03d", milliseconds);
 #endif
     /* 重命名堆栈文件 */
     auto fi = stripFileInfo(oldDumpFile);
     std::string baseName = g_procBasename + "_" + g_procVersion;
-    std::string newDumpFile = fi[0] + baseName + "_" + datetime + ms + (fi[3].empty() ? "" : "." + fi[3]);
+    std::string newDumpFile = fi[0] + baseName + "_" + datetime + msBuf + (fi[3].empty() ? "" : "." + fi[3]);
     if (0 != rename(oldDumpFile.c_str(), newDumpFile.c_str()))
     {
         newDumpFile = oldDumpFile;

@@ -46,14 +46,17 @@ void testMmfile()
             return;
         }
         /* 读取数据 */
-        char buffer[100];
-        size_t readSize = file.read(buffer, sizeof(buffer) - 1);
-        if (readSize == 0)
+        char buffer[100] = {0};
+        size_t readedSize = 0;
+        if (!file.read(sizeof(buffer) - 1, [&](const void* data, size_t count) {
+                memcpy(buffer + readedSize, data, count);
+                readedSize += count;
+                buffer[readedSize] = '\0'; /* 确保字符串结尾 */
+            }))
         {
             std::cerr << "Failed to read data: " << file.getLastError() << std::endl;
             return;
         }
-        buffer[readSize] = '\0'; /* 确保字符串结尾 */
         std::cout << "Data read from file: " << buffer << std::endl;
         /* 关闭文件 */
         file.close();
@@ -68,8 +71,11 @@ void testMmfile()
         }
         /* 读取整个文件内容 */
         char* buffer = new char[file.getFileSize()];
-        size_t readSize = file.read(buffer, file.getFileSize());
-        if (readSize != file.getFileSize())
+        size_t readedSize = 0;
+        if (!file.read(sizeof(buffer) - 1, [&](const void* data, size_t count) {
+                memcpy(buffer + readedSize, data, count);
+                readedSize += count;
+            }))
         {
             std::cerr << "Failed to read entire file: " << file.getLastError() << std::endl;
             delete[] buffer;

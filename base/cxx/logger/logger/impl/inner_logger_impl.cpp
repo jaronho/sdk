@@ -1,13 +1,13 @@
 #include "inner_logger_impl.h"
 
 #include <fmt/color.h>
-#include <sys/timeb.h>
 #include <thread>
 #ifdef _WIN32
 #include <Windows.h>
 #include <process.h>
 #else
 #include <sys/syscall.h>
+#include <sys/time.h>
 #include <unistd.h>
 #endif
 
@@ -23,22 +23,29 @@ struct DateTime
 DateTime getDateTime()
 {
     struct tm t;
-    time_t now;
-    time(&now);
 #ifdef _WIN32
-    localtime_s(&t, &now);
+    SYSTEMTIME now;
+    GetLocalTime(&now);
+    t.tm_year = now.wYear - 1900;
+    t.tm_mon = now.wMonth - 1;
+    t.tm_mday = now.wDay;
+    t.tm_hour = now.wHour;
+    t.tm_min = now.wMinute;
+    t.tm_sec = now.wSecond;
+    long milliseconds = now.wMilliseconds;
 #else
-    t = *localtime(&now);
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    localtime_r(&now.tv_sec, &t);
+    long milliseconds = now.tv_usec / 1000;
 #endif
     DateTime dt;
     strftime(dt.ymd, sizeof(dt.ymd), "%Y-%m-%d", &t);
     strftime(dt.hms, sizeof(dt.hms), "%H:%M:%S", &t);
-    struct timeb tb;
-    ftime(&tb);
 #ifdef _WIN32
-    sprintf_s(dt.ms, sizeof(dt.ms), "%03d", tb.millitm);
+    sprintf_s(dt.ms, sizeof(dt.ms), "%03d", milliseconds);
 #else
-    sprintf(dt.ms, "%03d", tb.millitm);
+    sprintf(dt.ms, "%03d", milliseconds);
 #endif
     return dt;
 }

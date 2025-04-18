@@ -1,7 +1,6 @@
 #include "datetime.h"
 
 #include <math.h>
-#include <sys/timeb.h>
 #include <time.h>
 #ifdef _WIN32
 #include <Windows.h>
@@ -42,13 +41,19 @@ DateTime::DateTime(double timestamp)
 #ifdef _WIN32
     localtime_s(&t, &now);
 #else
-    t = *localtime(&now);
+    localtime_r(&now, &t);
 #endif
     if (secs <= 0) /* 未指定时间戳, 获取当前时间毫秒 */
     {
-        struct timeb tb;
-        ftime(&tb);
-        ms = tb.millitm;
+#ifdef _WIN32
+        SYSTEMTIME wtm;
+        GetSystemTime(&wtm);
+        ms = wtm.wMilliseconds;
+#else
+        struct timeval tv;
+        gettimeofday(&tv, nullptr);
+        ms = tv.tv_usec / 1000;
+#endif
     }
     /* 填充 */
     year = 1900 + t.tm_year;

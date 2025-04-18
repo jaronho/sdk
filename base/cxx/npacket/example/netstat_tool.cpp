@@ -1,8 +1,13 @@
 ﻿#include <atomic>
 #include <stdio.h>
 #include <string>
-#include <sys/timeb.h>
 #include <thread>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#else
+#include <sys/time.h>
+#endif
 
 #include "../npacket/analyzer.h"
 #include "../npacket/pcap_device.h"
@@ -28,22 +33,29 @@ static std::atomic<uint64_t> s_outUdpByte{0}; /* 发送UDP字节总数 */
 std::string getDateTime()
 {
     struct tm t;
-    time_t now;
-    time(&now);
 #ifdef _WIN32
-    localtime_s(&t, &now);
+    SYSTEMTIME now;
+    GetLocalTime(&now);
+    t.tm_year = now.wYear - 1900;
+    t.tm_mon = now.wMonth - 1;
+    t.tm_mday = now.wDay;
+    t.tm_hour = now.wHour;
+    t.tm_min = now.wMinute;
+    t.tm_sec = now.wSecond;
+    long milliseconds = now.wMilliseconds;
 #else
-    t = *localtime(&now);
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    localtime_r(&now.tv_sec, &t);
+    long milliseconds = now.tv_usec / 1000;
 #endif
     char buf1[20] = {0};
     strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &t);
     char buf2[4] = {0};
-    struct timeb tb;
-    ftime(&tb);
 #ifdef _WIN32
-    sprintf_s(buf2, sizeof(buf2), "%03d", tb.millitm);
+    sprintf_s(buf2, sizeof(buf2), "%03d", milliseconds);
 #else
-    sprintf(buf2, "%03d", tb.millitm);
+    sprintf(buf2, "%03d", milliseconds);
 #endif
     return std::string(buf1).append(".").append(buf2);
 }

@@ -3,10 +3,11 @@
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
-#include <sys/timeb.h>
 #include <thread>
 #ifdef _WIN32
 #include <Windows.h>
+#else
+#include <sys/time.h>
 #endif
 
 #include "../serial/serial.h"
@@ -19,22 +20,29 @@ size_t g_totalRecvLength = 0; /* 总的接收长度(字节) */
 std::string getDateTime()
 {
     struct tm t;
-    time_t now;
-    time(&now);
 #ifdef _WIN32
-    localtime_s(&t, &now);
+    SYSTEMTIME now;
+    GetLocalTime(&now);
+    t.tm_year = now.wYear - 1900;
+    t.tm_mon = now.wMonth - 1;
+    t.tm_mday = now.wDay;
+    t.tm_hour = now.wHour;
+    t.tm_min = now.wMinute;
+    t.tm_sec = now.wSecond;
+    long milliseconds = now.wMilliseconds;
 #else
-    t = *localtime(&now);
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    localtime_r(&now.tv_sec, &t);
+    long milliseconds = now.tv_usec / 1000;
 #endif
     char buf1[20] = {0};
     strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &t);
     char buf2[4] = {0};
-    struct timeb tb;
-    ftime(&tb);
 #ifdef _WIN32
-    sprintf_s(buf2, sizeof(buf2), "%03d", tb.millitm);
+    sprintf_s(buf2, sizeof(buf2), "%03d", milliseconds);
 #else
-    sprintf(buf2, "%03d", tb.millitm);
+    sprintf(buf2, "%03d", milliseconds);
 #endif
     return std::string(buf1).append(".").append(buf2);
 }
@@ -145,10 +153,6 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
                 const serial::Stopbits& stopbits, const serial::FlowcontrolType& flowcontrol, int crlf, bool showTime, bool sendHex,
                 bool showHex, bool autoLine, bool hideRecv)
 {
-    if (showTime) /* 显示时间时则设置接收自动换行 */
-    {
-        autoLine = true;
-    }
     /* 串口设置及打开 */
     g_com.setPort(port);
     g_com.setBaudrate(baudrate);
@@ -336,7 +340,7 @@ void openSerial(const std::string& port, unsigned long baudrate, const serial::D
     {
         if (hideRecv)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            std::this_thread::sleep_for(std::chrono::seconds(1));
             continue;
         }
         if (!bytes.empty())
@@ -440,10 +444,10 @@ int main(int argc, char** argv)
     printf("** [-flow 流控]        流控(选填), 值: [None: N|n, Software: S|s, Hardware: H|h], 默认: N.                 **\n");
     printf("** [-crlf 结束符]      发送结束符(选填), 值: [0: 无, 1: CR(回车), 2: LF(换行), 3: CRLF(回车换行)], 默认: 0.**\n");
     printf("** [--list]            显示所有串口, 默认: 不显示.                                                         **\n");
-    printf("** [--time]            显示发送/接收数据时间(选填), 显示时自动换行接收数据, 默认: 不显示.                  **\n");
+    printf("** [--time]            显示发送/接收数据时间(选填), 默认: 不显示.                                          **\n");
     printf("** [--txhex]           使用十六进制格式发送数据(选填), 默认: ASCII.                                        **\n");
     printf("** [--rxhex]           使用十六进制格式显示接收数据(选填), 默认: ASCII.                                    **\n");
-    printf("** [--rxline]          自动换行接收数据(选填), 受显示时间影响, 默认: 不自动换行.                           **\n");
+    printf("** [--rxline]          自动换行接收数据(选填), 默认: 不自动换行.                                           **\n");
     printf("** [--rxhide]          不显示接收到的数据(选填), 默认: 显示.                                               **\n");
     printf("**                                                                                                         **\n");
     printf("** 示例:                                                                                                   **\n");
