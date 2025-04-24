@@ -49,7 +49,7 @@ class FileInfo
 public:
     enum class CopyResult
     {
-        ok, /* 成功 */
+        ok = 0, /* 成功 */
         src_open_failed, /* 源文件打开失败 */
         dest_open_failed, /* 目标文件打开失败 */
         memory_alloc_failed, /* 内存分配失败 */

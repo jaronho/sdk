@@ -196,7 +196,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
         }
         if (m_totalProgressCallback)
         {
-            m_totalProgressCallback(totalFileCount, index, srcFileInfo.name());
+            m_totalProgressCallback(totalFileCount, index + 1, srcFileInfo.name());
         }
         /* 执行拷贝操作 */
         int errCode = 0;
