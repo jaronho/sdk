@@ -73,7 +73,7 @@ struct DevNode
 {
     DevNode() = default;
     DevNode(const std::string& name, const std::string& fstype = "", const std::string& label = "", const std::string& partlabel = "",
-            const std::string& winDriver = "");
+            size_t capacity = 0, const std::string& winDriver = "");
 
     /**
      * @brief 获取挂载点
@@ -85,6 +85,7 @@ struct DevNode
     std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat(FAT32), exfat(exFAT), ntfs(NTFS)等 */
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
     std::string partlabel; /* 分区标签, 例如: "Microsoft reserved partition" */
+    size_t capacity = 0; /* 磁盘容量 */
 
 private:
     std::string m_winDriver; /* 设备驱动器(Windows平台), 如: H:\, I:\ */

@@ -1269,7 +1269,7 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
             {
                 auto pos = std::string(devNode).rfind('/');
                 auto devName = std::string::npos == pos ? std::string() : std::string(devNode).substr(pos + 1);
-                auto command = std::string("lsblk -aOP | grep -E 'NAME=\"") + devName + "\" KNAME=\"" + devName + "\" '";
+                auto command = std::string("lsblk -abOP | grep -E 'NAME=\"") + devName + "\" KNAME=\"" + devName + "\" '";
                 std::string outStr;
                 runCommand(command, &outStr, nullptr);
                 static const std::string UUID_FLAG = " UUID=\""; /* UUID */
@@ -1279,6 +1279,7 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
                 static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
                 static const std::string MODEL_FLAG = " MODEL=\""; /* 设备标识符 */
                 static const std::string VENDOR_FLAG = " VENDOR=\""; /* 设备制造商 */
+                static const std::string SIZE_FLAG = " SIZE=\""; /* 大小 */
                 std::string uuid;
                 auto uuidPos = outStr.find(UUID_FLAG);
                 if (std::string::npos != uuidPos)
@@ -1349,6 +1350,16 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
                         vendor = outStr.substr(vendorPos + VENDOR_FLAG.size(), ep - vendorPos - VENDOR_FLAG.size());
                     }
                 }
+                size_t capacity = 0;
+                auto sizePos = outStr.find(SIZE_FLAG);
+                if (std::string::npos != sizePos)
+                {
+                    auto ep = outStr.find('"', sizePos + SIZE_FLAG.size());
+                    if (std::string::npos != ep)
+                    {
+                        capacity = std::atoll(outStr.substr(sizePos + SIZE_FLAG.size(), ep - sizePos - SIZE_FLAG.size()).c_str());
+                    }
+                }
                 iter->model = model;
                 iter->vendor = vendor;
                 iter->group = group;
@@ -1356,20 +1367,20 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
                 {
                     if (uuid.empty()) /* 超块(不可挂载) */
                     {
-                        iter->devRootNode = DevNode(devNode, fstype, label, partlabel);
+                        iter->devRootNode = DevNode(devNode, fstype, label, partlabel, capacity);
                     }
                     else /* 可挂载分区 */
                     {
-                        iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel));
+                        iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel, capacity));
                     }
                 }
                 else if ("cdrom" == group) /* 光驱 */
                 {
-                    iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel));
+                    iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel, capacity));
                 }
                 else /* 其他 */
                 {
-                    iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel));
+                    iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel, capacity));
                 }
             }
             else /* 非存储设备 */
@@ -1650,8 +1661,8 @@ std::vector<CdromInfo> getCdromInfoList(std::string& outStr)
 #endif
 
 DevNode::DevNode(const std::string& name, const std::string& fstype, const std::string& label, const std::string& partlabel,
-                 const std::string& winDriver)
-    : name(name), fstype(fstype), label(label), partlabel(partlabel), m_winDriver(winDriver)
+                 size_t capacity, const std::string& winDriver)
+    : name(name), fstype(fstype), label(label), partlabel(partlabel), capacity(capacity), m_winDriver(winDriver)
 {
 }
 
@@ -2282,7 +2293,7 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
 #ifdef _WIN32
                 for (const auto& di : item.driverList)
                 {
-                    info->m_devNodes.emplace_back(DevNode("", di.fstype, di.label, "", di.driver));
+                    info->m_devNodes.emplace_back(DevNode("", di.fstype, di.label, "", 0, di.driver));
                 }
 #else
                 info->m_devRootNode = item.devRootNode;
