@@ -14,7 +14,6 @@
 #include "utility/datetime/datetime.h"
 #include "utility/filesystem/file_info.h"
 #include "utility/filesystem/path_info.h"
-#include "utility/mmfile/mmfile.h"
 #include "utility/strtool/strtool.h"
 
 /* 转换字节到合适的单位 */
@@ -115,6 +114,23 @@ static void printElapsedTime(const std::chrono::steady_clock::time_point& old, c
     printf("[%s] 耗时 (%zu ms): %s\n", dtString().c_str(), elapsed, timeStr.str().c_str());
 }
 
+long long isPureInteger(const std::string& str)
+{
+    try
+    {
+        size_t pos;
+        long long value = stoll(str, &pos);
+        if (str.size() == pos)
+        {
+            return value;
+        }
+    }
+    catch (...)
+    {
+    }
+    return -1;
+}
+
 int main(int argc, char** argv)
 {
 #ifdef _WIN32
@@ -122,9 +138,9 @@ int main(int argc, char** argv)
 #endif
     cmdline::parser parser;
     parser.add<std::string>("input", 'i', "输入指定文件路径或目录路径", false, "");
+    parser.add<std::string>("seglist", 's', "文件分段大小列表(字节), 分段间逗号分隔, 默认: 空-计算全部内容, 值如: 1024,1568", false, "");
     parser.add<int>("thread", 't', "并发计算线程数量, 小等于1表示单线程, 默认: 1", false, 1);
     parser.add<int>("block", 'b', "每次读文件的块大小(字节), 默认: 1Mb", false, 1024 * 1024);
-    parser.add<int>("mapfile", 'm', "是否启用内存映射文件, 默认: 0", false, 0);
     parser.add("verbose", 'v', "显示进度信息");
     parser.add("help", 'h', "显示帮助信息");
     parser.parse_check(argc, argv);
@@ -134,11 +150,26 @@ int main(int argc, char** argv)
         printf("%s\n", parser.usage().c_str());
         return 0;
     }
+    auto segList = parser.get<std::string>("seglist");
+    auto tmpSegList = utility::StrTool::split(segList, ",");
+    std::vector<size_t> segSizeList;
+    for (const auto& item : tmpSegList)
+    {
+        auto value = isPureInteger(item);
+        if (value >= 0)
+        {
+            segSizeList.emplace_back(value);
+        }
+        else
+        {
+            segSizeList.clear();
+            break;
+        }
+    }
     auto threadCount = parser.get<int>("thread");
     threadCount = threadCount >= 0 ? threadCount : 0;
     auto blockSize = parser.get<int>("block");
     blockSize = blockSize >= 1024 ? blockSize : 1024;
-    auto mapFile = (parser.get<int>("mapfile") > 0);
     utility::FileAttribute attr;
     utility::getFileAttribute(target, attr);
     uint64_t output = 0;
@@ -157,7 +188,7 @@ int main(int argc, char** argv)
             utility::PathInfo pi(target, true);
             auto tp = std::chrono::steady_clock::now();
             output = toolkit::Tool::xxhashDirectory(
-                target,
+                target, [&, segSizeList](const std::string& name, size_t fileSize) { return segSizeList; },
                 [&](size_t totalCount, size_t totalSize) {
                     printf("[%s] 文件总数量: %zu, 文件总大小: %s\n", dtString().c_str(), totalCount,
                            convertBytesToAppropriateUnit(totalSize).c_str());
@@ -201,7 +232,7 @@ int main(int argc, char** argv)
                         calcFunc();
                     }
                 },
-                nullptr, blockSize, mapFile);
+                nullptr, blockSize);
             printf("\n");
             if (output > 0)
             {
@@ -212,7 +243,7 @@ int main(int argc, char** argv)
         else
         {
             output = toolkit::Tool::xxhashDirectory(
-                target, nullptr,
+                target, [&, segSizeList](const std::string& name, size_t fileSize) { return segSizeList; }, nullptr,
                 [&, calcExecutor](const std::string& name, size_t fileSize, const std::function<uint64_t()>& calcFunc) {
                     if (calcExecutor)
                     {
@@ -223,7 +254,7 @@ int main(int argc, char** argv)
                         calcFunc();
                     }
                 },
-                nullptr, blockSize, mapFile);
+                nullptr, blockSize);
         }
     }
     else if (attr.isFile) /* 文件 */
@@ -233,7 +264,7 @@ int main(int argc, char** argv)
             printf("[%s] 开始计算文件HASH值\n", dtString().c_str());
         }
         auto tp = std::chrono::steady_clock::now();
-        output = toolkit::Tool::xxhashFile(target, nullptr, blockSize, mapFile);
+        output = toolkit::Tool::xxhashFile(target, segSizeList, nullptr, blockSize);
         if (parser.exist("verbose"))
         {
             printElapsedTime(tp, std::chrono::steady_clock::now());
