@@ -336,6 +336,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         readSize = fread(block, 1, blockSize, srcFile);
         if (0 == readSize)
         {
+            if (errCode)
+            {
+                *errCode = errno;
+            }
             if (retryTime > 0
                 && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
             {
@@ -347,6 +351,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         writeSize = fwrite(block, 1, readSize, destFile);
         if (0 == writeSize)
         {
+            if (errCode)
+            {
+                *errCode = errno;
+            }
             if (retryTime > 0
                 && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
             {
@@ -500,6 +508,13 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
     {
         fflush(f);
     }
+    else
+    {
+        if (errCode)
+        {
+            *errCode = errno;
+        }
+    }
     fclose(f);
     return ret;
 }
@@ -556,6 +571,13 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
     if (ret)
     {
         fflush(f);
+    }
+    else
+    {
+        if (errCode)
+        {
+            *errCode = errno;
+        }
     }
     fclose(f);
     return ret;
