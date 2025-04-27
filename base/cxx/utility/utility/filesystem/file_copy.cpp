@@ -194,9 +194,10 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
             m_errCode = errno;
             return FileInfo::CopyResult::dest_open_failed;
         }
+        auto srcAttr = srcFileInfo.attribute();
         if (m_totalProgressCallback)
         {
-            m_totalProgressCallback(totalFileCount, index + 1, srcFileInfo.name());
+            m_totalProgressCallback(totalFileCount, index + 1, srcFileInfo.name(), srcAttr);
         }
         /* 执行拷贝操作 */
         int errCode = 0;
@@ -205,7 +206,6 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
             di.realFile = checkDestFile(di.realFile); /* 检测目标文件是否已存在并重命名 */
         }
         auto destFileTmp = di.realFile + m_tmpSuffix; /* 临时文件名 */
-        auto srcAttr = srcFileInfo.attribute();
         auto result = srcFileInfo.copy(
             destFileTmp, &errCode,
             [&](size_t now, size_t total) {

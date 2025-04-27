@@ -50,8 +50,10 @@ using FileCopyBeginCallback = std::function<void(int totalCount, size_t totalSiz
  * @param totalCount 总文件数
  * @param index 当前拷贝的索引(从0开始)
  * @param srcFile 当前拷贝的源文件
+ * @param srcAttr 当前拷贝的源文件属性
  */
-using FileCopyTotalProgressCallback = std::function<void(int totalCount, int index, const std::string& srcFile)>;
+using FileCopyTotalProgressCallback =
+    std::function<void(int totalCount, int index, const std::string& srcFile, const FileAttribute& srcAttr)>;
 
 /**
  * @brief 文件拷贝单个进度回调

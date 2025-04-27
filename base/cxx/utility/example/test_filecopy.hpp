@@ -46,8 +46,9 @@ void testFileCopy(int argc, char** argv)
     auto beginCb = [&](int totalCount, size_t totalSize) {
         printf("[START] {\"total_count\":%d,\"total_size\":%zu}\n", totalCount, totalSize);
     };
-    auto totalProgressCb = [&](int totalCount, int index, const std::string& srcFile) {
-        printf("[BEGIN] {\"total_count\":%d,\"index\":%d,\"src\":\"%s\"}\n", totalCount, index, srcFile.c_str());
+    auto totalProgressCb = [&](int totalCount, int index, const std::string& srcFile, const utility::FileAttribute& srcAttr) {
+        printf("[BEGIN] {\"total_count\":%d,\"index\":%d,\"src\":\"%s\",\"file_size\":%zu}\n", totalCount, index, srcFile.c_str(),
+               srcAttr.size);
     };
     auto singleProgressCb = [&](const std::string& srcFile, size_t fileSize, size_t copiedSize) {
         printf("[PROGRESS] {\"src\":\"%s\",\"file_size\":%zu,\"copied_size\":%zu}\n", srcFile.c_str(), fileSize, copiedSize);
