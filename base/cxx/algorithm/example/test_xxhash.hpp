@@ -20,9 +20,9 @@ void testXxhash()
             if (XXH_OK == XXH3_64bits_reset(state))
             {
                 XXH3_64bits_update(state, str.c_str(), str.size());
+                XXH64_hash_t result = XXH3_64bits_digest(state);
+                printf("xxh64: %llx\n", result);
             }
-            XXH64_hash_t result = XXH3_64bits_digest(state);
-            printf("xxh64: %llx\n", result);
             XXH3_freeState(state);
         }
     }
