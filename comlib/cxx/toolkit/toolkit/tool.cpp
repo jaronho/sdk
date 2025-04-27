@@ -250,39 +250,12 @@ uint64_t Tool::xxhashFile(const std::string& fullName, const std::vector<size_t>
             XXH3_state_t* state = XXH3_createState();
             if (state)
             {
-                unsigned long long offset = 0, count = blockSize;
-                if (segSizeList.empty() || totalSegSize + segSizeList.size() >= fileSize) /* 计算全部内容 */
+                if (XXH_OK == XXH3_64bits_reset(state))
                 {
-                    while (count > 0)
+                    unsigned long long offset = 0, count = blockSize;
+                    if (segSizeList.empty() || totalSegSize + segSizeList.size() >= fileSize) /* 计算全部内容 */
                     {
-                        if (stopFunc && stopFunc())
-                        {
-                            XXH3_freeState(state);
-                            free(blockBuffer);
-                            fclose(f);
-                            return output;
-                        }
-#ifdef _WIN32
-                        _fseeki64(f, offset, SEEK_SET);
-#else
-                        fseeko64(f, offset, SEEK_SET);
-#endif
-                        count = fread(blockBuffer, 1, blockSize, f);
-                        offset += count;
-                        XXH3_64bits_update(state, blockBuffer, count);
-                    }
-                }
-                else /* 计算分段内容 */
-                {
-                    long long dist = 0;
-                    if (segSizeList.size() > 1)
-                    {
-                        dist = (fileSize - totalSegSize) / (segSizeList.size() - 1); /* 计算分段间距 */
-                    }
-                    for (auto segSize : segSizeList)
-                    {
-                        size_t readedSize = 0, buffSize = 0;
-                        while (readedSize < segSize)
+                        while (count > 0)
                         {
                             if (stopFunc && stopFunc())
                             {
@@ -296,20 +269,50 @@ uint64_t Tool::xxhashFile(const std::string& fullName, const std::vector<size_t>
 #else
                             fseeko64(f, offset, SEEK_SET);
 #endif
-                            buffSize = segSize - readedSize;
-                            if (buffSize > blockSize)
-                            {
-                                buffSize = blockSize;
-                            }
-                            count = fread(blockBuffer, 1, buffSize, f);
-                            readedSize += count;
+                            count = fread(blockBuffer, 1, blockSize, f);
                             offset += count;
                             XXH3_64bits_update(state, blockBuffer, count);
                         }
-                        offset += dist;
                     }
+                    else /* 计算分段内容 */
+                    {
+                        long long dist = 0;
+                        if (segSizeList.size() > 1)
+                        {
+                            dist = (fileSize - totalSegSize) / (segSizeList.size() - 1); /* 计算分段间距 */
+                        }
+                        for (auto segSize : segSizeList)
+                        {
+                            size_t readedSize = 0, buffSize = 0;
+                            while (readedSize < segSize)
+                            {
+                                if (stopFunc && stopFunc())
+                                {
+                                    XXH3_freeState(state);
+                                    free(blockBuffer);
+                                    fclose(f);
+                                    return output;
+                                }
+#ifdef _WIN32
+                                _fseeki64(f, offset, SEEK_SET);
+#else
+                                fseeko64(f, offset, SEEK_SET);
+#endif
+                                buffSize = segSize - readedSize;
+                                if (buffSize > blockSize)
+                                {
+                                    buffSize = blockSize;
+                                }
+                                count = fread(blockBuffer, 1, buffSize, f);
+                                readedSize += count;
+                                offset += count;
+                                XXH3_64bits_update(state, blockBuffer, count);
+                            }
+                            offset += dist;
+                        }
+                    }
+                    output = XXH3_64bits_digest(state);
                 }
-                output = XXH3_64bits_digest(state);
                 XXH3_freeState(state);
             }
             free(blockBuffer);
