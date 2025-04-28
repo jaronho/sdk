@@ -121,19 +121,59 @@ static char** string2argv(const std::string& str, int& argvCount)
 {
     std::vector<std::string> argVec;
     std::string arg;
+    enum State
+    {
+        NORMAL,
+        IN_SINGLE_QUOTE,
+        IN_DOUBLE_QUOTE
+    } state = NORMAL;
     for (size_t i = 0; i < str.size(); ++i)
     {
-        if (' ' == str[i])
+        char c = str[i];
+        if (NORMAL == state)
         {
-            if (!arg.empty())
+            if ('\'' == c)
             {
-                argVec.emplace_back(arg);
-                arg.clear();
+                state = IN_SINGLE_QUOTE;
+            }
+            else if ('"' == c)
+            {
+                state = IN_DOUBLE_QUOTE;
+            }
+            else if (' ' == c)
+            {
+                if (!arg.empty())
+                {
+                    argVec.emplace_back(arg);
+                    arg.clear();
+                }
+            }
+            else
+            {
+                arg.push_back(c);
             }
         }
-        else
+        else if (state == IN_SINGLE_QUOTE)
         {
-            arg.push_back(str[i]);
+            if ('\'' == c)
+            {
+                state = NORMAL;
+            }
+            else
+            {
+                arg.push_back(c);
+            }
+        }
+        else if (state == IN_DOUBLE_QUOTE)
+        {
+            if ('"' == c)
+            {
+                state = NORMAL;
+            }
+            else
+            {
+                arg.push_back(c);
+            }
         }
     }
     if (!arg.empty())
@@ -153,9 +193,9 @@ static char** string2argv(const std::string& str, int& argvCount)
                 memset(arg, 0, argVec[i].size() + 1);
                 memcpy(arg, argVec[i].c_str(), argVec[i].size());
             }
-            *(argv + i) = arg;
+            argv[i] = arg;
         }
-        *(argv + argvCount) = NULL; /* 最后一个必须设置为NULL */
+        argv[argvCount] = NULL; /* 最后一个必须设置为NULL */
     }
     return argv;
 }
