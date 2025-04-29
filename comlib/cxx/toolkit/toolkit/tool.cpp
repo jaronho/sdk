@@ -121,18 +121,31 @@ std::string Tool::md5File(const std::string& fullName, const std::vector<size_t>
     return output;
 }
 
-std::string
-Tool::md5Directory(const std::string& path, const std::function<std::vector<size_t>(const std::string& name, size_t fileSize)>& segSizeFunc,
-                   const std::function<void(size_t totalCount, size_t totalSize)>& beginCb,
-                   const std::function<void(const std::string& name, size_t fileSize, const std::function<std::string()>& calcFunc)>& func,
-                   const std::function<bool()>& stopFunc, size_t blockSize)
+std::string Tool::md5Directory(
+    const std::string& path,
+    const std::function<std::vector<size_t>(const std::string& name, const utility::FileAttribute& attr, int depth)>& segSizeFunc,
+    const std::function<bool(const std::string& name, const utility::FileAttribute& attr, int depth)>& filterFunc,
+    const std::function<void(size_t totalCount, size_t totalSize)>& beginCb,
+    const std::function<void(const std::string& name, const utility::FileAttribute& attr, int depth,
+                             const std::function<std::string()>& calcFunc)>& func,
+    const std::function<bool()>& stopFunc, size_t blockSize)
 {
     /* 计算文件数量和总大小 */
     size_t totalFileCount = 0, totalFileSize = 0;
     utility::PathInfo pi(path, true);
     pi.traverse(
-        nullptr,
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (filterFunc && filterFunc(name, attr, depth))
+            {
+                return false;
+            }
+            return true;
+        },
+        [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (filterFunc && filterFunc(name, attr, depth))
+            {
+                return;
+            }
             ++totalFileCount;
             totalFileSize += attr.size;
         },
@@ -150,11 +163,11 @@ Tool::md5Directory(const std::string& path, const std::function<std::vector<size
     auto md5List = std::make_shared<std::vector<std::string>>();
     auto result = std::make_shared<std::promise<void>>();
     auto innerFunc = [&, segSizeFunc, stopFunc, blockSize, totalFileCount, mutexInner, md5List,
-                      result](const std::string& name, const utility::FileAttribute& attr) {
+                      result](const std::string& name, const utility::FileAttribute& attr, int depth) {
         std::vector<size_t> segSizeList;
         if (segSizeFunc)
         {
-            segSizeList = segSizeFunc(name, attr.size);
+            segSizeList = segSizeFunc(name, attr, depth);
         }
         bool stopFlag = false;
         auto value = md5File(
@@ -183,15 +196,25 @@ Tool::md5Directory(const std::string& path, const std::function<std::vector<size
         return value;
     };
     pi.traverse(
-        nullptr,
+        [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (filterFunc && filterFunc(name, attr, depth))
+            {
+                return false;
+            }
+            return true;
+        },
         [&, innerFunc](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (filterFunc && filterFunc(name, attr, depth))
+            {
+                return;
+            }
             if (func)
             {
-                func(name, attr.size, [&, innerFunc, name, attr]() { return innerFunc(name, attr); });
+                func(name, attr, depth, [&, innerFunc, name, attr, depth]() { return innerFunc(name, attr, depth); });
             }
             else
             {
-                innerFunc(name, attr);
+                innerFunc(name, attr, depth);
             }
         },
         [&, stopFunc]() {
@@ -322,20 +345,32 @@ uint64_t Tool::xxhashFile(const std::string& fullName, const std::vector<size_t>
     return output;
 }
 
-uint64_t
-Tool::xxhashDirectory(const std::string& path,
-                      const std::function<std::vector<size_t>(const std::string& name, size_t fileSize)>& segSizeFunc,
-                      const std::function<void(size_t totalCount, size_t totalSize)>& beginCb,
-                      const std::function<void(const std::string& name, size_t fileSize, const std::function<uint64_t()>& calcFunc)>& func,
-                      const std::function<bool()>& stopFunc, size_t blockSize)
+uint64_t Tool::xxhashDirectory(
+    const std::string& path,
+    const std::function<std::vector<size_t>(const std::string& name, const utility::FileAttribute& attr, int depth)>& segSizeFunc,
+    const std::function<bool(const std::string& name, const utility::FileAttribute& attr, int depth)>& filterFunc,
+    const std::function<void(size_t totalCount, size_t totalSize)>& beginCb,
+    const std::function<void(const std::string& name, const utility::FileAttribute& attr, int depth,
+                             const std::function<uint64_t()>& calcFunc)>& func,
+    const std::function<bool()>& stopFunc, size_t blockSize)
 {
     blockSize = blockSize <= 0 ? (1024 * 1024) : (blockSize > (50 * 1024 * 1024) ? (50 * 1024 * 1024) : blockSize);
     /* 计算文件数量和总大小 */
     size_t totalFileCount = 0, totalFileSize = 0;
     utility::PathInfo pi(path, true);
     pi.traverse(
-        nullptr,
         [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (filterFunc && filterFunc(name, attr, depth))
+            {
+                return false;
+            }
+            return true;
+        },
+        [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (filterFunc && filterFunc(name, attr, depth))
+            {
+                return;
+            }
             ++totalFileCount;
             totalFileSize += attr.size;
         },
@@ -353,11 +388,11 @@ Tool::xxhashDirectory(const std::string& path,
     auto xxhashList = std::make_shared<std::vector<std::string>>();
     auto result = std::make_shared<std::promise<void>>();
     auto innerFunc = [&, segSizeFunc, stopFunc, blockSize, totalFileCount, mutexInner, xxhashList,
-                      result](const std::string& name, const utility::FileAttribute& attr) {
+                      result](const std::string& name, const utility::FileAttribute& attr, int depth) {
         std::vector<size_t> segSizeList;
         if (segSizeFunc)
         {
-            segSizeList = segSizeFunc(name, attr.size);
+            segSizeList = segSizeFunc(name, attr, depth);
         }
         bool stopFlag = false;
         auto value = xxhashFile(
@@ -388,15 +423,21 @@ Tool::xxhashDirectory(const std::string& path,
         return value;
     };
     pi.traverse(
-        nullptr,
+        [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+            if (filterFunc && filterFunc(name, attr, depth))
+            {
+                return false;
+            }
+            return true;
+        },
         [&, innerFunc](const std::string& name, const utility::FileAttribute& attr, int depth) {
             if (func)
             {
-                func(name, attr.size, [&, innerFunc, name, attr]() { return innerFunc(name, attr); });
+                func(name, attr, depth, [&, innerFunc, name, attr, depth]() { return innerFunc(name, attr, depth); });
             }
             else
             {
-                innerFunc(name, attr);
+                innerFunc(name, attr, depth);
             }
         },
         [&, stopFunc]() {

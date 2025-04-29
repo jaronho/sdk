@@ -188,14 +188,26 @@ int main(int argc, char** argv)
             utility::PathInfo pi(target, true);
             auto tp = std::chrono::steady_clock::now();
             output = toolkit::Tool::xxhashDirectory(
-                target, [&, segSizeList](const std::string& name, size_t fileSize) { return segSizeList; },
+                target, [&, segSizeList](const std::string& name, const utility::FileAttribute& attr, int depth) { return segSizeList; },
+                [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+                    if (1 == depth && attr.isDir)
+                    {
+                        auto dirName = utility::FileInfo(name).filename();
+                        if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
                 [&](size_t totalCount, size_t totalSize) {
                     printf("[%s] 文件总数量: %zu, 文件总大小: %s\n", dtString().c_str(), totalCount,
                            convertBytesToAppropriateUnit(totalSize).c_str());
                     totalFileCount = totalCount;
                     totalFileSize = totalSize;
                 },
-                [&, calcExecutor](const std::string& name, size_t fileSize, const std::function<uint64_t()>& calcFunc) {
+                [&, calcExecutor](const std::string& name, const utility::FileAttribute& attr, int depth,
+                                  const std::function<uint64_t()>& calcFunc) {
                     auto relativeName = utility::StrTool::replace(name.substr(pi.path().size()), "\\", "/");
                     if (!relativeName.empty() && '/' == relativeName[0])
                     {
@@ -207,10 +219,10 @@ int main(int argc, char** argv)
                     }
                     if (calcExecutor)
                     {
-                        calcExecutor->post("calc", [&, totalFileCount, relativeName, fileSize, calcFunc]() {
+                        calcExecutor->post("calc", [&, totalFileCount, relativeName, attr, calcFunc]() {
                             auto totalCountStr = std::to_string(totalFileCount);
                             std::string placeStr(totalCountStr.size() * 2 + 3, '-');
-                            auto fileDesc = relativeName + " (" + convertBytesToAppropriateUnit(fileSize) + ")";
+                            auto fileDesc = relativeName + " (" + convertBytesToAppropriateUnit(attr.size) + ")";
                             printf("[%s] %s %s\n", dtString().c_str(), placeStr.c_str(), fileDesc.c_str());
                             calcFunc();
                             nowCount += 1;
@@ -227,7 +239,7 @@ int main(int argc, char** argv)
                         auto nowCountStr = std::to_string(nowCount.load());
                         auto progress =
                             "[" + utility::StrTool::fillPlace(nowCountStr, ' ', totalCountStr.size()) + "/" + totalCountStr + "]";
-                        auto fileDesc = relativeName + " (" + convertBytesToAppropriateUnit(fileSize) + ")";
+                        auto fileDesc = relativeName + " (" + convertBytesToAppropriateUnit(attr.size) + ")";
                         printf("[%s] %s %s\n", dtString().c_str(), progress.c_str(), fileDesc.c_str());
                         calcFunc();
                     }
@@ -243,8 +255,21 @@ int main(int argc, char** argv)
         else
         {
             output = toolkit::Tool::xxhashDirectory(
-                target, [&, segSizeList](const std::string& name, size_t fileSize) { return segSizeList; }, nullptr,
-                [&, calcExecutor](const std::string& name, size_t fileSize, const std::function<uint64_t()>& calcFunc) {
+                target, [&, segSizeList](const std::string& name, const utility::FileAttribute& attr, int depth) { return segSizeList; },
+                [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
+                    if (1 == depth && attr.isDir)
+                    {
+                        auto dirName = utility::FileInfo(name).filename();
+                        if ("$RECYCLE.BIN" == dirName || "System Volume Information" == dirName) /* 跳过Windows文件系统目录 */
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                nullptr,
+                [&, calcExecutor](const std::string& name, const utility::FileAttribute& attr, int depth,
+                                  const std::function<uint64_t()>& calcFunc) {
                     if (calcExecutor)
                     {
                         calcExecutor->post("calc", calcFunc);
