@@ -78,11 +78,6 @@ static void delDiagTask(const Task* task)
     }
 }
 
-void Diagnose::setEnable()
-{
-    s_enabled = true;
-}
-
 void Diagnose::setTaskCreatedCallback(const TaskCreatedCallback& createdCb)
 {
     std::lock_guard<std::mutex> locker(s_mutexTask);
@@ -105,6 +100,11 @@ void Diagnose::setTaskExceptionStateCallback(const TaskExceptionStateCallback& s
 {
     std::lock_guard<std::mutex> locker(s_mutexTask);
     s_taskExceptionStateCallback = stateCb;
+}
+
+void Diagnose::setEnable(bool enable)
+{
+    s_enabled = enable;
 }
 
 std::vector<ExecutorDiagnoseInfo> Diagnose::getTaskDiagnoseInfo()
@@ -165,10 +165,6 @@ std::vector<ExecutorDiagnoseInfo> Diagnose::getTaskDiagnoseInfo()
 
 void Diagnose::onExecutorCreated(const Executor* executor)
 {
-    if (!s_enabled)
-    {
-        return;
-    }
     if (!executor)
     {
         return;
@@ -183,10 +179,6 @@ void Diagnose::onExecutorCreated(const Executor* executor)
 
 void Diagnose::onExecutorDestroyed(const Executor* executor)
 {
-    if (!s_enabled)
-    {
-        return;
-    }
     if (!executor)
     {
         return;

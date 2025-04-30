@@ -89,11 +89,6 @@ class Diagnose final
 
 public:
     /**
-	 * @brief 设置开启诊断功能, 注意: 如果要开启则必须要先于其他所有线程组件调用
-	 */
-    static void setEnable();
-
-    /**
 	 * @brief 设置任务创建回调
 	 * @param createdCb 创建回调
 	 */
@@ -116,6 +111,12 @@ public:
 	 * @param stateCb 状态回调
 	 */
     static void setTaskExceptionStateCallback(const TaskExceptionStateCallback& stateCb);
+
+    /**
+	 * @brief 设置打开/关闭诊断功能
+	 * @param enable 是否打开: true-打开, false-关闭
+	 */
+    static void setEnable(bool enable);
 
     /**
      * @brief 获取任务诊断信息
