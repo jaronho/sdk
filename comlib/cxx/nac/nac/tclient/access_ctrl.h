@@ -73,6 +73,9 @@ struct AccessConfig
     std::string certFile; /* 证书文件(全路径), 例如: /home/root/client.crt */
     std::string pkFile; /* 私钥文件(全路径), 例如: /home/root/client.key */
     std::string pkPwd; /* 私钥文件密码, 例如: qq123456 */
+    int sendBufSize = -1; /* 发送缓冲区大小(字节), <=0表示系统默认 */
+    int recvBufSize = -1; /* 接收缓冲区大小(字节), <=0表示系统默认 */
+    int enableNagle = -1; /* 是否启用Nagle算法, <0表示系统默认, 0-禁用, 1-启用 */
     unsigned int connectTimeout = 0; /* 连接超时(秒), 为0表示系统默认 */
     int32_t authBizCode = 0; /* 鉴权业务码, 为0表示不需要鉴权 */
     unsigned int authTimeout = 30; /* 鉴权超时(秒), 必须大于0 */

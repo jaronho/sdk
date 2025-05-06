@@ -232,11 +232,6 @@ int main(int argc, char* argv[])
     s_logger = logger::LoggerManager::getLogger();
     /* 创建服务器 */
     auto server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, serverHost, serverPort, false, 10 * 1024 * 1024);
-    if (!server->isValid())
-    {
-        ERROR_LOG(s_logger, "服务器无效, 请检查地址[{}]和端口[{}].", serverHost, serverPort);
-        return 0;
-    }
     /* 设置新连接回调 */
     server->setNewConnectionCallback([&](const std::weak_ptr<nsocket::TcpConnection>& wpConn) {
         const auto conn = wpConn.lock();

@@ -80,6 +80,9 @@ public:
      * @param certFile 证书文件(选填), 例如: client.crt
      * @param pkFile 私钥文件(选填), 例如: client.key
      * @param pkPwd 私钥文件密码(选填), 例如: qq123456
+     * @param sendBufSize 发送缓冲区大小(字节), <=0表示系统默认
+     * @param recvBufSize 接收缓冲区大小(字节), <=0表示系统默认
+     * @param enableNagle 是否启用Nagle算法, <=0表示系统默认, 0-禁用, >0-启用
      * @param connectTimeout 连接超时(秒, 选填), 为0表示系统默认
      * @param authBizCode 鉴权业务码(选填), 为0时表示不需要鉴权
      * @param authTimeout 鉴权响应超时(秒, 选填), 必须大于0
@@ -91,8 +94,9 @@ public:
      */
     bool connect(unsigned short localPort, const std::string& address, unsigned int port, bool sslOn = false, int sslWay = 1,
                  int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "", const std::string& pkPwd = "",
-                 unsigned int connectTimeout = 0, int32_t authBizCode = 0, unsigned int authTimeout = 30, int32_t heartbeatBizCode = 0,
-                 unsigned int heartbeatInterval = 15, bool heartbeatFixedSend = false, unsigned int offlineTime = 61);
+                 int sendBufSize = -1, int recvBufSize = -1, int enableNagle = -1, unsigned int connectTimeout = 0, int32_t authBizCode = 0,
+                 unsigned int authTimeout = 30, int32_t heartbeatBizCode = 0, unsigned int heartbeatInterval = 15,
+                 bool heartbeatFixedSend = false, unsigned int offlineTime = 61);
 
     /**
      * @brief 重连, 注意: 主动断开连接再调重连则无效

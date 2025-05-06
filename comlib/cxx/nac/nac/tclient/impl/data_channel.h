@@ -33,10 +33,14 @@ public:
      * @param certFile 证书文件(选填), 例如: client.crt
      * @param pkFile 私钥文件(选填), 例如: client.key
      * @param pkPwd 私钥文件密码(选填), 例如: qq123456
+     * @param sendBufSize 发送缓冲区大小(字节), <=0表示系统默认
+     * @param recvBufSize 接收缓冲区大小(字节), <=0表示系统默认
+     * @param enableNagle 是否启用Nagle算法, <=0表示系统默认, 0-禁用, >0-启用
      * @return true-请求连接中, false-失败
      */
     bool connect(unsigned short localPort, const std::string& address, unsigned short port, bool sslOn = false, int sslWay = 1,
-                 int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "", const std::string& pkPwd = "");
+                 int certFmt = 2, const std::string& certFile = "", const std::string& pkFile = "", const std::string& pkPwd = "",
+                 int sendBufSize = -1, int recvBufSize = -1, int enableNagle = -1);
 
     /**
      * @brief 断开连接

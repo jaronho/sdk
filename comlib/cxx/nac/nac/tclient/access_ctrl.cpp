@@ -265,8 +265,9 @@ bool AccessCtrl::connect(const AccessConfig& cfg)
     }
     /* 首次连接 */
     bool ret = s_connectService->connect(cfg.localPort, cfg.address, cfg.port, cfg.sslOn, cfg.sslWay, cfg.certFmt, cfg.certFile, cfg.pkFile,
-                                         cfg.pkPwd, cfg.connectTimeout, (int32_t)cfg.authBizCode, cfg.authTimeout,
-                                         (int32_t)cfg.heartbeatBizCode, cfg.heartbeatInterval, cfg.heartbeatFixedSend, cfg.offlineTime);
+                                         cfg.pkPwd, cfg.sendBufSize, cfg.recvBufSize, cfg.enableNagle, cfg.connectTimeout,
+                                         (int32_t)cfg.authBizCode, cfg.authTimeout, (int32_t)cfg.heartbeatBizCode, cfg.heartbeatInterval,
+                                         cfg.heartbeatFixedSend, cfg.offlineTime);
     if (!ret)
     {
         std::lock_guard<std::mutex> locker(s_mutexRetryTimer);

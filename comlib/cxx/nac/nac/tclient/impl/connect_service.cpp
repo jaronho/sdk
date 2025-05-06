@@ -77,9 +77,9 @@ void ConnectService::setHeartbeatDataGenerator(const std::function<std::string()
 }
 
 bool ConnectService::connect(unsigned short localPort, const std::string& address, unsigned int port, bool sslOn, int sslWay, int certFmt,
-                             const std::string& certFile, const std::string& pkFile, const std::string& pkPwd, unsigned int connectTimeout,
-                             int32_t authBizCode, unsigned int authTimeout, int32_t heartbeatBizCode, unsigned int heartbeatInterval,
-                             bool heartbeatFixedSend, unsigned int offlineTime)
+                             const std::string& certFile, const std::string& pkFile, const std::string& pkPwd, int sendBufSize,
+                             int recvBufSize, int enableNagle, unsigned int connectTimeout, int32_t authBizCode, unsigned int authTimeout,
+                             int32_t heartbeatBizCode, unsigned int heartbeatInterval, bool heartbeatFixedSend, unsigned int offlineTime)
 {
     if (address.empty() || 0 == port)
     {
@@ -136,7 +136,8 @@ bool ConnectService::connect(unsigned short localPort, const std::string& addres
     if (dataChannel)
     {
         startTimetoutTimer();
-        return dataChannel->connect(localPort, address, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd);
+        return dataChannel->connect(localPort, address, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, sendBufSize, recvBufSize,
+                                    enableNagle);
     }
     return false;
 }

@@ -10,7 +10,8 @@ std::weak_ptr<threading::Executor> DataChannel::getPktExecutor()
 }
 
 bool DataChannel::connect(unsigned short localPort, const std::string& address, unsigned short port, bool sslOn, int sslWay, int certFmt,
-                          const std::string& certFile, const std::string& pkFile, const std::string& pkPwd)
+                          const std::string& certFile, const std::string& pkFile, const std::string& pkPwd, int sendBufSize,
+                          int recvBufSize, int enableNagle)
 {
     try
     {
@@ -24,11 +25,13 @@ bool DataChannel::connect(unsigned short localPort, const std::string& address, 
         certFmt = certFmt < 1 ? 1 : (certFmt > 2 ? 2 : certFmt);
         if (sslOn)
         {
-            INFO_LOG(m_logger, "连接服务器: {}:{}, 通道加密: 是, SSL验证: {}.", address, port, 1 == sslWay ? "单向" : "双向");
+            INFO_LOG(m_logger, "连接服务器: {}:{}, 通道加密: 是, SSL验证: {}, 缓冲区大小(发送: {}, 接收: {}), Nagle: {}.", address, port,
+                     1 == sslWay ? "单向" : "双向", sendBufSize, recvBufSize, enableNagle);
         }
         else
         {
-            INFO_LOG(m_logger, "连接服务器: {}:{}, 通道加密: 否.", address, port);
+            INFO_LOG(m_logger, "连接服务器: {}:{}, 通道加密: 否, 缓冲区大小(发送: {}, 接收: {}), Nagle: {}.", address, port, sendBufSize,
+                     recvBufSize, enableNagle);
         }
         const std::weak_ptr<DataChannel> wpSelf = shared_from_this();
         const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
@@ -79,6 +82,18 @@ bool DataChannel::connect(unsigned short localPort, const std::string& address, 
                 WARN_LOG(logger, "数据接收警告: 报文处理线程为空.");
             }
         });
+        if (sendBufSize > 0)
+        {
+            m_tcpClient->setSendBufferSize(sendBufSize);
+        }
+        if (recvBufSize > 0)
+        {
+            m_tcpClient->setRecvBufferSize(recvBufSize);
+        }
+        if (enableNagle >= 0)
+        {
+            m_tcpClient->setNagleEnable(enableNagle > 0 ? true : false);
+        }
         const std::weak_ptr<nsocket::TcpClient> wpTcpClient = m_tcpClient;
         m_tcpExecutor->post("nac.tcli.loop",
                             [wpTcpClient, address, port, sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, logger = m_logger]() {
@@ -257,7 +272,20 @@ void DataChannel::onConnected(const boost::system::error_code& code)
     }
     else
     {
-        INFO_LOG(m_logger, "连接成功.");
+        std::shared_ptr<nsocket::TcpClient> tcpClient;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+            tcpClient = m_tcpClient;
+        }
+        if (tcpClient)
+        {
+            INFO_LOG(m_logger, "连接成功, 缓冲区大小(发送: {}, 接收: {}), Nagle: {}.", tcpClient->getSendBufferSize(),
+                     tcpClient->getRecvBufferSize(), tcpClient->isNagleEnable());
+        }
+        else
+        {
+            INFO_LOG(m_logger, "连接成功.");
+        }
     }
     sigConnectStatus(code);
 }
