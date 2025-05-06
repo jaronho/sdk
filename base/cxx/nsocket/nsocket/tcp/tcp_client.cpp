@@ -19,6 +19,26 @@ void TcpClient::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
     m_onDataCallback = onDataCb;
 }
 
+void TcpClient::setNonBlock(bool nonBlock)
+{
+    m_nonBlock = (nonBlock ? 1 : 0);
+}
+
+void TcpClient::setSendBufferSize(int bufferSize)
+{
+    m_sendBufferSize = bufferSize;
+}
+
+void TcpClient::setRecvBufferSize(int bufferSize)
+{
+    m_recvBufferSize = bufferSize;
+}
+
+void TcpClient::setNagleEnable(bool enable)
+{
+    m_enableNagle = (enable ? 1 : 0);
+}
+
 void TcpClient::run(const std::string& host, uint16_t port, bool sslOn, int sslWay, int certFmt, const std::string& certFile,
                     const std::string& pkFile, const std::string& pkPwd)
 {
@@ -79,6 +99,22 @@ void TcpClient::run(const std::string& host, uint16_t port, bool sslOn, int sslW
                 }
             });
             tcpConn->setDataCallback(m_onDataCallback);
+            if (m_nonBlock >= 0)
+            {
+                tcpConn->setNonBlock(m_nonBlock > 0 ? true : false);
+            }
+            if (m_sendBufferSize > 0)
+            {
+                tcpConn->setSendBufferSize(m_sendBufferSize);
+            }
+            if (m_recvBufferSize > 0)
+            {
+                tcpConn->setRecvBufferSize(m_recvBufferSize);
+            }
+            if (m_enableNagle >= 0)
+            {
+                tcpConn->setNagleEnable(m_enableNagle > 0 ? true : false);
+            }
             tcpConn->setLocalPort(m_localPort);
             {
                 std::lock_guard<std::mutex> locker(m_mutex);
@@ -184,6 +220,62 @@ bool TcpClient::isEnableSSL()
 bool TcpClient::isRunning()
 {
     return (RunStatus::running == m_runStatus);
+}
+
+bool TcpClient::isNonBlock()
+{
+    std::shared_ptr<TcpConnection> tcpConn = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        tcpConn = m_tcpConn;
+    }
+    if (tcpConn)
+    {
+        return tcpConn->isNonBlock();
+    }
+    return false;
+}
+
+int TcpClient::getSendBufferSize()
+{
+    std::shared_ptr<TcpConnection> tcpConn = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        tcpConn = m_tcpConn;
+    }
+    if (tcpConn)
+    {
+        return tcpConn->getSendBufferSize();
+    }
+    return -1;
+}
+
+int TcpClient::getRecvBufferSize()
+{
+    std::shared_ptr<TcpConnection> tcpConn = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        tcpConn = m_tcpConn;
+    }
+    if (tcpConn)
+    {
+        return tcpConn->getRecvBufferSize();
+    }
+    return -1;
+}
+
+bool TcpClient::isNagleEnable()
+{
+    std::shared_ptr<TcpConnection> tcpConn = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        tcpConn = m_tcpConn;
+    }
+    if (tcpConn)
+    {
+        return tcpConn->isNagleEnable();
+    }
+    return false;
 }
 
 boost::asio::ip::tcp::endpoint TcpClient::getLocalEndpoint()

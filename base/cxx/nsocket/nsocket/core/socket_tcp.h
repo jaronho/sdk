@@ -70,6 +70,32 @@ public:
     virtual ~SocketTcpBase() = default;
 
     /**
+     * @brief 设置非阻塞模式(连接前调用才有效)
+     * @param nonBlock 非阻塞模式, true-是, false-否(阻塞模式)
+     */
+    void setNonBlock(bool nonBlock);
+
+    /**
+     * @brief 设置发送缓冲区大小(连接前调用才有效)
+     * @param bufferSize 发送缓冲区大小
+     */
+    void setSendBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置接收缓冲区大小(连接前调用才有效)
+     * @param bufferSize 接收缓冲区大小
+     */
+    void setRecvBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置是否启用Nagle算法(连接前调用才有效), Nagle算法会将小的数据包合并成较大的数据包再发送, 以提高网络传输效率.
+     *        但在某些情况下, 这可能会导致数据发送的延迟, 使应用程序认为数据已经发送成功, 但实际上数据还在等待合并的过程中,
+     *        没有立即被发送到网络上, 关闭Nagle算法可能会增加网络传输的开销, 应在权衡利弊后谨慎使用
+     * @param enable true-启用, false-关闭
+     */
+    void setNagleEnable(bool enable);
+
+    /**
      * @brief 设置本地端口(连接前调用才有效)
      * @param port 本地端口
      */
@@ -109,6 +135,30 @@ public:
     virtual bool isOpened() const = 0;
 
     /**
+     * @brief 是否非阻塞模式
+     * @return true-非阻塞, false-阻塞
+     */
+    virtual bool isNonBlock() const = 0;
+
+    /**
+     * @brief 获取发送缓冲区大小
+     * @return 发送缓冲区大小
+     */
+    virtual int getSendBufferSize() const = 0;
+
+    /**
+     * @brief 获取接收缓冲区大小
+     * @return 接收缓冲区大小
+     */
+    virtual int getRecvBufferSize() const = 0;
+
+    /**
+     * @brief 获取是否启用Nagle算法
+     * @return true-启用, false-不启用
+     */
+    virtual bool isNagleEnable() const = 0;
+
+    /**
      * @brief 获取本地端点
      * @return 本地端点
      */
@@ -120,46 +170,11 @@ public:
      */
     virtual boost::asio::ip::tcp::endpoint getRemoteEndpoint() const = 0;
 
-    /**
-     * @brief 是否非阻塞模式
-     * @return true-非阻塞, false-阻塞
-     */
-    virtual bool isNonBlock() const = 0;
-
-    /**
-     * @brief 设置非阻塞模式
-     * @param nonBlock 非阻塞模式, true-是, false-否(阻塞模式)
-     * @return true-设置成功, false-设置失败
-     */
-    virtual bool setNonBlock(bool nonBlock) = 0;
-
-    /**
-     * @brief 获取发送缓冲区大小
-     * @return 发送缓冲区大小
-     */
-    virtual size_t getSendBufferSize() const = 0;
-
-    /**
-     * @brief 设置发送缓冲区大小
-     * @param bufferSize 发送缓冲区大小
-     * @return true-设置成功, false-设置失败
-     */
-    virtual bool setSendBufferSize(size_t bufferSize) = 0;
-
-    /**
-     * @brief 获取接收缓冲区大小
-     * @return 接收缓冲区大小
-     */
-    virtual size_t getRecvBufferSize() const = 0;
-
-    /**
-     * @brief 设置接收缓冲区大小
-     * @param bufferSize 接收缓冲区大小
-     * @return true-设置成功, false-设置失败
-     */
-    virtual bool setRecvBufferSize(size_t bufferSize) = 0;
-
 protected:
+    std::atomic<int> m_nonBlock = {-1}; /* 是否非阻塞: <0-默认, 0-阻塞, 1-非阻塞 */
+    std::atomic<int> m_sendBufferSize = {-1}; /* 发送缓冲区大小(字节), <=0-默认, >0-指定大小 */
+    std::atomic<int> m_recvBufferSize = {-1}; /* 接收缓冲区大小(字节), <=0-默认, >0-指定大小 */
+    std::atomic<int> m_enableNagle = {-1}; /* 是否禁用Nagle算法, <0-默认, 0-禁用, 1-启用 */
     std::atomic<uint16_t> m_localPort = {0}; /* 本地端口 */
     boost::asio::ip::tcp::endpoint m_remotePoint; /* 远端端点 */
 };
@@ -184,21 +199,17 @@ public:
 
     bool isOpened() const override;
 
+    bool isNonBlock() const override;
+
+    int getSendBufferSize() const override;
+
+    int getRecvBufferSize() const override;
+
+    bool isNagleEnable() const override;
+
     boost::asio::ip::tcp::endpoint getLocalEndpoint() const override;
 
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const override;
-
-    bool isNonBlock() const override;
-
-    bool setNonBlock(bool nonBlock) override;
-
-    size_t getSendBufferSize() const override;
-
-    bool setSendBufferSize(size_t bufferSize) override;
-
-    size_t getRecvBufferSize() const override;
-
-    bool setRecvBufferSize(size_t bufferSize) override;
 
 private:
     boost::asio::ip::tcp::socket m_socket;
@@ -225,21 +236,17 @@ public:
 
     bool isOpened() const override;
 
+    bool isNonBlock() const override;
+
+    int getSendBufferSize() const override;
+
+    int getRecvBufferSize() const override;
+
+    bool isNagleEnable() const override;
+
     boost::asio::ip::tcp::endpoint getLocalEndpoint() const override;
 
     boost::asio::ip::tcp::endpoint getRemoteEndpoint() const override;
-
-    bool isNonBlock() const override;
-
-    bool setNonBlock(bool nonBlock) override;
-
-    size_t getSendBufferSize() const override;
-
-    bool setSendBufferSize(size_t bufferSize) override;
-
-    size_t getRecvBufferSize() const override;
-
-    bool setRecvBufferSize(size_t bufferSize) override;
 
     void handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb, bool async = true);
 

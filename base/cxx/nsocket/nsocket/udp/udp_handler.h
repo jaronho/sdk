@@ -64,6 +64,24 @@ public:
     void setDataCallback(const UDP_DATA_CALLBACK& onDataCb);
 
     /**
+     * @brief 设置非阻塞(打开前调用才有效)
+     * @param nonBlock true-非阻塞, false-阻塞
+     */
+    void setNonBlock(bool nonBlock);
+
+    /**
+     * @brief 设置发送缓冲区大小(打开前调用才有效)
+     * @param bufferSize 发送缓冲区大小
+     */
+    void setSendBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置接收缓冲区大小(打开前调用才有效)
+     * @param bufferSize 接收缓冲区大小
+     */
+    void setRecvBufferSize(int bufferSize);
+
+    /**
      * @brief 打开
      * @param point 本地端点
      * @param broadcast 是否广播, true-是, false-否
@@ -90,17 +108,28 @@ public:
     bool isOpened() const;
 
     /**
+     * @brief 是否非阻塞模式
+     * @return true-非阻塞, false-阻塞
+     */
+    bool isNonBlock();
+
+    /**
+     * @brief 获取发送缓冲区大小
+     * @return 发送缓冲区大小
+     */
+    int getSendBufferSize();
+
+    /**
+     * @brief 获取接收缓冲区大小
+     * @return 接收缓冲区大小
+     */
+    int getRecvBufferSize();
+
+    /**
      * @brief 获取本端端点
      * @return 本端端点
      */
     boost::asio::ip::udp::endpoint getLocalEndpoint();
-
-    /**
-     * @brief 设置非阻塞(说明: 需要打开成功后才调用)
-     * @param nonBlock true-非阻塞, false-阻塞
-     * @return true-设置成功, false-设置失败
-     */
-    bool setNonBlock(bool nonBlock);
 
 private:
     /**

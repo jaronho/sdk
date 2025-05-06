@@ -53,6 +53,45 @@ void UdpHandler::setDataCallback(const UDP_DATA_CALLBACK& onDataCb)
     m_onDataCallback = onDataCb;
 }
 
+void UdpHandler::setNonBlock(bool nonBlock)
+{
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
+    {
+        socketUdpBase->setNonBlock(nonBlock);
+    }
+}
+
+void UdpHandler::setSendBufferSize(int bufferSize)
+{
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
+    {
+        socketUdpBase->setSendBufferSize(bufferSize);
+    }
+}
+
+void UdpHandler::setRecvBufferSize(int bufferSize)
+{
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
+    {
+        socketUdpBase->setRecvBufferSize(bufferSize);
+    }
+}
+
 void UdpHandler::open(const boost::asio::ip::udp::endpoint& point, bool broadcast)
 {
     std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
@@ -221,6 +260,48 @@ bool UdpHandler::isOpened() const
     return m_isOpened;
 }
 
+bool UdpHandler::isNonBlock()
+{
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
+    {
+        return socketUdpBase->isNonBlock();
+    }
+    return false;
+}
+
+int UdpHandler::getSendBufferSize()
+{
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
+    {
+        return socketUdpBase->getSendBufferSize();
+    }
+    return -1;
+}
+
+int UdpHandler::getRecvBufferSize()
+{
+    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketUdpBase = m_socketUdpBase;
+    }
+    if (socketUdpBase)
+    {
+        return socketUdpBase->getRecvBufferSize();
+    }
+    return -1;
+}
+
 boost::asio::ip::udp::endpoint UdpHandler::getLocalEndpoint()
 {
     std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
@@ -233,19 +314,5 @@ boost::asio::ip::udp::endpoint UdpHandler::getLocalEndpoint()
         return socketUdpBase->getLocalEndpoint();
     }
     return boost::asio::ip::udp::endpoint();
-}
-
-bool UdpHandler::setNonBlock(bool nonBlock)
-{
-    std::shared_ptr<SocketUdpBase> socketUdpBase = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        socketUdpBase = m_socketUdpBase;
-    }
-    if (socketUdpBase)
-    {
-        return socketUdpBase->setNonBlock(nonBlock);
-    }
-    return false;
 }
 } // namespace nsocket

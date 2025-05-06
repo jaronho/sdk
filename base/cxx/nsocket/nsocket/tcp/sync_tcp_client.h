@@ -23,6 +23,30 @@ public:
     virtual ~SyncTcpClient();
 
     /**
+     * @brief 设置非阻塞模式(连接前调用才有效)
+     * @param nonBlock 非阻塞模式, true-是, false-否(阻塞模式)
+     */
+    void setNonBlock(bool nonBlock);
+
+    /**
+     * @brief 设置发送缓冲区大小(连接前调用才有效)
+     * @param bufferSize 发送缓冲区大小
+     */
+    void setSendBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置接收缓冲区大小(连接前调用才有效)
+     * @param bufferSize 接收缓冲区大小
+     */
+    void setRecvBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置是否启用Nagle算法(连接前调用才有效)
+     * @param enable true-启用, false-关闭
+     */
+    void setNagleEnable(bool enable);
+
+    /**
      * @brief 设置本地端口(连接前调用才有效)
      * @param port 本地端口, 为0时自动分配
      */
@@ -61,30 +85,28 @@ public:
     void stop();
 
     /**
+     * @brief 是否非阻塞模式
+     * @return true-非阻塞, false-阻塞
+     */
+    bool isNonBlock() const;
+
+    /**
      * @brief 获取发送缓冲区大小
      * @return 发送缓冲区大小
      */
-    size_t getSendBufferSize() const;
-
-    /**
-     * @brief 设置发送缓冲区大小
-     * @param bufferSize 发送缓冲区大小
-     * @return true-设置成功, false-设置失败
-     */
-    bool setSendBufferSize(size_t bufferSize);
+    int getSendBufferSize() const;
 
     /**
      * @brief 获取接收缓冲区大小
      * @return 接收缓冲区大小
      */
-    size_t getRecvBufferSize() const;
+    int getRecvBufferSize() const;
 
     /**
-     * @brief 设置接收缓冲区大小
-     * @param bufferSize 接收缓冲区大小
-     * @return true-设置成功, false-设置失败
+     * @brief 获取是否启用Nagle算法
+     * @return true-启用, false-不启用
      */
-    bool setRecvBufferSize(size_t bufferSize);
+    bool isNagleEnable() const;
 
 private:
     /**
@@ -97,6 +119,10 @@ private:
 private:
     boost::asio::io_context m_ioContext; /* IO上下文 */
     boost::asio::ip::tcp::socket m_socket; /* 套接字 */
+    std::atomic<int> m_nonBlock = {-1}; /* 是否非阻塞: <0-默认, 0-阻塞, 1-非阻塞 */
+    std::atomic<int> m_sendBufferSize = {-1}; /* 发送缓冲区大小(字节), <=0-默认, >0-指定大小 */
+    std::atomic<int> m_recvBufferSize = {-1}; /* 接收缓冲区大小(字节), <=0-默认, >0-指定大小 */
+    std::atomic<int> m_enableNagle = {-1}; /* 是否禁用Nagle算法, <0-默认, 0-禁用, 1-启用 */
     std::atomic<uint16_t> m_localPort = {0}; /* 本地端口 */
     std::vector<unsigned char> m_recvBuf; /* 接收缓冲区 */
 };

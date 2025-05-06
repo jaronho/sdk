@@ -23,6 +23,20 @@ void UdpNode::setDataCallback(const UDP_DATA_CALLBACK& onDataCb)
 {
     m_onDataCallback = onDataCb;
 }
+void UdpNode::setNonBlock(bool nonBlock)
+{
+    m_nonBlock = nonBlock ? 1 : 0;
+}
+
+void UdpNode::setSendBufferSize(int bufferSize)
+{
+    m_sendBufferSize = bufferSize;
+}
+
+void UdpNode::setRecvBufferSize(int bufferSize)
+{
+    m_recvBufferSize = bufferSize;
+}
 
 void UdpNode::run(const std::string& host, unsigned int port, bool broadcast)
 {
@@ -52,6 +66,18 @@ void UdpNode::run(const std::string& host, unsigned int port, bool broadcast)
             }
         });
         udpHandler->setDataCallback(m_onDataCallback);
+        if (m_nonBlock >= 0)
+        {
+            udpHandler->setNonBlock(m_nonBlock > 0 ? true : false);
+        }
+        if (m_sendBufferSize > 0)
+        {
+            udpHandler->setSendBufferSize(m_sendBufferSize);
+        }
+        if (m_recvBufferSize > 0)
+        {
+            udpHandler->setRecvBufferSize(m_recvBufferSize);
+        }
         {
             std::lock_guard<std::mutex> locker(m_mutex);
             m_udpHandler = udpHandler;
@@ -171,6 +197,48 @@ void UdpNode::stop()
 bool UdpNode::isRunning() const
 {
     return (RunStatus::running == m_runStatus);
+}
+
+bool UdpNode::isNonBlock()
+{
+    std::shared_ptr<UdpHandler> udpHandler = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        udpHandler = m_udpHandler;
+    }
+    if (udpHandler)
+    {
+        return udpHandler->isNonBlock();
+    }
+    return false;
+}
+
+int UdpNode::getSendBufferSize()
+{
+    std::shared_ptr<UdpHandler> udpHandler = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        udpHandler = m_udpHandler;
+    }
+    if (udpHandler)
+    {
+        return udpHandler->getSendBufferSize();
+    }
+    return -1;
+}
+
+int UdpNode::getRecvBufferSize()
+{
+    std::shared_ptr<UdpHandler> udpHandler = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        udpHandler = m_udpHandler;
+    }
+    if (udpHandler)
+    {
+        return udpHandler->getRecvBufferSize();
+    }
+    return -1;
 }
 
 boost::asio::ip::udp::endpoint UdpNode::getLocalEndpoint()

@@ -2,6 +2,21 @@
 
 namespace nsocket
 {
+void SocketUdpBase::setNonBlock(bool nonBlock)
+{
+    m_nonBlock = (nonBlock ? 1 : 0);
+}
+
+void SocketUdpBase::setSendBufferSize(int bufferSize)
+{
+    m_sendBufferSize = bufferSize;
+}
+
+void SocketUdpBase::setRecvBufferSize(int bufferSize)
+{
+    m_recvBufferSize = bufferSize;
+}
+
 SocketUdp::SocketUdp(boost::asio::ip::udp::socket socket) : m_socket(std::move(socket)) {}
 
 SocketUdp::~SocketUdp()
@@ -32,7 +47,38 @@ void SocketUdp::open(const boost::asio::ip::udp::endpoint& point, bool broadcast
         }
         else
         {
-            m_socket.set_option(boost::asio::socket_base::broadcast(broadcast), code);
+            do
+            {
+                if (m_nonBlock >= 0)
+                {
+                    m_socket.non_blocking(m_nonBlock > 0 ? true : false, code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_sendBufferSize > 0)
+                {
+                    m_socket.set_option(boost::asio::socket_base::send_buffer_size(m_sendBufferSize), code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_recvBufferSize > 0)
+                {
+                    m_socket.set_option(boost::asio::socket_base::receive_buffer_size(m_recvBufferSize), code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                m_socket.set_option(boost::asio::socket_base::broadcast(broadcast), code);
+                if (code)
+                {
+                    break;
+                }
+            } while (0);
             if (code)
             {
                 m_socket.close();
@@ -128,67 +174,17 @@ bool SocketUdp::isNonBlock() const
     return m_socket.non_blocking();
 }
 
-bool SocketUdp::setNonBlock(bool nonBlock)
+int SocketUdp::getSendBufferSize() const
 {
-    if (m_socket.is_open())
-    {
-        boost::system::error_code code;
-        m_socket.non_blocking(nonBlock, code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
+    boost::asio::socket_base::send_buffer_size opt;
+    m_socket.get_option(opt);
+    return opt.value();
 }
 
-size_t SocketUdp::getSendBufferSize() const
+int SocketUdp::getRecvBufferSize() const
 {
-    if (m_socket.is_open())
-    {
-        boost::asio::socket_base::send_buffer_size opt;
-        m_socket.get_option(opt);
-        return opt.value();
-    }
-    return 0;
-}
-
-bool SocketUdp::setSendBufferSize(size_t bufferSize)
-{
-    if (m_socket.is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_socket.set_option(boost::asio::socket_base::send_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-size_t SocketUdp::getRecvBufferSize() const
-{
-    if (m_socket.is_open())
-    {
-        boost::asio::socket_base::receive_buffer_size opt;
-        m_socket.get_option(opt);
-        return opt.value();
-    }
-    return 0;
-}
-
-bool SocketUdp::setRecvBufferSize(size_t bufferSize)
-{
-    if (m_socket.is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_socket.set_option(boost::asio::socket_base::receive_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
+    boost::asio::socket_base::receive_buffer_size opt;
+    m_socket.get_option(opt);
+    return opt.value();
 }
 } // namespace nsocket

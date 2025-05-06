@@ -41,6 +41,26 @@ void Client::setCloseCallback(const WS_CLI_CLOSE_CALLBACK& cb)
     m_onCloseCallback = cb;
 }
 
+void Client::setNonBlock(bool nonBlock)
+{
+    m_nonBlock = (nonBlock ? 1 : 0);
+}
+
+void Client::setSendBufferSize(int bufferSize)
+{
+    m_sendBufferSize = bufferSize;
+}
+
+void Client::setRecvBufferSize(int bufferSize)
+{
+    m_recvBufferSize = bufferSize;
+}
+
+void Client::setNagleEnable(bool enable)
+{
+    m_enableNagle = (enable ? 1 : 0);
+}
+
 void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool sslOn, int sslWay, int certFmt, const std::string& certFile,
                  const std::string& pkFile, const std::string& pkPwd)
 {
@@ -100,6 +120,22 @@ void Client::run(const std::string& hostPortPath, uint16_t defaultPort, bool ssl
             self->handleData(data);
         }
     });
+    if (m_nonBlock >= 0)
+    {
+        tcpClient->setNonBlock(m_nonBlock > 0 ? true : false);
+    }
+    if (m_sendBufferSize > 0)
+    {
+        tcpClient->setSendBufferSize(m_sendBufferSize);
+    }
+    if (m_recvBufferSize > 0)
+    {
+        tcpClient->setRecvBufferSize(m_recvBufferSize);
+    }
+    if (m_enableNagle >= 0)
+    {
+        tcpClient->setNagleEnable(m_enableNagle > 0 ? true : false);
+    }
     {
         std::lock_guard<std::mutex> locker(m_mutexTcpClient);
         m_tcpClient = tcpClient;
@@ -279,6 +315,62 @@ bool Client::isRunning()
     if (tcpClient && tcpClient->isRunning())
     {
         return true;
+    }
+    return false;
+}
+
+bool Client::isNonBlock()
+{
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        return tcpClient->isNonBlock();
+    }
+    return false;
+}
+
+int Client::getSendBufferSize()
+{
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        return tcpClient->getSendBufferSize();
+    }
+    return -1;
+}
+
+int Client::getRecvBufferSize()
+{
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        return tcpClient->getRecvBufferSize();
+    }
+    return -1;
+}
+
+bool Client::isNagleEnable()
+{
+    std::shared_ptr<TcpClient> tcpClient = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexTcpClient);
+        tcpClient = m_tcpClient;
+    }
+    if (tcpClient)
+    {
+        return tcpClient->isNagleEnable();
     }
     return false;
 }

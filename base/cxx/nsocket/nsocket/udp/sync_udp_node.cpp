@@ -12,6 +12,21 @@ SyncUdpNode::~SyncUdpNode()
     close();
 }
 
+void SyncUdpNode::setNonBlock(bool nonBlock)
+{
+    m_nonBlock = nonBlock ? 1 : 0;
+}
+
+void SyncUdpNode::setSendBufferSize(int bufferSize)
+{
+    m_sendBufferSize = bufferSize;
+}
+
+void SyncUdpNode::setRecvBufferSize(int bufferSize)
+{
+    m_recvBufferSize = bufferSize;
+}
+
 boost::system::error_code SyncUdpNode::open(const std::string& host, uint16_t port, bool broadcast,
                                             const std::chrono::steady_clock::duration& timeout)
 {
@@ -24,7 +39,38 @@ boost::system::error_code SyncUdpNode::open(const std::string& host, uint16_t po
     m_socket.open(boost::asio::ip::udp::v4(), *ec);
     if (!(*ec))
     {
-        m_socket.set_option(boost::asio::socket_base::broadcast(broadcast), *ec);
+        do
+        {
+            if (m_nonBlock >= 0)
+            {
+                m_socket.non_blocking(m_nonBlock > 0 ? true : false, *ec);
+                if (*ec)
+                {
+                    break;
+                }
+            }
+            if (m_sendBufferSize > 0)
+            {
+                m_socket.set_option(boost::asio::socket_base::send_buffer_size(m_sendBufferSize), *ec);
+                if (*ec)
+                {
+                    break;
+                }
+            }
+            if (m_recvBufferSize > 0)
+            {
+                m_socket.set_option(boost::asio::socket_base::receive_buffer_size(m_recvBufferSize), *ec);
+                if (*ec)
+                {
+                    break;
+                }
+            }
+            m_socket.set_option(boost::asio::socket_base::broadcast(broadcast), *ec);
+            if (*ec)
+            {
+                break;
+            }
+        } while (0);
         if (*ec)
         {
             m_socket.close();
@@ -125,54 +171,23 @@ void SyncUdpNode::close()
     m_ioContext.stop();
 }
 
-size_t SyncUdpNode::getSendBufferSize() const
+bool SyncUdpNode::isNonBlock() const
 {
-    if (m_socket.is_open())
-    {
-        boost::asio::socket_base::send_buffer_size opt;
-        m_socket.get_option(opt);
-        return opt.value();
-    }
-    return 0;
+    return m_socket.non_blocking();
 }
 
-bool SyncUdpNode::setSendBufferSize(size_t bufferSize)
+int SyncUdpNode::getSendBufferSize() const
 {
-    if (m_socket.is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_socket.set_option(boost::asio::socket_base::send_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
+    boost::asio::socket_base::send_buffer_size opt;
+    m_socket.get_option(opt);
+    return opt.value();
 }
 
-size_t SyncUdpNode::getRecvBufferSize() const
+int SyncUdpNode::getRecvBufferSize() const
 {
-    if (m_socket.is_open())
-    {
-        boost::asio::socket_base::receive_buffer_size opt;
-        m_socket.get_option(opt);
-        return opt.value();
-    }
-    return 0;
-}
-
-bool SyncUdpNode::setRecvBufferSize(size_t bufferSize)
-{
-    if (m_socket.is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_socket.set_option(boost::asio::socket_base::receive_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
+    boost::asio::socket_base::receive_buffer_size opt;
+    m_socket.get_option(opt);
+    return opt.value();
 }
 
 bool SyncUdpNode::runImpl(const std::chrono::steady_clock::duration& timeout)

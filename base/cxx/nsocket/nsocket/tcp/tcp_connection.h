@@ -50,6 +50,30 @@ public:
     void setDataCallback(const TCP_DATA_CALLBACK& onDataCb);
 
     /**
+     * @brief 设置非阻塞模式(连接前调用才有效)
+     * @param nonBlock 非阻塞模式, true-是, false-否(阻塞模式)
+     */
+    void setNonBlock(bool nonBlock);
+
+    /**
+     * @brief 设置发送缓冲区大小(连接前调用才有效)
+     * @param bufferSize 发送缓冲区大小
+     */
+    void setSendBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置接收缓冲区大小(连接前调用才有效)
+     * @param bufferSize 接收缓冲区大小
+     */
+    void setRecvBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置是否启用Nagle算法(连接前调用才有效)
+     * @param enable true-启用, false-关闭
+     */
+    void setNagleEnable(bool enable);
+
+    /**
      * @brief 设置本地端口(连接前调用才有效)
      * @param port 本地端口
      */
@@ -97,6 +121,30 @@ public:
     bool isConnected() const;
 
     /**
+     * @brief 是否非阻塞模式
+     * @return true-非阻塞, false-阻塞
+     */
+    bool isNonBlock();
+
+    /**
+     * @brief 获取发送缓冲区大小
+     * @return 发送缓冲区大小
+     */
+    int getSendBufferSize();
+
+    /**
+     * @brief 获取接收缓冲区大小
+     * @return 接收缓冲区大小
+     */
+    int getRecvBufferSize();
+
+    /**
+     * @brief 获取是否启用Nagle算法
+     * @return true-启用, false-不启用
+     */
+    bool isNagleEnable();
+
+    /**
      * @brief 获取本端端点
      * @return 本端端点
      */
@@ -107,13 +155,6 @@ public:
      * @return 远端端点
      */
     boost::asio::ip::tcp::endpoint getRemoteEndpoint();
-
-    /**
-     * @brief 设置非阻塞(说明: 需要连接成功后才调用)
-     * @param nonBlock true-非阻塞, false-阻塞
-     * @return true-设置成功, false-设置失败
-     */
-    bool setNonBlock(bool nonBlock);
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
     /**

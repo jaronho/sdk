@@ -92,6 +92,30 @@ public:
     void setCloseCallback(const WS_CLI_CLOSE_CALLBACK& cb);
 
     /**
+     * @brief 设置非阻塞(运行前调用才有效)
+     * @param nonBlock true-非阻塞, false-阻塞
+     */
+    void setNonBlock(bool nonBlock);
+
+    /**
+     * @brief 设置发送缓冲区大小(运行前调用才有效)
+     * @param bufferSize 发送缓冲区大小
+     */
+    void setSendBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置接收缓冲区大小(运行前调用才有效)
+     * @param bufferSize 接收缓冲区大小
+     */
+    void setRecvBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置是否启用Nagle算法(运行前调用才有效)
+     * @param enable true-启用, false-关闭
+     */
+    void setNagleEnable(bool enable);
+
+    /**
      * @brief 运行(进入循环, 阻塞和占用调用线程)
      * @param hostPortPath 远端主机端口路径, 例如: ws://127.0.0.1:4444/echo
      * @param defaultPort 默认远端端口, 当hostPortPath没有包含端口时则使用默认端口
@@ -145,6 +169,30 @@ public:
      * @param true-是, false-否
      */
     bool isRunning();
+
+    /**
+     * @brief 是否非阻塞模式
+     * @return true-非阻塞, false-阻塞
+     */
+    bool isNonBlock();
+
+    /**
+     * @brief 获取发送缓冲区大小
+     * @return 发送缓冲区大小
+     */
+    int getSendBufferSize();
+
+    /**
+     * @brief 获取接收缓冲区大小
+     * @return 接收缓冲区大小
+     */
+    int getRecvBufferSize();
+
+    /**
+     * @brief 获取是否启用Nagle算法
+     * @return true-启用, false-不启用
+     */
+    bool isNagleEnable();
 
     /**
      * @brief 获取本端端点
@@ -217,6 +265,10 @@ private:
     WS_CLI_PONG_CALLBACK m_onPongCallback = nullptr; /* pong回调 */
     std::shared_ptr<CliMessager> m_messager = nullptr; /* 消息接收者 */
     WS_CLI_CLOSE_CALLBACK m_onCloseCallback = nullptr; /* 连接关闭回调 */
+    std::atomic<int> m_nonBlock = {-1}; /* 是否非阻塞: <0-默认, 0-阻塞, 1-非阻塞 */
+    std::atomic<int> m_sendBufferSize = {-1}; /* 发送缓冲区大小(字节), <=0-默认, >0-指定大小 */
+    std::atomic<int> m_recvBufferSize = {-1}; /* 接收缓冲区大小(字节), <=0-默认, >0-指定大小 */
+    std::atomic<int> m_enableNagle = {-1}; /* 是否禁用Nagle算法, <0-默认, 0-禁用, 1-启用 */
 };
 } // namespace ws
 } // namespace nsocket

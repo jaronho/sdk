@@ -2,16 +2,36 @@
 
 namespace nsocket
 {
-void SocketTcpBase::setLocalPort(uint16_t port)
-{
-    m_localPort = port;
-}
-
 SocketTcp::SocketTcp(boost::asio::ip::tcp::socket socket) : m_socket(std::move(socket)) {}
 
 SocketTcp::~SocketTcp()
 {
     close();
+}
+
+void SocketTcpBase::setNonBlock(bool nonBlock)
+{
+    m_nonBlock = (nonBlock ? 1 : 0);
+}
+
+void SocketTcpBase::setSendBufferSize(int bufferSize)
+{
+    m_sendBufferSize = bufferSize;
+}
+
+void SocketTcpBase::setRecvBufferSize(int bufferSize)
+{
+    m_recvBufferSize = bufferSize;
+}
+
+void SocketTcpBase::setNagleEnable(bool enable)
+{
+    m_enableNagle = (enable ? 1 : 0);
+}
+
+void SocketTcpBase::setLocalPort(uint16_t port)
+{
+    m_localPort = port;
 }
 
 void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async)
@@ -37,10 +57,49 @@ void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
         }
         else
         {
-            if (m_localPort > 0)
+            do
             {
-                m_socket.bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_localPort), code);
-            }
+                if (m_nonBlock >= 0)
+                {
+                    m_socket.non_blocking(m_nonBlock > 0 ? true : false, code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_sendBufferSize > 0)
+                {
+                    m_socket.set_option(boost::asio::socket_base::send_buffer_size(m_sendBufferSize), code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_recvBufferSize > 0)
+                {
+                    m_socket.set_option(boost::asio::socket_base::receive_buffer_size(m_recvBufferSize), code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_enableNagle >= 0)
+                {
+                    m_socket.set_option(boost::asio::ip::tcp::no_delay(m_enableNagle > 0 ? false : true), code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_localPort > 0)
+                {
+                    m_socket.bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_localPort), code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+            } while (0);
             if (code)
             {
                 m_socket.close();
@@ -122,6 +181,32 @@ bool SocketTcp::isOpened() const
     return m_socket.is_open();
 }
 
+bool SocketTcp::isNonBlock() const
+{
+    return m_socket.non_blocking();
+}
+
+int SocketTcp::getSendBufferSize() const
+{
+    boost::asio::socket_base::send_buffer_size opt;
+    m_socket.get_option(opt);
+    return opt.value();
+}
+
+int SocketTcp::getRecvBufferSize() const
+{
+    boost::asio::socket_base::receive_buffer_size opt;
+    m_socket.get_option(opt);
+    return opt.value();
+}
+
+bool SocketTcp::isNagleEnable() const
+{
+    boost::asio::ip::tcp::no_delay opt;
+    m_socket.get_option(opt);
+    return (opt.value() ? false : true);
+}
+
 boost::asio::ip::tcp::endpoint SocketTcp::getLocalEndpoint() const
 {
     boost::system::error_code code;
@@ -142,75 +227,6 @@ boost::asio::ip::tcp::endpoint SocketTcp::getRemoteEndpoint() const
         return m_remotePoint;
     }
     return point;
-}
-
-bool SocketTcp::isNonBlock() const
-{
-    return m_socket.non_blocking();
-}
-
-bool SocketTcp::setNonBlock(bool nonBlock)
-{
-    if (m_socket.is_open())
-    {
-        boost::system::error_code code;
-        m_socket.non_blocking(nonBlock, code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-size_t SocketTcp::getSendBufferSize() const
-{
-    if (m_socket.is_open())
-    {
-        boost::asio::socket_base::send_buffer_size opt;
-        m_socket.get_option(opt);
-        return opt.value();
-    }
-    return 0;
-}
-
-bool SocketTcp::setSendBufferSize(size_t bufferSize)
-{
-    if (m_socket.is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_socket.set_option(boost::asio::socket_base::send_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-size_t SocketTcp::getRecvBufferSize() const
-{
-    if (m_socket.is_open())
-    {
-        boost::asio::socket_base::receive_buffer_size opt;
-        m_socket.get_option(opt);
-        return opt.value();
-    }
-    return 0;
-}
-
-bool SocketTcp::setRecvBufferSize(size_t bufferSize)
-{
-    if (m_socket.is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_socket.set_option(boost::asio::socket_base::receive_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)
@@ -247,10 +263,49 @@ void SocketTls::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
         }
         else
         {
-            if (m_localPort > 0)
+            do
             {
-                m_sslStream.lowest_layer().bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_localPort), code);
-            }
+                if (m_nonBlock >= 0)
+                {
+                    m_sslStream.lowest_layer().non_blocking(m_nonBlock > 0 ? true : false, code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_sendBufferSize > 0)
+                {
+                    m_sslStream.lowest_layer().set_option(boost::asio::socket_base::send_buffer_size(m_sendBufferSize), code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_recvBufferSize > 0)
+                {
+                    m_sslStream.lowest_layer().set_option(boost::asio::socket_base::receive_buffer_size(m_recvBufferSize), code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_enableNagle >= 0)
+                {
+                    m_sslStream.lowest_layer().set_option(boost::asio::ip::tcp::no_delay(m_enableNagle > 0 ? false : true), code);
+                    if (code)
+                    {
+                        break;
+                    }
+                }
+                if (m_localPort > 0)
+                {
+                    m_sslStream.lowest_layer().bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_localPort), code);
+                }
+                if (code)
+                {
+                    break;
+                }
+            } while (0);
             if (code)
             {
                 if (onConnectCb)
@@ -331,6 +386,32 @@ bool SocketTls::isOpened() const
     return m_sslStream.lowest_layer().is_open();
 }
 
+bool SocketTls::isNonBlock() const
+{
+    return m_sslStream.lowest_layer().non_blocking();
+}
+
+int SocketTls::getSendBufferSize() const
+{
+    boost::asio::socket_base::send_buffer_size opt;
+    m_sslStream.lowest_layer().get_option(opt);
+    return opt.value();
+}
+
+int SocketTls::getRecvBufferSize() const
+{
+    boost::asio::socket_base::receive_buffer_size opt;
+    m_sslStream.lowest_layer().get_option(opt);
+    return opt.value();
+}
+
+bool SocketTls::isNagleEnable() const
+{
+    boost::asio::ip::tcp::no_delay opt;
+    m_sslStream.lowest_layer().get_option(opt);
+    return (opt.value() ? false : true);
+}
+
 boost::asio::ip::tcp::endpoint SocketTls::getLocalEndpoint() const
 {
     boost::system::error_code code;
@@ -351,75 +432,6 @@ boost::asio::ip::tcp::endpoint SocketTls::getRemoteEndpoint() const
         return m_remotePoint;
     }
     return point;
-}
-
-bool SocketTls::isNonBlock() const
-{
-    return m_sslStream.lowest_layer().non_blocking();
-}
-
-bool SocketTls::setNonBlock(bool nonBlock)
-{
-    if (m_sslStream.lowest_layer().is_open())
-    {
-        boost::system::error_code code;
-        m_sslStream.lowest_layer().non_blocking(nonBlock, code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-size_t SocketTls::getSendBufferSize() const
-{
-    if (m_sslStream.lowest_layer().is_open())
-    {
-        boost::asio::socket_base::send_buffer_size opt;
-        m_sslStream.lowest_layer().get_option(opt);
-        return opt.value();
-    }
-    return 0;
-}
-
-bool SocketTls::setSendBufferSize(size_t bufferSize)
-{
-    if (m_sslStream.lowest_layer().is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_sslStream.lowest_layer().set_option(boost::asio::socket_base::send_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-size_t SocketTls::getRecvBufferSize() const
-{
-    if (m_sslStream.lowest_layer().is_open())
-    {
-        boost::asio::socket_base::receive_buffer_size opt;
-        m_sslStream.lowest_layer().get_option(opt);
-        return opt.value();
-    }
-    return 0;
-}
-
-bool SocketTls::setRecvBufferSize(size_t bufferSize)
-{
-    if (m_sslStream.lowest_layer().is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_sslStream.lowest_layer().set_option(boost::asio::socket_base::receive_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
 }
 
 void SocketTls::handshake(boost::asio::ssl::stream_base::handshake_type type, const TLS_HANDSHAKE_CALLBACK& onHandshakeCb, bool async)

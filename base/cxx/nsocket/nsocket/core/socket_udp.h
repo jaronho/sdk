@@ -39,6 +39,24 @@ public:
     virtual ~SocketUdpBase() = default;
 
     /**
+     * @brief 设置非阻塞模式(打开前调用才有效)
+     * @param nonBlock 非阻塞模式, true-是, false-否(阻塞模式)
+     */
+    void setNonBlock(bool nonBlock);
+
+    /**
+     * @brief 设置发送缓冲区大小(打开前调用才有效)
+     * @param bufferSize 发送缓冲区大小
+     */
+    void setSendBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置接收缓冲区大小(打开前调用才有效)
+     * @param bufferSize 接收缓冲区大小
+     */
+    void setRecvBufferSize(int bufferSize);
+
+    /**
      * @brief 打开套接字
      * @param point 本地端点
      * @param broadcast 是否广播, true-是, false-否
@@ -74,51 +92,33 @@ public:
     virtual bool isOpened() const = 0;
 
     /**
-     * @brief 获取本地端点
-     * @return 本地端点
-     */
-    virtual boost::asio::ip::udp::endpoint getLocalEndpoint() const = 0;
-
-    /**
      * @brief 是否非阻塞模式
      * @return true-非阻塞, false-阻塞
      */
     virtual bool isNonBlock() const = 0;
 
     /**
-     * @brief 设置非阻塞模式
-     * @param nonBlock 非阻塞模式, true-是, false-否(阻塞模式)
-     * @return true-设置成功, false-设置失败
-     */
-    virtual bool setNonBlock(bool nonBlock) = 0;
-
-    /**
      * @brief 获取发送缓冲区大小
      * @return 发送缓冲区大小
      */
-    virtual size_t getSendBufferSize() const = 0;
-
-    /**
-     * @brief 设置发送缓冲区大小
-     * @param bufferSize 发送缓冲区大小
-     * @return true-设置成功, false-设置失败
-     */
-    virtual bool setSendBufferSize(size_t bufferSize) = 0;
+    virtual int getSendBufferSize() const = 0;
 
     /**
      * @brief 获取接收缓冲区大小
      * @return 接收缓冲区大小
      */
-    virtual size_t getRecvBufferSize() const = 0;
+    virtual int getRecvBufferSize() const = 0;
 
     /**
-     * @brief 设置接收缓冲区大小
-     * @param bufferSize 接收缓冲区大小
-     * @return true-设置成功, false-设置失败
+     * @brief 获取本地端点
+     * @return 本地端点
      */
-    virtual bool setRecvBufferSize(size_t bufferSize) = 0;
+    virtual boost::asio::ip::udp::endpoint getLocalEndpoint() const = 0;
 
 protected:
+    std::atomic<int> m_nonBlock = {-1}; /* 是否非阻塞: <0-默认, 0-阻塞, 1-非阻塞 */
+    std::atomic<int> m_sendBufferSize = {-1}; /* 发送缓冲区大小(字节), <=0-默认, >0-指定大小 */
+    std::atomic<int> m_recvBufferSize = {-1}; /* 接收缓冲区大小(字节), <=0-默认, >0-指定大小 */
     boost::asio::ip::udp::endpoint m_localPoint; /* 本地端点 */
 };
 
@@ -143,19 +143,13 @@ public:
 
     bool isOpened() const override;
 
-    boost::asio::ip::udp::endpoint getLocalEndpoint() const override;
-
     bool isNonBlock() const override;
 
-    bool setNonBlock(bool nonBlock) override;
+    int getSendBufferSize() const override;
 
-    size_t getSendBufferSize() const override;
+    int getRecvBufferSize() const override;
 
-    bool setSendBufferSize(size_t bufferSize) override;
-
-    size_t getRecvBufferSize() const override;
-
-    bool setRecvBufferSize(size_t bufferSize) override;
+    boost::asio::ip::udp::endpoint getLocalEndpoint() const override;
 
 private:
     boost::asio::ip::udp::socket m_socket;

@@ -49,6 +49,58 @@ void TcpConnection::setDataCallback(const TCP_DATA_CALLBACK& onDataCb)
     m_onDataCallback = onDataCb;
 }
 
+void TcpConnection::setNonBlock(bool nonBlock)
+{
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        socketTcpBase->setNonBlock(nonBlock);
+    }
+}
+
+void TcpConnection::setSendBufferSize(int bufferSize)
+{
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        socketTcpBase->setSendBufferSize(bufferSize);
+    }
+}
+
+void TcpConnection::setRecvBufferSize(int bufferSize)
+{
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        socketTcpBase->setRecvBufferSize(bufferSize);
+    }
+}
+
+void TcpConnection::setNagleEnable(bool enable)
+{
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        socketTcpBase->setNagleEnable(enable);
+    }
+}
+
 void TcpConnection::setLocalPort(uint16_t port)
 {
     std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
@@ -302,6 +354,62 @@ bool TcpConnection::isConnected() const
     return m_isConnected;
 }
 
+bool TcpConnection::isNonBlock()
+{
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        return socketTcpBase->isNonBlock();
+    }
+    return false;
+}
+
+int TcpConnection::getSendBufferSize()
+{
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        return socketTcpBase->getSendBufferSize();
+    }
+    return -1;
+}
+
+int TcpConnection::getRecvBufferSize()
+{
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        return socketTcpBase->getRecvBufferSize();
+    }
+    return -1;
+}
+
+bool TcpConnection::isNagleEnable()
+{
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        return socketTcpBase->isNagleEnable();
+    }
+    return false;
+}
+
 boost::asio::ip::tcp::endpoint TcpConnection::getLocalEndpoint()
 {
     std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
@@ -328,20 +436,6 @@ boost::asio::ip::tcp::endpoint TcpConnection::getRemoteEndpoint()
         return socketTcpBase->getRemoteEndpoint();
     }
     return boost::asio::ip::tcp::endpoint();
-}
-
-bool TcpConnection::setNonBlock(bool nonBlock)
-{
-    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
-    {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        socketTcpBase = m_socketTcpBase;
-    }
-    if (socketTcpBase)
-    {
-        return socketTcpBase->setNonBlock(nonBlock);
-    }
-    return false;
 }
 
 #if (1 == ENABLE_NSOCKET_OPENSSL)

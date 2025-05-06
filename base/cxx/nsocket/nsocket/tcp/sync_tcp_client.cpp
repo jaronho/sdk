@@ -12,6 +12,26 @@ SyncTcpClient::~SyncTcpClient()
     stop();
 }
 
+void SyncTcpClient::setNonBlock(bool nonBlock)
+{
+    m_nonBlock = (nonBlock ? 1 : 0);
+}
+
+void SyncTcpClient::setSendBufferSize(int bufferSize)
+{
+    m_sendBufferSize = bufferSize;
+}
+
+void SyncTcpClient::setRecvBufferSize(int bufferSize)
+{
+    m_recvBufferSize = bufferSize;
+}
+
+void SyncTcpClient::setNagleEnable(bool enable)
+{
+    m_enableNagle = (enable ? 1 : 0);
+}
+
 void SyncTcpClient::setLocalPort(uint16_t port)
 {
     m_localPort = port;
@@ -28,10 +48,49 @@ boost::system::error_code SyncTcpClient::connect(const std::string& host, uint16
     m_socket.open(boost::asio::ip::tcp::v4(), *ec);
     if (!(*ec))
     {
-        if (m_localPort > 0)
+        do
         {
-            m_socket.bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_localPort), *ec);
-        }
+            if (m_nonBlock >= 0)
+            {
+                m_socket.non_blocking(m_nonBlock > 0 ? true : false, *ec);
+                if (*ec)
+                {
+                    break;
+                }
+            }
+            if (m_sendBufferSize > 0)
+            {
+                m_socket.set_option(boost::asio::socket_base::send_buffer_size(m_sendBufferSize), *ec);
+                if (*ec)
+                {
+                    break;
+                }
+            }
+            if (m_recvBufferSize > 0)
+            {
+                m_socket.set_option(boost::asio::socket_base::receive_buffer_size(m_recvBufferSize), *ec);
+                if (*ec)
+                {
+                    break;
+                }
+            }
+            if (m_enableNagle >= 0)
+            {
+                m_socket.set_option(boost::asio::ip::tcp::no_delay(m_enableNagle > 0 ? false : true), *ec);
+                if (*ec)
+                {
+                    break;
+                }
+            }
+            if (m_localPort > 0)
+            {
+                m_socket.bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_localPort), *ec);
+            }
+            if (*ec)
+            {
+                break;
+            }
+        } while (0);
         if (*ec)
         {
             m_socket.close();
@@ -120,54 +179,30 @@ void SyncTcpClient::stop()
     m_ioContext.stop();
 }
 
-size_t SyncTcpClient::getSendBufferSize() const
+bool SyncTcpClient::isNonBlock() const
 {
-    if (m_socket.is_open())
-    {
-        boost::asio::socket_base::send_buffer_size opt;
-        m_socket.get_option(opt);
-        return opt.value();
-    }
-    return 0;
+    return m_socket.non_blocking();
 }
 
-bool SyncTcpClient::setSendBufferSize(size_t bufferSize)
+int SyncTcpClient::getSendBufferSize() const
 {
-    if (m_socket.is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_socket.set_option(boost::asio::socket_base::send_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
+    boost::asio::socket_base::send_buffer_size opt;
+    m_socket.get_option(opt);
+    return opt.value();
 }
 
-size_t SyncTcpClient::getRecvBufferSize() const
+int SyncTcpClient::getRecvBufferSize() const
 {
-    if (m_socket.is_open())
-    {
-        boost::asio::socket_base::receive_buffer_size opt;
-        m_socket.get_option(opt);
-        return opt.value();
-    }
-    return 0;
+    boost::asio::socket_base::receive_buffer_size opt;
+    m_socket.get_option(opt);
+    return opt.value();
 }
 
-bool SyncTcpClient::setRecvBufferSize(size_t bufferSize)
+bool SyncTcpClient::isNagleEnable() const
 {
-    if (m_socket.is_open() && bufferSize > 0)
-    {
-        boost::system::error_code code;
-        m_socket.set_option(boost::asio::socket_base::receive_buffer_size(bufferSize), code);
-        if (!code)
-        {
-            return true;
-        }
-    }
-    return false;
+    boost::asio::ip::tcp::no_delay opt;
+    m_socket.get_option(opt);
+    return opt.value();
 }
 
 bool SyncTcpClient::runImpl(const std::chrono::steady_clock::duration& timeout)

@@ -36,6 +36,24 @@ public:
     void setDataCallback(const UDP_DATA_CALLBACK& onDataCb);
 
     /**
+     * @brief 设置非阻塞(运行前调用才有效)
+     * @param nonBlock true-非阻塞, false-阻塞
+     */
+    void setNonBlock(bool nonBlock);
+
+    /**
+     * @brief 设置发送缓冲区大小(运行前调用才有效)
+     * @param bufferSize 发送缓冲区大小
+     */
+    void setSendBufferSize(int bufferSize);
+
+    /**
+     * @brief 设置接收缓冲区大小(运行前调用才有效)
+     * @param bufferSize 接收缓冲区大小
+     */
+    void setRecvBufferSize(int bufferSize);
+
+    /**
      * @brief 运行(进入循环, 阻塞和占用调用线程)
      * @param host 本地地址
      * @param port 本地端口
@@ -74,6 +92,24 @@ public:
     bool isRunning() const;
 
     /**
+     * @brief 是否非阻塞模式
+     * @return true-非阻塞, false-阻塞
+     */
+    bool isNonBlock();
+
+    /**
+     * @brief 获取发送缓冲区大小
+     * @return 发送缓冲区大小
+     */
+    int getSendBufferSize();
+
+    /**
+     * @brief 获取接收缓冲区大小
+     * @return 接收缓冲区大小
+     */
+    int getRecvBufferSize();
+
+    /**
      * @brief 获取本端端点
      * @return 本端端点
      */
@@ -93,6 +129,9 @@ private:
     size_t m_bufferSize; /* 数据接收缓冲区大小 */
     UDP_OPEN_CALLBACK m_onOpenCallback = nullptr; /* 打开回调 */
     UDP_DATA_CALLBACK m_onDataCallback = nullptr; /* 数据回调 */
+    std::atomic<int> m_nonBlock = {-1}; /* 是否非阻塞: <0-默认, 0-阻塞, 1-非阻塞 */
+    std::atomic<int> m_sendBufferSize = {-1}; /* 发送缓冲区大小(字节), <=0-默认, >0-指定大小 */
+    std::atomic<int> m_recvBufferSize = {-1}; /* 接收缓冲区大小(字节), <=0-默认, >0-指定大小 */
     enum class RunStatus
     {
         idle, /* 空闲 */
