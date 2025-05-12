@@ -7,7 +7,6 @@
 #ifdef _WIN32
 #include <Shlobj.h>
 #include <Windows.h>
-#include <atlstr.h>
 #include <shellapi.h>
 #else
 #include <sys/statfs.h>
