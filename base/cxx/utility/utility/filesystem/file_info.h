@@ -237,9 +237,12 @@ public:
 
     /**
      * @brief 判断是否为文本文件
+     * @param ratio 非文本字符比例, 当比例大于该值时表示非文本, 为0时表示只要有非文本字符就确认
+     * @param maxSampleSize 最大采样字节数, 0-表示全部采样
+     * @param bufSize 缓冲区大小
      * @return true-文本文件, false-非文本文件
      */
-    bool isTextFile() const;
+    bool isTextFile(float ratio = 0, size_t maxSampleSize = 0, size_t bufSize = 4096) const;
 
     /**
      * @brief 从文件中读取数据
@@ -292,9 +295,12 @@ public:
     /**
      * @brief 判断文件是否为文本数据
      * @param f 文件指针
+     * @param ratio 非文本字符比例, 当比例大于该值时表示非文本, 为0时表示只要有非文本字符就确认
+     * @param maxSampleSize 最大采样字节数, 0-表示全部采样
+     * @param bufSize 缓冲区大小
      * @return true-文本数据, false-二进制数据
      */
-    static bool isTextData(FILE* f);
+    static bool isTextData(FILE* f, float ratio = 0, size_t maxSampleSize = 0, size_t bufSize = 4096);
 
 private:
     std::string m_fullName; /* 全路径文件名 */

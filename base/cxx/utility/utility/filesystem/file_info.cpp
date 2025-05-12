@@ -676,7 +676,7 @@ bool FileInfo::editLine(const std::function<bool(size_t num, std::string& line)>
     return ret;
 }
 
-bool FileInfo::isTextFile() const
+bool FileInfo::isTextFile(float ratio, size_t maxSampleSize, size_t bufSize) const
 {
     if (m_fullName.empty())
     {
@@ -691,7 +691,7 @@ bool FileInfo::isTextFile() const
     {
         return false;
     }
-    auto ret = isTextData(f);
+    auto ret = isTextData(f, ratio, maxSampleSize, bufSize);
     fclose(f);
     return ret;
 }
@@ -848,27 +848,56 @@ bool FileInfo::edit(FILE* f, size_t offset, size_t count, const std::function<vo
     return false;
 }
 
-bool FileInfo::isTextData(FILE* f)
+bool FileInfo::isTextData(FILE* f, float ratio, size_t maxSampleSize, size_t bufSize)
 {
     if (!f)
     {
         throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
                                + "] arg 'f' is not opened");
     }
-#ifdef _WIN32
-    _fseeki64(f, 0, SEEK_SET);
-#else
-    fseeko64(f, 0, SEEK_SET);
-#endif
-    char ch[1] = {0};
-    while (!feof(f))
+    bufSize = bufSize > 1024 ? bufSize : 1024;
+    char* buffer = (char*)malloc(bufSize);
+    if (buffer)
     {
-        memset(ch, 0, 1);
-        if (0 == fread(ch, 1, 1, f))
+        fpos_t oriPos;
+        fgetpos(f, &oriPos); /* 保存当前文件指针位置, 以便恢复 */
+#ifdef _WIN32
+        _fseeki64(f, 0, SEEK_SET);
+#else
+        fseeko64(f, 0, SEEK_SET);
+#endif
+        size_t totalRead = 0, illegalCount = 0; /* 当前总读写节数, 非法字符数 */
+        while (!feof(f)) /* 检查文件内容 */
         {
-            break;
+            size_t count = fread(buffer, 1, bufSize, f);
+            if (0 == count)
+            {
+                break;
+            }
+            totalRead += count;
+            for (size_t i = 0; i < count; ++i)
+            {
+                unsigned char ch = (buffer[i]);
+                if (0x00 == ch || (ch < 0x20 && !('\t' == ch || '\n' == ch || '\r' == ch))) /* 检测非文本特征 */
+                {
+                    if (ratio <= 1e-6f)
+                    {
+                        fsetpos(f, &oriPos); /* 恢复文件指针到原始位置 */
+                        free(buffer);
+                        return false;
+                    }
+                    ++illegalCount;
+                    break;
+                }
+            }
+            if (maxSampleSize > 0 && totalRead >= maxSampleSize) /* 采样足够后提前退出 */
+            {
+                break;
+            }
         }
-        if (0x00 == ch[0] || 0xFF == ch[0])
+        fsetpos(f, &oriPos); /* 恢复文件指针到原始位置 */
+        free(buffer);
+        if ((double)illegalCount / totalRead >= ratio)
         {
             return false;
         }
