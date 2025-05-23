@@ -219,33 +219,28 @@ void TcpConnection::handshake(boost::asio::ssl::stream_base::handshake_type type
 
 void TcpConnection::send(const std::vector<unsigned char>& data, const TCP_SEND_CALLBACK& onSendCb)
 {
-    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    if (data.empty())
     {
-        std::lock_guard<std::mutex> locker(m_mutex);
-        socketTcpBase = m_socketTcpBase;
-    }
-    if (socketTcpBase && m_isConnected)
-    {
-        if (data.empty())
+        if (onSendCb)
         {
-            if (onSendCb)
-            {
-                onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_message_available), 0);
-            }
+            onSendCb(boost::system::errc::make_error_code(boost::system::errc::no_message_available), 0);
         }
-        else
+    }
+    else
+    {
+        boost::system::error_code code;
+        size_t sentLength = 0;
         {
-            boost::system::error_code code;
-            size_t sentLength = 0;
+            std::lock_guard<std::mutex> locker(m_mutex);
             while (sentLength < data.size()) /* 循环发送所有数据 */
             {
-                if (m_isConnected)
+                if (m_socketTcpBase && m_isConnected)
                 {
-                    socketTcpBase->send(boost::asio::buffer(data.data() + sentLength, data.size() - sentLength),
-                                        [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
-                                            code = ec;
-                                            sentLength += length;
-                                        });
+                    m_socketTcpBase->send(boost::asio::buffer(data.data() + sentLength, data.size() - sentLength),
+                                          [&code, &sentLength](const boost::system::error_code& ec, size_t length) {
+                                              code = ec;
+                                              sentLength += length;
+                                          });
                     if (code) /* 发送失败 */
                     {
                         break;
@@ -253,19 +248,16 @@ void TcpConnection::send(const std::vector<unsigned char>& data, const TCP_SEND_
                 }
                 else
                 {
-                    onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
-                    return;
+                    code = boost::system::errc::make_error_code(boost::system::errc::not_connected);
+                    sentLength = 0;
+                    break;
                 }
             }
-            if (onSendCb)
-            {
-                onSendCb(code, sentLength);
-            }
         }
-    }
-    else if (onSendCb)
-    {
-        onSendCb(boost::system::errc::make_error_code(boost::system::errc::not_connected), 0);
+        if (onSendCb)
+        {
+            onSendCb(code, sentLength);
+        }
     }
 }
 
