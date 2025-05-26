@@ -33,13 +33,17 @@ void FileDeleter::tryOnce(const std::vector<Config>& cfgList, const DeleteCheckF
             continue;
         }
         auto nowTimestamp = (int64_t)utility::DateTime::getNowTimestamp();
-        std::vector<InfoInner> folderList, fileList;
+        std::vector<InfoInner> folderList, expireFileList, occupyFileList;
         auto folderCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
             if (folderCheckFunc && !folderCheckFunc(name, attr, depth)) /* 目录不允许删除 */
             {
                 return false;
             }
-            folderList.emplace_back(InfoInner(name, attr, depth));
+            auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
+            if (cfg.expireTime > 0 && nowTimestamp - modifyTimestamp >= cfg.expireTime) /* 有过期时间限制, 且文件夹过期 */
+            {
+                folderList.emplace_back(InfoInner(name, attr, depth));
+            }
             return true;
         };
         auto fileCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
@@ -57,24 +61,43 @@ void FileDeleter::tryOnce(const std::vector<Config>& cfgList, const DeleteCheckF
             auto modifyTimestamp = (int64_t)utility::DateTime(attr.modifyTimeFmt()).toTimestamp();
             if (cfg.expireTime > 0 && nowTimestamp - modifyTimestamp >= cfg.expireTime) /* 有过期时间限制, 且文件过期 */
             {
-                auto ok = utility::FileInfo(name).remove();
-                if (fileDeletedCb)
-                {
-                    fileDeletedCb(name, attr, depth, ok);
-                }
+                expireFileList.emplace_back(InfoInner(name, attr, depth));
             }
             else if (cfg.occupySize > 0) /* 有分配空间限制 */
             {
-                fileList.emplace_back(InfoInner(name, attr, depth));
+                occupyFileList.emplace_back(InfoInner(name, attr, depth));
             }
         };
         pi.traverse(folderCb, fileCb, nullptr, true, false);
-        /* 删除超出分配空间的最早的文件 */
-        if (cfg.occupySize > 0 && !fileList.empty())
+        /* 删除空文件夹 */
+        for (const auto& folder : folderList)
         {
-            std::sort(fileList.begin(), fileList.end(), [&](InfoInner a, InfoInner b) { return a.attr.modifyTime < b.attr.modifyTime; });
+            auto pi = utility::PathInfo(folder.name);
+            if (pi.exist() && pi.empty())
+            {
+                auto ok = pi.remove();
+                if (folderDeletedCb)
+                {
+                    folderDeletedCb(folder.name, folder.attr, folder.depth, ok);
+                }
+            }
+        }
+        /* 删除过期文件 */
+        for (const auto& file : expireFileList)
+        {
+            auto ok = utility::FileInfo(file.name).remove();
+            if (fileDeletedCb)
+            {
+                fileDeletedCb(file.name, file.attr, file.depth, ok);
+            }
+        }
+        /* 删除超出分配空间的最早的文件 */
+        if (cfg.occupySize > 0 && !occupyFileList.empty())
+        {
+            std::sort(occupyFileList.begin(), occupyFileList.end(),
+                      [&](const InfoInner& a, const InfoInner& b) { return (a.attr.modifyTime < b.attr.modifyTime); });
             size_t deletedSize = 0;
-            for (auto file : fileList)
+            for (const auto& file : occupyFileList)
             {
                 if (deletedSize >= cfg.occupySize * cfg.occupyLine) /* 判断分配空间的删除线是否已完全释放 */
                 {
@@ -88,19 +111,6 @@ void FileDeleter::tryOnce(const std::vector<Config>& cfgList, const DeleteCheckF
                 if (ok)
                 {
                     deletedSize += file.attr.size;
-                }
-            }
-        }
-        /* 删除空目录 */
-        for (auto folder : folderList)
-        {
-            auto pi = utility::PathInfo(folder.name);
-            if (pi.exist() && pi.empty(true))
-            {
-                auto ok = pi.remove();
-                if (folderDeletedCb)
-                {
-                    folderDeletedCb(folder.name, folder.attr, folder.depth, ok);
                 }
             }
         }
