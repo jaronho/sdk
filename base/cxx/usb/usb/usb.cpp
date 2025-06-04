@@ -185,47 +185,11 @@ std::string guid2string(GUID guid)
     return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(oss.str());
 }
 
-BOOL DeviceIoControlEx(HANDLE hDevice, DWORD dwIoControlCode, LPVOID lpInBuffer, DWORD nInBufferSize, LPVOID lpOutBuffer,
-                       DWORD nOutBufferSize, LPDWORD lpBytesReturned, DWORD dwTimeout = 3000)
-{
-    if (!hDevice || INVALID_HANDLE_VALUE == hDevice)
-    {
-        return FALSE;
-    }
-    if (dwTimeout > 0)
-    {
-        OVERLAPPED ov = {0};
-        ov.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-        if (!ov.hEvent)
-        {
-            return FALSE;
-        }
-        if (!DeviceIoControl(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, &ov))
-        {
-            if (ERROR_IO_PENDING != GetLastError())
-            {
-                CloseHandle(ov.hEvent);
-                return FALSE;
-            }
-        }
-        DWORD waitResult = WaitForSingleObject(ov.hEvent, dwTimeout);
-        if (WAIT_TIMEOUT == waitResult)
-        {
-            CancelIo(hDevice);
-            CloseHandle(ov.hEvent);
-            return FALSE;
-        }
-        CloseHandle(ov.hEvent);
-        return (WAIT_OBJECT_0 == waitResult);
-    }
-    return DeviceIoControl(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, NULL);
-}
-
 std::string getRootHubName(HANDLE hostController)
 {
     USB_ROOT_HUB_NAME rootHubName;
     ULONG nBytes = 0;
-    if (!DeviceIoControlEx(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, 0, 0, &rootHubName, sizeof(rootHubName), &nBytes))
+    if (!DeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, 0, 0, &rootHubName, sizeof(rootHubName), &nBytes, NULL))
     {
         return "";
     }
@@ -234,7 +198,7 @@ std::string getRootHubName(HANDLE hostController)
     PUSB_ROOT_HUB_NAME rootHubNameW = (PUSB_ROOT_HUB_NAME)GlobalAlloc(GPTR, nBytes);
     if (rootHubNameW)
     {
-        if (DeviceIoControlEx(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, rootHubNameW, nBytes, &nBytes))
+        if (DeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, rootHubNameW, nBytes, &nBytes, NULL))
         {
             rootHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
                 std::wstring(rootHubNameW->RootHubName, wcslen(rootHubNameW->RootHubName)));
@@ -249,8 +213,8 @@ std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
     USB_NODE_CONNECTION_NAME extHubName;
     extHubName.ConnectionIndex = connectionIndex;
     ULONG nBytes = 0;
-    if (!DeviceIoControlEx(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, &extHubName, sizeof(extHubName), &extHubName, sizeof(extHubName),
-                           &nBytes))
+    if (!DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, &extHubName, sizeof(extHubName), &extHubName, sizeof(extHubName), &nBytes,
+                         NULL))
     {
         return "";
     }
@@ -264,7 +228,7 @@ std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
     if (extHubNameW)
     {
         extHubNameW->ConnectionIndex = connectionIndex;
-        if (DeviceIoControlEx(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, extHubNameW, nBytes, extHubNameW, nBytes, &nBytes))
+        if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, extHubNameW, nBytes, extHubNameW, nBytes, &nBytes, NULL))
         {
             extHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
                 std::wstring(extHubNameW->NodeName, wcslen(extHubNameW->NodeName)));
@@ -279,8 +243,8 @@ std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
     USB_NODE_CONNECTION_DRIVERKEY_NAME driverKeyName;
     driverKeyName.ConnectionIndex = connectionIndex;
     ULONG nBytes = 0;
-    if (!DeviceIoControlEx(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, &driverKeyName, sizeof(driverKeyName), &driverKeyName,
-                           sizeof(driverKeyName), &nBytes))
+    if (!DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, &driverKeyName, sizeof(driverKeyName), &driverKeyName,
+                         sizeof(driverKeyName), &nBytes, NULL))
     {
         return "";
     }
@@ -294,7 +258,8 @@ std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
     if (driverKeyNameW)
     {
         driverKeyNameW->ConnectionIndex = connectionIndex;
-        if (DeviceIoControlEx(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, driverKeyNameW, nBytes, driverKeyNameW, nBytes, &nBytes))
+        if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, driverKeyNameW, nBytes, driverKeyNameW, nBytes, &nBytes,
+                            NULL))
         {
             driverKeyNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
                 std::wstring(driverKeyNameW->DriverKeyName, wcslen(driverKeyNameW->DriverKeyName)));
@@ -325,8 +290,8 @@ PUSB_DESCRIPTOR_REQUEST getConfigDescriptor(HANDLE hHubDevice, ULONG connectionI
     configDescReq->SetupPacket.wValue = (USB_CONFIGURATION_DESCRIPTOR_TYPE << 8) | descriptorIndex;
     configDescReq->SetupPacket.wLength = (USHORT)(nBytes - sizeof(USB_DESCRIPTOR_REQUEST));
     ULONG nBytesReturned = 0;
-    if (!DeviceIoControlEx(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, configDescReq, nBytes, configDescReq, nBytes,
-                           &nBytesReturned))
+    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, configDescReq, nBytes, configDescReq, nBytes,
+                         &nBytesReturned, NULL))
     {
         return NULL;
     }
@@ -349,8 +314,8 @@ PUSB_DESCRIPTOR_REQUEST getConfigDescriptor(HANDLE hHubDevice, ULONG connectionI
     configDescReq->ConnectionIndex = connectionIndex;
     configDescReq->SetupPacket.wValue = (USB_CONFIGURATION_DESCRIPTOR_TYPE << 8) | descriptorIndex;
     configDescReq->SetupPacket.wLength = (USHORT)(nBytes - sizeof(USB_DESCRIPTOR_REQUEST));
-    if (!DeviceIoControlEx(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, configDescReq, nBytes, configDescReq, nBytes,
-                           &nBytesReturned))
+    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, configDescReq, nBytes, configDescReq, nBytes,
+                         &nBytesReturned, NULL))
     {
         GlobalFree(configDescReq);
         return NULL;
@@ -423,8 +388,8 @@ PSTRING_DESCRIPTOR_NODE getStringDescriptor(HANDLE hHubDevice, ULONG connectionI
     stringDescReq->SetupPacket.wIndex = languageID;
     stringDescReq->SetupPacket.wLength = (USHORT)(nBytes - sizeof(USB_DESCRIPTOR_REQUEST));
     ULONG nBytesReturned = 0;
-    if (!DeviceIoControlEx(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, stringDescReq, nBytes, stringDescReq, nBytes,
-                           &nBytesReturned))
+    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, stringDescReq, nBytes, stringDescReq, nBytes,
+                         &nBytesReturned, NULL))
     {
         return NULL;
     }
@@ -686,7 +651,7 @@ void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>
     {
         DWORD nBytes = 0;
         STORAGE_DEVICE_NUMBER deviceNum;
-        if (DeviceIoControlEx(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes))
+        if (DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes, NULL))
         {
             auto iter = std::find_if(localDriveList.begin(), localDriveList.end(), [&](const LogicalDrive& item) {
                 return (item.deviceType == deviceNum.DeviceType && item.deviceNumber == deviceNum.DeviceNumber);
@@ -733,7 +698,7 @@ std::vector<LogicalDrive> getLogicalDriveList()
                 info.label = volumeName;
                 DWORD nBytes = 0;
                 STORAGE_DEVICE_NUMBER devNum;
-                if (DeviceIoControlEx(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &devNum, sizeof(devNum), &nBytes))
+                if (DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &devNum, sizeof(devNum), &nBytes, NULL))
                 {
                     info.deviceType = devNum.DeviceType;
                     info.deviceNumber = devNum.DeviceNumber;
@@ -745,7 +710,7 @@ std::vector<LogicalDrive> getLogicalDriveList()
                 CHAR buffer[sizeof(STORAGE_DEVICE_DESCRIPTOR) + 512 - 1] = {0};
                 STORAGE_DEVICE_DESCRIPTOR* pDevDesc = (STORAGE_DEVICE_DESCRIPTOR*)buffer;
                 pDevDesc->Size = sizeof(STORAGE_DEVICE_DESCRIPTOR) + 512 - 1;
-                if (DeviceIoControlEx(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), pDevDesc, pDevDesc->Size, &nBytes))
+                if (DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), pDevDesc, pDevDesc->Size, &nBytes, NULL))
                 {
                     info.serial = &buffer[pDevDesc->SerialNumberOffset];
                     if (std::all_of(info.serial.begin(), info.serial.end(), isspace)) /* 全部是空格 */
@@ -778,8 +743,8 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
             break;
         }
         connectionInfoEx->ConnectionIndex = index;
-        if (!DeviceIoControlEx(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION_EX, connectionInfoEx, nBytesEx, connectionInfoEx,
-                               nBytesEx, &nBytesEx))
+        if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION_EX, connectionInfoEx, nBytesEx, connectionInfoEx,
+                             nBytesEx, &nBytesEx, NULL))
         {
             ULONG nBytes = sizeof(USB_NODE_CONNECTION_INFORMATION) + sizeof(USB_PIPE_INFO) * 30;
             PUSB_NODE_CONNECTION_INFORMATION connectionInfo = (PUSB_NODE_CONNECTION_INFORMATION)GlobalAlloc(GPTR, nBytes);
@@ -789,8 +754,8 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
                 continue;
             }
             connectionInfo->ConnectionIndex = index;
-            if (!DeviceIoControlEx(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION, connectionInfo, nBytes, connectionInfo, nBytes,
-                                   &nBytes))
+            if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION, connectionInfo, nBytes, connectionInfo, nBytes,
+                                 &nBytes, NULL))
             {
                 GlobalFree(connectionInfo);
                 GlobalFree(connectionInfoEx);
@@ -939,8 +904,8 @@ void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devIn
         return;
     }
     ULONG nBytes = 0;
-    if (!DeviceIoControlEx(hHubDevice, IOCTL_USB_GET_NODE_INFORMATION, hubInfo, sizeof(USB_NODE_INFORMATION), hubInfo,
-                           sizeof(USB_NODE_INFORMATION), &nBytes))
+    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_INFORMATION, hubInfo, sizeof(USB_NODE_INFORMATION), hubInfo,
+                         sizeof(USB_NODE_INFORMATION), &nBytes, NULL))
     {
         CloseHandle(hHubDevice);
         GlobalFree(hubInfo);
