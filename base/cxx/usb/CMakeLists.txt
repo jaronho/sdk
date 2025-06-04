@@ -26,7 +26,7 @@ ${base_usb_files}
 ]]
 
 ################################### 添加usb库 ###################################
-set(libusb_include_dir ${CMAKE_CURRENT_SOURCE_DIR}/libusb-1.0.26/libusb CACHE INTERNAL "")
+set(libusb_include_dir ${CMAKE_CURRENT_SOURCE_DIR}/libusb-1.0.29/libusb CACHE INTERNAL "")
 
 set(base_usb_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 
