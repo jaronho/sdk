@@ -186,7 +186,7 @@ std::string guid2string(GUID guid)
 }
 
 BOOL DeviceIoControlEx(HANDLE hDevice, DWORD dwIoControlCode, LPVOID lpInBuffer, DWORD nInBufferSize, LPVOID lpOutBuffer,
-                       DWORD nOutBufferSize, LPDWORD lpBytesReturned, DWORD dwTimeout = 0)
+                       DWORD nOutBufferSize, LPDWORD lpBytesReturned, DWORD dwTimeout = 3000)
 {
     if (!hDevice || INVALID_HANDLE_VALUE == hDevice)
     {
@@ -680,7 +680,8 @@ void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>
     {
         return;
     }
-    auto handle = CreateFileA(devicePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    auto handle =
+        CreateFileA(devicePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     if (handle)
     {
         DWORD nBytes = 0;
@@ -712,7 +713,8 @@ std::vector<LogicalDrive> getLogicalDriveList()
             char driverChar = 'A' + index;
             char drivePath[10] = {0};
             sprintf_s(drivePath, "\\\\.\\%c:", driverChar);
-            auto handle = CreateFileA(drivePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+            auto handle =
+                CreateFileA(drivePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
             if (handle)
             {
                 std::string driver = std::string(1, driverChar) + ":\\";
@@ -929,7 +931,8 @@ void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devIn
         return;
     }
     std::string deviceName = "\\\\.\\" + hubName;
-    HANDLE hHubDevice = CreateFileA(deviceName.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    HANDLE hHubDevice =
+        CreateFileA(deviceName.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     if (INVALID_HANDLE_VALUE == hHubDevice)
     {
         GlobalFree(hubInfo);
@@ -998,8 +1001,8 @@ std::vector<UsbImpl> enumerateHostControllers()
             devDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
             if (SetupDiGetDeviceInterfaceDetailA(devInfo, &devInterfaceData, devDetailData, requiredSize, &requiredSize, NULL))
             {
-                HANDLE hHCDev =
-                    CreateFileA(devDetailData->DevicePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+                HANDLE hHCDev = CreateFileA(devDetailData->DevicePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                            OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
                 if (INVALID_HANDLE_VALUE != hHCDev)
                 {
                     auto rootHubName = getRootHubName(hHCDev);
@@ -1745,9 +1748,13 @@ Usb::Usb(const Usb& src)
     m_pid = src.m_pid;
     m_serial = src.m_serial;
     m_product = src.m_product;
+    m_model = src.m_model;
+    m_vendor = src.m_vendor;
+    m_group = src.m_group;
     m_manufacturer = src.m_manufacturer;
     m_devRootNode = src.m_devRootNode;
     m_devNodes = src.m_devNodes;
+    m_cdromInfo = src.m_cdromInfo;
 }
 
 std::shared_ptr<Usb> Usb::getParent() const
