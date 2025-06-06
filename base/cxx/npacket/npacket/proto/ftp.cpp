@@ -403,7 +403,7 @@ void FtpParser::recyleDataConnect(const std::chrono::steady_clock::time_point& n
         if (std::chrono::duration_cast<std::chrono::seconds>(ntp - iter->second->tp).count() >= m_dataConnectTimeout) /* 超时则回收 */
         {
             auto ctrl = iter->second->ctrl;
-            m_dataConnectList.erase(iter++);
+            iter = m_dataConnectList.erase(iter);
             if (m_dataCb)
             {
                 m_dataCb(ntp, 0, nullptr, ctrl, DataFlag::abnormal, nullptr, 0);
