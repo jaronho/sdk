@@ -31,6 +31,38 @@ struct LogConfig
     {
     }
 
+    bool operator==(const LogConfig& other) const
+    {
+        if (other.path != path || other.name != name || other.fileExtName != fileExtName || other.level != level
+            || other.fileMaxSize != fileMaxSize || other.fileMaxCount != fileMaxCount || other.fileIndexFixed != fileIndexFixed
+            || other.newFolderDaily != newFolderDaily || other.consoleMode != consoleMode)
+        {
+            return false;
+        }
+        for (const auto& kv : levelFile)
+        {
+            auto iter = other.levelFile.find(kv.first);
+            if (other.levelFile.end() == iter || kv.second != iter->second)
+            {
+                return false;
+            }
+        }
+        for (const auto& kv : other.levelFile)
+        {
+            auto iter = levelFile.find(kv.first);
+            if (levelFile.end() == iter || kv.second != iter->second)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool operator!=(const LogConfig& other) const
+    {
+        return !(operator==(other));
+    }
+
     std::string path; /* (必填)日志文件路径 */
     std::string name; /* (选填)记录器名称, 默认: "app" */
     std::string fileExtName; /* (选填)日志文件扩展名, 默认: ".log" */
