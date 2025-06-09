@@ -184,7 +184,7 @@ int main(int argc, char** argv)
         {
             printf("[%s] 开始计算文件数量和大小\n", dtString().c_str());
             size_t totalFileCount = 0, totalFileSize = 0;
-            std::atomic_size_t nowCount = {0};
+            std::atomic<size_t> nowCount = {0};
             utility::PathInfo pi(target, true);
             auto tp = std::chrono::steady_clock::now();
             value = toolkit::Tool::md5Directory(
