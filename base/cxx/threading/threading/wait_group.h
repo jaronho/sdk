@@ -59,6 +59,6 @@ public:
 private:
     std::mutex m_mutex;
     std::condition_variable m_cv; /* 条件变量 */
-    std::atomic_size_t m_counter = {0}; /* 计数器 */
+    std::atomic<size_t> m_counter = {0}; /* 计数器 */
 };
 } // namespace threading

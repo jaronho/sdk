@@ -72,7 +72,7 @@ public:
 
 private:
     const std::string m_name; /* 执行者名称 */
-    std::atomic_size_t m_maxCount = {0}; /* 最多任务数 */
+    std::atomic<size_t> m_maxCount = {0}; /* 最多任务数 */
 };
 
 using ExecutorPtr = std::shared_ptr<Executor>;
