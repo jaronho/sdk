@@ -40,6 +40,71 @@ public:
     void close();
 
     /**
+     * @brief 获取日志文件路径
+     * @return 日志文件路径
+     */
+    std::string getPath();
+
+    /**
+     * @brief 获取日志文件名称
+     * @return 日志文件名
+     */
+    std::string getFilename();
+
+    /**
+     * @brief 获取日志文件全名(包含路径)
+     * @return 日志文件全名
+     */
+    std::string getFullName();
+
+    /**
+     * @brief 获取日志文件最大容量
+     * @return 文件最大容量(字节)
+     */
+    size_t getMaxSize();
+
+    /**
+     * @brief 设置日志文件最大容量
+     * @param maxSize 文件最大容量(字节)
+     */
+    void setMaxSize(size_t maxSize);
+
+    /**
+     * @brief 是否启用记录功能
+     * @return true-启用, false-禁用
+     */
+    bool isEnable();
+
+    /**
+     * @brief 设置是否启用记录功能
+     * @param enable 启用标识
+     */
+    void setEnable(bool enable);
+
+    /**
+     * @brief 获取文件当前大小(字节)
+     * @return 当前大小
+     */
+    size_t getSize();
+
+    /**
+     * @brief 清除日志文件内容
+     */
+    void clear();
+
+    /**
+     * @brief 获取最多文件个数
+     * @return 最多文件个数
+     */
+    size_t getMaxFiles() const;
+
+    /**
+     * @brief 设置最多文件个数
+     * @param maxFiles 最多文件个数
+     */
+    void setMaxFiles(size_t maxFiles);
+
+    /**
      * @brief 获取当前日志文件索引值
      * @return 索引值
      */
@@ -93,7 +158,7 @@ private:
 private:
     std::string m_baseName; /* 日志文件名 */
     std::string m_extName; /* 日志文件后缀名 */
-    size_t m_maxFiles = 0; /* 最多文件个数 */
+    std::atomic<size_t> m_maxFiles = {0}; /* 最多文件个数 */
     std::atomic_int m_index = {0}; /* 当前日志文件索引值 */
     bool m_indexFixed = false; /* 文件数最大时, 索引值固定还是递增 */
     std::mutex m_mutex; /* 互斥锁 */

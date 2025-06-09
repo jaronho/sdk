@@ -83,6 +83,12 @@ public:
     size_t getMaxSize() const;
 
     /**
+     * @brief 设置日志文件最大容量
+     * @param maxSize 文件最大容量(字节)
+     */
+    void setMaxSize(size_t maxSize);
+
+    /**
      * @brief 是否启用记录功能
      * @return true-启用, false-禁用
      */
@@ -117,9 +123,9 @@ private:
     std::string m_path; /* 日志文件路径 */
     std::string m_filename; /* 日志文件名 */
     std::string m_fullName; /* 日志文件全名(包含路径) */
-    size_t m_maxSize = 0; /* 文件最大容量值 */
+    std::atomic<size_t> m_maxSize = {0}; /* 文件最大容量值 */
     std::mutex m_mutex; /* 互斥锁 */
     FILE* m_f = nullptr; /* 文件指针 */
-    std::atomic_size_t m_size = {0}; /* 文件当前大小 */
+    std::atomic<size_t> m_size = {0}; /* 文件当前大小 */
     std::atomic_bool m_enable = {true}; /* 是否启用日志记录功能 */
 };

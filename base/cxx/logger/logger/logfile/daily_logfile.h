@@ -30,6 +30,30 @@ public:
     virtual ~DailyLogfile() = default;
 
     /**
+     * @brief 获取日志文件最大容量
+     * @return 文件最大容量(字节)
+     */
+    size_t getMaxSize() const;
+
+    /**
+     * @brief 设置日志文件最大容量
+     * @param maxSize 文件最大容量(字节)
+     */
+    void setMaxSize(size_t maxSize);
+
+    /**
+     * @brief 获取最多文件个数
+     * @return 最多文件个数
+     */
+    size_t getMaxFiles() const;
+
+    /**
+     * @brief 设置最多文件个数
+     * @param maxFiles 最多文件个数
+     */
+    void setMaxFiles(size_t maxFiles);
+
+    /**
      * @brief 记录日志内容
      * @param content 日志内容
      * @param newline 是否换行
@@ -43,8 +67,8 @@ private:
     std::string m_suffixName; /* 日志文件后缀名 */
     std::string m_baseName; /* 日志文件名 */
     std::string m_extName; /* 日志文件后缀名 */
-    size_t m_maxSize = 0; /* 文件最大容量值 */
-    size_t m_maxFiles = 0; /* 最多文件个数 */
+    std::atomic<size_t> m_maxSize = {0}; /* 文件最大容量值 */
+    std::atomic<size_t> m_maxFiles = {0}; /* 最多文件个数 */
     bool m_indexFixed = false; /* 文件数最大时, 索引值固定还是递增 */
     bool m_createDailyFolder = true; /* 是否创建每日文件夹 */
     std::mutex m_mutex; /* 互斥锁 */

@@ -27,13 +27,47 @@ std::string Logger::getName() const
     return std::string();
 }
 
+size_t Logger::getMaxSize() const
+{
+    if (m_inner)
+    {
+        return m_inner->getMaxSize();
+    }
+    return 0;
+}
+
+void Logger::setMaxSize(size_t maxSize)
+{
+    if (m_inner)
+    {
+        m_inner->setMaxSize(maxSize);
+    }
+}
+
+size_t Logger::getMaxFiles() const
+{
+    if (m_inner)
+    {
+        return m_inner->getMaxFiles();
+    }
+    return 0;
+}
+
+void Logger::setMaxFiles(size_t maxFiles)
+{
+    if (m_inner)
+    {
+        m_inner->setMaxFiles(maxFiles);
+    }
+}
+
 int Logger::getLevel() const
 {
     if (m_inner)
     {
         return m_inner->getLevel();
     }
-    return LEVEL_TRACE;
+    return -1;
 }
 
 void Logger::setLevel(int level)

@@ -107,6 +107,34 @@ public:
     static Logger getLogger(const std::string& tagName = std::string(), int level = -1, const std::string& loggerName = std::string());
 
     /**
+     * @brief 获取日志文件最大容量
+     * @param loggerName 日志记录器名称(选填)
+     * @return 文件最大容量(字节)
+     */
+    static size_t getFileMaxSize(const std::string& loggerName = std::string());
+
+    /**
+     * @brief 设置日志文件最大容量
+     * @param maxSize 文件最大容量(字节)
+     * @param loggerName 日志记录器名称(选填)
+     */
+    static void setFileMaxSize(size_t maxSize, const std::string& loggerName = std::string());
+
+    /**
+     * @brief 获取最多文件个数
+     * @param loggerName 日志记录器名称(选填)
+     * @return 最多文件个数
+     */
+    static size_t getFileMaxCount(const std::string& loggerName = std::string());
+
+    /**
+     * @brief 设置最多文件个数
+     * @param maxCount 最多文件个数
+     * @param loggerName 日志记录器名称(选填)
+     */
+    static void setFileMaxCount(size_t maxCount, const std::string& loggerName = std::string());
+
+    /**
      * @brief 获取日志等级
      * @param loggerName 日志记录器名称(选填)
      * @return 日志等级

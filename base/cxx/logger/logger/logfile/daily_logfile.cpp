@@ -21,6 +21,40 @@ DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixNam
     m_createDailyFolder = createDailyFolder;
 }
 
+size_t DailyLogfile::getMaxSize() const
+{
+    return m_maxSize;
+}
+
+void DailyLogfile::setMaxSize(size_t maxSize)
+{
+    m_maxSize = maxSize;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        if (m_rotatingLogfile)
+        {
+            m_rotatingLogfile->setMaxSize(maxSize);
+        }
+    }
+}
+
+size_t DailyLogfile::getMaxFiles() const
+{
+    return m_maxFiles;
+}
+
+void DailyLogfile::setMaxFiles(size_t maxFiles)
+{
+    m_maxFiles = maxFiles;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        if (m_rotatingLogfile)
+        {
+            m_rotatingLogfile->setMaxFiles(maxFiles);
+        }
+    }
+}
+
 Logfile::Result DailyLogfile::record(const std::string& content, bool newline)
 {
     struct tm t;

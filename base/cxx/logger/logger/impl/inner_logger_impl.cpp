@@ -127,22 +127,100 @@ InnerLoggerImpl::InnerLoggerImpl(const LogConfig& cfg) : InnerLogger(cfg.path, c
         m_dailyLogFatal = std::make_shared<DailyLogfile>(cfg.path, cfg.name, "_fatal", cfg.fileExtName, cfg.fileMaxSize, cfg.fileMaxCount,
                                                          cfg.fileIndexFixed, cfg.newFolderDaily);
     }
-    m_level.store(cfg.level);
+    m_fileMaxSize = cfg.fileMaxSize;
+    m_fileMaxCount = cfg.fileMaxCount;
+    m_level = cfg.level;
     {
         std::lock_guard<std::mutex> locker(m_mutexLevelFile);
         m_levelFile = cfg.levelFile;
     }
-    m_consoleMode.store(cfg.consoleMode);
+    m_consoleMode = cfg.consoleMode;
 }
 
-int InnerLoggerImpl::getLevel() const
+size_t InnerLoggerImpl::getMaxSize()
 {
-    return m_level.load();
+    return m_fileMaxSize;
+}
+
+void InnerLoggerImpl::setMaxSize(size_t maxSize)
+{
+    m_fileMaxSize = maxSize;
+    if (m_dailyLog)
+    {
+        m_dailyLog->setMaxSize(maxSize);
+    }
+    if (m_dailyLogTrace)
+    {
+        m_dailyLogTrace->setMaxSize(maxSize);
+    }
+    if (m_dailyLogDebug)
+    {
+        m_dailyLogDebug->setMaxSize(maxSize);
+    }
+    if (m_dailyLogInfo)
+    {
+        m_dailyLogInfo->setMaxSize(maxSize);
+    }
+    if (m_dailyLogWarn)
+    {
+        m_dailyLogWarn->setMaxSize(maxSize);
+    }
+    if (m_dailyLogError)
+    {
+        m_dailyLogError->setMaxSize(maxSize);
+    }
+    if (m_dailyLogFatal)
+    {
+        m_dailyLogFatal->setMaxSize(maxSize);
+    }
+}
+
+size_t InnerLoggerImpl::getMaxFiles()
+{
+    return m_fileMaxCount;
+}
+
+void InnerLoggerImpl::setMaxFiles(size_t maxFiles)
+{
+    m_fileMaxCount = maxFiles;
+    if (m_dailyLog)
+    {
+        m_dailyLog->setMaxFiles(maxFiles);
+    }
+    if (m_dailyLogTrace)
+    {
+        m_dailyLogTrace->setMaxFiles(maxFiles);
+    }
+    if (m_dailyLogDebug)
+    {
+        m_dailyLogDebug->setMaxFiles(maxFiles);
+    }
+    if (m_dailyLogInfo)
+    {
+        m_dailyLogInfo->setMaxFiles(maxFiles);
+    }
+    if (m_dailyLogWarn)
+    {
+        m_dailyLogWarn->setMaxFiles(maxFiles);
+    }
+    if (m_dailyLogError)
+    {
+        m_dailyLogError->setMaxFiles(maxFiles);
+    }
+    if (m_dailyLogFatal)
+    {
+        m_dailyLogFatal->setMaxFiles(maxFiles);
+    }
+}
+
+int InnerLoggerImpl::getLevel()
+{
+    return m_level;
 }
 
 void InnerLoggerImpl::setLevel(int level)
 {
-    m_level.store(level);
+    m_level = level;
 }
 
 int InnerLoggerImpl::getLevelFile(int level)
@@ -166,9 +244,9 @@ void InnerLoggerImpl::setLevelFile(int level, int fileType)
     }
 }
 
-int InnerLoggerImpl::getConsoleMode() const
+int InnerLoggerImpl::getConsoleMode()
 {
-    return m_consoleMode.load();
+    return m_consoleMode;
 }
 
 void InnerLoggerImpl::setConsoleMode(int mode)
@@ -177,7 +255,7 @@ void InnerLoggerImpl::setConsoleMode(int mode)
     {
         mode = 0;
     }
-    m_consoleMode.store(mode);
+    m_consoleMode = mode;
 }
 
 void InnerLoggerImpl::print(int level, const std::string& tag, const std::string& file, int line, const std::string& func,

@@ -35,13 +35,13 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
     m_maxFiles = maxFiles > 0 ? maxFiles : 0;
     m_indexFixed = indexFixed;
     std::vector<int> indexList;
-    m_index.store(findLastIndex(path, indexList));
-    m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index.load()), maxSize);
+    m_index = findLastIndex(path, indexList);
+    m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index), maxSize);
 }
 
 int RotatingLogfile::getFileIndex() const
 {
-    return m_index.load();
+    return m_index;
 }
 
 bool RotatingLogfile::open()
@@ -54,6 +54,70 @@ void RotatingLogfile::close()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     m_logfile->close();
+}
+
+std::string RotatingLogfile::getPath()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_logfile->getPath();
+}
+
+std::string RotatingLogfile::getFilename()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_logfile->getFilename();
+}
+
+std::string RotatingLogfile::getFullName()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_logfile->getFullName();
+}
+
+size_t RotatingLogfile::getMaxSize()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_logfile->getMaxSize();
+}
+
+void RotatingLogfile::setMaxSize(size_t maxSize)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    m_logfile->setMaxSize(maxSize);
+}
+
+bool RotatingLogfile::isEnable()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_logfile->isEnable();
+}
+
+void RotatingLogfile::setEnable(bool enable)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    m_logfile->setEnable(enable);
+}
+
+size_t RotatingLogfile::getSize()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_logfile->getSize();
+}
+
+void RotatingLogfile::clear()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    m_logfile->clear();
+}
+
+size_t RotatingLogfile::getMaxFiles() const
+{
+    return m_maxFiles;
+}
+
+void RotatingLogfile::setMaxFiles(size_t maxFiles)
+{
+    m_maxFiles = maxFiles;
 }
 
 Logfile::Result RotatingLogfile::record(const std::string& content, bool newline)
@@ -250,7 +314,7 @@ bool RotatingLogfile::rotateFileList()
             {
                 std::string descardFullName = path + calcFilenameByIndex(indexList[0]);
                 remove(descardFullName.c_str());
-                m_index.store(lastIndex + 1);
+                m_index = lastIndex + 1;
             }
             m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index), maxSize);
             m_logfile->open();
@@ -258,7 +322,7 @@ bool RotatingLogfile::rotateFileList()
     }
     else /* 不限文件个数, 或未达到最大文件数 */
     {
-        m_index.store(lastIndex + 1);
+        m_index = lastIndex + 1;
         m_logfile->close();
         m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index), maxSize);
         m_logfile->open();

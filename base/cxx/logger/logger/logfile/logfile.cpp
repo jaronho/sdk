@@ -104,10 +104,10 @@ bool Logfile::open()
     }
 #ifdef _WIN32
     _fseeki64(m_f, 0, SEEK_END);
-    m_size.store(_ftelli64(m_f));
+    m_size = _ftelli64(m_f);
 #else
     fseeko64(m_f, 0, SEEK_END);
-    m_size.store(ftello64(m_f));
+    m_size = ftello64(m_f);
 #endif
     return true;
 }
@@ -121,7 +121,7 @@ void Logfile::close()
         fclose(m_f);
         m_f = nullptr;
     }
-    m_size.store(0);
+    m_size = 0;
 }
 
 std::string Logfile::getPath() const
@@ -144,19 +144,24 @@ size_t Logfile::getMaxSize() const
     return m_maxSize;
 }
 
+void Logfile::setMaxSize(size_t maxSize)
+{
+    m_maxSize = maxSize;
+}
+
 bool Logfile::isEnable() const
 {
-    return m_enable.load();
+    return m_enable;
 }
 
 void Logfile::setEnable(bool enable)
 {
-    m_enable.store(enable);
+    m_enable = enable;
 }
 
 size_t Logfile::getSize() const
 {
-    return m_size.load();
+    return m_size;
 }
 
 void Logfile::clear()
@@ -173,15 +178,15 @@ void Logfile::clear()
     {
 #ifdef _WIN32
         _fseeki64(m_f, 0, SEEK_END);
-        m_size.store(_ftelli64(m_f));
+        m_size = _ftelli64(m_f);
 #else
         fseeko64(m_f, 0, SEEK_END);
-        m_size.store(ftello64(m_f));
+        m_size = ftello64(m_f);
 #endif
     }
     else
     {
-        m_size.store(0);
+        m_size = 0;
     }
 }
 
@@ -192,7 +197,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
     {
         return Result::invalid;
     }
-    if (!m_enable.load())
+    if (!m_enable)
     {
         return Result::disabled;
     }
@@ -203,13 +208,13 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
         {
             return Result::too_large;
         }
-        if (m_size.load() + contentSize > m_maxSize)
+        if (m_size + contentSize > m_maxSize)
         {
             return Result::will_full;
         }
     }
     bool needFlush = false;
-    if (m_size.load() > 0 && newline)
+    if (m_size > 0 && newline)
     {
         if (0 == fwrite("\n", 1, 1, m_f))
         {
@@ -217,7 +222,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
             m_f = nullptr;
             return Result::newline_failed;
         }
-        m_size.store(m_size.load() + 1);
+        ++m_size;
         needFlush = true;
     }
     if (contentSize > 0)
@@ -228,7 +233,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
             m_f = nullptr;
             return Result::content_failed;
         }
-        m_size.store(m_size.load() + contentSize);
+        m_size = m_size + contentSize;
         needFlush = true;
     }
     if (needFlush)

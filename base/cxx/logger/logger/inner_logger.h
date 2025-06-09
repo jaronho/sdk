@@ -34,10 +34,34 @@ public:
     std::string getName() const;
 
     /**
+     * @brief 获取日志文件最大容量
+     * @return 文件最大容量(字节)
+     */
+    virtual size_t getMaxSize() = 0;
+
+    /**
+     * @brief 设置日志文件最大容量
+     * @param maxSize 文件最大容量(字节)
+     */
+    virtual void setMaxSize(size_t maxSize) = 0;
+
+    /**
+     * @brief 获取最多文件个数
+     * @return 最多文件个数
+     */
+    virtual size_t getMaxFiles() = 0;
+
+    /**
+     * @brief 设置最多文件个数
+     * @param maxFiles 最多文件个数
+     */
+    virtual void setMaxFiles(size_t maxFiles) = 0;
+
+    /**
      * @brief 获取等级
      * @return 等级
      */
-    virtual int getLevel() const = 0;
+    virtual int getLevel() = 0;
 
     /**
      * @brief 设置等级
@@ -63,7 +87,7 @@ public:
      * @brief 获取控制台日志输出模式
      * @return 0-不输出, 1-普通输出, 2-带样式输出
      */
-    virtual int getConsoleMode() const = 0;
+    virtual int getConsoleMode() = 0;
 
     /**
      * @brief 设置控制台日志输出模式

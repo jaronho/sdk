@@ -37,6 +37,72 @@ Logger LoggerManager::getLogger(const std::string& tagName, int level, const std
     return Logger(tag, innerLogger);
 }
 
+size_t LoggerManager::getFileMaxSize(const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    auto name = loggerName.empty() ? m_logCfg.name : loggerName;
+    auto iter = m_loggerMap.find(name);
+    if (m_loggerMap.end() == iter)
+    {
+        return m_logCfg.fileMaxSize;
+    }
+    return iter->second->getMaxSize();
+}
+
+void LoggerManager::setFileMaxSize(size_t maxSize, const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    maxSize = maxSize <= 0 ? m_logCfg.fileMaxSize : maxSize;
+    if (loggerName.empty())
+    {
+        for (auto iter = m_loggerMap.begin(); m_loggerMap.end() != iter; ++iter)
+        {
+            iter->second->setMaxSize(maxSize);
+        }
+    }
+    else
+    {
+        auto iter = m_loggerMap.find(loggerName);
+        if (m_loggerMap.end() != iter)
+        {
+            iter->second->setMaxSize(maxSize);
+        }
+    }
+}
+
+size_t LoggerManager::getFileMaxCount(const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    auto name = loggerName.empty() ? m_logCfg.name : loggerName;
+    auto iter = m_loggerMap.find(name);
+    if (m_loggerMap.end() == iter)
+    {
+        return m_logCfg.fileMaxCount;
+    }
+    return iter->second->getMaxFiles();
+}
+
+void LoggerManager::setFileMaxCount(size_t maxCount, const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    maxCount = maxCount <= 0 ? m_logCfg.fileMaxCount : maxCount;
+    if (loggerName.empty())
+    {
+        for (auto iter = m_loggerMap.begin(); m_loggerMap.end() != iter; ++iter)
+        {
+            iter->second->setMaxFiles(maxCount);
+        }
+    }
+    else
+    {
+        auto iter = m_loggerMap.find(loggerName);
+        if (m_loggerMap.end() != iter)
+        {
+            iter->second->setMaxFiles(maxCount);
+        }
+    }
+}
+
 int LoggerManager::getLevel(const std::string& loggerName)
 {
     std::lock_guard<std::mutex> locker(m_mutex);

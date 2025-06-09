@@ -40,6 +40,30 @@ public:
     std::string getName() const;
 
     /**
+     * @brief 获取日志文件最大容量
+     * @return 文件最大容量(字节)
+     */
+    size_t getMaxSize() const;
+
+    /**
+     * @brief 设置日志文件最大容量
+     * @param maxSize 文件最大容量(字节)
+     */
+    void setMaxSize(size_t maxSize);
+
+    /**
+     * @brief 获取最多文件个数
+     * @return 最多文件个数
+     */
+    size_t getMaxFiles() const;
+
+    /**
+     * @brief 设置最多文件个数
+     * @param maxFiles 最多文件个数
+     */
+    void setMaxFiles(size_t maxFiles);
+
+    /**
      * @brief 获取等级
      * @return 等级
      */
