@@ -115,6 +115,15 @@ public:
      */
     ConnectState getConnectState() const;
 
+    /**
+     * @brief 设置参数
+     * @param heartbeatInterval 心跳间隔(秒), 必须大于0
+     * @param heartbeatFixedSend 心跳是否根据间隔固定发送, 若不固定则在心跳间隔内未收任何服务端数据包时才发送心跳
+     * @param offlineTime 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线, 必须大于心跳间隔
+     * @return true-成功, false-失败
+     */
+    bool setParam(unsigned int heartbeatInterval, bool heartbeatFixedSend, unsigned int offlineTime);
+
 private:
     /**
      * @brief 断开连接类型
@@ -234,9 +243,9 @@ private:
     int32_t m_authBizCode = 0; /* 鉴权业务码 */
     unsigned int m_authTimeout = 30; /* 鉴权响应超时(秒), 必须大于0 */
     int32_t m_heartbeatBizCode = 0; /* 心跳业务码 */
-    unsigned int m_heartbeatInterval = 15; /* 心跳间隔(秒), 必须大于0 */
-    bool m_heartbeatFixedSend = {false}; /* 心跳是否固定间隔发送, 若不固定则在心跳间隔内未收任何服务端数据包时才发送心跳 */
-    unsigned int m_offlineTime = 61; /* 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线 */
+    std::atomic_uint m_heartbeatInterval = {15}; /* 心跳间隔(秒), 必须大于0 */
+    std::atomic_bool m_heartbeatFixedSend = {false}; /* 心跳是否固定间隔发送, 若不固定则在心跳间隔内未收任何服务端数据包时才发送心跳 */
+    std::atomic_uint m_offlineTime = {61}; /* 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线 */
     std::shared_ptr<threading::SteadyTimer> m_timeoutTimer = nullptr; /* 连接超时定时器 */
     std::shared_ptr<threading::SteadyTimer> m_heartbeatTimer = nullptr; /* 心跳定时器 */
     std::shared_ptr<threading::SteadyTimer> m_offlineCheckTimer = nullptr; /* 掉线检查定时器 */

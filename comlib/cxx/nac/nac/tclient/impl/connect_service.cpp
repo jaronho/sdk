@@ -179,6 +179,38 @@ ConnectState ConnectService::getConnectState() const
     return m_connectState;
 }
 
+bool ConnectService::setParam(unsigned int heartbeatInterval, bool heartbeatFixedSend, unsigned int offlineTime)
+{
+    if (m_heartbeatBizCode > 0) /* 需要发送心跳包 */
+    {
+        if (0 == heartbeatInterval)
+        {
+            WARN_LOG(m_logger, "设置参数错误: 心跳间隔不能为0秒.");
+            return false;
+        }
+        if (offlineTime <= heartbeatInterval)
+        {
+            ERROR_LOG(m_logger, "设置参数错误: 掉线判定时间[{}秒]必须大于心跳间隔[{}秒].", offlineTime, heartbeatInterval);
+            return false;
+        }
+        INFO_LOG(m_logger, "设置参数: 心跳间隔[{}秒], {}间隔发送, 掉线判断时间[{}秒]", heartbeatInterval,
+                 heartbeatFixedSend ? "[固定]" : "[非固定]", offlineTime);
+        m_heartbeatInterval = heartbeatInterval;
+        m_heartbeatFixedSend = heartbeatFixedSend;
+    }
+    else /* 不需要发送心跳包 */
+    {
+        if (offlineTime <= 1)
+        {
+            ERROR_LOG(m_logger, "设置参数错误: 掉线判定时间不能为0秒.");
+            return false;
+        }
+        INFO_LOG(m_logger, "设置参数: 掉线判断时间[{}秒]", offlineTime);
+    }
+    m_offlineTime = offlineTime;
+    return true;
+}
+
 void ConnectService::releaseConnection(const DisconnectType& type)
 {
     m_disconnectType = type;

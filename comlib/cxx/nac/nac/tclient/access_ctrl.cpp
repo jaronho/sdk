@@ -296,6 +296,15 @@ void AccessCtrl::disconnect()
     s_connectService->disconnect();
 }
 
+bool AccessCtrl::setParam(unsigned int heartbeatInterval, bool heartbeatFixedSend, unsigned int offlineTime)
+{
+    if (s_connectService)
+    {
+        return s_connectService->setParam(heartbeatInterval, heartbeatFixedSend, offlineTime);
+    }
+    return false;
+}
+
 int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, const RespCallback& callback, unsigned int timeout)
 {
     auto func = [&, callback](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
