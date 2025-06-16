@@ -30,6 +30,16 @@ void Request::setEnableRedirect(int maxRedirects)
     m_maxRedirects = maxRedirects;
 }
 
+int Request::getTimeout() const
+{
+    return m_timeout;
+}
+
+void Request::setTimeout(size_t seconds)
+{
+    m_timeout = static_cast<int>(seconds);
+}
+
 int Request::getConnectTimeout() const
 {
     return m_connectTimeout;
@@ -40,14 +50,16 @@ void Request::setConnectTimeout(size_t seconds)
     m_connectTimeout = static_cast<int>(seconds);
 }
 
-int Request::getTimeout() const
+void Request::getLowSpeedTimeout(int& limit, int& timeout) const
 {
-    return m_timeout;
+    limit = m_lowSpeedLimit;
+    timeout = m_lowSpeedTimeout;
 }
 
-void Request::setTimeout(size_t seconds)
+void Request::setLowSpeedTimeout(size_t limit, size_t seconds)
 {
-    m_timeout = static_cast<int>(seconds);
+    m_lowSpeedLimit = static_cast<int>(limit);
+    m_lowSpeedTimeout = static_cast<int>(seconds);
 }
 
 bool Request::isKeepAlive() const

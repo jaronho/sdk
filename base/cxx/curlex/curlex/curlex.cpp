@@ -46,15 +46,21 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
     {
         obj->setEnableRedirect(req->getMaxRedirects());
     }
+    int timeout = req->getTimeout();
+    if (timeout >= 0)
+    {
+        obj->setTimeout(static_cast<size_t>(timeout));
+    }
     int connectTimeout = req->getConnectTimeout();
     if (connectTimeout >= 0)
     {
         obj->setConnectTimeout(static_cast<size_t>(connectTimeout));
     }
-    int timeout = req->getTimeout();
-    if (timeout >= 0)
+    int lowSpeedLimit = -1, lowSpeedTimeout = -1;
+    req->getLowSpeedTimeout(lowSpeedLimit, lowSpeedTimeout);
+    if (lowSpeedLimit >= 0 && lowSpeedTimeout >= 0)
     {
-        obj->setTimeout(static_cast<size_t>(timeout));
+        obj->setLowSpeedTimeout(lowSpeedLimit, lowSpeedTimeout);
     }
     if (req->isKeepAlive())
     {

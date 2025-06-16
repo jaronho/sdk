@@ -72,6 +72,18 @@ public:
     void setEnableRedirect(int maxRedirects);
 
     /**
+     * @brief 获取总超时时间
+     * @return 超时时间
+     */
+    int getTimeout() const;
+
+    /**
+     * @brief 设置总超时时间
+     * @param seconds 超时时间(秒)
+     */
+    void setTimeout(size_t seconds);
+
+    /**
      * @brief 获取连接超时时间
      * @return 超时时间
      */
@@ -84,16 +96,18 @@ public:
     void setConnectTimeout(size_t seconds);
 
     /**
-     * @brief 获取超时时间
-     * @return 超时时间
+     * @brief 获取低速超时时间
+     * @param limit [输出]速度(字节/秒)
+     * @param timeout [输出]超时时间(秒)
      */
-    int getTimeout() const;
+    void getLowSpeedTimeout(int& limit, int& timeout) const;
 
     /**
-     * @brief 设置超时时间
+     * @brief 设置低速超时时间
+     * @param limit 速度(字节/秒)
      * @param seconds 超时时间(秒)
      */
-    void setTimeout(size_t seconds);
+    void setLowSpeedTimeout(size_t limit, size_t seconds);
 
     /**
      * @brief 是否启用保活
@@ -188,8 +202,10 @@ private:
     unsigned int m_localPort; /* 本地端口 */
     bool m_redirect = true; /* 是否支持重定向 */
     int m_maxRedirects = -1; /* 可以递归返回的数量 */
+    int m_timeout = -1; /* 总超时时间(秒) */
     int m_connectTimeout = -1; /* 连接超时时间(秒) */
-    int m_timeout = -1; /* 超时时间(秒) */
+    int m_lowSpeedLimit = -1; /* 低速传输超时限制(字节/秒) */
+    int m_lowSpeedTimeout = -1; /* 低速传输超时时间(秒) */
     bool m_keepAlive = false; /* 是否保活 */
     size_t m_keepAliveIdle = 60; /* 保活空闲时间 */
     size_t m_keepAliveInterval = 60; /* 保活探测间隔 */

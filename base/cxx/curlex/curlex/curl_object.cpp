@@ -341,7 +341,7 @@ bool CurlObject::initialize(const std::string& caFile)
         return false;
     }
     code = setOption(CURLOPT_NOSIGNAL, 1L);
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
 }
 
 bool CurlObject::initialize(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
@@ -446,7 +446,7 @@ bool CurlObject::initialize(const std::string& user, const std::string& password
         return false;
     }
     code = setOption(CURLOPT_NOSIGNAL, 1L);
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
 }
 
 bool CurlObject::isValid(void) const
@@ -462,13 +462,13 @@ bool CurlObject::setUrl(const std::string& url)
     }
     /* the second parameter must use type: const char* */
     auto code = setOption(CURLOPT_URL, url.c_str());
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
 }
 
 bool CurlObject::setLocalPort(unsigned int port)
 {
     auto code = setOption(CURLOPT_LOCALPORT, port);
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
 }
 
 bool CurlObject::setEnableRedirect(int maxRedirects)
@@ -479,19 +479,34 @@ bool CurlObject::setEnableRedirect(int maxRedirects)
         return false;
     }
     code = setOption(CURLOPT_MAXREDIRS, maxRedirects);
-    return CURLE_OK == code;
-}
-
-bool CurlObject::setConnectTimeout(size_t seconds)
-{
-    auto code = setOption(CURLOPT_CONNECTTIMEOUT, seconds);
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
 }
 
 bool CurlObject::setTimeout(size_t seconds)
 {
     auto code = setOption(CURLOPT_TIMEOUT, seconds);
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
+}
+
+bool CurlObject::setConnectTimeout(size_t seconds)
+{
+    auto code = setOption(CURLOPT_CONNECTTIMEOUT, seconds);
+    return (CURLE_OK == code);
+}
+
+bool CurlObject::setLowSpeedTimeout(size_t limit, size_t seconds)
+{
+    auto code = setOption(CURLOPT_LOW_SPEED_LIMIT, limit);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    code = setOption(CURLOPT_LOW_SPEED_TIME, seconds);
+    if (CURLE_OK != code)
+    {
+        return false;
+    }
+    return true;
 }
 
 bool CurlObject::setKeepAlive(size_t idle, size_t interval)
@@ -601,7 +616,7 @@ bool CurlObject::setResumeOffset(int64_t index)
         return false;
     }
     auto code = setOption(CURLOPT_RESUME_FROM, index);
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
 }
 
 bool CurlObject::setRawData(const std::vector<char>& bytes, bool chunk)
@@ -834,6 +849,6 @@ bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::str
     }
     m_lastPost = nullptr;
     respElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
 }
 } // namespace curlex

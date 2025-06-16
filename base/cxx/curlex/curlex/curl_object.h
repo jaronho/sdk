@@ -128,6 +128,13 @@ public:
     bool setEnableRedirect(int maxRedirects = -1L);
 
     /**
+     * @brief 设置总超时时间(整个请求的总时间, 涵盖了从请求开始到结束的所有阶段)
+     * @param seconds 超时时间(秒), 设置为0永远不超时
+     * @return true-成功, false-失败
+     */
+    bool setTimeout(size_t seconds = 60);
+
+    /**
      * @brief 设置连接超时时间
      * @param seconds 超时时间(秒)
      * @return true-成功, false-失败
@@ -135,11 +142,12 @@ public:
     bool setConnectTimeout(size_t seconds = 30);
 
     /**
-     * @brief 设置数据传输超时时间
-     * @param seconds 超时时间(秒), 设置为0永远不超时
+     * @brief 设置低速传输超时时间
+     * @param limit 速度(字节/秒)
+     * @param seconds 超时时间(秒)
      * @return true-成功, false-失败
      */
-    bool setTimeout(size_t seconds = 60);
+    bool setLowSpeedTimeout(size_t limit, size_t seconds);
 
     /**
      * @brief 设置保活
