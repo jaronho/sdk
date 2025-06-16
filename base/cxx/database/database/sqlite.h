@@ -269,52 +269,61 @@ public:
      * @brief 清空表数据
      * @param tableName 表名
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-成功, false-失败
      */
-    bool clearTable(const std::string& tableName, std::string* errorMsg = nullptr);
+    bool clearTable(const std::string& tableName, std::string* errorMsg = nullptr, std::string* sqlstr = nullptr);
 
     /**
      * @brief 删除表
      * @param tableName 表名
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-成功, false-失败
      */
-    bool dropTable(const std::string& tableName, std::string* errorMsg = nullptr);
+    bool dropTable(const std::string& tableName, std::string* errorMsg = nullptr, std::string* sqlstr = nullptr);
 
     /**
      * @brief 重命名表
      * @param tableName 表名
      * @param newTableName 新表名
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-成功, false-失败
      */
-    bool renameTable(const std::string& tableName, const std::string& newTableName, std::string* errorMsg = nullptr);
+    bool renameTable(const std::string& tableName, const std::string& newTableName, std::string* errorMsg = nullptr,
+                     std::string* sqlstr = nullptr);
 
     /**
      * @brief 检测表是否存在
      * @param tableName 表名
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-存在, false-不存在
      */
-    bool checkTableExist(const std::string& tableName, std::string* errorMsg = nullptr);
+    bool checkTableExist(const std::string& tableName, std::string* errorMsg = nullptr, std::string* sqlstr = nullptr);
 
     /**
      * @brief 检测表中是否存在字段(列)
      * @param tableName 表名
      * @param columnName 字段(列)名
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-存在, false-不存在
      */
-    bool checkColumnExist(const std::string& tableName, const std::string& columnName, std::string* errorMsg = nullptr);
+    bool checkColumnExist(const std::string& tableName, const std::string& columnName, std::string* errorMsg = nullptr,
+                          std::string* sqlstr = nullptr);
 
     /**
      * @brief 查询表中数据条数
      * @param tableName 表名
      * @param condition 条件(选填), 默认为空
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @param errorMsg 错误消息(选填)
      * @return 数据条数
      */
-    long long queryDataCount(const std::string& tableName, const std::string& condition, std::string* errorMsg = nullptr);
+    long long queryDataCount(const std::string& tableName, const std::string& condition, std::string* errorMsg = nullptr,
+                             std::string* sqlstr = nullptr);
 
     /**
      * @brief 插入/替换表数据
@@ -322,10 +331,11 @@ public:
      * @param values 值
      * @param replace 是否替换(选填), 默认false, 为true时若键值已存在则替换, 若键值不存在则插入
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-成功, false-失败
      */
     bool insertInto(const std::string& tableName, const std::unordered_map<std::string, std::string>& values, bool replace = false,
-                    std::string* errorMsg = nullptr);
+                    std::string* errorMsg = nullptr, std::string* sqlstr = nullptr);
 
     /**
      * @brief 插入/替换表数据
@@ -333,18 +343,22 @@ public:
      * @param values 值
      * @param replace 是否替换(选填), 默认false, 为true时若键值已存在则替换, 若键值不存在则插入
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-成功, false-失败
      */
-    bool insertInto(const std::string& tableName, const ValueMap& values, bool replace = false, std::string* errorMsg = nullptr);
+    bool insertInto(const std::string& tableName, const ValueMap& values, bool replace = false, std::string* errorMsg = nullptr,
+                    std::string* sqlstr = nullptr);
 
     /**
      * @brief 删除表数据
      * @param tableName 表名
      * @param condition 条件
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-成功, false-失败
      */
-    bool deleteFrom(const std::string& tableName, const std::string& condition, std::string* errorMsg = nullptr);
+    bool deleteFrom(const std::string& tableName, const std::string& condition, std::string* errorMsg = nullptr,
+                    std::string* sqlstr = nullptr);
 
     /**
      * @brief 更新表数据
@@ -352,10 +366,11 @@ public:
      * @param newValues 新值
      * @param condition 条件
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-成功, false-失败
      */
     bool updateSet(const std::string& tableName, const std::unordered_map<std::string, std::string>& newValues,
-                   const std::string& condition, std::string* errorMsg = nullptr);
+                   const std::string& condition, std::string* errorMsg = nullptr, std::string* sqlstr = nullptr);
 
     /**
      * @brief 更新表数据
@@ -363,9 +378,11 @@ public:
      * @param newValues 新值
      * @param condition 条件
      * @param errorMsg 错误消息(选填)
+     * @param sqlstr [输出]执行的SQL语句(选填)
      * @return true-成功, false-失败
      */
-    bool updateSet(const std::string& tableName, const ValueMap& newValues, const std::string& condition, std::string* errorMsg = nullptr);
+    bool updateSet(const std::string& tableName, const ValueMap& newValues, const std::string& condition, std::string* errorMsg = nullptr,
+                   std::string* sqlstr = nullptr);
 
 private:
     /**

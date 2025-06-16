@@ -559,8 +559,12 @@ std::string Sqlite::getLastErrorMsg()
     return msg;
 }
 
-bool Sqlite::clearTable(const std::string& tableName, std::string* errorMsg)
+bool Sqlite::clearTable(const std::string& tableName, std::string* errorMsg, std::string* sqlstr)
 {
+    if (sqlstr)
+    {
+        sqlstr->clear();
+    }
     if (tableName.empty())
     {
         if (errorMsg)
@@ -570,11 +574,19 @@ bool Sqlite::clearTable(const std::string& tableName, std::string* errorMsg)
         return false;
     }
     auto sql = "DELETE FROM " + tableName;
+    if (sqlstr)
+    {
+        *sqlstr = sql;
+    }
     return execSql(sql, nullptr, errorMsg);
 }
 
-bool Sqlite::dropTable(const std::string& tableName, std::string* errorMsg)
+bool Sqlite::dropTable(const std::string& tableName, std::string* errorMsg, std::string* sqlstr)
 {
+    if (sqlstr)
+    {
+        sqlstr->clear();
+    }
     if (tableName.empty())
     {
         if (errorMsg)
@@ -584,11 +596,19 @@ bool Sqlite::dropTable(const std::string& tableName, std::string* errorMsg)
         return false;
     }
     auto sql = "DROP TABLE IF EXISTS " + tableName;
+    if (sqlstr)
+    {
+        *sqlstr = sql;
+    }
     return execSql(sql, nullptr, errorMsg);
 }
 
-bool Sqlite::renameTable(const std::string& tableName, const std::string& newTableName, std::string* errorMsg)
+bool Sqlite::renameTable(const std::string& tableName, const std::string& newTableName, std::string* errorMsg, std::string* sqlstr)
 {
+    if (sqlstr)
+    {
+        sqlstr->clear();
+    }
     if (tableName.empty() || newTableName.empty())
     {
         if (errorMsg)
@@ -598,11 +618,19 @@ bool Sqlite::renameTable(const std::string& tableName, const std::string& newTab
         return false;
     }
     auto sql = "ALTER TABLE " + tableName + " RENAME TO " + newTableName;
+    if (sqlstr)
+    {
+        *sqlstr = sql;
+    }
     return execSql(sql, nullptr, errorMsg);
 }
 
-bool Sqlite::checkTableExist(const std::string& tableName, std::string* errorMsg)
+bool Sqlite::checkTableExist(const std::string& tableName, std::string* errorMsg, std::string* sqlstr)
 {
+    if (sqlstr)
+    {
+        sqlstr->clear();
+    }
     if (tableName.empty())
     {
         if (errorMsg)
@@ -613,6 +641,10 @@ bool Sqlite::checkTableExist(const std::string& tableName, std::string* errorMsg
     }
     bool foundFlag = false;
     auto sql = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='" + tableName + "'";
+    if (sqlstr)
+    {
+        *sqlstr = sql;
+    }
     execSql(
         sql,
         [&](const std::unordered_map<std::string, std::string>& columns) {
@@ -636,8 +668,12 @@ bool Sqlite::checkTableExist(const std::string& tableName, std::string* errorMsg
     return foundFlag;
 }
 
-bool Sqlite::checkColumnExist(const std::string& tableName, const std::string& columnName, std::string* errorMsg)
+bool Sqlite::checkColumnExist(const std::string& tableName, const std::string& columnName, std::string* errorMsg, std::string* sqlstr)
 {
+    if (sqlstr)
+    {
+        sqlstr->clear();
+    }
     if (tableName.empty() || columnName.empty())
     {
         if (errorMsg)
@@ -648,6 +684,10 @@ bool Sqlite::checkColumnExist(const std::string& tableName, const std::string& c
     }
     bool foundFlag = false;
     auto sql = "PRAGMA table_info(" + tableName + ")";
+    if (sqlstr)
+    {
+        *sqlstr = sql;
+    }
     execSql(
         sql,
         [&](const std::unordered_map<std::string, std::string>& columns) {
@@ -665,8 +705,12 @@ bool Sqlite::checkColumnExist(const std::string& tableName, const std::string& c
     return foundFlag;
 }
 
-long long Sqlite::queryDataCount(const std::string& tableName, const std::string& condition, std::string* errorMsg)
+long long Sqlite::queryDataCount(const std::string& tableName, const std::string& condition, std::string* errorMsg, std::string* sqlstr)
 {
+    if (sqlstr)
+    {
+        sqlstr->clear();
+    }
     if (tableName.empty())
     {
         if (errorMsg)
@@ -677,6 +721,10 @@ long long Sqlite::queryDataCount(const std::string& tableName, const std::string
     }
     long long dataCount = 0;
     auto sql = "SELECT count(*) FROM " + tableName + (condition.empty() ? "" : " WHERE " + condition);
+    if (sqlstr)
+    {
+        *sqlstr = sql;
+    }
     execSql(
         sql,
         [&](const std::unordered_map<std::string, std::string>& columns) {
@@ -702,8 +750,12 @@ long long Sqlite::queryDataCount(const std::string& tableName, const std::string
 }
 
 bool Sqlite::insertInto(const std::string& tableName, const std::unordered_map<std::string, std::string>& values, bool replace,
-                        std::string* errorMsg)
+                        std::string* errorMsg, std::string* sqlstr)
 {
+    if (sqlstr)
+    {
+        sqlstr->clear();
+    }
     if (tableName.empty() || values.empty())
     {
         if (errorMsg)
@@ -732,16 +784,24 @@ bool Sqlite::insertInto(const std::string& tableName, const std::unordered_map<s
         valueSql += "'" + iter->second + "'";
     }
     auto sql = std::string(replace ? "REPLACE" : "INSERT") + " INTO " + tableName + "(" + nameSql + ") VALUES(" + valueSql + ")";
+    if (sqlstr)
+    {
+        *sqlstr = sql;
+    }
     return execSql(sql, nullptr, errorMsg);
 }
 
-bool Sqlite::insertInto(const std::string& tableName, const ValueMap& values, bool replace, std::string* errorMsg)
+bool Sqlite::insertInto(const std::string& tableName, const ValueMap& values, bool replace, std::string* errorMsg, std::string* sqlstr)
 {
-    return insertInto(tableName, values.m_values, replace, errorMsg);
+    return insertInto(tableName, values.m_values, replace, errorMsg, sqlstr);
 }
 
-bool Sqlite::deleteFrom(const std::string& tableName, const std::string& condition, std::string* errorMsg)
+bool Sqlite::deleteFrom(const std::string& tableName, const std::string& condition, std::string* errorMsg, std::string* sqlstr)
 {
+    if (sqlstr)
+    {
+        sqlstr->clear();
+    }
     if (tableName.empty() || condition.empty())
     {
         if (errorMsg)
@@ -751,12 +811,20 @@ bool Sqlite::deleteFrom(const std::string& tableName, const std::string& conditi
         return false;
     }
     auto sql = "DELETE FROM " + tableName + " WHERE " + condition;
+    if (sqlstr)
+    {
+        *sqlstr = sql;
+    }
     return execSql(sql, nullptr, errorMsg);
 }
 
 bool Sqlite::updateSet(const std::string& tableName, const std::unordered_map<std::string, std::string>& newValues,
-                       const std::string& condition, std::string* errorMsg)
+                       const std::string& condition, std::string* errorMsg, std::string* sqlstr)
 {
+    if (sqlstr)
+    {
+        sqlstr->clear();
+    }
     if (tableName.empty() || newValues.empty() || condition.empty())
     {
         if (errorMsg)
@@ -783,12 +851,17 @@ bool Sqlite::updateSet(const std::string& tableName, const std::unordered_map<st
         newValueSql += iter->first + "='" + iter->second + "'";
     }
     auto sql = "UPDATE " + tableName + " SET " + newValueSql + " WHERE " + condition;
+    if (sqlstr)
+    {
+        *sqlstr = sql;
+    }
     return execSql(sql, nullptr, errorMsg);
 }
 
-bool Sqlite::updateSet(const std::string& tableName, const ValueMap& newValues, const std::string& condition, std::string* errorMsg)
+bool Sqlite::updateSet(const std::string& tableName, const ValueMap& newValues, const std::string& condition, std::string* errorMsg,
+                       std::string* sqlstr)
 {
-    return updateSet(tableName, newValues.m_values, condition, errorMsg);
+    return updateSet(tableName, newValues.m_values, condition, errorMsg, sqlstr);
 }
 
 int Sqlite::execImpl(sqlite3* db, const std::string& sql,
