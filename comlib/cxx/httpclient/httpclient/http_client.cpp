@@ -190,5 +190,9 @@ void HttpClient::handleResp(const std::string& name, const curlex::Response& res
             }
         });
     }
+    else
+    {
+        respCb(resp);
+    }
 }
 } // namespace http

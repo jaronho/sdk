@@ -52,16 +52,23 @@ public:
     virtual ~Connection() = default;
 
     /**
+     * @brief 设置总超时时间
+     * @param seconds 秒
+     */
+    void setTimeout(size_t seconds);
+
+    /**
      * @brief 设置连接超时时间
      * @param seconds 秒
      */
     void setConnectTimeout(size_t seconds);
 
     /**
-     * @brief 设置超时时间(收到服务器响应)
-     * @param seconds 秒
+     * @brief 设置低速超时时间
+     * @param limit 速度(字节/秒)
+     * @param seconds 超时时间(秒)
      */
-    void setTimeout(size_t seconds);
+    void setLowSpeedTimeout(size_t limit, size_t seconds);
 
     /**
      * @brief 设置数据传输速度上限

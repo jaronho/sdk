@@ -25,14 +25,19 @@ Connection::Connection(const std::string& username, const std::string& password,
     m_req = HttpClient::makeUserpwdRequest(username, password, url, localPort);
 }
 
+void Connection::setTimeout(size_t seconds)
+{
+    m_req->setTimeout(seconds);
+}
+
 void Connection::setConnectTimeout(size_t seconds)
 {
     m_req->setConnectTimeout(seconds);
 }
 
-void Connection::setTimeout(size_t seconds)
+void Connection::setLowSpeedTimeout(size_t limit, size_t seconds)
 {
-    m_req->setTimeout(seconds);
+    m_req->setLowSpeedTimeout(limit, seconds);
 }
 
 void Connection::setLimitSpeed(size_t sendSpeed, size_t recvSpeed)
