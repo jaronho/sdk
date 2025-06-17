@@ -383,10 +383,6 @@ ssize_t SerialImpl::read(char* buffer, size_t size)
         len += count; /* 更新已读字节数 */
     }
 #endif
-    if (len > 0)
-    {
-        *(buffer + len) = '\0';
-    }
     return len;
 }
 
