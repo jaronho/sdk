@@ -1,5 +1,7 @@
 #include "sqlite.h"
 
+#include <vector>
+
 namespace database
 {
 Sqlite::Stmt::Stmt(std::shared_ptr<std::recursive_mutex> mutex, sqlite3* db, const std::string& sql) : m_stmt(nullptr)
