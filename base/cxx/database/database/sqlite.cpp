@@ -764,8 +764,10 @@ bool Sqlite::insertInto(const std::string& tableName, const std::unordered_map<s
         }
         return false;
     }
-    std::string nameSql, valueSql;
-    for (auto iter = values.begin(); values.end() != iter; ++iter)
+    /* 构建列名和占位符 */
+    std::string columns, placeholders;
+    std::vector<std::string> paramValues;
+    for (auto iter = values.begin(); iter != values.end(); ++iter)
     {
         if (iter->first.empty())
         {
@@ -775,20 +777,54 @@ bool Sqlite::insertInto(const std::string& tableName, const std::unordered_map<s
             }
             return false;
         }
-        if (values.begin() != iter)
+        if (!columns.empty())
         {
-            nameSql += ",";
-            valueSql += ",";
+            columns += ",";
+            placeholders += ",";
         }
-        nameSql += iter->first;
-        valueSql += "'" + iter->second + "'";
+        columns += iter->first;
+        placeholders += "?";
+        paramValues.push_back(iter->second);
     }
-    auto sql = std::string(replace ? "REPLACE" : "INSERT") + " INTO " + tableName + "(" + nameSql + ") VALUES(" + valueSql + ")";
+    /* 构建SQL语句 */
+    std::string sql = std::string(replace ? "REPLACE" : "INSERT") + " INTO " + tableName + "(" + columns + ") VALUES(" + placeholders + ")";
     if (sqlstr)
     {
         *sqlstr = sql;
     }
-    return execSql(sql, nullptr, errorMsg);
+    /* 准备SQL语句 */
+    auto stmt = createStmt(sql);
+    if (!stmt)
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "create statement failed";
+        }
+        return false;
+    }
+    /* 绑定参数 */
+    for (size_t i = 0; i < paramValues.size(); ++i)
+    {
+        if (!stmt->bind(static_cast<int>(i), paramValues[i]))
+        {
+            if (errorMsg)
+            {
+                (*errorMsg) = "bind parameter failed";
+            }
+            return false;
+        }
+    }
+    /* 执行SQL语句 */
+    int result = stmt->step();
+    if (0 != result && 1 != result)
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "execute statement failed: " + getLastErrorMsg();
+        }
+        return false;
+    }
+    return true;
 }
 
 bool Sqlite::insertInto(const std::string& tableName, const ValueMap& values, bool replace, std::string* errorMsg, std::string* sqlstr)
@@ -833,8 +869,10 @@ bool Sqlite::updateSet(const std::string& tableName, const std::unordered_map<st
         }
         return false;
     }
+    /* 构建列名和占位符 */
     std::string newValueSql;
-    for (auto iter = newValues.begin(); newValues.end() != iter; ++iter)
+    std::vector<std::string> paramValues;
+    for (auto iter = newValues.begin(); iter != newValues.end(); ++iter)
     {
         if (iter->first.empty())
         {
@@ -848,14 +886,48 @@ bool Sqlite::updateSet(const std::string& tableName, const std::unordered_map<st
         {
             newValueSql += ",";
         }
-        newValueSql += iter->first + "='" + iter->second + "'";
+        newValueSql += iter->first + " = ?"; /* 使用占位符 */
+        paramValues.push_back(iter->second);
     }
+    /* 构建SQL语句 */
     auto sql = "UPDATE " + tableName + " SET " + newValueSql + " WHERE " + condition;
     if (sqlstr)
     {
         *sqlstr = sql;
     }
-    return execSql(sql, nullptr, errorMsg);
+    /* 准备SQL语句 */
+    auto stmt = createStmt(sql);
+    if (!stmt)
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "create statement failed";
+        }
+        return false;
+    }
+    /* 绑定参数 */
+    for (size_t i = 0; i < paramValues.size(); ++i)
+    {
+        if (!stmt->bind(static_cast<int>(i), paramValues[i]))
+        {
+            if (errorMsg)
+            {
+                (*errorMsg) = "bind parameter failed";
+            }
+            return false;
+        }
+    }
+    /* 执行SQL语句 */
+    int result = stmt->step();
+    if (0 != result && 1 != result)
+    {
+        if (errorMsg)
+        {
+            (*errorMsg) = "execute statement failed: " + getLastErrorMsg();
+        }
+        return false;
+    }
+    return true;
 }
 
 bool Sqlite::updateSet(const std::string& tableName, const ValueMap& newValues, const std::string& condition, std::string* errorMsg,
