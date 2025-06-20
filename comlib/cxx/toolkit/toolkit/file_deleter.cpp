@@ -33,6 +33,7 @@ void FileDeleter::tryOnce(const std::vector<Config>& cfgList, const DeleteCheckF
             continue;
         }
         auto nowTimestamp = (int64_t)utility::DateTime::getNowTimestamp();
+        /* step1. 遍历搜索要删除的目录和文件 */
         std::vector<InfoInner> folderList, expireFileList, occupyFileList;
         auto folderCb = [&](const std::string& name, const utility::FileAttribute& attr, int depth) {
             if (folderCheckFunc && !folderCheckFunc(name, attr, depth)) /* 目录不允许删除 */
@@ -69,20 +70,7 @@ void FileDeleter::tryOnce(const std::vector<Config>& cfgList, const DeleteCheckF
             }
         };
         pi.traverse(folderCb, fileCb, nullptr, true, false);
-        /* 删除空文件夹 */
-        for (const auto& folder : folderList)
-        {
-            auto pi = utility::PathInfo(folder.name);
-            if (pi.exist() && pi.empty())
-            {
-                auto ok = pi.remove();
-                if (folderDeletedCb)
-                {
-                    folderDeletedCb(folder.name, folder.attr, folder.depth, ok);
-                }
-            }
-        }
-        /* 删除过期文件 */
+        /* step2. 删除过期文件 */
         for (const auto& file : expireFileList)
         {
             auto ok = utility::FileInfo(file.name).remove();
@@ -91,7 +79,7 @@ void FileDeleter::tryOnce(const std::vector<Config>& cfgList, const DeleteCheckF
                 fileDeletedCb(file.name, file.attr, file.depth, ok);
             }
         }
-        /* 删除超出分配空间的最早的文件 */
+        /* step3. 删除超出分配空间的最早的文件 */
         if (cfg.occupySize > 0 && !occupyFileList.empty())
         {
             std::sort(occupyFileList.begin(), occupyFileList.end(),
@@ -111,6 +99,19 @@ void FileDeleter::tryOnce(const std::vector<Config>& cfgList, const DeleteCheckF
                 if (ok)
                 {
                     deletedSize += file.attr.size;
+                }
+            }
+        }
+        /* step4. 删除空目录 */
+        for (const auto& folder : folderList)
+        {
+            auto pi = utility::PathInfo(folder.name);
+            if (pi.exist() && pi.empty())
+            {
+                auto ok = pi.remove();
+                if (folderDeletedCb)
+                {
+                    folderDeletedCb(folder.name, folder.attr, folder.depth, ok);
                 }
             }
         }
