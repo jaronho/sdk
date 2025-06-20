@@ -115,14 +115,66 @@ timespec timespecFromMS(unsigned int millis)
 }
 #endif
 
+int getDatabitsNum(const Databits& databits)
+{
+    switch (databits)
+    {
+    case Databits::five:
+        return 5;
+    case Databits::six:
+        return 6;
+    case Databits::seven:
+        return 7;
+    case Databits::eight:
+        return 8;
+    default:
+        return 0;
+    }
+}
+
+int getParityNum(const ParityType& parity)
+{
+    switch (parity)
+    {
+    case ParityType::none:
+        return 0;
+    case ParityType::even:
+        return 2;
+    case ParityType::odd:
+        return 1;
+    case ParityType::mark:
+        return 3;
+    case ParityType::space:
+        return 4;
+    default:
+        return 0;
+    }
+}
+
+int getStopbitsNum(const Stopbits& stopbits)
+{
+    switch (stopbits)
+    {
+    case Stopbits::one:
+        return 1;
+    case Stopbits::one_and_half:
+        return 3;
+    case Stopbits::two:
+        return 2;
+    default:
+        return 0;
+    }
+}
+
 SerialImpl::SerialImpl()
     : m_fd(INVALID_HANDLE_VALUE)
-    , m_baudrate(9600)
+    , m_baudrate(115200)
     , m_databits(Databits::eight)
     , m_parity(ParityType::none)
     , m_stopbits(Stopbits::one)
     , m_flowcontrol(FlowcontrolType::none)
     , m_timeout(Timeout::simpleTimeout(0))
+    , m_byteTimeNS(0)
 {
 }
 
@@ -654,8 +706,51 @@ bool SerialImpl::waitReadable(unsigned int timeout)
         return false;
     }
 #ifdef _WIN32
-    /* TODO: 未实现 */
-    return true;
+    /* 使用WaitCommEvent实现 */
+    OVERLAPPED overlapped = {0};
+    overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (NULL == overlapped.hEvent)
+    {
+        return false;
+    }
+    BOOL fWaitingOnEvent = TRUE;
+    DWORD dwEventType = 0;
+    BOOL result = TRUE;
+    if (!WaitCommEvent(m_fd, &dwEventType, &overlapped))
+    {
+        if (ERROR_IO_PENDING == GetLastError())
+        {
+            result = FALSE;
+        }
+        else
+        {
+            if (WAIT_OBJECT_0 == WaitForSingleObject(overlapped.hEvent, timeout))
+            {
+                DWORD bytesRead = 0;
+                if (!GetOverlappedResult(m_fd, &overlapped, &bytesRead, FALSE))
+                {
+                    result = FALSE;
+                }
+                if (0 == bytesRead)
+                {
+                    result = FALSE;
+                }
+            }
+            else
+            {
+                result = FALSE;
+            }
+        }
+    }
+    else /* WaitCommEvent completed immediately */
+    {
+        if (0 == overlapped.InternalHigh)
+        {
+            result = FALSE;
+        }
+    }
+    CloseHandle(overlapped.hEvent);
+    return result;
 #else
     /* 设置一次select调用用于阻塞 */
     fd_set readfds;
@@ -686,10 +781,12 @@ bool SerialImpl::waitReadable(unsigned int timeout)
 void SerialImpl::waitByteTimes(size_t count)
 {
 #ifdef _WIN32
-    /* TODO: 未实现 */
+    unsigned int byteTimeMS = m_byteTimeNS / 1000000.0;
+    /* 等待 */
+    Sleep(byteTimeMS * count);
 #else
-    timespec wait_time = {0, static_cast<long>(m_byteTimeNS * count)};
-    pselect(0, NULL, NULL, NULL, &wait_time, NULL);
+    timespec waitTime = {0, static_cast<long>(m_byteTimeNS * count)};
+    pselect(0, NULL, NULL, NULL, &waitTime, NULL);
 #endif
 }
 
@@ -991,60 +1088,20 @@ int SerialImpl::reconfig()
     {
         return 8; /* 超时设置失败 */
     }
+    /* 使用新设置更新读/写单个字节时间 */
+    unsigned int bitTimeNS = 1e9 / m_baudrate;
+    int databitsNum = getDatabitsNum(m_databits);
+    int parityNum = getParityNum(m_parity);
+    int stopbitsNum = getStopbitsNum(m_stopbits);
+    m_byteTimeNS = bitTimeNS * (1 + databitsNum + parityNum + stopbitsNum);
+    /* 对1.5位停止位进行补偿, 使用整数值3而不是1.5 */
+    if (Stopbits::one_and_half == m_stopbits)
+    {
+        m_byteTimeNS += ((1.5 - stopbitsNum) * bitTimeNS);
+    }
     return 0;
 }
 #else
-int getDatabitsNum(const Databits& databits)
-{
-    switch (databits)
-    {
-    case Databits::five:
-        return 5;
-    case Databits::six:
-        return 6;
-    case Databits::seven:
-        return 7;
-    case Databits::eight:
-        return 8;
-    default:
-        return 0;
-    }
-}
-
-int getParityNum(const ParityType& parity)
-{
-    switch (parity)
-    {
-    case ParityType::none:
-        return 0;
-    case ParityType::even:
-        return 2;
-    case ParityType::odd:
-        return 1;
-    case ParityType::mark:
-        return 3;
-    case ParityType::space:
-        return 4;
-    default:
-        return 0;
-    }
-}
-
-int getStopbitsNum(const Stopbits& stopbits)
-{
-    switch (stopbits)
-    {
-    case Stopbits::one:
-        return 1;
-    case Stopbits::one_and_half:
-        return 3;
-    case Stopbits::two:
-        return 2;
-    default:
-        return 0;
-    }
-}
-
 int SerialImpl::reconfig()
 {
     if (INVALID_HANDLE_VALUE == m_fd)

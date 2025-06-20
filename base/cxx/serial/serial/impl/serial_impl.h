@@ -242,8 +242,6 @@ private:
     Stopbits m_stopbits; /* 停止位 */
     FlowcontrolType m_flowcontrol; /* 流控 */
     Timeout m_timeout; /* 读操作超时 */
-#ifndef _WIN32
     unsigned int m_byteTimeNS; /* 读/写单个字节时间(单位:纳秒) */
-#endif
 };
 } // namespace serial
