@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
     lcfg.fileMaxCount = 5;
     lcfg.newFolderDaily = true;
     lcfg.consoleMode = 1;
-    logger::LoggerManager::start(lcfg);
+    logger::LoggerManager::setConfig(lcfg);
     s_logger = logger::LoggerManager::getLogger();
     /* 业务模块 */
     Login login;

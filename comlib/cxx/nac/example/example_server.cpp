@@ -228,7 +228,7 @@ int main(int argc, char* argv[])
     lcfg.fileMaxCount = 5;
     lcfg.newFolderDaily = true;
     lcfg.consoleMode = 1;
-    logger::LoggerManager::start(lcfg);
+    logger::LoggerManager::setConfig(lcfg);
     s_logger = logger::LoggerManager::getLogger();
     /* 创建服务器 */
     auto server = std::make_shared<nsocket::TcpServer>("tcp_server", 10, serverHost, serverPort, false, 10 * 1024 * 1024);
