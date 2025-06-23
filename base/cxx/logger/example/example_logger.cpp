@@ -21,7 +21,7 @@ int main()
     cfg.fileMaxCount = 5;
     cfg.fileIndexFixed = true;
     cfg.newFolderDaily = true;
-    logger::LoggerManager::start(cfg, "who");
+    logger::LoggerManager::setConfig(cfg, "who");
     auto logger1 = logger::LoggerManager::getLogger("test", -1, "main_");
     logger1.setConsoleMode(2);
     for (int i = 0; i < 100; ++i)
