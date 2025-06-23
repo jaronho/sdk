@@ -1,20 +1,20 @@
 #include "daily_logfile.h"
 
-#include <stdexcept>
 #include <stdio.h>
 
 DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& suffixName,
                            const std::string& extName, size_t maxSize, size_t maxFiles, bool indexFixed, bool createDailyFolder)
 {
-    if (path.empty())
+    std::string selfPath, selfName;
+    if (path.empty() || prefixName.empty())
     {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'path' is empty");
+        Logfile::getProcessPathAndName(selfPath, selfName);
     }
-    m_path = path;
-    m_prefixName = prefixName;
+    m_path = path.empty() ? selfPath : path;
+    m_prefixName = prefixName.empty() ? selfName : prefixName;
     m_suffixName = suffixName;
-    m_baseName = prefixName + suffixName;
-    m_extName = extName;
+    m_baseName = m_prefixName + m_suffixName;
+    m_extName = extName.empty() ? ".log" : extName;
     m_maxSize = maxSize;
     m_maxFiles = maxFiles > 0 ? maxFiles : 0;
     m_indexFixed = indexFixed;

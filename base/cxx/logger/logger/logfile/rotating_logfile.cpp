@@ -1,8 +1,6 @@
 #include "rotating_logfile.h"
 
-#include <iostream>
 #include <regex>
-#include <stdexcept>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -17,17 +15,14 @@
 RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& baseName, const std::string& extName, size_t maxSize,
                                  size_t maxFiles, bool indexFixed)
 {
-    if (path.empty())
+    std::string selfPath, selfName;
+    if (path.empty() || baseName.empty())
     {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'path' is empty");
+        Logfile::getProcessPathAndName(selfPath, selfName);
     }
-    if (baseName.empty())
-    {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
-                               + "] arg 'baseName' is empty");
-    }
-    m_baseName = baseName;
-    m_extName = extName;
+    std::string logPath = path.empty() ? selfPath : path;
+    m_baseName = baseName.empty() ? selfName : baseName;
+    m_extName = extName.empty() ? ".log" : extName;
     if (!extName.empty() && '.' != extName[0])
     {
         m_extName.insert(0, ".");
@@ -35,8 +30,8 @@ RotatingLogfile::RotatingLogfile(const std::string& path, const std::string& bas
     m_maxFiles = maxFiles > 0 ? maxFiles : 0;
     m_indexFixed = indexFixed;
     std::vector<int> indexList;
-    m_index = findLastIndex(path, indexList);
-    m_logfile = std::make_shared<Logfile>(path, calcFilenameByIndex(m_index), maxSize);
+    m_index = findLastIndex(logPath, indexList);
+    m_logfile = std::make_shared<Logfile>(logPath, calcFilenameByIndex(m_index), maxSize);
 }
 
 int RotatingLogfile::getFileIndex() const

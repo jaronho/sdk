@@ -30,6 +30,13 @@ public:
      */
     static bool createPath(const std::string& path);
 
+    /**
+     * @brief 获取当前进程路径和名称
+     * @param path [输出]程序文件所在路径
+     * @param name [输出]程序文件名
+     */
+    static void getProcessPathAndName(std::string& path, std::string& name);
+
 public:
     /**
      * @brief 构造函数

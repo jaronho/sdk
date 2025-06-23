@@ -11,11 +11,22 @@ LogConfig LoggerManager::m_logCfg;
 std::unordered_map<std::string, InnerLoggerPtr> LoggerManager::m_loggerMap;
 std::string LoggerManager::m_defaultTagName;
 
-void LoggerManager::start(const LogConfig& cfg, const std::string& defultTagName)
+void LoggerManager::setConfig(const LogConfig& cfg, const std::string& defultTagName)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     m_logCfg = cfg;
     m_defaultTagName = defultTagName;
+    for (auto iter = m_loggerMap.begin(); m_loggerMap.end() != iter; ++iter)
+    {
+        iter->second->setMaxSize(cfg.fileMaxSize);
+        iter->second->setMaxFiles(cfg.fileMaxCount);
+        iter->second->setLevel(cfg.level);
+        for (const auto& kv : cfg.levelFile)
+        {
+            iter->second->setLevelFile(kv.first, kv.second);
+        }
+        iter->second->setConsoleMode(cfg.consoleMode);
+    }
 }
 
 Logger LoggerManager::getLogger(const std::string& tagName, int level, const std::string& loggerName)
@@ -30,7 +41,14 @@ Logger LoggerManager::getLogger(const std::string& tagName, int level, const std
     }
     /* 默认日志器找不到则创建 */
     LogConfig cfg = m_logCfg;
-    cfg.name = name;
+    std::string selfPath, selfName;
+    if (cfg.path.empty() || cfg.name.empty())
+    {
+        Logfile::getProcessPathAndName(selfPath, selfName);
+    }
+    cfg.path = cfg.path.empty() ? selfPath : cfg.path;
+    cfg.name = cfg.name.empty() ? selfName : cfg.name;
+    cfg.fileExtName = cfg.fileExtName.empty() ? ".log" : cfg.fileExtName;
     cfg.level = level < 0 ? cfg.level : level;
     InnerLoggerPtr innerLogger = createInnerLogger(cfg);
     m_loggerMap.insert(std::make_pair(name, innerLogger));

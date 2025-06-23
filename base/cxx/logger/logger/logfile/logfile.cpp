@@ -1,10 +1,9 @@
 #include "logfile.h"
 
-#include <iostream>
-#include <stdexcept>
 #include <string.h>
 #include <sys/stat.h>
 #ifdef _WIN32
+#include <Windows.h>
 #include <direct.h>
 #include <io.h>
 #else
@@ -47,24 +46,52 @@ bool Logfile::createPath(const std::string& path)
     return true;
 }
 
+void Logfile::getProcessPathAndName(std::string& path, std::string& name)
+{
+#ifdef _WIN32
+    char exeFile[MAX_PATH + 1] = {0};
+    GetModuleFileNameA(NULL, exeFile, MAX_PATH);
+#else
+    char exeFile[261] = {0};
+    unsigned int exeFileLen = readlink("/proc/self/exe", exeFile, sizeof(exeFile) - 1);
+    if (exeFileLen > 0 && exeFileLen < sizeof(exeFile) - 1)
+    {
+        exeFile[exeFileLen] = '\0';
+    }
+#endif
+    std::string fullPath = exeFile;
+    size_t lastSlashPos = fullPath.find_last_of("/\\");
+    if (std::string::npos == lastSlashPos)
+    {
+        path.clear();
+        name = fullPath;
+    }
+    else
+    {
+        path = fullPath.substr(0, lastSlashPos);
+        name = fullPath.substr(lastSlashPos + 1);
+    }
+    size_t lastDotPos = name.find_last_of('.');
+    if (std::string::npos != lastDotPos)
+    {
+        name = name.substr(0, lastDotPos);
+    }
+}
+
 Logfile::Logfile(const std::string& path, const std::string& filename, size_t maxSize)
 {
-    if (path.empty())
+    std::string selfPath, selfName;
+    if (path.empty() || filename.empty())
     {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__ + "] arg 'path' is empty");
+        getProcessPathAndName(selfPath, selfName);
     }
-    if (filename.empty())
-    {
-        throw std::logic_error(std::string("[") + __FILE__ + " " + std::to_string(__LINE__) + " " + __FUNCTION__
-                               + "] arg 'filename' is empty");
-    }
-    m_path = path;
+    m_path = path.empty() ? selfPath : path;
     const char& lastPathChar = path[path.length() - 1];
     if ('/' == lastPathChar || '\\' == lastPathChar)
     {
         m_path.pop_back();
     }
-    m_filename = filename;
+    m_filename = filename.empty() ? (selfName + ".log") : filename;
 #ifdef _WIN32
     m_fullName = m_path + "\\" + m_filename;
 #else

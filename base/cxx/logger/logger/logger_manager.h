@@ -91,11 +91,11 @@ class LoggerManager final
 {
 public:
     /**
-     * @brief 启动日志
+     * @brief 设置配置(正常是程序启动时调用)
      * @param cfg 配置
      * @param defultTagName 默认的日志标签(选填)
      */
-    static void start(const LogConfig& cfg, const std::string& defultTagName = std::string());
+    static void setConfig(const LogConfig& cfg, const std::string& defultTagName = std::string());
 
     /**
      * @brief 获取日志记录器
