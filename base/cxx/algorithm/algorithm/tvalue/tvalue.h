@@ -68,6 +68,16 @@ public:
     }
 
     /**
+     * @brief 设置成功所需次数
+     * @param okNeedCount 成功所需次数
+     */
+    void setOkNeedCount(int okNeedCount)
+    {
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        m_okNeedCount = okNeedCount > 0 ? okNeedCount : 0;
+    }
+
+    /**
      * @brief 设置值
      * @param nowValue 当前值
      * @return 0-值更新, 1-值不更新(值未发生变化), 2-值不更新(未达到重复次数)
