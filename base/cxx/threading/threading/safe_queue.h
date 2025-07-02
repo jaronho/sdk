@@ -45,6 +45,16 @@ public:
     SafeQueue(size_t maxCount = 0) : m_maxCount(maxCount) {}
 
     /**
+      * @brief 设置队列个数上限
+      * @param maxCount 队列个数上限, 0-表示不限制
+      */
+    void setMaxCount(size_t maxCount)
+    {
+        std::unique_lock<std::mutex> locker(m_mutex);
+        m_maxCount = maxCount;
+    }
+
+    /**
       * @brief 入队列
       * @param value 值
       * @param wait 队列已满的情况下, 是否等待(选填): true-等待, false-丢弃
