@@ -14,11 +14,12 @@
 
 static logger::Logger s_logger;
 static threading::ExecutorPtr s_logicExecutor = nullptr; /* 逻辑线程 */
+static std::shared_ptr<nac::tcli::AccessCtrl> s_accessCtrl = nullptr; /* 网络接入控制 */
 
 class Login final : public nac::tcli::AccessObserver
 {
 public:
-    Login()
+    Login() : nac::tcli::AccessObserver(s_accessCtrl)
     {
         subscribeAccessState([&](const nac::tcli::ConnectState& state) { onAccessState(state); });
         subscribeAccessMsg((int32_t)BizCode::notify_proc_upgrade,
@@ -195,7 +196,7 @@ int main(int argc, char* argv[])
     {
         pem = 1;
     }
-    /* 初始日志模块 */
+    /* step1. 初始日志模块 */
     logger::LogConfig lcfg;
     lcfg.path = utility::FileInfo(utility::Process::getProcessExeFile()).path();
     lcfg.name = "client_"; /* 设置默认日志文件名前缀 */
@@ -206,13 +207,16 @@ int main(int argc, char* argv[])
     lcfg.consoleMode = 1;
     logger::LoggerManager::setConfig(lcfg);
     s_logger = logger::LoggerManager::getLogger();
-    /* 业务模块 */
-    Login login;
-    /* 启动网络接入模块 */
+    /* step2. 创建线程 */
     s_logicExecutor = threading::ThreadProxy::createAsioExecutor("logic", 1);
-    nac::tcli::AccessCtrl::start(std::make_shared<nac::tcli::ProtocolAdapterCustom>(NAC_PROTOCOL_VERSION), s_logicExecutor);
-    nac::tcli::AccessCtrl::setPacketVersionMismatchCallback([&](int32_t localVersion, int32_t pktVersion) {});
-    nac::tcli::AccessCtrl::setPacketLengthAbnormalCallback([&](int32_t maxLength, int32_t pktLength) {});
+    /* step3. 创建网络接入模块 */
+    s_accessCtrl = std::make_shared<nac::tcli::AccessCtrl>();
+    s_accessCtrl->start(std::make_shared<nac::tcli::ProtocolAdapterCustom>(NAC_PROTOCOL_VERSION), s_logicExecutor);
+    s_accessCtrl->setPacketVersionMismatchCallback([&](int32_t localVersion, int32_t pktVersion) {});
+    s_accessCtrl->setPacketLengthAbnormalCallback([&](int32_t maxLength, int32_t pktLength) {});
+    /* step4. 创建业务模块 */
+    Login login();
+    /* step5. 网络连接 */
     nac::tcli::AccessConfig acfg;
     acfg.address = serverHost;
     acfg.port = serverPort;
@@ -228,7 +232,7 @@ int main(int argc, char* argv[])
     acfg.heartbeatFixedSend = true;
     acfg.offlineTime = 13;
     acfg.retryInterval = {1};
-    while (!nac::tcli::AccessCtrl::connect(acfg))
+    while (!s_accessCtrl->connect(acfg))
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -282,7 +286,7 @@ int main(int argc, char* argv[])
                 {
                     std::this_thread::sleep_for(std::chrono::milliseconds(interval));
                 }
-                auto seqId = nac::tcli::AccessCtrl::sendMsg(
+                auto seqId = s_accessCtrl->sendMsg(
                     bizCode, 0, data,
                     [&, bizCode, count](bool ok, const std::string& data) {
                         INFO_LOG(s_logger, "响应第[{:5d}]次消息, bizCode: {} {}", count, bizCode, ok ? "成功." : "失败.");

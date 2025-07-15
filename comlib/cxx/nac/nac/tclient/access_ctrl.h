@@ -29,35 +29,7 @@ using BizExecutorHook = std::function<void(const std::string& name, const std::f
 
 class StateHandler;
 class MsgHandler;
-
-/**
- * @brief 观察者(基类), 如果要订阅接入的相关状态和消息, 则只能通过观察者
- */
-class AccessObserver
-{
-public:
-    ~AccessObserver();
-
-protected:
-    /**
-     * @brief 订阅网络连接状态
-     * @param func 连接状态处理函数
-     * @return true-订阅成功, false-订阅失败
-     */
-    bool subscribeAccessState(const std::function<void(const ConnectState& state)>& func);
-
-    /**
-     * @brief 订阅网络接入消息
-     * @param bizCode 业务码
-     * @param func 消息处理函数
-     * @return true-订阅成功, false-订阅失败
-     */
-    bool subscribeAccessMsg(int32_t bizCode, const std::function<void(int64_t seqId, const std::string& data)>& func);
-
-private:
-    std::shared_ptr<StateHandler> m_stateHandler = nullptr; /* 连接状态处理器 */
-    std::vector<std::shared_ptr<MsgHandler>> m_msgHandlerList; /* 消息处理器列表 */
-};
+class AccessObserver;
 
 /**
  * @brief 接入配置
@@ -95,55 +67,55 @@ class AccessCtrl final
 
 public:
     /**
-     * @brief 启动模块
+     * @brief 启动模块(注意: 需要最先调用)
      * @param adapter 协议适配器
      * @param bizExecutor 业务处理线程
      * @param bizExecutorHook 业务处理线程钩子(选填), 为空时直接执行处理函数
      */
-    static void start(const std::shared_ptr<ProtocolAdapter>& adapter, const threading::ExecutorPtr& bizExecutor,
-                      const BizExecutorHook& bizExecutorHook = nullptr);
+    void start(const std::shared_ptr<ProtocolAdapter>& adapter, const threading::ExecutorPtr& bizExecutor,
+               const BizExecutorHook& bizExecutorHook = nullptr);
 
     /**
      * @brief 设置数据包版本不匹配回调
      * @param callback 回调, 参数: localVersion-本地版本号, pktVersion-数据包版本号
      */
-    static void setPacketVersionMismatchCallback(const PACKET_VERSION_MISMATCH_CALLBACK& callback);
+    void setPacketVersionMismatchCallback(const PACKET_VERSION_MISMATCH_CALLBACK& callback);
 
     /**
      * @brief 设置数据包长度异常回调
      * @param callback 回调, 参数: maxLength-最大长度, pktLength-数据包长度
      */
-    static void setPacketLengthAbnormalCallback(const PACKET_LENGTH_ABNORMAL_CALLBACK& callback);
+    void setPacketLengthAbnormalCallback(const PACKET_LENGTH_ABNORMAL_CALLBACK& callback);
 
     /**
      * @brief 设置鉴权数据生成器
      * @param generator 生成器, 返回值: 鉴权数据
      */
-    static void setAuthDataGenerator(const std::function<std::string()>& generator);
+    void setAuthDataGenerator(const std::function<std::string()>& generator);
 
     /**
      * @brief 设置鉴权结果回调
      * @param callback 回调, 参数: data-鉴权结果, 返回值: true-鉴权成功, false-鉴权失败
      */
-    static void setAuthResultCallback(const std::function<bool(const std::string& data)>& callback);
+    void setAuthResultCallback(const std::function<bool(const std::string& data)>& callback);
 
     /**
      * @brief 设置心跳数据生成器
      * @param generator 生成器, 返回值: 心跳数据(一般为空)
      */
-    static void setHeartbeatDataGenerator(const std::function<std::string()>& generator);
+    void setHeartbeatDataGenerator(const std::function<std::string()>& generator);
 
     /**
-     * @brief 连接(非阻塞)
+     * @brief 连接
      * @param cfg 接入配置
      * @return true-启动中, false-启动失败
      */
-    static bool connect(const AccessConfig& cfg);
+    bool connect(const AccessConfig& cfg);
 
     /**
      * @brief 断开
      */
-    static void disconnect();
+    void disconnect();
 
     /**
      * @brief 设置参数
@@ -152,7 +124,7 @@ public:
      * @param offlineTime 掉线判定时间(秒), 超过该时间未收到服务端数据表示掉线, 必须大于心跳间隔
      * @return true-成功, false-失败
      */
-    static bool setParam(unsigned int heartbeatInterval, bool heartbeatFixedSend, unsigned int offlineTime);
+    bool setParam(unsigned int heartbeatInterval, bool heartbeatFixedSend, unsigned int offlineTime);
 
     /**
      * @brief 发送消息
@@ -163,14 +135,14 @@ public:
      * @param timeout 响应超时(秒), 为0时表示不需要等待服务端响应数据
      * @return 消息序列ID, -1表示发送失败
      */
-    static int64_t sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, const RespCallback& callback = nullptr,
-                           unsigned int timeout = 5);
+    int64_t sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, const RespCallback& callback = nullptr,
+                    unsigned int timeout = 5);
 
     /**
      * @brief 获取本端端点
      * @return 本端端点
      */
-    static boost::asio::ip::tcp::endpoint getLocalEndpoint();
+    boost::asio::ip::tcp::endpoint getLocalEndpoint();
 
 private:
     /**
@@ -178,13 +150,13 @@ private:
      * @param handler 状态处理器
      * @return true-订阅成功, false-订阅失败
      */
-    static bool subscribeState(const std::shared_ptr<StateHandler>& handler);
+    bool subscribeState(const std::shared_ptr<StateHandler>& handler);
 
     /**
      * @brief 取消状态订阅, 在观察者析构中自动调用, 外部模块不直接调用
      * @param handler 状态处理器
      */
-    static void unsubscribeState(const std::shared_ptr<StateHandler>& handler);
+    void unsubscribeState(const std::shared_ptr<StateHandler>& handler);
 
     /**
      * @brief 订阅消息(服务端主动下发的消息), 在观察者中自动调用, 外部模块不直接调用
@@ -192,13 +164,13 @@ private:
      * @param handler 消息处理器
      * @return true-订阅成功, false-订阅失败
      */
-    static bool subscribeMsg(int32_t bizCode, const std::shared_ptr<MsgHandler>& handler);
+    bool subscribeMsg(int32_t bizCode, const std::shared_ptr<MsgHandler>& handler);
 
     /**
      * @brief 取消消息订阅, 在观察者析构中自动调用, 外部模块不直接调用
      * @param handler 消息处理器
      */
-    static void unsubscribeMsg(const std::shared_ptr<MsgHandler>& handler);
+    void unsubscribeMsg(const std::shared_ptr<MsgHandler>& handler);
 
     /**
      * @brief 响应接收消息
@@ -206,18 +178,71 @@ private:
      * @param seqId 消息序列ID
      * @param data 数据
      */
-    static void onReceiveMsg(int32_t bizCode, int64_t seqId, const std::string& data);
+    void onReceiveMsg(int32_t bizCode, int64_t seqId, const std::string& data);
 
     /**
      * @brief 响应连接状态变化
      * @param state 连接状态
      */
-    static void onConnectStateChanged(const ConnectState& state);
+    void onConnectStateChanged(const ConnectState& state);
 
     /**
      * @brief 响应重试定时器
      */
-    static void onRetryTimer();
+    void onRetryTimer();
+
+private:
+    std::shared_ptr<DataChannel> m_dataChannel = nullptr; /* 数据通道 */
+    std::shared_ptr<ProtocolAdapter> m_protocolAdapter = nullptr; /* 协议适配器 */
+    std::shared_ptr<SessionManager> m_sessionManager = nullptr; /* 会话管理器 */
+    std::shared_ptr<ConnectService> m_connectService = nullptr; /* 连接服务 */
+    threading::ExecutorPtr m_bizExecutor = nullptr; /* 业务处理线程 */
+    BizExecutorHook m_bizExecutorHook = nullptr; /* 业务处理线程钩子 */
+    std::mutex m_mutexStateHandlerList;
+    std::list<std::weak_ptr<StateHandler>> m_stateHandlerList; /* 状态处理器列表 */
+    std::mutex m_mutexMsgHandlerMap;
+    std::map<int32_t, std::list<std::weak_ptr<MsgHandler>>> m_msgHandlerMap; /* 消息处理器列表 */
+    std::mutex m_mutexCfg;
+    AccessConfig m_cfg; /* 接入配置 */
+    std::mutex m_mutexRetryTimer;
+    threading::SteadyTimerPtr m_retryTimer = nullptr; /* 重试(自动重连)定时器 */
+    std::atomic<ConnectState> m_connectState = {ConnectState::idle}; /* 连接状态 */
+};
+
+/**
+ * @brief 观察者(基类), 如果要订阅接入的相关状态和消息, 则只能通过观察者
+ */
+class AccessObserver
+{
+public:
+    /**
+     * @brief 构造函数
+     * @param accessCtrl 接入控制
+     */
+    AccessObserver(const std::shared_ptr<AccessCtrl>& accessCtrl);
+    ~AccessObserver();
+
+protected:
+    /**
+     * @brief 订阅网络连接状态
+     * @param func 连接状态处理函数
+     * @return true-订阅成功, false-订阅失败
+     */
+    bool subscribeAccessState(const std::function<void(const ConnectState& state)>& func);
+
+    /**
+     * @brief 订阅网络接入消息
+     * @param bizCode 业务码
+     * @param func 消息处理函数
+     * @return true-订阅成功, false-订阅失败
+     */
+    bool subscribeAccessMsg(int32_t bizCode, const std::function<void(int64_t seqId, const std::string& data)>& func);
+
+private:
+    std::weak_ptr<AccessCtrl> m_wpAccessCtrl; /* 接入控制 */
+    std::mutex m_mutexHandler;
+    std::shared_ptr<StateHandler> m_stateHandler = nullptr; /* 连接状态处理器 */
+    std::vector<std::shared_ptr<MsgHandler>> m_msgHandlerList; /* 消息处理器列表 */
 };
 } // namespace tcli
 } // namespace nac

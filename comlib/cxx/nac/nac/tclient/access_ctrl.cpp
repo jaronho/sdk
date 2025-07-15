@@ -49,65 +49,6 @@ private:
     std::function<void(int64_t seqId, const std::string& data)> m_func = nullptr; /* 消息处理函数 */
 };
 
-AccessObserver::~AccessObserver()
-{
-    if (m_stateHandler)
-    {
-        AccessCtrl::unsubscribeState(m_stateHandler);
-        m_stateHandler.reset();
-    }
-    for (auto& handler : m_msgHandlerList)
-    {
-        AccessCtrl::unsubscribeMsg(handler);
-        handler.reset();
-    }
-    m_msgHandlerList.clear();
-}
-
-bool AccessObserver::subscribeAccessState(const std::function<void(const ConnectState& state)>& func)
-{
-    if (func)
-    {
-        auto handler = std::make_shared<StateHandler>(func);
-        if (AccessCtrl::subscribeState(handler))
-        {
-            m_stateHandler = handler;
-            return true;
-        }
-    }
-    return false;
-}
-
-bool AccessObserver::subscribeAccessMsg(int32_t bizCode, const std::function<void(int64_t seqId, const std::string& data)>& func)
-{
-    if (func)
-    {
-        auto handler = std::make_shared<MsgHandler>(func);
-        if (AccessCtrl::subscribeMsg(bizCode, handler))
-        {
-            m_msgHandlerList.emplace_back(handler);
-            return true;
-        }
-    }
-    return false;
-}
-
-static std::shared_ptr<DataChannel> s_dataChannel = nullptr; /* 数据通道 */
-static std::shared_ptr<ProtocolAdapter> s_protocolAdapter = nullptr; /* 协议适配器 */
-static std::shared_ptr<SessionManager> s_sessionManager = nullptr; /* 会话管理器 */
-static std::shared_ptr<ConnectService> s_connectService = nullptr; /* 连接服务 */
-static threading::ExecutorPtr s_bizExecutor = nullptr; /* 业务处理线程 */
-static BizExecutorHook s_bizExecutorHook = nullptr; /* 业务处理线程钩子 */
-static std::mutex s_mutexStateHandlerList;
-static std::list<std::weak_ptr<StateHandler>> s_stateHandlerList; /* 状态处理器列表 */
-static std::mutex s_mutexMsgHandlerMap;
-static std::map<int32_t, std::list<std::weak_ptr<MsgHandler>>> s_msgHandlerMap; /* 消息处理器列表 */
-static std::mutex s_mutexCfg;
-static AccessConfig s_cfg; /* 接入配置 */
-static std::mutex s_mutexRetryTimer;
-static threading::SteadyTimerPtr s_retryTimer = nullptr; /* 重试(自动重连)定时器 */
-static std::atomic<ConnectState> s_connectState = {ConnectState::idle}; /* 连接状态 */
-
 void AccessCtrl::start(const std::shared_ptr<ProtocolAdapter>& adapter, const threading::ExecutorPtr& bizExecutor,
                        const BizExecutorHook& bizExecutorHook)
 {
@@ -115,39 +56,39 @@ void AccessCtrl::start(const std::shared_ptr<ProtocolAdapter>& adapter, const th
     {
         throw std::logic_error("arg adapter must not be empty");
     }
-    s_dataChannel = std::make_shared<DataChannel>();
-    s_protocolAdapter = adapter;
-    s_protocolAdapter->setDataChannel(s_dataChannel);
-    s_sessionManager = std::make_shared<SessionManager>();
-    s_sessionManager->setDataChannel(s_dataChannel);
-    s_sessionManager->setProtocolAdapter(s_protocolAdapter);
-    s_sessionManager->setMsgReceiver([&](int32_t bizCode, int64_t seqId, const std::string& data) { onReceiveMsg(bizCode, seqId, data); });
-    s_connectService = std::make_shared<ConnectService>();
-    s_connectService->setDataChannel(s_dataChannel);
-    s_connectService->setSessionManager(s_sessionManager);
-    s_connectService->setConnectCallback([&](const ConnectState& state) { onConnectStateChanged(state); });
-    s_bizExecutor = bizExecutor;
-    s_bizExecutorHook = bizExecutorHook;
+    m_dataChannel = std::make_shared<DataChannel>();
+    m_protocolAdapter = adapter;
+    m_protocolAdapter->setDataChannel(m_dataChannel);
+    m_sessionManager = std::make_shared<SessionManager>();
+    m_sessionManager->setDataChannel(m_dataChannel);
+    m_sessionManager->setProtocolAdapter(m_protocolAdapter);
+    m_sessionManager->setMsgReceiver([&](int32_t bizCode, int64_t seqId, const std::string& data) { onReceiveMsg(bizCode, seqId, data); });
+    m_connectService = std::make_shared<ConnectService>();
+    m_connectService->setDataChannel(m_dataChannel);
+    m_connectService->setSessionManager(m_sessionManager);
+    m_connectService->setConnectCallback([&](const ConnectState& state) { onConnectStateChanged(state); });
+    m_bizExecutor = bizExecutor;
+    m_bizExecutorHook = bizExecutorHook;
 }
 
 void AccessCtrl::setPacketVersionMismatchCallback(const PACKET_VERSION_MISMATCH_CALLBACK& callback)
 {
-    if (!s_protocolAdapter)
+    if (!m_protocolAdapter)
     {
         return;
     }
-    s_protocolAdapter->setPacketVersionMismatchCallback([&, callback](int32_t localVersion, int32_t pktVersion) {
-        if (!s_bizExecutor)
+    m_protocolAdapter->setPacketVersionMismatchCallback([&, callback](int32_t localVersion, int32_t pktVersion) {
+        if (!m_bizExecutor)
         {
             return;
         }
         auto name = "nac.tcli.api.pkt.version_mismatch";
-        s_bizExecutor->post(name, [&, name, localVersion, pktVersion, callback]() {
+        m_bizExecutor->post(name, [&, name, localVersion, pktVersion, callback]() {
             if (callback)
             {
-                if (s_bizExecutorHook)
+                if (m_bizExecutorHook)
                 {
-                    s_bizExecutorHook(name, [localVersion, pktVersion, callback]() { callback(localVersion, pktVersion); });
+                    m_bizExecutorHook(name, [localVersion, pktVersion, callback]() { callback(localVersion, pktVersion); });
                 }
                 else
                 {
@@ -160,22 +101,22 @@ void AccessCtrl::setPacketVersionMismatchCallback(const PACKET_VERSION_MISMATCH_
 
 void AccessCtrl::setPacketLengthAbnormalCallback(const PACKET_LENGTH_ABNORMAL_CALLBACK& callback)
 {
-    if (!s_protocolAdapter)
+    if (!m_protocolAdapter)
     {
         return;
     }
-    s_protocolAdapter->setPacketLengthAbnormalCallback([&, callback](int32_t maxLength, int32_t pktLength) {
-        if (!s_bizExecutor)
+    m_protocolAdapter->setPacketLengthAbnormalCallback([&, callback](int32_t maxLength, int32_t pktLength) {
+        if (!m_bizExecutor)
         {
             return;
         }
         auto name = "nac.tcli.api.pkt.length_abnormal";
-        s_bizExecutor->post(name, [&, name, maxLength, pktLength, callback]() {
+        m_bizExecutor->post(name, [&, name, maxLength, pktLength, callback]() {
             if (callback)
             {
-                if (s_bizExecutorHook)
+                if (m_bizExecutorHook)
                 {
-                    s_bizExecutorHook(name, [maxLength, pktLength, callback]() { callback(maxLength, pktLength); });
+                    m_bizExecutorHook(name, [maxLength, pktLength, callback]() { callback(maxLength, pktLength); });
                 }
                 else
                 {
@@ -188,11 +129,11 @@ void AccessCtrl::setPacketLengthAbnormalCallback(const PACKET_LENGTH_ABNORMAL_CA
 
 void AccessCtrl::setAuthDataGenerator(const std::function<std::string()>& generator)
 {
-    if (!s_connectService)
+    if (!m_connectService)
     {
         return;
     }
-    s_connectService->setAuthDataGenerator([generator]() {
+    m_connectService->setAuthDataGenerator([generator]() {
         if (generator)
         {
             return generator();
@@ -203,11 +144,11 @@ void AccessCtrl::setAuthDataGenerator(const std::function<std::string()>& genera
 
 void AccessCtrl::setAuthResultCallback(const std::function<bool(const std::string& data)>& callback)
 {
-    if (!s_connectService)
+    if (!m_connectService)
     {
         return;
     }
-    s_connectService->setAuthResultCallback([callback](const std::string& data) {
+    m_connectService->setAuthResultCallback([callback](const std::string& data) {
         if (callback)
         {
             return callback(data);
@@ -218,11 +159,11 @@ void AccessCtrl::setAuthResultCallback(const std::function<bool(const std::strin
 
 void AccessCtrl::setHeartbeatDataGenerator(const std::function<std::string()>& generator)
 {
-    if (!s_connectService)
+    if (!m_connectService)
     {
         return;
     }
-    s_connectService->setHeartbeatDataGenerator([generator]() {
+    m_connectService->setHeartbeatDataGenerator([generator]() {
         if (generator)
         {
             return generator();
@@ -233,47 +174,47 @@ void AccessCtrl::setHeartbeatDataGenerator(const std::function<std::string()>& g
 
 bool AccessCtrl::connect(const AccessConfig& cfg)
 {
-    if (!s_connectService)
+    if (!m_connectService)
     {
         return false;
     }
     {
-        std::lock_guard<std::mutex> locker(s_mutexCfg);
-        s_cfg = cfg;
+        std::lock_guard<std::mutex> locker(m_mutexCfg);
+        m_cfg = cfg;
     }
     /* 创建重试定时器 */
     {
-        std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
-        if (s_retryTimer)
+        std::lock_guard<std::mutex> locker(m_mutexRetryTimer);
+        if (m_retryTimer)
         {
-            s_retryTimer->stop();
+            m_retryTimer->stop();
         }
     }
     if (cfg.retryInterval.size() > 0)
     {
-        std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
-        if (s_retryTimer)
+        std::lock_guard<std::mutex> locker(m_mutexRetryTimer);
+        if (m_retryTimer)
         {
-            s_retryTimer->setDelay(std::chrono::seconds(cfg.retryInterval[0]));
+            m_retryTimer->setDelay(std::chrono::seconds(cfg.retryInterval[0]));
         }
         else
         {
-            s_retryTimer = threading::SteadyTimer::onceTimer(
+            m_retryTimer = threading::SteadyTimer::onceTimer(
                 "nac.tcli.connect.retry", std::chrono::seconds(cfg.retryInterval[0]),
-                [&](const std::chrono::steady_clock::time_point& tp) { onRetryTimer(); }, s_dataChannel->getPktExecutor().lock());
+                [&](const std::chrono::steady_clock::time_point& tp) { onRetryTimer(); }, m_dataChannel->getPktExecutor().lock());
         }
     }
     /* 首次连接 */
-    bool ret = s_connectService->connect(cfg.localPort, cfg.address, cfg.port, cfg.sslOn, cfg.sslWay, cfg.certFmt, cfg.certFile, cfg.pkFile,
+    bool ret = m_connectService->connect(cfg.localPort, cfg.address, cfg.port, cfg.sslOn, cfg.sslWay, cfg.certFmt, cfg.certFile, cfg.pkFile,
                                          cfg.pkPwd, cfg.sendBufSize, cfg.recvBufSize, cfg.enableNagle, cfg.connectTimeout,
                                          (int32_t)cfg.authBizCode, cfg.authTimeout, (int32_t)cfg.heartbeatBizCode, cfg.heartbeatInterval,
                                          cfg.heartbeatFixedSend, cfg.offlineTime);
     if (!ret)
     {
-        std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
-        if (s_retryTimer)
+        std::lock_guard<std::mutex> locker(m_mutexRetryTimer);
+        if (m_retryTimer)
         {
-            s_retryTimer->start();
+            m_retryTimer->start();
         }
     }
     return ret;
@@ -281,26 +222,26 @@ bool AccessCtrl::connect(const AccessConfig& cfg)
 
 void AccessCtrl::disconnect()
 {
-    if (!s_connectService)
+    if (!m_connectService)
     {
         return;
     }
     {
-        std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
-        if (s_retryTimer)
+        std::lock_guard<std::mutex> locker(m_mutexRetryTimer);
+        if (m_retryTimer)
         {
-            s_retryTimer->stop();
-            s_retryTimer.reset();
+            m_retryTimer->stop();
+            m_retryTimer = nullptr;
         }
     }
-    s_connectService->disconnect();
+    m_connectService->disconnect();
 }
 
 bool AccessCtrl::setParam(unsigned int heartbeatInterval, bool heartbeatFixedSend, unsigned int offlineTime)
 {
-    if (s_connectService)
+    if (m_connectService)
     {
-        return s_connectService->setParam(heartbeatInterval, heartbeatFixedSend, offlineTime);
+        return m_connectService->setParam(heartbeatInterval, heartbeatFixedSend, offlineTime);
     }
     return false;
 }
@@ -308,7 +249,7 @@ bool AccessCtrl::setParam(unsigned int heartbeatInterval, bool heartbeatFixedSen
 int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, const RespCallback& callback, unsigned int timeout)
 {
     auto func = [&, callback](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
-        if (!s_bizExecutor)
+        if (!m_bizExecutor)
         {
             if (callback)
             {
@@ -317,12 +258,12 @@ int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& d
             return;
         }
         auto name = "nac.tcli.api.resp|" + std::to_string(sendOk) + "|" + std::to_string(bizCode) + "|" + std::to_string(seqId);
-        s_bizExecutor->post(name, [&, name, sendOk, bizCode, seqId, data, callback]() {
+        m_bizExecutor->post(name, [&, name, sendOk, bizCode, seqId, data, callback]() {
             if (callback)
             {
-                if (s_bizExecutorHook)
+                if (m_bizExecutorHook)
                 {
-                    s_bizExecutorHook(name, [sendOk, data, callback]() { callback(sendOk, data); });
+                    m_bizExecutorHook(name, [sendOk, data, callback]() { callback(sendOk, data); });
                 }
                 else
                 {
@@ -331,51 +272,51 @@ int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& d
             }
         });
     };
-    if (!s_sessionManager)
+    if (!m_sessionManager)
     {
         func(false, bizCode, seqId, "");
         return -1;
     }
-    if (ConnectState::connected != s_connectState)
+    if (ConnectState::connected != m_connectState)
     {
         func(false, bizCode, seqId, "");
         return -1;
     }
     AccessConfig cfg;
     {
-        std::lock_guard<std::mutex> locker(s_mutexCfg);
-        cfg = s_cfg;
+        std::lock_guard<std::mutex> locker(m_mutexCfg);
+        cfg = m_cfg;
     }
     if (bizCode == cfg.authBizCode || bizCode == cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
     {
         func(false, bizCode, seqId, "");
         return -1;
     }
-    return s_sessionManager->sendMsg(bizCode, seqId, data, timeout, func);
+    return m_sessionManager->sendMsg(bizCode, seqId, data, timeout, func);
 }
 
 boost::asio::ip::tcp::endpoint AccessCtrl::getLocalEndpoint()
 {
-    if (!s_dataChannel)
+    if (!m_dataChannel)
     {
         return boost::asio::ip::tcp::endpoint();
     }
-    return s_dataChannel->getLocalEndpoint();
+    return m_dataChannel->getLocalEndpoint();
 }
 
 bool AccessCtrl::subscribeState(const std::shared_ptr<StateHandler>& handler)
 {
     if (handler)
     {
-        std::lock_guard<std::mutex> locker(s_mutexStateHandlerList);
-        for (const auto& wpHandler : s_stateHandlerList)
+        std::lock_guard<std::mutex> locker(m_mutexStateHandlerList);
+        for (const auto& wpHandler : m_stateHandlerList)
         {
             if (wpHandler.lock() == handler)
             {
                 return false;
             }
         }
-        s_stateHandlerList.emplace_back(handler);
+        m_stateHandlerList.emplace_back(handler);
         return true;
     }
     return false;
@@ -385,8 +326,8 @@ void AccessCtrl::unsubscribeState(const std::shared_ptr<StateHandler>& handler)
 {
     if (handler)
     {
-        std::lock_guard<std::mutex> locker(s_mutexMsgHandlerMap);
-        s_stateHandlerList.remove_if([handler](const std::weak_ptr<StateHandler>& wpHandler) { return (wpHandler.lock() == handler); });
+        std::lock_guard<std::mutex> locker(m_mutexMsgHandlerMap);
+        m_stateHandlerList.remove_if([handler](const std::weak_ptr<StateHandler>& wpHandler) { return (wpHandler.lock() == handler); });
     }
 }
 
@@ -394,8 +335,8 @@ bool AccessCtrl::subscribeMsg(int32_t bizCode, const std::shared_ptr<MsgHandler>
 {
     AccessConfig cfg;
     {
-        std::lock_guard<std::mutex> locker(s_mutexCfg);
-        cfg = s_cfg;
+        std::lock_guard<std::mutex> locker(m_mutexCfg);
+        cfg = m_cfg;
     }
     if (bizCode == cfg.authBizCode || bizCode == cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
     {
@@ -403,8 +344,8 @@ bool AccessCtrl::subscribeMsg(int32_t bizCode, const std::shared_ptr<MsgHandler>
     }
     if (handler)
     {
-        std::lock_guard<std::mutex> locker(s_mutexMsgHandlerMap);
-        auto& handlerList = s_msgHandlerMap[bizCode];
+        std::lock_guard<std::mutex> locker(m_mutexMsgHandlerMap);
+        auto& handlerList = m_msgHandlerMap[bizCode];
         for (const auto& wpHandler : handlerList)
         {
             if (wpHandler.lock() == handler)
@@ -412,7 +353,7 @@ bool AccessCtrl::subscribeMsg(int32_t bizCode, const std::shared_ptr<MsgHandler>
                 return false;
             }
         }
-        s_msgHandlerMap[bizCode].emplace_back(handler);
+        m_msgHandlerMap[bizCode].emplace_back(handler);
         return true;
     }
     return false;
@@ -422,8 +363,8 @@ void AccessCtrl::unsubscribeMsg(const std::shared_ptr<MsgHandler>& handler)
 {
     if (handler)
     {
-        std::lock_guard<std::mutex> locker(s_mutexMsgHandlerMap);
-        for (auto iter = s_msgHandlerMap.begin(); s_msgHandlerMap.end() != iter; ++iter)
+        std::lock_guard<std::mutex> locker(m_mutexMsgHandlerMap);
+        for (auto iter = m_msgHandlerMap.begin(); m_msgHandlerMap.end() != iter; ++iter)
         {
             iter->second.remove_if([handler](const std::weak_ptr<MsgHandler>& wpHandler) { return (wpHandler.lock() == handler); });
         }
@@ -432,17 +373,17 @@ void AccessCtrl::unsubscribeMsg(const std::shared_ptr<MsgHandler>& handler)
 
 void AccessCtrl::onReceiveMsg(int32_t bizCode, int64_t seqId, const std::string& data)
 {
-    if (!s_bizExecutor)
+    if (!m_bizExecutor)
     {
         return;
     }
     auto name = "nac.tcli.api.notify|" + std::to_string(bizCode) + "|" + std::to_string(seqId);
-    s_bizExecutor->post(name, [&, name, bizCode, seqId, data]() {
+    m_bizExecutor->post(name, [&, name, bizCode, seqId, data]() {
         std::list<std::weak_ptr<MsgHandler>> handlerList;
         {
-            std::lock_guard<std::mutex> locker(s_mutexMsgHandlerMap);
-            const auto& iter = s_msgHandlerMap.find(bizCode);
-            if (s_msgHandlerMap.end() == iter)
+            std::lock_guard<std::mutex> locker(m_mutexMsgHandlerMap);
+            const auto& iter = m_msgHandlerMap.find(bizCode);
+            if (m_msgHandlerMap.end() == iter)
             {
                 return;
             }
@@ -452,9 +393,9 @@ void AccessCtrl::onReceiveMsg(int32_t bizCode, int64_t seqId, const std::string&
         {
             return;
         }
-        if (s_bizExecutorHook)
+        if (m_bizExecutorHook)
         {
-            s_bizExecutorHook(name, [seqId, data, handlerList]() {
+            m_bizExecutorHook(name, [seqId, data, handlerList]() {
                 for (const auto& wpHandler : handlerList)
                 {
                     auto handler = wpHandler.lock();
@@ -481,25 +422,25 @@ void AccessCtrl::onReceiveMsg(int32_t bizCode, int64_t seqId, const std::string&
 
 void AccessCtrl::onConnectStateChanged(const ConnectState& state)
 {
-    s_connectState = state;
-    if (!s_bizExecutor)
+    m_connectState = state;
+    if (!m_bizExecutor)
     {
         return;
     }
     auto name = "nac.tcli.api.state|" + std::to_string((int)state);
-    s_bizExecutor->post(name, [&, name, state]() {
+    m_bizExecutor->post(name, [&, name, state]() {
         std::list<std::weak_ptr<StateHandler>> handlerList;
         {
-            std::lock_guard<std::mutex> locker(s_mutexStateHandlerList);
-            handlerList = s_stateHandlerList;
+            std::lock_guard<std::mutex> locker(m_mutexStateHandlerList);
+            handlerList = m_stateHandlerList;
         }
         if (handlerList.empty())
         {
             return;
         }
-        if (s_bizExecutorHook)
+        if (m_bizExecutorHook)
         {
-            s_bizExecutorHook(name, [state, handlerList]() {
+            m_bizExecutorHook(name, [state, handlerList]() {
                 for (const auto& wpHandler : handlerList)
                 {
                     auto handler = wpHandler.lock();
@@ -524,39 +465,111 @@ void AccessCtrl::onConnectStateChanged(const ConnectState& state)
     });
     if (ConnectState::disconnected == state) /* 断开连接, 重连 */
     {
-        std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
-        if (s_retryTimer)
+        std::lock_guard<std::mutex> locker(m_mutexRetryTimer);
+        if (m_retryTimer)
         {
-            s_retryTimer->start();
+            m_retryTimer->start();
         }
     }
 }
 
 void AccessCtrl::onRetryTimer()
 {
-    if (!s_connectService)
+    if (!m_connectService)
     {
         return;
     }
     AccessConfig cfg;
     {
-        std::lock_guard<std::mutex> locker(s_mutexCfg);
+        std::lock_guard<std::mutex> locker(m_mutexCfg);
         /* 设置下一次重试间隔 */
-        if (s_cfg.retryInterval.size() > 1)
+        if (m_cfg.retryInterval.size() > 1)
         {
-            s_cfg.retryInterval.erase(s_cfg.retryInterval.begin());
+            m_cfg.retryInterval.erase(m_cfg.retryInterval.begin());
         }
-        cfg = s_cfg;
+        cfg = m_cfg;
     }
     {
-        std::lock_guard<std::mutex> locker(s_mutexRetryTimer);
-        if (s_retryTimer)
+        std::lock_guard<std::mutex> locker(m_mutexRetryTimer);
+        if (m_retryTimer)
         {
-            s_retryTimer->setDelay(std::chrono::seconds(cfg.retryInterval[0]));
+            m_retryTimer->setDelay(std::chrono::seconds(cfg.retryInterval[0]));
         }
     }
     /* 重试 */
-    s_connectService->reconnect();
+    m_connectService->reconnect();
+}
+
+AccessObserver::AccessObserver(const std::shared_ptr<AccessCtrl>& accessCtrl)
+{
+    if (!accessCtrl)
+    {
+        throw std::logic_error("access ctrl must not be empty");
+    }
+    m_wpAccessCtrl = accessCtrl;
+}
+
+AccessObserver::~AccessObserver()
+{
+    auto accessCtrl = m_wpAccessCtrl.lock();
+    if (accessCtrl)
+    {
+        std::shared_ptr<StateHandler> stateHandler;
+        std::vector<std::shared_ptr<MsgHandler>> msgHandlerList;
+        {
+            std::lock_guard<std::mutex> locker(m_mutexHandler);
+            stateHandler = m_stateHandler;
+            m_stateHandler = nullptr;
+            msgHandlerList = m_msgHandlerList;
+            m_msgHandlerList.clear();
+        }
+        if (stateHandler)
+        {
+            accessCtrl->unsubscribeState(stateHandler);
+        }
+        for (auto& handler : msgHandlerList)
+        {
+            accessCtrl->unsubscribeMsg(handler);
+        }
+    }
+}
+
+bool AccessObserver::subscribeAccessState(const std::function<void(const ConnectState& state)>& func)
+{
+    if (func)
+    {
+        auto accessCtrl = m_wpAccessCtrl.lock();
+        if (accessCtrl)
+        {
+            auto handler = std::make_shared<StateHandler>(func);
+            if (accessCtrl->subscribeState(handler))
+            {
+                std::lock_guard<std::mutex> locker(m_mutexHandler);
+                m_stateHandler = handler;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool AccessObserver::subscribeAccessMsg(int32_t bizCode, const std::function<void(int64_t seqId, const std::string& data)>& func)
+{
+    if (func)
+    {
+        auto accessCtrl = m_wpAccessCtrl.lock();
+        if (accessCtrl)
+        {
+            auto handler = std::make_shared<MsgHandler>(func);
+            if (accessCtrl->subscribeMsg(bizCode, handler))
+            {
+                std::lock_guard<std::mutex> locker(m_mutexHandler);
+                m_msgHandlerList.emplace_back(handler);
+                return true;
+            }
+        }
+    }
+    return false;
 }
 } // namespace tcli
 } // namespace nac
