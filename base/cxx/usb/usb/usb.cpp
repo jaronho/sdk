@@ -1186,20 +1186,30 @@ std::vector<UsbImpl> enumerateUsbDevices()
     return usbList;
 }
 
-void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
+struct UsbUdevImpl
 {
+    int busNum = -1;
+    int portNum = -1;
+    int address = -1;
+    std::string devNodeName;
+    bool isBlock = false;
+};
+
+std::vector<UsbUdevImpl> enumerateUsbUdevs()
+{
+    std::vector<UsbUdevImpl> udevList;
     struct udev* udev = udev_new();
     if (!udev)
     {
-        return;
+        return udevList;
     }
     udev_enumerate* enumerate = udev_enumerate_new(udev);
     if (!enumerate)
     {
         udev_unref(udev);
-        return;
+        return udevList;
     }
-    udev_enumerate_add_match_is_initialized(enumerate); /* 只查找已经初始化的设备 */
+    udev_enumerate_add_match_is_initialized(enumerate);
 #if 0 /* 暂时屏蔽设备过滤类型 */
     udev_enumerate_add_match_subsystem(enumerate, "block");
     udev_enumerate_add_match_subsystem(enumerate, "hidraw");
@@ -1212,7 +1222,7 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
     {
         udev_enumerate_unref(enumerate);
         udev_unref(udev);
-        return;
+        return udevList;
     }
     struct udev_list_entry* devEntry;
     udev_list_entry_foreach(devEntry, devEntryList) /* 遍历设备 */
@@ -1223,174 +1233,195 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
             continue;
         }
         struct udev_device* dev = udev_device_new_from_syspath(udev, entryName);
-        if (!dev)
+        if (dev)
         {
-            continue;
+            const char* devNode = udev_device_get_devnode(dev);
+            if (devNode)
+            {
+                struct udev_device* pDev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
+                if (pDev)
+                {
+                    const char* busNumPtr = udev_device_get_property_value(pDev, "BUSNUM");
+                    const char* portNumPtr = udev_device_get_sysnum(pDev);
+                    const char* devNumPtr = udev_device_get_property_value(pDev, "DEVNUM");
+                    if (busNumPtr && portNumPtr && devNumPtr)
+                    {
+                        const char* subSystemPtr = udev_device_get_subsystem(dev);
+                        UsbUdevImpl info;
+                        try
+                        {
+                            info.busNum = std::atoi(busNumPtr);
+                            info.portNum = std::atoi(portNumPtr);
+                            info.address = std::atoi(devNumPtr);
+                        }
+                        catch (...)
+                        {
+                        }
+                        info.devNodeName = devNode;
+                        info.isBlock = (subSystemPtr && 0 == strcmp(subSystemPtr, "block"));
+                        udevList.emplace_back(info);
+                    }
+                }
+            }
+            udev_device_unref(dev);
         }
-        const char* devNode = udev_device_get_devnode(dev);
-        do
-        {
-            if (!devNode)
-            {
-                break;
-            }
-            struct udev_device* pDev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
-            if (!pDev)
-            {
-                break;
-            }
-            const char* busNumPtr = udev_device_get_property_value(pDev, "BUSNUM");
-            const char* portNumPtr = udev_device_get_sysnum(pDev);
-            const char* devNumPtr = udev_device_get_property_value(pDev, "DEVNUM");
-            if (!busNumPtr || !portNumPtr || !devNumPtr)
-            {
-                break;
-            }
-            int busNum = -1, portNum = -1, address = -1;
-            try
-            {
-                busNum = std::atoi(busNumPtr);
-                portNum = std::atoi(portNumPtr);
-                address = std::atoi(devNumPtr);
-            }
-            catch (...)
-            {
-            }
-            auto iter = std::find_if(usbList.begin(), usbList.end(), [&](UsbImpl info) {
-                return (busNum == info.busNum && portNum == info.portNum && address == info.address);
-            });
-            if (usbList.end() == iter)
-            {
-                break;
-            }
-            const char* subSystemPtr = udev_device_get_subsystem(dev);
-            if (subSystemPtr && 0 == strcmp(subSystemPtr, "block")) /* 存储设备 */
-            {
-                auto pos = std::string(devNode).rfind('/');
-                auto devName = std::string::npos == pos ? std::string() : std::string(devNode).substr(pos + 1);
-                auto command = std::string("lsblk -abOP | grep -E 'NAME=\"") + devName + "\" KNAME=\"" + devName + "\" '";
-                std::string outStr;
-                runCommand(command, &outStr, nullptr);
-                static const std::string UUID_FLAG = " UUID=\""; /* UUID */
-                static const std::string GROUP_FLAG = " GROUP=\""; /* 组名 */
-                static const std::string FSTYPE_FLAG = " FSTYPE=\""; /* 文件系统类型 */
-                static const std::string LABEL_FLAG = " LABEL=\""; /* 文件系统标签 */
-                static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
-                static const std::string MODEL_FLAG = " MODEL=\""; /* 设备标识符 */
-                static const std::string VENDOR_FLAG = " VENDOR=\""; /* 设备制造商 */
-                static const std::string SIZE_FLAG = " SIZE=\""; /* 大小 */
-                std::string uuid;
-                auto uuidPos = outStr.find(UUID_FLAG);
-                if (std::string::npos != uuidPos)
-                {
-                    auto ep = outStr.find('"', uuidPos + UUID_FLAG.size());
-                    if (std::string::npos != ep)
-                    {
-                        uuid = outStr.substr(uuidPos + UUID_FLAG.size(), ep - uuidPos - UUID_FLAG.size());
-                    }
-                }
-                std::string group;
-                auto groupPos = outStr.find(GROUP_FLAG);
-                if (std::string::npos != groupPos)
-                {
-                    auto ep = outStr.find('"', groupPos + GROUP_FLAG.size());
-                    if (std::string::npos != ep)
-                    {
-                        group = outStr.substr(groupPos + GROUP_FLAG.size(), ep - groupPos - GROUP_FLAG.size());
-                    }
-                }
-                std::string fstype;
-                auto fstypePos = outStr.find(FSTYPE_FLAG);
-                if (std::string::npos != fstypePos)
-                {
-                    auto ep = outStr.find('"', fstypePos + FSTYPE_FLAG.size());
-                    if (std::string::npos != ep)
-                    {
-                        fstype = outStr.substr(fstypePos + FSTYPE_FLAG.size(), ep - fstypePos - FSTYPE_FLAG.size());
-                    }
-                }
-                std::string label;
-                auto labelPos = outStr.find(LABEL_FLAG);
-                if (std::string::npos != labelPos)
-                {
-                    auto ep = outStr.find('"', labelPos + LABEL_FLAG.size());
-                    if (std::string::npos != ep)
-                    {
-                        label = outStr.substr(labelPos + LABEL_FLAG.size(), ep - labelPos - LABEL_FLAG.size());
-                    }
-                }
-                std::string partlabel;
-                auto partlabelPos = outStr.find(PARTLABEL_FLAG);
-                if (std::string::npos != partlabelPos)
-                {
-                    auto ep = outStr.find('"', partlabelPos + PARTLABEL_FLAG.size());
-                    if (std::string::npos != ep)
-                    {
-                        partlabel = outStr.substr(partlabelPos + PARTLABEL_FLAG.size(), ep - partlabelPos - PARTLABEL_FLAG.size());
-                    }
-                }
-                std::string model;
-                auto modelPos = outStr.find(MODEL_FLAG);
-                if (std::string::npos != modelPos)
-                {
-                    auto ep = outStr.find('"', modelPos + MODEL_FLAG.size());
-                    if (std::string::npos != ep)
-                    {
-                        model = outStr.substr(modelPos + MODEL_FLAG.size(), ep - modelPos - MODEL_FLAG.size());
-                    }
-                }
-                std::string vendor;
-                auto vendorPos = outStr.find(VENDOR_FLAG);
-                if (std::string::npos != vendorPos)
-                {
-                    auto ep = outStr.find('"', vendorPos + VENDOR_FLAG.size());
-                    if (std::string::npos != ep)
-                    {
-                        vendor = outStr.substr(vendorPos + VENDOR_FLAG.size(), ep - vendorPos - VENDOR_FLAG.size());
-                    }
-                }
-                size_t capacity = 0;
-                auto sizePos = outStr.find(SIZE_FLAG);
-                if (std::string::npos != sizePos)
-                {
-                    auto ep = outStr.find('"', sizePos + SIZE_FLAG.size());
-                    if (std::string::npos != ep)
-                    {
-                        capacity = std::atoll(outStr.substr(sizePos + SIZE_FLAG.size(), ep - sizePos - SIZE_FLAG.size()).c_str());
-                    }
-                }
-                iter->model = model;
-                iter->vendor = vendor;
-                iter->group = group;
-                if ("disk" == group) /* 磁盘 */
-                {
-                    if (uuid.empty()) /* 超块(不可挂载) */
-                    {
-                        iter->devRootNode = DevNode(devNode, fstype, label, partlabel, capacity);
-                    }
-                    else /* 可挂载分区 */
-                    {
-                        iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel, capacity));
-                    }
-                }
-                else if ("cdrom" == group) /* 光驱 */
-                {
-                    iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel, capacity));
-                }
-                else /* 其他 */
-                {
-                    iter->devNodes.emplace_back(DevNode(devNode, fstype, label, partlabel, capacity));
-                }
-            }
-            else /* 非存储设备 */
-            {
-                iter->devNodes.emplace_back(DevNode(devNode));
-            }
-        } while (0);
-        udev_device_unref(dev);
     }
     udev_enumerate_unref(enumerate);
     udev_unref(udev);
+    return udevList;
+}
+
+void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList, int timeoutS = 5)
+{
+    if (usbList.empty())
+    {
+        return;
+    }
+    std::vector<std::string> outVec;
+    if (timeoutS > 0)
+    {
+        runCommand("timeout " + std::to_string(timeoutS) + " lsblk -abOP", nullptr, &outVec);
+    }
+    else
+    {
+        runCommand("lsblk -abOP", nullptr, &outVec);
+    }
+    auto udevList = enumerateUsbUdevs();
+    for (const auto& info : udevList)
+    {
+        auto iter = std::find_if(usbList.begin(), usbList.end(), [&](const UsbImpl& item) {
+            return (item.busNum == info.busNum && item.portNum == info.portNum && item.address == info.address);
+        });
+        if (usbList.end() == iter)
+        {
+            continue;
+        }
+        if (info.isBlock) /* 存储设备 */
+        {
+            auto it = std::find_if(outVec.begin(), outVec.end(), [&](const std::string& line) {
+                return (std::string::npos != line.find("PATH=\"" + info.devNodeName + "\"")); /* 找到设备节点对应信息 */
+            });
+            if (outVec.end() == it)
+            {
+                continue;
+            }
+            const auto& infoStr = (*it);
+            static const std::string UUID_FLAG = " UUID=\""; /* UUID */
+            static const std::string GROUP_FLAG = " GROUP=\""; /* 组名 */
+            static const std::string FSTYPE_FLAG = " FSTYPE=\""; /* 文件系统类型 */
+            static const std::string LABEL_FLAG = " LABEL=\""; /* 文件系统标签 */
+            static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
+            static const std::string MODEL_FLAG = " MODEL=\""; /* 设备标识符 */
+            static const std::string VENDOR_FLAG = " VENDOR=\""; /* 设备制造商 */
+            static const std::string SIZE_FLAG = " SIZE=\""; /* 大小 */
+            std::string uuid;
+            auto uuidPos = infoStr.find(UUID_FLAG);
+            if (std::string::npos != uuidPos)
+            {
+                auto ep = infoStr.find('"', uuidPos + UUID_FLAG.size());
+                if (std::string::npos != ep)
+                {
+                    uuid = infoStr.substr(uuidPos + UUID_FLAG.size(), ep - uuidPos - UUID_FLAG.size());
+                }
+            }
+            std::string group;
+            auto groupPos = infoStr.find(GROUP_FLAG);
+            if (std::string::npos != groupPos)
+            {
+                auto ep = infoStr.find('"', groupPos + GROUP_FLAG.size());
+                if (std::string::npos != ep)
+                {
+                    group = infoStr.substr(groupPos + GROUP_FLAG.size(), ep - groupPos - GROUP_FLAG.size());
+                }
+            }
+            std::string fstype;
+            auto fstypePos = infoStr.find(FSTYPE_FLAG);
+            if (std::string::npos != fstypePos)
+            {
+                auto ep = infoStr.find('"', fstypePos + FSTYPE_FLAG.size());
+                if (std::string::npos != ep)
+                {
+                    fstype = infoStr.substr(fstypePos + FSTYPE_FLAG.size(), ep - fstypePos - FSTYPE_FLAG.size());
+                }
+            }
+            std::string label;
+            auto labelPos = infoStr.find(LABEL_FLAG);
+            if (std::string::npos != labelPos)
+            {
+                auto ep = infoStr.find('"', labelPos + LABEL_FLAG.size());
+                if (std::string::npos != ep)
+                {
+                    label = infoStr.substr(labelPos + LABEL_FLAG.size(), ep - labelPos - LABEL_FLAG.size());
+                }
+            }
+            std::string partlabel;
+            auto partlabelPos = infoStr.find(PARTLABEL_FLAG);
+            if (std::string::npos != partlabelPos)
+            {
+                auto ep = infoStr.find('"', partlabelPos + PARTLABEL_FLAG.size());
+                if (std::string::npos != ep)
+                {
+                    partlabel = infoStr.substr(partlabelPos + PARTLABEL_FLAG.size(), ep - partlabelPos - PARTLABEL_FLAG.size());
+                }
+            }
+            std::string model;
+            auto modelPos = infoStr.find(MODEL_FLAG);
+            if (std::string::npos != modelPos)
+            {
+                auto ep = infoStr.find('"', modelPos + MODEL_FLAG.size());
+                if (std::string::npos != ep)
+                {
+                    model = infoStr.substr(modelPos + MODEL_FLAG.size(), ep - modelPos - MODEL_FLAG.size());
+                }
+            }
+            std::string vendor;
+            auto vendorPos = infoStr.find(VENDOR_FLAG);
+            if (std::string::npos != vendorPos)
+            {
+                auto ep = infoStr.find('"', vendorPos + VENDOR_FLAG.size());
+                if (std::string::npos != ep)
+                {
+                    vendor = infoStr.substr(vendorPos + VENDOR_FLAG.size(), ep - vendorPos - VENDOR_FLAG.size());
+                }
+            }
+            size_t capacity = 0;
+            auto sizePos = infoStr.find(SIZE_FLAG);
+            if (std::string::npos != sizePos)
+            {
+                auto ep = infoStr.find('"', sizePos + SIZE_FLAG.size());
+                if (std::string::npos != ep)
+                {
+                    capacity = std::atoll(infoStr.substr(sizePos + SIZE_FLAG.size(), ep - sizePos - SIZE_FLAG.size()).c_str());
+                }
+            }
+            iter->model = model;
+            iter->vendor = vendor;
+            iter->group = group;
+            if ("disk" == group) /* 磁盘 */
+            {
+                if (uuid.empty()) /* 超块(不可挂载) */
+                {
+                    iter->devRootNode = DevNode(info.devNodeName, fstype, label, partlabel, capacity);
+                }
+                else /* 可挂载分区 */
+                {
+                    iter->devNodes.emplace_back(DevNode(info.devNodeName, fstype, label, partlabel, capacity));
+                }
+            }
+            else if ("cdrom" == group) /* 光驱 */
+            {
+                iter->devNodes.emplace_back(DevNode(info.devNodeName, fstype, label, partlabel, capacity));
+            }
+            else /* 其他 */
+            {
+                iter->devNodes.emplace_back(DevNode(info.devNodeName, fstype, label, partlabel, capacity));
+            }
+        }
+        else /* 非存储设备 */
+        {
+            iter->devNodes.emplace_back(DevNode(info.devNodeName));
+        }
+    }
 }
 #endif
 
@@ -2105,7 +2136,7 @@ std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
 #else
                 /* Linux平台下libusb打开设备可能会卡住, 因此通过读取系统内核文件获取详细信息 */
                 implList = enumerateUsbDevices();
-                enumerateUsbDevNodes(implList);
+                enumerateUsbDevNodes(implList, 5);
                 std::string outStr;
                 cdromList = getCdromInfoList(outStr);
 #endif
