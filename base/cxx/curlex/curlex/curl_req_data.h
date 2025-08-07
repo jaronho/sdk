@@ -125,6 +125,16 @@ public:
     };
 
     /**
+     * @brief 缓冲区信息
+     */
+    struct BufferInfo
+    {
+        std::string name; /* 缓冲区名称 */
+        const char* buffer; /* 缓冲区数据 */
+        size_t bufferSize = 0; /* 缓冲区大小 */
+    };
+
+    /**
      * @brief 构造函数
      */
     MultipartFormRequestData();
@@ -164,9 +174,26 @@ public:
      */
     bool addFile(const std::string& fieldName, const std::string& filename);
 
+    /**
+     * @brief 获取缓冲区列表
+     * @return 缓冲区列表
+     */
+    std::map<std::string, BufferInfo> getBufferMap() const;
+
+    /**
+     * @brief 添加缓冲区
+     * @param fieldName 字段名
+     * @param bufferName 缓冲区名称
+     * @param buffer 缓冲区数据(需要保证表单数据上传结束前, 缓冲区数据一直在内存中存在)
+     * @param bufferSize 缓冲区大小
+     * @return true-成功, false-失败
+     */
+    bool addBuffer(const std::string& fieldName, const std::string& bufferName, const char* buffer, size_t bufferSize);
+
 private:
     std::map<std::string, TextInfo> m_textMap; /* 文本列表 */
     std::map<std::string, std::string> m_fileMap; /* 文件列表 */
+    std::map<std::string, BufferInfo> m_bufferMap; /* 缓冲区列表 */
 };
 
 using MultipartFormRequestDataPtr = std::shared_ptr<MultipartFormRequestData>;

@@ -113,17 +113,20 @@ std::shared_ptr<CurlObject> createCurlObject(const RequestPtr& req, const FuncSe
         }
         case RequestData::Type::multipart_form: {
             auto multipartFormReqData = std::dynamic_pointer_cast<MultipartFormRequestData>(reqData);
-            auto textMap = multipartFormReqData->getTextMap();
-            auto textIter = textMap.begin();
-            for (; textMap.end() != textIter; ++textIter)
+            const auto& textMap = multipartFormReqData->getTextMap();
+            for (auto iter = textMap.begin(); textMap.end() != iter; ++iter)
             {
-                obj->addMultipartFormText(textIter->first, textIter->second.text, textIter->second.contentType);
+                obj->addMultipartFormText(iter->first, iter->second.text, iter->second.contentType);
             }
-            auto fileMap = multipartFormReqData->getFileMap();
-            auto fileIter = fileMap.begin();
-            for (; fileMap.end() != fileIter; ++fileIter)
+            const auto& fileMap = multipartFormReqData->getFileMap();
+            for (auto iter = fileMap.begin(); fileMap.end() != iter; ++iter)
             {
-                obj->addMultipartFormFile(fileIter->first, fileIter->second);
+                obj->addMultipartFormFile(iter->first, iter->second);
+            }
+            const auto& bufferMap = multipartFormReqData->getBufferMap();
+            for (auto iter = bufferMap.begin(); bufferMap.end() != iter; ++iter)
+            {
+                obj->addMultipartFormBuffer(iter->first, iter->second.name, iter->second.buffer, iter->second.bufferSize);
             }
             break;
         }

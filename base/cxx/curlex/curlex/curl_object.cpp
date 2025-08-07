@@ -310,7 +310,7 @@ bool CurlObject::initialize()
         return false;
     }
     code = setOption(CURLOPT_NOSIGNAL, 1L);
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
 }
 
 bool CurlObject::initialize(const std::string& caFile)
@@ -409,7 +409,7 @@ bool CurlObject::initialize(const FileFormat& fileFmt, const std::string& certFi
         }
     }
     code = setOption(CURLOPT_NOSIGNAL, 1L);
-    return CURLE_OK == code;
+    return (CURLE_OK == code);
 }
 
 bool CurlObject::initialize(const std::string& user, const std::string& password)
@@ -681,7 +681,7 @@ bool CurlObject::addMultipartFormText(const std::string& fieldName, const std::s
     }
     auto code = curl_formadd(&m_httpPost, &m_lastPost, CURLFORM_COPYNAME, fieldName.c_str(), CURLFORM_COPYCONTENTS, text.c_str(),
                              CURLFORM_CONTENTSLENGTH, text.size(), CURLFORM_CONTENTTYPE, contentType.c_str(), CURLFORM_END);
-    return CURL_FORMADD_OK == code;
+    return (CURL_FORMADD_OK == code);
 }
 
 bool CurlObject::addMultipartFormFile(const std::string& fieldName, const std::string& filename)
@@ -695,7 +695,22 @@ bool CurlObject::addMultipartFormFile(const std::string& fieldName, const std::s
         return false;
     }
     auto code = curl_formadd(&m_httpPost, &m_lastPost, CURLFORM_COPYNAME, fieldName.c_str(), CURLFORM_FILE, filename.c_str(), CURLFORM_END);
-    return CURL_FORMADD_OK == code;
+    return (CURL_FORMADD_OK == code);
+}
+
+bool CurlObject::addMultipartFormBuffer(const std::string& fieldName, const std::string& bufferName, const char* buffer, size_t bufferSize)
+{
+    if (!m_curl)
+    {
+        return false;
+    }
+    if (fieldName.empty() || !buffer || 0 == bufferSize)
+    {
+        return false;
+    }
+    auto code = curl_formadd(&m_httpPost, &m_lastPost, CURLFORM_COPYNAME, fieldName.c_str(), CURLFORM_BUFFER, bufferName.c_str(),
+                             CURLFORM_BUFFERPTR, buffer, CURLFORM_BUFFERLENGTH, static_cast<long>(bufferSize), CURLFORM_END);
+    return (CURL_FORMADD_OK == code);
 }
 
 bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::string& remoteIp, unsigned int& remotePort, int& curlCode,

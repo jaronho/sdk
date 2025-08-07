@@ -240,6 +240,16 @@ public:
     bool addMultipartFormFile(const std::string& fieldName, const std::string& filename);
 
     /**
+     * @brief 添加多部分表单缓冲区数据(适用于POST/PUT/DELETE), 格式: multipart/form-data
+     * @param fieldName 字段名
+     * @param bufferName 缓冲区名称
+     * @param buffer 缓冲区内容
+     * @param bufferSize 缓冲区大小
+     * @return true-成功, false-失败
+     */
+    bool addMultipartFormBuffer(const std::string& fieldName, const std::string& bufferName, const char* buffer, size_t bufferSize);
+
+    /**
      * @brief 执行请求
      * @param localIp 本端IP
      * @param localPort 本端端口

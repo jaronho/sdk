@@ -161,4 +161,23 @@ bool MultipartFormRequestData::addFile(const std::string& fieldName, const std::
     m_fileMap.insert(std::make_pair(fieldName, filename));
     return true;
 }
+
+std::map<std::string, MultipartFormRequestData::BufferInfo> MultipartFormRequestData::getBufferMap() const
+{
+    return m_bufferMap;
+}
+
+bool MultipartFormRequestData::addBuffer(const std::string& fieldName, const std::string& bufferName, const char* buffer, size_t bufferSize)
+{
+    if (fieldName.empty() || !buffer || 0 == bufferSize)
+    {
+        return false;
+    }
+    BufferInfo info;
+    info.name = bufferName;
+    info.buffer = buffer;
+    info.bufferSize = bufferSize;
+    m_bufferMap.insert(std::make_pair(fieldName, info));
+    return true;
+}
 } // namespace curlex
