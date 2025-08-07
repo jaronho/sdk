@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
     }
     if (serverHost.empty())
     {
-        serverHost = "127.0.0.1";
+        serverHost = "0.0.0.0";
     }
     if (serverPort <= 0 || serverPort > 65535)
     {
@@ -146,8 +146,8 @@ int main(int argc, char* argv[])
     {
         certFmt = 2;
     }
-    nsocket::ws::Server server("ws_server", 10, serverHost, serverPort);
-    server.setConnectingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+    auto server = std::make_shared<nsocket::ws::Server>("ws_server", 10, serverHost, serverPort);
+    server->setConnectingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
         const auto session = wpSession.lock();
         if (session)
         {
@@ -155,7 +155,7 @@ int main(int argc, char* argv[])
         }
         return nullptr;
     });
-    server.setOpenCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+    server->setOpenCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
         const auto session = wpSession.lock();
         if (session)
         {
@@ -163,7 +163,7 @@ int main(int argc, char* argv[])
                    session->getClientHost().c_str(), session->getClientPort(), session->getUri().c_str());
         }
     });
-    server.setPingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+    server->setPingCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
         const auto session = wpSession.lock();
         if (session)
         {
@@ -171,7 +171,7 @@ int main(int argc, char* argv[])
             session->sendPong();
         }
     });
-    server.setPongCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
+    server->setPongCallback([&](const std::weak_ptr<nsocket::ws::Session>& wpSession) {
         const auto session = wpSession.lock();
         if (session)
         {
@@ -195,8 +195,8 @@ int main(int argc, char* argv[])
             printf("\n");
         }
     };
-    server.setMessager(msger);
-    server.setCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
+    server->setMessager(msger);
+    server->setCloseCallback([&](uint64_t cid, const boost::asio::ip::tcp::endpoint& point, const boost::system::error_code& code) {
         printf("------------------------------ client [%lld] on closed\n", cid);
     });
     /* 注意: 最好增加异常捕获, 因为当密码不对时会抛异常 */
@@ -212,7 +212,7 @@ int main(int argc, char* argv[])
             printf("server: %s:%d\n", serverHost.c_str(), serverPort);
         }
         std::string errDesc;
-        if (server.run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, &errDesc))
+        if (server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, &errDesc))
         {
             while (1)
             {

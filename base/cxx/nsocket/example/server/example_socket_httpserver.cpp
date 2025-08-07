@@ -174,7 +174,7 @@ int main(int argc, char* argv[])
     }
     if (serverHost.empty())
     {
-        serverHost = "127.0.0.1";
+        serverHost = "0.0.0.0";
     }
     if (serverPort <= 0 || serverPort > 65535)
     {
@@ -204,8 +204,8 @@ int main(int argc, char* argv[])
     {
         certFmt = 2;
     }
-    nsocket::http::Server server("http_server", 10, serverHost, serverPort);
-    server.setDefaultRouterCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
+    auto server = std::make_shared<nsocket::http::Server>("http_server", 10, serverHost, serverPort);
+    server->setDefaultRouterCallback([&](uint64_t cid, const nsocket::http::REQUEST_PTR& req, const nsocket::http::Connector& conn) {
         printf("************************* Not Found URI Router *************************\n");
         printf("***     Cid: %zu\n", cid);
         printf("***  Client: %s:%d\n", req->host.c_str(), req->port);
@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
             resp->body.insert(resp->body.end(), str.begin(), str.end());
             conn.sendAndClose(resp->pack());
         };
-        server.addRouter({nsocket::http::Method::GET}, {"/", "index", "index.htm", "index.html"}, r);
+        server->addRouter({nsocket::http::Method::GET}, {"/", "index", "index.htm", "index.html"}, r);
     }
     {
         auto r = std::make_shared<nsocket::http::Router_simple>();
@@ -330,7 +330,7 @@ int main(int argc, char* argv[])
             resp->body.insert(resp->body.end(), result.begin(), result.end());
             conn.sendAndClose(resp->pack());
         };
-        server.addRouter({nsocket::http::Method::GET, nsocket::http::Method::POST}, {"/simple"}, r);
+        server->addRouter({nsocket::http::Method::GET, nsocket::http::Method::POST}, {"/simple"}, r);
     }
     {
         auto r = std::make_shared<nsocket::http::Router_x_www_form_urlencoded>();
@@ -385,7 +385,7 @@ int main(int argc, char* argv[])
             resp->body.insert(resp->body.end(), result.begin(), result.end());
             conn.sendAndClose(resp->pack());
         };
-        server.addRouter({nsocket::http::Method::POST}, {"/form"}, r);
+        server->addRouter({nsocket::http::Method::POST}, {"/form"}, r);
     }
     {
         /* 创建文件路径 */
@@ -455,7 +455,7 @@ int main(int argc, char* argv[])
             auto iter = g_fileHandlerMap.find(cid);
             if (g_fileHandlerMap.end() == iter)
             {
-                std::string fullFilename = UPLOAD_PATH + "/" + filename;
+                std::string fullFilename = UPLOAD_PATH + "/" + (filename.empty() ? name : filename);
                 fs = std::make_shared<std::fstream>(fullFilename, std::ios::out | std::ios::binary);
                 if (!fs->is_open())
                 {
@@ -496,7 +496,7 @@ int main(int argc, char* argv[])
             resp->body.insert(resp->body.end(), result.begin(), result.end());
             conn.sendAndClose(resp->pack());
         };
-        server.addRouter({nsocket::http::Method::POST}, {"/multi"}, r);
+        server->addRouter({nsocket::http::Method::POST}, {"/multi"}, r);
     }
     try
     {
@@ -510,7 +510,7 @@ int main(int argc, char* argv[])
             printf("server: %s:%d\n", serverHost.c_str(), serverPort);
         }
         std::string errDesc;
-        if (server.run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, &errDesc))
+        if (server->run(sslOn, sslWay, certFmt, certFile, pkFile, pkPwd, &errDesc))
         {
             while (1)
             {

@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
     }
     if (serverHost.empty())
     {
-        serverHost = "127.0.0.1";
+        serverHost = "0.0.0.0";
     }
     if (serverPort <= 0 || serverPort > 65535)
     {

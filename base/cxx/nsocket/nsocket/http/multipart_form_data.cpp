@@ -117,6 +117,7 @@ int MultipartFormData::parseBoundary(const unsigned char* data, int length)
                     m_parseStep = ParseStep::content_disposition;
                     m_nowLine.clear();
                     m_name.clear();
+                    m_filenameFlag = false;
                     m_filename.clear();
                     m_contentType.clear();
                     m_fileOffset = 0;
@@ -135,6 +136,7 @@ int MultipartFormData::parseBoundary(const unsigned char* data, int length)
                     m_parseStep = ParseStep::ending;
                     m_nowLine.clear();
                     m_name.clear();
+                    m_filenameFlag = false;
                     m_filename.clear();
                     m_contentType.clear();
                     m_fileOffset = 0;
@@ -213,6 +215,7 @@ bool MultipartFormData::parseNameAndFilename()
     pos = sec.rfind(FILENAME_TAG);
     if (std::string::npos != pos) /* 有文件名 */
     {
+        m_filenameFlag = true;
         m_filename = sec.substr(pos + FILENAME_TAG.size(), sec.size() - pos - FILENAME_TAG.size() - 1);
         sec = sec.substr(0, pos);
     }
@@ -317,11 +320,11 @@ int MultipartFormData::parseEmptyLine(const unsigned char* data, int length)
 
 int MultipartFormData::parseContent(const unsigned char* data, int length, const TEXT_CALLBACK& textCb, const FILE_CALLBACK& fileCb)
 {
-    if (m_filename.empty())
+    if (m_filenameFlag)
     {
-        return parseTextContent(data, length, textCb);
+        return parseFileContent(data, length, fileCb);
     }
-    return parseFileContent(data, length, fileCb);
+    return parseTextContent(data, length, textCb);
 }
 
 int MultipartFormData::parseTextContent(const unsigned char* data, int length, const TEXT_CALLBACK& textCb)

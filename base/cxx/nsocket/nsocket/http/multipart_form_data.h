@@ -126,6 +126,7 @@ private:
     ParseStep m_parseStep = ParseStep::boundary; /* 解析步骤 */
     std::string m_nowLine; /* 当前行数据 */
     std::string m_name; /* 表单项名 */
+    bool m_filenameFlag = false; /* 文件名标识 */
     std::string m_filename; /* 文件名 */
     std::string m_contentType; /* 表单项内容类型 */
     size_t m_fileOffset = 0; /* 文件偏移 */
