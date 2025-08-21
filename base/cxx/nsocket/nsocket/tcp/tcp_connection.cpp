@@ -39,6 +39,21 @@ uint64_t TcpConnection::getId() const
     return m_id;
 }
 
+boost::asio::io_context& TcpConnection::getIoContext()
+{
+    static boost::asio::io_context ioContext;
+    std::shared_ptr<SocketTcpBase> socketTcpBase = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        socketTcpBase = m_socketTcpBase;
+    }
+    if (socketTcpBase)
+    {
+        socketTcpBase->getIoContext();
+    }
+    return ioContext;
+}
+
 void TcpConnection::setConnectCallback(const TCP_CONNECT_CALLBACK& onConnectCb)
 {
     m_onConnectCallback = onConnectCb;

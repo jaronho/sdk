@@ -110,6 +110,12 @@ public:
     virtual void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) = 0;
 
     /**
+     * @brief 获取处理I/O的上下文
+     * @return 上下文
+     */
+    virtual boost::asio::io_context& getIoContext() = 0;
+
+    /**
      * @brief 发送数据
      * @param data 数据
      * @param onSendCb 发送回调
@@ -191,6 +197,8 @@ public:
 
     void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) override;
 
+    boost::asio::io_context& getIoContext();
+
     void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb) override;
 
     void recv(const boost::asio::mutable_buffer& data, const TCP_RECV_CALLBACK& onRecvCb) override;
@@ -227,6 +235,8 @@ public:
     ~SocketTls();
 
     void connect(const boost::asio::ip::tcp::endpoint& point, const TCP_CONNECT_CALLBACK& onConnectCb, bool async = true) override;
+
+    boost::asio::io_context& getIoContext();
 
     void send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb) override;
 

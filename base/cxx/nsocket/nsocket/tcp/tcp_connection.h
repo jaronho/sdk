@@ -38,6 +38,12 @@ public:
     uint64_t getId() const;
 
     /**
+     * @brief 获取处理I/O的上下文
+     * @return 上下文
+     */
+    boost::asio::io_context& getIoContext();
+
+    /**
      * @brief 设置连接回调
      * @param onConnectCb 连接回调
      */

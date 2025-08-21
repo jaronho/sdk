@@ -127,6 +127,11 @@ void SocketTcp::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
     }
 }
 
+boost::asio::io_context& SocketTcp::getIoContext()
+{
+    return static_cast<boost::asio::io_context&>(m_socket.get_executor().context());
+}
+
 void SocketTcp::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb)
 {
     if (m_socket.is_open())
@@ -330,6 +335,11 @@ void SocketTls::connect(const boost::asio::ip::tcp::endpoint& point, const TCP_C
             }
         }
     }
+}
+
+boost::asio::io_context& SocketTls::getIoContext()
+{
+    return static_cast<boost::asio::io_context&>(m_sslStream.lowest_layer().get_executor().context());
 }
 
 void SocketTls::send(const boost::asio::const_buffer& data, const TCP_SEND_CALLBACK& onSendCb)
