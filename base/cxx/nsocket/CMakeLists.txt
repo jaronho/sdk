@@ -71,6 +71,9 @@ ${base_nsocket_http_files}
 
 [源文件]
 ${base_nsocket_websocket_files}
+
+[源文件]
+${base_nsocket_ftp_files}
 ]]
 
 ###################################### 添加nsocket库 #####################################
@@ -104,6 +107,10 @@ set(base_nsocket_websocket_src_list)
 get_cxx_files(nsocket/websocket src_list)
 list(APPEND base_nsocket_websocket_src_list ${src_list})
 
+set(base_nsocket_ftp_src_list)
+get_cxx_files(nsocket/ftp src_list)
+list(APPEND base_nsocket_ftp_src_list ${src_list})
+
 set(base_nsocket_src_list)
 get_cxx_files(nsocket src_list)
 list(APPEND base_nsocket_src_list ${src_list})
@@ -117,6 +124,7 @@ set(base_nsocket_files
     ${base_nsocket_websocket_base64_src_list}
     ${base_nsocket_websocket_sha1_src_list}
     ${base_nsocket_websocket_src_list}
+    ${base_nsocket_ftp_src_list}
     ${base_nsocket_src_list}
     CACHE INTERNAL "")
 
@@ -145,6 +153,13 @@ set(base_nsocket_websocket_files
     ${base_nsocket_websocket_base64_src_list}
     ${base_nsocket_websocket_sha1_src_list}
     ${base_nsocket_websocket_src_list}
+    ${base_nsocket_src_list}
+    CACHE INTERNAL "")
+
+set(base_nsocket_ftp_files
+    ${base_nsocket_core_src_list}
+    ${base_nsocket_tcp_src_list}
+    ${base_nsocket_ftp_src_list}
     ${base_nsocket_src_list}
     CACHE INTERNAL "")
 

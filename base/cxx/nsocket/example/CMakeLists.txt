@@ -93,6 +93,15 @@ foreach(filename ${example_websocketserver_files})
     message("    " ${filename})
 endforeach()
 
+# 添加FTP服务端示例文件
+set(example_ftpserver_files)
+list(APPEND example_ftpserver_files server/example_socket_ftpserver.cpp)
+
+print_info(BODY "example ftp server files:")
+foreach(filename ${example_ftpserver_files})
+    message("    " ${filename})
+endforeach()
+
 if (MSVC)
     add_compile_options("/utf-8") # 添加UTF8编码支持
 endif()
@@ -103,6 +112,7 @@ add_executable(example_nsocket_websocketclient ${base_nsocket_websocket_files} $
 add_executable(example_nsocket_tcpserver ${base_nsocket_tcp_files} ${example_tcpserver_files})
 add_executable(example_nsocket_httpserver ${base_nsocket_http_files} ${example_httpserver_files})
 add_executable(example_nsocket_websocketserver ${base_nsocket_websocket_files} ${example_websocketserver_files})
+add_executable(example_nsocket_ftpserver ${base_nsocket_ftp_files} ${example_ftpserver_files})
 
 # 链接依赖库
 if(enable_nsocket_openssl)
@@ -111,10 +121,12 @@ if(enable_nsocket_openssl)
     target_link_libraries(example_nsocket_tcpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_httpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_websocketserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_ftpserver Threads::Threads ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
 else()
     target_link_libraries(example_nsocket_tcpclient Threads::Threads ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_websocketclient Threads::Threads ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_tcpserver Threads::Threads ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_httpserver Threads::Threads ${Boost_LIBRARIES})
     target_link_libraries(example_nsocket_websocketserver Threads::Threads ${Boost_LIBRARIES})
+    target_link_libraries(example_nsocket_ftpserver Threads::Threads ${Boost_LIBRARIES})
 endif()
