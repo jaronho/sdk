@@ -68,7 +68,7 @@ int main(int argc, char** argv)
             printf("=  manufacturer: %s\n", info->getManufacturer().c_str());
             printf("=         model: %s\n", info->getModel().c_str());
             printf("=        vendor: %s\n", info->getVendor().c_str());
-            printf("=         group: %s\n", info->getGroup().c_str());
+            printf("=   storageType: %s\n", info->getStorageType().c_str());
 #ifdef _WIN32
             auto devNodes = info->getDevNodes();
             if (info->isStorage())

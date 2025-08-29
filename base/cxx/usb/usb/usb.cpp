@@ -66,7 +66,7 @@ struct UsbImpl
     std::string manufacturer; /* 厂商名称 */
     std::string model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
     std::string vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
-    std::string group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
+    std::string storageType; /* 存储类型, 值: disk-磁盘(机械盘,SSD,U盘,NVMe,SD卡等), part-分区, cdrom-光驱(CD,DVD,BD,ISO loop设备等) */
 #ifdef _WIN32
     std::string driverName; /* 设备驱动名称 */
     std::string deviceId; /* 设备ID */
@@ -565,11 +565,12 @@ std::string getDisplayString(UCHAR index, PSTRING_DESCRIPTOR_NODE stringDescs)
     return desc;
 }
 
-void parseBusRelations(const std::string& buffer, std::string& model, std::string& vendor, std::string& group, std::string& devicePath)
+void parseBusRelations(const std::string& buffer, std::string& model, std::string& vendor, std::string& storageType,
+                       std::string& devicePath)
 {
     model.clear();
     vendor.clear();
-    group.clear();
+    storageType.clear();
     devicePath.clear();
     auto pos = buffer.find("Ven_");
     if (std::string::npos != pos)
@@ -610,16 +611,16 @@ void parseBusRelations(const std::string& buffer, std::string& model, std::strin
             {
                 break;
             }
-            group.push_back(buffer[i]);
+            storageType.push_back(buffer[i]);
         }
-        std::transform(group.begin(), group.end(), group.begin(), tolower);
+        std::transform(storageType.begin(), storageType.end(), storageType.begin(), tolower);
     }
     std::string interfaceClassGUID;
-    if ("disk" == group) /* 磁盘 */
+    if ("disk" == storageType) /* 磁盘 */
     {
         interfaceClassGUID = guid2string(GUID_DEVINTERFACE_DISK);
     }
-    else if ("cdrom" == group) /* 光驱 */
+    else if ("cdrom" == storageType) /* 光驱 */
     {
         interfaceClassGUID = guid2string(GUID_DEVINTERFACE_CDROM);
     }
@@ -805,7 +806,7 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
                 manufacturer = getDisplayString(connectionInfoEx->DeviceDescriptor.iManufacturer, stringDescs);
             }
             std::string driverName = getDriverKeyName(hHubDevice, index);
-            std::string deviceId, model, vendor, group, devicePath;
+            std::string deviceId, model, vendor, storageType, devicePath;
             std::vector<DriverInfo> driverList;
             auto iter = devInfoDataList.find(driverName);
             if (devInfoDataList.end() != iter)
@@ -817,7 +818,7 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
                                               reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
                 {
                     deviceId = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(propertyBuffer);
-                    parseBusRelations(deviceId, model, vendor, group, devicePath);
+                    parseBusRelations(deviceId, model, vendor, storageType, devicePath);
                     if (!devicePath.empty())
                     {
                         parseStorageDriver(devicePath, localDriveList, driverList);
@@ -841,7 +842,7 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
             info.deviceId = deviceId;
             info.vendor = vendor;
             info.model = model;
-            info.group = group;
+            info.storageType = storageType;
             info.driverList = driverList;
             usbList.emplace_back(info);
         }
@@ -866,7 +867,7 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
     {
         for (size_t i = 0; i < usbList.size(); ++i)
         {
-            if (("disk" == usbList[i].group || "cdrom" == usbList[i].group) && usbList[i].driverList.empty())
+            if (("disk" == usbList[i].storageType || "cdrom" == usbList[i].storageType) && usbList[i].driverList.empty())
             {
                 auto iter = std::find_if(localDriveList.begin(), localDriveList.end(), [&](const LogicalDrive& item) {
                     return ((DRIVE_REMOVABLE == item.driveType || DRIVE_CDROM == item.driveType) && item.serial == usbList[i].serial
@@ -1306,32 +1307,21 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList, int timeoutS = 5)
                 continue;
             }
             const auto& infoStr = (*it);
-            static const std::string UUID_FLAG = " UUID=\""; /* UUID */
-            static const std::string GROUP_FLAG = " GROUP=\""; /* 组名 */
+            static const std::string TYPE_FLAG = " TYPE=\""; /* 设备类型 */
             static const std::string FSTYPE_FLAG = " FSTYPE=\""; /* 文件系统类型 */
             static const std::string LABEL_FLAG = " LABEL=\""; /* 文件系统标签 */
             static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
             static const std::string MODEL_FLAG = " MODEL=\""; /* 设备标识符 */
             static const std::string VENDOR_FLAG = " VENDOR=\""; /* 设备制造商 */
             static const std::string SIZE_FLAG = " SIZE=\""; /* 大小 */
-            std::string uuid;
-            auto uuidPos = infoStr.find(UUID_FLAG);
-            if (std::string::npos != uuidPos)
+            std::string type;
+            auto typePos = infoStr.find(TYPE_FLAG);
+            if (std::string::npos != typePos)
             {
-                auto ep = infoStr.find('"', uuidPos + UUID_FLAG.size());
+                auto ep = infoStr.find('"', typePos + TYPE_FLAG.size());
                 if (std::string::npos != ep)
                 {
-                    uuid = infoStr.substr(uuidPos + UUID_FLAG.size(), ep - uuidPos - UUID_FLAG.size());
-                }
-            }
-            std::string group;
-            auto groupPos = infoStr.find(GROUP_FLAG);
-            if (std::string::npos != groupPos)
-            {
-                auto ep = infoStr.find('"', groupPos + GROUP_FLAG.size());
-                if (std::string::npos != ep)
-                {
-                    group = infoStr.substr(groupPos + GROUP_FLAG.size(), ep - groupPos - GROUP_FLAG.size());
+                    type = infoStr.substr(typePos + TYPE_FLAG.size(), ep - typePos - TYPE_FLAG.size());
                 }
             }
             std::string fstype;
@@ -1396,30 +1386,47 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList, int timeoutS = 5)
             }
             iter->model = model;
             iter->vendor = vendor;
-            iter->group = group;
-            if ("disk" == group) /* 磁盘 */
+            if ("disk" == type) /* 磁盘 */
             {
-                if (uuid.empty()) /* 超块(不可挂载) */
-                {
-                    iter->devRootNode = DevNode(info.devNodeName, fstype, label, partlabel, capacity);
-                }
-                else /* 可挂载分区 */
-                {
-                    iter->devNodes.emplace_back(DevNode(info.devNodeName, fstype, label, partlabel, capacity));
-                }
+                iter->storageType = type;
+                iter->devRootNode = DevNode(info.devNodeName, "", fstype, label, partlabel, capacity);
             }
-            else if ("cdrom" == group) /* 光驱 */
+            else if ("part" == type) /* 分区 */
             {
-                iter->devNodes.emplace_back(DevNode(info.devNodeName, fstype, label, partlabel, capacity));
+                iter->storageType = type;
+                iter->devNodes.emplace_back(DevNode(info.devNodeName, "", fstype, label, partlabel, capacity));
+            }
+            else if ("rom" == type) /* 光驱 */
+            {
+                iter->storageType = "cdrom";
+                iter->devNodes.emplace_back(DevNode(info.devNodeName, "", fstype, label, partlabel, capacity));
             }
             else /* 其他 */
             {
-                iter->devNodes.emplace_back(DevNode(info.devNodeName, fstype, label, partlabel, capacity));
+                iter->storageType = type;
+                iter->devNodes.emplace_back(DevNode(info.devNodeName, "", fstype, label, partlabel, capacity));
             }
         }
         else /* 非存储设备 */
         {
             iter->devNodes.emplace_back(DevNode(info.devNodeName));
+        }
+    }
+    for (auto& item : usbList)
+    {
+        if (!item.devRootNode.name.empty())
+        {
+            if (item.devNodes.empty())
+            {
+                item.devNodes.emplace_back(item.devRootNode);
+            }
+            else
+            {
+                for (auto& devNode : item.devNodes)
+                {
+                    devNode.pkname = item.devRootNode.name;
+                }
+            }
         }
     }
 }
@@ -1690,9 +1697,9 @@ std::vector<CdromInfo> getCdromInfoList(std::string& outStr)
 }
 #endif
 
-DevNode::DevNode(const std::string& name, const std::string& fstype, const std::string& label, const std::string& partlabel,
-                 size_t capacity, const std::string& winDriver)
-    : name(name), fstype(fstype), label(label), partlabel(partlabel), capacity(capacity), m_winDriver(winDriver)
+DevNode::DevNode(const std::string& name, const std::string& pkname, const std::string& fstype, const std::string& label,
+                 const std::string& partlabel, size_t capacity, const std::string& winDriver)
+    : name(name), pkname(pkname), fstype(fstype), label(label), partlabel(partlabel), capacity(capacity), m_winDriver(winDriver)
 {
 }
 
@@ -1746,9 +1753,8 @@ Usb::Usb(const Usb& src)
     m_product = src.m_product;
     m_model = src.m_model;
     m_vendor = src.m_vendor;
-    m_group = src.m_group;
+    m_storageType = src.m_storageType;
     m_manufacturer = src.m_manufacturer;
-    m_devRootNode = src.m_devRootNode;
     m_devNodes = src.m_devNodes;
     m_cdromInfo = src.m_cdromInfo;
 }
@@ -1921,14 +1927,9 @@ std::string Usb::getVendor() const
     return m_vendor;
 }
 
-std::string Usb::getGroup() const
+std::string Usb::getStorageType() const
 {
-    return m_group;
-}
-
-DevNode Usb::getDevRootNode() const
-{
-    return m_devRootNode;
+    return m_storageType;
 }
 
 std::vector<DevNode> Usb::getDevNodes() const
@@ -1958,12 +1959,12 @@ bool Usb::isHub() const
 
 bool Usb::isDisk() const
 {
-    return ("disk" == m_group);
+    return ("disk" == m_storageType || "part" == m_storageType);
 }
 
 bool Usb::isCdrom() const
 {
-    return ("cdrom" == m_group);
+    return ("cdrom" == m_storageType);
 }
 
 std::string Usb::describe(bool showChildren, int allIntend, int intend) const
@@ -2001,28 +2002,7 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
     desc += "\"manufacturer\": \"" + m_manufacturer + "\", ";
     desc += "\"model\": \"" + m_model + "\", ";
     desc += "\"vendor\": \"" + m_vendor + "\", ";
-    desc += "\"group\": \"" + m_group + "\"";
-    if (!m_devRootNode.name.empty()) /* Linux平台才有根节点 */
-    {
-        desc += ",";
-        desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
-        desc += "\"devRootNode\": ";
-        desc += "{";
-        desc += "\"name\": \"" + m_devRootNode.name + "\"";
-        if (!m_devRootNode.fstype.empty())
-        {
-            desc += ", \"fstype\": \"" + m_devRootNode.fstype + "\"";
-        }
-        if (!m_devRootNode.label.empty())
-        {
-            desc += ", \"label\": \"" + m_devRootNode.label + "\"";
-        }
-        if (!m_devRootNode.partlabel.empty())
-        {
-            desc += ", \"partlabel\": \"" + m_devRootNode.partlabel + "\"";
-        }
-        desc += "}";
-    }
+    desc += "\"storageType\": \"" + m_storageType + "\"";
     if (m_devNodes.size() > 0)
     {
         desc += ",";
@@ -2043,10 +2023,15 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
                 ++fieldCount;
                 desc += "\"name\": \"" + m_devNodes[i].name + "\"";
             }
+            if (!m_devNodes[i].pkname.empty())
+            {
+                desc += (++fieldCount > 1) ? ", " : "";
+                desc += "\"pkname\": \"" + m_devNodes[i].pkname + "\"";
+            }
             if (!m_devNodes[i].fstype.empty())
             {
                 desc += (++fieldCount > 1) ? ", " : "";
-                desc += "\"type\": \"" + m_devNodes[i].fstype + "\"";
+                desc += "\"fstype\": \"" + m_devNodes[i].fstype + "\"";
             }
             if (!m_devNodes[i].label.empty())
             {
@@ -2320,20 +2305,19 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
                 {
                     info->m_vendor = item.vendor;
                 }
-                if (info->m_group.empty())
+                if (info->m_storageType.empty())
                 {
-                    info->m_group = item.group;
+                    info->m_storageType = item.storageType;
                 }
 #ifdef _WIN32
                 for (const auto& di : item.driverList)
                 {
-                    info->m_devNodes.emplace_back(DevNode("", di.fstype, di.label, "", 0, di.driver));
+                    info->m_devNodes.emplace_back(DevNode("", "", di.fstype, di.label, "", 0, di.driver));
                 }
 #else
-                info->m_devRootNode = item.devRootNode;
                 info->m_devNodes = item.devNodes;
 #endif
-                if ("cdrom" == info->m_group && !info->m_devNodes.empty())
+                if ("cdrom" == info->m_storageType && !info->m_devNodes.empty())
                 {
                     auto iter = std::find_if(cdromList.begin(), cdromList.end(), [&](const CdromInfo& item) {
 #ifdef _WIN32

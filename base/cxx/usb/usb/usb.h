@@ -72,8 +72,8 @@ std::vector<CdromInfo> getCdromInfoList(std::string& outStr);
 struct DevNode
 {
     DevNode() = default;
-    DevNode(const std::string& name, const std::string& fstype = "", const std::string& label = "", const std::string& partlabel = "",
-            size_t capacity = 0, const std::string& winDriver = "");
+    DevNode(const std::string& name, const std::string& pkname = "", const std::string& fstype = "", const std::string& label = "",
+            const std::string& partlabel = "", size_t capacity = 0, const std::string& winDriver = "");
 
     /**
      * @brief 获取挂载点
@@ -82,6 +82,7 @@ struct DevNode
     std::string getMountpoint() const;
 
     std::string name; /* 节点名, 如, Linux: /dev/sdb1, /dev/sr0, /dev/hidraw0 等 */
+    std::string pkname; /* 内部上级内核设备名称(可为空), 如, Linux: 如果节点名为/dev/sdb1, 则其上级名称为/dev/sdb */
     std::string fstype; /* 文件系统类型, 如果是存储设备则值为: ext4, vfat(FAT32), exfat(exFAT), ntfs(NTFS)等 */
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
     std::string partlabel; /* 分区标签, 例如: "Microsoft reserved partition" */
@@ -238,16 +239,10 @@ public:
     std::string getVendor() const;
 
     /**
-     * @brief 获取组名, 值: disk-磁盘, cdrom-光驱
+     * @brief 获取存储设备类型, 值: disk-磁盘(机械盘,SSD,U盘,NVMe,SD卡等), part-分区, cdrom-光驱(CD,DVD,BD,ISO loop设备等)
      * @return 组名
      */
-    std::string getGroup() const;
-
-    /**
-     * @brief 获取根节点(适用于Linux平台)
-     * @return 根节点
-     */
-    DevNode getDevRootNode() const;
+    std::string getStorageType() const;
 
     /**
      * @brief 获取节点列表(Windows一般至多1个, Linux平台可能多个)
@@ -357,8 +352,7 @@ private:
     std::string m_manufacturer; /* 厂商名称 */
     std::string m_model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
     std::string m_vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
-    std::string m_group; /* 组名, 值: disk-磁盘, cdrom-光驱 */
-    DevNode m_devRootNode; /* 设备根节点(适用于Linux平台) */
+    std::string m_storageType; /* 存储类型, 值: disk-磁盘(机械盘,SSD,U盘,NVMe,SD卡等), part-分区, cdrom-光驱(CD,DVD,BD,ISO loop设备等) */
     std::vector<DevNode> m_devNodes; /* 设备节点(Windows一般至多1个, Linux平台可能多个) */
     CdromInfo m_cdromInfo; /* 光驱设备信息 */
 };
