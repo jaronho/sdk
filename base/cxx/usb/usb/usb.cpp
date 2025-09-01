@@ -36,8 +36,8 @@ struct LogicalDrive
     DEVICE_TYPE deviceType = 0;
     DWORD deviceNumber = 0;
     std::string serial;
-    std::string vendor;
     std::string model;
+    std::string vendor;
 };
 #endif
 
@@ -572,19 +572,7 @@ void parseBusRelations(const std::string& buffer, std::string& model, std::strin
     vendor.clear();
     storageType.clear();
     devicePath.clear();
-    auto pos = buffer.find("Ven_");
-    if (std::string::npos != pos)
-    {
-        for (size_t i = pos + 4; i < buffer.size(); ++i)
-        {
-            if ('&' == buffer[i])
-            {
-                break;
-            }
-            vendor.push_back('_' == buffer[i] ? ' ' : buffer[i]);
-        }
-    }
-    pos = buffer.find("Prod_");
+    auto pos = buffer.find("Prod_");
     if (std::string::npos != pos)
     {
         for (size_t i = pos + 5; i < buffer.size(); ++i)
@@ -594,6 +582,18 @@ void parseBusRelations(const std::string& buffer, std::string& model, std::strin
                 break;
             }
             model.push_back('_' == buffer[i] ? ' ' : buffer[i]);
+        }
+    }
+    pos = buffer.find("Ven_");
+    if (std::string::npos != pos)
+    {
+        for (size_t i = pos + 4; i < buffer.size(); ++i)
+        {
+            if ('&' == buffer[i])
+            {
+                break;
+            }
+            vendor.push_back('_' == buffer[i] ? ' ' : buffer[i]);
         }
     }
     pos = buffer.find("USBSTOR\\");
@@ -718,8 +718,8 @@ std::vector<LogicalDrive> getLogicalDriveList()
                     {
                         info.serial.clear();
                     }
-                    info.vendor = &buffer[pDevDesc->VendorIdOffset];
                     info.model = &buffer[pDevDesc->ProductIdOffset];
+                    info.vendor = &buffer[pDevDesc->VendorIdOffset];
                 }
                 localDriveList.emplace_back(info);
                 CloseHandle(handle);
@@ -840,8 +840,8 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
             info.manufacturer = manufacturer;
             info.driverName = driverName;
             info.deviceId = deviceId;
-            info.vendor = vendor;
             info.model = model;
+            info.vendor = vendor;
             info.storageType = storageType;
             info.driverList = driverList;
             usbList.emplace_back(info);
@@ -871,7 +871,7 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
             {
                 auto iter = std::find_if(localDriveList.begin(), localDriveList.end(), [&](const LogicalDrive& item) {
                     return ((DRIVE_REMOVABLE == item.driveType || DRIVE_CDROM == item.driveType) && item.serial == usbList[i].serial
-                            && item.vendor == usbList[i].vendor && item.model == usbList[i].model);
+                            && item.model == usbList[i].model && item.vendor == usbList[i].vendor);
                 });
                 if (localDriveList.end() != iter)
                 {
@@ -1384,8 +1384,14 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList, int timeoutS = 5)
                     capacity = std::atoll(infoStr.substr(sizePos + SIZE_FLAG.size(), ep - sizePos - SIZE_FLAG.size()).c_str());
                 }
             }
-            iter->model = model;
-            iter->vendor = vendor;
+            if (iter->model.empty())
+            {
+                iter->model = model;
+            }
+            if (iter->vendor.empty())
+            {
+                iter->vendor = vendor;
+            }
             if ("disk" == type) /* 磁盘 */
             {
                 iter->storageType = type;
