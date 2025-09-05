@@ -260,6 +260,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     {
         *errCode = 0;
     }
+    if (retryTime <= 0)
+    {
+        retryTime = 1000;
+    }
     if (m_fullName.empty())
     {
         return CopyResult::src_open_failed;
@@ -322,10 +326,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         return CopyResult::memory_alloc_failed;
     }
     /* 拷贝文件内容 */
-    size_t nowSize = 0, readSize = 0, writeSize = 0;
+    size_t nowSize = 0, readSize = 0, wantRead = 0, readed = 0, writeSize = 0, written = 0;
     auto tp = std::chrono::steady_clock::now();
     CopyResult result = CopyResult::ok;
-    while (!feof(srcFile))
+    while (nowSize < srcFileSize)
     {
         memset(block, 0, blockSize);
 #ifdef _WIN32
@@ -333,35 +337,56 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
 #else
         fseeko64(srcFile, nowSize, SEEK_SET);
 #endif
-        readSize = fread(block, 1, blockSize, srcFile);
-        if (0 == readSize)
+        readSize = 0;
+        wantRead = (nowSize + blockSize <= srcFileSize) ? blockSize : (srcFileSize - nowSize);
+        while (readSize < wantRead)
         {
-            if (errCode)
+            readed = fread(block + readSize, 1, wantRead - readSize, srcFile);
+            if (readed > 0)
             {
-                *errCode = errno;
+                readSize += readed;
             }
-            if (retryTime > 0
-                && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
+            else
             {
-                result = CopyResult::src_read_failed;
-                break;
+                if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
+                {
+                    if (errCode)
+                    {
+                        *errCode = errno;
+                    }
+                    result = CopyResult::src_read_failed;
+                    break;
+                }
             }
-            continue;
         }
-        writeSize = fwrite(block, 1, readSize, destFile);
-        if (0 == writeSize)
+        if (CopyResult::ok != result)
         {
-            if (errCode)
+            break;
+        }
+        writeSize = 0;
+        while (writeSize < readSize)
+        {
+            written = fwrite(block + writeSize, 1, readSize - writeSize, destFile);
+            if (written > 0)
             {
-                *errCode = errno;
+                writeSize += written;
             }
-            if (retryTime > 0
-                && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
+            else
             {
-                result = CopyResult::dest_write_failed;
-                break;
+                if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
+                {
+                    if (errCode)
+                    {
+                        *errCode = errno;
+                    }
+                    result = CopyResult::dest_write_failed;
+                    break;
+                }
             }
-            continue;
+        }
+        if (CopyResult::ok != result)
+        {
+            break;
         }
         nowSize += writeSize;
         tp = std::chrono::steady_clock::now();

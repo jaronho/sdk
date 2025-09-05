@@ -89,7 +89,7 @@ public:
      * @param stopFunc 停止函数(选填)
      * @param tmpSuffix 临时后缀名(选填), 默认不使用临时文件
      * @param blocks 拷贝块大小, 为空时表示使用默认(最大64Kb)
-     * @param retryTime 读写失败时重试时间(毫秒), 为0表示一直重试
+     * @param retryTime 读写失败时重试时间(毫秒), 值必须大于0(否则可能会死循环)
      */
     FileCopy(const std::string& srcPath, const std::string& destPath, bool clearDest, bool coverDest,
              const FileCopyDestNameAlterFunc& destNameAlterFunc, const FileCopyFilterFunc& filterFunc,

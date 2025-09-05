@@ -205,7 +205,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
         {
             di.realFile = checkDestFile(di.realFile); /* 检测目标文件是否已存在并重命名 */
         }
-        auto destFileTmp = di.realFile + m_tmpSuffix; /* 临时文件名 */
+        auto destFileTmp = checkDestFile(di.realFile + m_tmpSuffix); /* 临时文件名 */
         auto result = srcFileInfo.copy(
             destFileTmp, &errCode,
             [&](size_t now, size_t total) {
@@ -231,6 +231,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
                     m_failSrcFile = srcFileInfo.name();
                     m_failDestFile = di;
                     m_errCode = errno;
+                    FileInfo(destFileTmp).remove(); /* 防止文件残留 */
                     return FileInfo::CopyResult::dest_open_failed;
                 }
             }
@@ -249,6 +250,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
             di.realFile = destFileTmp;
             m_failDestFile = di;
             m_errCode = errCode;
+            FileInfo(destFileTmp).remove(); /* 防止文件残留 */
             return result;
         }
     }
