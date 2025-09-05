@@ -14,6 +14,7 @@ struct FileCopyDestInfo
 {
     std::string showFile; /* 展示的文件(全路径) */
     std::string realFile; /* 实际的文件(全路径) */
+    size_t fileSize = 0; /* 文件大小(单位: 字节) */
 };
 
 /**

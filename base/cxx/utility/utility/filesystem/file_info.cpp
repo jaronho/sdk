@@ -252,13 +252,17 @@ bool FileInfo::remove() const
     return false;
 }
 
-FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCode,
+FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCode, size_t* destFileSize,
                                     const std::function<bool(size_t now, size_t total)>& progressCb,
                                     const std::vector<FileInfo::CopyBlock>& blocks, unsigned int retryTime) const
 {
     if (errCode)
     {
         *errCode = 0;
+    }
+    if (destFileSize)
+    {
+        *destFileSize = 0;
     }
     if (retryTime <= 0)
     {
@@ -411,6 +415,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         }
     }
     fclose(destFile);
+    if (destFileSize)
+    {
+        *destFileSize = nowSize;
+    }
     return result;
 }
 

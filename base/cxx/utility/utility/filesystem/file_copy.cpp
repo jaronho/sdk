@@ -207,7 +207,7 @@ FileInfo::CopyResult FileCopy::copySrcFileList(const std::vector<std::string>& s
         }
         auto destFileTmp = checkDestFile(di.realFile + m_tmpSuffix); /* 临时文件名 */
         auto result = srcFileInfo.copy(
-            destFileTmp, &errCode,
+            destFileTmp, &errCode, &di.fileSize,
             [&](size_t now, size_t total) {
                 if (m_stopFunc && m_stopFunc())
                 {
