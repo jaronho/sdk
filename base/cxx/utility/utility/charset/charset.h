@@ -105,5 +105,12 @@ public:
      * @return GBK字符串
      */
     static std::string utf8ToGbk(const std::string& str);
+
+    /**
+     * @brief 把 "\xe6\x96\xb0" 这样的 6-char 序列转成 3-byte UTF-8
+     * @param in UTF8编码的汉字被错误地以转义形式显示的字符串(UTF8字节当作Latin-1或ASCII字符串来处理)
+     * @return UTF8字符串
+     */
+    static std::string unescapeToUtf8(const std::string& in);
 };
 } // namespace utility

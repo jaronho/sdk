@@ -111,11 +111,11 @@ int System::runCmd(const std::string& cmd, std::string* outStr, std::vector<std:
                     break;
                 }
                 auto outLine = line.substr(0, pos);
+                line = line.substr(pos + offset, line.size() - pos - offset);
                 if (!outLine.empty() || !ignoreBlankLine)
                 {
                     outVec->emplace_back(outLine);
                 }
-                line = line.substr(pos + offset, line.size() - pos - offset);
             }
         }
         return true;

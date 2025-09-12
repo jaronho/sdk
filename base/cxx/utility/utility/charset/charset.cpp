@@ -892,4 +892,25 @@ std::string Charset::utf8ToGbk(const std::string& str)
 {
     return unicodeToGbk(utf8ToUnicode(str));
 }
+
+std::string Charset::unescapeToUtf8(const std::string& in)
+{
+    std::string out;
+    out.reserve(in.size());
+    for (size_t i = 0; i < in.size(); ++i)
+    {
+        if (i + 3 < in.size() && '\\' == in[i] && 'x' == in[i + 1])
+        {
+            int hi = std::isdigit(in[i + 2]) ? (in[i + 2] - '0') : (std::tolower(in[i + 2]) - 'a' + 10);
+            int lo = std::isdigit(in[i + 3]) ? (in[i + 3] - '0') : (std::tolower(in[i + 3]) - 'a' + 10);
+            out.push_back((char)((hi << 4) | lo));
+            i += 3;
+        }
+        else
+        {
+            out.push_back(in[i]);
+        }
+    }
+    return out;
+}
 } // namespace utility
