@@ -643,28 +643,27 @@ void parseBusRelations(const std::string& buffer, std::string& model, std::strin
 void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>& localDriveList, std::vector<DriverInfo>& driverList)
 {
     driverList.clear();
-    if (devicePath.empty())
+    if (!devicePath.empty())
     {
-        return;
-    }
-    auto handle =
-        CreateFileA(devicePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-    if (handle)
-    {
-        DWORD nBytes = 0;
-        STORAGE_DEVICE_NUMBER deviceNum;
-        if (DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes, NULL))
+        auto handle = CreateFileA(devicePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+                                  FILE_FLAG_OVERLAPPED, NULL);
+        if (INVALID_HANDLE_VALUE != handle)
         {
-            auto iter = std::find_if(localDriveList.begin(), localDriveList.end(), [&](const LogicalDrive& item) {
-                return (item.deviceType == deviceNum.DeviceType && item.deviceNumber == deviceNum.DeviceNumber);
-            });
-            if (localDriveList.end() != iter)
+            DWORD nBytes = 0;
+            STORAGE_DEVICE_NUMBER deviceNum;
+            if (DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes, NULL))
             {
-                driverList.emplace_back(DriverInfo(iter->driver, iter->fstype, iter->label));
-                localDriveList.erase(iter);
+                auto iter = std::find_if(localDriveList.begin(), localDriveList.end(), [&](const LogicalDrive& item) {
+                    return (item.deviceType == deviceNum.DeviceType && item.deviceNumber == deviceNum.DeviceNumber);
+                });
+                if (localDriveList.end() != iter)
+                {
+                    driverList.emplace_back(DriverInfo(iter->driver, iter->fstype, iter->label));
+                    localDriveList.erase(iter);
+                }
             }
+            CloseHandle(handle);
         }
-        CloseHandle(handle);
     }
 }
 
@@ -682,7 +681,7 @@ std::vector<LogicalDrive> getLogicalDriveList()
             sprintf_s(drivePath, "\\\\.\\%c:", driverChar);
             auto handle =
                 CreateFileA(drivePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-            if (handle)
+            if (INVALID_HANDLE_VALUE != handle)
             {
                 std::string driver = std::string(1, driverChar) + ":\\";
                 const int bufferSize = 256;
