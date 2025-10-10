@@ -643,6 +643,7 @@ void parseBusRelations(const std::string& buffer, std::string& model, std::strin
 void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>& localDriveList, std::vector<DriverInfo>& driverList)
 {
     driverList.clear();
+    int deviceType = -1, deviceNumber = -1;
     if (!devicePath.empty())
     {
         auto handle = CreateFileA(devicePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
@@ -653,17 +654,19 @@ void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>
             STORAGE_DEVICE_NUMBER deviceNum;
             if (DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes, NULL))
             {
-                auto iter = std::find_if(localDriveList.begin(), localDriveList.end(), [&](const LogicalDrive& item) {
-                    return (item.deviceType == deviceNum.DeviceType && item.deviceNumber == deviceNum.DeviceNumber);
-                });
-                if (localDriveList.end() != iter)
-                {
-                    driverList.emplace_back(DriverInfo(iter->driver, iter->fstype, iter->label));
-                    localDriveList.erase(iter);
-                }
+                deviceType = deviceNum.DeviceType;
+                deviceNumber = deviceNum.DeviceNumber;
             }
             CloseHandle(handle);
         }
+    }
+    auto iter = std::find_if(localDriveList.begin(), localDriveList.end(), [&](const LogicalDrive& item) {
+        return (item.deviceType == deviceType && item.deviceNumber == deviceNumber);
+    });
+    if (localDriveList.end() != iter)
+    {
+        driverList.emplace_back(DriverInfo(iter->driver, iter->fstype, iter->label));
+        localDriveList.erase(iter);
     }
 }
 
