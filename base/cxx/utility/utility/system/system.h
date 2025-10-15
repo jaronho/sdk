@@ -97,5 +97,13 @@ public:
      * @return 主机名
      */
     static std::string getHostname();
+
+#ifdef _WIN32
+    /**
+     * @brief 判断当前进程是否以管理员权限运行
+     * @return true-是, false-否
+     */
+    static bool isRunAsAdmin();
+#endif
 };
 } // namespace utility

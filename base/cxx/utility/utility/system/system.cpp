@@ -357,4 +357,21 @@ std::string System::getHostname()
     return hostname;
 #endif
 }
+
+#ifdef _WIN32
+bool System::isRunAsAdmin()
+{
+    BOOL isAdmin = FALSE;
+    PSID administratorsGroup = nullptr;
+    /* 创建"Administrators"组的SID */
+    SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+    if (AllocateAndInitializeSid(&ntAuthority, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0,
+                                 &administratorsGroup))
+    {
+        CheckTokenMembership(NULL, administratorsGroup, &isAdmin); /* 检查当前线程是否属于该组 */
+        FreeSid(administratorsGroup);
+    }
+    return (TRUE == isAdmin);
+}
+#endif
 } // namespace utility

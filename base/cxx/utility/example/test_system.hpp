@@ -17,6 +17,16 @@
 void testSystem()
 {
     printf("\n============================== test system =============================\n");
+#ifdef _WIN32
+    if (utility::System::isRunAsAdmin())
+    {
+        printf("running as admin\n");
+    }
+    else
+    {
+        printf("running not as admin\n");
+    }
+#endif
     auto hostname = utility::System::getHostname();
     printf("hostname: %s\n", hostname.c_str());
     printf("------------------------------\n");
