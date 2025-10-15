@@ -295,7 +295,7 @@ public:
     std::string describe(bool showChildren = false, int allIntend = 0, int intend = 4) const;
 
     /**
-     * @brief 获取系统中USB设备列表
+     * @brief 获取系统中USB设备列表(注意: Windows平台需要管理员权限)
      * @param detailFlag 是否获取设备详情
      * @return USB设备列表
      */

@@ -155,6 +155,23 @@ void diffUsbList(const std::vector<std::shared_ptr<usb::Usb>>& preList, const st
     }
 }
 
+#ifdef _WIN32
+bool isRunAsAdmin()
+{
+    BOOL isAdmin = FALSE;
+    PSID administratorsGroup = nullptr;
+    /* 创建"Administrators"组的SID */
+    SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+    if (AllocateAndInitializeSid(&ntAuthority, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0,
+                                 &administratorsGroup))
+    {
+        CheckTokenMembership(NULL, administratorsGroup, &isAdmin); /* 检查当前线程是否属于该组 */
+        FreeSid(administratorsGroup);
+    }
+    return (TRUE == isAdmin);
+}
+#endif
+
 /**
  * USB设备查看工具
  * 用法: ./usb_watch [选项]
@@ -167,6 +184,11 @@ int main(int argc, char** argv)
 {
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
+    if (!isRunAsAdmin())
+    {
+        printf("请使用管理员权限运行该程序\n");
+        return 0;
+    }
 #endif
     /* 参数值 */
     bool treeFlag = false;
