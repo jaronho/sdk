@@ -505,7 +505,7 @@ char* FileInfo::read(size_t offset, size_t& count) const
     return buffer;
 }
 
-bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCode) const
+int64_t FileInfo::write(const char* data, size_t length, bool isAppend, int* errCode) const
 {
     if (errCode)
     {
@@ -513,15 +513,15 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
     }
     if (!data)
     {
-        return false;
+        return -1;
     }
     if (length <= 0 && isAppend)
     {
-        return false;
+        return -1;
     }
     if (m_fullName.empty())
     {
-        return false;
+        return -1;
     }
 #ifdef _WIN32
     auto f = _wfopen(str2wstr(m_fullName).c_str(), isAppend ? L"ab+" : L"wb+");
@@ -534,10 +534,10 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
         {
             *errCode = errno;
         }
-        return false;
+        return -1;
     }
-    auto ret = write(f, 0, data, length);
-    if (ret)
+    auto written = write(f, 0, data, length);
+    if (written == length)
     {
         fflush(f);
     }
@@ -549,15 +549,15 @@ bool FileInfo::write(const char* data, size_t length, bool isAppend, int* errCod
         }
     }
     fclose(f);
-    return ret;
+    return written;
 }
 
-bool FileInfo::write(const std::string& data, bool isAppend, int* errCode) const
+int64_t FileInfo::write(const std::string& data, bool isAppend, int* errCode) const
 {
     return write(data.c_str(), data.size(), isAppend, errCode);
 }
 
-bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) const
+int64_t FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) const
 {
     if (errCode)
     {
@@ -565,11 +565,11 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
     }
     if (!data)
     {
-        return false;
+        return -1;
     }
     if (m_fullName.empty())
     {
-        return false;
+        return -1;
     }
     /* 如果文件不存在则需要先创建文件 */
 #ifdef _WIN32
@@ -583,7 +583,7 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
         {
             *errCode = errno;
         }
-        return false;
+        return -1;
     }
     fclose(f);
     /* 该模式允许在指定位置写入数据, 但需要文件已经创建 */
@@ -598,10 +598,10 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
         {
             *errCode = errno;
         }
-        return false;
+        return -1;
     }
-    auto ret = write(f, pos, data, length);
-    if (ret)
+    auto written = write(f, pos, data, length);
+    if (written == length)
     {
         fflush(f);
     }
@@ -613,10 +613,10 @@ bool FileInfo::write(size_t pos, const char* data, size_t length, int* errCode) 
         }
     }
     fclose(f);
-    return ret;
+    return written;
 }
 
-bool FileInfo::write(size_t pos, const std::string& data, int* errCode) const
+int64_t FileInfo::write(size_t pos, const std::string& data, int* errCode) const
 {
     return write(pos, data.c_str(), data.size(), errCode);
 }
@@ -699,10 +699,13 @@ bool FileInfo::editLine(const std::function<bool(size_t num, std::string& line)>
         {
             return false;
         }
-        ret = write(f, 0, buffer);
-        if (ret)
+        if (buffer.size() == write(f, 0, buffer))
         {
             fflush(f);
+        }
+        else
+        {
+            ret = false;
         }
     }
     fclose(f);
@@ -811,25 +814,21 @@ bool FileInfo::readLine(FILE* f, std::string& line, std::string& bomFlag, std::s
     return false;
 }
 
-bool FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
+int64_t FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
 {
     if (!f || !data)
     {
-        return false;
+        return -1;
     }
 #ifdef _WIN32
     _fseeki64(f, offset, SEEK_SET);
 #else
     fseeko64(f, offset, SEEK_SET);
 #endif
-    if (fwrite(data, 1, count, f) > 0)
-    {
-        return true;
-    }
-    return false;
+    return fwrite(data, 1, count, f);
 }
 
-bool FileInfo::write(FILE* f, size_t offset, const std::string& data)
+int64_t FileInfo::write(FILE* f, size_t offset, const std::string& data)
 {
     return write(f, offset, data.c_str(), data.size());
 }
@@ -872,9 +871,9 @@ bool FileInfo::edit(FILE* f, size_t offset, size_t count, const std::function<vo
 #else
                 fseeko64(f, offset, SEEK_SET);
 #endif
-                fwrite(buffer, 1, count, f);
+                auto written = fwrite(buffer, 1, count, f);
                 free(buffer);
-                return true;
+                return (written == count);
             }
         }
     }

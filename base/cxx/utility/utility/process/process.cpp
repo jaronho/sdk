@@ -457,20 +457,19 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
 #endif
 }
 
-void Process::runProcess(const std::string& cmdline, const std::function<void(int pid)>& startFunc,
-                         const std::function<bool(const char* data, size_t count)>& outputFunc, bool waitProcessDead)
+void Process::runProcess(const std::string& cmdline, const std::function<void(int pid)>& startCb,
+                         const std::function<void(int readfd)>& outputCb, bool waitProcessDead)
 {
     int pid = -1, readfd = -1;
-    FILE* stream = nullptr;
 #ifdef _WIN32
     HANDLE hRead = INVALID_HANDLE_VALUE;
     HANDLE hWrite = INVALID_HANDLE_VALUE;
     SECURITY_ATTRIBUTES sa = {sizeof(sa), NULL, TRUE};
     if (!CreatePipe(&hRead, &hWrite, &sa, 0))
     {
-        if (startFunc)
+        if (startCb)
         {
-            startFunc(pid);
+            startCb(pid);
         }
         return;
     }
@@ -485,9 +484,9 @@ void Process::runProcess(const std::string& cmdline, const std::function<void(in
     {
         CloseHandle(hRead);
         CloseHandle(hWrite);
-        if (startFunc)
+        if (startCb)
         {
-            startFunc(pid);
+            startCb(pid);
         }
         return;
     }
@@ -498,23 +497,22 @@ void Process::runProcess(const std::string& cmdline, const std::function<void(in
         CloseHandle(hWrite);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
-        if (startFunc)
+        if (startCb)
         {
-            startFunc(pid);
+            startCb(pid);
         }
         return;
     }
     pid = pi.dwProcessId;
-    stream = _fdopen(readfd, "r");
     CloseHandle(hWrite);
     CloseHandle(pi.hThread);
 #else
     int pipefd[2];
     if (pipe(pipefd) < 0)
     {
-        if (startFunc)
+        if (startCb)
         {
-            startFunc(pid);
+            startCb(pid);
         }
         return;
     }
@@ -536,9 +534,9 @@ void Process::runProcess(const std::string& cmdline, const std::function<void(in
     {
         close(pipefd[0]);
         close(pipefd[1]);
-        if (startFunc)
+        if (startCb)
         {
-            startFunc(pid);
+            startCb(pid);
         }
         return;
     }
@@ -583,55 +581,27 @@ void Process::runProcess(const std::string& cmdline, const std::function<void(in
     else /* 父进程空间 */
     {
         close(pipefd[1]); /* 关闭父进程写端 */
-        stream = fdopen(pipefd[0], "r");
     }
 #endif
-    if (stream)
+    if (startCb)
     {
-        setvbuf(stream, NULL, _IONBF, 0); /* 设置无缓冲 */
+        startCb(pid);
     }
-    if (startFunc)
+    if (readfd >= 0)
     {
-        startFunc(pid);
-    }
-    bool stopFlag = false;
-    if (outputFunc && readfd > 0)
-    {
-        char buffer[1024];
-        while (1)
+        if (outputCb)
         {
-            memset(buffer, 0, sizeof(buffer));
-            auto count = read(readfd, buffer, sizeof(buffer));
-            if (count > 0) /* 有数据 */
-            {
-                if (!outputFunc(buffer, count))
-                {
-                    stopFlag = true;
-                    break;
-                }
-            }
-            else if (count < 0 && (EAGAIN == errno || EWOULDBLOCK == errno)) /* 无数据 */
-            {
-                continue;
-            }
-            else if (0 == count) /* 管道关闭 */
-            {
-                break;
-            }
+            outputCb(readfd); /* 注意: 需要在回调调用close(readfd), 否则会资源泄露 */
         }
-    }
-    if (stream)
-    {
-        fclose(stream);
+        else
+        {
+            close(readfd); /* 关闭读端 */
+        }
     }
 #ifdef _WIN32
     if (pi.hProcess)
     {
-        if (stopFlag) /* 停止进程 */
-        {
-            TerminateProcess(pi.hProcess, 0);
-        }
-        else if (waitProcessDead) /* 等待进程退出 */
+        if (waitProcessDead) /* 等待进程退出 */
         {
             WaitForSingleObject(pi.hProcess, INFINITE);
         }
@@ -640,16 +610,47 @@ void Process::runProcess(const std::string& cmdline, const std::function<void(in
 #else
     if (pid >= 0)
     {
-        if (stopFlag) /* 停止进程 */
-        {
-            kill(pid, SIGKILL);
-        }
-        else if (waitProcessDead) /* 等待进程退出 */
+        if (waitProcessDead) /* 等待进程退出 */
         {
             waitpid(pid, nullptr, 0);
         }
     }
 #endif
+}
+
+void Process::runProcess(const std::string& cmdline, const std::function<void(int pid)>& startCb,
+                         const std::function<void(const char* data, size_t count)>& outputCb, bool waitProcessDead)
+{
+    runProcess(
+        cmdline, startCb,
+        [&](int readfd) {
+            if (readfd >= 0)
+            {
+                if (outputCb)
+                {
+                    char buffer[1024];
+                    while (1)
+                    {
+                        memset(buffer, 0, sizeof(buffer));
+                        auto count = read(readfd, buffer, sizeof(buffer));
+                        if (count > 0) /* 有数据 */
+                        {
+                            outputCb(buffer, count);
+                        }
+                        else if (count < 0 && (EAGAIN == errno || EWOULDBLOCK == errno)) /* 无数据 */
+                        {
+                            continue;
+                        }
+                        else if (0 == count) /* 管道关闭 */
+                        {
+                            break;
+                        }
+                    }
+                }
+                close(readfd);
+            }
+        },
+        waitProcessDead);
 }
 
 bool Process::killProcess(int pid)

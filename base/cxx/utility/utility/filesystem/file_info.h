@@ -188,18 +188,18 @@ public:
      * @param length 数据长度
      * @param isAppend true-在文件末尾追加, false-替换全部
      * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
-     * @return true-成功, false-失败
+     * @return 写入的数据长度
      */
-    bool write(const char* data, size_t length, bool isAppend = false, int* errCode = nullptr) const;
+    int64_t write(const char* data, size_t length, bool isAppend = false, int* errCode = nullptr) const;
 
     /**
      * @brief 写文件数据
      * @param data 数据
      * @param isAppend true-在文件末尾追加, false-替换全部
      * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
-     * @return true-成功, false-失败
+     * @return 写入的数据长度
      */
-    bool write(const std::string& data, bool isAppend = false, int* errCode = nullptr) const;
+    int64_t write(const std::string& data, bool isAppend = false, int* errCode = nullptr) const;
 
     /**
      * @brief 写文件数据
@@ -207,18 +207,18 @@ public:
      * @param data 数据
      * @param length 数据长度
      * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
-     * @return true-成功, false-失败
+     * @return 写入的数据长度
      */
-    bool write(size_t pos, const char* data, size_t length, int* errCode = nullptr) const;
+    int64_t write(size_t pos, const char* data, size_t length, int* errCode = nullptr) const;
 
     /**
      * @brief 写文件数据
      * @param pos 写入的位置, 说明: 若写入位置大于原文件长度, 则原文件末尾到写入位置会被NUL占位
      * @param data 数据
      * @param errCode [输出]错误码(选填), 可用于strerror函数获取描述信息
-     * @return true-成功, false-失败
+     * @return 写入的数据长度
      */
-    bool write(size_t pos, const std::string& data, int* errCode = nullptr) const;
+    int64_t write(size_t pos, const std::string& data, int* errCode = nullptr) const;
 
     /**
      * @brief 编辑文件中的数据
@@ -270,18 +270,18 @@ public:
      * @param offset 写入的偏移值, 为0时表示从头开始
      * @param data 数据
      * @param count 要写入的字节数
-     * @return true-成功, false-失败
+     * @return 写入的数据长度
      */
-    static bool write(FILE* f, size_t offset, const char* data, size_t count);
+    static int64_t write(FILE* f, size_t offset, const char* data, size_t count);
 
     /**
      * @brief 向文件中写入数据
      * @param f 文件指针
      * @param offset 写入的偏移值, 为0时表示从头开始
      * @param data 数据
-     * @return true-成功, false-失败
+     * @return 写入的数据长度
      */
-    static bool write(FILE* f, size_t offset, const std::string& data);
+    static int64_t write(FILE* f, size_t offset, const std::string& data);
 
     /**
      * @brief 编辑文件中的数据

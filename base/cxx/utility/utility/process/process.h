@@ -61,12 +61,22 @@ public:
     /**
      * @brief 启动进程
      * @param cmdline 命令行
-     * @param startFunc 进程启动回调, 参数: pid-进程ID, >=0-进程创建成功, <0-进程创建失败
-     * @param outputFunc 进程输出回调, 参数: data-数据, count-数据长度, 返回值: true-继续获取数据, false-停止获取数据且停止进程
+     * @param startCb 进程启动回调, 参数: pid-进程ID, >=0-进程创建成功, <0-进程创建失败
+     * @param outputCb 进程输出回调, 参数: readfd-输出文件句柄, 需要调用close(readfd)关闭否则会资源泄露
      * @param waitProcessDead 是否等待进程退出, true-等待, false-不等待
      */
-    static void runProcess(const std::string& cmdline, const std::function<void(int pid)>& startFunc,
-                           const std::function<bool(const char* data, size_t count)>& outputFunc, bool waitProcessDead = true);
+    static void runProcess(const std::string& cmdline, const std::function<void(int pid)>& startCb,
+                           const std::function<void(int readfd)>& outputCb, bool waitProcessDead = true);
+
+    /**
+     * @brief 启动进程
+     * @param cmdline 命令行
+     * @param startCb 进程启动回调, 参数: pid-进程ID, >=0-进程创建成功, <0-进程创建失败
+     * @param outputCb 进程输出回调, 参数: data-数据, count-数据长度
+     * @param waitProcessDead 是否等待进程退出, true-等待, false-不等待
+     */
+    static void runProcess(const std::string& cmdline, const std::function<void(int pid)>& startCb,
+                           const std::function<void(const char* data, size_t count)>& outputCb, bool waitProcessDead = true);
 
     /**
      * @brief 杀死进程
