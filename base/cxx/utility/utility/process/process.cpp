@@ -546,7 +546,8 @@ void Process::runProcess(const std::string& cmdline, const std::function<void(in
     {
         setpgid(0, 0);
         close(pipefd[0]); /* 关闭读端 */
-        dup2(pipefd[1], STDOUT_FILENO); /* 正确重定向写端 */
+        dup2(pipefd[1], STDOUT_FILENO); /* 重定向stdout */
+        dup2(pipefd[1], STDERR_FILENO); /* 重定向stderr */
         close(pipefd[1]); /* 关闭原始写端 */
         /* 在子进程中执行该程序 */
         if (args.empty()) /* 无进程参数 */
