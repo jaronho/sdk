@@ -14,6 +14,7 @@
 //
 #include <Dbt.h>
 #include <SetupAPI.h>
+#include <cfgmgr32.h>
 #include <devpkey.h>
 #include <strsafe.h>
 #include <usb.h>
@@ -809,6 +810,23 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
                 manufacturer = getDisplayString(connectionInfoEx->DeviceDescriptor.iManufacturer, stringDescs);
             }
             std::string driverName = getDriverKeyName(hHubDevice, index);
+            if (serial.empty() && !driverName.empty()) /* 只有原路径没读到才补 */
+            {
+                auto it = devInfoDataList.find(driverName);
+                if (it != devInfoDataList.end())
+                {
+                    CHAR instanceId[MAX_DEVICE_ID_LEN];
+                    if (CM_Get_Device_ID(it->second.DevInst, instanceId, MAX_PATH, 0) == CR_SUCCESS)
+                    {
+                        std::string str(instanceId);
+                        auto pos = str.rfind(L'\\');
+                        if (std::string::npos != pos)
+                        {
+                            serial = str.substr(pos + 1);
+                        }
+                    }
+                }
+            }
             std::string deviceId, model, vendor, storageType, devicePath;
             std::vector<DriverInfo> driverList;
             auto iter = devInfoDataList.find(driverName);
@@ -2272,22 +2290,6 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
     info->m_pid = pid;
     if (detailFlag) /* 获取详细信息 */
     {
-#if 0 /* Windows平台下打不开, Linux平台下有时会卡住, 因此弃而不用 */
-        libusb_device_handle* handle = NULL;
-        if (LIBUSB_SUCCESS == libusb_open(dev, &handle) && handle)
-        {
-            char serial[256] = {0}; /* 序列号 */
-            libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, (unsigned char*)serial, sizeof(serial));
-            info->m_serial = serial;
-            char product[256] = {0}; /* 产品名称 */
-            libusb_get_string_descriptor_ascii(handle, desc.iProduct, (unsigned char*)product, sizeof(product));
-            info->m_product = product;
-            char manufacturer[256] = {0}; /* 厂商名称 */
-            libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, (unsigned char*)manufacturer, sizeof(manufacturer));
-            info->m_manufacturer = manufacturer;
-            libusb_close(handle);
-        }
-#endif
         /* 获取详细信息 */
         for (const auto& item : implList)
         {
@@ -2354,6 +2356,42 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
                 break;
             }
         }
+#if 0 /* Windows平台下打不开, Linux平台下有时会卡住, 因此弃而不用 */
+        if (info->m_serial.empty() || info->m_product.empty() || info->m_manufacturer.empty())
+        {
+            libusb_device_handle* handle = NULL;
+            if (LIBUSB_SUCCESS == libusb_open(dev, &handle) && handle)
+            {
+                unsigned char buf[256];
+                int len;
+                if (desc.iSerialNumber && info->m_serial.empty())
+                {
+                    len = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, buf, sizeof(buf));
+                    if (len > 0)
+                    {
+                        info->m_serial = std::string((char*)buf, len);
+                    }
+                }
+                if (desc.iProduct && info->m_product.empty())
+                {
+                    len = libusb_get_string_descriptor_ascii(handle, desc.iProduct, buf, sizeof(buf));
+                    if (len > 0)
+                    {
+                        info->m_product = std::string((char*)buf, len);
+                    }
+                }
+                if (desc.iManufacturer && info->m_manufacturer.empty())
+                {
+                    len = libusb_get_string_descriptor_ascii(handle, desc.iManufacturer, buf, sizeof(buf));
+                    if (len > 0)
+                    {
+                        info->m_manufacturer = std::string((char*)buf, len);
+                    }
+                }
+                libusb_close(handle);
+            }
+        }
+#endif
     }
     return info;
 }
