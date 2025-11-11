@@ -55,6 +55,13 @@ struct DriverInfo
     std::string label; /* 文件系统标签, 例如: "Jim's U-DISK" */
 };
 
+struct ComPortInfo
+{
+    std::string parentInstanceId; /* 父设备实例ID, 例如: USB\\VID_10C4&PID_EA71\\C264F133A8CECCBF11EA40C3F37ED86 */
+    std::string portName; /* 串口名, 如: COM3 */
+    std::string friendlyName; /* 友好名, 如: USB Serial Port (COM3) */
+};
+
 struct UsbImpl
 {
     int busNum = -1; /* 总线编号 */
@@ -72,6 +79,7 @@ struct UsbImpl
     std::string driverName; /* 设备驱动名称 */
     std::string deviceId; /* 设备ID */
     std::vector<DriverInfo> driverList; /* 存储设备驱动器列表 */
+    std::vector<ComPortInfo> comList; /* 串口列表 */
 #else
     DevNode blockDevRootNode; /* 存储设备根节点 */
     std::vector<DevNode> blockDevNodes; /* 存储设备节点 */
@@ -157,8 +165,8 @@ typedef struct _USB_IAD_DESCRIPTOR
 } USB_IAD_DESCRIPTOR, *PUSB_IAD_DESCRIPTOR;
 
 void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
-                  PUSB_NODE_CONNECTION_INFORMATION_EX ConnectionInfo, std::vector<LogicalDrive>& localDriveList,
-                  std::vector<UsbImpl>& usbList);
+                  PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<LogicalDrive>& localDriveList,
+                  const std::vector<ComPortInfo>& comPortList, std::vector<UsbImpl>& usbList);
 
 std::string guid2string(GUID guid)
 {
@@ -626,7 +634,25 @@ void parseBusRelations(const std::string& buffer, std::string& model, std::strin
     {
         interfaceClassGUID = guid2string(GUID_DEVINTERFACE_CDROM);
     }
-    if (!interfaceClassGUID.empty())
+    if (interfaceClassGUID.empty())
+    {
+        pos = buffer.find("USB\\");
+        auto miPos = buffer.find("MI_");
+        if (std::string::npos != pos && std::string::npos != miPos) /* 检查是否是CDC设备(通常包含MI_接口号) */
+        {
+            devicePath = buffer;
+            for (size_t i = 0; i < devicePath.size(); ++i)
+            {
+                if ('\\' == devicePath[i])
+                {
+                    devicePath[i] = '#';
+                }
+            }
+            devicePath = "\\\\?\\" + devicePath + "#" + guid2string(GUID_DEVINTERFACE_COMPORT);
+            std::transform(devicePath.begin(), devicePath.end(), devicePath.begin(), tolower);
+        }
+    }
+    else
     {
         devicePath = buffer;
         for (size_t i = 0; i < devicePath.size(); ++i)
@@ -736,7 +762,8 @@ std::vector<LogicalDrive> getLogicalDriveList()
 }
 
 void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, HANDLE hHubDevice,
-                       ULONG numPorts, std::vector<LogicalDrive>& localDriveList, std::vector<UsbImpl>& usbList)
+                       ULONG numPorts, std::vector<LogicalDrive>& localDriveList, const std::vector<ComPortInfo>& comPortList,
+                       std::vector<UsbImpl>& usbList)
 {
     bool recheckDriverFlag = false;
     for (ULONG index = 1; index <= numPorts; ++index)
@@ -829,6 +856,7 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
             }
             std::string deviceId, model, vendor, storageType, devicePath;
             std::vector<DriverInfo> driverList;
+            std::vector<ComPortInfo> comList;
             auto iter = devInfoDataList.find(driverName);
             if (devInfoDataList.end() != iter)
             {
@@ -842,10 +870,29 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
                     parseBusRelations(deviceId, model, vendor, storageType, devicePath);
                     if (!devicePath.empty())
                     {
-                        parseStorageDriver(devicePath, localDriveList, driverList);
-                        if (driverList.empty())
+                        if (storageType.empty()) /* 非存储设备, 尝试查找是否串口 */
                         {
-                            recheckDriverFlag = true;
+                            CHAR usbInstanceId[MAX_DEVICE_ID_LEN] = {0};
+                            if (CR_SUCCESS == CM_Get_Device_ID(iter->second.DevInst, usbInstanceId, MAX_PATH, 0))
+                            {
+                                std::string key = usbInstanceId;
+                                std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+                                for (const auto& info : comPortList)
+                                {
+                                    if (info.parentInstanceId == key)
+                                    {
+                                        comList.emplace_back(info);
+                                    }
+                                }
+                            }
+                        }
+                        else /* 存储设备 */
+                        {
+                            parseStorageDriver(devicePath, localDriveList, driverList);
+                            if (driverList.empty())
+                            {
+                                recheckDriverFlag = true;
+                            }
                         }
                     }
                 }
@@ -865,12 +912,13 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
             info.vendor = vendor;
             info.storageType = storageType;
             info.driverList = driverList;
+            info.comList = comList;
             usbList.emplace_back(info);
         }
         if (connectionInfoEx->DeviceIsHub) /* Hub Device */
         {
             enumerateHub(devInfo, devInfoDataList, rootIndex, getExternalHubName(hHubDevice, index), connectionInfoEx, localDriveList,
-                         usbList);
+                         comPortList, usbList);
         }
         if (configDesc)
         {
@@ -906,7 +954,7 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
 
 void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
                   PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<LogicalDrive>& localDriveList,
-                  std::vector<UsbImpl>& usbList)
+                  const std::vector<ComPortInfo>& comPortList, std::vector<UsbImpl>& usbList)
 {
     if (hubName.empty())
     {
@@ -940,9 +988,65 @@ void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devIn
     {
     }
     enumerateHubPorts(devInfo, devInfoDataList, rootIndex, hHubDevice, hubInfo->u.HubInformation.HubDescriptor.bNumberOfPorts,
-                      localDriveList, usbList);
+                      localDriveList, comPortList, usbList);
     CloseHandle(hHubDevice);
     GlobalFree(hubInfo);
+}
+
+std::vector<ComPortInfo> getComPortList(HDEVINFO hDevInfo)
+{
+    std::vector<ComPortInfo> comPortList;
+    if (INVALID_HANDLE_VALUE == hDevInfo)
+    {
+        return comPortList;
+    }
+    SP_DEVICE_INTERFACE_DATA interfaceData = {sizeof(SP_DEVICE_INTERFACE_DATA)};
+    DWORD index = 0;
+    while (SetupDiEnumDeviceInterfaces(hDevInfo, NULL, &GUID_DEVINTERFACE_COMPORT, index++, &interfaceData))
+    {
+        DWORD requiredSize = 0;
+        SetupDiGetDeviceInterfaceDetailA(hDevInfo, &interfaceData, NULL, 0, &requiredSize, NULL);
+        PSP_DEVICE_INTERFACE_DETAIL_DATA detailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA)GlobalAlloc(GPTR, requiredSize);
+        if (!detailData)
+        {
+            continue;
+        }
+        detailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+        SP_DEVINFO_DATA devInfoData = {sizeof(SP_DEVINFO_DATA)};
+        if (SetupDiGetDeviceInterfaceDetailA(hDevInfo, &interfaceData, detailData, requiredSize, &requiredSize, &devInfoData))
+        {
+            DEVINST parentDevInst;
+            CHAR parentInstanceId[MAX_DEVICE_ID_LEN];
+            if (CR_SUCCESS == CM_Get_Parent(&parentDevInst, devInfoData.DevInst, 0)
+                && CR_SUCCESS == CM_Get_Device_ID(parentDevInst, parentInstanceId, MAX_PATH, 0))
+            {
+                HKEY hKey = SetupDiOpenDevRegKey(hDevInfo, &devInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
+                if (hKey != INVALID_HANDLE_VALUE)
+                {
+                    char portName[64] = {0};
+                    DWORD size = sizeof(portName);
+                    if (ERROR_SUCCESS == RegQueryValueExA(hKey, "PortName", NULL, NULL, (LPBYTE)portName, &size))
+                    {
+                        std::string key = parentInstanceId;
+                        std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+                        ComPortInfo info;
+                        info.parentInstanceId = key;
+                        info.portName = portName;
+                        char friendlyName[256] = {0};
+                        if (SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (PBYTE)friendlyName,
+                                                              sizeof(friendlyName), &requiredSize))
+                        {
+                            info.friendlyName = friendlyName;
+                        }
+                        comPortList.emplace_back(info);
+                    }
+                    RegCloseKey(hKey);
+                }
+            }
+        }
+        GlobalFree(detailData);
+    }
+    return comPortList;
 }
 
 std::vector<UsbImpl> enumerateHostControllers()
@@ -968,6 +1072,7 @@ std::vector<UsbImpl> enumerateHostControllers()
     }
     /* 遍历获取USB设备详情 */
     auto localDriveList = getLogicalDriveList();
+    auto comPortList = getComPortList(devInfo);
     for (ULONG index = 0; index < totalCount; ++index)
     {
         SP_DEVICE_INTERFACE_DATA devInterfaceData;
@@ -994,7 +1099,7 @@ std::vector<UsbImpl> enumerateHostControllers()
                 {
                     auto rootHubName = getRootHubName(hHCDev);
                     CloseHandle(hHCDev);
-                    enumerateHub(devInfo, devInfoDataList, index + 1, rootHubName, NULL, localDriveList, usbList);
+                    enumerateHub(devInfo, devInfoDataList, index + 1, rootHubName, NULL, localDriveList, comPortList, usbList);
                 }
             }
             GlobalFree(devDetailData);
@@ -2324,6 +2429,10 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
                 for (const auto& di : item.driverList)
                 {
                     info->m_devNodes.emplace_back(DevNode("", "", di.fstype, di.label, "", 0, di.driver));
+                }
+                for (const auto& ci : item.comList)
+                {
+                    info->m_devNodes.emplace_back(DevNode(ci.portName));
                 }
 #else
                 info->m_devNodes = item.blockDevNodes;
