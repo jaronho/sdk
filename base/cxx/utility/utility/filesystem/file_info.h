@@ -224,10 +224,10 @@ public:
      * @brief 编辑文件中的数据
      * @param offset 指定的偏移值, 为0时表示从头开始
      * @param count 指定字节数
-     * @param func 编辑函数(对buffer进行编辑, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
-     * @return true-成功, false-失败
+     * @param func 编辑函数(对buffer进行编辑, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度, 返回值: true-保存修改, false-不保存
+     * @return 实际数据长度
      */
-    bool edit(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& func) const;
+    int64_t edit(size_t offset, size_t count, const std::function<bool(char* buffer, size_t count)>& func) const;
 
     /**
      * @brief 编辑文本文件中的行数据
@@ -288,10 +288,10 @@ public:
      * @param f 文件指针
      * @param offset 指定的偏移值, 为0时表示从头开始
      * @param count 指定字节数
-     * @param func 编辑函数(对buffer进行编辑, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度
-     * @return true-成功, false-失败
+     * @param func 编辑函数(对buffer进行编辑, 注意: 不要改变buffer长度), 参数: buffer-读到的数据, count-读到的数据长度, 返回值: true-保存修改, false-不保存
+     * @return 实际数据长度
      */
-    static bool edit(FILE* f, size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& func);
+    static int64_t edit(FILE* f, size_t offset, size_t count, const std::function<bool(char* buffer, size_t count)>& func);
 
     /**
      * @brief 判断文件是否为文本数据

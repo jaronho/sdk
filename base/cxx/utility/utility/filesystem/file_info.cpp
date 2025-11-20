@@ -621,11 +621,11 @@ int64_t FileInfo::write(size_t pos, const std::string& data, int* errCode) const
     return write(pos, data.c_str(), data.size(), errCode);
 }
 
-bool FileInfo::edit(size_t offset, size_t count, const std::function<void(char* buffer, size_t count)>& func) const
+int64_t FileInfo::edit(size_t offset, size_t count, const std::function<bool(char* buffer, size_t count)>& func) const
 {
     if (m_fullName.empty())
     {
-        return false;
+        return -1;
     }
 #ifdef _WIN32
     auto f = _wfopen(str2wstr(m_fullName).c_str(), L"rb+");
@@ -634,10 +634,10 @@ bool FileInfo::edit(size_t offset, size_t count, const std::function<void(char* 
 #endif
     if (!f)
     {
-        return false;
+        return -1;
     }
     auto ret = edit(f, offset, count, func);
-    if (ret)
+    if (ret > 0)
     {
         fflush(f);
     }
@@ -739,7 +739,6 @@ char* FileInfo::read(FILE* f, size_t offset, size_t& count)
         count = 0;
         return NULL;
     }
-    char* buffer = NULL;
 #ifdef _WIN32
     _fseeki64(f, 0, SEEK_END);
     auto fileSize = _ftelli64(f);
@@ -747,32 +746,30 @@ char* FileInfo::read(FILE* f, size_t offset, size_t& count)
     fseeko64(f, 0, SEEK_END);
     auto fileSize = ftello64(f);
 #endif
+    if (offset >= fileSize)
+    {
+        count = 0;
+        return NULL;
+    }
     if (0 == count)
     {
         count = fileSize;
     }
-    if (offset < fileSize)
+    if (offset + count > fileSize)
     {
-        if (offset + count > fileSize)
-        {
-            count = fileSize - offset;
-        }
-        auto buffSize = count;
-        buffer = (char*)malloc(buffSize);
-        if (buffer)
-        {
-            memset(buffer, 0, buffSize);
-#ifdef _WIN32
-            _fseeki64(f, offset, SEEK_SET);
-#else
-            fseeko64(f, offset, SEEK_SET);
-#endif
-            count = fread(buffer, 1, buffSize, f);
-        }
+        count = fileSize - offset;
     }
-    else
+    auto buffSize = count;
+    char* buffer = (char*)malloc(buffSize);
+    if (buffer)
     {
-        count = 0;
+        memset(buffer, 0, buffSize);
+#ifdef _WIN32
+        _fseeki64(f, offset, SEEK_SET);
+#else
+        fseeko64(f, offset, SEEK_SET);
+#endif
+        count = fread(buffer, 1, buffSize, f);
     }
     return buffer;
 }
@@ -782,36 +779,36 @@ bool FileInfo::readLine(FILE* f, std::string& line, std::string& bomFlag, std::s
     line.clear();
     bomFlag.clear();
     endFlag.clear();
-    if (f && !feof(f))
+    if (!f || feof(f))
     {
-        char ch = 0;
-        while (!feof(f) && '\n' != (ch = fgetc(f)))
-        {
-            line.push_back(ch);
-        }
-        if ('\n' == ch)
-        {
-            endFlag.push_back(ch);
-        }
-        /* BOM字符检测 */
-        if (line.size() >= 3 && (0xEF == (unsigned char)line[0] && 0xBB == (unsigned char)line[1] && 0xBF == (unsigned char)line[2]))
-        {
-            bomFlag = line.substr(0, 3);
-            line = line.substr(3);
-        }
-        /* 非显示字符检测 */
-        long long lastIndex = line.size() - 1;
-        if (lastIndex >= 0 && ('\r' == line[lastIndex] || 0xFF == (unsigned char)line[lastIndex]))
-        {
-            if ('\r' == line[lastIndex])
-            {
-                endFlag.insert(0, 1, '\r');
-            }
-            line.erase(lastIndex);
-        }
-        return true;
+        return false;
     }
-    return false;
+    char ch = 0;
+    while (!feof(f) && '\n' != (ch = fgetc(f)))
+    {
+        line.push_back(ch);
+    }
+    if ('\n' == ch)
+    {
+        endFlag.push_back(ch);
+    }
+    /* BOM字符检测 */
+    if (line.size() >= 3 && (0xEF == (unsigned char)line[0] && 0xBB == (unsigned char)line[1] && 0xBF == (unsigned char)line[2]))
+    {
+        bomFlag = line.substr(0, 3);
+        line = line.substr(3);
+    }
+    /* 非显示字符检测 */
+    long long lastIndex = line.size() - 1;
+    if (lastIndex >= 0 && ('\r' == line[lastIndex] || 0xFF == (unsigned char)line[lastIndex]))
+    {
+        if ('\r' == line[lastIndex])
+        {
+            endFlag.insert(0, 1, '\r');
+        }
+        line.erase(lastIndex);
+    }
+    return true;
 }
 
 int64_t FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
@@ -833,11 +830,11 @@ int64_t FileInfo::write(FILE* f, size_t offset, const std::string& data)
     return write(f, offset, data.c_str(), data.size());
 }
 
-bool FileInfo::edit(FILE* f, size_t offset, size_t count, const std::function<void(char* srcData, size_t count)>& func)
+int64_t FileInfo::edit(FILE* f, size_t offset, size_t count, const std::function<bool(char* srcData, size_t count)>& func)
 {
-    if (!f || !func)
+    if (!f || 0 == count || !func)
     {
-        return false;
+        return -1;
     }
 #ifdef _WIN32
     _fseeki64(f, 0, SEEK_END);
@@ -846,38 +843,53 @@ bool FileInfo::edit(FILE* f, size_t offset, size_t count, const std::function<vo
     fseeko64(f, 0, SEEK_END);
     auto fileSize = ftello64(f);
 #endif
-    if (offset < fileSize)
+    if (offset >= fileSize)
     {
-        if (offset + count > fileSize)
-        {
-            count = fileSize - offset;
-        }
-        auto buffSize = count;
-        auto buffer = (char*)malloc(buffSize);
-        if (buffer)
-        {
-            memset(buffer, 0, buffSize);
-#ifdef _WIN32
-            _fseeki64(f, offset, SEEK_SET);
-#else
-            fseeko64(f, offset, SEEK_SET);
-#endif
-            count = fread(buffer, 1, count, f);
-            func(buffer, count);
-            if (buffer)
-            {
-#ifdef _WIN32
-                _fseeki64(f, offset, SEEK_SET);
-#else
-                fseeko64(f, offset, SEEK_SET);
-#endif
-                auto written = fwrite(buffer, 1, count, f);
-                free(buffer);
-                return (written == count);
-            }
-        }
+        return -1;
     }
-    return false;
+    if (offset + count > fileSize)
+    {
+        count = fileSize - offset;
+    }
+    auto buffSize = count;
+    auto buffer = (char*)malloc(buffSize);
+    if (!buffer)
+    {
+        return -1;
+    }
+    memset(buffer, 0, buffSize);
+#ifdef _WIN32
+    _fseeki64(f, offset, SEEK_SET);
+#else
+    fseeko64(f, offset, SEEK_SET);
+#endif
+    size_t totalRead = 0;
+    while (totalRead < count) /* 循环读取, 直到读取到count个字节或到达文件末尾 */
+    {
+        auto bytesRead = fread(buffer + totalRead, 1, count - totalRead, f);
+        if (0 == bytesRead) /* 到达文件末尾或发生错误 */
+        {
+            break;
+        }
+        totalRead += bytesRead;
+    }
+    if (totalRead != count)
+    {
+        free(buffer);
+        return 0;
+    }
+    size_t written = 0;
+    if (func(buffer, totalRead))
+    {
+#ifdef _WIN32
+        _fseeki64(f, offset, SEEK_SET);
+#else
+        fseeko64(f, offset, SEEK_SET);
+#endif
+        written = fwrite(buffer, 1, totalRead, f);
+    }
+    free(buffer);
+    return (written == totalRead ? totalRead : 0);
 }
 
 bool FileInfo::isTextData(FILE* f, float ratio, size_t maxSampleSize, size_t bufSize)
