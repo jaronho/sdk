@@ -283,46 +283,46 @@ void Serial::flushOutput()
     m_impl->flushOutput();
 }
 
-bool Serial::getCD()
+int Serial::getCD()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     return m_impl->getCD();
 }
 
-bool Serial::getCTS()
+int Serial::getCTS()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     return m_impl->getCTS();
 }
 
-bool Serial::getDSR()
+int Serial::getDSR()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     return m_impl->getDSR();
 }
 
-bool Serial::getRI()
+int Serial::getRI()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     return m_impl->getRI();
 }
 
-void Serial::setBreak(bool set)
+void Serial::setBreak(bool flag)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    m_impl->setBreak(set);
+    m_impl->setBreak(flag);
 }
 
-void Serial::setDTR(bool set)
+void Serial::setDTR(bool flag)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    m_impl->setDTR(set);
+    m_impl->setDTR(flag);
 }
 
-void Serial::setRTS(bool set)
+void Serial::setRTS(bool flag)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    m_impl->setRTS(set);
+    m_impl->setRTS(flag);
 }
 
 bool Serial::waitReadable(unsigned int timeout)

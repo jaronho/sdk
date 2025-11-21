@@ -168,39 +168,62 @@ public:
     void flushOutput();
 
     /**
-     * @brief 获取CD
+     * @brief 获取CD(Carrier Detect - 载波检测)信号状态, 用于检测远程设备是否在线并发送有效载波信号, 在串口直连场景中常用于检测对端设备是否就绪.
+     *        在modem通信中, CD信号表示拨号连接已建立, 也可用于检测设备热插拔状态
+     * @return <0: 发生错误(串口未打开或API调用失败), 0: 信号无效(未检测到信号, 远程设备未连接或掉线), >0: 信号有效(检测到信号, 远程设备在线)
      */
-    bool getCD();
+    int getCD();
 
     /**
-     * @brief 获取CTS
+     * @brief 获取CTS(Clear to Send - 清除发送)信号状态, 硬件流控制的核心信号, 表示对端设备是否准备好接收数据, 用于防止发送方溢出接收方缓冲区.
+     *        常与RTS信号配合使用实现硬件流控制, 在工业控制中可作为通用数字输入信号
+     * @return <0: 发生错误(串口未打开或API调用失败), 0: 信号无效(对端设备忙, 应暂停发送数据), >0: 信号有效(对端设备就绪, 可以发送数据)
      */
-    bool getCTS();
+    int getCTS();
 
     /**
-     * @brief 获取DSR
+     * @brief 获取DSR(Data Set Ready - 数据集就绪)信号状态, 表示DCE设备(如modem)已完成初始化并准备好建立通信链路.
+     *        DTR/DSR信号对用于设备就绪状态的握手, 可用于判断设备电源/连接状态
+     * @return <0: 发生错误(串口未打开或API调用失败), 0: 信号无效(设备未就绪或正在初始化), >0: 信号有效(设备已就绪)
      */
-    bool getDSR();
+    int getDSR();
 
     /**
-     * @brief 获取RI
+     * @brief 获取RI(Ring Indicator - 振铃指示)信号状态, 在modem应用中检测电话线路是否有来电振铃信号.
+     *        主要用于传统modem来电检测, 现代USB转串口适配器可能不支持此信号
+     * @return <0: 发生错误(串口未打开或API调用失败), 0: 信号无效(无来电), >0: 信号有效(检测到振铃信号)
      */
-    bool getRI();
+    int getRI();
 
     /**
-     * @brief 设置中断
+     * @brief 设置BREAK信号状态, BREAK信号会将串口的TxD线路强制拉低(SPACE状态)并持续一段时间，常用于:
+     *        1. 向远程设备发送异常通知;
+     *        2. 触发远程设备重置;
+     *        3. 进入设备特殊引导模式(如某些bootloader);
+     *        典型应用: 在Windows下调用EscapeCommFunction(SETBREAK), Linux下调用ioctl(TIOCSBRK), 持续发送BREAK信号会阻塞正常数据传输, 使用后务必及时关闭
+     * @param flag 信号状态, 值: true-激活信号(线路被强制拉低), false-取消信号(线路恢复正常)
      */
-    void setBreak(bool set);
+    void setBreak(bool flag);
 
     /**
-     * @brief 设置DTR
+     * @brief 设置DTR(Data Terminal Ready - 数据终端就绪)信号状态, DTR信号表示DTE设备(如计算机)已就绪, 可与远程DCE设备建立通信链路,
+     *        与DSR信号配合使用构成设备就绪状态的握手协议, 典型应用:
+     *        1. 硬件握手, 配合DSR信号建立可靠通信链路;
+     *        2. 设备控制, 控制modem挂线/摘机, 或外部设备电源管理;
+     *        3. 半双工通信, 触发对端设备进入接收/发送模式切换;
+     * @param flag 信号状态, 值: true-激活信号(向对端表示本设备已就绪), false-关闭信号(通常会导致对端设备挂起或断开连接)
      */
-    void setDTR(bool set);
+    void setDTR(bool flag);
 
     /**
-     * @brief 设置RTS
+     * @brief 设置RTS(Request To Send - 请求发送)信号状态, RTS信号是硬件流控制的核心, 用于请求发送数据权限, 与CTS信号配合使用,
+     *        当CTS/RTS流控启用时, DTE通过设置RTS通知DCE本端准备发送数据, 典型应用:
+     *        1. 硬件流控, 防止高速传输时接收方缓冲区溢出;
+     *        2. 半双工通信, 控制RS-485收发器的发送/接收模式切换;
+     *        3. 通用GPIO, 作为可编程输出信号控制外部设备;
+     * @param flag 信号状态, 值: true-激活信号(请求发送数据, 对端CTS有效时可立即发送), false-关闭信号(暂停数据发送请求)
      */
-    void setRTS(bool set);
+    void setRTS(bool flag);
 
     /**
      * @brief 等待可读, 将会阻塞直到有数据可读取, 或触发readTimeoutConstant超时

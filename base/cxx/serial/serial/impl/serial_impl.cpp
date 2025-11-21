@@ -523,107 +523,106 @@ void SerialImpl::flushOutput()
 #endif
 }
 
-bool SerialImpl::getCD()
+int SerialImpl::getCD()
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
-        return false;
+        return -1;
     }
 #ifdef _WIN32
     DWORD dwModemStatus;
     if (!GetCommModemStatus(m_fd, &dwModemStatus))
     {
-        return false;
+        return -1;
     }
-    return 0 != (MS_RLSD_ON & dwModemStatus);
+    return (MS_RLSD_ON & dwModemStatus);
 #else
     int status;
     if (ioctl(m_fd, TIOCMGET, &status) < 0)
     {
-        return false;
+        return -1;
     }
-    return 0 != (status & TIOCM_CD);
+    return (status & TIOCM_CD);
 #endif
 }
 
-bool SerialImpl::getCTS()
+int SerialImpl::getCTS()
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
-        return false;
+        return -1;
     }
 #ifdef _WIN32
     DWORD dwModemStatus;
     if (!GetCommModemStatus(m_fd, &dwModemStatus))
     {
-        return false;
+        return -1;
     }
-    return 0 != (MS_CTS_ON & dwModemStatus);
+    return (MS_CTS_ON & dwModemStatus);
 #else
     int status;
     if (ioctl(m_fd, TIOCMGET, &status) < 0)
     {
-        return false;
+        return -1;
     }
-    return 0 != (status & TIOCM_CTS);
+    return (status & TIOCM_CTS);
 #endif
 }
 
-bool SerialImpl::getDSR()
+int SerialImpl::getDSR()
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
-        return false;
+        return -1;
     }
 #ifdef _WIN32
     DWORD dwModemStatus;
     if (!GetCommModemStatus(m_fd, &dwModemStatus))
     {
-        return false;
+        return -1;
     }
-
-    return 0 != (MS_DSR_ON & dwModemStatus);
+    return (MS_DSR_ON & dwModemStatus);
 #else
     int status;
     if (ioctl(m_fd, TIOCMGET, &status) < 0)
     {
-        return false;
+        return -1;
     }
-    return 0 != (status & TIOCM_DSR);
+    return (status & TIOCM_DSR);
 #endif
 }
 
-bool SerialImpl::getRI()
+int SerialImpl::getRI()
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
-        return false;
+        return -1;
     }
 #ifdef _WIN32
     DWORD dwModemStatus;
     if (!GetCommModemStatus(m_fd, &dwModemStatus))
     {
-        return false;
+        return -1;
     }
-    return 0 != (MS_RING_ON & dwModemStatus);
+    return (MS_RING_ON & dwModemStatus);
 #else
     int status;
     if (ioctl(m_fd, TIOCMGET, &status) < 0)
     {
-        return false;
+        return -1;
     }
-    return 0 != (status & TIOCM_RI);
+    return (status & TIOCM_RI);
 #endif
 }
 
-void SerialImpl::setBreak(bool set)
+void SerialImpl::setBreak(bool flag)
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         return;
     }
 #ifdef _WIN32
-    if (set)
+    if (flag)
     {
         EscapeCommFunction(m_fd, SETBREAK);
     }
@@ -632,7 +631,7 @@ void SerialImpl::setBreak(bool set)
         EscapeCommFunction(m_fd, CLRBREAK);
     }
 #else
-    if (set)
+    if (flag)
     {
         ioctl(m_fd, TIOCSBRK);
     }
@@ -643,14 +642,14 @@ void SerialImpl::setBreak(bool set)
 #endif
 }
 
-void SerialImpl::setDTR(bool set)
+void SerialImpl::setDTR(bool flag)
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         return;
     }
 #ifdef _WIN32
-    if (set)
+    if (flag)
     {
         EscapeCommFunction(m_fd, SETDTR);
     }
@@ -660,7 +659,7 @@ void SerialImpl::setDTR(bool set)
     }
 #else
     int command = TIOCM_DTR;
-    if (set)
+    if (flag)
     {
         ioctl(m_fd, TIOCMBIS, &command);
     }
@@ -671,14 +670,14 @@ void SerialImpl::setDTR(bool set)
 #endif
 }
 
-void SerialImpl::setRTS(bool set)
+void SerialImpl::setRTS(bool flag)
 {
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         return;
     }
 #ifdef _WIN32
-    if (set)
+    if (flag)
     {
         EscapeCommFunction(m_fd, SETRTS);
     }
@@ -688,7 +687,7 @@ void SerialImpl::setRTS(bool set)
     }
 #else
     int command = TIOCM_RTS;
-    if (set)
+    if (flag)
     {
         ioctl(m_fd, TIOCMBIS, &command);
     }
@@ -1468,7 +1467,7 @@ int SerialImpl::reconfig()
     if (isCustomBaudrate) /* 应用自定义波特率 */
     {
 #if defined(MAC_OS_X_VERSION_10_4) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_4) /* OSX支持 */
-        /* Starting with Tiger, the IOSSIOSPEED ioctl can be used to set arbitrary baud rates other than those specified by POSIX.
+        /* Starting with Tiger, the IOSSIOSPEED ioctl can be used to flag arbitrary baud rates other than those specified by POSIX.
            The driver for the underlying serial hardware ultimately determines which baud rates can be used. This ioctl sets both 
            the input and output speed. */
         speed_t newBaudrate = static_cast<speed_t>(m_baudrate);
