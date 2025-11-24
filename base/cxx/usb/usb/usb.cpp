@@ -21,6 +21,7 @@
 #include <usbioctl.h>
 #include <winioctl.h>
 #pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "cfgmgr32.lib")
 #else
 #include <libudev.h>
 #endif
@@ -780,29 +781,16 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
         {
             ULONG nBytes = sizeof(USB_NODE_CONNECTION_INFORMATION) + sizeof(USB_PIPE_INFO) * 30;
             PUSB_NODE_CONNECTION_INFORMATION connectionInfo = (PUSB_NODE_CONNECTION_INFORMATION)GlobalAlloc(GPTR, nBytes);
-            if (NULL == connectionInfo)
+            if (connectionInfo)
             {
-                GlobalFree(connectionInfoEx);
-                continue;
-            }
-            connectionInfo->ConnectionIndex = index;
-            if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION, connectionInfo, nBytes, connectionInfo, nBytes,
-                                 &nBytes, NULL))
-            {
+                connectionInfo->ConnectionIndex = index;
+                if (DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION, connectionInfo, nBytes, connectionInfo, nBytes,
+                                    &nBytes, NULL))
+                {
+                    memcpy(connectionInfoEx, connectionInfo, sizeof(USB_NODE_CONNECTION_INFORMATION));
+                }
                 GlobalFree(connectionInfo);
-                GlobalFree(connectionInfoEx);
-                continue;
             }
-            connectionInfoEx->ConnectionIndex = connectionInfo->ConnectionIndex;
-            connectionInfoEx->DeviceDescriptor = connectionInfo->DeviceDescriptor;
-            connectionInfoEx->CurrentConfigurationValue = connectionInfo->CurrentConfigurationValue;
-            connectionInfoEx->Speed = connectionInfo->LowSpeed ? UsbLowSpeed : UsbFullSpeed;
-            connectionInfoEx->DeviceIsHub = connectionInfo->DeviceIsHub;
-            connectionInfoEx->DeviceAddress = connectionInfo->DeviceAddress;
-            connectionInfoEx->NumberOfOpenPipes = connectionInfo->NumberOfOpenPipes;
-            connectionInfoEx->ConnectionStatus = connectionInfo->ConnectionStatus;
-            memcpy(&connectionInfoEx->PipeList[0], &connectionInfo->PipeList[0], sizeof(USB_PIPE_INFO) * 30);
-            GlobalFree(connectionInfo);
         }
         PUSB_DESCRIPTOR_REQUEST configDesc = NULL;
         if (DeviceConnected == connectionInfoEx->ConnectionStatus)
@@ -837,29 +825,29 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
                 manufacturer = getDisplayString(connectionInfoEx->DeviceDescriptor.iManufacturer, stringDescs);
             }
             std::string driverName = getDriverKeyName(hHubDevice, index);
-            if (serial.empty() && !driverName.empty()) /* 只有原路径没读到才补 */
-            {
-                auto it = devInfoDataList.find(driverName);
-                if (it != devInfoDataList.end())
-                {
-                    CHAR instanceId[MAX_DEVICE_ID_LEN];
-                    if (CM_Get_Device_ID(it->second.DevInst, instanceId, MAX_PATH, 0) == CR_SUCCESS)
-                    {
-                        std::string str(instanceId);
-                        auto pos = str.rfind(L'\\');
-                        if (std::string::npos != pos)
-                        {
-                            serial = str.substr(pos + 1);
-                        }
-                    }
-                }
-            }
             std::string deviceId, model, vendor, storageType, devicePath;
             std::vector<DriverInfo> driverList;
             std::vector<ComPortInfo> comList;
             auto iter = devInfoDataList.find(driverName);
             if (devInfoDataList.end() != iter)
             {
+                CHAR instanceId[MAX_DEVICE_ID_LEN];
+                if (CR_SUCCESS == CM_Get_Device_ID(iter->second.DevInst, instanceId, MAX_PATH, 0))
+                {
+                    if (serial.empty())
+                    {
+                        std::string str(instanceId);
+                        auto slashPos = str.rfind('\\');
+                        if (std::string::npos != slashPos)
+                        {
+                            str = str.substr(slashPos + 1);
+                            if (std::string::npos == str.find('&'))
+                            {
+                                serial = str;
+                            }
+                        }
+                    }
+                }
                 DEVPROPTYPE propertyType = 0;
                 WCHAR propertyBuffer[1024] = {0};
                 DWORD requiredSize = 0;
@@ -872,17 +860,13 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
                     {
                         if (storageType.empty()) /* 非存储设备, 尝试查找是否串口 */
                         {
-                            CHAR usbInstanceId[MAX_DEVICE_ID_LEN] = {0};
-                            if (CR_SUCCESS == CM_Get_Device_ID(iter->second.DevInst, usbInstanceId, MAX_PATH, 0))
+                            std::string key = instanceId;
+                            std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+                            for (const auto& info : comPortList)
                             {
-                                std::string key = usbInstanceId;
-                                std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-                                for (const auto& info : comPortList)
+                                if (info.parentInstanceId == key)
                                 {
-                                    if (info.parentInstanceId == key)
-                                    {
-                                        comList.emplace_back(info);
-                                    }
+                                    comList.emplace_back(info);
                                 }
                             }
                         }
@@ -1057,6 +1041,53 @@ std::vector<UsbImpl> enumerateHostControllers()
     {
         return usbList;
     }
+    /* 收集所有控制器信息 */
+    struct ControllerInfo
+    {
+        std::string deviceInstanceId; /* 设备实例ID, 用于排序 */
+        std::string rootHubName; /* Root Hub名称 */
+        SP_DEVINFO_DATA devInfoData; /* 设备信息数据 */
+    };
+    std::vector<ControllerInfo> controllers;
+    /* 枚举所有USB主机控制器 */
+    SP_DEVICE_INTERFACE_DATA devInterfaceData;
+    devInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+    for (ULONG index = 0; SetupDiEnumDeviceInterfaces(devInfo, 0, (LPGUID)&GUID_CLASS_USB_HOST_CONTROLLER, index, &devInterfaceData);
+         ++index)
+    {
+        ULONG requiredSize = 0;
+        SetupDiGetDeviceInterfaceDetailA(devInfo, &devInterfaceData, NULL, 0, &requiredSize, NULL);
+        PSP_DEVICE_INTERFACE_DETAIL_DATA devDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA)GlobalAlloc(GPTR, requiredSize);
+        if (devDetailData)
+        {
+            devDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+            SP_DEVINFO_DATA devInfoData = {sizeof(SP_DEVINFO_DATA)};
+            if (SetupDiGetDeviceInterfaceDetailA(devInfo, &devInterfaceData, devDetailData, requiredSize, &requiredSize, &devInfoData))
+            {
+                HANDLE hHCDev = CreateFileA(devDetailData->DevicePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                            OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+                if (INVALID_HANDLE_VALUE != hHCDev)
+                {
+                    auto rootHubName = getRootHubName(hHCDev);
+                    /* 获取设备实例ID（这是关键排序依据）*/
+                    CHAR instanceId[MAX_DEVICE_ID_LEN];
+                    if (SetupDiGetDeviceInstanceIdA(devInfo, &devInfoData, instanceId, sizeof(instanceId), NULL))
+                    {
+                        ControllerInfo ci;
+                        ci.deviceInstanceId = instanceId;
+                        ci.rootHubName = rootHubName;
+                        ci.devInfoData = devInfoData;
+                        controllers.emplace_back(ci);
+                    }
+                    CloseHandle(hHCDev);
+                }
+            }
+            GlobalFree(devDetailData);
+        }
+    }
+    /* 按设备实例ID排序, libusb在Windows上的枚举顺序是按设备路径/实例ID字母序 */
+    std::sort(controllers.begin(), controllers.end(),
+              [](const ControllerInfo& a, const ControllerInfo& b) { return a.deviceInstanceId < b.deviceInstanceId; });
     /* 遍历获取所有 SP_DEVINFO_DATA 信息 */
     std::map<std::string, SP_DEVINFO_DATA> devInfoDataList; /* key: driverName, value: 信息 */
     SP_DEVINFO_DATA devInfoData;
@@ -1073,37 +1104,11 @@ std::vector<UsbImpl> enumerateHostControllers()
     /* 遍历获取USB设备详情 */
     auto localDriveList = getLogicalDriveList();
     auto comPortList = getComPortList(devInfo);
-    for (ULONG index = 0; index < totalCount; ++index)
+    /* 按校准后的顺序枚举, 使用排序后的索引+1作为busNum, 与libusb保持一致 */
+    for (size_t i = 0; i < controllers.size(); ++i)
     {
-        SP_DEVICE_INTERFACE_DATA devInterfaceData;
-        devInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
-        if (!SetupDiEnumDeviceInterfaces(devInfo, 0, (LPGUID)&GUID_CLASS_USB_HOST_CONTROLLER, index, &devInterfaceData))
-        {
-            break;
-        }
-        ULONG requiredSize = 0;
-        BOOL ret = SetupDiGetDeviceInterfaceDetailA(devInfo, &devInterfaceData, NULL, 0, &requiredSize, NULL);
-        if (FALSE == ret && ERROR_INSUFFICIENT_BUFFER != GetLastError())
-        {
-            break;
-        }
-        PSP_DEVICE_INTERFACE_DETAIL_DATA devDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA)GlobalAlloc(GPTR, requiredSize);
-        if (devDetailData)
-        {
-            devDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
-            if (SetupDiGetDeviceInterfaceDetailA(devInfo, &devInterfaceData, devDetailData, requiredSize, &requiredSize, NULL))
-            {
-                HANDLE hHCDev = CreateFileA(devDetailData->DevicePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-                                            OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-                if (INVALID_HANDLE_VALUE != hHCDev)
-                {
-                    auto rootHubName = getRootHubName(hHCDev);
-                    CloseHandle(hHCDev);
-                    enumerateHub(devInfo, devInfoDataList, index + 1, rootHubName, NULL, localDriveList, comPortList, usbList);
-                }
-            }
-            GlobalFree(devDetailData);
-        }
+        int busNum = static_cast<int>(i + 1); /* 校准后的busNum */
+        enumerateHub(devInfo, devInfoDataList, busNum, controllers[i].rootHubName, NULL, localDriveList, comPortList, usbList);
     }
     SetupDiDestroyDeviceInfoList(devInfo);
     return usbList;
