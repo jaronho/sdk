@@ -2401,56 +2401,79 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
     if (detailFlag) /* 获取详细信息 */
     {
         /* 获取详细信息 */
+        bool firstFound = false;
+        UsbImpl temp;
         for (const auto& item : implList)
         {
             if (item.busNum == info->m_busNum && item.portNum == info->m_portNum && item.address == info->m_address
-                && item.vid == info->m_vid && item.pid == info->m_pid)
+                && item.vid == info->m_vid && item.pid == info->m_pid) /* 先完全匹配 */
             {
-                if (info->m_serial.empty())
+                firstFound = true;
+                temp = item;
+                break;
+            }
+        }
+        bool secondFound = false;
+        if (!firstFound)
+        {
+            for (const auto& item : implList)
+            {
+                if (item.portNum == info->m_portNum && item.address == info->m_address && item.vid == info->m_vid
+                    && item.pid == info->m_pid) /* 降级匹配 */
                 {
-                    info->m_serial = item.serial;
+                    secondFound = true;
+                    temp = item;
+                    break;
                 }
-                if (info->m_product.empty())
-                {
-                    info->m_product = item.product;
-                }
-                if (info->m_manufacturer.empty())
-                {
-                    info->m_manufacturer = item.manufacturer;
-                }
-                if (info->m_model.empty())
-                {
-                    info->m_model = item.model;
-                }
-                if (info->m_vendor.empty())
-                {
-                    info->m_vendor = item.vendor;
-                }
-                if (info->m_storageType.empty())
-                {
-                    info->m_storageType = item.storageType;
-                }
+            }
+        }
+        if (firstFound || secondFound)
+        {
+            if (info->m_serial.empty())
+            {
+                info->m_serial = temp.serial;
+            }
+            if (info->m_product.empty())
+            {
+                info->m_product = temp.product;
+            }
+            if (info->m_manufacturer.empty())
+            {
+                info->m_manufacturer = temp.manufacturer;
+            }
+            if (info->m_model.empty())
+            {
+                info->m_model = temp.model;
+            }
+            if (info->m_vendor.empty())
+            {
+                info->m_vendor = temp.vendor;
+            }
+            if (info->m_storageType.empty())
+            {
+                info->m_storageType = temp.storageType;
+            }
 #ifdef _WIN32
-                for (const auto& di : item.driverList)
-                {
-                    info->m_devNodes.emplace_back(DevNode("", "", di.fstype, di.label, "", 0, di.driver));
-                }
-                for (const auto& ci : item.comList)
-                {
-                    info->m_devNodes.emplace_back(DevNode(ci.portName));
-                }
+            for (const auto& di : temp.driverList)
+            {
+                info->m_devNodes.emplace_back(DevNode("", "", di.fstype, di.label, "", 0, di.driver));
+            }
+            for (const auto& ci : temp.comList)
+            {
+                info->m_devNodes.emplace_back(DevNode(ci.portName));
+            }
 #else
-                info->m_devNodes = item.blockDevNodes;
-                for (const auto& devNode : item.nonblockDevNodes)
-                {
-                    info->m_devNodes.emplace_back(devNode);
-                }
+            info->m_devNodes = temp.blockDevNodes;
+            for (const auto& devNode : temp.nonblockDevNodes)
+            {
+                info->m_devNodes.emplace_back(devNode);
+            }
 #endif
-                if ("cdrom" == info->m_storageType && !info->m_devNodes.empty())
-                {
-                    auto iter = std::find_if(cdromList.begin(), cdromList.end(), [&](const CdromInfo& item) {
+            if ("cdrom" == info->m_storageType && !info->m_devNodes.empty())
+            {
+                auto iter = std::find_if(cdromList.begin(), cdromList.end(), [&](const CdromInfo& item) {
 #ifdef _WIN32
-                        return (item.name == info->m_devNodes[0].getMountpoint());
+                    return (item.name == info->m_devNodes[0].getMountpoint());
 #else
                         for (const auto& devNode : info->m_devNodes)
                         {
@@ -2461,13 +2484,11 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
                         }
                         return false;
 #endif
-                    });
-                    if (cdromList.end() != iter)
-                    {
-                        info->m_cdromInfo = (*iter);
-                    }
+                });
+                if (cdromList.end() != iter)
+                {
+                    info->m_cdromInfo = (*iter);
                 }
-                break;
             }
         }
 #if 0 /* Windows平台下打不开, Linux平台下有时会卡住, 因此弃而不用 */
