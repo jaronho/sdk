@@ -1,5 +1,7 @@
 #include "modbus_tcp.h"
 
+#include <algorithm>
+
 namespace npacket
 {
 ModbusTcpParser::ModbusTcpParser(const std::vector<uint16_t>& portList)

@@ -1,5 +1,7 @@
 #include "modbus_rtu.h"
 
+#include <algorithm>
+
 namespace npacket
 {
 ModbusRtuParser::ModbusRtuParser(const std::vector<uint8_t>& addressList) : m_allowedAddressList(addressList) {}
