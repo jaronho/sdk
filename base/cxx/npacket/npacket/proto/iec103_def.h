@@ -1,8 +1,5 @@
 #pragma once
-#include <functional>
 #include <vector>
-
-#include "../protocol_parser.h"
 
 namespace npacket
 {

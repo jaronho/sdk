@@ -22,6 +22,15 @@ using LAYER_CALLBACK = std::function<bool(const std::chrono::steady_clock::time_
                                           const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)>;
 
 /**
+ * @brief 数据源
+ */
+enum class DataSource
+{
+    network = 0, /* 标准网络包 */
+    serial /* 串口数据包 */
+};
+
+/**
  * @brief 分析器
  */
 class Analyzer
@@ -53,9 +62,10 @@ public:
      * @brief 解析数据
      * @param data 数据
      * @param dataLen 数据长度
-     * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败
+     * @param dataSource 数据源
+     * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器
      */
-    int parse(const uint8_t* data, uint32_t dataLen);
+    int parse(const uint8_t* data, uint32_t dataLen, const DataSource& dataSource = DataSource::network);
 
 private:
     /**

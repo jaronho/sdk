@@ -1,0 +1,104 @@
+#pragma once
+#include <functional>
+
+#include "../protocol_parser.h"
+#include "modbus_def.h"
+
+namespace npacket
+{
+/**
+ * @brief Modbus/TCP协议解析器(基于RFC-6454)
+ */
+class ModbusTcpParser : public ProtocolParser
+{
+public:
+    /**
+     * @brief 数据回调
+     * @param ntp 数据包接收时间点
+     * @param totalLen 数据包总长度
+     * @param header 传输层头部
+     * @param transactionId 事务标识符
+     * @param unitId 单元标识符(从站地址)
+     * @param funcCode 功能码
+     * @param data 数据
+     * @param dataLen 数据长度
+     * @param isException 是否为异常响应
+     * @param exceptionCode 异常码(仅当isException为true时有效)
+     */
+    using DATA_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                             const std::shared_ptr<ProtocolHeader>& header, uint16_t transactionId, uint8_t unitId,
+                                             modbus::FunctionCode funcCode, const uint8_t* data, uint32_t dataLen, bool isException,
+                                             modbus::ExceptionCode exceptionCode)>;
+
+public:
+    /**
+     * @brief 构造函数
+     * @param portList 要监听的端口列表(默认502)
+     */
+    ModbusTcpParser(const std::vector<uint16_t>& portList = {502});
+
+    /**
+     * @brief 获取应用层协议
+     * @return 协议类型(ApplicationProtocol)
+     */
+    uint32_t getProtocol() const override;
+
+    /**
+     * @brief 解析
+     * @param ntp 数据包接收时间点
+     * @param totalLen 数据包总长度
+     * @param header 传输层头部
+     * @param payload 层负载
+     * @param payloadLen 层负载长度
+     * @return true-成功, false-失败
+     */
+    bool parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+               const uint8_t* payload, uint32_t payloadLen) override;
+
+    /**
+     * @brief 设置数据回调
+     * @param callback 回调
+     */
+    void setDataCallback(const DATA_CALLBACK& callback);
+
+private:
+    /**
+     * @brief MBAP 头部结构(Modbus Application Protocol Header)
+     */
+    struct MbapHeader
+    {
+        uint16_t transactionId = 0; /* 事务标识符 */
+        uint16_t protocolId = 0; /* 协议标识符(必须为0) */
+        uint16_t length = 0; /* 长度 = 包括单元标识符 + 功能码 + 数据 */
+        uint8_t unitId = 0; /* 单元标识符(从站地址) */
+    };
+
+    /**
+     * @brief 解析MBAP头
+     * @param data 数据
+     * @param dataLen 数据长度
+     * @param mbap [输出]MBAP头
+     * @param headerLen [输出]MBAP头长度
+     * @return true-成功, false-失败
+     */
+    bool parseMbapHeader(const uint8_t* data, uint32_t dataLen, MbapHeader& mbap, uint32_t& headerLen);
+
+    /**
+     * @brief 验证端口是否匹配
+     * @param port 端口
+     * @return true-匹配, false-不匹配
+     */
+    bool isModbusPort(uint16_t port) const;
+
+    /**
+     * @brief 验证功能码有效性
+     * @param funcCode 功能码
+     * @return true-有效, false-无效
+     */
+    bool isValidFunctionCode(uint8_t funcCode) const;
+
+private:
+    DATA_CALLBACK m_dataCallback = nullptr; /* 数据回调 */
+    std::vector<uint16_t> m_modbusPortList; /* Modbus端口列表 */
+};
+} // namespace npacket

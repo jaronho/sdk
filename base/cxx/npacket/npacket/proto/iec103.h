@@ -2,6 +2,7 @@
 #include <functional>
 #include <vector>
 
+#include "../protocol_parser.h"
 #include "iec103_def.h"
 
 namespace npacket

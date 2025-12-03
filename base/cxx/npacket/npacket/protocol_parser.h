@@ -18,7 +18,9 @@ enum ApplicationProtocol
     IEC103, /* 一种用于电力系统远程监控和控制的通信协议, 由国际电工委员会(IEC)制定 */
     TPKT, /* 介于TCP和COTP协议之间, 属于传输服务类的协议, 主要用来在TCP和COTP之间建立桥梁, 一般与COTP一起发送, 当作Header段 */
     COTP, /* 面向连接的传输协议(Connection-Oriented Transport Protocol), 上层协议为TPKT协议 */
-    S7COMM, /* (S7 Communication)是西门子S7通讯协议簇里的一种, 上层协议为COTP协议  */
+    S7COMM, /* (S7 Communication)是西门子S7通讯协议簇里的一种, 上层协议为COTP协议 */
+    MODBUS_RTU, /* Modbus远程终端单元协议(基于串行通信) */
+    MODBUS_TCP, /* Modbus传输控制协议(基于以太网通信) */
 };
 
 /**
