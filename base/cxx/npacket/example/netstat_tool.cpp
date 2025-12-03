@@ -10,7 +10,7 @@
 #endif
 
 #include "../npacket/analyzer.h"
-#include "../npacket/pcap_device.h"
+#include "../npacket/device/pcap_device.h"
 
 static npacket::Analyzer s_inPktAnalyzer; /* 接收包分析器 */
 static npacket::PcapDevice s_inPacpDevice; /* 接收抓包设备 */

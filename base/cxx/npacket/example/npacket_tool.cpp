@@ -6,7 +6,7 @@
 #include <thread>
 
 #include "../npacket/analyzer.h"
-#include "../npacket/pcap_device.h"
+#include "../npacket/device/pcap_device.h"
 #include "../npacket/proto/ftp.h"
 #include "../npacket/proto/iec103.h"
 

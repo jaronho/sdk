@@ -41,24 +41,44 @@ ${PCAP_LIBRARIES}
 ${base_npacket_dir}
 
 [源文件]
+${base_npacket_device_files}
+
+[源文件]
+${base_npacket_parser_files}
+
+[源文件]
 ${base_npacket_files}
 ]]
 
 ###################################### 添加npacket库 #####################################
 set(base_npacket_dir ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 
+set(base_npacket_device_src_list)
+get_cxx_files(npacket/device src_list)
+list(APPEND base_npacket_device_src_list ${src_list})
+
 set(base_npacket_proto_src_list)
 get_cxx_files(npacket/proto src_list)
 list(APPEND base_npacket_proto_src_list ${src_list})
 
-set(base_npacket_src_list)
+set(base_npacket_parser_list)
 get_cxx_files(npacket src_list)
-list(APPEND base_npacket_src_list ${src_list})
+list(APPEND base_npacket_parser_list ${src_list})
 
 # 组装文件列表
-set(base_npacket_files
+set(base_npacket_device_files
+    ${base_npacket_device_src_list}
+    CACHE INTERNAL "")
+    
+set(base_npacket_parser_files
     ${base_npacket_proto_src_list}
-    ${base_npacket_src_list}
+    ${base_npacket_parser_list}
+    CACHE INTERNAL "")
+    
+set(base_npacket_files
+    ${base_npacket_device_src_list}
+    ${base_npacket_proto_src_list}
+    ${base_npacket_parser_list}
     CACHE INTERNAL "")
 
 # 打印文件列表
