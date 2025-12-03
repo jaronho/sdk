@@ -54,6 +54,7 @@ int Analyzer::parse(const uint8_t* data, uint32_t dataLen)
     uint32_t remainLen = dataLen, offset = 0, headerLen = 0, networkProtocol = 0, transportProtocol = 0;
     LAYER_CALLBACK ehternetLayerCb = nullptr, networkLayerCb = nullptr, transportLayerCb = nullptr;
     {
+        std::lock_guard<std::mutex> locker(m_mutexLayerCb);
         ehternetLayerCb = m_ethernetLayerCb;
         networkLayerCb = m_networkLayerCb;
         transportLayerCb = m_transportLayerCb;
@@ -144,7 +145,7 @@ std::shared_ptr<ProtocolHeader> Analyzer::handleEthernetLayer(const uint8_t* dat
     return nullptr;
 }
 
-std::shared_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(const uint32_t& networkProtocol, const uint8_t* data, uint32_t dataLen,
+std::shared_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
                                                              uint32_t& headerLen, uint32_t& transportProtocol)
 {
     if (data)
@@ -205,7 +206,7 @@ std::shared_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(const uint32_t& net
     return nullptr;
 }
 
-std::shared_ptr<ProtocolHeader> Analyzer::handleTransportLayer(const uint32_t& transportProtocol, const uint8_t* data, uint32_t dataLen,
+std::shared_ptr<ProtocolHeader> Analyzer::handleTransportLayer(uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
                                                                uint32_t& headerLen)
 {
     if (data)

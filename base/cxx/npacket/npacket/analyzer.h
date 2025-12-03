@@ -75,11 +75,11 @@ private:
      * @param data 层数据
      * @param dataLen 层数据长度
      * @param headerLen [输出]协议头部长度
-     * @param networkProtocol [输出]传输层协议类型
+     * @param transportProtocol [输出]传输层协议类型
      * @return 协议头部
      */
-    std::shared_ptr<ProtocolHeader> handleNetworkLayer(const uint32_t& networkProtocol, const uint8_t* data, uint32_t dataLen,
-                                                       uint32_t& headerLen, uint32_t& transportProtocol);
+    std::shared_ptr<ProtocolHeader> handleNetworkLayer(uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
+                                                       uint32_t& transportProtocol);
 
     /**
      * @brief 处理传输层数据
@@ -89,7 +89,7 @@ private:
      * @param headerLen [输出]协议头部长度
      * @return 协议头部
      */
-    std::shared_ptr<ProtocolHeader> handleTransportLayer(const uint32_t& transportProtocol, const uint8_t* data, uint32_t dataLen,
+    std::shared_ptr<ProtocolHeader> handleTransportLayer(uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
                                                          uint32_t& headerLen);
 
 private:
