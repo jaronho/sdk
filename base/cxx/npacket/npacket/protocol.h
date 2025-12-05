@@ -144,7 +144,7 @@ public:
     uint8_t flagRsrvd = 0; /* 标志: 保留位 */
     uint8_t flagDont = 0; /* 标志: 没有分段 */
     uint8_t flagMore = 0; /* 标志: 更多分段 */
-    uint8_t fragOffset = 0; /* 分段偏移数 */
+    uint16_t fragOffset = 0; /* 分段偏移数 */
     uint8_t ttl = 0; /* 报文生存时间 */
     uint8_t nextProtocol = 0; /* 下一层协议类型 */
     uint16_t checksum = 0; /* 头部校验和 */

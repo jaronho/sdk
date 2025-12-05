@@ -59,11 +59,6 @@ struct RawIpv6Header
     uint8_t hopLimit; /* 跳跃限制 */
     uint8_t srcAddr[16]; /* 源IP地址 */
     uint8_t dstAddr[16]; /* 目的IP地址 */
-    struct HopByHopHeader /* 逐跳选项头部(属于强制性的扩展头部), 长度为8的整数倍 */
-    {
-        uint8_t nextHeader; /* 下一个头的协议类型 */
-        uint8_t length; /* 选项头长度(不包括前8个字节) */
-    } hopByHopHeader;
 };
 
 /**

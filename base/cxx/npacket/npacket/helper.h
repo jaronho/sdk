@@ -4,6 +4,17 @@
 namespace npacket
 {
 /**
+ * @brief IPv6扩展头类型定义
+ */
+#define IPV6_EXT_HOP_BY_HOP 0 /* 逐跳选项头 */
+#define IPV6_EXT_ROUTING 43 /* 路由头 */
+#define IPV6_EXT_FRAGMENT 44 /* 分片头 */
+#define IPV6_EXT_ESP 50 /* ESP头 */
+#define IPV6_EXT_AUTH 51 /* 认证头 */
+#define IPV6_EXT_DEST_OPTIONS 60 /* 目的选项头 */
+#define IPV6_EXT_NO_NEXT 59 /* 无下一个头 */
+
+/**
  * @brief 辅助类
  */
 class Helper final
