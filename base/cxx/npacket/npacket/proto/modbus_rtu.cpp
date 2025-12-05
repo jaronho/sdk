@@ -4,7 +4,10 @@
 
 namespace npacket
 {
-ModbusRtuParser::ModbusRtuParser(const std::vector<uint8_t>& addressList) : m_allowedAddressList(addressList) {}
+ModbusRtuParser::ModbusRtuParser(const std::vector<uint8_t> addressList, bool generateTransId)
+    : m_allowedAddressList(addressList.begin(), addressList.end()), m_generateTransId(generateTransId)
+{
+}
 
 uint32_t ModbusRtuParser::getProtocol() const
 {
@@ -14,7 +17,7 @@ uint32_t ModbusRtuParser::getProtocol() const
 bool ModbusRtuParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                             const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
-    if (!payload || payloadLen < 4) /* Modbus/RTU最小帧长: 地址(1) + 功能码(1) + CRC(2) = 4字节 */
+    if (!payload || payloadLen < modbus::RTU_MIN_FRAME)
     {
         return false;
     }
@@ -27,16 +30,12 @@ bool ModbusRtuParser::parse(const std::chrono::steady_clock::time_point& ntp, ui
     }
     bool isException = (0 != (rawFuncCode & (uint8_t)(modbus::FunctionCode::EXCEPTION_MASK))); /* 是否为异常响应 */
     auto funcCode = (modbus::FunctionCode)(rawFuncCode & 0x7F);
-    if ((uint8_t)(funcCode) > 0x2B) /* 验证功能码有效性(超过最大标准功能码) */
-    {
-        return false;
-    }
-    if (!validateFrameLength(funcCode, payloadLen)) /* 验证帧长度与功能码匹配 */
+    if (!modbus::isValidFunctionCode((uint8_t)(funcCode))) /* 验证功能码有效性 */
     {
         return false;
     }
     /* CRC校验 */
-    uint16_t crcReceived = (payload[payloadLen - 1] << 8) | payload[payloadLen - 2];
+    uint16_t crcReceived = (payload[payloadLen - 2] | (payload[payloadLen - 1] << 8));
     uint16_t crcCalculated = calcCRC16(payload, payloadLen - 2);
     if (crcReceived != crcCalculated) /* CRC不匹配 */
     {
@@ -44,7 +43,7 @@ bool ModbusRtuParser::parse(const std::chrono::steady_clock::time_point& ntp, ui
     }
     /* 数据定位 */
     const uint8_t* data = payload + 2;
-    uint32_t dataLen = payloadLen - 4; /* 去掉头部和CRC */
+    uint32_t dataLen = payloadLen - modbus::RTU_MIN_FRAME; /* 去掉头部和CRC */
     modbus::ExceptionCode exceptionCode = modbus::ExceptionCode::ILLEGAL_FUNCTION;
     if (isException)
     {
@@ -63,14 +62,26 @@ bool ModbusRtuParser::parse(const std::chrono::steady_clock::time_point& ntp, ui
             return false;
         }
     }
-    /* 广播地址特殊处理(地址0不应有响应) */
-    if (0 == slaveAddress && !isException) /* 广播请求不应出现在接收路径(除非是伪造) */
-    {
-        return false;
-    }
     if (m_dataCallback)
     {
-        m_dataCallback(ntp, totalLen, slaveAddress, funcCode, data, dataLen, isException, exceptionCode);
+        modbus::DataSt d;
+        d.transactionId = m_generateTransId ? generateTransactionId() : 0;
+        d.slaveAddress = slaveAddress;
+        d.isBroadcast = (0 == slaveAddress);
+        d.funcCode = funcCode;
+        if (isException)
+        {
+            d.data = nullptr;
+            d.dataLen = 0;
+        }
+        else
+        {
+            d.data = data;
+            d.dataLen = dataLen;
+        }
+        d.isException = isException;
+        d.exceptionCode = exceptionCode;
+        m_dataCallback(ntp, totalLen, d);
     }
     return true;
 }
@@ -98,7 +109,7 @@ uint16_t ModbusRtuParser::calcCRC16(const uint8_t* data, uint32_t len) const
             }
         }
     }
-    return (crc >> 8) | (crc << 8); /* 字节序转换 */
+    return crc;
 }
 
 bool ModbusRtuParser::isValidSlaveAddress(uint8_t address) const
@@ -107,40 +118,11 @@ bool ModbusRtuParser::isValidSlaveAddress(uint8_t address) const
     {
         return true;
     }
-    return (m_allowedAddressList.end() != std::find(m_allowedAddressList.begin(), m_allowedAddressList.end(), address));
+    return (m_allowedAddressList.end() != m_allowedAddressList.find(address));
 }
 
-bool ModbusRtuParser::validateFrameLength(modbus::FunctionCode code, uint32_t len) const
+uint16_t ModbusRtuParser::generateTransactionId()
 {
-    if (len < 4) /* 基础长度：地址(1) + 功能码(1) + CRC(2) = 4 */
-    {
-        return false;
-    }
-    uint32_t expectedMinLen = 4;
-    switch (code)
-    {
-    case modbus::FunctionCode::READ_COILS:
-    case modbus::FunctionCode::READ_DISCRETE_INPUTS:
-    case modbus::FunctionCode::READ_HOLDING_REGISTERS:
-    case modbus::FunctionCode::READ_INPUT_REGISTERS:
-        expectedMinLen += 4; /* 起始地址(2) + 数量(2) */
-        break;
-    case modbus::FunctionCode::WRITE_SINGLE_COIL:
-    case modbus::FunctionCode::WRITE_SINGLE_REGISTER:
-        expectedMinLen += 4; /* 地址(2) + 值(2) */
-        break;
-    case modbus::FunctionCode::DIAGNOSTICS:
-        expectedMinLen += 2; /* 子功能码(2) */
-        break;
-    case modbus::FunctionCode::WRITE_MULTIPLE_COILS:
-        expectedMinLen += 5; /* 起始地址(2) + 数量(2) + 字节计数(1) */
-        break;
-    case modbus::FunctionCode::WRITE_MULTIPLE_REGISTERS:
-        expectedMinLen += 5; /* 起始地址(2) + 数量(2) + 字节计数(1) */
-        break;
-    default: /* 其他功能码暂不验证具体长度 */
-        break;
-    }
-    return len >= expectedMinLen;
+    return m_transactionId.fetch_add(1, std::memory_order_relaxed);
 }
 } // namespace npacket

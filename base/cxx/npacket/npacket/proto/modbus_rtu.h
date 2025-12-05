@@ -1,5 +1,7 @@
 #pragma once
+#include <atomic>
 #include <functional>
+#include <unordered_set>
 
 #include "../protocol_parser.h"
 #include "modbus_def.h"
@@ -16,23 +18,18 @@ public:
      * @brief 数据回调
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
-     * @param slaveAddr 从站地址
-     * @param funcCode 功能码
-     * @param data 数据
-     * @param dataLen 数据长度
-     * @param isException 是否为异常响应
-     * @param exceptionCode 异常码(仅当isException为true时有效)
+     * @param data Modbus数据
      */
-    using DATA_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, uint8_t slaveAddress,
-                                             modbus::FunctionCode funcCode, const uint8_t* data, uint32_t dataLen, bool isException,
-                                             modbus::ExceptionCode exceptionCode)>;
+    using DATA_CALLBACK =
+        std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const modbus::DataSt& data)>;
 
 public:
     /**
      * @brief 构造函数
      * @param addressList 允许的从站地址列表(空表示允许所有地址)
+     * @param generateTransId 是否生成事务ID
      */
-    ModbusRtuParser(const std::vector<uint8_t>& addressList = {});
+    ModbusRtuParser(const std::vector<uint8_t> addressList = {}, bool generateTransId = true);
 
     /**
      * @brief 获取应用层协议
@@ -75,15 +72,15 @@ private:
     bool isValidSlaveAddress(uint8_t address) const;
 
     /**
-     * @brief 验证帧长度与功能码匹配
-     * @param code 功能码
-     * @param len 帧长度
-     * @return true-匹配, false-不匹配
+     * @brief 生成事务ID
+     * @return 事务ID
      */
-    bool validateFrameLength(modbus::FunctionCode code, uint32_t len) const;
+    uint16_t generateTransactionId();
 
 private:
     DATA_CALLBACK m_dataCallback = nullptr; /* 数据回调 */
-    std::vector<uint8_t> m_allowedAddressList; /* 空=允许所有地址 */
+    std::unordered_set<uint8_t> m_allowedAddressList; /* 空=允许所有地址 */
+    bool m_generateTransId = false; /* 是否生成事务ID */
+    std::atomic_uint16_t m_transactionId{0}; /* 事务ID生成器 */
 };
 } // namespace npacket

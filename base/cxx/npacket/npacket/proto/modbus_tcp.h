@@ -7,7 +7,7 @@
 namespace npacket
 {
 /**
- * @brief Modbus/TCP协议解析器(基于RFC-6454)
+ * @brief Modbus/TCP协议解析器
  */
 class ModbusTcpParser : public ProtocolParser
 {
@@ -17,18 +17,10 @@ public:
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
-     * @param transactionId 事务标识符
-     * @param unitId 单元标识符(从站地址)
-     * @param funcCode 功能码
-     * @param data 数据
-     * @param dataLen 数据长度
-     * @param isException 是否为异常响应
-     * @param exceptionCode 异常码(仅当isException为true时有效)
+     * @param data Modbus数据
      */
     using DATA_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                             const std::shared_ptr<ProtocolHeader>& header, uint16_t transactionId, uint8_t unitId,
-                                             modbus::FunctionCode funcCode, const uint8_t* data, uint32_t dataLen, bool isException,
-                                             modbus::ExceptionCode exceptionCode)>;
+                                             const std::shared_ptr<ProtocolHeader>& header, const modbus::DataSt& data)>;
 
 public:
     /**
@@ -89,13 +81,6 @@ private:
      * @return true-匹配, false-不匹配
      */
     bool isModbusPort(uint16_t port) const;
-
-    /**
-     * @brief 验证功能码有效性
-     * @param funcCode 功能码
-     * @return true-有效, false-无效
-     */
-    bool isValidFunctionCode(uint8_t funcCode) const;
 
 private:
     DATA_CALLBACK m_dataCallback = nullptr; /* 数据回调 */
