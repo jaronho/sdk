@@ -831,6 +831,10 @@ std::wstring Charset::utf8ToUnicode(const std::string& str)
     }
     int size = utf8_to_unicode(str.c_str(), str.size(), 0, 0);
     wchar* unicode = new wchar[size / 2 + 1];
+    if (!unicode)
+    {
+        return std::wstring();
+    }
     size = utf8_to_unicode(str.c_str(), str.size(), unicode, sizeof(wchar) * (size / 2 + 1));
     unicode[size / 2] = 0;
     std::wstring ret((wchar_t*)unicode, size / 2);
@@ -846,6 +850,10 @@ std::string Charset::unicodeToUtf8(const std::wstring& wstr)
     }
     int size = unicode_to_utf8((wchar*)wstr.c_str(), wstr.size(), 0, 0);
     char* utf8 = new char[size + 1];
+    if (!utf8)
+    {
+        return std::string();
+    }
     size = unicode_to_utf8((wchar*)wstr.c_str(), wstr.size(), utf8, size + 1);
     utf8[size] = 0;
     std::string ret(utf8, size);
@@ -861,6 +869,10 @@ std::wstring Charset::gbkToUnicode(const std::string& str)
     }
     int size = gbk_to_unicode(str.c_str(), str.size(), 0, 0);
     wchar* unicode = new wchar[size / 2 + 1];
+    if (!unicode)
+    {
+        return std::wstring();
+    }
     size = gbk_to_unicode(str.c_str(), str.size(), unicode, sizeof(wchar) * (size / 2 + 1));
     unicode[size / 2] = 0;
     std::wstring ret((wchar_t*)unicode, size / 2);
@@ -876,6 +888,10 @@ std::string Charset::unicodeToGbk(const std::wstring& wstr)
     }
     int size = unicode_to_gbk((wchar*)wstr.c_str(), wstr.size(), 0, 0);
     char* gbk = new char[size + 1];
+    if (!gbk)
+    {
+        return std::string();
+    }
     size = unicode_to_gbk((wchar*)wstr.c_str(), wstr.size(), gbk, size + 1);
     gbk[size] = 0;
     std::string ret(gbk, size);

@@ -148,6 +148,10 @@ std::vector<Net::IfaceInfo> Net::getAllInterfaces()
     std::vector<IfaceInfo> ifaceList;
 #ifdef _WIN32
     PIP_ADAPTER_INFO pIpAdapterInfo = new IP_ADAPTER_INFO(); /* 存储本机网卡信息 */
+    if (!pIpAdapterInfo)
+    {
+        return ifaceList;
+    }
     unsigned long stSize = sizeof(IP_ADAPTER_INFO);
     int nRel = GetAdaptersInfo(pIpAdapterInfo, &stSize);
     bool renew = false;
@@ -155,6 +159,10 @@ std::vector<Net::IfaceInfo> Net::getAllInterfaces()
     {
         delete pIpAdapterInfo;
         pIpAdapterInfo = (PIP_ADAPTER_INFO)(new BYTE[stSize]); /* 重新申请内存空间用来存储所有网卡信息 */
+        if (!pIpAdapterInfo)
+        {
+            return ifaceList;
+        }
         nRel = GetAdaptersInfo(pIpAdapterInfo, &stSize);
         renew = true;
     }
