@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
     cfg.fileMaxCount = 0;
     cfg.newFolderDaily = true;
     cfg.consoleMode = 1;
-    logger::LoggerManager::start(cfg);
+    logger::LoggerManager::setConfig(cfg);
     auto g_logger = logger::LoggerManager::getLogger();
     /* 命令参数 */
     cmdline::parser parser;

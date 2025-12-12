@@ -1,5 +1,7 @@
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#endif
 #include <chrono>
 #include <mutex>
 #include <thread>
@@ -59,6 +61,7 @@ std::string htmlString(uint64_t cid, const nsocket::http::REQUEST_PTR& req, cons
 
 int main(int argc, char* argv[])
 {
+#ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
     /* 关闭控制台程序的快速编辑模式, 否则会出现点击界面, 程序将会变成阻塞状态, 不按回车无法继续运行 */
     HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
@@ -66,6 +69,7 @@ int main(int argc, char* argv[])
     GetConsoleMode(hStdin, &mode);
     mode &= ~ENABLE_QUICK_EDIT_MODE; /* 移除快速编辑模式 */
     SetConsoleMode(hStdin, mode);
+#endif
     /* 命令参数 */
     cmdline::parser parser;
     parser.header("HTTP服务端");
