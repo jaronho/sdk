@@ -1,7 +1,5 @@
 #pragma once
 #include <chrono>
-#include <mutex>
-#include <vector>
 
 #include "protocol.h"
 
@@ -12,7 +10,7 @@ namespace npacket
  */
 enum ApplicationProtocol
 {
-    NONE, /* 无 */
+    NONE = 0, /* 无 */
     FTP, /* 文件传输协议 */
     HTTP, /* 超文本传输协议 */
     IEC103, /* 一种用于电力系统远程监控和控制的通信协议, 由国际电工委员会(IEC)制定 */
@@ -21,6 +19,16 @@ enum ApplicationProtocol
     S7COMM, /* (S7 Communication)是西门子S7通讯协议簇里的一种, 上层协议为COTP协议 */
     MODBUS_RTU, /* Modbus远程终端单元协议(基于串行通信) */
     MODBUS_TCP, /* Modbus传输控制协议(基于以太网通信) */
+};
+
+/**
+ * @brief 帧解析结果
+ */
+enum ParseResult
+{
+    SUCCESS = 0, /* 解析成功 */
+    FAILURE, /* 解析失败 */
+    CONTINUE, /* 数据不足, 需要继续接收 */
 };
 
 /**
@@ -48,9 +56,9 @@ public:
      * @param header 传输层头部
      * @param payload 传输层负载
      * @param payloadLen 传输层负载长度
-     * @return true-成功, false-失败
+     * @return 解析结果
      */
-    virtual bool parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
-                       const uint8_t* payload, uint32_t payloadLen) = 0;
+    virtual ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                              const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen) = 0;
 };
 } // namespace npacket

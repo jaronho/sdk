@@ -79,12 +79,17 @@ struct DataSt
 };
 
 /**
- * @brief 最小区间帧长度计算器
+ * @brief 获取最小帧数据长度(不含地址, 功能码, CRC)
  * @param code 功能码
- * @return 最小帧长度
+ * @param isException 是否为异常响应模式
+ * @return 最小帧数据长度
  */
-inline uint32_t getMinFrameLength(FunctionCode code)
+inline uint32_t getMinFrameLength(FunctionCode code, bool isException)
 {
+    if (isException) /* 异常响应模式: 固定返回1字节(异常码) */
+    {
+        return 1;
+    }
     switch (code)
     {
     /* 基础读写功能码 */
@@ -96,16 +101,15 @@ inline uint32_t getMinFrameLength(FunctionCode code)
     case FunctionCode::WRITE_SINGLE_COIL:
     case FunctionCode::WRITE_SINGLE_REGISTER:
         return 4; /* 地址(2) + 值(2) */
+    /* 纯功能码 */
     case FunctionCode::READ_EXCEPTION_STATUS:
-        return 1; /* 仅功能码 */
+    case FunctionCode::GET_COM_EVENT_COUNTER:
+    case FunctionCode::GET_COM_EVENT_LOG:
+    case FunctionCode::REPORT_SERVER_ID:
+        return 0; /* 仅功能码, 无数据 */
     /* 诊断功能码 */
     case FunctionCode::DIAGNOSTICS:
         return 2; /* 子功能码(2) */
-    case FunctionCode::GET_COM_EVENT_COUNTER:
-    case FunctionCode::GET_COM_EVENT_LOG:
-        return 1; /* 仅功能码 */
-    case FunctionCode::REPORT_SERVER_ID:
-        return 1; /* 仅功能码 */
     /* 批量操作功能码 */
     case FunctionCode::WRITE_MULTIPLE_COILS:
     case FunctionCode::WRITE_MULTIPLE_REGISTERS:
@@ -113,18 +117,16 @@ inline uint32_t getMinFrameLength(FunctionCode code)
     case FunctionCode::MASK_WRITE_REGISTER:
         return 6; /* 地址(2) + AND掩码(2) + OR掩码(2) */
     case FunctionCode::READ_WRITE_MULTIPLE_REGISTERS:
-        return 10; /* 读起始地址(2) + 读数量(2) + 写起始地址(2) + 写数量(2) + 写字节计数(1) */
+        return 9; /* 读起始地址(2) + 读数量(2) + 写起始地址(2) + 写数量(2) + 写字节计数(1) */
     case FunctionCode::READ_FIFO_QUEUE:
         return 2; /* 队列指针地址(2) */
-    /* 文件记录功能码 */
     case FunctionCode::READ_FILE_RECORD:
     case FunctionCode::WRITE_FILE_RECORD:
-        return 9; /* 功能码(1) + 字节计数(1) + 最少1个子请求(7) */
-    /* 封装接口 */
+        return 8; /* 字节计数(1) + 最少1个子请求(7) */
     case FunctionCode::READ_DEVICE_IDENTIFICATION:
         return 3; /* MEI类型(1) + 读设备ID码(1) + 对象ID(1) */
     default:
-        return 1; /* 默认至少功能码 */
+        return 0; /* 默认无数据 */
     }
 }
 

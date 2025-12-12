@@ -7,16 +7,16 @@ uint32_t CotpParser::getProtocol() const
     return ApplicationProtocol::COTP;
 }
 
-bool CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
-                       const uint8_t* payload, uint32_t payloadLen)
+ParseResult CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                              const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     if (header && TransportProtocol::TCP != header->getProtocol())
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     if (payloadLen < 7) /* COTP包最小7个字节 */
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     const uint8_t* buffer = payload;
     uint32_t bufferLen = payloadLen;
@@ -27,7 +27,7 @@ bool CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_
     tpktInfo.length = (buffer[2] << 8) + buffer[3];
     if (tpktInfo.length != payloadLen)
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     buffer = payload + 4;
     bufferLen -= 4;
@@ -35,7 +35,7 @@ bool CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_
     uint8_t cotpLength = buffer[0];
     if (cotpLength < 2 || 5 + cotpLength < payloadLen)
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     PduType pduType = (PduType)((buffer[1] << 4) | (buffer[1] >> 4));
     switch (pduType)
@@ -53,7 +53,7 @@ bool CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_
     case PduType::DT:
         break;
     default: /* PDU类型标识错误 */
-        return false;
+        return ParseResult::FAILURE;
     }
     std::shared_ptr<CotpInfo> cotpInfo = nullptr;
     if (2 == cotpLength)
@@ -81,7 +81,7 @@ bool CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_
     }
     else
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     buffer = buffer + 1 + cotpInfo->length;
     bufferLen -= (1 + cotpInfo->length);
@@ -93,7 +93,7 @@ bool CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_
             parseS7Comm(ntp, totalLen, header, tpktInfo, cotpInfo, buffer, bufferLen);
         }
     }
-    return true;
+    return ParseResult::SUCCESS;
 }
 
 bool CotpParser::parseS7Comm(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,

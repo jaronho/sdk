@@ -189,7 +189,7 @@ public:
     /**
      * @brief 源IP地址字符串
      */
-    std::string senderIpStr()
+    std::string senderIpStr() const
     {
         char buf[16] = {0};
         sprintf(buf, "%d.%d.%d.%d", senderIp[0], senderIp[1], senderIp[2], senderIp[3]);

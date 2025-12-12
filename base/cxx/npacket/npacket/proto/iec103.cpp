@@ -66,26 +66,26 @@ uint32_t Iec103Parser::getProtocol() const
     return ApplicationProtocol::IEC103;
 }
 
-bool Iec103Parser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
-                         const uint8_t* payload, uint32_t payloadLen)
+ParseResult Iec103Parser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     if (header && TransportProtocol::TCP != header->getProtocol() && TransportProtocol::UDP != header->getProtocol())
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     if (payloadLen < 5) /* IEC103包最小5个字节 */
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     if (parseFixedFrame(ntp, totalLen, header, payload, payloadLen))
     {
-        return true;
+        return ParseResult::SUCCESS;
     }
     else if (parseVariableFrame(ntp, totalLen, header, payload, payloadLen))
     {
-        return true;
+        return ParseResult::SUCCESS;
     }
-    return false;
+    return ParseResult::FAILURE;
 }
 
 void Iec103Parser::setFixedFrameCallback(const FIXED_FRAME_CALLBACK& callback)

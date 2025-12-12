@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <vector>
 
 #include "../protocol_parser.h"
 #include "modbus_def.h"
@@ -42,10 +43,10 @@ public:
      * @param header 传输层头部
      * @param payload 层负载
      * @param payloadLen 层负载长度
-     * @return true-成功, false-失败
+     * @return 解析结果
      */
-    bool parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
-               const uint8_t* payload, uint32_t payloadLen) override;
+    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+                      const uint8_t* payload, uint32_t payloadLen) override;
 
     /**
      * @brief 设置数据回调

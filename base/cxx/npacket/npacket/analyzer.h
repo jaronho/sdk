@@ -27,10 +27,24 @@ using LAYER_CALLBACK = std::function<bool(const std::chrono::steady_clock::time_
 /**
  * @brief 数据源
  */
-enum class DataSource
+enum DataSource
 {
-    network = 0, /* 标准网络包 */
-    serial /* 串口数据包 */
+    NETWORK = 0, /* 标准网络包 */
+    SERIAL /* 串口数据包 */
+};
+
+/**
+ * @brief 网络包分析配置
+ */
+struct NetworkConfig
+{
+    size_t fragTimeout = 30000; /* 分片重组超时时间(毫秒) */
+    size_t fragClearInterval = 6000; /* 分片缓存清理间隔(毫秒) */
+    size_t maxFragSize = 8192; /* 单个分片最大负载大小(防止大分片攻击) */
+    size_t maxFragmentCount = 32; /* 每组分片最大数量(防止分片攻击) */
+    size_t maxReassembleSize = 65535; /* 最大重组后数据包大小(防止分片攻击) */
+    size_t maxCacheCount = 500; /* 最大分片缓存数量(防止分片攻击) */
+    size_t maxRecursionDepth = 3; /* 最大递归深度(防止分片嵌套攻击) */
 };
 
 /**
@@ -41,16 +55,9 @@ class Analyzer
 public:
     /**
      * @brief 构造函数
-     * @param fragmentTimeout 分片重组超时时间(毫秒)
-     * @param fragmentClearInterval 分片缓存清理间隔(毫秒)
-     * @param maxFragmentSize 单个分片最大负载大小(防止大分片攻击)
-     * @param maxFragmentCount 每组分片最大数量(防止分片攻击)
-     * @param maxReassembledSize 最大重组后数据包大小(防止分片攻击)
-     * @param maxCacheCount 最大分片缓存数量(防止分片攻击)
-     * @param maxRecursionDepth 最大递归深度(防止分片嵌套攻击)
+     * @param networkCfg 网络包分析配置
      */
-    Analyzer(size_t fragmentTimeout = 30000, size_t fragmentClearInterval = 6000, size_t maxFragmentSize = 8192,
-             size_t maxFragmentCount = 32, size_t maxReassembledSize = 65535, size_t maxCacheCount = 500, size_t maxRecursionDepth = 3);
+    Analyzer(NetworkConfig networkCfg = NetworkConfig());
 
     /**
      * @brief 设置层数据回调
@@ -81,7 +88,7 @@ public:
      * @param dataSource 数据源
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int parse(const uint8_t* data, uint32_t dataLen, const DataSource& dataSource = DataSource::network);
+    int parse(const uint8_t* data, uint32_t dataLen, const DataSource& dataSource = DataSource::NETWORK);
 
 private:
     /**
@@ -260,6 +267,20 @@ private:
                                                          uint32_t& headerLen);
 
     /**
+     * @brief 处理应用层数据
+     * @param ntp 数据包接收时间点
+     * @param totalLen 数据包总长度
+     * @param header 传输层头部
+     * @param payload 传输层负载
+     * @param payloadLen 传输层负载长度
+     * @param applicationParserList 应用层解析器列表
+     * @return 0-成功, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片)
+     */
+    int handleApplicationLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                               const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                               const std::vector<std::shared_ptr<ProtocolParser>>& applicationParserList);
+
+    /**
      * @brief 遍历IPv6扩展头链获取最终协议类型
      * @param data IPv6数据包起始位置
      * @param dataLen 数据长度
@@ -306,6 +327,8 @@ private:
                                  uint32_t& identification);
 
 private:
+    const NetworkConfig m_networkCfg; /* 网络包分析配置 */
+
     std::mutex m_mutexLayerCb;
     LAYER_CALLBACK m_ethernetLayerCb = nullptr; /* 以太网层数据回调 */
     LAYER_CALLBACK m_networkLayerCb = nullptr; /* 网络层数据回调 */
@@ -314,14 +337,6 @@ private:
     std::mutex m_mutexFragmentCache;
     std::map<FragmentKey, std::shared_ptr<FragmentInfo>> m_fragmentCache; /* 分片缓存 */
     std::chrono::steady_clock::time_point m_lastCleanupTime = std::chrono::steady_clock::now(); /* 上次清理分片缓存时间 */
-
-    size_t m_fragmentTimeout = 30000; /* 分片重组超时时间(毫秒) */
-    size_t m_fragmentCleanupInterval = 6000; /* 分片缓存清理间隔(毫秒) */
-    size_t m_maxFragmentSize = 8192; /* 单个分片最大负载大小(字节, 防止大分片攻击) */
-    size_t m_maxFragmentCount = 32; /* 每组分片最大数量(防止分片攻击) */
-    size_t m_maxReassembledSize = 65535; /* 最大重组后数据包大小(字节, 防止分片攻击) */
-    size_t m_maxCacheCount = 500; /* 最大分片缓存数量(防止分片攻击) */
-    size_t m_maxRecursionDepth = 3; /* 最大递归深度(防止分片攻击) */
 
     std::mutex m_mutexParserList;
     std::vector<std::shared_ptr<ProtocolParser>> m_applicationParserList; /* 应用层解析器列表 */

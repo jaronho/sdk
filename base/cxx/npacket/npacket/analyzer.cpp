@@ -6,73 +6,52 @@
 
 namespace npacket
 {
-Analyzer::Analyzer(size_t fragmentTimeout, size_t fragmentClearInterval, size_t maxFragmentSize, size_t maxFragmentCount,
-                   size_t maxReassembledSize, size_t maxCacheCount, size_t maxRecursionDepth)
+/**
+ * @brief 限制网络分析配置
+ * @param cfg 外部定义的配置信息
+ * @return 限制后的新配置
+ */
+NetworkConfig limitNetworkConfig(NetworkConfig cfg)
 {
     /* 限制不超过5分钟, 超过5分钟的分片几乎不可能是正常的网络延 */
-    if (fragmentTimeout >= 1000 && fragmentTimeout <= 300000)
+    if (cfg.fragTimeout < 1000 || cfg.fragTimeout > 300000)
     {
-        m_fragmentTimeout = fragmentTimeout;
-    }
-    else
-    {
-        m_fragmentTimeout = 1000;
+        cfg.fragTimeout = 1000;
     }
     /* 限制不超过超时实际的1/5, 平衡CPU开销和响应速度, 过长导致僵尸缓存清理不及时 */
-    if (fragmentClearInterval >= 100 && fragmentClearInterval <= 60000 && fragmentClearInterval <= m_fragmentTimeout)
+    if (cfg.fragClearInterval < 100 || cfg.fragClearInterval > 60000 || cfg.fragClearInterval > cfg.fragTimeout)
     {
-        m_fragmentCleanupInterval = fragmentClearInterval;
-    }
-    else
-    {
-        m_fragmentCleanupInterval = m_fragmentTimeout / 5;
+        cfg.fragClearInterval = cfg.fragTimeout / 5;
     }
     /* 限制单个报文不超过16MB(已远超常规应用层协议需求) */
-    if (maxReassembledSize >= 1280 && maxReassembledSize <= 16777216) /* 1280-IPv6最小MTU */
+    if (cfg.maxReassembleSize < 1280 || cfg.maxReassembleSize > 16777216) /* 1280-IPv6最小MTU */
     {
-        m_maxReassembledSize = maxReassembledSize;
-    }
-    else
-    {
-        m_maxReassembledSize = 65535;
+        cfg.maxReassembleSize = 65535;
     }
     /* 限制分片数不超过256(RFC 791建议值), 超过极不常见 */
-    if (maxFragmentCount > 0 && maxFragmentCount <= 256)
+    if (0 == cfg.maxFragmentCount || cfg.maxFragmentCount > 256)
     {
-        m_maxFragmentCount = maxFragmentCount;
-    }
-    else
-    {
-        m_maxFragmentCount = 32;
+        cfg.maxFragmentCount = 32;
     }
     /* 限制单个分片不超过16KB, 超过此值攻击意图明显 */
-    if (maxFragmentSize >= 8 && maxFragmentSize <= 16384 && maxFragmentSize <= m_maxReassembledSize - Ipv6Header::getMinLen())
+    if (cfg.maxFragSize < 8 || cfg.maxFragSize > 16384 && cfg.maxFragSize > cfg.maxReassembleSize - Ipv6Header::getMinLen())
     {
-        m_maxFragmentSize = maxFragmentSize;
-    }
-    else
-    {
-        m_maxFragmentSize = 8192;
+        cfg.maxFragSize = 8192;
     }
     /* 限制缓存数量不超过5000条 */
-    if (maxCacheCount > 0 && maxCacheCount <= 5000)
+    if (0 == cfg.maxCacheCount || cfg.maxCacheCount > 5000)
     {
-        m_maxCacheCount = maxCacheCount;
-    }
-    else
-    {
-        m_maxCacheCount = 1000;
+        cfg.maxCacheCount = 1000;
     }
     /* 限制递归栈不超过5层(理论安全值), 超过风险急剧上升 */
-    if (maxRecursionDepth > 0 && maxRecursionDepth <= 5)
+    if (0 == cfg.maxRecursionDepth || cfg.maxRecursionDepth > 5)
     {
-        m_maxRecursionDepth = maxRecursionDepth;
+        cfg.maxRecursionDepth = 3;
     }
-    else
-    {
-        m_maxRecursionDepth = 3;
-    }
+    return cfg;
 }
+
+Analyzer::Analyzer(NetworkConfig networkCfg) : m_networkCfg(limitNetworkConfig(networkCfg)) {}
 
 void Analyzer::setLayerCallback(const LAYER_CALLBACK& ethernetLayerCb, const LAYER_CALLBACK& networkLayerCb,
                                 const LAYER_CALLBACK& transportLayerCb)
@@ -125,7 +104,7 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
     {
         return -1;
     }
-    if (depth >= m_maxRecursionDepth) /* 防止深度分片攻击(DoS)导致的栈溢出 */
+    if (depth >= m_networkCfg.maxRecursionDepth) /* 防止深度分片攻击(DoS)导致的栈溢出 */
     {
         return 6;
     }
@@ -134,7 +113,7 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
     uint32_t remainLen = dataLen, offset = 0;
     std::shared_ptr<ProtocolHeader> transportHeader = nullptr;
     bool willParseApplication = false;
-    if (DataSource::network == dataSource) /* 标准网络数据包 */
+    if (DataSource::NETWORK == dataSource) /* 标准网络数据包 */
     {
         uint32_t headerLen = 0, networkProtocol = 0, transportProtocol = 0;
         LAYER_CALLBACK ehternetLayerCb = nullptr, networkLayerCb = nullptr, transportLayerCb = nullptr;
@@ -201,7 +180,7 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
             }
         }
     }
-    else if (DataSource::serial == dataSource) /* 串口数据包 */
+    else if (DataSource::SERIAL == dataSource) /* 串口数据包 */
     {
         willParseApplication = true;
     }
@@ -213,14 +192,7 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
             std::lock_guard<std::mutex> locker(m_mutexParserList);
             applicationParserList = m_applicationParserList;
         }
-        for (auto parser : applicationParserList)
-        {
-            if (parser && parser->parse(ntp, dataLen, transportHeader, data + offset, remainLen))
-            {
-                return 0;
-            }
-        }
-        return 4;
+        return handleApplicationLayer(ntp, dataLen, transportHeader, data + offset, remainLen, applicationParserList);
     }
     return 0;
 }
@@ -327,6 +299,30 @@ std::shared_ptr<ProtocolHeader> Analyzer::handleTransportLayer(uint32_t transpor
     return nullptr;
 }
 
+int Analyzer::handleApplicationLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                     const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                                     const std::vector<std::shared_ptr<ProtocolParser>>& applicationParserList)
+{
+    bool anyContinue = false;
+    for (size_t i = 0; i < applicationParserList.size(); ++i) /* 遍历所有应用层解析器 */
+    {
+        auto parser = applicationParserList[i];
+        if (parser)
+        {
+            auto result = parser->parse(ntp, totalLen, header, payload, payloadLen);
+            if (ParseResult::SUCCESS == result)
+            {
+                return 0;
+            }
+            else if (ParseResult::CONTINUE == result)
+            {
+                anyContinue = true; /* 标记需要更多数据, 同时继续尝试下一个解析器 */
+            }
+        }
+    }
+    return (anyContinue ? 5 : 4);
+}
+
 bool Analyzer::traverseIpv6Extension(const uint8_t* data, uint32_t dataLen, uint8_t& nextHeader, uint32_t& totalExtLen, bool stopAtFragment,
                                      Ipv6FragmentHeader* fragHeader)
 {
@@ -396,7 +392,7 @@ bool Analyzer::traverseIpv6Extension(const uint8_t* data, uint32_t dataLen, uint
 void Analyzer::cleanupFragmentCache(const std::chrono::steady_clock::time_point& ntp)
 {
     std::lock_guard<std::mutex> locker(m_mutexFragmentCache);
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastCleanupTime).count() <= m_fragmentCleanupInterval)
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastCleanupTime).count() <= m_networkCfg.fragClearInterval)
     {
         return;
     }
@@ -404,7 +400,7 @@ void Analyzer::cleanupFragmentCache(const std::chrono::steady_clock::time_point&
     /* step1. 清理超时分片缓存 */
     for (auto iter = m_fragmentCache.begin(); m_fragmentCache.end() != iter;)
     {
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - iter->second->lastAccessTime).count() > m_fragmentTimeout)
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - iter->second->lastAccessTime).count() > m_networkCfg.fragTimeout)
         {
             iter = m_fragmentCache.erase(iter);
         }
@@ -415,9 +411,9 @@ void Analyzer::cleanupFragmentCache(const std::chrono::steady_clock::time_point&
     }
     /* step2. 限制分片缓存大小 */
     auto cacheSize = m_fragmentCache.size();
-    if (cacheSize > m_maxCacheCount)
+    if (cacheSize > m_networkCfg.maxCacheCount)
     {
-        auto needRemoveCount = cacheSize - m_maxCacheCount;
+        auto needRemoveCount = cacheSize - m_networkCfg.maxCacheCount;
         if (needRemoveCount > 0) /* 仍超过最大数量, 按LRU删除最旧的 */
         {
             /* 收集条目并按最后访问时间排序 */
@@ -501,11 +497,11 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
     }
     const uint8_t* payload = data + headerLen;
     uint32_t payloadLen = dataLen - headerLen;
-    if (payloadLen > m_maxFragmentSize) /* 检查单分片负载大小 */
+    if (payloadLen > m_networkCfg.maxFragSize) /* 检查单分片负载大小 */
     {
         return nullptr;
     }
-    if (fragOffset > (m_maxReassembledSize / 8)) /* 检查分片偏移量计算是否越界 */
+    if (fragOffset > (m_networkCfg.maxReassembleSize / 8)) /* 检查分片偏移量计算是否越界 */
     {
         return nullptr;
     }
@@ -514,7 +510,8 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
         return nullptr;
     }
     uint64_t estimatedTotal = (uint64_t)fragOffset * 8 + payloadLen;
-    if (estimatedTotal > m_maxReassembledSize || estimatedTotal > std::numeric_limits<uint32_t>::max()) /* 预检查总大小(防止整数溢出) */
+    if (estimatedTotal > m_networkCfg.maxReassembleSize
+        || estimatedTotal > std::numeric_limits<uint32_t>::max()) /* 预检查总大小(防止整数溢出) */
     {
         return nullptr;
     }
@@ -534,12 +531,12 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
             info = iter->second;
         }
         info->lastAccessTime = std::chrono::steady_clock::now(); /* 更新访问时间 */
-        if (info->fragmentCount >= m_maxFragmentCount) /* 检查分片数量(疑似DoS攻击) */
+        if (info->fragmentCount >= m_networkCfg.maxFragmentCount) /* 检查分片数量(疑似DoS攻击) */
         {
             m_fragmentCache.erase(key);
             return nullptr;
         }
-        if (info->totalPayloadSize + payloadLen > m_maxReassembledSize) /* 检查缓存总大小 */
+        if (info->totalPayloadSize + payloadLen > m_networkCfg.maxReassembleSize) /* 检查缓存总大小 */
         {
             m_fragmentCache.erase(key);
             return nullptr;
@@ -572,7 +569,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
             return nullptr;
         }
         m_fragmentCache.erase(key); /* 清理缓存 */
-        if (0 == info->totalLen || info->totalLen > m_maxReassembledSize) /* 验证总长度 */
+        if (0 == info->totalLen || info->totalLen > m_networkCfg.maxReassembleSize) /* 验证总长度 */
         {
             return nullptr;
         }
@@ -584,7 +581,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
         uint32_t currentPos = 0;
         for (auto& kv : info->fragments)
         {
-            uint32_t expectedPos = kv.first * 8;
+            uint32_t expectedPos = kv.first;
             if (expectedPos != currentPos) /* 分片不连续 */
             {
                 return nullptr;

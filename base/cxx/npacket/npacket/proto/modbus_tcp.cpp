@@ -14,39 +14,39 @@ uint32_t ModbusTcpParser::getProtocol() const
     return ApplicationProtocol::MODBUS_TCP;
 }
 
-bool ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                            const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
 {
     if (!header || TransportProtocol::TCP != header->getProtocol())
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     auto tcpHeader = std::dynamic_pointer_cast<TcpHeader>(header);
     if (!tcpHeader)
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     if (!isModbusPort(tcpHeader->srcPort) && !isModbusPort(tcpHeader->dstPort)) /* 验证端口 */
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     /* 解析MBAP头 */
     MbapHeader mbap;
     uint32_t mbapHeaderLen = 0;
     if (!parseMbapHeader(payload, payloadLen, mbap, mbapHeaderLen))
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     if (0 != mbap.protocolId) /* 验证协议标识符: 非Modbus协议 */
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     /* 定位PDU */
     const uint8_t* pduStart = payload + mbapHeaderLen;
     uint32_t pduLen = payloadLen - mbapHeaderLen;
     if (pduLen < mbap.length || mbap.length < 1) /* 验证PDU长度与MBAP.length一致: 数据不完整或长度字段错误 */
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     /* 解析功能码 */
     uint8_t rawFuncCode = pduStart[0];
@@ -54,22 +54,18 @@ bool ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& ntp, ui
     auto funcCode = (modbus::FunctionCode)(rawFuncCode & 0x7F);
     if (!modbus::isValidFunctionCode((uint8_t)(funcCode))) /* 验证功能码有效性 */
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     /* 验证最小PDU长度 */
     uint32_t dataLen = mbap.length - 1; /* 减去功能码 */
-    if (!isException && dataLen < modbus::getMinFrameLength(funcCode))
+    if (dataLen < modbus::getMinFrameLength(funcCode, isException))
     {
-        return false;
+        return ParseResult::FAILURE;
     }
     /* 异常响应处理 */
     modbus::ExceptionCode exceptionCode = modbus::ExceptionCode::ILLEGAL_FUNCTION;
     if (isException)
     {
-        if (dataLen < 1) /* 异常响应必须包含异常码 */
-        {
-            return false;
-        }
         exceptionCode = (modbus::ExceptionCode)(pduStart[1]);
         dataLen = 0; /* 异常响应无数据 */
     }
@@ -94,7 +90,7 @@ bool ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& ntp, ui
         d.exceptionCode = exceptionCode;
         m_dataCallback(ntp, totalLen, header, d);
     }
-    return true;
+    return ParseResult::SUCCESS;
 }
 
 void ModbusTcpParser::setDataCallback(const DATA_CALLBACK& callback)
