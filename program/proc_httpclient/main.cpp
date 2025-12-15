@@ -190,14 +190,6 @@ int main(int argc, char* argv[])
     printf("%s\n", parser.usage().c_str());
     /* 参数解析 */
     auto api = parser.get<std::string>("api");
-#if (1 == ENABLE_NSOCKET_OPENSSL)
-    auto sslOn = parser.get<int>("ssl-on");
-    auto sslWay = parser.get<int>("ssl-way");
-    auto certFmt = parser.get<int>("cert-fmt");
-    auto certFile = parser.get<std::string>("cert-file");
-    auto pkFile = parser.get<std::string>("pk-file");
-    auto pkPwd = parser.get<std::string>("pk-pwd");
-#endif
     /* 解析方法 */
     auto method = parser.get<std::string>("method");
     if (!utility::StrTool::equal(M_DELETE, method, false) && !utility::StrTool::equal(M_GET, method, false)
