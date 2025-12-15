@@ -214,13 +214,13 @@ int main(int argc, char* argv[])
     auto paramVec = utility::StrTool::split(param, ";");
     for (const auto& item : paramVec)
     {
-        auto vec = utility::StrTool::split(item, ":");
-        if (2 != vec.size())
+        auto pos = item.find(":");
+        if (std::string::npos == pos)
         {
             printf("param参数错误, 格式不对: %s\n", item.c_str());
             return 0;
         }
-        auto key = vec[0], value = vec[1];
+        auto key = item.substr(0, pos), value = item.substr(pos + 1);
         utility::StrTool::trimLeftRight(key, ' ');
         if (key.empty())
         {
@@ -241,13 +241,13 @@ int main(int argc, char* argv[])
     auto headerVec = utility::StrTool::split(header, ";");
     for (const auto& item : headerVec)
     {
-        auto vec = utility::StrTool::split(item, ":");
-        if (2 != vec.size())
+        auto pos = item.find(":");
+        if (std::string::npos == pos)
         {
             printf("header参数错误, 格式不对: %s\n", item.c_str());
             return 0;
         }
-        auto key = vec[0], value = vec[1];
+        auto key = item.substr(0, pos), value = item.substr(pos + 1);
         utility::StrTool::trimLeftRight(key, ' ');
         if (key.empty())
         {
@@ -270,13 +270,13 @@ int main(int argc, char* argv[])
     auto textVec = utility::StrTool::split(text, ";");
     for (const auto& item : textVec)
     {
-        auto vec = utility::StrTool::split(item, ":");
-        if (2 != vec.size())
+        auto pos = item.find(":");
+        if (std::string::npos == pos)
         {
             printf("text参数错误, 格式不对: %s\n", item.c_str());
             return 0;
         }
-        auto key = vec[0], value = vec[1];
+        auto key = item.substr(0, pos), value = item.substr(pos + 1);
         utility::StrTool::trimLeftRight(key, ' ');
         if (key.empty())
         {
@@ -297,13 +297,13 @@ int main(int argc, char* argv[])
     auto fileVec = utility::StrTool::split(file, ";");
     for (const auto& item : fileVec)
     {
-        auto vec = utility::StrTool::split(item, ":");
-        if (2 != vec.size())
+        auto pos = item.find(":");
+        if (std::string::npos == pos)
         {
             printf("file参数错误, 格式不对: %s\n", item.c_str());
             return 0;
         }
-        auto key = vec[0], value = vec[1];
+        auto key = item.substr(0, pos), value = item.substr(pos + 1);
         utility::StrTool::trimLeftRight(key, ' ');
         if (key.empty())
         {
