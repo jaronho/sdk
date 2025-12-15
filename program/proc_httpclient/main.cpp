@@ -94,6 +94,10 @@ void printProgressInfo(const std::string& tag, int64_t now, int64_t total, doubl
     static const double GBU = (double)1024 * 1024 * 1024;
     static const double MBU = (double)1024 * 1024;
     static const double KBU = (double)1024;
+    if (0 == now && 0 == total && 0 == speed)
+    {
+        return;
+    }
     /* 总进度 */
     double totalF = (double)total;
     char totalDesc[16] = {0};
@@ -122,7 +126,7 @@ void printProgressInfo(const std::string& tag, int64_t now, int64_t total, doubl
     if (nowF > GBU)
     {
         nowF /= GBU;
-        SPRINTF(nowDesc, "%0.1fGb", nowF);
+        SPRINTF(nowDesc, "%0.2fGb", nowF);
     }
     else if (nowF > MBU)
     {
@@ -143,7 +147,7 @@ void printProgressInfo(const std::string& tag, int64_t now, int64_t total, doubl
     if (speed > GBU)
     {
         speed /= GBU;
-        SPRINTF(speedDesc, "%0.1f Gb/s", speed);
+        SPRINTF(speedDesc, "%0.2f Gb/s", speed);
     }
     else if (speed > MBU)
     {
