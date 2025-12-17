@@ -6,4 +6,6 @@ uint32_t ProtocolParser::getParentProtocol() const
 {
     return ApplicationProtocol::NONE;
 }
+
+void ProtocolParser::reset() {}
 } // namespace npacket

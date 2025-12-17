@@ -29,8 +29,8 @@ public:
      */
     enum IllegalDataType
     {
-        TIMEOUT, /* 超时未完整 */
-        INVALID /* 无效数据(地址/功能码/CRC错误) */
+        INVALID = 0, /* 无效数据(地址/功能码/CRC错误) */
+        TIMEOUT /* 超时未完整 */
     };
 
     /**
@@ -76,6 +76,11 @@ public:
      */
     ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
                       const uint8_t* payload, uint32_t payloadLen) override;
+
+    /**
+     * @brief 重置
+     */
+    void reset() override;
 
     /**
      * @brief 设置数据回调

@@ -60,5 +60,10 @@ public:
      */
     virtual ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                               const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen) = 0;
+
+    /**
+     * @brief 重置
+     */
+    virtual void reset();
 };
 } // namespace npacket
