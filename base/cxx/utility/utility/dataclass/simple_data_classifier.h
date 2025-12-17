@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace dataclass
+namespace utility
 {
 /** 
  * @brief 数据类型
@@ -23,9 +23,9 @@ enum SimpleDataType
  */
 struct SimpleClassifierConfig
 {
-    uint32_t intervalThresholdMs = 10; /* 关键间隔阈值(毫秒), 实际间隔>=阈值, 判定为命令(低速), 实际间隔<阈值, 判定为流(高速) */
+    uint32_t intervalThreshold = 10; /* 关键间隔阈值(毫秒), 实际间隔>=阈值, 判定为命令(低速), 实际间隔<阈值, 判定为流(高速) */
     uint32_t intervalSampleCount = 10; /* 时间间隔采样数, 收集连续收到数据的最近N条间隔, 然后计算时取平均值 */
-    uint32_t idleTimeoutMs = 100; /* 数据接收静默超时时间(毫秒) */
+    uint32_t idleTimeout = 100; /* 数据接收静默超时时间(毫秒) */
     uint32_t maxBufferSize = 4096; /* 最大缓冲区长度, 缓冲区数据超过此长度时则强制回调 */
     std::vector<std::string> streamFlags; /* 流标识, 当数据判定非流数据时, 需要检测是否包含该标识, 包含则判定为流, 例如: \r, \r\n */
 };
@@ -60,10 +60,11 @@ public:
 
     /**
      * @brief 接收数据(外部循环调用)
+     * @param ntp 当前时间点
      * @param data 数据(可能为空)
      * @param dataLen 数据长度(可能为0)
      */
-    void recvData(const uint8_t* data, uint32_t dataLen);
+    void recvData(const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen);
 
     /**
      * @brief 重置
@@ -113,4 +114,4 @@ private:
     SimpleDataType m_lastDataType = SimpleDataType::unknown; /* 上次接收数据的类型 */
     std::deque<int64_t> m_intervalSamples; /* 接收数据间隔采样 */
 };
-} // namespace dataclass
+} // namespace utility

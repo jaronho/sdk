@@ -1,8 +1,8 @@
-#include "data_classifier.h"
+#include "simple_data_classifier.h"
 
 #include <algorithm>
 
-namespace dataclass
+namespace utility
 {
 /**
  * @brief 限制分类器配置
@@ -11,17 +11,17 @@ namespace dataclass
  */
 SimpleClassifierConfig limitSimpleClassifierConfig(SimpleClassifierConfig cfg)
 {
-    if (0 == cfg.intervalThresholdMs)
+    if (0 == cfg.intervalThreshold)
     {
-        cfg.intervalThresholdMs = 10;
+        cfg.intervalThreshold = 10;
     }
     if (cfg.intervalSampleCount < 2)
     {
         cfg.intervalSampleCount = 2;
     }
-    if (0 == cfg.idleTimeoutMs)
+    if (0 == cfg.idleTimeout)
     {
-        cfg.idleTimeoutMs = 100;
+        cfg.idleTimeout = 100;
     }
     if (0 == cfg.maxBufferSize)
     {
@@ -41,13 +41,12 @@ void SimpleDataClassifier::setDataCallback(const DATA_CALLBACK& callback)
     m_dataCallback = callback;
 }
 
-void SimpleDataClassifier::recvData(const uint8_t* data, uint32_t dataLen)
+void SimpleDataClassifier::recvData(const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen)
 {
     if (!m_dataCallback)
     {
         return;
     }
-    auto ntp = std::chrono::steady_clock::now();
     checkTimeout(ntp); /* 超时检查, 每次调用都检查, 确保及时性 */
     checkStreamEnd(ntp); /* 流结束检查 */
     if (!data || 0 == dataLen)
@@ -149,7 +148,7 @@ SimpleDataType SimpleDataClassifier::detectDataType() const
             sum += interval;
         }
         int64_t avgInterval = sum / m_intervalSamples.size();
-        if (avgInterval >= m_cfg.intervalThresholdMs)
+        if (avgInterval >= m_cfg.intervalThreshold)
         {
             return SimpleDataType::command;
         }
@@ -190,7 +189,7 @@ void SimpleDataClassifier::checkTimeout(const std::chrono::steady_clock::time_po
     if (!m_buffer.empty())
     {
         auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_bufferStartTime).count();
-        if (interval > m_cfg.idleTimeoutMs)
+        if (interval > m_cfg.idleTimeout)
         {
             auto type = detectDataType();
             if (SimpleDataType::unknown == type)
@@ -207,7 +206,7 @@ void SimpleDataClassifier::checkStreamEnd(const std::chrono::steady_clock::time_
     if (m_isInStreamMode)
     {
         auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastStreamDataTime).count();
-        if (interval >= m_cfg.idleTimeoutMs)
+        if (interval >= m_cfg.idleTimeout)
         {
             if (m_buffer.empty()) /* 缓冲区为空时, 直接调用回调通知流结束 */
             {
@@ -241,4 +240,4 @@ bool SimpleDataClassifier::checkStreamFlags() const
     }
     return false;
 }
-} // namespace dataclass
+} // namespace utility
