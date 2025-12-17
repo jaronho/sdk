@@ -31,6 +31,9 @@ ${base_utility_charset_files}
 ${base_utility_cmdline_files}
 
 [源文件]
+${base_utility_dataclass_files}
+
+[源文件]
 ${base_utility_datetime_files}
 
 [源文件]
@@ -76,6 +79,9 @@ set(base_utility_charset_files ${src_list} CACHE INTERNAL "")
 get_cxx_files(utility/cmdline src_list)
 set(base_utility_cmdline_files ${src_list} CACHE INTERNAL "")
 
+get_cxx_files(utility/dataclass src_list)
+set(base_utility_dataclass_files ${src_list} CACHE INTERNAL "")
+
 get_cxx_files(utility/datetime src_list)
 set(base_utility_datetime_files ${src_list} CACHE INTERNAL "")
 
@@ -114,6 +120,7 @@ set(base_utility_files
     ${base_utility_bytearray_files}
     ${base_utility_charset_files}
     ${base_utility_cmdline_files}
+    ${base_utility_dataclass_files}
     ${base_utility_datetime_files}
     ${base_utility_digit_files}
     ${base_utility_filesystem_files}
