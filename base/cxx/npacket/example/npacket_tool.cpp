@@ -309,24 +309,24 @@ void handleApplicationFtpData(const std::chrono::steady_clock::time_point& ntp, 
     if (s_proto.empty() || "ftp-data" == s_proto)
     {
         printTransportHeaderTcp(header);
-        std::string modeDesc = npacket::FtpParser::DataMode::active == ctrl.mode ? "PORT" : "PASV";
-        if (npacket::FtpParser::DataFlag::ready == flag)
+        std::string modeDesc = npacket::FtpParser::DataMode::ACTIVE == ctrl.mode ? "PORT" : "PASV";
+        if (npacket::FtpParser::DataFlag::READY == flag)
         {
             printf("            ----- FTP-DATA [%s][start][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(), ctrl.clientIp.c_str(),
                    ctrl.clientPort, ctrl.serverIp.c_str(), ctrl.serverPort);
         }
-        else if (npacket::FtpParser::DataFlag::body == flag)
+        else if (npacket::FtpParser::DataFlag::BODY == flag)
         {
             printf("            ----- FTP-DATA [%s][%d][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(), dataLen,
                    ctrl.clientIp.c_str(), ctrl.clientPort, ctrl.serverIp.c_str(), ctrl.serverPort);
             printf("%s\n", std::string(data, data + dataLen).c_str());
         }
-        else if (npacket::FtpParser::DataFlag::finish == flag)
+        else if (npacket::FtpParser::DataFlag::FINISH == flag)
         {
             printf("            ----- FTP-DATA [%s][finish][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(), ctrl.clientIp.c_str(),
                    ctrl.clientPort, ctrl.serverIp.c_str(), ctrl.serverPort);
         }
-        else if (npacket::FtpParser::DataFlag::abnormal == flag)
+        else if (npacket::FtpParser::DataFlag::ABNORMAL == flag)
         {
             printf("            ----- FTP-DATA [%s][timeout][client: %s:%d][server: %s:%d] -----\n", modeDesc.c_str(),
                    ctrl.clientIp.c_str(), ctrl.clientPort, ctrl.serverIp.c_str(), ctrl.serverPort);

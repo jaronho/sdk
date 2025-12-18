@@ -36,11 +36,9 @@ public:
     /**
      * @brief 数据回调
      * @param ntp 数据包接收时间点
-     * @param totalLen 数据包总长度
      * @param data Modbus数据
      */
-    using DATA_CALLBACK =
-        std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const modbus::DataSt& data)>;
+    using DATA_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, const modbus::DataSt& data)>;
 
     /**
      * @brief 非法数据回调(超时或无效数据)
@@ -95,10 +93,26 @@ public:
     void setIllegalDataCallback(const ILLEGAL_DATA_CALLBACK& callback);
 
 private:
-    void checkTimeout(const std::chrono::steady_clock::time_point& ntp);
+    /**
+     * @brief 清理缓存
+     * @param ntp 时间点
+     */
+    void cleanupBuffer(const std::chrono::steady_clock::time_point& ntp);
 
+    /**
+     * @brief 尝试解析缓存
+     * @param ntp 时间点
+     * @return 解析结果
+     */
     ParseResult tryParseBuffer(const std::chrono::steady_clock::time_point& ntp);
 
+    /**
+     * @brief 处理非法数据
+     * @param ntp 时间点
+     * @param data 数据
+     * @param len 数据长度
+     * @param type 非法类型
+     */
     void handleIllegalData(const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen, IllegalDataType type);
 
     /**

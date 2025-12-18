@@ -117,10 +117,7 @@ const std::unordered_map<std::string, int> CODE_MAP = {
     {"553", 0} /* 请求的操作未被执行, 文件名不合法 */
 };
 
-FtpParser::FtpParser(uint32_t dcTimeout)
-{
-    m_dataConnectTimeout = dcTimeout > 0 ? dcTimeout : m_dataConnectTimeout;
-}
+FtpParser::FtpParser(uint32_t dcTimeout) : m_dataConnectTimeout(dcTimeout > 0 ? dcTimeout : 15) {}
 
 uint32_t FtpParser::getProtocol() const
 {
@@ -222,7 +219,7 @@ bool FtpParser::parseRequest(const std::chrono::steady_clock::time_point& ntp, u
             uint32_t port;
             if (parseDataPort(arg, ip, port))
             {
-                handleDataPort(ntp, header, DataMode::active, ip, port);
+                handleDataPort(ntp, header, DataMode::ACTIVE, ip, port);
                 return true;
             }
             return false;
@@ -294,7 +291,7 @@ bool FtpParser::parseResponse(const std::chrono::steady_clock::time_point& ntp, 
                 uint32_t port;
                 if (parseDataPort(arg.substr(bp + 1, ep - 1 - bp), ip, port))
                 {
-                    handleDataPort(ntp, header, DataMode::passive, ip, port);
+                    handleDataPort(ntp, header, DataMode::PASSIVE, ip, port);
                     return true;
                 }
             }
@@ -373,7 +370,7 @@ void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp,
         }
         auto tcpHeader = std::dynamic_pointer_cast<TcpHeader>(header);
         auto dci = std::make_shared<DataConnectInfo>();
-        if (DataMode::active == mode) /* 主动模式 */
+        if (DataMode::ACTIVE == mode) /* 主动模式 */
         {
             dci->ctrl.clientIp = scrAddr;
             dci->ctrl.clientPort = tcpHeader->srcPort;
@@ -390,7 +387,7 @@ void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp,
         dci->ctrl.mode = mode;
         dci->ip = ip;
         dci->port = port;
-        dci->status = DataConnectStatus::ready;
+        dci->status = DataConnectStatus::READY;
         dci->tp = ntp;
         m_dataConnectList.insert(std::make_pair(key, dci));
     }
@@ -406,7 +403,7 @@ void FtpParser::recyleDataConnect(const std::chrono::steady_clock::time_point& n
             iter = m_dataConnectList.erase(iter);
             if (m_dataCb)
             {
-                m_dataCb(ntp, 0, nullptr, ctrl, DataFlag::abnormal, nullptr, 0);
+                m_dataCb(ntp, 0, nullptr, ctrl, DataFlag::ABNORMAL, nullptr, 0);
             }
         }
         else
@@ -447,30 +444,30 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
     auto ctrl = iter->second->ctrl;
     if (0 == payloadLen)
     {
-        if (1 == tcpHeader->flagAck && DataConnectStatus::ready == iter->second->status) /* 数据连接建立 */
+        if (1 == tcpHeader->flagAck && DataConnectStatus::READY == iter->second->status) /* 数据连接建立 */
         {
             iter->second->tp = std::chrono::steady_clock::now();
-            iter->second->status = DataConnectStatus::created;
+            iter->second->status = DataConnectStatus::CREATED;
             if (m_dataCb)
             {
-                m_dataCb(ntp, totalLen, header, ctrl, DataFlag::ready, nullptr, 0);
+                m_dataCb(ntp, totalLen, header, ctrl, DataFlag::READY, nullptr, 0);
             }
         }
-        else if (1 == tcpHeader->flagFin && DataConnectStatus::created == iter->second->status) /* 数据连接断开 */
+        else if (1 == tcpHeader->flagFin && DataConnectStatus::CREATED == iter->second->status) /* 数据连接断开 */
         {
             m_dataConnectList.erase(iter);
             if (m_dataCb)
             {
-                m_dataCb(ntp, totalLen, header, ctrl, DataFlag::finish, nullptr, 0);
+                m_dataCb(ntp, totalLen, header, ctrl, DataFlag::FINISH, nullptr, 0);
             }
         }
     }
-    else if (DataConnectStatus::created == iter->second->status) /* 数据连接已连接 */
+    else if (DataConnectStatus::CREATED == iter->second->status) /* 数据连接已连接 */
     {
         iter->second->tp = std::chrono::steady_clock::now();
         if (m_dataCb)
         {
-            m_dataCb(ntp, totalLen, header, ctrl, DataFlag::body, payload, payloadLen);
+            m_dataCb(ntp, totalLen, header, ctrl, DataFlag::BODY, payload, payloadLen);
         }
     }
     return true;

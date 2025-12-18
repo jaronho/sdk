@@ -84,7 +84,8 @@ private:
     bool isModbusPort(uint16_t port) const;
 
 private:
+    const std::vector<uint16_t> m_modbusPortList; /* Modbus端口列表 */
+
     DATA_CALLBACK m_dataCallback = nullptr; /* 数据回调 */
-    std::vector<uint16_t> m_modbusPortList; /* Modbus端口列表 */
 };
 } // namespace npacket

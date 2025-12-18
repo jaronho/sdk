@@ -17,8 +17,8 @@ public:
      */
     enum class DataMode
     {
-        active = 0, /* 主动模式 */
-        passive /* 被动模式 */
+        ACTIVE = 0, /* 主动模式 */
+        PASSIVE /* 被动模式 */
     };
 
     /**
@@ -30,7 +30,7 @@ public:
         uint32_t clientPort = 0; /* 客户端控制端口 */
         std::string serverIp; /* 服务端IP */
         uint32_t serverPort = 0; /* 服务端控制端口 */
-        DataMode mode = DataMode::active; /* 数据连接模式 */
+        DataMode mode = DataMode::ACTIVE; /* 数据连接模式 */
     };
 
     /**
@@ -38,10 +38,10 @@ public:
      */
     enum class DataFlag
     {
-        ready = 0, /* 准备传输数据(此时无数据 */
-        body, /* 数据包内容 */
-        finish, /* 数据传输结束(此时无数据) */
-        abnormal /* 异常(超时)结束(此时无头部且无数据) */
+        READY = 0, /* 准备传输数据(此时无数据) */
+        BODY, /* 数据包内容 */
+        FINISH, /* 数据传输结束(此时无数据) */
+        ABNORMAL /* 异常(超时)结束(此时无头部且无数据) */
     };
 
     /**
@@ -157,8 +157,8 @@ private:
      */
     enum class DataConnectStatus
     {
-        ready = 0, /* 就绪(协商完毕, 等待建立) */
-        created /* 已建立 */
+        READY = 0, /* 就绪(协商完毕, 等待建立) */
+        CREATED /* 已建立 */
     };
 
     /**
@@ -169,15 +169,17 @@ private:
         CtrlInfo ctrl; /* 控制连接信息 */
         std::string ip; /* 主动模式下: 客户端的IP, 被动模式下: 服务端的IP */
         uint32_t port = 0; /* 主动模式下: 客户端的端口, 被动模式下: 服务端的端口 */
-        DataConnectStatus status = DataConnectStatus::ready; /* 连接状态 */
+        DataConnectStatus status = DataConnectStatus::READY; /* 连接状态 */
         std::chrono::steady_clock::time_point tp{}; /* 更新时间点 */
     };
 
 private:
+    const uint32_t m_dataConnectTimeout; /* 数据连接超时时间(单位: 秒) */
+
     CTRL_PKT_CALLBACK m_requestCb = nullptr; /* 请求包回调 */
     CTRL_PKT_CALLBACK m_responseCb = nullptr; /* 响应包回调 */
     DATA_PKT_CALLBACK m_dataCb = nullptr; /* 数据包回调 */
+
     std::unordered_map<std::string, std::shared_ptr<DataConnectInfo>> m_dataConnectList; /* 数据连接列表, key: IP+:+端口 */
-    uint32_t m_dataConnectTimeout = 15; /* 数据连接超时时间(单位: 秒) */
 };
 } // namespace npacket

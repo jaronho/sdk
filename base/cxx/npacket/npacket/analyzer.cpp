@@ -100,6 +100,8 @@ int Analyzer::parse(const uint8_t* data, uint32_t dataLen, const DataSource& dat
 
 int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth)
 {
+    auto ntp = std::chrono::steady_clock::now();
+    cleanupFragmentCache(ntp); /* 清空超时分片缓存 */
     if (!data || 0 == dataLen)
     {
         return -1;
@@ -108,8 +110,6 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
     {
         return 6;
     }
-    auto ntp = std::chrono::steady_clock::now();
-    cleanupFragmentCache(ntp); /* 清空超时分片缓存 */
     uint32_t remainLen = dataLen, offset = 0;
     std::shared_ptr<ProtocolHeader> transportHeader = nullptr;
     bool willParseApplication = false;
