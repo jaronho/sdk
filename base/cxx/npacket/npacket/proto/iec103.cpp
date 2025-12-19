@@ -67,8 +67,10 @@ uint32_t Iec103Parser::getProtocol() const
 }
 
 ParseResult Iec103Parser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+                                const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                                uint32_t& consumeLen)
 {
+    consumeLen = 0;
     if (header && TransportProtocol::TCP != header->getProtocol() && TransportProtocol::UDP != header->getProtocol())
     {
         return ParseResult::FAILURE;
@@ -79,10 +81,12 @@ ParseResult Iec103Parser::parse(const std::chrono::steady_clock::time_point& ntp
     }
     if (parseFixedFrame(ntp, totalLen, header, payload, payloadLen))
     {
+        consumeLen = payloadLen;
         return ParseResult::SUCCESS;
     }
     else if (parseVariableFrame(ntp, totalLen, header, payload, payloadLen))
     {
+        consumeLen = payloadLen;
         return ParseResult::SUCCESS;
     }
     return ParseResult::FAILURE;

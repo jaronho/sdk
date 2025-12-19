@@ -95,14 +95,15 @@ public:
     /**
      * @brief 解析
      * @param ntp 数据包接收时间点
-     * @param totalLen 数据包总长度(当数据走的是非网络时, 与payloadLen相等)
-     * @param header 传输层头部(当数据走的是非网络时, 为空)
+     * @param totalLen 数据包总长度
+     * @param header 传输层头部
      * @param payload 层负载
      * @param payloadLen 层负载长度
+     * @param consumeLen [输出]消耗的长度
      * @return 解析结果
      */
     ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
-                      const uint8_t* payload, uint32_t payloadLen) override;
+                      const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen) override;
 
     /**
      * @brief 设置固定帧回调

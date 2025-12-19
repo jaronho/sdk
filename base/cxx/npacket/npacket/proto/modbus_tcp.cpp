@@ -15,8 +15,10 @@ uint32_t ModbusTcpParser::getProtocol() const
 }
 
 ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                                   uint32_t& consumeLen)
 {
+    consumeLen = 0;
     if (!header || TransportProtocol::TCP != header->getProtocol())
     {
         return ParseResult::FAILURE;
@@ -90,6 +92,7 @@ ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& 
         d.exceptionCode = exceptionCode;
         m_dataCallback(ntp, totalLen, header, d);
     }
+    consumeLen = modbus::MBAP_HEADER_LEN + mbap.length;
     return ParseResult::SUCCESS;
 }
 

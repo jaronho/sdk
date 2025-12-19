@@ -25,15 +25,6 @@ class ModbusRtuParser : public ProtocolParser
 {
 public:
     /**
-     * @brief 非法数据类型
-     */
-    enum IllegalDataType
-    {
-        INVALID = 0, /* 无效数据(地址/功能码/CRC错误) */
-        TIMEOUT /* 超时未完整 */
-    };
-
-    /**
      * @brief 数据回调
      * @param ntp 数据包接收时间点
      * @param data Modbus数据
@@ -41,14 +32,13 @@ public:
     using DATA_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, const modbus::DataSt& data)>;
 
     /**
-     * @brief 非法数据回调(超时或无效数据)
+     * @brief 超时数据回调
      * @param ntp 时间点
      * @param data 数据
      * @param dataLen 数据长度
-     * @param type 非法数据类型
      */
-    using ILLEGAL_DATA_CALLBACK =
-        std::function<void(const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen, IllegalDataType type)>;
+    using TIMEOUT_DATA_CALLBACK =
+        std::function<void(const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen)>;
 
 public:
     /**
@@ -70,10 +60,11 @@ public:
      * @param header 传输层头部
      * @param payload 层负载
      * @param payloadLen 层负载长度
+     * @param consumeLen [输出]消耗的长度
      * @return 解析结果
      */
     ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
-                      const uint8_t* payload, uint32_t payloadLen) override;
+                      const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen) override;
 
     /**
      * @brief 重置
@@ -87,10 +78,10 @@ public:
     void setDataCallback(const DATA_CALLBACK& callback);
 
     /**
-     * @brief 设置非法数据回调
+     * @brief 设置超时数据回调
      * @param callback 回调
      */
-    void setIllegalDataCallback(const ILLEGAL_DATA_CALLBACK& callback);
+    void setTimeoutDataCallback(const TIMEOUT_DATA_CALLBACK& callback);
 
 private:
     /**
@@ -102,18 +93,10 @@ private:
     /**
      * @brief 尝试解析缓存
      * @param ntp 时间点
+     * @param frameLen [输出]帧长度
      * @return 解析结果
      */
-    ParseResult tryParseBuffer(const std::chrono::steady_clock::time_point& ntp);
-
-    /**
-     * @brief 处理非法数据
-     * @param ntp 时间点
-     * @param data 数据
-     * @param len 数据长度
-     * @param type 非法类型
-     */
-    void handleIllegalData(const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen, IllegalDataType type);
+    ParseResult tryParseBuffer(const std::chrono::steady_clock::time_point& ntp, uint32_t& frameLen);
 
     /**
      * @brief CRC16校验计算
@@ -139,7 +122,7 @@ private:
 private:
     const ModbusRtuConfig m_cfg; /* 配置 */
     DATA_CALLBACK m_dataCallback = nullptr; /* 数据回调 */
-    ILLEGAL_DATA_CALLBACK m_illegalDataCallback = nullptr; /* 非法数据回调 */
+    TIMEOUT_DATA_CALLBACK m_timeoutDataCallback = nullptr; /* 超时数据回调 */
     std::vector<uint8_t> m_buffer; /* 缓冲区 */
     std::chrono::steady_clock::time_point m_lastReceiveTime; /* 上次接收时间点 */
     std::atomic_uint16_t m_transactionId{0}; /* 事务ID生成器 */

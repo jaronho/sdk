@@ -303,24 +303,64 @@ int Analyzer::handleApplicationLayer(const std::chrono::steady_clock::time_point
                                      const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
                                      const std::vector<std::shared_ptr<ProtocolParser>>& applicationParserList)
 {
-    bool anyContinue = false;
-    for (size_t i = 0; i < applicationParserList.size(); ++i) /* 遍历所有应用层解析器 */
+    uint32_t remainLen = payloadLen; /* 剩余数据长度 */
+    uint32_t offset = 0; /* 已消费的字节偏移 */
+    bool anyParsed = false; /* 是否成功解析过至少一个消息 */
+    bool needMoreData = false; /* 是否有解析器需要更多数据 */
+    while (offset < payloadLen) /* 循环处理, 直到payload耗尽或无法继续 */
     {
-        auto parser = applicationParserList[i];
-        if (parser)
+        bool parsedInThisRound = false; /* 本轮是否成功解析 */
+        for (size_t i = 0; i < applicationParserList.size(); ++i) /* 遍历所有解析器尝试解析当前剩余数据 */
         {
-            auto result = parser->parse(ntp, totalLen, header, payload, payloadLen);
-            if (ParseResult::SUCCESS == result)
+            auto parser = applicationParserList[i];
+            if (!parser)
+            {
+                continue;
+            }
+            uint32_t consumeLen = 0;
+            auto result = parser->parse(ntp, totalLen, header, payload + offset, remainLen, consumeLen);
+            switch (result)
+            {
+            case ParseResult::SUCCESS:
+                if (consumeLen > 0 && consumeLen <= remainLen)
+                {
+                    remainLen -= consumeLen;
+                    offset += consumeLen;
+                    anyParsed = true;
+                    parsedInThisRound = true;
+                    needMoreData = false;
+                }
+                else /* 解析成功但无数据消费 */
+                {
+                    return 4;
+                }
+                break;
+            case ParseResult::CONTINUE:
+                needMoreData = true;
+                break;
+            case ParseResult::FAILURE: /* 当前解析器无法识别, 继续尝试下一个 */
+                break;
+            }
+            if (parsedInThisRound) /* 判断本轮是否已成功解析 */
+            {
+                break;
+            }
+        }
+        if (!parsedInThisRound) /* 检查本轮解析结果 */
+        {
+            if (anyParsed) /* 已成功解析过, 剩余数据可能属于下一个数据包 */
             {
                 return 0;
             }
-            else if (ParseResult::CONTINUE == result)
+            /* 从未成功解析过 */
+            if (needMoreData)
             {
-                anyContinue = true; /* 标记需要更多数据, 同时继续尝试下一个解析器 */
+                return 5;
             }
+            return 4;
         }
     }
-    return (anyContinue ? 5 : 4);
+    return anyParsed ? 0 : 4;
 }
 
 bool Analyzer::traverseIpv6Extension(const uint8_t* data, uint32_t dataLen, uint8_t& nextHeader, uint32_t& totalExtLen, bool stopAtFragment,

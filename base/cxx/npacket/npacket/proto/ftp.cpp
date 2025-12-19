@@ -125,8 +125,10 @@ uint32_t FtpParser::getProtocol() const
 }
 
 ParseResult FtpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                             const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+                             const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                             uint32_t& consumeLen)
 {
+    consumeLen = 0;
     recyleDataConnect(ntp);
     if (!header || !header->parent || TransportProtocol::TCP != header->getProtocol()
         || (NetworkProtocol::IPv4 != header->parent->getProtocol() && NetworkProtocol::IPv6 != header->parent->getProtocol()))
@@ -135,16 +137,19 @@ ParseResult FtpParser::parse(const std::chrono::steady_clock::time_point& ntp, u
     }
     if (parseData(ntp, totalLen, header, payload, payloadLen))
     {
+        consumeLen = payloadLen;
         return ParseResult::SUCCESS;
     }
     if (payloadLen >= 5 && '\r' == payload[payloadLen - 2] && '\n' == payload[payloadLen - 1]) /* FTP控制包最小5个字节且都以'\r\n'结尾 */
     {
         if (parseRequest(ntp, totalLen, header, payload, payloadLen))
         {
+            consumeLen = payloadLen;
             return ParseResult::SUCCESS;
         }
         else if (parseResponse(ntp, totalLen, header, payload, payloadLen))
         {
+            consumeLen = payloadLen;
             return ParseResult::SUCCESS;
         }
     }

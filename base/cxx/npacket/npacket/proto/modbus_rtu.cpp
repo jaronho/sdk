@@ -30,8 +30,10 @@ uint32_t ModbusRtuParser::getProtocol() const
 }
 
 ParseResult ModbusRtuParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                                   uint32_t& consumeLen)
 {
+    consumeLen = 0;
     cleanupBuffer(ntp);
     if (!payload || 0 == payloadLen)
     {
@@ -52,21 +54,19 @@ ParseResult ModbusRtuParser::parse(const std::chrono::steady_clock::time_point& 
             {
                 return ParseResult::CONTINUE;
             }
-            result = tryParseBuffer(ntp);
-            if (ParseResult::SUCCESS == result) /* 成功解析, 继续尝试解析下一个包 */
+            uint32_t frameLen = 0;
+            result = tryParseBuffer(ntp, frameLen);
+            consumeLen += frameLen;
+            if (ParseResult::FAILURE == result) /* 无效数据 */
             {
-                result = ParseResult::SUCCESS;
+                m_buffer.clear();
+                break;
             }
-            else /* 数据不足, 或无效数据 */
+            else if (ParseResult::CONTINUE == result) /* 数据不足 */
             {
                 break;
             }
         }
-    }
-    if (ParseResult::FAILURE == result) /* 解析失败, 清空缓冲区 */
-    {
-        handleIllegalData(ntp, m_buffer.data(), m_buffer.size(), IllegalDataType::INVALID);
-        m_buffer.clear();
     }
     return result;
 }
@@ -82,9 +82,9 @@ void ModbusRtuParser::setDataCallback(const DATA_CALLBACK& callback)
     m_dataCallback = callback;
 }
 
-void ModbusRtuParser::setIllegalDataCallback(const ILLEGAL_DATA_CALLBACK& callback)
+void ModbusRtuParser::setTimeoutDataCallback(const TIMEOUT_DATA_CALLBACK& callback)
 {
-    m_illegalDataCallback = callback;
+    m_timeoutDataCallback = callback;
 }
 
 void ModbusRtuParser::cleanupBuffer(const std::chrono::steady_clock::time_point& ntp)
@@ -94,14 +94,18 @@ void ModbusRtuParser::cleanupBuffer(const std::chrono::steady_clock::time_point&
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastReceiveTime).count();
         if (elapsed >= m_cfg.bufferTimeout) /* 超时, 触发回调 */
         {
-            handleIllegalData(ntp, m_buffer.data(), m_buffer.size(), IllegalDataType::TIMEOUT);
+            if (m_timeoutDataCallback)
+            {
+                m_timeoutDataCallback(ntp, m_buffer.data(), m_buffer.size());
+            }
             m_buffer.clear();
         }
     }
 }
 
-ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::time_point& ntp)
+ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::time_point& ntp, uint32_t& frameLen)
 {
+    frameLen = 0;
     /* 检查头部字段 */
     uint8_t slaveAddress = m_buffer[0];
     uint8_t rawFuncCode = m_buffer[1];
@@ -119,14 +123,15 @@ ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::tim
     /* 获取最小帧长度 */
     bool isException = (rawFuncCode & 0x80);
     uint32_t minDataLen = modbus::getMinFrameLength(funcCode, isException);
-    uint32_t minFrameLen = (2 + minDataLen + 2); /* 地址 + 功能码 + 数据 + CRC */
-    if (m_buffer.size() < minFrameLen) /* 数据长度不足, 等待更多数据 */
+    frameLen = (2 + minDataLen + 2); /* 地址 + 功能码 + 数据 + CRC */
+    if (m_buffer.size() < frameLen) /* 数据长度不足, 等待更多数据 */
     {
+        frameLen = m_buffer.size();
         return ParseResult::CONTINUE;
     }
     /* CRC校验 */
-    uint16_t crcReceived = (m_buffer[minFrameLen - 2] | (m_buffer[minFrameLen - 1] << 8));
-    uint16_t crcCalculated = calcCRC16(m_buffer.data(), minFrameLen - 2);
+    uint16_t crcReceived = (m_buffer[frameLen - 2] | (m_buffer[frameLen - 1] << 8));
+    uint16_t crcCalculated = calcCRC16(m_buffer.data(), frameLen - 2);
     if (crcReceived != crcCalculated) /* CRC不匹配, 视为无效数据 */
     {
         return ParseResult::FAILURE;
@@ -142,13 +147,6 @@ ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::tim
             return ParseResult::FAILURE;
         }
         exceptionCode = (modbus::ExceptionCode)(dataPtr[0]);
-    }
-    else
-    {
-        if (m_buffer.size() < minFrameLen) /* 验证数据长度是否符合协议规范 */
-        {
-            return ParseResult::CONTINUE;
-        }
     }
     /* 生成数据包 */
     modbus::DataSt d;
@@ -166,17 +164,8 @@ ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::tim
         m_dataCallback(ntp, d);
     }
     /* 从缓冲区移除已解析的数据 */
-    m_buffer.erase(m_buffer.begin(), m_buffer.begin() + minFrameLen);
+    m_buffer.erase(m_buffer.begin(), m_buffer.begin() + frameLen);
     return ParseResult::SUCCESS;
-}
-
-void ModbusRtuParser::handleIllegalData(const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
-                                        IllegalDataType type)
-{
-    if (m_illegalDataCallback)
-    {
-        m_illegalDataCallback(ntp, data, dataLen, type);
-    }
 }
 
 uint16_t ModbusRtuParser::calcCRC16(const uint8_t* data, uint32_t len) const

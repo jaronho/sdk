@@ -8,8 +8,10 @@ uint32_t CotpParser::getProtocol() const
 }
 
 ParseResult CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                              const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+                              const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                              uint32_t& consumeLen)
 {
+    consumeLen = 0;
     if (header && TransportProtocol::TCP != header->getProtocol())
     {
         return ParseResult::FAILURE;
@@ -93,6 +95,7 @@ ParseResult CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, 
             parseS7Comm(ntp, totalLen, header, tpktInfo, cotpInfo, buffer, bufferLen);
         }
     }
+    consumeLen = tpktInfo.length;
     return ParseResult::SUCCESS;
 }
 
