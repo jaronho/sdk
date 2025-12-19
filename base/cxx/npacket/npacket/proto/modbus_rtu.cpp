@@ -120,10 +120,33 @@ ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::tim
     {
         return ParseResult::FAILURE;
     }
-    /* 获取最小帧长度 */
+    /* 获取最小帧长度(固定部分) */
     bool isException = (rawFuncCode & 0x80);
     uint32_t minDataLen = modbus::getMinFrameLength(funcCode, isException);
-    frameLen = (2 + minDataLen + 2); /* 地址 + 功能码 + 数据 + CRC */
+    /* 计算实际数据长度(包含可变部分) */
+    uint32_t actualDataLen = minDataLen;
+    if (!isException && m_buffer.size() >= (2 + minDataLen))
+    {
+        switch (funcCode) /* 处理包含字节计数的功能码 */
+        {
+        case modbus::FunctionCode::WRITE_MULTIPLE_COILS:
+        case modbus::FunctionCode::WRITE_MULTIPLE_REGISTERS:
+        case modbus::FunctionCode::READ_WRITE_MULTIPLE_REGISTERS: {
+            /* 字节计数位于数据部分的最后一个字节 */
+            uint32_t byteCountPos = 2 + minDataLen - 1;
+            if (byteCountPos < m_buffer.size())
+            {
+                uint8_t byteCount = m_buffer[byteCountPos];
+                actualDataLen = minDataLen + byteCount; /* 添加可变数据长度 */
+            }
+            break;
+        }
+        default: /* 其他功能码minDataLen已包含完整数据长度 */
+            break;
+        }
+    }
+    /* 计算完整帧长度 */
+    frameLen = (2 + actualDataLen + 2); /* 地址 + 功能码 + 实际数据 + CRC */
     if (m_buffer.size() < frameLen) /* 数据长度不足, 等待更多数据 */
     {
         frameLen = m_buffer.size();
@@ -155,7 +178,7 @@ ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::tim
     d.isBroadcast = (0 == slaveAddress);
     d.funcCode = funcCode;
     d.data = (isException ? nullptr : dataPtr);
-    d.dataLen = (isException ? 0 : minDataLen);
+    d.dataLen = (isException ? 0 : actualDataLen); /* 使用实际数据长度 */
     d.isException = isException;
     d.exceptionCode = exceptionCode;
     /* 成功解析, 触发回调 */
