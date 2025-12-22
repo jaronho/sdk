@@ -64,32 +64,35 @@ ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& 
     {
         return ParseResult::FAILURE;
     }
-    /* 异常响应处理 */
-    modbus::ExceptionCode exceptionCode = modbus::ExceptionCode::ILLEGAL_FUNCTION;
+    /* 判断报文方向: 如果源端口是Modbus端口, 说明是从站响应 */
+    bool isRequest = !isModbusPort(tcpHeader->srcPort);
+    /* 功能数据处理 */
     if (isException)
     {
-        exceptionCode = (modbus::ExceptionCode)(pduStart[1]);
-        dataLen = 0; /* 异常响应无数据 */
+        if (dataLen < 1) /* 异常响应必须包含异常码 */
+        {
+            return ParseResult::FAILURE;
+        }
     }
+    auto d = std::make_shared<modbus::DataSt>();
+    d->transactionId = mbap.transactionId;
+    d->slaveAddress = mbap.unitId;
+    d->isBroadcast = false; /* TCP无广播概念 */
+    d->funcCode = funcCode;
+    if (isException)
+    {
+        auto resp = std::make_shared<modbus::ExceptionResponse>();
+        resp->code = (modbus::ExceptionCode)(pduStart[1]);
+        d->funcData = resp;
+    }
+    else
+    {
+        d->data.insert(d->data.end(), pduStart + 1, pduStart + 1 + dataLen);
+        d->funcData = parseFuncData(funcCode, isRequest, d->data.data(), d->data.size());
+    }
+    d->isException = isException;
     if (m_dataCallback)
     {
-        modbus::DataSt d;
-        d.transactionId = mbap.transactionId;
-        d.slaveAddress = mbap.unitId;
-        d.isBroadcast = false; /* TCP无广播概念 */
-        d.funcCode = funcCode;
-        if (isException)
-        {
-            d.data = nullptr;
-            d.dataLen = 0;
-        }
-        else
-        {
-            d.data = pduStart + 1;
-            d.dataLen = dataLen;
-        }
-        d.isException = isException;
-        d.exceptionCode = exceptionCode;
         m_dataCallback(ntp, totalLen, header, d);
     }
     consumeLen = modbus::MBAP_HEADER_LEN + mbap.length;

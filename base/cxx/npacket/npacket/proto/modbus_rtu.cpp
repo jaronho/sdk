@@ -22,7 +22,7 @@ ModbusRtuConfig limitModbusRtuConfig(ModbusRtuConfig cfg)
     return cfg;
 }
 
-ModbusRtuParser::ModbusRtuParser(ModbusRtuConfig cfg) : m_cfg(limitModbusRtuConfig(cfg)) {}
+ModbusRtuParser::ModbusRtuParser(bool isMaster, ModbusRtuConfig cfg) : m_isMaster(isMaster), m_cfg(limitModbusRtuConfig(cfg)) {}
 
 uint32_t ModbusRtuParser::getProtocol() const
 {
@@ -120,24 +120,58 @@ ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::tim
     {
         return ParseResult::FAILURE;
     }
-    /* 获取最小帧长度(固定部分) */
+    bool isRequest = (!m_isMaster); /* 确定报文方向, Master模式: isRequest=false(解析从站响应), Slave模式: isRequest=true(解析主站请求) */
     bool isException = (rawFuncCode & 0x80);
-    uint32_t minDataLen = modbus::getMinFrameLength(funcCode, isException);
+    uint32_t minDataLen = modbus::getMinFrameLength(funcCode, isException); /* 获取最小帧长度(固定部分) */
     /* 计算实际数据长度(包含可变部分) */
     uint32_t actualDataLen = minDataLen;
-    if (!isException && m_buffer.size() >= (2 + minDataLen))
+    if (!isException)
     {
         switch (funcCode) /* 处理包含字节计数的功能码 */
         {
-        case modbus::FunctionCode::WRITE_MULTIPLE_COILS:
-        case modbus::FunctionCode::WRITE_MULTIPLE_REGISTERS:
-        case modbus::FunctionCode::READ_WRITE_MULTIPLE_REGISTERS: {
-            /* 字节计数位于数据部分的最后一个字节 */
-            uint32_t byteCountPos = 2 + minDataLen - 1;
-            if (byteCountPos < m_buffer.size())
+        case modbus::FunctionCode::READ_COILS:
+        case modbus::FunctionCode::READ_DISCRETE_INPUTS:
+        case modbus::FunctionCode::READ_HOLDING_REGISTERS:
+        case modbus::FunctionCode::READ_INPUT_REGISTERS: {
+            if (!isRequest && m_buffer.size() >= 3) /* 至少需要3字节才能安全读取字节计数 */
             {
-                uint8_t byteCount = m_buffer[byteCountPos];
-                actualDataLen = minDataLen + byteCount; /* 添加可变数据长度 */
+                uint8_t byteCount = m_buffer[2];
+                actualDataLen = 1 + byteCount; /* 1字节byteCount + N字节数据 */
+            }
+            break;
+        }
+        case modbus::FunctionCode::WRITE_MULTIPLE_COILS:
+        case modbus::FunctionCode::WRITE_MULTIPLE_REGISTERS: {
+            if (m_buffer.size() >= (2 + minDataLen)) /* 确保能读取字节计数(位置 = 2 + minDataLen - 1) */
+            {
+                uint8_t byteCount = m_buffer[2 + minDataLen - 1];
+                if (isRequest)
+                {
+                    actualDataLen = minDataLen + byteCount; /* 5 + N */
+                }
+                else
+                {
+                    actualDataLen = 4; /* 响应: 起始地址(2) + 数量(2) */
+                }
+            }
+            break;
+        }
+        case modbus::FunctionCode::READ_WRITE_MULTIPLE_REGISTERS: {
+            if (isRequest) /* 请求: 字节计数在PDU末尾 */
+            {
+                if (m_buffer.size() >= (2 + minDataLen))
+                {
+                    uint8_t byteCount = m_buffer[2 + minDataLen - 1];
+                    actualDataLen = minDataLen + byteCount; /* 9 + N */
+                }
+            }
+            else /* 响应: 字节计数在PDU起始位置 */
+            {
+                if (m_buffer.size() >= 3)
+                {
+                    uint8_t byteCount = m_buffer[2];
+                    actualDataLen = 1 + byteCount;
+                }
             }
             break;
         }
@@ -149,7 +183,7 @@ ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::tim
     frameLen = (2 + actualDataLen + 2); /* 地址 + 功能码 + 实际数据 + CRC */
     if (m_buffer.size() < frameLen) /* 数据长度不足, 等待更多数据 */
     {
-        frameLen = m_buffer.size();
+        frameLen = 0;
         return ParseResult::CONTINUE;
     }
     /* CRC校验 */
@@ -157,30 +191,38 @@ ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::tim
     uint16_t crcCalculated = calcCRC16(m_buffer.data(), frameLen - 2);
     if (crcReceived != crcCalculated) /* CRC不匹配, 视为无效数据 */
     {
+        frameLen = 0;
         return ParseResult::FAILURE;
     }
     /* 数据定位 */
     const uint8_t* dataPtr = m_buffer.data() + 2;
-    modbus::ExceptionCode exceptionCode = modbus::ExceptionCode::ILLEGAL_FUNCTION;
-    /* 异常响应处理 */
+    /* 功能数据处理 */
     if (isException)
     {
         if (minDataLen < 1) /* 异常响应必须包含异常码 */
         {
+            frameLen = 0;
             return ParseResult::FAILURE;
         }
-        exceptionCode = (modbus::ExceptionCode)(dataPtr[0]);
     }
     /* 生成数据包 */
-    modbus::DataSt d;
-    d.transactionId = generateTransactionId();
-    d.slaveAddress = slaveAddress;
-    d.isBroadcast = (0 == slaveAddress);
-    d.funcCode = funcCode;
-    d.data = (isException ? nullptr : dataPtr);
-    d.dataLen = (isException ? 0 : actualDataLen); /* 使用实际数据长度 */
-    d.isException = isException;
-    d.exceptionCode = exceptionCode;
+    auto d = std::make_shared<modbus::DataSt>();
+    d->transactionId = generateTransactionId();
+    d->slaveAddress = slaveAddress;
+    d->isBroadcast = (0 == slaveAddress);
+    d->funcCode = funcCode;
+    if (isException)
+    {
+        auto resp = std::make_shared<modbus::ExceptionResponse>();
+        resp->code = (modbus::ExceptionCode)(dataPtr[0]);
+        d->funcData = resp;
+    }
+    else
+    {
+        d->data.insert(d->data.end(), dataPtr, dataPtr + actualDataLen);
+        d->funcData = parseFuncData(funcCode, isRequest, d->data.data(), d->data.size());
+    }
+    d->isException = isException;
     /* 成功解析, 触发回调 */
     if (m_dataCallback)
     {

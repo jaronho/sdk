@@ -29,7 +29,8 @@ public:
      * @param ntp 数据包接收时间点
      * @param data Modbus数据
      */
-    using DATA_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, const modbus::DataSt& data)>;
+    using DATA_CALLBACK =
+        std::function<void(const std::chrono::steady_clock::time_point& ntp, const std::shared_ptr<modbus::DataSt>& data)>;
 
     /**
      * @brief 超时数据回调
@@ -43,9 +44,10 @@ public:
 public:
     /**
      * @brief 构造函数
+     * @param isMaster 主站还是从站, true-主站, false-从站
      * @param cfg 配置
      */
-    ModbusRtuParser(ModbusRtuConfig cfg = ModbusRtuConfig());
+    ModbusRtuParser(bool isMaster, ModbusRtuConfig cfg = ModbusRtuConfig());
 
     /**
      * @brief 获取应用层协议
@@ -120,6 +122,7 @@ private:
     uint16_t generateTransactionId();
 
 private:
+    const bool m_isMaster; /* 主站还是从站, true-主站, false-从站 */
     const ModbusRtuConfig m_cfg; /* 配置 */
     DATA_CALLBACK m_dataCallback = nullptr; /* 数据回调 */
     TIMEOUT_DATA_CALLBACK m_timeoutDataCallback = nullptr; /* 超时数据回调 */
