@@ -40,7 +40,7 @@ public:
 
     /**
       * @brief 使用队列个数上限为参数的构造函数
-      * @param maxCount 队列个数上限, 0-表示不限制
+      * @param maxCount 队列个数上限, 0-表示不限制(默认)
       */
     SafeQueue(size_t maxCount = 0) : m_maxCount(maxCount) {}
 
@@ -57,19 +57,23 @@ public:
     /**
       * @brief 入队列
       * @param value 值
-      * @param wait 队列已满的情况下, 是否等待(选填): true-等待, false-丢弃
-      * @return true-成功, false-失败
+      * @param flag 队列已满的情况下, 操作模式(选填): 0-等待(默认), 1-丢弃最早, 2-丢弃当前
+      * @return true-成功, false-失败(值未入队列)
       */
-    bool push(const T& value, bool wait = true)
+    bool push(const T& value, int flag = 0)
     {
         std::unique_lock<std::mutex> locker(m_mutex);
         if (m_maxCount > 0 && m_list.size() >= m_maxCount)
         {
-            if (wait) /* 等待 */
+            if (0 == flag) /* 等待 */
             {
                 m_cv.wait(locker, [this]() { return m_list.size() < m_maxCount; });
             }
-            else /* 丢弃 */
+            else if (1 == flag) /* 丢弃最早 */
+            {
+                m_list.pop_front();
+            }
+            else /* (2 == flag)丢弃当前 */
             {
                 return false;
             }
