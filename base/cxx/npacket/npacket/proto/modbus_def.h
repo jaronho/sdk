@@ -563,13 +563,15 @@ struct ExceptionResponse : public FuncDataSt
  */
 struct DataSt
 {
+    std::vector<uint8_t> rawData; /* 原始数据 */
     uint16_t transactionId = 0; /* 事务ID(TCP)或自增ID(RTU) */
     uint8_t slaveAddress = 0; /* 从站地址 */
     bool isBroadcast = false; /* 是否为广播地址(RTU地址0) */
     FunctionCode funcCode; /* 功能码 */
-    std::vector<uint8_t> data; /* 数据 */
+    uint32_t bizDataLen = 0; /* 业务数据长度 */
+    const uint8_t* bizData = nullptr; /* 业务数据(指向rawData内存中对应的区域) */
     bool isException = false; /* 是否为异常响应 */
-    std::shared_ptr<FuncDataSt> funcData = nullptr; /* 功能码数据 */
+    std::shared_ptr<FuncDataSt> funcData = nullptr; /* 功能码数据(根据bizData解析出的有意义数据) */
 };
 
 /**
