@@ -114,9 +114,16 @@ public:
      * @brief 记录日志内容
      * @param content 日志内容
      * @param newline 是否换行
+     * @param immediateFlush 是否立即刷新
      * @return 操作结果
      */
-    Logfile::Result record(const std::string& content, bool newline = true);
+    Logfile::Result record(const std::string& content, bool newline = true, bool immediateFlush = true);
+
+    /**
+     * @brief 强制刷新日志内容
+     * @return true-成功, false-失败
+     */
+    bool forceFlush();
 
 private:
     /**

@@ -90,6 +90,18 @@ public:
     void setLevelFile(int level, int fileType = -1);
 
     /**
+     * @brief 获取刷新等级
+     * @return 取刷新等级
+     */
+    int getFlushLevel() const;
+
+    /**
+     * @brief 设置取刷新等级
+     * @param level 取刷新等级
+     */
+    void setFlushLevel(int level);
+
+    /**
      * @brief 获取控制台日志输出模式
      * @return 0-不输出, 1-普通输出, 2-带样式输出
      */
@@ -107,6 +119,11 @@ public:
     void warn(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
     void error(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
     void fatal(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
+
+    /**
+     * @brief 强制刷新日志内容
+     */
+    void forceFlush();
 
 private:
     std::string m_tag; /* 标签 */

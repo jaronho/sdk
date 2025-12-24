@@ -134,6 +134,7 @@ InnerLoggerImpl::InnerLoggerImpl(const LogConfig& cfg) : InnerLogger(cfg.path, c
         std::lock_guard<std::mutex> locker(m_mutexLevelFile);
         m_levelFile = cfg.levelFile;
     }
+    m_flushLevel = cfg.flushLevel;
     m_consoleMode = cfg.consoleMode;
 }
 
@@ -244,6 +245,16 @@ void InnerLoggerImpl::setLevelFile(int level, int fileType)
     }
 }
 
+int InnerLoggerImpl::getFlushLevel()
+{
+    return m_flushLevel;
+}
+
+void InnerLoggerImpl::setFlushLevel(int level)
+{
+    m_flushLevel = level;
+}
+
 int InnerLoggerImpl::getConsoleMode()
 {
     return m_consoleMode;
@@ -293,7 +304,8 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
         auto dailyLog = getDailyLog(level);
         if (dailyLog)
         {
-            dailyLog->record(content, true);
+            bool immediateFlush = (level >= m_flushLevel);
+            dailyLog->record(content, true, immediateFlush);
         }
         /* 打印到控制台 */
         if (1 == m_consoleMode)
@@ -304,6 +316,38 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
         {
             fmt::print(getLevelTextStyle(level), "{}\n", content);
         }
+    }
+}
+
+void InnerLoggerImpl::forceFlush()
+{
+    if (m_dailyLog)
+    {
+        m_dailyLog->forceFlush();
+    }
+    if (m_dailyLogTrace)
+    {
+        m_dailyLogTrace->forceFlush();
+    }
+    if (m_dailyLogDebug)
+    {
+        m_dailyLogDebug->forceFlush();
+    }
+    if (m_dailyLogInfo)
+    {
+        m_dailyLogInfo->forceFlush();
+    }
+    if (m_dailyLogWarn)
+    {
+        m_dailyLogWarn->forceFlush();
+    }
+    if (m_dailyLogError)
+    {
+        m_dailyLogError->forceFlush();
+    }
+    if (m_dailyLogFatal)
+    {
+        m_dailyLogFatal->forceFlush();
     }
 }
 

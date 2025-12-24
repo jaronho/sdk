@@ -75,6 +75,18 @@ public:
     void setLevelFile(int level, int fileType = -1) override;
 
     /**
+     * @brief 获取刷新等级
+     * @return 取刷新等级
+     */
+    int getFlushLevel() override;
+
+    /**
+     * @brief 设置取刷新等级
+     * @param level 取刷新等级
+     */
+    void setFlushLevel(int level) override;
+
+    /**
      * @brief 获取控制台日志输出模式
      * @return 0-不输出, 1-普通输出, 2-带样式输出
      */
@@ -98,6 +110,11 @@ public:
     void print(int level, const std::string& tag, const std::string& file, int line, const std::string& func,
                const std::string& msg) override;
 
+    /**
+     * @brief 强制刷新日志内容
+     */
+    void forceFlush() override;
+
 private:
     /**
      * @brief 获取每天日志文件
@@ -119,6 +136,7 @@ private:
     std::atomic_int m_level = {LEVEL_TRACE}; /* 日志等级 */
     std::mutex m_mutexLevelFile;
     std::unordered_map<int, int> m_levelFile; /* 等级文件类型, key-日志等级, value-文件类型(同等级类型, 若不在范围内表示写入到通用文件) */
+    std::atomic_int m_flushLevel = {LEVEL_TRACE}; /* 刷新等级(当日志等级大等于刷新等级时, 日志写入后立即刷新) */
     std::atomic_int m_consoleMode = {0}; /* 控制台日志输出模式: 0-不输出, 1-普通输出, 2-带样式输出 */
 };
 

@@ -115,18 +115,24 @@ void RotatingLogfile::setMaxFiles(size_t maxFiles)
     m_maxFiles = maxFiles;
 }
 
-Logfile::Result RotatingLogfile::record(const std::string& content, bool newline)
+Logfile::Result RotatingLogfile::record(const std::string& content, bool newline, bool immediateFlush)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    Logfile::Result ret = m_logfile->record(content, newline);
+    Logfile::Result ret = m_logfile->record(content, newline, immediateFlush);
     if (Logfile::Result::will_full == ret)
     {
         if (rotateFileList())
         {
-            return m_logfile->record(content, newline);
+            return m_logfile->record(content, newline, immediateFlush);
         }
     }
     return ret;
+}
+
+bool RotatingLogfile::forceFlush()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_logfile->forceFlush();
 }
 
 void RotatingLogfile::traverseFile(std::string path, std::function<void(const std::string& fullName)> callback)

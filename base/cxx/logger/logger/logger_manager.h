@@ -165,6 +165,20 @@ public:
     static void setLevelFile(int level, int fileType = -1, const std::string& loggerName = std::string());
 
     /**
+     * @brief 获取刷新等级
+     * @param loggerName 日志记录器名称(选填)
+     * @return 刷新等级
+     */
+    static int getFlushLevel(const std::string& loggerName = std::string());
+
+    /**
+     * @brief 设置刷新等级
+     * @param level 刷新等级
+     * @param loggerName 日志记录器名称(选填)
+     */
+    static void setFlushLevel(int level, const std::string& loggerName = std::string());
+
+    /**
      * @brief 获取控制台日志输出模式
      * @param loggerName 日志记录器名称(选填)
      * @return 0-不输出, 1-普通输出, 2-带样式输出
@@ -177,6 +191,12 @@ public:
      * @param loggerName 日志记录器名称(选填)
      */
     static void setConsoleMode(int mode, const std::string& loggerName = std::string());
+
+    /**
+     * @brief 强制刷新日志内容
+     * @param loggerName 日志记录器名称(选填)
+     */
+    static void forceFlush(const std::string& loggerName = std::string());
 
 private:
     /**

@@ -84,6 +84,18 @@ public:
     virtual void setLevelFile(int level, int fileType = -1) = 0;
 
     /**
+     * @brief 获取刷新等级
+     * @return 取刷新等级
+     */
+    virtual int getFlushLevel() = 0;
+
+    /**
+     * @brief 设置取刷新等级
+     * @param level 取刷新等级
+     */
+    virtual void setFlushLevel(int level) = 0;
+
+    /**
      * @brief 获取控制台日志输出模式
      * @return 0-不输出, 1-普通输出, 2-带样式输出
      */
@@ -106,6 +118,11 @@ public:
      */
     virtual void print(int level, const std::string& tag, const std::string& file, int line, const std::string& func,
                        const std::string& msg) = 0;
+
+    /**
+     * @brief 强制刷新日志内容
+     */
+    virtual void forceFlush() = 0;
 
 private:
     const std::string m_path; /* 日志路径 */

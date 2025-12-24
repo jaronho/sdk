@@ -55,36 +55,50 @@ void DailyLogfile::setMaxFiles(size_t maxFiles)
     }
 }
 
-Logfile::Result DailyLogfile::record(const std::string& content, bool newline)
+Logfile::Result DailyLogfile::record(const std::string& content, bool newline, bool immediateFlush)
 {
-    struct tm t;
     time_t now;
     time(&now);
-#ifdef _WIN32
-    localtime_s(&t, &now);
-#else
-    t = *localtime(&now);
-#endif
-    char dateStr[12] = {0};
-    strftime(dateStr, sizeof(dateStr), "%Y%m%d", &t);
-    std::lock_guard<std::mutex> locker(m_mutex);
-    std::string baseName = m_prefixName + dateStr + m_suffixName;
-    if (!m_rotatingLogfile || 0 != baseName.compare(m_baseName))
+    time_t today = (now / 86400); /* 将时间转换为天数整数 */
+    if (today != m_today.load(std::memory_order_relaxed)) /* 优先原子判断(避免格式化时间字符串, 避免加锁, 提升性能) */
     {
-        std::string path = m_path;
-        if (m_createDailyFolder)
+        std::lock_guard<std::mutex> locker(m_mutex);
+        if (today != m_today.load(std::memory_order_relaxed)) /* 双重检查(防止多线程重复重建) */
         {
-            memset(dateStr, 0, sizeof(dateStr));
-            strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", &t);
+            struct tm t;
 #ifdef _WIN32
-            path.append("\\").append(dateStr);
+            localtime_s(&t, &now);
 #else
-            path.append("/").append(dateStr);
+            t = *localtime(&now);
 #endif
+            char dateStr[12] = {0};
+            strftime(dateStr, sizeof(dateStr), "%Y%m%d", &t);
+            m_baseName = m_prefixName + dateStr + m_suffixName;
+            std::string path = m_path;
+            if (m_createDailyFolder)
+            {
+                memset(dateStr, 0, sizeof(dateStr));
+                strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", &t);
+#ifdef _WIN32
+                path.append("\\").append(dateStr);
+#else
+                path.append("/").append(dateStr);
+#endif
+            }
+            m_rotatingLogfile = std::make_shared<RotatingLogfile>(path, m_baseName, m_extName, m_maxSize, m_maxFiles, m_indexFixed);
+            m_rotatingLogfile->open();
+            m_today.store(today, std::memory_order_release);
         }
-        m_baseName = baseName;
-        m_rotatingLogfile = std::make_shared<RotatingLogfile>(path, baseName, m_extName, m_maxSize, m_maxFiles, m_indexFixed);
-        m_rotatingLogfile->open();
     }
-    return m_rotatingLogfile->record(content, newline);
+    return m_rotatingLogfile->record(content, newline, immediateFlush);
+}
+
+bool DailyLogfile::forceFlush()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_rotatingLogfile)
+    {
+        return m_rotatingLogfile->forceFlush();
+    }
+    return false;
 }

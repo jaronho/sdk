@@ -149,6 +149,7 @@ void Logfile::close()
         m_f = nullptr;
     }
     m_size = 0;
+    m_flushed = true;
 }
 
 std::string Logfile::getPath() const
@@ -217,7 +218,7 @@ void Logfile::clear()
     }
 }
 
-Logfile::Result Logfile::record(const std::string& content, bool newline)
+Logfile::Result Logfile::record(const std::string& content, bool newline, bool immediateFlush)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     if (!m_f)
@@ -261,9 +262,10 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
             return Result::content_failed;
         }
         m_size = m_size + contentSize;
+        m_flushed = false;
         needFlush = true;
     }
-    if (needFlush)
+    if (needFlush && immediateFlush)
     {
         if (0 != fflush(m_f))
         {
@@ -271,6 +273,21 @@ Logfile::Result Logfile::record(const std::string& content, bool newline)
             m_f = nullptr;
             return Result::flush_failed;
         }
+        m_flushed = true;
     }
     return Result::ok;
+}
+
+bool Logfile::forceFlush()
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_f)
+    {
+        if (m_flushed || 0 == fflush(m_f))
+        {
+            m_flushed = true;
+            return true;
+        }
+    }
+    return false;
 }

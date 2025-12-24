@@ -187,6 +187,39 @@ void LoggerManager::setLevelFile(int level, int fileType, const std::string& log
     }
 }
 
+int LoggerManager::getFlushLevel(const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    auto name = loggerName.empty() ? m_logCfg.name : loggerName;
+    auto iter = m_loggerMap.find(name);
+    if (m_loggerMap.end() == iter)
+    {
+        return m_logCfg.flushLevel;
+    }
+    return iter->second->getFlushLevel();
+}
+
+void LoggerManager::setFlushLevel(int level, const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    level = level < 0 ? m_logCfg.flushLevel : level;
+    if (loggerName.empty())
+    {
+        for (auto iter = m_loggerMap.begin(); m_loggerMap.end() != iter; ++iter)
+        {
+            iter->second->setFlushLevel(level);
+        }
+    }
+    else
+    {
+        auto iter = m_loggerMap.find(loggerName);
+        if (m_loggerMap.end() != iter)
+        {
+            iter->second->setFlushLevel(level);
+        }
+    }
+}
+
 int LoggerManager::getConsoleMode(const std::string& loggerName)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
@@ -215,6 +248,26 @@ void LoggerManager::setConsoleMode(int mode, const std::string& loggerName)
         if (m_loggerMap.end() != iter)
         {
             iter->second->setConsoleMode(mode);
+        }
+    }
+}
+
+void LoggerManager::forceFlush(const std::string& loggerName)
+{
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (loggerName.empty())
+    {
+        for (auto iter = m_loggerMap.begin(); m_loggerMap.end() != iter; ++iter)
+        {
+            iter->second->forceFlush();
+        }
+    }
+    else
+    {
+        auto iter = m_loggerMap.find(loggerName);
+        if (m_loggerMap.end() != iter)
+        {
+            iter->second->forceFlush();
         }
     }
 }

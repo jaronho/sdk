@@ -95,6 +95,23 @@ void Logger::setLevelFile(int level, int fileType)
     }
 }
 
+int Logger::getFlushLevel() const
+{
+    if (m_inner)
+    {
+        return m_inner->getFlushLevel();
+    }
+    return -1;
+}
+
+void Logger::setFlushLevel(int level)
+{
+    if (m_inner)
+    {
+        m_inner->setFlushLevel(level);
+    }
+}
+
 int Logger::getConsoleMode() const
 {
     if (m_inner)
@@ -157,6 +174,14 @@ void Logger::fatal(const std::string& file, int line, const std::string& func, c
     if (m_inner)
     {
         m_inner->print(LEVEL_FATAL, m_tag, file, line, func, msg);
+    }
+}
+
+void Logger::forceFlush()
+{
+    if (m_inner)
+    {
+        m_inner->forceFlush();
     }
 }
 } // namespace logger

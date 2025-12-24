@@ -122,9 +122,16 @@ public:
      * @brief 记录日志内容
      * @param content 日志内容
      * @param newline 是否换行
+     * @param immediateFlush 是否立即刷新
      * @return 操作结果
      */
-    Result record(const std::string& content, bool newline = true);
+    Result record(const std::string& content, bool newline = true, bool immediateFlush = true);
+
+    /**
+     * @brief 强制刷新日志内容
+     * @return true-成功, false-失败
+     */
+    bool forceFlush();
 
 private:
     std::string m_path; /* 日志文件路径 */
@@ -134,5 +141,6 @@ private:
     std::mutex m_mutex; /* 互斥锁 */
     FILE* m_f = nullptr; /* 文件指针 */
     std::atomic<size_t> m_size = {0}; /* 文件当前大小 */
+    std::atomic_bool m_flushed = {true}; /* 写入的日志是否已刷新 */
     std::atomic_bool m_enable = {true}; /* 是否启用日志记录功能 */
 };

@@ -56,6 +56,7 @@ struct LogConfig
     std::string fileExtName = ".log"; /* (选填)日志文件扩展名, 默认: ".log" */
     int level = LEVEL_TRACE; /* (选填)日志等级, 默认: LEVEL_TRACE */
     std::unordered_map<int, int> levelFile; /* 等级文件类型, key-日志等级, value-文件类型(同等级类型, 若不在范围内表示写入到通用文件) */
+    int flushLevel = LEVEL_TRACE; /* (选填)刷新等级(当日志等级大等于刷新等级时, 日志写入后立即刷新), 默认: LEVEL_TRACE */
     size_t fileMaxSize = (20 * 1024 * 1024); /* (选填)每个日志文件最大长度(字节), 默认: 20M = 20 * 1024 * 1024 */
     size_t fileMaxCount = 0; /* (选填)每天允许最多的日志文件数, 默认: 0-表示不限制 */
     bool fileIndexFixed = false; /* 文件数最大时, 索引值固定还是递增, 默认: false-递增 */
