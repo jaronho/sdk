@@ -17,6 +17,7 @@ int main()
                      {logger::LEVEL_INFO, logger::LEVEL_INFO},   {logger::LEVEL_WARN, logger::LEVEL_WARN},
                      {logger::LEVEL_ERROR, logger::LEVEL_ERROR},  {logger::LEVEL_FATAL, logger::LEVEL_FATAL}};
 #endif
+    cfg.flushLevel = logger::LEVEL_INFO;
     cfg.fileMaxSize = 20 * 1024 * 1024;
     cfg.fileMaxCount = 5;
     cfg.fileIndexFixed = true;
@@ -81,4 +82,5 @@ int main()
     float numFloat = 345.152723f;
     INFO_LOG(g_logger, "numInt === {} === {:04d} === {:x} === {:X}", numInt, numInt, numInt, numInt);
     INFO_LOG(g_logger, "numFloat === {} === {:.1f} === {:.2f} === {:.3f}", numFloat, numFloat, numFloat, numFloat);
+    logger::LoggerManager::forceFlush();
 }
