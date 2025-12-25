@@ -57,28 +57,27 @@ void DailyLogfile::setMaxFiles(size_t maxFiles)
 
 Logfile::Result DailyLogfile::record(const std::string& content, bool newline, bool immediateFlush)
 {
-    time_t now;
-    time(&now);
-    time_t today = (now / 86400); /* 将时间转换为天数整数 */
+    time_t now = time(nullptr);
+    struct tm localTm;
+#ifdef _WIN32
+    localtime_s(&localTm, &now);
+#else
+    localTm = *localtime(&now);
+#endif
+    auto today = (localTm.tm_year + 1900) * 10000 + (localTm.tm_mon + 1) * 100 + localTm.tm_mday; /* 用本地时间的年月日组合作为天数标识 */
     if (today != m_today.load(std::memory_order_relaxed)) /* 优先原子判断(避免格式化时间字符串, 避免加锁, 提升性能) */
     {
         std::lock_guard<std::mutex> locker(m_mutex);
         if (today != m_today.load(std::memory_order_relaxed)) /* 双重检查(防止多线程重复重建) */
         {
-            struct tm t;
-#ifdef _WIN32
-            localtime_s(&t, &now);
-#else
-            t = *localtime(&now);
-#endif
             char dateStr[12] = {0};
-            strftime(dateStr, sizeof(dateStr), "%Y%m%d", &t);
+            strftime(dateStr, sizeof(dateStr), "%Y%m%d", &localTm);
             m_baseName = m_prefixName + dateStr + m_suffixName;
             std::string path = m_path;
             if (m_createDailyFolder)
             {
                 memset(dateStr, 0, sizeof(dateStr));
-                strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", &t);
+                strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", &localTm);
 #ifdef _WIN32
                 path.append("\\").append(dateStr);
 #else
