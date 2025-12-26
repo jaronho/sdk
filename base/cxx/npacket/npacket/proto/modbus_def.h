@@ -563,15 +563,17 @@ struct ExceptionResponse : public FuncDataSt
  */
 struct DataSt
 {
-    std::vector<uint8_t> rawData; /* 原始数据 */
     uint16_t transactionId = 0; /* 事务ID(TCP)或自增ID(RTU) */
     uint8_t slaveAddress = 0; /* 从站地址 */
     bool isBroadcast = false; /* 是否为广播地址(RTU地址0) */
     FunctionCode funcCode; /* 功能码 */
-    uint32_t bizDataLen = 0; /* 业务数据长度 */
-    const uint8_t* bizData = nullptr; /* 业务数据(指向rawData内存中对应的区域) */
+    bool isRequest = false; /* 是否请求包, true-主站请求包, false-从站响应包 */
     bool isException = false; /* 是否为异常响应 */
-    std::shared_ptr<FuncDataSt> funcData = nullptr; /* 功能码数据(根据bizData解析出的有意义数据) */
+    uint32_t bizDataLen = 0; /* 业务数据长度 */
+    const uint8_t* rawData = nullptr; /* 原始数据 */
+    uint32_t rawDataLen = 0; /* 原始数据长度 */
+    uint32_t funcDataOffset = 0; /* 功能数据偏移(基于rawData的偏移), 0表示没有功能数据 */
+    uint32_t funcDataLen = 0; /* 功能数据长度, 0表示没有功能数据 */
 };
 
 /**
@@ -662,235 +664,246 @@ inline bool isValidFunctionCode(uint8_t funcCode)
 }
 
 /**
- * @brief 解析功能码的对应数据
+ * @brief 解析功能数据(转为可直接阅读的有意义的数据类型)
  * @param funcCode 功能码
  * @param isRequest 是否请求数据包
- * @param data 数据
- * @param dataLen 数据长度
- * @return 对应功能码的数据
+ * @param isException 是否异常
+ * @param funcData 功能数据
+ * @param funcDataLen 功能数据长度
+ * @return 功能数据
  */
-inline std::shared_ptr<FuncDataSt> parseFuncData(FunctionCode funcCode, bool isRequest, const uint8_t* data, uint32_t dataLen)
+static std::shared_ptr<FuncDataSt> parseFuncData(FunctionCode funcCode, bool isRequest, bool isException, const uint8_t* funcData,
+                                                 uint32_t funcDataLen)
 {
-    std::shared_ptr<FuncDataSt> funcData = nullptr;
+    if (!funcData || 0 == funcDataLen)
+    {
+        return nullptr;
+    }
+    if (isException)
+    {
+        auto resp = std::make_shared<modbus::ExceptionResponse>();
+        resp->code = (modbus::ExceptionCode)(funcData[0]);
+        return resp;
+    }
     switch (funcCode)
     {
     case FunctionCode::READ_COILS:
-        if (isRequest && 4 == dataLen) /* 请求 */
+        if (isRequest && 4 == funcDataLen) /* 请求 */
         {
             auto req = std::make_shared<ReadCoilsRequest>();
-            req->startAddress = (data[0] << 8) | data[1];
-            req->quantity = (data[2] << 8) | data[3];
-            funcData = req;
+            req->startAddress = (funcData[0] << 8) | funcData[1];
+            req->quantity = (funcData[2] << 8) | funcData[3];
+            return req;
         }
-        else if (!isRequest && dataLen >= 1) /* 响应 */
+        else if (!isRequest && funcDataLen >= 1) /* 响应 */
         {
             auto resp = std::make_shared<ReadCoilsResponse>();
-            resp->byteCount = data[0];
-            resp->status = (dataLen > 1) ? (data + 1) : nullptr;
-            funcData = resp;
+            resp->byteCount = funcData[0];
+            resp->status = (funcDataLen > 1) ? (funcData + 1) : nullptr;
+            return resp;
         }
         break;
     case FunctionCode::READ_DISCRETE_INPUTS:
-        if (isRequest && 4 == dataLen) /* 请求 */
+        if (isRequest && 4 == funcDataLen) /* 请求 */
         {
             auto req = std::make_shared<ReadDiscreteInputsRequest>();
-            req->startAddress = (data[0] << 8) | data[1];
-            req->quantity = (data[2] << 8) | data[3];
-            funcData = req;
+            req->startAddress = (funcData[0] << 8) | funcData[1];
+            req->quantity = (funcData[2] << 8) | funcData[3];
+            return req;
         }
-        else if (!isRequest && dataLen >= 1) /* 响应 */
+        else if (!isRequest && funcDataLen >= 1) /* 响应 */
         {
             auto resp = std::make_shared<ReadDiscreteInputsResponse>();
-            resp->byteCount = data[0];
-            resp->status = (dataLen > 1) ? (data + 1) : nullptr;
-            funcData = resp;
+            resp->byteCount = funcData[0];
+            resp->status = (funcDataLen > 1) ? (funcData + 1) : nullptr;
+            return resp;
         }
         break;
     case FunctionCode::READ_HOLDING_REGISTERS:
-        if (isRequest && 4 == dataLen) /* 请求 */
+        if (isRequest && 4 == funcDataLen) /* 请求 */
         {
             auto req = std::make_shared<ReadHoldingRegistersRequest>();
-            req->startAddress = (data[0] << 8) | data[1];
-            req->quantity = (data[2] << 8) | data[3];
-            funcData = req;
+            req->startAddress = (funcData[0] << 8) | funcData[1];
+            req->quantity = (funcData[2] << 8) | funcData[3];
+            return req;
         }
-        else if (!isRequest && dataLen >= 1) /* 响应 */
+        else if (!isRequest && funcDataLen >= 1) /* 响应 */
         {
             auto resp = std::make_shared<ReadHoldingRegistersResponse>();
-            resp->byteCount = data[0];
-            resp->values = (const uint16_t*)(data + 1);
-            funcData = resp;
+            resp->byteCount = funcData[0];
+            resp->values = (const uint16_t*)(funcData + 1);
+            return resp;
         }
         break;
     case FunctionCode::READ_INPUT_REGISTERS:
-        if (isRequest && 4 == dataLen) /* 请求 */
+        if (isRequest && 4 == funcDataLen) /* 请求 */
         {
             auto req = std::make_shared<ReadInputRegistersRequest>();
-            req->startAddress = (data[0] << 8) | data[1];
-            req->quantity = (data[2] << 8) | data[3];
-            funcData = req;
+            req->startAddress = (funcData[0] << 8) | funcData[1];
+            req->quantity = (funcData[2] << 8) | funcData[3];
+            return req;
         }
-        else if (!isRequest && dataLen >= 1) /* 响应 */
+        else if (!isRequest && funcDataLen >= 1) /* 响应 */
         {
             auto resp = std::make_shared<ReadInputRegistersResponse>();
-            resp->byteCount = data[0];
-            resp->values = (const uint16_t*)(data + 1);
-            funcData = resp;
+            resp->byteCount = funcData[0];
+            resp->values = (const uint16_t*)(funcData + 1);
+            return resp;
         }
         break;
     case FunctionCode::WRITE_SINGLE_COIL:
-        if (dataLen >= 4)
+        if (funcDataLen >= 4)
         {
-            uint16_t addr = (data[0] << 8) | data[1];
-            uint16_t val = (data[2] << 8) | data[3];
+            uint16_t addr = (funcData[0] << 8) | funcData[1];
+            uint16_t val = (funcData[2] << 8) | funcData[3];
             bool isOn = (0xFF00 == val);
             if (isRequest) /* 请求 */
             {
                 auto req = std::make_shared<WriteSingleCoilRequest>();
                 req->address = addr;
                 req->value = isOn;
-                funcData = req;
+                return req;
             }
             else /* 响应 */
             {
                 auto resp = std::make_shared<WriteSingleCoilResponse>();
                 resp->address = addr;
                 resp->value = isOn;
-                funcData = resp;
+                return resp;
             }
         }
         break;
     case FunctionCode::WRITE_SINGLE_REGISTER:
-        if (dataLen >= 4)
+        if (funcDataLen >= 4)
         {
-            uint16_t addr = (data[0] << 8) | data[1];
-            uint16_t val = (data[2] << 8) | data[3];
+            uint16_t addr = (funcData[0] << 8) | funcData[1];
+            uint16_t val = (funcData[2] << 8) | funcData[3];
             if (isRequest) /* 请求 */
             {
                 auto req = std::make_shared<WriteSingleRegisterRequest>();
                 req->address = addr;
                 req->value = val;
-                funcData = req;
+                return req;
             }
             else /* 响应 */
             {
                 auto resp = std::make_shared<WriteSingleRegisterResponse>();
                 resp->address = addr;
                 resp->value = val;
-                funcData = resp;
+                return resp;
             }
         }
         break;
     case FunctionCode::READ_EXCEPTION_STATUS:
-        if (!isRequest && 1 == dataLen) /* 响应 */
+        if (!isRequest && 1 == funcDataLen) /* 响应 */
         {
             auto resp = std::make_shared<ReadExceptionStatusResponse>();
-            resp->outputData = data[0];
-            funcData = resp;
+            resp->outputData = funcData[0];
+            return resp;
         }
         break;
     case FunctionCode::DIAGNOSTICS:
-        if (dataLen >= 4)
+        if (funcDataLen >= 4)
         {
-            uint16_t subFunc = (data[0] << 8) | data[1];
-            uint16_t dataTmp = (data[2] << 8) | data[3];
+            uint16_t subFunc = (funcData[0] << 8) | funcData[1];
+            uint16_t dataTmp = (funcData[2] << 8) | funcData[3];
             if (isRequest) /* 请求 */
             {
                 auto req = std::make_shared<DiagnosticsRequest>();
                 req->subFunc = subFunc;
                 req->data = dataTmp;
-                funcData = req;
+                return req;
             }
             else /* 响应 */
             {
                 auto resp = std::make_shared<DiagnosticsResponse>();
                 resp->subFunc = subFunc;
                 resp->data = dataTmp;
-                funcData = resp;
+                return resp;
             }
         }
         break;
     case FunctionCode::GET_COM_EVENT_COUNTER:
-        if (!isRequest && 4 == dataLen) /* 响应 */
+        if (!isRequest && 4 == funcDataLen) /* 响应 */
         {
             auto resp = std::make_shared<GetComEventCounterResponse>();
-            resp->status = (data[0] << 8) | data[1];
-            resp->eventCount = (data[2] << 8) | data[3];
-            funcData = resp;
+            resp->status = (funcData[0] << 8) | funcData[1];
+            resp->eventCount = (funcData[2] << 8) | funcData[3];
+            return resp;
         }
         break;
     case FunctionCode::GET_COM_EVENT_LOG:
-        if (!isRequest && dataLen >= 6) /* 响应 */
+        if (!isRequest && funcDataLen >= 6) /* 响应 */
         {
             auto resp = std::make_shared<GetComEventLogResponse>();
-            resp->status = (data[0] << 8) | data[1];
-            resp->eventCount = (data[2] << 8) | data[3];
-            resp->messageCount = (data[4] << 8) | data[5];
-            resp->events = (dataLen > 6) ? (data + 6) : nullptr;
-            resp->eventsLen = (dataLen > 6) ? (dataLen - 6) : 0;
-            funcData = resp;
+            resp->status = (funcData[0] << 8) | funcData[1];
+            resp->eventCount = (funcData[2] << 8) | funcData[3];
+            resp->messageCount = (funcData[4] << 8) | funcData[5];
+            resp->events = (funcDataLen > 6) ? (funcData + 6) : nullptr;
+            resp->eventsLen = (funcDataLen > 6) ? (funcDataLen - 6) : 0;
+            return resp;
         }
         break;
     case FunctionCode::REPORT_SERVER_ID:
-        if (!isRequest && dataLen >= 2) /* 响应 */
+        if (!isRequest && funcDataLen >= 2) /* 响应 */
         {
             auto resp = std::make_shared<ReportServerIdResponse>();
-            resp->serverId = data[0];
-            resp->runStatusIndicator = data[1];
-            resp->additionalData = (dataLen > 2) ? (data + 2) : nullptr;
-            resp->additionalDataLen = (dataLen > 2) ? (dataLen - 2) : 0;
-            funcData = resp;
+            resp->serverId = funcData[0];
+            resp->runStatusIndicator = funcData[1];
+            resp->additionalData = (funcDataLen > 2) ? (funcData + 2) : nullptr;
+            resp->additionalDataLen = (funcDataLen > 2) ? (funcDataLen - 2) : 0;
+            return resp;
         }
         break;
     case FunctionCode::WRITE_MULTIPLE_COILS:
-        if (isRequest && dataLen >= 5) /* 请求 */
+        if (isRequest && funcDataLen >= 5) /* 请求 */
         {
             auto req = std::make_shared<WriteMultipleCoilsRequest>();
-            req->startAddress = (data[0] << 8) | data[1];
-            req->quantity = (data[2] << 8) | data[3];
-            req->byteCount = data[4];
-            req->data = data + 5;
-            funcData = req;
+            req->startAddress = (funcData[0] << 8) | funcData[1];
+            req->quantity = (funcData[2] << 8) | funcData[3];
+            req->byteCount = funcData[4];
+            req->data = funcData + 5;
+            return req;
         }
-        else if (!isRequest && 4 == dataLen) /* 响应 */
+        else if (!isRequest && 4 == funcDataLen) /* 响应 */
         {
             auto resp = std::make_shared<WriteMultipleCoilsResponse>();
-            resp->startAddress = (data[0] << 8) | data[1];
-            resp->quantity = (data[2] << 8) | data[3];
-            funcData = resp;
+            resp->startAddress = (funcData[0] << 8) | funcData[1];
+            resp->quantity = (funcData[2] << 8) | funcData[3];
+            return resp;
         }
         break;
     case FunctionCode::WRITE_MULTIPLE_REGISTERS:
-        if (isRequest && dataLen >= 5) /* 请求 */
+        if (isRequest && funcDataLen >= 5) /* 请求 */
         {
             auto req = std::make_shared<WriteMultipleRegistersRequest>();
-            req->startAddress = (data[0] << 8) | data[1];
-            req->quantity = (data[2] << 8) | data[3];
-            req->byteCount = data[4];
-            req->data = data + 5;
-            funcData = req;
+            req->startAddress = (funcData[0] << 8) | funcData[1];
+            req->quantity = (funcData[2] << 8) | funcData[3];
+            req->byteCount = funcData[4];
+            req->data = funcData + 5;
+            return req;
         }
-        else if (!isRequest && 4 == dataLen) /* 响应 */
+        else if (!isRequest && 4 == funcDataLen) /* 响应 */
         {
             auto resp = std::make_shared<WriteMultipleRegistersResponse>();
-            resp->startAddress = (data[0] << 8) | data[1];
-            resp->quantity = (data[2] << 8) | data[3];
-            funcData = resp;
+            resp->startAddress = (funcData[0] << 8) | funcData[1];
+            resp->quantity = (funcData[2] << 8) | funcData[3];
+            return resp;
         }
         break;
     case FunctionCode::MASK_WRITE_REGISTER:
-        if (dataLen >= 6)
+        if (funcDataLen >= 6)
         {
-            uint16_t addr = (data[0] << 8) | data[1];
-            uint16_t andMask = (data[2] << 8) | data[3];
-            uint16_t orMask = (data[4] << 8) | data[5];
+            uint16_t addr = (funcData[0] << 8) | funcData[1];
+            uint16_t andMask = (funcData[2] << 8) | funcData[3];
+            uint16_t orMask = (funcData[4] << 8) | funcData[5];
             if (isRequest) /* 请求 */
             {
                 auto req = std::make_shared<MaskWriteRegisterRequest>();
                 req->address = addr;
                 req->andMask = andMask;
                 req->orMask = orMask;
-                funcData = req;
+                return req;
             }
             else /* 响应 */
             {
@@ -898,102 +911,117 @@ inline std::shared_ptr<FuncDataSt> parseFuncData(FunctionCode funcCode, bool isR
                 resp->address = addr;
                 resp->andMask = andMask;
                 resp->orMask = orMask;
-                funcData = resp;
+                return resp;
             }
         }
         break;
     case FunctionCode::READ_WRITE_MULTIPLE_REGISTERS:
-        if (isRequest && dataLen >= 9) /* 请求 */
+        if (isRequest && funcDataLen >= 9) /* 请求 */
         {
             auto req = std::make_shared<ReadWriteMultipleRegistersRequest>();
-            req->readStartAddress = (data[0] << 8) | data[1];
-            req->readQuantity = (data[2] << 8) | data[3];
-            req->writeStartAddress = (data[4] << 8) | data[5];
-            req->writeQuantity = (data[6] << 8) | data[7];
-            req->writeByteCount = data[8];
-            req->writeValues = (const uint16_t*)(data + 9);
-            funcData = req;
+            req->readStartAddress = (funcData[0] << 8) | funcData[1];
+            req->readQuantity = (funcData[2] << 8) | funcData[3];
+            req->writeStartAddress = (funcData[4] << 8) | funcData[5];
+            req->writeQuantity = (funcData[6] << 8) | funcData[7];
+            req->writeByteCount = funcData[8];
+            req->writeValues = (const uint16_t*)(funcData + 9);
+            return req;
         }
-        else if (!isRequest && dataLen >= 1) /* 响应 */
+        else if (!isRequest && funcDataLen >= 1) /* 响应 */
         {
             auto resp = std::make_shared<ReadWriteMultipleRegistersResponse>();
-            resp->readByteCount = data[0];
-            resp->readValues = (const uint16_t*)(data + 1);
-            funcData = resp;
+            resp->readByteCount = funcData[0];
+            resp->readValues = (const uint16_t*)(funcData + 1);
+            return resp;
         }
         break;
     case FunctionCode::READ_FIFO_QUEUE:
-        if (isRequest && 2 == dataLen) /* 请求 */
+        if (isRequest && 2 == funcDataLen) /* 请求 */
         {
             auto req = std::make_shared<ReadFifoQueueRequest>();
-            req->fifoPointerAddress = (data[0] << 8) | data[1];
-            funcData = req;
+            req->fifoPointerAddress = (funcData[0] << 8) | funcData[1];
+            return req;
         }
-        else if (!isRequest && dataLen >= 2) /* 响应 */
+        else if (!isRequest && funcDataLen >= 2) /* 响应 */
         {
             auto resp = std::make_shared<ReadFifoQueueResponse>();
-            resp->fifoCount = (data[0] << 8) | data[1];
-            resp->fifoValues = (const uint16_t*)(data + 2);
-            funcData = resp;
+            resp->fifoCount = (funcData[0] << 8) | funcData[1];
+            resp->fifoValues = (const uint16_t*)(funcData + 2);
+            return resp;
         }
         break;
     case FunctionCode::READ_FILE_RECORD:
-        if (isRequest && dataLen >= 1) /* 请求 */
+        if (isRequest && funcDataLen >= 1) /* 请求 */
         {
             auto req = std::make_shared<ReadFileRecordRequest>();
-            req->byteCount = data[0];
-            req->subRequests = data + 1;
-            funcData = req;
+            req->byteCount = funcData[0];
+            req->subRequests = funcData + 1;
+            return req;
         }
-        else if (!isRequest && dataLen >= 2) /* 响应 */
+        else if (!isRequest && funcDataLen >= 2) /* 响应 */
         {
             auto resp = std::make_shared<ReadFileRecordResponse>();
-            resp->recordData = data;
-            resp->totalDataLen = dataLen;
-            funcData = resp;
+            resp->recordData = funcData;
+            resp->totalDataLen = funcDataLen;
+            return resp;
         }
         break;
     case FunctionCode::WRITE_FILE_RECORD:
-        if (isRequest && dataLen >= 7) /* 请求 */
+        if (isRequest && funcDataLen >= 7) /* 请求 */
         {
             auto req = std::make_shared<WriteFileRecordRequest>();
-            req->byteCount = data[0];
-            req->subRequests = data + 1;
-            funcData = req;
+            req->byteCount = funcData[0];
+            req->subRequests = funcData + 1;
+            return req;
         }
-        else if (!isRequest && dataLen >= 1) /* 响应, 响应数据是请求数据的镜像(Echo) */
+        else if (!isRequest && funcDataLen >= 1) /* 响应, 响应数据是请求数据的镜像(Echo) */
         {
             auto resp = std::make_shared<WriteFileRecordResponse>();
-            resp->byteCount = data[0];
-            resp->subRequests = data + 1;
-            funcData = resp;
+            resp->byteCount = funcData[0];
+            resp->subRequests = funcData + 1;
+            return resp;
         }
         break;
     case FunctionCode::READ_DEVICE_IDENTIFICATION:
-        if (isRequest && 3 == dataLen) /* 请求 */
+        if (isRequest && 3 == funcDataLen) /* 请求 */
         {
             auto req = std::make_shared<ReadDeviceIdentificationRequest>();
-            req->meiType = data[0];
-            req->readDevIdCode = data[1];
-            req->objectId = data[2];
-            funcData = req;
+            req->meiType = funcData[0];
+            req->readDevIdCode = funcData[1];
+            req->objectId = funcData[2];
+            return req;
         }
-        else if (!isRequest && dataLen >= 3) /* 响应 */
+        else if (!isRequest && funcDataLen >= 3) /* 响应 */
         {
             auto resp = std::make_shared<ReadDeviceIdentificationResponse>();
-            resp->meiType = data[0];
-            resp->conformityLevel = data[1] & 0x7F;
-            resp->moreFollows = 0 != (data[1] & 0x80);
-            resp->nextObjectId = data[2];
-            resp->objects = (dataLen > 3) ? (data + 3) : nullptr;
-            resp->objectsLen = (dataLen > 3) ? (dataLen - 3) : 0;
-            funcData = resp;
+            resp->meiType = funcData[0];
+            resp->conformityLevel = funcData[1] & 0x7F;
+            resp->moreFollows = 0 != (funcData[1] & 0x80);
+            resp->nextObjectId = funcData[2];
+            resp->objects = (funcDataLen > 3) ? (funcData + 3) : nullptr;
+            resp->objectsLen = (funcDataLen > 3) ? (funcDataLen - 3) : 0;
+            return resp;
         }
         break;
     default:
         break;
     }
-    return funcData;
+    return nullptr;
+}
+
+/**
+ * @brief 解析功能数据(转为可直接阅读的有意义的数据类型)
+ * @param data Modbus数据
+ * @return 功能数据
+ */
+static std::shared_ptr<FuncDataSt> parseFuncData(const DataSt& data)
+{
+    if (!data.rawData || 0 == data.rawDataLen || 0 == data.funcDataOffset || 0 == data.funcDataLen
+        || (data.funcDataOffset + data.funcDataLen) >= data.rawDataLen)
+    {
+        return nullptr;
+    }
+    return parseFuncData(data.funcCode, data.isRequest, data.isException, data.rawData + data.funcDataOffset, data.funcDataLen);
 }
 } // namespace modbus
 } // namespace npacket

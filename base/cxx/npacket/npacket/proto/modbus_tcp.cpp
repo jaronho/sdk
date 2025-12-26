@@ -75,26 +75,26 @@ ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& 
         }
     }
     auto d = std::make_shared<modbus::DataSt>();
-    d->rawData.insert(d->rawData.end(), payload, payload + modbus::MBAP_HEADER_LEN + mbap.length);
     d->transactionId = mbap.transactionId;
     d->slaveAddress = mbap.unitId;
     d->isBroadcast = false; /* TCP无广播概念 */
     d->funcCode = funcCode;
+    d->isRequest = isRequest;
+    d->isException = isException;
     if (isException)
     {
-        d->bizDataLen = 0;
-        d->bizData = nullptr;
-        auto resp = std::make_shared<modbus::ExceptionResponse>();
-        resp->code = (modbus::ExceptionCode)(pduStart[1]);
-        d->funcData = resp;
+        d->rawData = nullptr;
+        d->rawDataLen = 0;
+        d->funcDataOffset = 0;
+        d->funcDataLen = 0;
     }
     else
     {
-        d->bizDataLen = dataLen;
-        d->bizData = d->rawData.data() + mbapHeaderLen + 1;
-        d->funcData = parseFuncData(funcCode, isRequest, d->bizData, d->bizDataLen);
+        d->rawData = payload;
+        d->rawDataLen = modbus::MBAP_HEADER_LEN + mbap.length;
+        d->funcDataOffset = mbapHeaderLen + 1;
+        d->funcDataLen = dataLen;
     }
-    d->isException = isException;
     if (m_dataCallback)
     {
         m_dataCallback(ntp, totalLen, header, d);
