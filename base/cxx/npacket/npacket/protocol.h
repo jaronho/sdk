@@ -39,6 +39,14 @@ public:
      */
     virtual uint32_t getProtocol() const = 0;
 
+    /**
+     * @brief 重置对象状态(复用时需要)
+     */
+    virtual void reset()
+    {
+        parent.reset();
+    }
+
     std::shared_ptr<ProtocolHeader> parent = nullptr; /* 父层头部 */
 };
 
@@ -67,12 +75,24 @@ public:
     }
 
     /**
+     * @brief 重置对象状态
+     */
+    void reset() override
+    {
+        ProtocolHeader::reset();
+        headerLen = 0;
+        memset(dstMac, 0, sizeof(dstMac));
+        memset(srcMac, 0, sizeof(srcMac));
+        nextProtocol = 0;
+    }
+
+    /**
      * @brief 目标MAC地址字符串
      */
     std::string dstMacStr() const
     {
         char buf[18] = {0};
-        sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", dstMac[0], dstMac[1], dstMac[2], dstMac[3], dstMac[4], dstMac[5]);
+        snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", dstMac[0], dstMac[1], dstMac[2], dstMac[3], dstMac[4], dstMac[5]);
         return buf;
     }
 
@@ -82,13 +102,13 @@ public:
     std::string srcMacStr() const
     {
         char buf[18] = {0};
-        sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", srcMac[0], srcMac[1], srcMac[2], srcMac[3], srcMac[4], srcMac[5]);
+        snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", srcMac[0], srcMac[1], srcMac[2], srcMac[3], srcMac[4], srcMac[5]);
         return buf;
     }
 
     uint8_t headerLen = 0; /* 头部长度 */
-    uint8_t dstMac[6]; /* 目标MAC地址 */
-    uint8_t srcMac[6]; /* 源MAC地址 */
+    uint8_t dstMac[6] = {0}; /* 目标MAC地址 */
+    uint8_t srcMac[6] = {0}; /* 源MAC地址 */
     uint32_t nextProtocol = 0; /* 下一层协议类型 */
 };
 
@@ -117,12 +137,34 @@ public:
     }
 
     /**
+     * @brief 重置对象状态
+     */
+    void reset() override
+    {
+        ProtocolHeader::reset();
+        version = 0;
+        headerLen = 0;
+        tos = 0;
+        totalLen = 0;
+        identification = 0;
+        flagRsrvd = 0;
+        flagDont = 0;
+        flagMore = 0;
+        fragOffset = 0;
+        ttl = 0;
+        nextProtocol = 0;
+        checksum = 0;
+        memset(srcAddr, 0, sizeof(srcAddr));
+        memset(dstAddr, 0, sizeof(dstAddr));
+    }
+
+    /**
      * @brief 源IP地址字符串
      */
     std::string srcAddrStr() const
     {
         char buf[16] = {0};
-        sprintf(buf, "%d.%d.%d.%d", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3]);
+        snprintf(buf, sizeof(buf), "%d.%d.%d.%d", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3]);
         return buf;
     }
 
@@ -132,7 +174,7 @@ public:
     std::string dstAddrStr() const
     {
         char buf[16] = {0};
-        sprintf(buf, "%d.%d.%d.%d", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3]);
+        snprintf(buf, sizeof(buf), "%d.%d.%d.%d", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3]);
         return buf;
     }
 
@@ -148,8 +190,8 @@ public:
     uint8_t ttl = 0; /* 报文生存时间 */
     uint8_t nextProtocol = 0; /* 下一层协议类型 */
     uint16_t checksum = 0; /* 头部校验和 */
-    uint8_t srcAddr[4]; /* 源IP地址 */
-    uint8_t dstAddr[4]; /* 目的IP地址 */
+    uint8_t srcAddr[4] = {0}; /* 源IP地址 */
+    uint8_t dstAddr[4] = {0}; /* 目的IP地址 */
 };
 
 /**
@@ -177,12 +219,31 @@ public:
     }
 
     /**
+     * @brief 重置对象状态
+     */
+    void reset() override
+    {
+        ProtocolHeader::reset();
+        headerLen = 0;
+        hardwareType = 0;
+        protocolType = 0;
+        hardwareSize = 0;
+        protocolSize = 0;
+        opcode = 0;
+        memset(senderMac, 0, sizeof(senderMac));
+        memset(senderIp, 0, sizeof(senderIp));
+        memset(targetMac, 0, sizeof(targetMac));
+        memset(targetIp, 0, sizeof(targetIp));
+    }
+
+    /**
      * @brief 源MAC地址字符串
      */
     std::string senderMacStr() const
     {
         char buf[18] = {0};
-        sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", senderMac[0], senderMac[1], senderMac[2], senderMac[3], senderMac[4], senderMac[5]);
+        snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", senderMac[0], senderMac[1], senderMac[2], senderMac[3], senderMac[4],
+                 senderMac[5]);
         return buf;
     }
 
@@ -192,7 +253,7 @@ public:
     std::string senderIpStr() const
     {
         char buf[16] = {0};
-        sprintf(buf, "%d.%d.%d.%d", senderIp[0], senderIp[1], senderIp[2], senderIp[3]);
+        snprintf(buf, sizeof(buf), "%d.%d.%d.%d", senderIp[0], senderIp[1], senderIp[2], senderIp[3]);
         return buf;
     }
 
@@ -202,7 +263,8 @@ public:
     std::string targetMacStr() const
     {
         char buf[18] = {0};
-        sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", targetMac[0], targetMac[1], targetMac[2], targetMac[3], targetMac[4], targetMac[5]);
+        snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", targetMac[0], targetMac[1], targetMac[2], targetMac[3], targetMac[4],
+                 targetMac[5]);
         return buf;
     }
 
@@ -212,7 +274,7 @@ public:
     std::string targetIpStr() const
     {
         char buf[16] = {0};
-        sprintf(buf, "%d.%d.%d.%d", targetIp[0], targetIp[1], targetIp[2], targetIp[3]);
+        snprintf(buf, sizeof(buf), "%d.%d.%d.%d", targetIp[0], targetIp[1], targetIp[2], targetIp[3]);
         return buf;
     }
 
@@ -222,10 +284,10 @@ public:
     uint8_t hardwareSize = 0; /* 硬件地址长度(源和目的物理地址的长度, 单位字节) */
     uint8_t protocolSize = 0; /* 协议地址长度(源和目的的协议地址的长度, 单位字节) */
     uint16_t opcode = 0; /* 操作(记录该报文的类型, 其中1表示ARP请求报文, 2表示ARP响应报文) */
-    uint8_t senderMac[6]; /* 源MAC地址 */
-    uint8_t senderIp[4]; /* 源IP地址(IPv4) */
-    uint8_t targetMac[6]; /* 目的MAC地址 */
-    uint8_t targetIp[4]; /* 目的IP地址(IPv4) */
+    uint8_t senderMac[6] = {0}; /* 源MAC地址 */
+    uint8_t senderIp[4] = {0}; /* 源IP地址(IPv4) */
+    uint8_t targetMac[6] = {0}; /* 目的MAC地址 */
+    uint8_t targetIp[4] = {0}; /* 目的IP地址(IPv4) */
 };
 
 /**
@@ -253,13 +315,34 @@ public:
     }
 
     /**
+     * @brief 重置对象状态
+     */
+    void reset() override
+    {
+        ProtocolHeader::reset();
+        version = 0;
+        headerLen = 0;
+        trafficClass = 0;
+        flowLabel = 0;
+        payloadLen = 0;
+        nextHeader = 0;
+        hopLimit = 0;
+        memset(srcAddr, 0, sizeof(srcAddr));
+        memset(dstAddr, 0, sizeof(dstAddr));
+        hopByHopHeader.nextHeader = 0;
+        hopByHopHeader.length = 0;
+        hopByHopHeader.options = nullptr;
+        hopByHopHeader.optionLen = 6;
+    }
+
+    /**
      * @brief 源IP地址字符串
      */
     std::string srcAddrStr() const
     {
         char buf[40] = {0};
-        sprintf(buf, "%x:%x:%x:%x:%x:%x:%x:%x", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3], srcAddr[4], srcAddr[5], srcAddr[6],
-                srcAddr[7]);
+        snprintf(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3], srcAddr[4], srcAddr[5],
+                 srcAddr[6], srcAddr[7]);
         return buf;
     }
 
@@ -269,8 +352,8 @@ public:
     std::string dstAddrStr() const
     {
         char buf[40] = {0};
-        sprintf(buf, "%x:%x:%x:%x:%x:%x:%x:%x", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3], dstAddr[4], dstAddr[5], dstAddr[6],
-                dstAddr[7]);
+        snprintf(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3], dstAddr[4], dstAddr[5],
+                 dstAddr[6], dstAddr[7]);
         return buf;
     }
 
@@ -281,8 +364,8 @@ public:
     uint16_t payloadLen = 0; /* 负载长度 */
     uint8_t nextHeader = 0; /* 下一个头的协议类型 */
     uint8_t hopLimit = 0; /* 跳跃限制 */
-    uint16_t srcAddr[8]; /* 源IP地址 */
-    uint16_t dstAddr[8]; /* 目的IP地址 */
+    uint16_t srcAddr[8] = {0}; /* 源IP地址 */
+    uint16_t dstAddr[8] = {0}; /* 目的IP地址 */
     struct HopByHopHeader /* 逐跳选项头部(属于强制性的扩展头部), 长度为8的整数倍 */
     {
         uint8_t nextHeader = 0; /* 下一个头的协议类型 */
@@ -314,6 +397,32 @@ public:
     uint32_t getProtocol() const override
     {
         return TransportProtocol::TCP;
+    }
+
+    /**
+     * @brief 重置对象状态
+     */
+    void reset() override
+    {
+        ProtocolHeader::reset();
+        srcPort = 0;
+        dstPort = 0;
+        seq = 0;
+        ack = 0;
+        headerLen = 0;
+        flagRsrvd = 0;
+        flagNonce = 0;
+        flagCwr = 0;
+        flagEce = 0;
+        flagUrg = 0;
+        flagAck = 0;
+        flagPsh = 0;
+        flagRst = 0;
+        flagSyn = 0;
+        flagFin = 0;
+        window = 0;
+        checksum = 0;
+        urgptr = 0;
     }
 
     uint16_t srcPort = 0; /* 源端口 */
@@ -360,6 +469,19 @@ public:
         return TransportProtocol::UDP;
     }
 
+    /**
+     * @brief 重置对象状态
+     */
+    void reset() override
+    {
+        ProtocolHeader::reset();
+        headerLen = 0;
+        srcPort = 0;
+        dstPort = 0;
+        totalLen = 0;
+        checksum = 0;
+    }
+
     uint8_t headerLen = 0; /* 头部长度 */
     uint16_t srcPort = 0; /* 源端口 */
     uint16_t dstPort = 0; /* 目的端口 */
@@ -379,7 +501,7 @@ public:
      */
     static uint32_t getMinLen()
     {
-        return 3;
+        return 8;
     }
 
     /**
@@ -389,6 +511,18 @@ public:
     uint32_t getProtocol() const override
     {
         return TransportProtocol::ICMP;
+    }
+
+    /**
+     * @brief 重置对象状态
+     */
+    void reset() override
+    {
+        ProtocolHeader::reset();
+        headerLen = 0;
+        type = 0;
+        code = 0;
+        checksum = 0;
     }
 
     uint8_t headerLen = 0; /* 头部长度 */
@@ -409,7 +543,7 @@ public:
      */
     static uint32_t getMinLen()
     {
-        return 3;
+        return 8;
     }
 
     /**
@@ -419,6 +553,18 @@ public:
     uint32_t getProtocol() const override
     {
         return TransportProtocol::ICMPv6;
+    }
+
+    /**
+     * @brief 重置对象状态
+     */
+    void reset() override
+    {
+        ProtocolHeader::reset();
+        headerLen = 0;
+        type = 0;
+        code = 0;
+        checksum = 0;
     }
 
     uint8_t headerLen = 0; /* 头部长度 */
