@@ -10,7 +10,7 @@ class System final
 public:
     /**
      * @brief 执行命令
-     * @param cmd 命令内容
+     * @param cmd 命令内容, 说明: 接口只捕获stdout无法捕获stderr内容, 如果需要则Linux平台需要在命令内容后增加" 2>&1"
      * @param outputFunc 输出回调, 参数: data-数据, count-数据长度, 返回值: true-继续获取数据, false-停止获取数据
      * @return 执行结果, 0-成功, 非0-失败
      */
@@ -18,7 +18,7 @@ public:
 
     /**
      * @brief 执行命令
-     * @param cmd 命令内容
+     * @param cmd 命令内容, 说明: 接口只捕获stdout无法捕获stderr内容, 如果需要则Linux平台需要在命令内容后增加" 2>&1"
      * @param outStr [输出]过程输出的可打印内容(选填, 字符串)
      * @param outVec [输出]过程输出的可打印内容(选填, 行列表)
      * @param ignoreBlankLine 是否忽略空行(选填), 为true时空行将不会添加到outVec行列表中
