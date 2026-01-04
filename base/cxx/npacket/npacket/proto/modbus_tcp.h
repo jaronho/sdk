@@ -73,9 +73,10 @@ private:
      * @param dataLen 数据长度
      * @param mbap [输出]MBAP头
      * @param headerLen [输出]MBAP头长度
+     * @param pduLen [输出]PDU长度
      * @return true-成功, false-失败
      */
-    bool parseMbapHeader(const uint8_t* data, uint32_t dataLen, MbapHeader& mbap, uint32_t& headerLen);
+    bool parseMbapHeader(const uint8_t* data, uint32_t dataLen, MbapHeader& mbap, uint32_t& headerLen, uint32_t& pduLen);
 
     /**
      * @brief 验证端口是否匹配
