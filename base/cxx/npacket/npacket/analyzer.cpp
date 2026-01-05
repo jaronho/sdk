@@ -80,15 +80,46 @@ bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
     return false;
 }
 
+bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolParser>& parser)
+{
+    addProtocolParser(parser); /* 保留遍历能力 */
+    if (parser && port > 0)
+    {
+        std::lock_guard<std::mutex> locker(m_mutexParserMap);
+        if (m_applicationParserMap.end() != m_applicationParserMap.find(port))
+        {
+            m_applicationParserMap.insert(std::make_pair(port, parser));
+        }
+        return true;
+    }
+    return false;
+}
+
 void Analyzer::removeProtocolParser(uint32_t protocol)
 {
-    std::lock_guard<std::mutex> locker(m_mutexParserList);
-    for (auto iter = m_applicationParserList.begin(); m_applicationParserList.end() != iter; ++iter)
     {
-        if (*iter && (*iter)->getProtocol() == protocol)
+        std::lock_guard<std::mutex> locker(m_mutexParserList);
+        for (auto iter = m_applicationParserList.begin(); m_applicationParserList.end() != iter; ++iter)
         {
-            m_applicationParserList.erase(iter);
-            break;
+            if (*iter && (*iter)->getProtocol() == protocol)
+            {
+                m_applicationParserList.erase(iter);
+                break;
+            }
+        }
+    }
+    {
+        std::lock_guard<std::mutex> locker(m_mutexParserMap);
+        for (auto iter = m_applicationParserMap.begin(); m_applicationParserMap.end() != iter;)
+        {
+            if (iter->second && iter->second->getProtocol() == protocol)
+            {
+                iter = m_applicationParserMap.erase(iter);
+            }
+            else
+            {
+                ++iter;
+            }
         }
     }
 }
@@ -303,64 +334,89 @@ int Analyzer::handleApplicationLayer(const std::chrono::steady_clock::time_point
                                      const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
                                      const std::vector<std::shared_ptr<ProtocolParser>>& applicationParserList)
 {
-    uint32_t remainLen = payloadLen; /* 剩余数据长度 */
-    uint32_t offset = 0; /* 已消费的字节偏移 */
-    bool anyParsed = false; /* 是否成功解析过至少一个消息 */
-    bool needMoreData = false; /* 是否有解析器需要更多数据 */
-    while (offset < payloadLen) /* 循环处理, 直到payload耗尽或无法继续 */
+    /* 从传输层头部提取端口 */
+    uint16_t srcPort = 0, dstPort = 0;
+    if (header)
     {
-        bool parsedInThisRound = false; /* 本轮是否成功解析 */
-        for (size_t i = 0; i < applicationParserList.size(); ++i) /* 遍历所有解析器尝试解析当前剩余数据 */
+        if (TransportProtocol::TCP == header->getProtocol())
         {
-            auto parser = applicationParserList[i];
-            if (!parser)
+            auto tcpHeader = std::static_pointer_cast<TcpHeader>(header);
+            if (tcpHeader)
             {
-                continue;
-            }
-            uint32_t consumeLen = 0;
-            auto result = parser->parse(ntp, totalLen, header, payload + offset, remainLen, consumeLen);
-            switch (result)
-            {
-            case ParseResult::SUCCESS:
-                if (consumeLen > 0 && consumeLen <= remainLen)
-                {
-                    remainLen -= consumeLen;
-                    offset += consumeLen;
-                    anyParsed = true;
-                    parsedInThisRound = true;
-                    needMoreData = false;
-                }
-                else /* 解析成功但无数据消费 */
-                {
-                    return 4;
-                }
-                break;
-            case ParseResult::CONTINUE:
-                needMoreData = true;
-                break;
-            case ParseResult::FAILURE: /* 当前解析器无法识别, 继续尝试下一个 */
-                break;
-            }
-            if (parsedInThisRound) /* 判断本轮是否已成功解析 */
-            {
-                break;
+                srcPort = tcpHeader->srcPort;
+                dstPort = tcpHeader->dstPort;
             }
         }
-        if (!parsedInThisRound) /* 检查本轮解析结果 */
+        else if (TransportProtocol::UDP == header->getProtocol())
         {
-            if (anyParsed) /* 已成功解析过, 剩余数据可能属于下一个数据包 */
+            auto udpHeader = std::static_pointer_cast<UdpHeader>(header);
+            if (udpHeader)
             {
-                return 0;
+                srcPort = udpHeader->srcPort;
+                dstPort = udpHeader->dstPort;
             }
-            /* 从未成功解析过 */
-            if (needMoreData)
-            {
-                return 5;
-            }
-            return 4;
         }
     }
-    return anyParsed ? 0 : 4;
+    /* 根据端口查找解析器(端口优先级: 1.dstPort, 2.srcPort) */
+    std::shared_ptr<ProtocolParser> portParser = nullptr;
+    {
+        std::lock_guard<std::mutex> locker(m_mutexParserMap);
+        auto iter = m_applicationParserMap.find(dstPort);
+        if (m_applicationParserMap.end() != iter)
+        {
+            portParser = iter->second;
+        }
+        else
+        {
+            iter = m_applicationParserMap.find(srcPort);
+            if (m_applicationParserMap.end() != iter)
+            {
+                portParser = iter->second;
+            }
+        }
+    }
+    uint32_t offset = 0; /* 已消费的字节偏移 */
+    std::shared_ptr<ProtocolParser> stickyParser = nullptr; /* 粘包优化, 记住成功的解析器 */
+    while (offset < payloadLen)
+    {
+        uint32_t consumeLen = 0;
+        ParseResult result = ParseResult::FAILURE;
+        auto parser = stickyParser ? stickyParser : portParser; /* 优先级: 1.上次成功的, 2.端口映射的 */
+        if (parser)
+        {
+            result = parser->parse(ntp, totalLen, header, payload + offset, payloadLen - offset, consumeLen);
+        }
+        if (ParseResult::FAILURE == result) /* 失败则回退遍历 */
+        {
+            for (const auto& p : applicationParserList)
+            {
+                if (p != parser) /* 跳过已尝试的 */
+                {
+                    result = p->parse(ntp, totalLen, header, payload + offset, payloadLen - offset, consumeLen);
+                    if (ParseResult::FAILURE != result)
+                    {
+                        stickyParser = p; /* 记录成功解析器 */
+                        break;
+                    }
+                }
+            }
+        }
+        switch (result) /* 结果处理 */
+        {
+        case ParseResult::SUCCESS:
+            if (0 == consumeLen || consumeLen > payloadLen - offset) /* 无效消费 */
+            {
+                return 4;
+            }
+            offset += consumeLen;
+            break;
+        case ParseResult::CONTINUE:
+            return 5;
+        case ParseResult::FAILURE:
+            return offset > 0 ? 0 : 4; /* 偏移值大于0表示有成功解析过 */
+        }
+    }
+    return 0;
 }
 
 bool Analyzer::traverseIpv6Extension(const uint8_t* data, uint32_t dataLen, uint8_t& nextHeader, uint32_t& totalExtLen, bool stopAtFragment,

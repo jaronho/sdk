@@ -5,6 +5,7 @@
 #include <map>
 #include <mutex>
 #include <string.h>
+#include <unordered_map>
 #include <vector>
 
 #include "protocol.h"
@@ -69,11 +70,19 @@ public:
                           const LAYER_CALLBACK& transportLayerCb);
 
     /**
-     * @brief 添加应用层解析器
+     * @brief 添加应用层解析器(当协议端口不固定或者未知时使用此接口)
      * @param parser 应用层协议解析器
      * @return true-添加成功, false-添加失败
      */
     bool addProtocolParser(const std::shared_ptr<ProtocolParser>& parser);
+
+    /**
+     * @brief 添加应用层解析器(当协议端口固定且已知时使用此接口)
+     * @param port 端口号
+     * @param parser 应用层协议解析器
+     * @return true-添加成功, false-添加失败
+     */
+    bool addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolParser>& parser);
 
     /**
      * @brief 删除应用层解析器
@@ -340,5 +349,8 @@ private:
 
     std::mutex m_mutexParserList;
     std::vector<std::shared_ptr<ProtocolParser>> m_applicationParserList; /* 应用层解析器列表 */
+
+    std::mutex m_mutexParserMap;
+    std::unordered_map<uint16_t, std::shared_ptr<ProtocolParser>> m_applicationParserMap; /* 应用层解析器映射表, key-端口 */
 };
 } // namespace npacket
