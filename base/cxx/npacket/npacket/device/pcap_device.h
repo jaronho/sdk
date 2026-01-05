@@ -10,7 +10,7 @@
 namespace npacket
 {
 /**
- * @brief pcap设备(对网络适配器的抽象)
+ * @brief pcap设备(跨平台抓包)
  */
 class PcapDevice final
 {
@@ -91,6 +91,7 @@ public:
 
     /**
      * @brief 获取本机所有pcap设备
+     * @param errorBuffer [输出]错误信息
      * @return pcap设备列表
      */
     static std::vector<std::shared_ptr<PcapDevice>> getAllDevices(std::string* errorBuffer = nullptr);
