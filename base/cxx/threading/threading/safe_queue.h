@@ -5,7 +5,6 @@
 #include <functional>
 #include <initializer_list>
 #include <mutex>
-#include <optional>
 
 namespace threading
 {
