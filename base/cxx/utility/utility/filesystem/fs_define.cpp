@@ -1,6 +1,7 @@
 #include "fs_define.h"
 
 #include <algorithm>
+#include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <vector>
@@ -189,19 +190,36 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
     struct _stat64 st;
     int ret = _wstat64(wname.c_str(), &st);
 #else
-    struct stat64 st;
-    int ret = stat64(name.c_str(), &st);
+    struct statx st;
+    int ret = statx(AT_FDCWD, name.c_str(), AT_SYMLINK_NOFOLLOW, STATX_ALL, &st);
 #endif
     if (0 != ret)
     {
         return false;
     }
+#ifdef _WIN32
     attr.createTime = st.st_ctime;
     attr.modifyTime = st.st_mtime;
     attr.accessTime = st.st_atime;
     attr.size = st.st_size;
     attr.isDir = S_IFDIR & st.st_mode;
     attr.isFile = S_IFREG & st.st_mode;
+#else
+    /* Linux平台: 优先使用birth time作为创建时间 */
+    if (st.stx_mask & STATX_BTIME)
+    {
+        attr.createTime = st.stx_btime.tv_sec; /* 真实的文件创建时间 */
+    }
+    else
+    {
+        attr.createTime = st.stx_ctime.tv_sec; /* 旧内核不支持则回退到状态改变时间 */
+    }
+    attr.modifyTime = st.stx_mtime.tv_sec;
+    attr.accessTime = st.stx_atime.tv_sec;
+    attr.size = st.stx_size;
+    attr.isDir = S_ISDIR(st.stx_mode);
+    attr.isFile = S_ISREG(st.stx_mode);
+#endif
 #ifdef _WIN32
     DWORD dwAttrib = GetFileAttributesW(wname.c_str());
     attr.isSymLink = isShortcut(name);
@@ -211,12 +229,13 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
         attr.isHidden = dwAttrib & FILE_ATTRIBUTE_HIDDEN;
         attr.isWritable = !(dwAttrib & FILE_ATTRIBUTE_READONLY);
     }
+    attr.isExecutable = S_IEXEC & st.st_mode;
 #else
     attr.isSymLink = isSymbolicLink(name);
     attr.isHidden = subName.empty() ? false : '.' == subName[0]; /* linux中文件名第1个字符为.表示隐藏 */
-    attr.isWritable = S_IWUSR & st.st_mode;
+    attr.isWritable = S_IWUSR & st.stx_mode;
+    attr.isExecutable = S_IEXEC & st.stx_mode;
 #endif
-    attr.isExecutable = S_IEXEC & st.st_mode;
     return true;
 }
 
