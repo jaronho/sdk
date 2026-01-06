@@ -1,9 +1,11 @@
 #pragma once
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <functional>
 #include <initializer_list>
 #include <mutex>
+#include <optional>
 
 namespace threading
 {
@@ -46,13 +48,21 @@ public:
     SafeQueue(size_t maxCount = 0) : m_maxCount(maxCount) {}
 
     /**
+      * @brief 析构函数
+      */
+    ~SafeQueue()
+    {
+        stop();
+    }
+
+    /**
       * @brief 设置队列个数上限
       * @param maxCount 队列个数上限, 0-表示不限制
       */
     void setMaxCount(size_t maxCount)
     {
         std::unique_lock<std::mutex> locker(m_mutex);
-        if (maxCount == m_maxCount)
+        if (m_stopped || maxCount == m_maxCount)
         {
             return;
         }
@@ -73,11 +83,19 @@ public:
     bool push(const T& value, int flag = 0)
     {
         std::unique_lock<std::mutex> locker(m_mutex);
+        if (m_stopped)
+        {
+            return false;
+        }
         if (m_maxCount > 0 && m_queue.size() >= m_maxCount)
         {
             if (0 == flag) /* 等待 */
             {
-                m_cvNotFull.wait(locker, [this]() { return (0 == m_maxCount || m_queue.size() < m_maxCount); });
+                m_cvNotFull.wait(locker, [this]() { return (m_stopped || 0 == m_maxCount || m_queue.size() < m_maxCount); });
+                if (m_stopped)
+                {
+                    return false;
+                }
             }
             else if (1 == flag) /* 丢弃最早 */
             {
@@ -103,11 +121,19 @@ public:
     bool push(T&& value, int flag = 0)
     {
         std::unique_lock<std::mutex> locker(m_mutex);
+        if (m_stopped)
+        {
+            return false;
+        }
         if (m_maxCount > 0 && m_queue.size() >= m_maxCount)
         {
             if (0 == flag) /* 等待 */
             {
-                m_cvNotFull.wait(locker, [this]() { return (0 == m_maxCount || m_queue.size() < m_maxCount); });
+                m_cvNotFull.wait(locker, [this]() { return (m_stopped || 0 == m_maxCount || m_queue.size() < m_maxCount); });
+                if (m_stopped)
+                {
+                    return false;
+                }
             }
             else if (1 == flag) /* 丢弃最早 */
             {
@@ -132,7 +158,7 @@ public:
     bool tryPop(T& value)
     {
         std::unique_lock<std::mutex> locker(m_mutex);
-        if (m_queue.empty())
+        if (m_stopped || m_queue.empty())
         {
             return false;
         }
@@ -144,16 +170,21 @@ public:
 
     /**
       * @brief 等待出队列(阻塞)
-      * @return 值
+      * @param value [输出]值
+      * @return true-成功, false-停止
       */
-    T waitPop()
+    bool waitPop(T& value)
     {
         std::unique_lock<std::mutex> locker(m_mutex); /* 和条件变量一同使用需要使用unique_lock */
-        m_cvNotEmpty.wait(locker, [&]() { return !m_queue.empty(); });
-        auto value = std::move(m_queue.front());
+        m_cvNotEmpty.wait(locker, [&]() { return m_stopped || !m_queue.empty(); });
+        if (m_stopped)
+        {
+            return false;
+        }
+        value = std::move(m_queue.front());
         m_queue.pop_front();
         m_cvNotFull.notify_one(); /* 成功出队, 通知一个等待的生产者 */
-        return value;
+        return true;
     }
 
     /**
@@ -164,7 +195,7 @@ public:
     size_t tryFront(T& value)
     {
         std::unique_lock<std::mutex> locker(m_mutex);
-        if (m_queue.empty())
+        if (m_stopped || m_queue.empty())
         {
             return 0;
         }
@@ -181,6 +212,10 @@ public:
     bool remove(const T& value, const std::function<bool(const T& a, const T& b)>& cmpFunc = nullptr)
     {
         std::unique_lock<std::mutex> locker(m_mutex);
+        if (m_stopped)
+        {
+            return false;
+        }
         for (auto iter = m_queue.begin(); iter != m_queue.end(); ++iter)
         {
             bool match = cmpFunc ? cmpFunc(*iter, value) : (*iter == value);
@@ -204,6 +239,10 @@ public:
     {
         size_t count = 0;
         std::unique_lock<std::mutex> locker(m_mutex);
+        if (m_stopped)
+        {
+            return 0;
+        }
         auto iter = m_queue.begin();
         while (m_queue.end() != iter)
         {
@@ -231,6 +270,10 @@ public:
     void clear()
     {
         std::unique_lock<std::mutex> locker(m_mutex);
+        if (m_stopped)
+        {
+            return;
+        }
         m_queue.clear();
         m_cvNotFull.notify_all(); /* 空后队列不满, 通知所有等待的生产者 */
     }
@@ -239,7 +282,7 @@ public:
       * @brief 队列元素个数
       * @return 元素个数
       */
-    size_t size()
+    size_t size() const
     {
         std::unique_lock<std::mutex> locker(m_mutex);
         return m_queue.size();
@@ -249,7 +292,7 @@ public:
       * @brief 判断队列是否为空
       * @return true-空, false-非空
       */
-    bool empty()
+    bool empty() const
     {
         std::unique_lock<std::mutex> locker(m_mutex);
         return m_queue.empty();
@@ -259,17 +302,41 @@ public:
       * @brief 判断队列是否已满
       * @return true-已满, false-未满
       */
-    bool full()
+    bool full() const
     {
         std::unique_lock<std::mutex> locker(m_mutex);
         return (m_maxCount > 0 && m_queue.size() >= m_maxCount);
     }
 
+    /**
+      * @brief 停止所有等待操作(该操作不可恢复, 明确队列不再使用时才调用), 调用后所有waitPop/push等待会立即返回false
+      */
+    void stop()
+    {
+        std::unique_lock<std::mutex> locker(m_mutex);
+        if (!m_stopped)
+        {
+            m_stopped = true;
+            m_cvNotEmpty.notify_all(); /* 通知所有消费者 */
+            m_cvNotFull.notify_all(); /* 通知所有生产者 */
+        }
+    }
+
+    /**
+      * @brief 检查是否已停止
+      * @return true-已停止, false-未停止
+      */
+    bool isStopped() const
+    {
+        return m_stopped.load(std::memory_order_relaxed);
+    }
+
 private:
-    std::mutex m_mutex;
+    mutable std::mutex m_mutex;
     std::deque<T> m_queue; /* 数据列表 */
     std::condition_variable m_cvNotFull; /* 生产者使用, 队列不满条件变量 */
     std::condition_variable m_cvNotEmpty; /* 消费者使用, 队列不空条件变量 */
     size_t m_maxCount = 0; /* 队列个数上限, 0-表示不限制 */
+    std::atomic_bool m_stopped{false}; /* 停止标志 */
 };
 } // namespace threading
