@@ -212,11 +212,6 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
         }
         netcardList.emplace_back(iface);
     }
-    /* 排序(网卡地址小的排在前面) */
-    std::sort(netcardList.begin(), netcardList.end(), [](utility::Net::IfaceInfo a, utility::Net::IfaceInfo b) {
-        return utility::StrTool::toLower(utility::StrTool::join(a.mac, ":"))
-               < utility::StrTool::toLower(utility::StrTool::join(b.mac, ":"));
-    });
     return netcardList;
 }
 

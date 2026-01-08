@@ -67,7 +67,7 @@ public:
     static std::vector<BridgeInfo> getBridgeInfos();
 
     /**
-     * @brief 获取以太网卡列表(过滤掉网桥), 并对列表进行排序(网卡地址小的排在前面) 
+     * @brief 获取以太网卡列表(过滤掉网桥)
      * @return 网卡列表
      */
     static std::vector<utility::Net::IfaceInfo> getEthernetCards();
