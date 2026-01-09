@@ -40,6 +40,9 @@ ${base_algorithm_sm4_files}
 ${base_algorithm_snowflake_files}
 
 [源文件]
+${base_algorithm_squeue_files}
+
+[源文件]
 ${base_algorithm_tvalue_files}
 
 [源文件]
@@ -76,6 +79,9 @@ set(base_algorithm_sm4_files ${src_list} CACHE INTERNAL "")
 get_cxx_files(algorithm/snowflake src_list)
 set(base_algorithm_snowflake_files ${src_list} CACHE INTERNAL "")
 
+get_cxx_files(algorithm/squeue src_list)
+set(base_algorithm_squeue_files ${src_list} CACHE INTERNAL "")
+
 get_cxx_files(algorithm/tvalue src_list)
 set(base_algorithm_tvalue_files ${src_list} CACHE INTERNAL "")
 
@@ -93,6 +99,7 @@ set(base_algorithm_files
     ${base_algorithm_sm3_files}
     ${base_algorithm_sm4_files}
     ${base_algorithm_snowflake_files}
+    ${base_algorithm_squeue_files}
     ${base_algorithm_tvalue_files}
     ${base_algorithm_xxhash_files}
     CACHE INTERNAL "")
