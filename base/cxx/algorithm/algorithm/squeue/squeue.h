@@ -10,22 +10,21 @@
 namespace algorithm
 {
 /**
+ * @brief 入队策略
+ */
+enum class SQueuePushStrategy
+{
+    waitting, /* 阻塞等待 */
+    drop_current, /* 丢弃当前 */
+    drop_oldest /* 丢弃最旧 */
+};
+
+/**
  * @brief 线程安全队列
  */
 template<typename T>
 class SQueue
 {
-public:
-    /**
-     * @brief 入队策略
-     */
-    enum class PushStrategy
-    {
-        waitting, /* 阻塞等待 */
-        drop_current, /* 丢弃当前 */
-        drop_oldest /* 丢弃最旧 */
-    };
-
 public:
     SQueue(const SQueue&) = delete;
     SQueue(SQueue&&) = default;
@@ -50,10 +49,10 @@ public:
     /**
       * @brief 入队列
       * @param value 值
-      * @param strategy 入队策略
+      * @param strategy 入队策略(当有限制队列最大容量时才生效)
       * @return true-成功, false-失败(值未入队列)
       */
-    bool push(const T& value, const PushStrategy& strategy = PushStrategy::waitting)
+    bool push(const T& value, const SQueuePushStrategy& strategy = SQueuePushStrategy::waitting)
     {
         return pushInner(value, strategy);
     }
@@ -61,10 +60,10 @@ public:
     /**
       * @brief 入队列
       * @param value 值
-      * @param strategy 入队策略
+      * @param strategy 入队策略(当有限制队列最大容量时才生效)
       * @return true-成功, false-失败(值未入队列)
       */
-    bool push(T&& value, const PushStrategy& strategy = PushStrategy::waitting)
+    bool push(T&& value, const SQueuePushStrategy& strategy = SQueuePushStrategy::waitting)
     {
         return pushInner(std::move(value), strategy);
     }
@@ -96,6 +95,56 @@ public:
     }
 
     /**
+     * @brief 清空队列
+     * @return 实际清空的元素个数
+     */
+    size_t clear()
+    {
+        size_t count = 0;
+        T data;
+        while (m_queue.try_dequeue(data))
+        {
+            if (m_dropFunc)
+            {
+                try
+                {
+                    m_dropFunc(data);
+                }
+                catch (...)
+                {
+                }
+            }
+            ++count;
+        }
+        return count;
+    }
+
+    /**
+      * @brief 停止所有等待操作(该操作不可恢复, 明确队列不再使用时才调用), 调用后所有waitPop/push等待会立即返回false
+      */
+    void stop()
+    {
+        bool expected = false;
+        if (m_stopFlag.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) /* 值发生变化 */
+        {
+            {
+                std::lock_guard<std::mutex> locker(m_mutexStopCv);
+                m_stopCv.notify_all(); /* 唤醒所有等待的生产者 */
+            }
+            clear(); /* 清空队列并调用丢弃回调 */
+        }
+    }
+
+    /**
+     * @brief 检查队列是否已停止
+     * @return true-已停止, false-未停止
+     */
+    bool isStopped() const
+    {
+        return m_stopFlag.load(std::memory_order_acquire);
+    }
+
+    /**
       * @brief 队列元素个数(近似值)
       * @return 元素个数
       */
@@ -122,48 +171,6 @@ public:
         return (m_capacity > 0 && m_queue.size_approx() >= m_capacity);
     }
 
-    /**
-     * @brief 检查队列是否已停止
-     * @return true-已停止, false-未停止
-     */
-    bool isStopped() const
-    {
-        return m_stopFlag.load(std::memory_order_acquire);
-    }
-
-    /**
-      * @brief 停止所有等待操作(该操作不可恢复, 明确队列不再使用时才调用), 调用后所有waitPop/push等待会立即返回false
-      */
-    void stop()
-    {
-        bool expected = false;
-        bool alreadyStopped = !m_stopFlag.compare_exchange_strong(expected, true, std::memory_order_acq_rel);
-        if (alreadyStopped)
-        {
-            return;
-        }
-        /* 唤醒所有等待的生产者 */
-        {
-            std::lock_guard<std::mutex> locker(m_mutexStopCv);
-            m_stopCv.notify_all();
-        }
-        /* 清空队列并调用丢弃回调 */
-        T data;
-        while (m_queue.try_dequeue(data))
-        {
-            if (m_dropFunc)
-            {
-                try
-                {
-                    m_dropFunc(data);
-                }
-                catch (...)
-                {
-                }
-            }
-        }
-    }
-
 private:
     /**
      * @brief 通用Push逻辑
@@ -172,7 +179,7 @@ private:
      * @return true-成功, false-失败
      */
     template<typename U>
-    bool pushInner(U&& value, const PushStrategy& strategy)
+    bool pushInner(U&& value, const SQueuePushStrategy& strategy)
     {
         if (m_stopFlag.load(std::memory_order_acquire))
         {
@@ -180,11 +187,11 @@ private:
         }
         switch (strategy)
         {
-        case PushStrategy::waitting:
+        case SQueuePushStrategy::waitting:
             return pushWait(std::forward<U>(value));
-        case PushStrategy::drop_current:
+        case SQueuePushStrategy::drop_current:
             return pushDropCurrent(std::forward<U>(value));
-        case PushStrategy::drop_oldest:
+        case SQueuePushStrategy::drop_oldest:
             return pushDropOldest(std::forward<U>(value));
         }
         return false;
