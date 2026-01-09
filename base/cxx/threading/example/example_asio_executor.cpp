@@ -1,8 +1,9 @@
+#include <deque>
 #include <iostream>
+#include <mutex>
 
 #include "threading/async_proxy.h"
 #include "threading/platform.h"
-#include "threading/safe_queue.h"
 #include "threading/signal/async_signal.h"
 #include "threading/signal/basic_signal.h"
 #include "threading/signal/scoped_signal_connection.h"
@@ -23,7 +24,8 @@ struct LogicMsg
 };
 
 threading::ExecutorPtr s_logicExecutor; /* 逻辑线程 */
-threading::SafeQueue<std::shared_ptr<LogicMsg>> s_logicMsgQueue; /* 逻辑消息队列 */
+std::mutex s_mutexLogicMsgQueue;
+std::deque<std::shared_ptr<LogicMsg>> s_logicMsgQueue; /* 逻辑消息队列 */
 threading::ExecutorPtr g_workers; /* 工作线程 */
 threading::BasicSignal<void()> g_sig1; /* 同步信号(不带参数无返回值) */
 threading::BasicSignal<void(const std::string& str)> g_sig2; /* 同步信号(带参数无返回值) */
@@ -36,8 +38,20 @@ threading::AsyncSignal<void(int num)> g_sig4; /* 异步信号(带有参数) */
 void tryHandleLogicMsg()
 {
     std::shared_ptr<LogicMsg> msg;
-    while (s_logicMsgQueue.tryPop(msg))
+    while (1)
     {
+        {
+            std::lock_guard<std::mutex> locker(s_mutexLogicMsgQueue);
+            if (s_logicMsgQueue.empty())
+            {
+                break;
+            }
+            else
+            {
+                msg = s_logicMsgQueue.front();
+                s_logicMsgQueue.pop_front();
+            }
+        }
         if (msg && msg->handler)
         {
             msg->handler();
@@ -77,10 +91,12 @@ int main()
     int mainPid = threading::Platform::getThreadId();
     s_logicExecutor = threading::ThreadProxy::createAsioExecutor("logic", 1);
     threading::AsyncProxy::start(6, s_logicExecutor, [&](const std::string& name, const std::function<void()>& finishCb) {
-        s_logicMsgQueue.push(std::make_shared<LogicMsg>(name, finishCb));
+        std::lock_guard<std::mutex> locker(s_mutexLogicMsgQueue);
+        s_logicMsgQueue.emplace_back(std::make_shared<LogicMsg>(name, finishCb));
     }); /* 创建异步任务线程(6个线程) */
     threading::Timer::setDefaultExecutor(s_logicExecutor, [&](const std::string& name, const std::function<void()>& func) {
-        s_logicMsgQueue.push(std::make_shared<LogicMsg>(name, func));
+        std::lock_guard<std::mutex> locker(s_mutexLogicMsgQueue);
+        s_logicMsgQueue.emplace_back(std::make_shared<LogicMsg>(name, func));
     });
     g_workers = threading::ThreadProxy::createAsioExecutor("workers", 6); /* 创建工作线程(6个线程) */
     /* 定时器1 */
