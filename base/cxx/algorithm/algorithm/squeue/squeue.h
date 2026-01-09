@@ -89,7 +89,8 @@ public:
     {
         if (0 == timeout)
         {
-            return m_queue.wait_dequeue(value);
+            m_queue.wait_dequeue(value);
+            return true;
         }
         return m_queue.wait_dequeue_timed(value, timeout);
     }
