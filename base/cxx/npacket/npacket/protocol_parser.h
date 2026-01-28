@@ -11,14 +11,21 @@ namespace npacket
 enum ApplicationProtocol
 {
     NONE = 0, /* 无 */
+    BACNET, /* BACNET协议(主要基于UDP传输) */
+    COTP, /* 面向连接的传输协议(Connection-Oriented Transport Protocol), 上层协议为TPKT协议 */
+    DNP3, /* DNP3协议(主要用于电力和水务自动化) */
     FTP, /* 文件传输协议 */
     HTTP, /* 超文本传输协议 */
     IEC103, /* 一种用于电力系统远程监控和控制的通信协议, 由国际电工委员会(IEC)制定 */
-    TPKT, /* 介于TCP和COTP协议之间, 属于传输服务类的协议, 主要用来在TCP和COTP之间建立桥梁, 一般与COTP一起发送, 当作Header段 */
-    COTP, /* 面向连接的传输协议(Connection-Oriented Transport Protocol), 上层协议为TPKT协议 */
-    S7COMM, /* (S7 Communication)是西门子S7通讯协议簇里的一种, 上层协议为COTP协议 */
+    IEC104, /* 一种用于电力系统远程监控和控制的通信协议, 由国际电工委员会(IEC)制定 */
     MODBUS_RTU, /* Modbus远程终端单元协议(基于串行通信) */
     MODBUS_TCP, /* Modbus传输控制协议(基于以太网通信) */
+    NFS, /* 网络文件系统协议 */
+    POP3, /* 邮局协议3(用于电子邮件接收) */
+    PROFINET, /* PROFINET协议(主要用于工业自动化) */
+    S7COMM, /* (S7 Communication)是西门子S7通讯协议簇里的一种, 上层协议为COTP协议 */
+    SMTP, /* 简单邮件传输协议(用于电子邮件发送) */
+    TPKT, /* 介于TCP和COTP协议之间, 属于传输服务类的协议, 主要用来在TCP和COTP之间建立桥梁, 一般与COTP一起发送, 当作Header段 */
 };
 
 /**
