@@ -713,7 +713,7 @@ public:
  */
 struct FixedFrame
 {
-    int prm = 0; /* 启动报文位, 1 - 主站向从站传输, 0 - 从站向主站传输 */
+    int prm = 0; /* 启动报文位, 1 - 主站向从站传输(请求), 0 - 从站向主站传输(响应) */
     int fcb_acd = 0; /* 当prm为1时表示fcb(帧计数位), 当prm为0时表示acd(要求访问位) */
     int fcv_dfc = 0; /* 当prm为1时表示fcv(帧计数有效位), 当prm为0时表示dfc(数据流控制位) */
     int func = 0; /* 功能码 */
@@ -725,7 +725,7 @@ struct FixedFrame
  */
 struct VariableFrame
 {
-    int prm = 0; /* 启动报文位, 1 - 主站向从站传输, 0 - 从站向主站传输 */
+    int prm = 0; /* 启动报文位, 1 - 主站向从站传输(请求), 0 - 从站向主站传输(响应) */
     int fcb_acd = 0; /* 当prm为1时表示fcb(帧计数位), 当prm为0时表示acd(要求访问位) */
     int fcv_dfc = 0; /* 当prm为1时表示fcv(帧计数有效位), 当prm为0时表示dfc(数据流控制位) */
     int func = 0; /* 功能码 */

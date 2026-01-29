@@ -122,13 +122,14 @@ private:
      * @brief 解析固定帧
      */
     bool parseFixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
-                         const uint8_t* payload, uint32_t payloadLen);
+                         const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen);
 
     /**
      * @brief 解析可变帧
      */
     bool parseVariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                            const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen);
+                            const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                            uint32_t& consumeLen);
 
     /**
      * @brief 解析应用服务数据单元

@@ -79,14 +79,12 @@ ParseResult Iec103Parser::parse(const std::chrono::steady_clock::time_point& ntp
     {
         return ParseResult::FAILURE;
     }
-    if (parseFixedFrame(ntp, totalLen, header, payload, payloadLen))
+    if (parseFixedFrame(ntp, totalLen, header, payload, payloadLen, consumeLen))
     {
-        consumeLen = payloadLen;
         return ParseResult::SUCCESS;
     }
-    else if (parseVariableFrame(ntp, totalLen, header, payload, payloadLen))
+    else if (parseVariableFrame(ntp, totalLen, header, payload, payloadLen, consumeLen))
     {
-        consumeLen = payloadLen;
         return ParseResult::SUCCESS;
     }
     return ParseResult::FAILURE;
@@ -103,7 +101,8 @@ void Iec103Parser::setVariableFrameCallback(const VARIABLE_FRAME_CALLBACK& callb
 }
 
 bool Iec103Parser::parseFixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                                   uint32_t& consumeLen)
 {
     /**
      * 固定帧:
@@ -115,7 +114,7 @@ bool Iec103Parser::parseFixedFrame(const std::chrono::steady_clock::time_point& 
      * | 16H(结束字符)                                       |
      * -------------------------------------------------------
      */
-    if (5 == payloadLen && 0x10 == payload[0] && 0x16 == payload[4])
+    if (payloadLen >= 5 && 0x10 == payload[0] && 0x16 == payload[4])
     {
         uint8_t ctrl = payload[1];
         uint8_t addr = payload[2];
@@ -132,6 +131,7 @@ bool Iec103Parser::parseFixedFrame(const std::chrono::steady_clock::time_point& 
             frame->fcv_dfc = fcv_dfc;
             frame->func = func;
             frame->addr = addr;
+            consumeLen = 5;
             if (m_fixedFrameCb)
             {
                 m_fixedFrameCb(ntp, totalLen, header, frame);
@@ -139,11 +139,13 @@ bool Iec103Parser::parseFixedFrame(const std::chrono::steady_clock::time_point& 
             return true;
         }
     }
+    consumeLen = 0;
     return false;
 }
 
 bool Iec103Parser::parseVariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                      const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+                                      const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+                                      uint32_t& consumeLen)
 {
     /**
      * 可变帧:
@@ -176,17 +178,17 @@ bool Iec103Parser::parseVariableFrame(const std::chrono::steady_clock::time_poin
      *      | SU | 时标HOUR                  |
      * ----------------------------------------------
      */
-    if (payloadLen >= 9 && 0x68 == payload[0] && payload[1] == payload[2] && 0x68 == payload[3] && 0x16 == payload[payloadLen - 1])
+    if (payloadLen >= 9 && 0x68 == payload[0] && payload[1] == payload[2] && 0x68 == payload[3])
     {
         uint8_t length = payload[1];
         uint32_t frameLen = 4 + length + 2;
-        if (frameLen == payloadLen)
+        if (payloadLen >= frameLen && 0x16 == payload[frameLen - 1])
         {
             uint8_t ctrl = payload[4];
             uint8_t addr = payload[5];
             const uint8_t* data = payload + 6;
             uint8_t dataLen = length - 2;
-            uint8_t checksum = payload[payloadLen - 2];
+            uint8_t checksum = payload[frameLen - 2];
             uint64_t s = (uint64_t)ctrl + addr;
             for (uint8_t i = 0; i < dataLen; ++i)
             {
@@ -205,6 +207,7 @@ bool Iec103Parser::parseVariableFrame(const std::chrono::steady_clock::time_poin
                 frame->func = func;
                 frame->addr = addr;
                 frame->asdu = parseAsdu(data, length - 2);
+                consumeLen = frameLen;
                 if (m_variableFrameCb)
                 {
                     m_variableFrameCb(ntp, totalLen, header, frame);
@@ -213,6 +216,7 @@ bool Iec103Parser::parseVariableFrame(const std::chrono::steady_clock::time_poin
             }
         }
     }
+    consumeLen = 0;
     return false;
 }
 
@@ -766,7 +770,7 @@ std::shared_ptr<iec103::Asdu23> Iec103Parser::parseAsud23(const iec103::DataUnit
     {
         auto asdu = std::make_shared<iec103::Asdu23>();
         asdu->func = elements[0];
-        asdu->_ = 0;
+        asdu->_ = elements[1];
         for (uint8_t i = 0; i < identify.vsq.num; ++i)
         {
             iec103::DataSet23 dataSet23;
@@ -803,7 +807,7 @@ std::shared_ptr<iec103::Asdu24> Iec103Parser::parseAsud24(const iec103::DataUnit
     {
         auto asdu = std::make_shared<iec103::Asdu24>();
         asdu->func = elements[0];
-        asdu->_ = 0;
+        asdu->_ = elements[1];
         do
         {
             count = getToo(elements + offset, elementLen - offset, asdu->too);
@@ -843,7 +847,7 @@ std::shared_ptr<iec103::Asdu25> Iec103Parser::parseAsud25(const iec103::DataUnit
     {
         auto asdu = std::make_shared<iec103::Asdu25>();
         asdu->func = elements[0];
-        asdu->_ = 0;
+        asdu->_ = elements[1];
         do
         {
             count = getToo(elements + offset, elementLen - offset, asdu->too);
@@ -883,8 +887,8 @@ std::shared_ptr<iec103::Asdu26> Iec103Parser::parseAsud26(const iec103::DataUnit
     {
         auto asdu = std::make_shared<iec103::Asdu26>();
         asdu->func = elements[0];
-        asdu->_ = 0;
-        asdu->__ = 0;
+        asdu->_ = elements[1];
+        asdu->__ = elements[2];
         do
         {
             count = getTov(elements + offset, elementLen - offset, asdu->tov);
@@ -942,8 +946,8 @@ std::shared_ptr<iec103::Asdu27> Iec103Parser::parseAsud27(const iec103::DataUnit
     {
         auto asdu = std::make_shared<iec103::Asdu27>();
         asdu->func = elements[0];
-        asdu->_ = 0;
-        asdu->__ = 0;
+        asdu->_ = elements[1];
+        asdu->__ = elements[2];
         do
         {
             count = getTov(elements + offset, elementLen - offset, asdu->tov);
@@ -995,9 +999,9 @@ std::shared_ptr<iec103::Asdu28> Iec103Parser::parseAsud28(const iec103::DataUnit
     {
         auto asdu = std::make_shared<iec103::Asdu28>();
         asdu->func = elements[0];
-        asdu->_ = 0;
-        asdu->__ = 0;
-        asdu->___ = 0;
+        asdu->_ = elements[1];
+        asdu->__ = elements[2];
+        asdu->___ = elements[3];
         if (getFan(elements + offset, elementLen - offset, asdu->fan) > 0)
         {
             return asdu;
@@ -1014,7 +1018,7 @@ std::shared_ptr<iec103::Asdu29> Iec103Parser::parseAsud29(const iec103::DataUnit
     {
         auto asdu = std::make_shared<iec103::Asdu29>();
         asdu->func = elements[0];
-        asdu->_ = 0;
+        asdu->_ = elements[1];
         do
         {
             count = getFan(elements + offset, elementLen - offset, asdu->fan);
@@ -1050,6 +1054,7 @@ std::shared_ptr<iec103::Asdu29> Iec103Parser::parseAsud29(const iec103::DataUnit
                 {
                     return nullptr;
                 }
+                offset += count;
                 asdu->dataSet.emplace_back(dataSet29);
             }
             return asdu;
@@ -1066,8 +1071,8 @@ std::shared_ptr<iec103::Asdu30> Iec103Parser::parseAsud30(const iec103::DataUnit
     {
         auto asdu = std::make_shared<iec103::Asdu30>();
         asdu->func = elements[0];
-        asdu->_ = 0;
-        asdu->__ = 0;
+        asdu->_ = elements[1];
+        asdu->__ = elements[2];
         do
         {
             count = getTov(elements + offset, elementLen - offset, asdu->tov);
@@ -1125,7 +1130,7 @@ std::shared_ptr<iec103::Asdu31> Iec103Parser::parseAsud31(const iec103::DataUnit
     {
         auto asdu = std::make_shared<iec103::Asdu31>();
         asdu->func = elements[0];
-        asdu->_ = 0;
+        asdu->_ = elements[1];
         do
         {
             count = getToo(elements + offset, elementLen - offset, asdu->too);
@@ -1420,7 +1425,7 @@ int Iec103Parser::getRfa(const uint8_t* data, uint32_t dataLen, iec103::RFA& val
     const int BYTE_NUM = 4; /* 4个字节 */
     if (data && dataLen >= BYTE_NUM)
     {
-        int temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
+        uint32_t temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
         memcpy(&val, &temp, BYTE_NUM);
         return BYTE_NUM;
     }
@@ -1432,7 +1437,7 @@ int Iec103Parser::getRpv(const uint8_t* data, uint32_t dataLen, iec103::RPV& val
     const int BYTE_NUM = 4; /* 4个字节 */
     if (data && dataLen >= BYTE_NUM)
     {
-        int temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
+        uint32_t temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
         memcpy(&val, &temp, BYTE_NUM);
         return BYTE_NUM;
     }
@@ -1444,7 +1449,7 @@ int Iec103Parser::getRsv(const uint8_t* data, uint32_t dataLen, iec103::RSV& val
     const int BYTE_NUM = 4; /* 4个字节 */
     if (data && dataLen >= BYTE_NUM)
     {
-        int temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
+        uint32_t temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
         memcpy(&val, &temp, BYTE_NUM);
         return BYTE_NUM;
     }
@@ -1467,7 +1472,7 @@ int Iec103Parser::getScl(const uint8_t* data, uint32_t dataLen, iec103::SCL& val
     const int BYTE_NUM = 4; /* 4个字节 */
     if (data && dataLen >= BYTE_NUM)
     {
-        int temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
+        uint32_t temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
         memcpy(&val, &temp, BYTE_NUM);
         return BYTE_NUM;
     }
@@ -1586,7 +1591,7 @@ int Iec103Parser::getCP56Time2a(const uint8_t* data, uint32_t dataLen, iec103::C
         val.year += (val.year < 70) ? 2000 : 1900;
         val.month = data[5] & 0x0f;
         val.day = data[4] & 0x1f;
-        val.wday = data[4] & 0xe0;
+        val.wday = (data[4] >> 5) & 0x07;
         val.hour = data[3] & 0x1f;
         val.minute = data[2] & 0x3f;
         val.millisecond = (data[1] << 8) | data[0];
@@ -1676,7 +1681,7 @@ int Iec103Parser::getNog(const uint8_t* data, uint32_t dataLen, iec103::NOG& val
     if (data && dataLen >= BYTE_NUM)
     {
         val = data[0];
-        return dataLen;
+        return BYTE_NUM;
     }
     return -1;
 }
@@ -1717,7 +1722,7 @@ int Iec103Parser::getValWithRet(const uint8_t* data, uint32_t dataLen, iec103::V
     if (data && dataLen >= BYTE_NUM)
     {
         uint32_t offset = 0;
-        int temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
+        uint32_t temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
         memcpy(&val.real32Value, &temp, 4);
         offset += 4;
         offset += getRet(data + offset, dataLen - offset, val.ret);
@@ -1837,7 +1842,7 @@ int Iec103Parser::getIEEE754R32(const uint8_t* data, uint32_t dataLen, float& va
     const int BYTE_NUM = 4; /* 4个字节 */
     if (data && dataLen >= BYTE_NUM)
     {
-        int temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
+        uint32_t temp = (data[3] << 24) + (data[2] << 16) + (data[1] << 8) + data[0];
         memcpy(&val, &temp, BYTE_NUM);
         return BYTE_NUM;
     }
