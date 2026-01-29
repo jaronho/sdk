@@ -14,7 +14,7 @@ static npacket::Analyzer s_pktAnalyzer;
 static std::string s_proto;
 
 /* 打印以太网 */
-void printEthernet(const std::shared_ptr<npacket::EthernetIIHeader>& h)
+void printEthernet(const npacket::EthernetIIHeader* h)
 {
     printf("=============== EthernetII ===============\n");
     printf("src mac: %s, dst mac: %s\n", h->srcMacStr().c_str(), h->dstMacStr().c_str());
@@ -22,7 +22,7 @@ void printEthernet(const std::shared_ptr<npacket::EthernetIIHeader>& h)
 }
 
 /* 打印IPv4 */
-void printIPv4(const std::shared_ptr<npacket::Ipv4Header>& h)
+void printIPv4(const npacket::Ipv4Header* h)
 {
     printf("    ----- IPv4 -----\n");
     printf("    version: %d, header len: %d, tos: %d, total len: %d\n", h->version, h->headerLen, h->tos, h->totalLen);
@@ -36,7 +36,7 @@ void printIPv4(const std::shared_ptr<npacket::Ipv4Header>& h)
 }
 
 /* 打印ARP */
-void printARP(const std::shared_ptr<npacket::ArpHeader>& h)
+void printARP(const npacket::ArpHeader* h)
 {
     printf("    ----- ARP -----\n");
     printf("    header len: %d\n", h->headerLen);
@@ -48,7 +48,7 @@ void printARP(const std::shared_ptr<npacket::ArpHeader>& h)
 }
 
 /* 打印IPv6 */
-void printIPv6(const std::shared_ptr<npacket::Ipv6Header>& h)
+void printIPv6(const npacket::Ipv6Header* h)
 {
     printf("    ----- IPv6 -----\n");
     printf("    version: %d, traffic class: %d, flow label: %u, payload len: %d\n", h->version, h->trafficClass, h->flowLabel,
@@ -73,7 +73,7 @@ void printIPv6(const std::shared_ptr<npacket::Ipv6Header>& h)
 }
 
 /* 打印TCP */
-void printTCP(const std::shared_ptr<npacket::TcpHeader>& h)
+void printTCP(const npacket::TcpHeader* h)
 {
     printf("        ----- TCP -----\n");
     printf("        src port: %d, dst port: %d\n", h->srcPort, h->dstPort);
@@ -87,7 +87,7 @@ void printTCP(const std::shared_ptr<npacket::TcpHeader>& h)
 }
 
 /* 打印UDP */
-void printUDP(const std::shared_ptr<npacket::UdpHeader>& h)
+void printUDP(const npacket::UdpHeader* h)
 {
     printf("        ----- UDP -----\n");
     printf("        src port: %d, dst port: %d\n", h->srcPort, h->dstPort);
@@ -96,42 +96,42 @@ void printUDP(const std::shared_ptr<npacket::UdpHeader>& h)
 }
 
 /* 打印ICMP */
-void printICMP(const std::shared_ptr<npacket::IcmpHeader>& h)
+void printICMP(const npacket::IcmpHeader* h)
 {
     printf("        ----- ICMP -----\n");
     printf("        type: %d, code: %d, checksum: 0x%04x\n", h->type, h->code, h->checksum);
 }
 
 /* 打印ICMPv6 */
-void printICMPv6(const std::shared_ptr<npacket::Icmpv6Header>& h)
+void printICMPv6(const npacket::Icmpv6Header* h)
 {
     printf("        ----- ICMPv6 -----\n");
     printf("        type: %d, code: %d, checksum: 0x%04x\n", h->type, h->code, h->checksum);
 }
 
 /* 打印传输层(TCP)头部 */
-void printTransportHeaderTcp(const std::shared_ptr<npacket::ProtocolHeader>& h)
+void printTransportHeaderTcp(const npacket::ProtocolHeader* h)
 {
     if (!s_proto.empty())
     {
-        printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+        printEthernet((const npacket::EthernetIIHeader*)(h->parent->parent));
         if (npacket::NetworkProtocol::IPv4 == h->parent->getProtocol())
         {
-            printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(h->parent));
+            printIPv4((const npacket::Ipv4Header*)(h->parent));
         }
         else if (npacket::NetworkProtocol::IPv6 == h->parent->getProtocol())
         {
-            printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(h->parent));
+            printIPv6((const npacket::Ipv6Header*)(h->parent));
         }
-        printTCP(std::dynamic_pointer_cast<npacket::TcpHeader>(h));
+        printTCP((const npacket::TcpHeader*)(h));
     }
 }
 
 /* 处理以太网层 */
-bool handleEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                         const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool handleEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+                         const uint8_t* payload, uint32_t payloadLen)
 {
-    auto h = std::dynamic_pointer_cast<npacket::EthernetIIHeader>(header);
+    auto h = (const npacket::EthernetIIHeader*)(header);
     if (s_proto.empty() || "ehternet" == s_proto)
     {
         printEthernet(h);
@@ -140,42 +140,42 @@ bool handleEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint3
 }
 
 /* 处理网络层 */
-bool handleNetworkLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                        const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool handleNetworkLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+                        const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::NetworkProtocol)header->getProtocol())
     {
     case npacket::NetworkProtocol::IPv4: {
-        auto h = std::dynamic_pointer_cast<npacket::Ipv4Header>(header);
+        auto h = (const npacket::Ipv4Header*)(header);
         if (s_proto.empty() || "ipv4" == s_proto)
         {
             if (!s_proto.empty())
             {
-                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent));
+                printEthernet((const npacket::EthernetIIHeader*)(h->parent));
             }
             printIPv4(h);
         }
     }
     break;
     case npacket::NetworkProtocol::ARP: {
-        auto h = std::dynamic_pointer_cast<npacket::ArpHeader>(header);
+        auto h = (const npacket::ArpHeader*)(header);
         if (s_proto.empty() || "arp" == s_proto)
         {
             if (!s_proto.empty())
             {
-                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent));
+                printEthernet((const npacket::EthernetIIHeader*)(h->parent));
             }
             printARP(h);
         }
     }
     break;
     case npacket::NetworkProtocol::IPv6: {
-        auto h = std::dynamic_pointer_cast<npacket::Ipv6Header>(header);
+        auto h = (const npacket::Ipv6Header > *)(header);
         if (s_proto.empty() || "ipv4" == s_proto)
         {
             if (!s_proto.empty())
             {
-                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent));
+                printEthernet((const npacket::EthernetIIHeader*)(h->parent));
             }
             printIPv6(h);
         }
@@ -186,25 +186,25 @@ bool handleNetworkLayer(const std::chrono::steady_clock::time_point& ntp, uint32
 }
 
 /* 处理传输层 */
-bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                          const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+                          const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
     {
     case npacket::TransportProtocol::TCP: {
-        auto h = std::dynamic_pointer_cast<npacket::TcpHeader>(header);
+        auto h = (const npacket::TcpHeader*)(header);
         if (s_proto.empty() || "tcp" == s_proto)
         {
             if (!s_proto.empty())
             {
-                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+                printEthernet((const npacket::EthernetIIHeader*)(h->parent->parent));
                 switch (h->parent->getProtocol())
                 {
                 case npacket::NetworkProtocol::IPv4:
-                    printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(h->parent));
+                    printIPv4((const npacket::Ipv4Header*)(h->parent));
                     break;
                 case npacket::NetworkProtocol::IPv6:
-                    printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(h->parent));
+                    printIPv6((const npacket::Ipv6Header > *)(h->parent));
                     break;
                 }
             }
@@ -213,19 +213,19 @@ bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint
     }
     break;
     case npacket::TransportProtocol::UDP: {
-        auto h = std::dynamic_pointer_cast<npacket::UdpHeader>(header);
+        auto h = (const npacket::UdpHeader*)(header);
         if (s_proto.empty() || "udp" == s_proto)
         {
             if (!s_proto.empty())
             {
-                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+                printEthernet((const npacket::EthernetIIHeader*)(h->parent->parent));
                 switch (h->parent->getProtocol())
                 {
                 case npacket::NetworkProtocol::IPv4:
-                    printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(h->parent));
+                    printIPv4((const npacket::Ipv4Header*)(h->parent));
                     break;
                 case npacket::NetworkProtocol::IPv6:
-                    printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(h->parent));
+                    printIPv6((const npacket::Ipv6Header*)(h->parent));
                     break;
                 }
             }
@@ -234,15 +234,15 @@ bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint
     }
     break;
     case npacket::TransportProtocol::ICMP: {
-        auto h = std::dynamic_pointer_cast<npacket::IcmpHeader>(header);
+        auto h = (const npacket::IcmpHeader*)(header);
         if (s_proto.empty() || "icmp" == s_proto)
         {
             if (!s_proto.empty())
             {
-                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+                printEthernet((const npacket::EthernetIIHeader*)(h->parent->parent));
                 if (npacket::NetworkProtocol::IPv4 == h->parent->getProtocol())
                 {
-                    printIPv4(std::dynamic_pointer_cast<npacket::Ipv4Header>(h->parent));
+                    printIPv4((const npacket::Ipv4Header*)(h->parent));
                 }
             }
             printICMP(h);
@@ -250,15 +250,15 @@ bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint
     }
     break;
     case npacket::TransportProtocol::ICMPv6: {
-        auto h = std::dynamic_pointer_cast<npacket::Icmpv6Header>(header);
+        auto h = (const npacket::Icmpv6Header*)(header);
         if (s_proto.empty() || "icmpv6" == s_proto)
         {
             if (!s_proto.empty())
             {
-                printEthernet(std::dynamic_pointer_cast<npacket::EthernetIIHeader>(h->parent->parent));
+                printEthernet((const npacket::EthernetIIHeader*)(h->parent->parent));
                 if (npacket::NetworkProtocol::IPv6 == h->parent->getProtocol())
                 {
-                    printIPv6(std::dynamic_pointer_cast<npacket::Ipv6Header>(h->parent));
+                    printIPv6((const npacket::Ipv6Header*)(h->parent));
                 }
             }
             printICMPv6(h);
@@ -270,8 +270,8 @@ bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint
 }
 
 /* 处理应用层FTP控制请求 */
-void handleApplicationFtpCtrlReq(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                 const std::shared_ptr<npacket::ProtocolHeader>& header, const std::string& flag, const std::string& param)
+void handleApplicationFtpCtrlReq(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+                                 const std::string& flag, const std::string& param)
 {
     if (s_proto.empty() || "ftp" == s_proto)
     {
@@ -287,7 +287,7 @@ void handleApplicationFtpCtrlReq(const std::chrono::steady_clock::time_point& nt
 
 /* 处理应用层FTP控制应答 */
 void handleApplicationFtpCtrlResp(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                  const std::shared_ptr<npacket::ProtocolHeader>& header, const std::string& flag, const std::string& param)
+                                  const npacket::ProtocolHeader* header, const std::string& flag, const std::string& param)
 {
     if (s_proto.empty() || "ftp" == s_proto)
     {
@@ -302,9 +302,9 @@ void handleApplicationFtpCtrlResp(const std::chrono::steady_clock::time_point& n
 }
 
 /* 处理应用层FTP数据 */
-void handleApplicationFtpData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                              const std::shared_ptr<npacket::ProtocolHeader>& header, const npacket::FtpParser::CtrlInfo& ctrl,
-                              const npacket::FtpParser::DataFlag& flag, const uint8_t* data, uint32_t dataLen)
+void handleApplicationFtpData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+                              const npacket::FtpParser::CtrlInfo& ctrl, const npacket::FtpParser::DataFlag& flag, const uint8_t* data,
+                              uint32_t dataLen)
 {
     if (s_proto.empty() || "ftp-data" == s_proto)
     {
@@ -336,8 +336,7 @@ void handleApplicationFtpData(const std::chrono::steady_clock::time_point& ntp, 
 
 /* 处理应用层IEC103固定帧 */
 void handleApplicationIec103FixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                       const std::shared_ptr<npacket::ProtocolHeader>& header,
-                                       const std::shared_ptr<npacket::iec103::FixedFrame>& frame)
+                                       const npacket::ProtocolHeader* header, const std::shared_ptr<npacket::iec103::FixedFrame>& frame)
 {
     if (s_proto.empty() || "iec103" == s_proto)
     {
@@ -353,7 +352,7 @@ void handleApplicationIec103FixedFrame(const std::chrono::steady_clock::time_poi
 
 /* 处理应用层IEC103可变帧 */
 void handleApplicationIec103VariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                          const std::shared_ptr<npacket::ProtocolHeader>& header,
+                                          const npacket::ProtocolHeader* header,
                                           const std::shared_ptr<npacket::iec103::VariableFrame>& frame)
 {
     if (s_proto.empty() || "iec103" == s_proto)

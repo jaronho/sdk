@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <memory>
 #include <unordered_map>
 
 #include "../protocol_parser.h"
@@ -52,9 +53,8 @@ public:
      * @param flag 命令/代码
      * @param arg 参数
      */
-    using CTRL_PKT_CALLBACK =
-        std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                           const std::shared_ptr<ProtocolHeader>& header, const std::string& flag, const std::string& arg)>;
+    using CTRL_PKT_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                                 const ProtocolHeader* header, const std::string& flag, const std::string& arg)>;
 
     /**
      * @brief 数据包回调
@@ -66,9 +66,9 @@ public:
      * @param data 数据内容
      * @param dataLen 数据长度
      */
-    using DATA_PKT_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                                 const std::shared_ptr<ProtocolHeader>& header, const CtrlInfo& ctrl, const DataFlag& flag,
-                                                 const uint8_t* data, uint32_t dataLen)>;
+    using DATA_PKT_CALLBACK =
+        std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                           const CtrlInfo& ctrl, const DataFlag& flag, const uint8_t* data, uint32_t dataLen)>;
 
 public:
     /**
@@ -93,7 +93,7 @@ public:
      * @param consumeLen [输出]消耗的长度
      * @return 解析结果
      */
-    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                       const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen) override;
 
     /**
@@ -118,13 +118,13 @@ private:
     /**
      * @brief 解析请求包
      */
-    bool parseRequest(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+    bool parseRequest(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                       const uint8_t* payload, uint32_t payloadLen);
 
     /**
      * @brief 解析响应包
      */
-    bool parseResponse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+    bool parseResponse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                        const uint8_t* payload, uint32_t payloadLen);
 
     /**
@@ -138,8 +138,8 @@ private:
     /**
      * @brief 处理数据端口
      */
-    void handleDataPort(const std::chrono::steady_clock::time_point& ntp, const std::shared_ptr<ProtocolHeader>& header,
-                        const DataMode& mode, const std::string& ip, uint32_t port);
+    void handleDataPort(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* header, const DataMode& mode,
+                        const std::string& ip, uint32_t port);
 
     /**
      * @brief 回收数据连接
@@ -149,7 +149,7 @@ private:
     /**
      * @brief 解析数据包
      */
-    bool parseData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+    bool parseData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                    const uint8_t* payload, uint32_t payloadLen);
 
 private:

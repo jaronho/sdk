@@ -124,9 +124,8 @@ uint32_t FtpParser::getProtocol() const
     return ApplicationProtocol::FTP;
 }
 
-ParseResult FtpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                             const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
-                             uint32_t& consumeLen)
+ParseResult FtpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                             const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     consumeLen = 0;
     recyleDataConnect(ntp);
@@ -171,8 +170,8 @@ void FtpParser::setDataCallback(const DATA_PKT_CALLBACK& callback)
     m_dataCb = callback;
 }
 
-bool FtpParser::parseRequest(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                             const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool FtpParser::parseRequest(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                             const uint8_t* payload, uint32_t payloadLen)
 {
     auto ch0 = payload[0], ch1 = payload[1], ch2 = payload[2];
     if ((ch0 >= 'A' && ch0 <= 'Z') && (ch1 >= 'A' && ch1 <= 'Z') && (ch2 >= 'A' && ch2 <= 'Z')) /* 疑似请求包 */
@@ -234,8 +233,8 @@ bool FtpParser::parseRequest(const std::chrono::steady_clock::time_point& ntp, u
     return false;
 }
 
-bool FtpParser::parseResponse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                              const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool FtpParser::parseResponse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                              const uint8_t* payload, uint32_t payloadLen)
 {
     if (payloadLen < 7)
     {
@@ -354,8 +353,8 @@ bool FtpParser::parseDataPort(const std::string& ip_port, std::string& ip, uint3
     return true;
 }
 
-void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp, const std::shared_ptr<ProtocolHeader>& header,
-                               const DataMode& mode, const std::string& ip, uint32_t port)
+void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* header, const DataMode& mode,
+                               const std::string& ip, uint32_t port)
 {
     auto key = ip + ":" + std::to_string(port);
     if (m_dataConnectList.end() == m_dataConnectList.find(key))
@@ -363,17 +362,17 @@ void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp,
         std::string scrAddr, dstAddr;
         if (NetworkProtocol::IPv4 == header->parent->getProtocol())
         {
-            auto ipv4Header = std::dynamic_pointer_cast<Ipv4Header>(header->parent);
+            auto ipv4Header = (const Ipv4Header*)(header->parent);
             scrAddr = ipv4Header->srcAddrStr();
             dstAddr = ipv4Header->dstAddrStr();
         }
         else if (NetworkProtocol::IPv6 == header->parent->getProtocol())
         {
-            auto ipv6Header = std::dynamic_pointer_cast<Ipv6Header>(header->parent);
+            auto ipv6Header = (const Ipv6Header*)(header->parent);
             scrAddr = ipv6Header->srcAddrStr();
             dstAddr = ipv6Header->dstAddrStr();
         }
-        auto tcpHeader = std::dynamic_pointer_cast<TcpHeader>(header);
+        auto tcpHeader = (const TcpHeader*)(header);
         auto dci = std::make_shared<DataConnectInfo>();
         if (DataMode::ACTIVE == mode) /* 主动模式 */
         {
@@ -418,23 +417,23 @@ void FtpParser::recyleDataConnect(const std::chrono::steady_clock::time_point& n
     }
 }
 
-bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                          const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                          const uint8_t* payload, uint32_t payloadLen)
 {
     std::string scrAddr, dstAddr;
     if (NetworkProtocol::IPv4 == header->parent->getProtocol())
     {
-        auto ipv4Header = std::dynamic_pointer_cast<Ipv4Header>(header->parent);
+        auto ipv4Header = (const Ipv4Header*)(header->parent);
         scrAddr = ipv4Header->srcAddrStr();
         dstAddr = ipv4Header->dstAddrStr();
     }
     else if (NetworkProtocol::IPv6 == header->parent->getProtocol())
     {
-        auto ipv6Header = std::dynamic_pointer_cast<Ipv6Header>(header->parent);
+        auto ipv6Header = (const Ipv6Header*)(header->parent);
         scrAddr = ipv6Header->srcAddrStr();
         dstAddr = ipv6Header->dstAddrStr();
     }
-    auto tcpHeader = std::dynamic_pointer_cast<TcpHeader>(header);
+    auto tcpHeader = (const TcpHeader*)(header);
     auto srcKey = scrAddr + ":" + std::to_string(tcpHeader->srcPort);
     auto iter = m_dataConnectList.find(srcKey);
     if (m_dataConnectList.end() == iter)

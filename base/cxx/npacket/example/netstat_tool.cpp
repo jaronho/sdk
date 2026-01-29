@@ -63,8 +63,8 @@ std::string getDateTime()
 /**
  * @brief 处理接收以太网层
  */
-bool handleInEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                           const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool handleInEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+                           const uint8_t* payload, uint32_t payloadLen)
 {
     ++s_inPkt;
     s_inByte += totalLen;
@@ -74,8 +74,8 @@ bool handleInEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uin
 /**
  * @brief 处理接收传输层
  */
-bool handleInTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                            const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool handleInTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+                            const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
     {
@@ -96,8 +96,8 @@ bool handleInTransportLayer(const std::chrono::steady_clock::time_point& ntp, ui
 /**
  * @brief 处理发送以太网层
  */
-bool handleOutEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                            const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool handleOutEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+                            const uint8_t* payload, uint32_t payloadLen)
 {
     ++s_outPkt;
     s_outByte += totalLen;
@@ -107,8 +107,8 @@ bool handleOutEthernetLayer(const std::chrono::steady_clock::time_point& ntp, ui
 /**
  * @brief 处理发送传输层
  */
-bool handleOutTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                             const std::shared_ptr<npacket::ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)
+bool handleOutTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+                             const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
     {

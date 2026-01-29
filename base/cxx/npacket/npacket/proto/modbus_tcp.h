@@ -21,7 +21,7 @@ public:
      * @param data Modbus数据
      */
     using DATA_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                             const std::shared_ptr<ProtocolHeader>& header, const std::shared_ptr<modbus::DataSt>& data)>;
+                                             const ProtocolHeader* header, const std::shared_ptr<modbus::DataSt>& data)>;
 
 public:
     /**
@@ -46,7 +46,7 @@ public:
      * @param consumeLen [输出]消耗的长度
      * @return 解析结果
      */
-    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                       const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen) override;
 
     /**

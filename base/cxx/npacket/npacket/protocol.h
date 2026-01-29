@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>
 #include <string.h>
 #include <string>
 
@@ -35,6 +34,11 @@ class ProtocolHeader
 {
 public:
     /**
+     * @brief 析构函数(必须要有)
+     */
+    virtual ~ProtocolHeader() = default;
+
+    /**
      * @brief 获取(网络层/传输层)协议
      * @return 协议类型(NetworkProtocol/TransportProtocol)
      */
@@ -45,10 +49,10 @@ public:
      */
     virtual void reset()
     {
-        parent.reset();
+        parent = nullptr;
     }
 
-    std::shared_ptr<ProtocolHeader> parent = nullptr; /* 父层头部 */
+    const ProtocolHeader* parent = nullptr; /* 父层头部 */
 };
 
 /**

@@ -66,9 +66,8 @@ uint32_t Iec103Parser::getProtocol() const
     return ApplicationProtocol::IEC103;
 }
 
-ParseResult Iec103Parser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
-                                uint32_t& consumeLen)
+ParseResult Iec103Parser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                                const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     consumeLen = 0;
     if (header && TransportProtocol::TCP != header->getProtocol() && TransportProtocol::UDP != header->getProtocol())
@@ -100,9 +99,8 @@ void Iec103Parser::setVariableFrameCallback(const VARIABLE_FRAME_CALLBACK& callb
     m_variableFrameCb = callback;
 }
 
-bool Iec103Parser::parseFixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
-                                   uint32_t& consumeLen)
+bool Iec103Parser::parseFixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                                   const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     /**
      * 固定帧:
@@ -143,9 +141,8 @@ bool Iec103Parser::parseFixedFrame(const std::chrono::steady_clock::time_point& 
     return false;
 }
 
-bool Iec103Parser::parseVariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                      const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
-                                      uint32_t& consumeLen)
+bool Iec103Parser::parseVariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                                      const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     /**
      * 可变帧:

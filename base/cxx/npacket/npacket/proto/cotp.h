@@ -1,4 +1,6 @@
 #pragma once
+#include <memory>
+
 #include "../protocol_parser.h"
 
 namespace npacket
@@ -127,14 +129,14 @@ public:
      * @param consumeLen [输出]消耗的长度
      * @return 解析结果
      */
-    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                       const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen) override;
 
 private:
     /**
      * @param 解析S7COMM 
      */
-    bool parseS7Comm(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+    bool parseS7Comm(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                      const TpktInfo& tpktInfo, const std::shared_ptr<CotpInfo>& cotpInfo, const uint8_t* payload, uint32_t payloadLen);
 };
 } // namespace npacket

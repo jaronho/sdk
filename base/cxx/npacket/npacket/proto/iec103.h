@@ -70,9 +70,8 @@ public:
      * @param header 传输层头部(当数据走的是非网络时, 为空)
      * @param frame 固定帧数据
      */
-    using FIXED_FRAME_CALLBACK =
-        std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                           const std::shared_ptr<ProtocolHeader>& header, const std::shared_ptr<iec103::FixedFrame>& frame)>;
+    using FIXED_FRAME_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                                    const ProtocolHeader* header, const std::shared_ptr<iec103::FixedFrame>& frame)>;
 
     /**
      * @brief 可变帧回调
@@ -81,9 +80,8 @@ public:
      * @param header 传输层头部(当数据走的是非网络时, 为空)
      * @param frame 可变帧数据
      */
-    using VARIABLE_FRAME_CALLBACK =
-        std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                           const std::shared_ptr<ProtocolHeader>& header, const std::shared_ptr<iec103::VariableFrame>& frame)>;
+    using VARIABLE_FRAME_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                                       const ProtocolHeader* header, const std::shared_ptr<iec103::VariableFrame>& frame)>;
 
 public:
     /**
@@ -102,7 +100,7 @@ public:
      * @param consumeLen [输出]消耗的长度
      * @return 解析结果
      */
-    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                       const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen) override;
 
     /**
@@ -121,15 +119,14 @@ private:
     /**
      * @brief 解析固定帧
      */
-    bool parseFixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const std::shared_ptr<ProtocolHeader>& header,
+    bool parseFixedFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                          const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen);
 
     /**
      * @brief 解析可变帧
      */
-    bool parseVariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                            const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
-                            uint32_t& consumeLen);
+    bool parseVariableFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                            const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen);
 
     /**
      * @brief 解析应用服务数据单元

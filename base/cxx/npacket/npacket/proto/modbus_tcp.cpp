@@ -14,16 +14,15 @@ uint32_t ModbusTcpParser::getProtocol() const
     return ApplicationProtocol::MODBUS_TCP;
 }
 
-ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                   const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
-                                   uint32_t& consumeLen)
+ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                                   const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     consumeLen = 0;
     if (!header || TransportProtocol::TCP != header->getProtocol())
     {
         return ParseResult::FAILURE;
     }
-    auto tcpHeader = std::dynamic_pointer_cast<TcpHeader>(header);
+    auto tcpHeader = (const TcpHeader*)(header);
     if (!tcpHeader)
     {
         return ParseResult::FAILURE;

@@ -3,6 +3,7 @@
 #include <chrono>
 #include <functional>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string.h>
 #include <unordered_map>
@@ -22,8 +23,8 @@ namespace npacket
  * @param payloadLen 层负载长度
  * @return true-继续处理下一层, false-停止后续处理
  */
-using LAYER_CALLBACK = std::function<bool(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                          const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen)>;
+using LAYER_CALLBACK = std::function<bool(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                                          const uint8_t* payload, uint32_t payloadLen)>;
 
 /**
  * @brief 数据源
@@ -249,7 +250,7 @@ private:
      * @param networkProtocol [输出]网络层协议类型
      * @return 协议头部
      */
-    std::shared_ptr<ProtocolHeader> handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
+    std::unique_ptr<ProtocolHeader> handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
                                                         uint32_t& networkProtocol);
 
     /**
@@ -261,7 +262,7 @@ private:
      * @param transportProtocol [输出]传输层协议类型
      * @return 协议头部
      */
-    std::shared_ptr<ProtocolHeader> handleNetworkLayer(uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
+    std::unique_ptr<ProtocolHeader> handleNetworkLayer(uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
                                                        uint32_t& transportProtocol);
 
     /**
@@ -272,7 +273,7 @@ private:
      * @param headerLen [输出]协议头部长度
      * @return 协议头部
      */
-    std::shared_ptr<ProtocolHeader> handleTransportLayer(uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
+    std::unique_ptr<ProtocolHeader> handleTransportLayer(uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
                                                          uint32_t& headerLen);
 
     /**
@@ -285,8 +286,8 @@ private:
      * @param applicationParserList 应用层解析器列表
      * @return 0-成功, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片)
      */
-    int handleApplicationLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                               const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+    int handleApplicationLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                               const uint8_t* payload, uint32_t payloadLen,
                                const std::vector<std::shared_ptr<ProtocolParser>>& applicationParserList);
 
     /**
@@ -316,8 +317,8 @@ private:
      * @param isFragment [输出]是否为分片报文, true-是分片报文, false-不是分片报文
      * @return 返回重组后的完整数据
      */
-    std::shared_ptr<std::vector<uint8_t>> checkAndHandleFragment(const std::shared_ptr<ProtocolHeader>& networkHeader, const uint8_t* data,
-                                                                 uint32_t dataLen, bool& isFragment);
+    std::shared_ptr<std::vector<uint8_t>> checkAndHandleFragment(const ProtocolHeader* networkHeader, const uint8_t* data, uint32_t dataLen,
+                                                                 bool& isFragment);
 
     /**
      * @brief 解析IPv6分片头部
@@ -331,9 +332,8 @@ private:
      * @param identification [输出]标识符
      * @return true-成功, false-失败
      */
-    bool parseIpv6FragmentHeader(const std::shared_ptr<Ipv6Header>& header, const uint8_t* data, uint32_t dataLen,
-                                 uint8_t& originalProtocol, bool& isMoreFragment, uint32_t& fragOffset, uint32_t& fragHeaderLen,
-                                 uint32_t& identification);
+    bool parseIpv6FragmentHeader(const Ipv6Header* header, const uint8_t* data, uint32_t dataLen, uint8_t& originalProtocol,
+                                 bool& isMoreFragment, uint32_t& fragOffset, uint32_t& fragHeaderLen, uint32_t& identification);
 
 private:
     const NetworkConfig m_networkCfg; /* 网络包分析配置 */

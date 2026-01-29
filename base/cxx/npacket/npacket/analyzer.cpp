@@ -142,7 +142,7 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
         return 6;
     }
     uint32_t remainLen = dataLen, offset = 0;
-    std::shared_ptr<ProtocolHeader> transportHeader = nullptr;
+    std::unique_ptr<ProtocolHeader> ethernetHeader = nullptr, networkHeader = nullptr, transportHeader = nullptr;
     bool willParseApplication = false;
     if (DataSource::NETWORK == dataSource) /* 标准网络数据包 */
     {
@@ -155,28 +155,28 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
             transportLayerCb = m_transportLayerCb;
         }
         /* step1. 解析以太网层 */
-        auto ethernetHeader = handleEthernetLayer(data + offset, remainLen, headerLen, networkProtocol);
+        ethernetHeader = handleEthernetLayer(data + offset, remainLen, headerLen, networkProtocol);
         if (!ethernetHeader)
         {
             return 1;
         }
         remainLen -= headerLen;
         offset += headerLen;
-        if (ehternetLayerCb && !ehternetLayerCb(ntp, dataLen, ethernetHeader, data + offset, remainLen))
+        if (ehternetLayerCb && !ehternetLayerCb(ntp, dataLen, ethernetHeader.get(), data + offset, remainLen))
         {
             return 0;
         }
         /* step2. 解析网络层 */
         if (remainLen > 0)
         {
-            auto networkHeader = handleNetworkLayer(networkProtocol, data + offset, remainLen, headerLen, transportProtocol);
+            networkHeader = handleNetworkLayer(networkProtocol, data + offset, remainLen, headerLen, transportProtocol);
             if (!networkHeader)
             {
                 return 2;
             }
             /* step3. 检查并处理分片 */
             bool isFragment = false;
-            auto reassembledData = checkAndHandleFragment(networkHeader, data + offset, remainLen, isFragment);
+            auto reassembledData = checkAndHandleFragment(networkHeader.get(), data + offset, remainLen, isFragment);
             if (isFragment)
             {
                 if (reassembledData) /* 分片已重组完成, 使用重组后的数据继续解析 */
@@ -185,10 +185,10 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
                 }
                 return 5; /* 分片未收齐, 等待后续 */
             }
-            networkHeader->parent = ethernetHeader;
+            networkHeader->parent = ethernetHeader.get();
             remainLen -= headerLen;
             offset += headerLen;
-            if (networkLayerCb && !networkLayerCb(ntp, dataLen, networkHeader, data + offset, remainLen))
+            if (networkLayerCb && !networkLayerCb(ntp, dataLen, networkHeader.get(), data + offset, remainLen))
             {
                 return 0;
             }
@@ -200,10 +200,10 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
                 {
                     return 3;
                 }
-                transportHeader->parent = networkHeader;
+                transportHeader->parent = networkHeader.get();
                 remainLen -= headerLen;
                 offset += headerLen;
-                if (transportLayerCb && !transportLayerCb(ntp, dataLen, transportHeader, data + offset, remainLen))
+                if (transportLayerCb && !transportLayerCb(ntp, dataLen, transportHeader.get(), data + offset, remainLen))
                 {
                     return 0;
                 }
@@ -223,12 +223,12 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
             std::lock_guard<std::mutex> locker(m_mutexParserList);
             applicationParserList = m_applicationParserList;
         }
-        return handleApplicationLayer(ntp, dataLen, transportHeader, data + offset, remainLen, applicationParserList);
+        return handleApplicationLayer(ntp, dataLen, transportHeader.get(), data + offset, remainLen, applicationParserList);
     }
     return 0;
 }
 
-std::shared_ptr<ProtocolHeader> Analyzer::handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
+std::unique_ptr<ProtocolHeader> Analyzer::handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
                                                               uint32_t& networkProtocol)
 {
     if (data && dataLen >= EthernetIIHeader::getMinLen())
@@ -241,7 +241,7 @@ std::shared_ptr<ProtocolHeader> Analyzer::handleEthernetLayer(const uint8_t* dat
     return nullptr;
 }
 
-std::shared_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
+std::unique_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
                                                              uint32_t& headerLen, uint32_t& transportProtocol)
 {
     if (data)
@@ -286,7 +286,7 @@ std::shared_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(uint32_t networkPro
     return nullptr;
 }
 
-std::shared_ptr<ProtocolHeader> Analyzer::handleTransportLayer(uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
+std::unique_ptr<ProtocolHeader> Analyzer::handleTransportLayer(uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
                                                                uint32_t& headerLen)
 {
     if (data)
@@ -330,8 +330,8 @@ std::shared_ptr<ProtocolHeader> Analyzer::handleTransportLayer(uint32_t transpor
     return nullptr;
 }
 
-int Analyzer::handleApplicationLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                     const std::shared_ptr<ProtocolHeader>& header, const uint8_t* payload, uint32_t payloadLen,
+int Analyzer::handleApplicationLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+                                     const uint8_t* payload, uint32_t payloadLen,
                                      const std::vector<std::shared_ptr<ProtocolParser>>& applicationParserList)
 {
     /* 从传输层头部提取端口 */
@@ -340,7 +340,7 @@ int Analyzer::handleApplicationLayer(const std::chrono::steady_clock::time_point
     {
         if (TransportProtocol::TCP == header->getProtocol())
         {
-            auto tcpHeader = std::static_pointer_cast<TcpHeader>(header);
+            auto tcpHeader = (const TcpHeader*)(header);
             if (tcpHeader)
             {
                 srcPort = tcpHeader->srcPort;
@@ -349,7 +349,7 @@ int Analyzer::handleApplicationLayer(const std::chrono::steady_clock::time_point
         }
         else if (TransportProtocol::UDP == header->getProtocol())
         {
-            auto udpHeader = std::static_pointer_cast<UdpHeader>(header);
+            auto udpHeader = (const UdpHeader*)(header);
             if (udpHeader)
             {
                 srcPort = udpHeader->srcPort;
@@ -530,8 +530,8 @@ void Analyzer::cleanupFragmentCache(const std::chrono::steady_clock::time_point&
     }
 }
 
-std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std::shared_ptr<ProtocolHeader>& networkHeader,
-                                                                       const uint8_t* data, uint32_t dataLen, bool& isFragment)
+std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const ProtocolHeader* networkHeader, const uint8_t* data,
+                                                                       uint32_t dataLen, bool& isFragment)
 {
     isFragment = false;
     if (!networkHeader || !data || 0 == dataLen)
@@ -547,7 +547,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
     if (NetworkProtocol::IPv4 == networkHeader->getProtocol()) /* IPv4 */
     {
         isIpv4 = true;
-        auto ipv4Header = std::static_pointer_cast<Ipv4Header>(networkHeader);
+        auto ipv4Header = (const Ipv4Header*)(networkHeader);
         if (!(ipv4Header->flagMore > 0 || ipv4Header->fragOffset > 0)) /* 非分片报文 */
         {
             return nullptr;
@@ -560,7 +560,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
     }
     else if (NetworkProtocol::IPv6 == networkHeader->getProtocol()) /* IPv6 */
     {
-        auto ipv6Header = std::static_pointer_cast<Ipv6Header>(networkHeader);
+        auto ipv6Header = (const Ipv6Header*)(networkHeader);
         uint32_t fragHeaderLen = 0, identification = 0;
         if (!parseIpv6FragmentHeader(ipv6Header, data, dataLen, originalProtocol, isMoreFragment, fragOffset, fragHeaderLen,
                                      identification)) /* 非分片报文 */
@@ -721,9 +721,8 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
     return nullptr;
 }
 
-bool Analyzer::parseIpv6FragmentHeader(const std::shared_ptr<Ipv6Header>& header, const uint8_t* data, uint32_t dataLen,
-                                       uint8_t& originalProtocol, bool& isMoreFragment, uint32_t& fragOffset, uint32_t& fragHeaderLen,
-                                       uint32_t& identification)
+bool Analyzer::parseIpv6FragmentHeader(const Ipv6Header* header, const uint8_t* data, uint32_t dataLen, uint8_t& originalProtocol,
+                                       bool& isMoreFragment, uint32_t& fragOffset, uint32_t& fragHeaderLen, uint32_t& identification)
 {
     if (!header || !data || dataLen < Ipv6Header::getMinLen() + 8)
     {

@@ -14,9 +14,9 @@ uint32_t Helper::ntoh32(const uint8_t n[4])
     return ((uint32_t)(n[0]) << 24) | ((uint32_t)(n[1]) << 16) | ((uint32_t)(n[2]) << 8) | n[3];
 }
 
-std::shared_ptr<EthernetIIHeader> Helper::loadEthernetIIHeader(const RawEthernetIIHeader& r)
+std::unique_ptr<EthernetIIHeader> Helper::loadEthernetIIHeader(const RawEthernetIIHeader& r)
 {
-    auto header = std::make_shared<EthernetIIHeader>();
+    auto header = std::make_unique<EthernetIIHeader>();
     header->headerLen = EthernetIIHeader::getMinLen();
     memcpy(header->dstMac, r.dstMac, sizeof(r.dstMac));
     memcpy(header->srcMac, r.srcMac, sizeof(r.srcMac));
@@ -24,9 +24,9 @@ std::shared_ptr<EthernetIIHeader> Helper::loadEthernetIIHeader(const RawEthernet
     return header;
 }
 
-std::shared_ptr<Ipv4Header> Helper::loadIpv4Header(const RawIpv4Header& r)
+std::unique_ptr<Ipv4Header> Helper::loadIpv4Header(const RawIpv4Header& r)
 {
-    auto header = std::make_shared<Ipv4Header>();
+    auto header = std::make_unique<Ipv4Header>();
     header->version = r.ver_ihl >> 4;
     header->headerLen = (r.ver_ihl & 0xF) * 4;
     header->tos = r.tos;
@@ -45,9 +45,9 @@ std::shared_ptr<Ipv4Header> Helper::loadIpv4Header(const RawIpv4Header& r)
     return header;
 }
 
-std::shared_ptr<ArpHeader> Helper::loadArpHeader(const RawArpHeader& r)
+std::unique_ptr<ArpHeader> Helper::loadArpHeader(const RawArpHeader& r)
 {
-    auto header = std::make_shared<ArpHeader>();
+    auto header = std::make_unique<ArpHeader>();
     header->headerLen = ArpHeader::getMinLen();
     header->hardwareType = ntoh16(r.hardwareType);
     header->protocolType = ntoh16(r.protocolType);
@@ -61,9 +61,9 @@ std::shared_ptr<ArpHeader> Helper::loadArpHeader(const RawArpHeader& r)
     return header;
 }
 
-std::shared_ptr<Ipv6Header> Helper::loadIpv6Header(const RawIpv6Header& r)
+std::unique_ptr<Ipv6Header> Helper::loadIpv6Header(const RawIpv6Header& r)
 {
-    auto header = std::make_shared<Ipv6Header>();
+    auto header = std::make_unique<Ipv6Header>();
     auto ver_class_label = ntoh32(r.ver_class_label);
     header->version = ver_class_label >> 28;
     header->headerLen = Ipv6Header::getMinLen();
@@ -80,9 +80,9 @@ std::shared_ptr<Ipv6Header> Helper::loadIpv6Header(const RawIpv6Header& r)
     return header;
 }
 
-std::shared_ptr<TcpHeader> Helper::loadTcpHeader(const RawTcpHeader& r)
+std::unique_ptr<TcpHeader> Helper::loadTcpHeader(const RawTcpHeader& r)
 {
-    auto header = std::make_shared<TcpHeader>();
+    auto header = std::make_unique<TcpHeader>();
     header->srcPort = ntoh16(r.srcPort);
     header->dstPort = ntoh16(r.dstPort);
     header->seq = ntoh32(r.seq);
@@ -105,9 +105,9 @@ std::shared_ptr<TcpHeader> Helper::loadTcpHeader(const RawTcpHeader& r)
     return header;
 }
 
-std::shared_ptr<UdpHeader> Helper::loadUdpHeader(const RawUdpHeader& r)
+std::unique_ptr<UdpHeader> Helper::loadUdpHeader(const RawUdpHeader& r)
 {
-    auto header = std::make_shared<UdpHeader>();
+    auto header = std::make_unique<UdpHeader>();
     header->headerLen = UdpHeader::getMinLen();
     header->srcPort = ntoh16(r.srcPort);
     header->dstPort = ntoh16(r.dstPort);
@@ -116,9 +116,9 @@ std::shared_ptr<UdpHeader> Helper::loadUdpHeader(const RawUdpHeader& r)
     return header;
 }
 
-std::shared_ptr<IcmpHeader> Helper::loadIcmpHeader(const RawIcmpHeader& r)
+std::unique_ptr<IcmpHeader> Helper::loadIcmpHeader(const RawIcmpHeader& r)
 {
-    auto header = std::make_shared<IcmpHeader>();
+    auto header = std::make_unique<IcmpHeader>();
     header->headerLen = IcmpHeader::getMinLen();
     header->type = r.type;
     header->code = r.code;
@@ -126,9 +126,9 @@ std::shared_ptr<IcmpHeader> Helper::loadIcmpHeader(const RawIcmpHeader& r)
     return header;
 }
 
-std::shared_ptr<Icmpv6Header> Helper::loadIcmpv6Header(const RawIcmpv6Header& r)
+std::unique_ptr<Icmpv6Header> Helper::loadIcmpv6Header(const RawIcmpv6Header& r)
 {
-    auto header = std::make_shared<Icmpv6Header>();
+    auto header = std::make_unique<Icmpv6Header>();
     header->headerLen = Icmpv6Header::getMinLen();
     header->type = r.type;
     header->code = r.code;
