@@ -36,10 +36,11 @@ enum DataSource
 };
 
 /**
- * @brief 网络包分析配置
+ * @brief IP分片重组配置
  */
-struct NetworkConfig
+struct IpReassemblyConfig
 {
+    bool enable = true; /* 是否启用IP分片重组功能 */
     size_t fragTimeout = 30000; /* 分片重组超时时间(毫秒) */
     size_t fragClearInterval = 6000; /* 分片缓存清理间隔(毫秒) */
     size_t maxFragSize = 8192; /* 单个分片最大负载大小(防止大分片攻击) */
@@ -50,6 +51,21 @@ struct NetworkConfig
 };
 
 /**
+ * @brief TCP流重组配置
+ */
+struct TcpReassemblyConfig
+{
+    bool enable = true; /* 是否启用IP分片重组功能 */
+    size_t streamTimeout = 30000; /* 流超时时间(毫秒) */
+    size_t streamClearInterval = 6000; /* 流缓存清理间隔(毫秒) */
+    size_t maxStreamSize = 1048576; /* 单个流最大缓存大小(1MB) */
+    size_t maxStreamCount = 1000; /* 最大流数量 */
+    size_t maxSegmentsPerStream = 32; /* 单流最大乱序段数(防止DoS攻击) */
+    size_t finWaitTimeout = 5000; /* 收到FIN后等待乱序数据重组的超时时间(毫秒) */
+    size_t gapSizeThreshold = 4096; /* 尽力交付(Gap Tolerance)阈值(字节), 0-无限等待丢包数据, >0-当>=该值(跳过丢包), 当<该值(流重置) */
+};
+
+/**
  * @brief 分析器
  */
 class Analyzer
@@ -57,9 +73,10 @@ class Analyzer
 public:
     /**
      * @brief 构造函数
-     * @param networkCfg 网络包分析配置
+     * @param ipReassemblyCfg IP分片重组配置
+     * @param tcpReassemblyCfg TCP流重组配置
      */
-    Analyzer(NetworkConfig networkCfg = NetworkConfig());
+    Analyzer(IpReassemblyConfig ipReassemblyCfg = IpReassemblyConfig(), TcpReassemblyConfig tcpReassemblyCfg = TcpReassemblyConfig());
 
     /**
      * @brief 设置层数据回调
@@ -231,6 +248,137 @@ private:
         uint32_t identification = 0; /* 分片ID */
     };
 
+    /**
+     * @brief TCP流标识键(四元组)
+     */
+    struct TcpStreamKey
+    {
+        /* IPv4地址 */
+        struct Ipv4Key
+        {
+            uint8_t srcIp[4]; /* 源地址: 存储网络字节序数组 */
+            uint8_t dstIp[4]; /* 目的地址: 存储网络字节序数组 */
+            uint16_t srcPort; /* 源端口 */
+            uint16_t dstPort; /* 目的端口 */
+
+            bool operator<(const Ipv4Key& other) const
+            {
+                int cmp = memcmp(srcIp, other.srcIp, sizeof(srcIp));
+                if (0 != cmp)
+                {
+                    return (cmp < 0);
+                }
+                cmp = memcmp(dstIp, other.dstIp, sizeof(dstIp));
+                if (0 != cmp)
+                {
+                    return (cmp < 0);
+                }
+                if (srcPort != other.srcPort)
+                {
+                    return srcPort < other.srcPort;
+                }
+                return dstPort < other.dstPort;
+            }
+        };
+
+        /* IPv6地址 */
+        struct Ipv6Key
+        {
+            uint8_t srcIp[16]; /* 源地址: 存储网络字节序 */
+            uint8_t dstIp[16]; /* 目的地址: 存储网络字节序数组 */
+            uint16_t srcPort; /* 源端口 */
+            uint16_t dstPort; /* 目的端口 */
+
+            bool operator<(const Ipv6Key& other) const
+            {
+                int cmp = memcmp(srcIp, other.srcIp, sizeof(srcIp));
+                if (0 != cmp)
+                {
+                    return (cmp < 0);
+                }
+                cmp = memcmp(dstIp, other.dstIp, sizeof(dstIp));
+                if (0 != cmp)
+                {
+                    return (cmp < 0);
+                }
+                if (srcPort != other.srcPort)
+                {
+                    return srcPort < other.srcPort;
+                }
+                return dstPort < other.dstPort;
+            }
+        };
+
+        uint8_t ipVersion = 0; /* IP版本: 4-IPv4, 6-IPv6 */
+        Ipv4Key v4;
+        Ipv6Key v6;
+
+        static TcpStreamKey createIpv4(const uint8_t srcIp[4], const uint8_t dstIp[4], uint16_t srcPort, uint16_t dstPort)
+        {
+            TcpStreamKey key;
+            key.ipVersion = 4;
+            memcpy(key.v4.srcIp, srcIp, 4);
+            memcpy(key.v4.dstIp, dstIp, 4);
+            key.v4.srcPort = srcPort;
+            key.v4.dstPort = dstPort;
+            return key;
+        }
+
+        static TcpStreamKey createIpv6(const uint8_t srcIp[16], const uint8_t dstIp[16], uint16_t srcPort, uint16_t dstPort)
+        {
+            TcpStreamKey key;
+            key.ipVersion = 6;
+            memcpy(key.v6.srcIp, srcIp, 16);
+            memcpy(key.v6.dstIp, dstIp, 16);
+            key.v6.srcPort = srcPort;
+            key.v6.dstPort = dstPort;
+            return key;
+        }
+
+        bool operator<(const TcpStreamKey& other) const
+        {
+            if (ipVersion != other.ipVersion)
+            {
+                return (ipVersion < other.ipVersion);
+            }
+            if (4 == ipVersion)
+            {
+                return (v4 < other.v4);
+            }
+            return (v6 < other.v6);
+        }
+    };
+
+    /**
+     * @brief TCP段信息
+     */
+    struct TcpSegment
+    {
+        uint32_t seq = 0; /* TCP序列号 */
+        uint32_t payloadLen = 0; /* 负载长度 */
+        std::vector<uint8_t> data; /* 数据 */
+        std::chrono::steady_clock::time_point recvTime; /* 接收时间 */
+        bool isFin = false; /* 是否是FIN包 */
+        bool isRst = false; /* 是否是RST包 */
+    };
+
+    /**
+     * @brief TCP流重组信息
+     */
+    struct TcpStreamInfo
+    {
+        uint32_t nextExpectedSeq = 0; /* 期望的下一个序列号 */
+        bool isSeqInitialized = false; /* 序列号是否已初始化(收到第一个SYN或数据的SYN) */
+        std::map<uint32_t, TcpSegment> segments; /* 乱序段缓存(按seq排序) */
+        std::vector<uint8_t> reassembledData; /* 已重组的连续数据(等待应用层消费) */
+        std::chrono::steady_clock::time_point lastAccessTime;
+        std::vector<std::shared_ptr<ProtocolParser>> waitingParsers; /* 等待更多数据的协议解析器列表 */
+        bool needMoreData = false; /* 是否有解析器需要更多数据 */
+        bool finReceived = false; /* 是否已收到FIN标记 */
+        std::chrono::steady_clock::time_point finRecvTime; /* FIN接收时间 */
+        bool rstReceived = false; /* 是否已收到RST标记 */
+    };
+
 private:
     /**
      * @brief 递归解析重组后的数据包(防止栈溢出)
@@ -283,12 +431,11 @@ private:
      * @param header 传输层头部
      * @param payload 传输层负载
      * @param payloadLen 传输层负载长度
-     * @param applicationParserList 应用层解析器列表
+     * @param tcpKey TCP流键
      * @return 0-成功, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片)
      */
     int handleApplicationLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
-                               const uint8_t* payload, uint32_t payloadLen,
-                               const std::vector<std::shared_ptr<ProtocolParser>>& applicationParserList);
+                               const uint8_t* payload, uint32_t payloadLen, const TcpStreamKey* tcpKey = nullptr);
 
     /**
      * @brief 遍历IPv6扩展头链获取最终协议类型
@@ -304,7 +451,7 @@ private:
                                bool stopAtFragment = false, Ipv6FragmentHeader* fragHeader = nullptr);
 
     /**
-     * @brief 清理分片缓存
+     * @brief 清理IP分片缓存
      * @param ntp 当前时间点
      */
     void cleanupFragmentCache(const std::chrono::steady_clock::time_point& ntp);
@@ -335,8 +482,29 @@ private:
     bool parseIpv6FragmentHeader(const Ipv6Header* header, const uint8_t* data, uint32_t dataLen, uint8_t& originalProtocol,
                                  bool& isMoreFragment, uint32_t& fragOffset, uint32_t& fragHeaderLen, uint32_t& identification);
 
+    /**
+     * @brief 清理TCP流缓存
+     * @param ntp 当前时间点
+     */
+    void cleanupTcpStreamCache(const std::chrono::steady_clock::time_point& ntp);
+
+    /**
+     * @brief 检查并处理TCP流
+     * @param networkHeader 网络层头部
+     * @param transportHeader 传输层头部
+     * @param payload 负载数据
+     * @param payloadLen 负载数据长度
+     * @param outKey [输出]TCP流标识健
+     * @param needMoreData [输出]是否需要更多数据
+     * @return 返回重组后的完整数据
+     */
+    std::shared_ptr<std::vector<uint8_t>> checkAndHandleTcpReassembly(const ProtocolHeader* networkHeader,
+                                                                      const ProtocolHeader* transportHeader, const uint8_t* payload,
+                                                                      uint32_t payloadLen, TcpStreamKey& outKey, bool& needMoreData);
+
 private:
-    const NetworkConfig m_networkCfg; /* 网络包分析配置 */
+    const IpReassemblyConfig m_ipReassemblyCfg; /* IP分片重组配置 */
+    const TcpReassemblyConfig m_tcpReassemblyCfg; /* TCP分片重组配置 */
 
     std::mutex m_mutexLayerCb;
     LAYER_CALLBACK m_ethernetLayerCb = nullptr; /* 以太网层数据回调 */
@@ -344,8 +512,12 @@ private:
     LAYER_CALLBACK m_transportLayerCb = nullptr; /* 传输层数据回调 */
 
     std::mutex m_mutexFragmentCache;
-    std::map<FragmentKey, std::shared_ptr<FragmentInfo>> m_fragmentCache; /* 分片缓存 */
-    std::chrono::steady_clock::time_point m_lastCleanupTime = std::chrono::steady_clock::now(); /* 上次清理分片缓存时间 */
+    std::map<FragmentKey, std::shared_ptr<FragmentInfo>> m_fragmentCache; /* IP分片缓存 */
+    std::chrono::steady_clock::time_point m_lastCleanupTime = std::chrono::steady_clock::now(); /* 上次清理IP分片缓存时间 */
+
+    std::mutex m_mutexTcpStreamCache;
+    std::map<TcpStreamKey, std::shared_ptr<TcpStreamInfo>> m_tcpStreamCache; /* TCP流缓存 */
+    std::chrono::steady_clock::time_point m_lastTcpCleanupTime = std::chrono::steady_clock::now(); /* 上次清理TCP流缓存时间 */
 
     std::mutex m_mutexParserList;
     std::vector<std::shared_ptr<ProtocolParser>> m_applicationParserList; /* 应用层解析器列表 */

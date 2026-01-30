@@ -36,18 +36,23 @@ ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& 
     uint32_t mbapHeaderLen = 0, pduLen = 0;
     if (!parseMbapHeader(payload, payloadLen, mbap, mbapHeaderLen, pduLen))
     {
+        if (payloadLen < modbus::MBAP_HEADER_LEN) /* 长度不足(可能被分包) */
+        {
+            return ParseResult::CONTINUE;
+        }
         return ParseResult::FAILURE;
     }
     if (0 != mbap.protocolId) /* 验证协议标识符: 非Modbus协议 */
     {
         return ParseResult::FAILURE;
     }
-    /* 定位PDU */
-    uint32_t remainLen = payloadLen - mbapHeaderLen;
-    if (pduLen < 1 || remainLen < pduLen) /* 验证PDU长度与MBAP.length一致: 数据不完整或长度字段错误 */
+    /* 检查是否收齐完整的PDU数据 */
+    uint32_t fullFrameLen = mbapHeaderLen + pduLen;
+    if (payloadLen < fullFrameLen) /* PDU数据未收齐(被TCP分片) */
     {
-        return ParseResult::FAILURE;
+        return ParseResult::CONTINUE;
     }
+    /* 定位PDU */
     const uint8_t* pduStart = payload + mbapHeaderLen;
     /* 解析功能码 */
     uint8_t rawFuncCode = pduStart[0];
@@ -59,9 +64,11 @@ ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& 
     }
     /* 验证最小PDU长度 */
     uint32_t dataLen = pduLen - 1; /* 减去功能码 */
-    if (dataLen < modbus::getMinFrameLength(funcCode, isException))
+    uint32_t minFrameLen = modbus::getMinFrameLength(funcCode, isException);
+    /* 如果PDU内部数据长度不足, 可能是分片导致 */
+    if (dataLen < minFrameLen) /* 对于请求包, 如果dataLen > 0但不足, 可能是分片, 如果为0, 需要更多数据 */
     {
-        return ParseResult::FAILURE;
+        return ParseResult::CONTINUE;
     }
     /* 判断报文方向: 如果源端口是Modbus端口, 说明是从站响应 */
     bool isRequest = !isModbusPort(tcpHeader->srcPort);
@@ -90,7 +97,7 @@ ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& 
     else
     {
         d->rawData = payload;
-        d->rawDataLen = modbus::MBAP_HEADER_LEN + pduLen;
+        d->rawDataLen = fullFrameLen;
         d->funcDataOffset = mbapHeaderLen + 1;
         d->funcDataLen = dataLen;
     }
@@ -98,7 +105,7 @@ ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& 
     {
         m_dataCallback(ntp, totalLen, header, d);
     }
-    consumeLen = modbus::MBAP_HEADER_LEN + pduLen;
+    consumeLen = fullFrameLen;
     return ParseResult::SUCCESS;
 }
 

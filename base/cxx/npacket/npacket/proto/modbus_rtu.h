@@ -60,8 +60,8 @@ public:
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
-     * @param payload 层负载
-     * @param payloadLen 层负载长度
+     * @param payload 负载
+     * @param payloadLen 负载长度
      * @param consumeLen [输出]消耗的长度
      * @return 解析结果
      */
