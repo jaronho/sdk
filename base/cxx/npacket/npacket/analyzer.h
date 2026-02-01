@@ -385,13 +385,15 @@ private:
     /**
      * @brief 递归解析重组后的数据包(防止栈溢出)
      * @param num 数据序号
+     * @param ntp 数据包接收时间点
      * @param data 数据
      * @param dataLen 数据长度
      * @param dataSource 数据源
      * @param depth 递归深度(防止无限递归)
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int parseWithDepthControl(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth);
+    int parseWithDepthControl(size_t num, const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
+                              const DataSource& dataSource, int depth);
 
     /**
      * @brief 处理以太网层数据

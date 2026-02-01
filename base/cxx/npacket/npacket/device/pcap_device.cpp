@@ -127,19 +127,18 @@ void PcapDevice::setDataCallback(const std::function<void(const unsigned char* d
     m_onDataCallback = cb;
 }
 
-bool PcapDevice::captureOnce()
+int PcapDevice::captureOnce(unsigned int count)
 {
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (!m_pcap)
     {
-        return false;
+        return -1;
     }
     if (!m_captureStarted)
     {
-        return false;
+        return -1;
     }
-    pcap_dispatch(m_pcap, -1, onPacketArrived, (u_char*)this);
-    return true;
+    return pcap_dispatch(m_pcap, count, onPacketArrived, (u_char*)this);
 }
 
 bool PcapDevice::startCapture()

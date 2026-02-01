@@ -230,17 +230,17 @@ void AfPacketDevice::setDataCallback(const std::function<void(const unsigned cha
     m_onDataCallback = cb;
 }
 
-bool AfPacketDevice::captureOnce()
+int AfPacketDevice::captureOnce(unsigned int count)
 {
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
     if (m_sockfd < 0 || !m_captureStarted.load())
     {
-        return false;
+        return -1;
     }
     /* TPACKET_V3 模式 */
     if (m_useV3)
     {
-        return processV3Block() > 0;
+        return (int)processV3Block();
     }
     /* 普通模式 */
     struct pollfd pfd;
@@ -248,7 +248,7 @@ bool AfPacketDevice::captureOnce()
     pfd.events = POLLIN;
     if (poll(&pfd, 1, m_timeoutMs) <= 0) /* 超时或无数据 */
     {
-        return false;
+        return 0;
     }
     /* 获取回调(减少锁开销) */
     std::function<void(const unsigned char* data, unsigned int dataLen)> onDataCallback = nullptr;
@@ -258,11 +258,15 @@ bool AfPacketDevice::captureOnce()
     }
     if (!onDataCallback) /* 无回调无需捕获 */
     {
-        return false;
+        return 0;
     }
-    size_t packets = 0;
+    size_t packets = 0; /* 实际处理的包数量 */
     while (1) /* 循环处理 */
     {
+        if (count > 0 && packets >= count) /* 达到限制则退出 */
+        {
+            break;
+        }
         ssize_t len = recvfrom(m_sockfd, m_buffer.data(), m_snapLen, MSG_DONTWAIT, nullptr, nullptr);
         if (len <= 0) /* EAGAIN或无数据 */
         {
@@ -271,7 +275,7 @@ bool AfPacketDevice::captureOnce()
         ++packets;
         onDataCallback(m_buffer.data(), len);
     }
-    return (packets > 0);
+    return (int)packets;
 }
 
 bool AfPacketDevice::startCapture()

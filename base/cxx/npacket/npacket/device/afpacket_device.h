@@ -77,10 +77,11 @@ public:
     void setDataCallback(const std::function<void(const unsigned char* data, unsigned int dataLen)>& cb);
 
     /**
-     * @brief 捕获单次(非阻塞,需在循环调用)
-     * @return true-捕获到数据, false-无数据或失败
+     * @brief 捕获单次(需要在循环调用)
+     * @param count 指定期望处理的最大数据包数量, 值: 0-无数量限制, >0-最多处理count个数据包
+     * @return <0-错误, >=0-实际处理的数据包数量
      */
-    bool captureOnce();
+    int captureOnce(unsigned int count = 0);
 
     /**
      * @brief 开始捕获(启动后台线程)

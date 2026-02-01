@@ -175,12 +175,13 @@ void Analyzer::removeProtocolParser(uint32_t protocol)
 
 int Analyzer::parse(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource)
 {
-    return parseWithDepthControl(num, data, dataLen, dataSource, 0);
+    auto ntp = std::chrono::steady_clock::now();
+    return parseWithDepthControl(num, ntp, data, dataLen, dataSource, 0);
 }
 
-int Analyzer::parseWithDepthControl(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth)
+int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
+                                    const DataSource& dataSource, int depth)
 {
-    auto ntp = std::chrono::steady_clock::now();
     cleanupFragmentCache(ntp); /* 清空超时IP分片缓存 */
     cleanupTcpStreamCache(ntp); /* 清理超时TCP流缓存 */
     if (!data || 0 == dataLen)
@@ -232,7 +233,7 @@ int Analyzer::parseWithDepthControl(size_t num, const uint8_t* data, uint32_t da
             {
                 if (reassembledIp) /* 分片已重组完成, 使用重组后的数据继续解析 */
                 {
-                    return parseWithDepthControl(num, reassembledIp->data(), reassembledIp->size(), dataSource, depth + 1);
+                    return parseWithDepthControl(num, ntp, reassembledIp->data(), reassembledIp->size(), dataSource, depth + 1);
                 }
                 return 5; /* 分片未收齐, 等待后续 */
             }
