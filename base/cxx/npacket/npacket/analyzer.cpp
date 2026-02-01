@@ -173,12 +173,12 @@ void Analyzer::removeProtocolParser(uint32_t protocol)
     }
 }
 
-int Analyzer::parse(const uint8_t* data, uint32_t dataLen, const DataSource& dataSource)
+int Analyzer::parse(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource)
 {
-    return parseWithDepthControl(data, dataLen, dataSource, 0);
+    return parseWithDepthControl(num, data, dataLen, dataSource, 0);
 }
 
-int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth)
+int Analyzer::parseWithDepthControl(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth)
 {
     auto ntp = std::chrono::steady_clock::now();
     cleanupFragmentCache(ntp); /* 清空超时IP分片缓存 */
@@ -206,21 +206,21 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
             transportLayerCb = m_transportLayerCb;
         }
         /* step1. 解析以太网层 */
-        ethernetHeader = handleEthernetLayer(data + offset, remainLen, headerLen, networkProtocol);
+        ethernetHeader = handleEthernetLayer(num, data + offset, remainLen, headerLen, networkProtocol);
         if (!ethernetHeader)
         {
             return 1;
         }
         remainLen -= headerLen;
         offset += headerLen;
-        if (ehternetLayerCb && !ehternetLayerCb(ntp, dataLen, ethernetHeader.get(), data + offset, remainLen))
+        if (ehternetLayerCb && !ehternetLayerCb(num, ntp, dataLen, ethernetHeader.get(), data + offset, remainLen))
         {
             return 0;
         }
         /* step2. 解析网络层 */
         if (remainLen > 0)
         {
-            networkHeader = handleNetworkLayer(networkProtocol, data + offset, remainLen, headerLen, transportProtocol);
+            networkHeader = handleNetworkLayer(num, networkProtocol, data + offset, remainLen, headerLen, transportProtocol);
             if (!networkHeader)
             {
                 return 2;
@@ -232,21 +232,21 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
             {
                 if (reassembledIp) /* 分片已重组完成, 使用重组后的数据继续解析 */
                 {
-                    return parseWithDepthControl(reassembledIp->data(), reassembledIp->size(), dataSource, depth + 1);
+                    return parseWithDepthControl(num, reassembledIp->data(), reassembledIp->size(), dataSource, depth + 1);
                 }
                 return 5; /* 分片未收齐, 等待后续 */
             }
             networkHeader->parent = ethernetHeader.get();
             remainLen -= headerLen;
             offset += headerLen;
-            if (networkLayerCb && !networkLayerCb(ntp, dataLen, networkHeader.get(), data + offset, remainLen))
+            if (networkLayerCb && !networkLayerCb(num, ntp, dataLen, networkHeader.get(), data + offset, remainLen))
             {
                 return 0;
             }
             /* step4. 解析传输层 */
             if (remainLen > 0)
             {
-                transportHeader = handleTransportLayer(transportProtocol, data + offset, remainLen, headerLen);
+                transportHeader = handleTransportLayer(num, transportProtocol, data + offset, remainLen, headerLen);
                 if (!transportHeader)
                 {
                     return 3;
@@ -284,7 +284,7 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
                         tcpPlayoadLen = 0;
                     }
                 }
-                if (transportLayerCb && !transportLayerCb(ntp, dataLen, transportHeader.get(), data + offset, tcpPlayoadLen))
+                if (transportLayerCb && !transportLayerCb(num, ntp, dataLen, transportHeader.get(), data + offset, tcpPlayoadLen))
                 {
                     return 0;
                 }
@@ -310,7 +310,8 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
                 checkAndHandleTcpReassembly(networkHeader.get(), transportHeader.get(), appData, appDataLen, tcpKey, needMoreData);
             if (reassembledTcp && !reassembledTcp->empty()) /* 有重组后的数据, 解析应用层, 并传入tcpKey用于关联状态 */
             {
-                return handleApplicationLayer(ntp, dataLen, transportHeader.get(), reassembledTcp->data(), reassembledTcp->size(), &tcpKey);
+                return handleApplicationLayer(num, ntp, dataLen, transportHeader.get(), reassembledTcp->data(), reassembledTcp->size(),
+                                              &tcpKey, depth);
             }
             else if (needMoreData) /* TCP流在等待更多数据, 返回CONTINUE */
             {
@@ -319,12 +320,12 @@ int Analyzer::parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const
             /* 流已关闭或出错, 继续尝试解析当前包(可能是RST/FIN) */
         }
         /* 非TCP或无需重组, 直接解析 */
-        return handleApplicationLayer(ntp, dataLen, transportHeader.get(), appData, appDataLen, nullptr);
+        return handleApplicationLayer(num, ntp, dataLen, transportHeader.get(), appData, appDataLen, nullptr, depth);
     }
     return 0;
 }
 
-std::unique_ptr<ProtocolHeader> Analyzer::handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
+std::unique_ptr<ProtocolHeader> Analyzer::handleEthernetLayer(size_t num, const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
                                                               uint32_t& networkProtocol)
 {
     if (data && dataLen >= EthernetIIHeader::getMinLen())
@@ -337,7 +338,7 @@ std::unique_ptr<ProtocolHeader> Analyzer::handleEthernetLayer(const uint8_t* dat
     return nullptr;
 }
 
-std::unique_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
+std::unique_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(size_t num, uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
                                                              uint32_t& headerLen, uint32_t& transportProtocol)
 {
     if (data)
@@ -382,8 +383,8 @@ std::unique_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(uint32_t networkPro
     return nullptr;
 }
 
-std::unique_ptr<ProtocolHeader> Analyzer::handleTransportLayer(uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
-                                                               uint32_t& headerLen)
+std::unique_ptr<ProtocolHeader> Analyzer::handleTransportLayer(size_t num, uint32_t transportProtocol, const uint8_t* data,
+                                                               uint32_t dataLen, uint32_t& headerLen)
 {
     if (data)
     {
@@ -426,9 +427,14 @@ std::unique_ptr<ProtocolHeader> Analyzer::handleTransportLayer(uint32_t transpor
     return nullptr;
 }
 
-int Analyzer::handleApplicationLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
-                                     const uint8_t* payload, uint32_t payloadLen, const TcpStreamKey* tcpKey)
+int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                     const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, const TcpStreamKey* tcpKey,
+                                     int depth)
 {
+    if (depth >= m_ipReassemblyCfg.maxRecursionDepth) /* 防止递归深度攻击(如嵌套封装协议) */
+    {
+        return 6; /* 达到最大递归深度 */
+    }
     if (!payload || 0 == payloadLen)
     {
         return 4;
@@ -577,7 +583,7 @@ int Analyzer::handleApplicationLayer(const std::chrono::steady_clock::time_point
         for (const auto& parser : candidateParsers) /* 尝试所有候选解析器 */
         {
             uint32_t consumeLen = 0;
-            ParseResult result = parser->parse(ntp, totalLen, header, fullData + offset, fullDataLen - offset, consumeLen);
+            ParseResult result = parser->parse(num, ntp, totalLen, header, fullData + offset, fullDataLen - offset, consumeLen);
             if (ParseResult::SUCCESS == result)
             {
                 if (consumeLen > 0 && consumeLen <= fullDataLen - offset)
@@ -923,17 +929,92 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const Pro
             m_fragmentCache.erase(key);
             return nullptr;
         }
-        /* 严格检查分片重叠(按RFC 5722, IPv6禁止重叠分片) */
+        /* 分片重叠处理 */
         uint32_t newStart = fragOffset * 8;
         uint32_t newEnd = newStart + payloadLen;
-        for (auto& kv : info->fragments)
+        if (isIpv4) /* IPv4: RFC 791 允许重叠分片, 采用"后到的覆盖先到的"策略处理四种重叠场景 */
         {
-            uint32_t existStart = kv.first * 8;
-            uint32_t existEnd = existStart + kv.second.size();
-            if (newStart < existEnd && newEnd > existStart) /* 任何重叠都视为攻击(根据RFC 5722, IPv6禁止重叠分片), 删除整个分片组 */
+            for (auto iterFrag = info->fragments.begin(); iterFrag != info->fragments.end();)
             {
-                m_fragmentCache.erase(key);
-                return nullptr;
+                uint32_t existStart = iterFrag->first * 8;
+                uint32_t existEnd = existStart + iterFrag->second.size();
+                /* 场景0: 无重叠(新分片完全在前或在后) */
+                if (newStart >= existEnd || newEnd <= existStart)
+                {
+                    ++iterFrag;
+                    continue;
+                }
+                /* 场景1: 新分片完全覆盖旧分片(新 < 旧 且 新 > 旧尾) */
+                if (newStart <= existStart && newEnd >= existEnd)
+                {
+                    info->totalPayloadSize -= iterFrag->second.size();
+                    iterFrag = info->fragments.erase(iterFrag);
+                }
+                /* 场景2: 新分片内嵌在旧分片内部(旧 < 新 且 旧尾 > 新尾) */
+                else if (existStart < newStart && existEnd > newEnd)
+                {
+                    uint32_t frontLen = newStart - existStart; /* 前段保留长度 */
+                    uint32_t backStart = newEnd; /* 后段起始字节偏移 */
+                    uint32_t backLen = existEnd - newEnd; /* 后段保留长度 */
+                    /* 保存旧数据引用 */
+                    std::vector<uint8_t> oldData = std::move(iterFrag->second);
+                    /* 删除原条目(迭代器失效, 需要重新获取) */
+                    iterFrag = info->fragments.erase(iterFrag);
+                    info->totalPayloadSize -= oldData.size();
+                    /* 保存前段(如果存在) - 偏移量不变 */
+                    if (frontLen > 0)
+                    {
+                        uint32_t frontOffset = existStart / 8;
+                        info->fragments[frontOffset] = std::vector<uint8_t>(oldData.begin(), oldData.begin() + frontLen);
+                        info->totalPayloadSize += frontLen;
+                    }
+                    /* 保存后段(如果存在) - 偏移量需要重新计算 */
+                    if (backLen > 0)
+                    {
+                        uint32_t backOffset = backStart / 8;
+                        info->fragments[backOffset] = std::vector<uint8_t>(oldData.begin() + (backStart - existStart), oldData.end());
+                        info->totalPayloadSize += backLen;
+                    }
+                    /* 注意: 内嵌场景后, 当前旧分片已被分割, 继续检查下一个旧分片 */
+                }
+                /* 场景3: 尾部重叠(新分片头部与旧分片尾部重叠) */
+                else if (existStart < newStart && existEnd <= newEnd && existEnd > newStart)
+                {
+                    uint32_t keepLen = newStart - existStart; /* 旧分片保留长度 */
+                    iterFrag->second.resize(keepLen);
+                    info->totalPayloadSize -= (existEnd - existStart - keepLen);
+                    ++iterFrag;
+                }
+                /* 场景4: 头部重叠(新分片尾部与旧分片头部重叠) */
+                else if (existStart >= newStart && existEnd > newEnd && existStart < newEnd)
+                {
+                    uint32_t skipLen = newEnd - existStart; /* 需要跳过的重复字节数 */
+                    uint32_t newOffset = newEnd / 8; /* 新偏移量(按8字节对齐) */
+
+                    std::vector<uint8_t> newData(iterFrag->second.begin() + skipLen, iterFrag->second.end());
+                    info->totalPayloadSize -= skipLen;
+
+                    iterFrag = info->fragments.erase(iterFrag);
+                    info->fragments[newOffset] = std::move(newData);
+                }
+                else
+                {
+                    /* 其他边界情况(理论上不应到达) */
+                    ++iterFrag;
+                }
+            }
+        }
+        else /* IPv6: RFC 5722 严格禁止重叠分片, 发现任何重叠立即废弃整个分片组 */
+        {
+            for (auto& kv : info->fragments)
+            {
+                uint32_t existStart = kv.first * 8;
+                uint32_t existEnd = existStart + kv.second.size();
+                if (newStart < existEnd && newEnd > existStart) /* 任何重叠都视为攻击 */
+                {
+                    m_fragmentCache.erase(key);
+                    return nullptr;
+                }
             }
         }
         /* 存储分片数据(跳过IP头, 只存payload) */
@@ -1316,12 +1397,26 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
                 break;
             }
         }
-        /* 流大小限制 */
+        /* 流大小限制与解析器通知 */
         if (result->size() > m_tcpReassemblyCfg.maxStreamSize)
         {
+            /* 截断前强制通知所有等待的解析器, 防止内存泄露 */
+            if (!streamInfo->waitingParsers.empty())
+            {
+                for (auto& parser : streamInfo->waitingParsers)
+                {
+                    if (parser)
+                    {
+                        parser->reset(); /* 强制重置, 释放内部缓存 */
+                    }
+                }
+                streamInfo->waitingParsers.clear();
+                streamInfo->needMoreData = false;
+            }
             size_t excess = result->size() - m_tcpReassemblyCfg.maxStreamSize;
             if (excess < result->size())
             {
+                /* 保留尾部数据到流缓存, 头部数据返回给应用层 */
                 std::vector<uint8_t> excessData(result->begin() + m_tcpReassemblyCfg.maxStreamSize, result->end());
                 result->resize(m_tcpReassemblyCfg.maxStreamSize);
                 streamInfo->reassembledData = std::move(excessData);
@@ -1330,6 +1425,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
             else /* 异常情况, 直接清空避免崩溃 */
             {
                 result->clear();
+                streamInfo->reassembledData.clear();
             }
         }
         return result;

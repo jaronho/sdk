@@ -38,6 +38,7 @@ public:
 
     /**
      * @brief 解析
+     * @param num 数据序号
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
@@ -46,7 +47,7 @@ public:
      * @param consumeLen [输出]消耗的长度
      * @return 解析结果
      */
-    ParseResult parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+    ParseResult parse(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                       const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen) override;
 
     /**

@@ -14,8 +14,8 @@ uint32_t ModbusTcpParser::getProtocol() const
     return ApplicationProtocol::MODBUS_TCP;
 }
 
-ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
-                                   const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
+ParseResult ModbusTcpParser::parse(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                   const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     consumeLen = 0;
     if (!header || TransportProtocol::TCP != header->getProtocol())
@@ -63,23 +63,22 @@ ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& 
         return ParseResult::FAILURE;
     }
     /* 验证最小PDU长度 */
-    uint32_t dataLen = pduLen - 1; /* 减去功能码 */
     uint32_t minFrameLen = modbus::getMinFrameLength(funcCode, isException);
-    /* 如果PDU内部数据长度不足, 可能是分片导致 */
-    if (dataLen < minFrameLen) /* 对于请求包, 如果dataLen > 0但不足, 可能是分片, 如果为0, 需要更多数据 */
+    if (pduLen < minFrameLen)
     {
-        return ParseResult::CONTINUE;
+        return ParseResult::FAILURE;
     }
-    /* 判断报文方向: 如果源端口是Modbus端口, 说明是从站响应 */
-    bool isRequest = !isModbusPort(tcpHeader->srcPort);
+    uint32_t funcDataLen = pduLen - 1; /* 减去1个字节功能码 */
     /* 功能数据处理 */
     if (isException)
     {
-        if (dataLen < 1) /* 异常响应必须包含异常码 */
+        if (0 == funcDataLen) /* 异常响应必须包含异常码 */
         {
             return ParseResult::FAILURE;
         }
     }
+    /* 判断报文方向: 如果源端口是Modbus端口, 说明是从站响应 */
+    bool isRequest = !isModbusPort(tcpHeader->srcPort);
     auto d = std::make_shared<modbus::DataSt>();
     d->transactionId = mbap.transactionId;
     d->slaveAddress = mbap.unitId;
@@ -99,7 +98,7 @@ ParseResult ModbusTcpParser::parse(const std::chrono::steady_clock::time_point& 
         d->rawData = payload;
         d->rawDataLen = fullFrameLen;
         d->funcDataOffset = mbapHeaderLen + 1;
-        d->funcDataLen = dataLen;
+        d->funcDataLen = funcDataLen;
     }
     if (m_dataCallback)
     {
@@ -135,7 +134,7 @@ bool ModbusTcpParser::parseMbapHeader(const uint8_t* data, uint32_t dataLen, Mba
     {
         return false;
     }
-    if (pduLen > dataLen - modbus::MBAP_HEADER_LEN) /* 数据包被分片或不完整 */
+    if (pduLen > dataLen - headerLen) /* 数据包被分片或不完整 */
     {
         return false;
     }

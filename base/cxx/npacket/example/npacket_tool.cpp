@@ -128,8 +128,8 @@ void printTransportHeaderTcp(const npacket::ProtocolHeader* h)
 }
 
 /* 处理以太网层 */
-bool handleEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
-                         const uint8_t* payload, uint32_t payloadLen)
+bool handleEthernetLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                         const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     auto h = (const npacket::EthernetIIHeader*)(header);
     if (s_proto.empty() || "ehternet" == s_proto)
@@ -140,8 +140,8 @@ bool handleEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint3
 }
 
 /* 处理网络层 */
-bool handleNetworkLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
-                        const uint8_t* payload, uint32_t payloadLen)
+bool handleNetworkLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                        const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::NetworkProtocol)header->getProtocol())
     {
@@ -170,7 +170,7 @@ bool handleNetworkLayer(const std::chrono::steady_clock::time_point& ntp, uint32
     }
     break;
     case npacket::NetworkProtocol::IPv6: {
-        auto h = (const npacket::Ipv6Header > *)(header);
+        auto h = (const npacket::Ipv6Header*)(header);
         if (s_proto.empty() || "ipv4" == s_proto)
         {
             if (!s_proto.empty())
@@ -186,8 +186,8 @@ bool handleNetworkLayer(const std::chrono::steady_clock::time_point& ntp, uint32
 }
 
 /* 处理传输层 */
-bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
-                          const uint8_t* payload, uint32_t payloadLen)
+bool handleTransportLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                          const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
     {
@@ -204,7 +204,7 @@ bool handleTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint
                     printIPv4((const npacket::Ipv4Header*)(h->parent));
                     break;
                 case npacket::NetworkProtocol::IPv6:
-                    printIPv6((const npacket::Ipv6Header > *)(h->parent));
+                    printIPv6((const npacket::Ipv6Header*)(h->parent));
                     break;
                 }
             }
@@ -534,7 +534,10 @@ int main(int argc, char* argv[])
     printf("描  述: %s\n", dev->getDescribe().c_str());
     printf("开始抓包 ...\n");
     printf("\n");
-    dev->setDataCallback([&](const unsigned char* data, int dataLen) { s_pktAnalyzer.parse(data, dataLen); });
+    dev->setDataCallback([&](const unsigned char* data, int dataLen) {
+        static size_t num = 1;
+        s_pktAnalyzer.parse(num++, data, dataLen);
+    });
     dev->startCapture();
     while (1)
     {

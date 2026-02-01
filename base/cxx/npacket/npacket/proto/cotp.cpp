@@ -7,7 +7,7 @@ uint32_t CotpParser::getProtocol() const
     return ApplicationProtocol::COTP;
 }
 
-ParseResult CotpParser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
+ParseResult CotpParser::parse(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                               const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     consumeLen = 0;

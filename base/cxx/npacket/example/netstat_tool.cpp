@@ -63,8 +63,8 @@ std::string getDateTime()
 /**
  * @brief 处理接收以太网层
  */
-bool handleInEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
-                           const uint8_t* payload, uint32_t payloadLen)
+bool handleInEthernetLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                           const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     ++s_inPkt;
     s_inByte += totalLen;
@@ -74,8 +74,8 @@ bool handleInEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uin
 /**
  * @brief 处理接收传输层
  */
-bool handleInTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
-                            const uint8_t* payload, uint32_t payloadLen)
+bool handleInTransportLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                            const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
     {
@@ -256,7 +256,10 @@ int main(int argc, char* argv[])
 #endif
         return 0;
     }
-    s_inPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) { s_inPktAnalyzer.parse(data, dataLen); });
+    s_inPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) {
+        static size_t num = 1;
+        s_inPktAnalyzer.parse(num++, data, dataLen);
+    });
     s_inPacpDevice.startCapture();
 #ifndef _WIN32
     /* 发送包 */

@@ -66,25 +66,45 @@ uint32_t Iec103Parser::getProtocol() const
     return ApplicationProtocol::IEC103;
 }
 
-ParseResult Iec103Parser::parse(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
-                                const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
+ParseResult Iec103Parser::parse(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     consumeLen = 0;
     if (header && TransportProtocol::TCP != header->getProtocol() && TransportProtocol::UDP != header->getProtocol())
     {
         return ParseResult::FAILURE;
     }
-    if (payloadLen < 5) /* IEC103包最小5个字节 */
+    if (0x10 != payload[0] && 0x68 != payload[0]) /* 不符合协议规范 */
     {
         return ParseResult::FAILURE;
+    }
+    if (payloadLen < 5) /* IEC103包最小5个字节 */
+    {
+        return ParseResult::CONTINUE;
     }
     if (parseFixedFrame(ntp, totalLen, header, payload, payloadLen, consumeLen))
     {
         return ParseResult::SUCCESS;
     }
-    else if (parseVariableFrame(ntp, totalLen, header, payload, payloadLen, consumeLen))
+    if (payloadLen < 9) /* 固定帧失败且长度<9, 可能是可变帧被分片, 等待更多数据 */
+    {
+        return ParseResult::CONTINUE;
+    }
+    if (parseVariableFrame(ntp, totalLen, header, payload, payloadLen, consumeLen))
     {
         return ParseResult::SUCCESS;
+    }
+    /* 检查是否是长度不足导致的失败, 如果前驱字符是0x68但长度不够, 等待重组 */
+    if (payloadLen >= 4 && 0x68 == payload[0] && payload[1] == payload[2] && 0x68 == payload[3])
+    {
+        uint8_t length = payload[1]; /* L字段 = 控制域(1) + 地址域(1) + ASDU数据域(n) */
+        uint32_t expectedFrameLen = 4 + length + 2; /* 4字节头部(68H+L+L+68H) + 数据域 + CS + 16H */
+        /* 如果检测到是可变帧格式但数据未收齐，返回CONTINUE等待重组 */
+        if (payloadLen < expectedFrameLen)
+        {
+            return ParseResult::CONTINUE;
+        }
+        /* 如果长度足够但校验失败(如CS错误或结束符错误), 才是真正的FAILURE */
     }
     return ParseResult::FAILURE;
 }
@@ -177,15 +197,21 @@ bool Iec103Parser::parseVariableFrame(const std::chrono::steady_clock::time_poin
      */
     if (payloadLen >= 9 && 0x68 == payload[0] && payload[1] == payload[2] && 0x68 == payload[3])
     {
-        uint8_t length = payload[1];
-        uint32_t frameLen = 4 + length + 2;
-        if (payloadLen >= frameLen && 0x16 == payload[frameLen - 1])
+        uint8_t length = payload[1]; /* 获取ASDU长度字段 */
+        uint32_t frameLen = 4 + length + 2; /* 计算完整帧长度: 头部4字节 + 数据域length + CS(1) + 结束符(1) */
+        if (payloadLen < frameLen) /* 检查数据是否收齐, 未收齐则返回 */
+        {
+            consumeLen = 0;
+            return false; /* 长度不足, 需要等待TCP重组 */
+        }
+        if (0x16 == payload[frameLen - 1]) /* 检查结束符 */
         {
             uint8_t ctrl = payload[4];
             uint8_t addr = payload[5];
-            const uint8_t* data = payload + 6;
-            uint8_t dataLen = length - 2;
+            const uint8_t* data = payload + 6; /* ASDU数据起始位置 */
+            uint8_t dataLen = length - 2; /* ASDU数据长度(扣除控制域和地址域) */
             uint8_t checksum = payload[frameLen - 2];
+            /* 计算校验和: 控制域 + 地址域 + ASDU数据 */
             uint64_t s = (uint64_t)ctrl + addr;
             for (uint8_t i = 0; i < dataLen; ++i)
             {

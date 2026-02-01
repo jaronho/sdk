@@ -16,6 +16,7 @@ namespace npacket
 {
 /**
  * @brief 层数据回调
+ * @param num 数据序号
  * @param ntp 数据包接收时间点
  * @param totalLen 数据包总长度
  * @param header 层头部
@@ -23,8 +24,8 @@ namespace npacket
  * @param payloadLen 层负载长度
  * @return true-继续处理下一层, false-停止后续处理
  */
-using LAYER_CALLBACK = std::function<bool(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
-                                          const uint8_t* payload, uint32_t payloadLen)>;
+using LAYER_CALLBACK = std::function<bool(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                          const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)>;
 
 /**
  * @brief 数据源
@@ -110,12 +111,13 @@ public:
 
     /**
      * @brief 解析数据
+     * @param num 数据序号
      * @param data 数据
      * @param dataLen 数据长度
      * @param dataSource 数据源
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int parse(const uint8_t* data, uint32_t dataLen, const DataSource& dataSource = DataSource::NETWORK);
+    int parse(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource = DataSource::NETWORK);
 
 private:
     /**
@@ -382,27 +384,30 @@ private:
 private:
     /**
      * @brief 递归解析重组后的数据包(防止栈溢出)
+     * @param num 数据序号
      * @param data 数据
      * @param dataLen 数据长度
      * @param dataSource 数据源
      * @param depth 递归深度(防止无限递归)
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int parseWithDepthControl(const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth);
+    int parseWithDepthControl(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth);
 
     /**
      * @brief 处理以太网层数据
+     * @param num 数据序号
      * @param data 层数据
      * @param dataLen 层数据长度
      * @param headerLen [输出]协议头部长度
      * @param networkProtocol [输出]网络层协议类型
      * @return 协议头部
      */
-    std::unique_ptr<ProtocolHeader> handleEthernetLayer(const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
+    std::unique_ptr<ProtocolHeader> handleEthernetLayer(size_t num, const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
                                                         uint32_t& networkProtocol);
 
     /**
      * @brief 处理网络层数据
+     * @param num 数据序号
      * @param networkProtocol 网络层协议类型
      * @param data 层数据
      * @param dataLen 层数据长度
@@ -410,32 +415,36 @@ private:
      * @param transportProtocol [输出]传输层协议类型
      * @return 协议头部
      */
-    std::unique_ptr<ProtocolHeader> handleNetworkLayer(uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
-                                                       uint32_t& transportProtocol);
+    std::unique_ptr<ProtocolHeader> handleNetworkLayer(size_t num, uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
+                                                       uint32_t& headerLen, uint32_t& transportProtocol);
 
     /**
      * @brief 处理传输层数据
+     * @param num 数据序号
      * @param transportProtocol 传输层协议类型
      * @param data 层数据
      * @param dataLen 层数据长度
      * @param headerLen [输出]协议头部长度
      * @return 协议头部
      */
-    std::unique_ptr<ProtocolHeader> handleTransportLayer(uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
+    std::unique_ptr<ProtocolHeader> handleTransportLayer(size_t num, uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
                                                          uint32_t& headerLen);
 
     /**
      * @brief 处理应用层数据
+     * @param num 数据序号
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
      * @param payload 传输层负载
      * @param payloadLen 传输层负载长度
      * @param tcpKey TCP流键
-     * @return 0-成功, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片)
+     * @param depth 递归深度(防止无限递归)
+     * @return 0-成功, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int handleApplicationLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
-                               const uint8_t* payload, uint32_t payloadLen, const TcpStreamKey* tcpKey = nullptr);
+    int handleApplicationLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                               const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen,
+                               const TcpStreamKey* tcpKey = nullptr, int depth = 0);
 
     /**
      * @brief 遍历IPv6扩展头链获取最终协议类型

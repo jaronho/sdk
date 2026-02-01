@@ -1018,7 +1018,7 @@ static std::shared_ptr<FuncDataSt> parseFuncData(FunctionCode funcCode, bool isR
 static std::shared_ptr<FuncDataSt> parseFuncData(const DataSt& data)
 {
     if (!data.rawData || 0 == data.rawDataLen || 0 == data.funcDataOffset || 0 == data.funcDataLen
-        || (data.funcDataOffset + data.funcDataLen) >= data.rawDataLen)
+        || (data.funcDataOffset + data.funcDataLen) > data.rawDataLen)
     {
         return nullptr;
     }
