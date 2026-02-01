@@ -521,7 +521,8 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                 {
                     /* 合并历史数据 + 新数据 */
                     combinedData.reserve(streamInfo->reassembledData.size() + payloadLen);
-                    combinedData.insert(combinedData.end(), streamInfo->reassembledData.begin(), streamInfo->reassembledData.end());
+                    combinedData.insert(combinedData.end(), std::make_move_iterator(streamInfo->reassembledData.begin()),
+                                        std::make_move_iterator(streamInfo->reassembledData.end()));
                     combinedData.insert(combinedData.end(), payload, payload + payloadLen);
                     fullData = combinedData.data();
                     fullDataLen = combinedData.size();
@@ -972,7 +973,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const Pro
                     /* 保存后段(如果存在) - 偏移量需要重新计算 */
                     if (backLen > 0)
                     {
-                        uint32_t backOffset = backStart / 8;
+                        uint32_t backOffset = (backStart + 7) / 8; /* 向上取整到8字节块 */
                         info->fragments[backOffset] = std::vector<uint8_t>(oldData.begin() + (backStart - existStart), oldData.end());
                         info->totalPayloadSize += backLen;
                     }
