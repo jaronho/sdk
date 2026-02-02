@@ -484,7 +484,7 @@ private:
         std::map<uint32_t, TcpSegment> segments; /* 乱序段缓存(按seq排序) */
         std::vector<uint8_t> reassembledData; /* 已重组的连续数据(等待应用层消费) */
         std::chrono::steady_clock::time_point lastAccessTime;
-        std::vector<std::shared_ptr<ProtocolParser>> waitingParsers; /* 等待更多数据的协议解析器列表 */
+        std::vector<std::weak_ptr<ProtocolParser>> wpWaitingParserList; /* 等待更多数据的协议解析器列表 */
         bool needMoreData = false; /* 是否有解析器需要更多数据 */
         bool finReceived = false; /* 是否已收到FIN标记 */
         std::chrono::steady_clock::time_point finRecvTime; /* FIN接收时间 */

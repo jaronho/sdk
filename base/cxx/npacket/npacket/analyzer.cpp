@@ -539,34 +539,42 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                     streamInfo->reassembledData.clear();
                 }
                 /* 如果有之前等待数据的协议, 优先尝试它们 */
-                if (!streamInfo->waitingParsers.empty())
+                if (!streamInfo->wpWaitingParserList.empty())
                 {
                     /* 将等待的解析器移到最前面 */
-                    std::vector<std::shared_ptr<ProtocolParser>> temp;
-                    for (const auto& wp : streamInfo->waitingParsers)
+                    std::vector<std::weak_ptr<ProtocolParser>> tempParserList;
+                    for (const auto& wpParser : streamInfo->wpWaitingParserList)
                     {
                         /* 检查是否仍在全局列表中(未被删除) */
                         bool stillValid = false;
                         for (const auto& cp : candidateParsers)
                         {
-                            if (cp == wp)
+                            if (cp == wpParser.lock())
                             {
                                 stillValid = true;
-                                temp.push_back(wp);
+                                tempParserList.push_back(wpParser);
                                 break;
                             }
                         }
                     }
                     /* 移除已失效的等待解析器 */
-                    streamInfo->waitingParsers = temp;
+                    streamInfo->wpWaitingParserList = tempParserList;
                     /* 重组候选列表: 等待的优先, 然后是其他 */
-                    std::vector<std::shared_ptr<ProtocolParser>> newCandidates = streamInfo->waitingParsers;
+                    std::vector<std::shared_ptr<ProtocolParser>> newCandidates;
+                    for (const auto& wpParser : streamInfo->wpWaitingParserList)
+                    {
+                        auto parser = wpParser.lock();
+                        if (parser)
+                        {
+                            newCandidates.emplace_back(parser);
+                        }
+                    }
                     for (const auto& cp : candidateParsers)
                     {
                         bool isWaiting = false;
-                        for (const auto& wp : streamInfo->waitingParsers)
+                        for (const auto& wpParser : streamInfo->wpWaitingParserList)
                         {
-                            if (cp == wp)
+                            if (cp == wpParser.lock())
                             {
                                 isWaiting = true;
                                 break;
@@ -584,8 +592,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     }
     /* 协议解析 */
     uint32_t offset = 0; /* 已消费的字节偏移 */
-    std::vector<std::shared_ptr<ProtocolParser>> continueParsers; /* 返回CONTINUE的解析器 */
-    std::shared_ptr<ProtocolParser> successParser;
+    std::vector<std::weak_ptr<ProtocolParser>> continueParsers; /* 返回CONTINUE的解析器 */
     uint32_t successConsumeLen = 0;
     while (offset < fullDataLen)
     {
@@ -599,7 +606,6 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             {
                 if (consumeLen > 0 && consumeLen <= fullDataLen - offset)
                 {
-                    successParser = parser;
                     successConsumeLen = consumeLen;
                     anySuccess = true;
                     break; /* 找到成功的, 跳出循环 */
@@ -622,7 +628,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                 auto iter = m_tcpStreamCache.find(*tcpKey);
                 if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
                 {
-                    streamInfo->waitingParsers.clear();
+                    streamInfo->wpWaitingParserList.clear();
                     streamInfo->needMoreData = false;
                 }
             }
@@ -639,7 +645,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                     auto iter = m_tcpStreamCache.find(*tcpKey);
                     if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
                     {
-                        streamInfo->waitingParsers = continueParsers;
+                        streamInfo->wpWaitingParserList = continueParsers;
                         streamInfo->needMoreData = true;
                         /* 保存未消费的数据(相对于合并后的数据) */
                         std::vector<uint8_t> newUnconsumedData(fullData + offset, fullData + fullDataLen);
@@ -691,7 +697,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                     auto iter = m_tcpStreamCache.find(*tcpKey);
                     if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
                     {
-                        streamInfo->waitingParsers.clear();
+                        streamInfo->wpWaitingParserList.clear();
                         streamInfo->needMoreData = false;
                     }
                 }
@@ -706,7 +712,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         auto iter = m_tcpStreamCache.find(*tcpKey);
         if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
         {
-            streamInfo->waitingParsers.clear();
+            streamInfo->wpWaitingParserList.clear();
             streamInfo->needMoreData = false;
         }
     }
@@ -1412,16 +1418,9 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
         if (result->size() > m_tcpReassemblyCfg.maxStreamSize)
         {
             /* 截断前强制通知所有等待的解析器, 防止内存泄露 */
-            if (!streamInfo->waitingParsers.empty())
+            if (!streamInfo->wpWaitingParserList.empty())
             {
-                for (auto& parser : streamInfo->waitingParsers)
-                {
-                    if (parser)
-                    {
-                        parser->reset(); /* 强制重置, 释放内部缓存 */
-                    }
-                }
-                streamInfo->waitingParsers.clear();
+                streamInfo->wpWaitingParserList.clear();
                 streamInfo->needMoreData = false;
             }
             size_t excess = result->size() - m_tcpReassemblyCfg.maxStreamSize;
@@ -1530,7 +1529,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
                     streamInfo->nextExpectedSeq = 0;
                     streamInfo->segments.clear();
                     streamInfo->reassembledData.clear();
-                    streamInfo->waitingParsers.clear();
+                    streamInfo->wpWaitingParserList.clear();
                     streamInfo->needMoreData = false;
                     streamInfo->finReceived = false;
                     streamInfo->rstReceived = false;
