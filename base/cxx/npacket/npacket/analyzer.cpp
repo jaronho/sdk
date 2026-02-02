@@ -1178,7 +1178,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
             auto ipHeader = (RawIpv6Header*)(reassembledIp->data());
             ipHeader->payloadLen[0] = ((newPayloadLen >> 8) & 0xFF);
             ipHeader->payloadLen[1] = (newPayloadLen & 0xFF);
-            ipHeader->nextHeader = originalProtocol; /* 恢复原始协议 */
+            ipHeader->nextHeader = info->originalProtocol; /* 恢复原始协议 */
         }
         return reassembledIp;
     }
