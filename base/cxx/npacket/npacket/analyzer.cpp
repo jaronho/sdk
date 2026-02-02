@@ -1031,16 +1031,17 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
                     /* 删除原条目(迭代器失效, 需要重新获取) */
                     iterFrag = info->fragments.erase(iterFrag);
                     info->totalPayloadSize -= oldData.size();
-                    /* 保存前段(如果存在) - 偏移量不变 */
+                    /* 保存前段(如果存在), 偏移量不变 */
                     if (frontLen > 0)
                     {
                         uint32_t frontOffset = existStart / 8;
                         info->fragments[frontOffset] = std::vector<uint8_t>(oldData.begin(), oldData.begin() + frontLen);
                         info->totalPayloadSize += frontLen;
                     }
-                    /* 保存后段(如果存在) - 偏移量需要重新计算 */
+                    /* 保存后段(如果存在), 偏移量需要重新计算 */
                     if (backLen > 0)
                     {
+                        /* backStart是新分片结束位置(即后段开始位置), 转换为8字节块偏移 */
                         uint32_t backOffset = backStart / 8; /* 向上取整到8字节块 */
                         info->fragments[backOffset] = std::vector<uint8_t>(oldData.begin() + (backStart - existStart), oldData.end());
                         info->totalPayloadSize += backLen;
