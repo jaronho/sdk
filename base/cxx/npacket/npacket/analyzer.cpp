@@ -854,7 +854,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const Pro
             return nullptr;
         }
         isFragment = true;
-        key = FragmentKey::createIpv4FragmentKey(ipv4Header->srcAddr, ipv4Header->dstAddr, ipv4Header->identification);
+        key = FragmentKey::createIpv4(ipv4Header->srcAddr, ipv4Header->dstAddr, ipv4Header->identification);
         headerLen = ipv4Header->headerLen;
         basicHeaderLen = headerLen; /* IPv4没有扩展头概念 */
         isMoreFragment = ipv4Header->flagMore;
@@ -878,7 +878,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const Pro
             dstBytes[i * 2] = (ipv6Header->dstAddr[i] >> 8);
             dstBytes[i * 2 + 1] = (ipv6Header->dstAddr[i] & 0xFF);
         }
-        key = FragmentKey::createIpv6FragmentKey(srcBytes, dstBytes, identification);
+        key = FragmentKey::createIpv6(srcBytes, dstBytes, identification);
         headerLen = Ipv6Header::getMinLen() + fragHeaderLen; /* 基本头 + 扩展头(含分片头) */
         basicHeaderLen = Ipv6Header::getMinLen(); /* 仅基本头40字节 */
     }
