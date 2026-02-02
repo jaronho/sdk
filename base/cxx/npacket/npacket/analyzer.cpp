@@ -193,7 +193,15 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
         return 6;
     }
     uint32_t remainLen = dataLen, offset = 0;
-    std::unique_ptr<ProtocolHeader> ethernetHeader = nullptr, networkHeader = nullptr, transportHeader = nullptr;
+    EthernetIIHeader ethHeader;
+    Ipv4Header ipv4Header;
+    Ipv6Header ipv6Header;
+    ArpHeader arpHeader;
+    TcpHeader tcpHeader;
+    UdpHeader udpHeader;
+    IcmpHeader icmpHeader;
+    Icmpv6Header icmpv6Header;
+    ProtocolHeader *ethernetHeader = nullptr, *networkHeader = nullptr, *transportHeader = nullptr;
     uint32_t appDataLen = remainLen;
     bool willParseApplication = false;
     if (DataSource::NETWORK == dataSource) /* 标准网络数据包 */
@@ -207,28 +215,29 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
             transportLayerCb = m_transportLayerCb;
         }
         /* step1. 解析以太网层 */
-        ethernetHeader = handleEthernetLayer(num, data + offset, remainLen, headerLen, networkProtocol);
+        ethernetHeader = handleEthernetLayer(num, data + offset, remainLen, ethHeader, headerLen, networkProtocol);
         if (!ethernetHeader)
         {
             return 1;
         }
         remainLen -= headerLen;
         offset += headerLen;
-        if (ehternetLayerCb && !ehternetLayerCb(num, ntp, dataLen, ethernetHeader.get(), data + offset, remainLen))
+        if (ehternetLayerCb && !ehternetLayerCb(num, ntp, dataLen, ethernetHeader, data + offset, remainLen))
         {
             return 0;
         }
         /* step2. 解析网络层 */
         if (remainLen > 0)
         {
-            networkHeader = handleNetworkLayer(num, networkProtocol, data + offset, remainLen, headerLen, transportProtocol);
+            networkHeader = handleNetworkLayer(num, networkProtocol, data + offset, remainLen, ipv4Header, ipv6Header, arpHeader, headerLen,
+                                               transportProtocol);
             if (!networkHeader)
             {
                 return 2;
             }
             /* step3. 检查并处理分片 */
             bool isFragment = false;
-            auto reassembledIp = checkAndHandleFragment(networkHeader.get(), data + offset, remainLen, isFragment);
+            auto reassembledIp = checkAndHandleFragment(networkHeader, data + offset, remainLen, isFragment);
             if (isFragment)
             {
                 if (reassembledIp) /* 分片已重组完成, 使用重组后的数据继续解析 */
@@ -237,32 +246,32 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
                 }
                 return 5; /* 分片未收齐, 等待后续 */
             }
-            networkHeader->parent = ethernetHeader.get();
+            networkHeader->parent = ethernetHeader;
             remainLen -= headerLen;
             offset += headerLen;
-            if (networkLayerCb && !networkLayerCb(num, ntp, dataLen, networkHeader.get(), data + offset, remainLen))
+            if (networkLayerCb && !networkLayerCb(num, ntp, dataLen, networkHeader, data + offset, remainLen))
             {
                 return 0;
             }
             /* step4. 解析传输层 */
             if (remainLen > 0)
             {
-                transportHeader = handleTransportLayer(num, transportProtocol, data + offset, remainLen, headerLen);
+                transportHeader = handleTransportLayer(num, transportProtocol, data + offset, remainLen, tcpHeader, udpHeader, icmpHeader,
+                                                       icmpv6Header, headerLen);
                 if (!transportHeader)
                 {
                     return 3;
                 }
-                transportHeader->parent = networkHeader.get();
+                transportHeader->parent = networkHeader;
                 remainLen -= headerLen;
                 offset += headerLen;
                 uint32_t tcpPlayoadLen = remainLen; /* TCP负载长度, 根据IP层的totalLen裁剪TCP负载(Ethernet Padding), 默认使用剩余长度 */
                 if (NetworkProtocol::IPv4 == networkProtocol)
                 {
-                    auto ipv4Header = (const Ipv4Header*)(networkHeader.get());
-                    if (ipv4Header->totalLen >= ipv4Header->headerLen + headerLen) /* IPv4 totalLen 包含 IP头 + IP负载(TCP头 + TCP数据) */
+                    if (ipv4Header.totalLen >= ipv4Header.headerLen + headerLen) /* IPv4 totalLen 包含 IP头 + IP负载(TCP头 + TCP数据) */
                     {
                         /* 计算实际的TCP数据长度 = totalLen - IP头长度 - TCP头长度 */
-                        tcpPlayoadLen = ipv4Header->totalLen - ipv4Header->headerLen - headerLen;
+                        tcpPlayoadLen = ipv4Header.totalLen - ipv4Header.headerLen - headerLen;
                         if (tcpPlayoadLen > remainLen) /* 防御性检查: tcpPlayoadLen 不应大于 remainLen */
                         {
                             tcpPlayoadLen = remainLen;
@@ -275,17 +284,16 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
                 }
                 else if (NetworkProtocol::IPv6 == networkHeader->getProtocol())
                 {
-                    auto ipv6Header = (const Ipv6Header*)(networkHeader.get());
-                    if (ipv6Header->payloadLen >= headerLen)
+                    if (ipv6Header.payloadLen >= headerLen)
                     {
-                        tcpPlayoadLen = ipv6Header->payloadLen - headerLen; /* headerLen应包含TCP头+Extension Headers */
+                        tcpPlayoadLen = ipv6Header.payloadLen - headerLen; /* headerLen应包含TCP头+Extension Headers */
                     }
                     else /* 长度字段异常 */
                     {
                         tcpPlayoadLen = 0;
                     }
                 }
-                if (transportLayerCb && !transportLayerCb(num, ntp, dataLen, transportHeader.get(), data + offset, tcpPlayoadLen))
+                if (transportLayerCb && !transportLayerCb(num, ntp, dataLen, transportHeader, data + offset, tcpPlayoadLen))
                 {
                     return 0;
                 }
@@ -307,12 +315,11 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
         {
             TcpStreamKey tcpKey;
             bool needMoreData = false;
-            auto reassembledTcp =
-                checkAndHandleTcpReassembly(networkHeader.get(), transportHeader.get(), appData, appDataLen, tcpKey, needMoreData);
+            auto reassembledTcp = checkAndHandleTcpReassembly(networkHeader, transportHeader, appData, appDataLen, tcpKey, needMoreData);
             if (reassembledTcp && !reassembledTcp->empty()) /* 有重组后的数据, 解析应用层, 并传入tcpKey用于关联状态 */
             {
-                return handleApplicationLayer(num, ntp, dataLen, transportHeader.get(), reassembledTcp->data(), reassembledTcp->size(),
-                                              &tcpKey, depth);
+                return handleApplicationLayer(num, ntp, dataLen, transportHeader, reassembledTcp->data(), reassembledTcp->size(), &tcpKey,
+                                              depth);
             }
             else if (needMoreData) /* TCP流在等待更多数据, 返回CONTINUE */
             {
@@ -321,26 +328,27 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
             /* 流已关闭或出错, 继续尝试解析当前包(可能是RST/FIN) */
         }
         /* 非TCP或无需重组, 直接解析 */
-        return handleApplicationLayer(num, ntp, dataLen, transportHeader.get(), appData, appDataLen, nullptr, depth);
+        return handleApplicationLayer(num, ntp, dataLen, transportHeader, appData, appDataLen, nullptr, depth);
     }
     return 0;
 }
 
-std::unique_ptr<ProtocolHeader> Analyzer::handleEthernetLayer(size_t num, const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
-                                                              uint32_t& networkProtocol)
+ProtocolHeader* Analyzer::handleEthernetLayer(size_t num, const uint8_t* data, uint32_t dataLen, EthernetIIHeader& ethHeader,
+                                              uint32_t& headerLen, uint32_t& networkProtocol)
 {
     if (data && dataLen >= EthernetIIHeader::getMinLen())
     {
-        auto header = Helper::loadEthernetIIHeader(*(RawEthernetIIHeader*)(data));
-        headerLen = header->headerLen;
-        networkProtocol = header->nextProtocol;
-        return header;
+        Helper::loadEthernetIIHeader(*(RawEthernetIIHeader*)(data), ethHeader);
+        headerLen = ethHeader.headerLen;
+        networkProtocol = ethHeader.nextProtocol;
+        return &ethHeader;
     }
     return nullptr;
 }
 
-std::unique_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(size_t num, uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
-                                                             uint32_t& headerLen, uint32_t& transportProtocol)
+ProtocolHeader* Analyzer::handleNetworkLayer(size_t num, uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
+                                             Ipv4Header& ipv4Header, Ipv6Header& ipv6Header, ArpHeader& arpHeader, uint32_t& headerLen,
+                                             uint32_t& transportProtocol)
 {
     if (data)
     {
@@ -349,33 +357,33 @@ std::unique_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(size_t num, uint32_
         case NetworkProtocol::IPv4:
             if (dataLen >= Ipv4Header::getMinLen())
             {
-                auto header = Helper::loadIpv4Header(*(RawIpv4Header*)(data));
-                headerLen = header->headerLen;
-                transportProtocol = header->nextProtocol;
-                return header;
+                Helper::loadIpv4Header(*(RawIpv4Header*)(data), ipv4Header);
+                headerLen = ipv4Header.headerLen;
+                transportProtocol = ipv4Header.nextProtocol;
+                return &ipv4Header;
             }
             break;
         case NetworkProtocol::ARP:
             if (dataLen >= ArpHeader::getMinLen())
             {
-                auto header = Helper::loadArpHeader(*(RawArpHeader*)(data));
-                headerLen = header->headerLen;
+                Helper::loadArpHeader(*(RawArpHeader*)(data), arpHeader);
+                headerLen = arpHeader.headerLen;
                 transportProtocol = 0; /* ARP无传输层 */
-                return header;
+                return &arpHeader;
             }
             break;
         case NetworkProtocol::IPv6:
             if (dataLen >= Ipv6Header::getMinLen())
             {
-                auto header = Helper::loadIpv6Header(*(RawIpv6Header*)(data));
-                headerLen = header->headerLen;
-                uint8_t nextHeader = header->nextHeader;
+                Helper::loadIpv6Header(*(RawIpv6Header*)(data), ipv6Header);
+                headerLen = ipv6Header.headerLen;
+                uint8_t nextHeader = ipv6Header.nextHeader;
                 uint32_t extLen = 0;
                 if (traverseIpv6Extension(data, dataLen, nextHeader, extLen, false, nullptr))
                 {
                     headerLen = Ipv6Header::getMinLen() + extLen;
                     transportProtocol = nextHeader;
-                    return header;
+                    return &ipv6Header;
                 }
             }
             break;
@@ -384,8 +392,9 @@ std::unique_ptr<ProtocolHeader> Analyzer::handleNetworkLayer(size_t num, uint32_
     return nullptr;
 }
 
-std::unique_ptr<ProtocolHeader> Analyzer::handleTransportLayer(size_t num, uint32_t transportProtocol, const uint8_t* data,
-                                                               uint32_t dataLen, uint32_t& headerLen)
+ProtocolHeader* Analyzer::handleTransportLayer(size_t num, uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
+                                               TcpHeader& tcpHeader, UdpHeader& udpHeader, IcmpHeader& icmpHeader,
+                                               Icmpv6Header& icmpv6Header, uint32_t& headerLen)
 {
     if (data)
     {
@@ -394,33 +403,33 @@ std::unique_ptr<ProtocolHeader> Analyzer::handleTransportLayer(size_t num, uint3
         case TransportProtocol::TCP:
             if (dataLen >= TcpHeader::getMinLen())
             {
-                auto header = Helper::loadTcpHeader(*(RawTcpHeader*)(data));
-                headerLen = header->headerLen;
-                return header;
+                Helper::loadTcpHeader(*(RawTcpHeader*)(data), tcpHeader);
+                headerLen = tcpHeader.headerLen;
+                return &tcpHeader;
             }
             break;
         case TransportProtocol::UDP:
             if (dataLen >= UdpHeader::getMinLen())
             {
-                auto header = Helper::loadUdpHeader(*(RawUdpHeader*)(data));
-                headerLen = header->headerLen;
-                return header;
+                Helper::loadUdpHeader(*(RawUdpHeader*)(data), udpHeader);
+                headerLen = udpHeader.headerLen;
+                return &udpHeader;
             }
             break;
         case TransportProtocol::ICMP:
             if (dataLen >= IcmpHeader::getMinLen())
             {
-                auto header = Helper::loadIcmpHeader(*(RawIcmpHeader*)(data));
-                headerLen = header->headerLen;
-                return header;
+                Helper::loadIcmpHeader(*(RawIcmpHeader*)(data), icmpHeader);
+                headerLen = icmpHeader.headerLen;
+                return &icmpHeader;
             }
             break;
         case TransportProtocol::ICMPv6:
             if (dataLen >= Icmpv6Header::getMinLen())
             {
-                auto header = Helper::loadIcmpv6Header(*(RawIcmpv6Header*)(data));
-                headerLen = header->headerLen;
-                return header;
+                Helper::loadIcmpv6Header(*(RawIcmpv6Header*)(data), icmpv6Header);
+                headerLen = icmpv6Header.headerLen;
+                return &icmpv6Header;
             }
             break;
         }

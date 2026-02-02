@@ -400,12 +400,13 @@ private:
      * @param num 数据序号
      * @param data 层数据
      * @param dataLen 层数据长度
+     * @param ethHeader [输出]以太网II协议头部
      * @param headerLen [输出]协议头部长度
      * @param networkProtocol [输出]网络层协议类型
-     * @return 协议头部
+     * @return 指向实际类型的基类指针
      */
-    std::unique_ptr<ProtocolHeader> handleEthernetLayer(size_t num, const uint8_t* data, uint32_t dataLen, uint32_t& headerLen,
-                                                        uint32_t& networkProtocol);
+    ProtocolHeader* handleEthernetLayer(size_t num, const uint8_t* data, uint32_t dataLen, EthernetIIHeader& ethHeader, uint32_t& headerLen,
+                                        uint32_t& networkProtocol);
 
     /**
      * @brief 处理网络层数据
@@ -413,12 +414,15 @@ private:
      * @param networkProtocol 网络层协议类型
      * @param data 层数据
      * @param dataLen 层数据长度
+     * @param ipv4Header [输出]Ipv4头部对象
+     * @param ipv6Header [输出]Ipv6头部对象
+     * @param arpHeader [输出]Arp头部对象
      * @param headerLen [输出]协议头部长度
      * @param transportProtocol [输出]传输层协议类型
-     * @return 协议头部
+     * @return 指向实际类型的基类指针
      */
-    std::unique_ptr<ProtocolHeader> handleNetworkLayer(size_t num, uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
-                                                       uint32_t& headerLen, uint32_t& transportProtocol);
+    ProtocolHeader* handleNetworkLayer(size_t num, uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen, Ipv4Header& ipv4Header,
+                                       Ipv6Header& ipv6Header, ArpHeader& arpHeader, uint32_t& headerLen, uint32_t& transportProtocol);
 
     /**
      * @brief 处理传输层数据
@@ -426,11 +430,16 @@ private:
      * @param transportProtocol 传输层协议类型
      * @param data 层数据
      * @param dataLen 层数据长度
+     * @param tcpHeader [输出]Tcp头部对象
+     * @param udpHeader [输出]Udp头部对象
+     * @param icmpHeader [输出]Icmp头部对象
+     * @param icmpv6Header [输出]Icmpv6头部对象
      * @param headerLen [输出]协议头部长度
-     * @return 协议头部
+     * @return 指向实际类型的基类指针
      */
-    std::unique_ptr<ProtocolHeader> handleTransportLayer(size_t num, uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
-                                                         uint32_t& headerLen);
+    ProtocolHeader* handleTransportLayer(size_t num, uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
+                                         TcpHeader& tcpHeader, UdpHeader& udpHeader, IcmpHeader& icmpHeader, Icmpv6Header& icmpv6Header,
+                                         uint32_t& headerLen);
 
     /**
      * @brief 处理应用层数据
