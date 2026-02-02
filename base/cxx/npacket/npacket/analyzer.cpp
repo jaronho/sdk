@@ -1041,7 +1041,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
                     /* 保存后段(如果存在) - 偏移量需要重新计算 */
                     if (backLen > 0)
                     {
-                        uint32_t backOffset = (backStart + 7) / 8; /* 向上取整到8字节块 */
+                        uint32_t backOffset = backStart / 8; /* 向上取整到8字节块 */
                         info->fragments[backOffset] = std::vector<uint8_t>(oldData.begin() + (backStart - existStart), oldData.end());
                         info->totalPayloadSize += backLen;
                     }
@@ -1498,7 +1498,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
                 std::vector<uint8_t> excessData(result->begin() + m_tcpReassemblyCfg.maxStreamSize, result->end());
                 result->resize(m_tcpReassemblyCfg.maxStreamSize);
                 streamInfo->reassembledData = std::move(excessData);
-                streamInfo->nextExpectedSeq = seqAdd(seq, (uint32_t)(m_tcpReassemblyCfg.maxStreamSize));
+                streamInfo->nextExpectedSeq = seqAdd(streamInfo->nextExpectedSeq, (uint32_t)(m_tcpReassemblyCfg.maxStreamSize));
             }
             else /* 异常情况, 直接清空避免崩溃 */
             {

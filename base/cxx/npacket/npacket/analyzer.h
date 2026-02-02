@@ -327,16 +327,18 @@ struct hash<npacket::FragmentKey>
         size_t h = std::hash<uint8_t>{}(k.ipVersion);
         if (4 == k.ipVersion)
         {
-            uint32_t srcIp = *reinterpret_cast<const uint32_t*>(k.v4.srcIp);
-            uint32_t dstIp = *reinterpret_cast<const uint32_t*>(k.v4.dstIp);
+            uint32_t srcIp, dstIp;
+            memcpy(&srcIp, k.v4.srcIp, sizeof(srcIp));
+            memcpy(&dstIp, k.v4.dstIp, sizeof(dstIp));
             h ^= std::hash<uint32_t>{}(srcIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= std::hash<uint32_t>{}(dstIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= std::hash<uint16_t>{}(k.v4.identification) + 0x9e3779b9 + (h << 6) + (h >> 2);
         }
         else
         {
-            const uint64_t* src = reinterpret_cast<const uint64_t*>(k.v6.srcIp);
-            const uint64_t* dst = reinterpret_cast<const uint64_t*>(k.v6.dstIp);
+            uint64_t src[2], dst[2];
+            memcpy(&src, k.v6.srcIp, sizeof(src));
+            memcpy(&dst, k.v6.dstIp, sizeof(dst));
             h ^= std::hash<uint64_t>{}(src[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= std::hash<uint64_t>{}(src[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= std::hash<uint64_t>{}(dst[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
@@ -355,8 +357,9 @@ struct hash<npacket::TcpStreamKey>
         size_t h = std::hash<uint8_t>{}(k.ipVersion);
         if (4 == k.ipVersion)
         {
-            uint32_t srcIp = *reinterpret_cast<const uint32_t*>(k.v4.srcIp);
-            uint32_t dstIp = *reinterpret_cast<const uint32_t*>(k.v4.dstIp);
+            uint32_t srcIp, dstIp;
+            memcpy(&srcIp, k.v4.srcIp, sizeof(srcIp));
+            memcpy(&dstIp, k.v4.dstIp, sizeof(dstIp));
             h ^= std::hash<uint32_t>{}(srcIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= std::hash<uint32_t>{}(dstIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= std::hash<uint16_t>{}(k.v4.srcPort) + 0x9e3779b9 + (h << 6) + (h >> 2);
@@ -364,8 +367,9 @@ struct hash<npacket::TcpStreamKey>
         }
         else
         {
-            const uint64_t* src = reinterpret_cast<const uint64_t*>(k.v6.srcIp);
-            const uint64_t* dst = reinterpret_cast<const uint64_t*>(k.v6.dstIp);
+            uint64_t src[2], dst[2];
+            memcpy(&src, k.v6.srcIp, sizeof(src));
+            memcpy(&dst, k.v6.dstIp, sizeof(dst));
             h ^= std::hash<uint64_t>{}(src[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= std::hash<uint64_t>{}(src[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= std::hash<uint64_t>{}(dst[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
