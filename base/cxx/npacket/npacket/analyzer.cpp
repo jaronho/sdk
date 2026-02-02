@@ -1031,20 +1031,50 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
                     /* 删除原条目(迭代器失效, 需要重新获取) */
                     iterFrag = info->fragments.erase(iterFrag);
                     info->totalPayloadSize -= oldData.size();
-                    /* 保存前段(如果存在), 偏移量不变 */
-                    if (frontLen > 0)
+                    if (0 == frontLen && backLen > 0) /* 情况1: 只有后段(前段为空, 新分片从旧分片开头开始) */
                     {
+                        size_t skipLen = newEnd - existStart; /* 跳过新分片覆盖的部分 */
+                        oldData.erase(oldData.begin(), oldData.begin() + skipLen);
+                        uint32_t backOffset = backStart / 8;
+                        info->fragments[backOffset] = std::move(oldData); /* 移动, 零拷贝 */
+                        info->totalPayloadSize += backLen;
+                    }
+                    else if (frontLen > 0 && 0 == backLen) /* 情况2: 只有前段(后段为空, 新分片延伸到旧分片末尾) */
+                    {
+                        oldData.resize(frontLen); /* 直接截断oldData */
                         uint32_t frontOffset = existStart / 8;
-                        info->fragments[frontOffset] = std::vector<uint8_t>(oldData.begin(), oldData.begin() + frontLen);
+                        info->fragments[frontOffset] = std::move(oldData); /* 移动, 零拷贝 */
                         info->totalPayloadSize += frontLen;
                     }
-                    /* 保存后段(如果存在), 偏移量需要重新计算 */
-                    if (backLen > 0)
+                    else if (frontLen > 0 && backLen > 0) /* 情况3: 前后段都存在(必须分割) */
                     {
-                        /* backStart是新分片结束位置(即后段开始位置), 转换为8字节块偏移 */
-                        uint32_t backOffset = backStart / 8; /* 向上取整到8字节块 */
-                        info->fragments[backOffset] = std::vector<uint8_t>(oldData.begin() + (backStart - existStart), oldData.end());
-                        info->totalPayloadSize += backLen;
+                        size_t backStartPos = backStart - existStart;
+                        if (frontLen <= backLen) /* 移动前段, 拷贝后段(因为后段需要重新分配) */
+                        {
+                            /* 前段小, 拷贝前段, 移动后段 */
+                            std::vector<uint8_t> backData;
+                            backData.reserve(backLen);
+                            backData.assign(oldData.begin() + backStartPos, oldData.end()); /* 拷贝后段 */
+                            oldData.resize(frontLen); /* 截断为前段 */
+                            uint32_t frontOffset = existStart / 8;
+                            uint32_t backOffset = backStart / 8;
+                            info->fragments[frontOffset] = std::move(oldData); /* 移动前段 */
+                            info->fragments[backOffset] = std::move(backData); /* 移动后段 */
+                        }
+                        else /* 移动后段, 拷贝前段(选择数据量小的拷贝) */
+                        {
+                            /* 后段小, 拷贝后段, 移动前段 */
+                            std::vector<uint8_t> frontData(oldData.begin(), oldData.begin() + frontLen); /* 拷贝前段 */
+                            //* 构造后段: 复用oldData的内存 */
+                            std::vector<uint8_t> backData;
+                            backData.reserve(backLen);
+                            backData.assign(oldData.begin() + backStartPos, oldData.end());
+                            uint32_t frontOffset = existStart / 8;
+                            uint32_t backOffset = backStart / 8;
+                            info->fragments[frontOffset] = std::move(frontData); /* 移动前段(新分配) */
+                            info->fragments[backOffset] = std::move(backData); /* 移动后段(新分配) */
+                        }
+                        info->totalPayloadSize += (frontLen + backLen);
                     }
                     /* 注意: 内嵌场景后, 当前旧分片已被分割, 继续检查下一个旧分片 */
                 }
