@@ -588,13 +588,15 @@ private:
 
     /**
      * @brief 检查并处理分片
+     * @param ntp 当前时间点
      * @param networkHeader 网络层头部
      * @param data 当前分片数据(含IP头)
      * @param dataLen 数据长度
      * @param isFragment [输出]是否为分片报文, true-是分片报文, false-不是分片报文
      * @return 返回重组后的完整数据
      */
-    std::shared_ptr<std::vector<uint8_t>> checkAndHandleFragment(const ProtocolHeader* networkHeader, const uint8_t* data, uint32_t dataLen,
+    std::shared_ptr<std::vector<uint8_t>> checkAndHandleFragment(const std::chrono::steady_clock::time_point& ntp,
+                                                                 const ProtocolHeader* networkHeader, const uint8_t* data, uint32_t dataLen,
                                                                  bool& isFragment);
 
     /**
@@ -620,17 +622,19 @@ private:
 
     /**
      * @brief 检查并处理TCP流
+     * @param ntp 当前时间点
      * @param networkHeader 网络层头部
      * @param transportHeader 传输层头部
      * @param payload 负载数据
      * @param payloadLen 负载数据长度
-     * @param outKey [输出]TCP流标识健
+     * @param key [输出]TCP流标识健
      * @param needMoreData [输出]是否需要更多数据
      * @return 返回重组后的完整数据
      */
-    std::shared_ptr<std::vector<uint8_t>> checkAndHandleTcpReassembly(const ProtocolHeader* networkHeader,
+    std::shared_ptr<std::vector<uint8_t>> checkAndHandleTcpReassembly(const std::chrono::steady_clock::time_point& ntp,
+                                                                      const ProtocolHeader* networkHeader,
                                                                       const ProtocolHeader* transportHeader, const uint8_t* payload,
-                                                                      uint32_t payloadLen, TcpStreamKey& outKey, bool& needMoreData);
+                                                                      uint32_t payloadLen, TcpStreamKey& key, bool& needMoreData);
 
 private:
     const IpReassemblyConfig m_ipReassemblyCfg; /* IP分片重组配置 */
