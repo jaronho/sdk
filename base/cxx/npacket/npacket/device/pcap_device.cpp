@@ -105,7 +105,7 @@ bool PcapDevice::open(const std::string& name, int direction, int snapLen, int p
 bool PcapDevice::setFilter(const std::string& bpf, int optimize, int netmask)
 {
     std::lock_guard<std::recursive_mutex> locker(m_mutex);
-    if (m_pcap)
+    if (!m_pcap)
     {
         return false;
     }
