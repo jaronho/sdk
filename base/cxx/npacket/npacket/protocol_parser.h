@@ -48,13 +48,13 @@ public:
      * @brief 获取父应用层协议
      * @return 协议类型(ApplicationProtocol)
      */
-    virtual uint32_t getParentProtocol() const;
+    virtual uint32_t getParentProtocol() const noexcept;
 
     /**
      * @brief 获取应用层协议
      * @return 协议类型(ApplicationProtocol)
      */
-    virtual uint32_t getProtocol() const = 0;
+    virtual uint32_t getProtocol() const noexcept = 0;
 
     /**
      * @brief 解析

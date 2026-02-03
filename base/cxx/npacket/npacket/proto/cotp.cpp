@@ -2,7 +2,7 @@
 
 namespace npacket
 {
-uint32_t CotpParser::getProtocol() const
+uint32_t CotpParser::getProtocol() const noexcept
 {
     return ApplicationProtocol::COTP;
 }

@@ -119,7 +119,7 @@ const std::unordered_map<std::string, int> CODE_MAP = {
 
 FtpParser::FtpParser(uint32_t dcTimeout) : m_dataConnectTimeout(dcTimeout > 0 ? dcTimeout : 15) {}
 
-uint32_t FtpParser::getProtocol() const
+uint32_t FtpParser::getProtocol() const noexcept
 {
     return ApplicationProtocol::FTP;
 }

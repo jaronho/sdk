@@ -24,7 +24,7 @@ ModbusRtuConfig limitModbusRtuConfig(ModbusRtuConfig cfg)
 
 ModbusRtuParser::ModbusRtuParser(bool isMaster, ModbusRtuConfig cfg) : m_isMaster(isMaster), m_cfg(limitModbusRtuConfig(cfg)) {}
 
-uint32_t ModbusRtuParser::getProtocol() const
+uint32_t ModbusRtuParser::getProtocol() const noexcept
 {
     return ApplicationProtocol::MODBUS_RTU;
 }

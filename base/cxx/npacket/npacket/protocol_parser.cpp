@@ -2,7 +2,7 @@
 
 namespace npacket
 {
-uint32_t ProtocolParser::getParentProtocol() const
+uint32_t ProtocolParser::getParentProtocol() const noexcept
 {
     return ApplicationProtocol::NONE;
 }

@@ -7,15 +7,17 @@
 namespace npacket
 {
 /**
- * @brief 安全的TCP序列号比较(处理32位回绕)
+ * @brief 安全的TCP序列号比较(处理32位回绕) - RFC 1982合规实现
  * @param a 序列号A
  * @param b 序列号B
  * @return 如果a < b返回true, 否则返回false(考虑回绕)
  */
 inline bool seqLt(uint32_t a, uint32_t b)
 {
-    /* RFC 1323: 当|a-b| < 2^31时, a < b (考虑回绕) */
-    return static_cast<int32_t>(a - b) < 0;
+    /* 原理：在序列号空间中, 如果 (a < b) 且 (b - a < 2^31) 或者 (a > b) 且 (a - b > 2^31), 则 a < b 使用显式比较避免任何未定义行为 */
+    const uint32_t HALF_SPACE = 0x80000000; /* 2^31 */
+    /* 同号情况: 直接比较, 异号情况: 差值超过半圈时, 小的那个反而大 */
+    return (((a < b) && (b - a < HALF_SPACE)) || ((a > b) && (a - b > HALF_SPACE)));
 }
 
 /**
@@ -26,7 +28,29 @@ inline bool seqLt(uint32_t a, uint32_t b)
  */
 inline bool seqLe(uint32_t a, uint32_t b)
 {
-    return static_cast<int32_t>(a - b) <= 0;
+    return (a == b || seqLt(a, b));
+}
+
+/**
+ * @brief 安全的TCP序列号比较(处理32位回绕)
+ * @param a 序列号A
+ * @param b 序列号B
+ * @return 如果a > b返回true, 否则返回false(考虑回绕)
+ */
+inline bool seqGt(uint32_t a, uint32_t b)
+{
+    return seqLt(b, a);
+}
+
+/**
+ * @brief 安全的TCP序列号比较(处理32位回绕)
+ * @param a 序列号A
+ * @param b 序列号B
+ * @return 如果a >= b返回true, 否则返回false(考虑回绕)
+ */
+inline bool seqGe(uint32_t a, uint32_t b)
+{
+    return (a == b || seqGt(a, b));
 }
 
 /**
@@ -37,7 +61,7 @@ inline bool seqLe(uint32_t a, uint32_t b)
  */
 inline uint32_t seqAdd(uint32_t seq, uint32_t increment)
 {
-    return seq + increment; /* 32位无符号自然回绕 */
+    return (seq + increment); /* 32位无符号自然回绕 */
 }
 
 /**
@@ -49,12 +73,15 @@ inline uint32_t seqAdd(uint32_t seq, uint32_t increment)
  */
 inline bool seqInRange(uint32_t seq, uint32_t start, uint32_t end)
 {
-    if (seqLe(start, end)) /* 正常情况: start <= end */
+    if (start == end)
     {
-        return seqLe(start, seq) && seqLt(seq, end);
+        return true;
     }
-    /* 回绕情况: start > end(实际是start...MAX, 0...end) */
-    return seqLe(start, seq) || seqLt(seq, end);
+    if (seqLt(start, end))
+    {
+        return seqGe(seq, start) && seqLt(seq, end);
+    }
+    return (seqGe(seq, start) || seqLt(seq, end));
 }
 
 /**
@@ -271,9 +298,20 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
         }
         remainLen -= headerLen;
         offset += headerLen;
-        if (m_cbCfg.ethernetLayerCb && !m_cbCfg.ethernetLayerCb(num, ntp, dataLen, ethernetHeader, data + offset, remainLen))
+        try
         {
-            return 0;
+            if (m_cbCfg.ethernetLayerCb && !m_cbCfg.ethernetLayerCb(num, ntp, dataLen, ethernetHeader, data + offset, remainLen))
+            {
+                return 0;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            printf("[Execption] ethernetLayerCb, %s\n", e.what());
+        }
+        catch (...)
+        {
+            printf("[Execption] ethernetLayerCb, unknown\n");
         }
         /* step2. 解析网络层 */
         if (remainLen > 0)
@@ -298,9 +336,20 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
             networkHeader->parent = ethernetHeader;
             remainLen -= headerLen;
             offset += headerLen;
-            if (m_cbCfg.networkLayerCb && !m_cbCfg.networkLayerCb(num, ntp, dataLen, networkHeader, data + offset, remainLen))
+            try
             {
-                return 0;
+                if (m_cbCfg.networkLayerCb && !m_cbCfg.networkLayerCb(num, ntp, dataLen, networkHeader, data + offset, remainLen))
+                {
+                    return 0;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                printf("[Execption] networkLayerCb, %s\n", e.what());
+            }
+            catch (...)
+            {
+                printf("[Execption] networkLayerCb, unknown\n");
             }
             /* step4. 解析传输层 */
             if (remainLen > 0)
@@ -342,9 +391,21 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
                         tcpPlayoadLen = 0;
                     }
                 }
-                if (m_cbCfg.transportLayerCb && !m_cbCfg.transportLayerCb(num, ntp, dataLen, transportHeader, data + offset, tcpPlayoadLen))
+                try
                 {
-                    return 0;
+                    if (m_cbCfg.transportLayerCb
+                        && !m_cbCfg.transportLayerCb(num, ntp, dataLen, transportHeader, data + offset, tcpPlayoadLen))
+                    {
+                        return 0;
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    printf("[Execption] transportLayerCb, %s\n", e.what());
+                }
+                catch (...)
+                {
+                    printf("[Execption] transportLayerCb, unknown\n");
                 }
                 appDataLen = tcpPlayoadLen;
                 willParseApplication = true;
@@ -523,7 +584,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         }
     }
     /* 获取候选解析器 */
-    std::vector<std::shared_ptr<ProtocolParser>> candidateParsers;
+    std::vector<std::weak_ptr<ProtocolParser>> candidateParsers;
     {
         std::lock_guard<std::mutex> locker(m_mutexParserList);
         /* 1. 端口匹配的解析器优先(端口优先级: 1.dstPort, 2.srcPort) */
@@ -543,16 +604,17 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         /* 2. 全局解析器列表(排除已添加的端口匹配协议) */
         for (const auto& parser : m_applicationParserList)
         {
-            bool alreadyAdded = false;
-            for (const auto& existing : candidateParsers)
+            bool findFlag = false;
+            for (const auto& wpParser : candidateParsers)
             {
-                if (existing == parser || (existing && parser && existing->getProtocol() == parser->getProtocol()))
+                auto cp = wpParser.lock();
+                if (cp == parser || (cp && parser && cp->getProtocol() == parser->getProtocol()))
                 {
-                    alreadyAdded = true;
+                    findFlag = true;
                     break;
                 }
             }
-            if (!alreadyAdded)
+            if (!findFlag)
             {
                 candidateParsers.push_back(parser);
             }
@@ -591,11 +653,12 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                     std::vector<std::weak_ptr<ProtocolParser>> tempParserList;
                     for (const auto& wpParser : streamInfo->wpWaitingParserList)
                     {
+                        auto parser = wpParser.lock();
                         /* 检查是否仍在全局列表中(未被删除) */
                         bool stillValid = false;
                         for (const auto& cp : candidateParsers)
                         {
-                            if (cp == wpParser.lock())
+                            if (cp.lock() == parser)
                             {
                                 stillValid = true;
                                 tempParserList.push_back(wpParser);
@@ -606,7 +669,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                     /* 移除已失效的等待解析器 */
                     streamInfo->wpWaitingParserList = tempParserList;
                     /* 重组候选列表: 等待的优先, 然后是其他 */
-                    std::vector<std::shared_ptr<ProtocolParser>> newCandidates;
+                    std::vector<std::weak_ptr<ProtocolParser>> newCandidates;
                     for (const auto& wpParser : streamInfo->wpWaitingParserList)
                     {
                         auto parser = wpParser.lock();
@@ -617,10 +680,11 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                     }
                     for (const auto& cp : candidateParsers)
                     {
+                        auto parser = cp.lock();
                         bool isWaiting = false;
                         for (const auto& wpParser : streamInfo->wpWaitingParserList)
                         {
-                            if (cp == wpParser.lock())
+                            if (parser == wpParser.lock())
                             {
                                 isWaiting = true;
                                 break;
@@ -644,10 +708,29 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     {
         continueParsers.clear();
         bool anySuccess = false;
-        for (const auto& parser : candidateParsers) /* 尝试所有候选解析器 */
+        for (const auto& wpParser : candidateParsers) /* 尝试所有候选解析器 */
         {
             uint32_t consumeLen = 0;
-            ParseResult result = parser->parse(num, ntp, totalLen, header, fullData + offset, fullDataLen - offset, consumeLen);
+            auto parser = wpParser.lock();
+            if (!parser)
+            {
+                continue;
+            }
+            ParseResult result;
+            try
+            {
+                result = parser->parse(num, ntp, totalLen, header, fullData + offset, fullDataLen - offset, consumeLen);
+            }
+            catch (const std::exception& e)
+            {
+                printf("[Execption] parse, %s\n", e.what());
+                continue;
+            }
+            catch (...)
+            {
+                printf("[Execption] parse, unknown\n");
+                continue;
+            }
             if (ParseResult::SUCCESS == result)
             {
                 if (consumeLen > 0 && consumeLen <= fullDataLen - offset)
@@ -1468,7 +1551,8 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
         {
             auto nextIter = streamInfo->segments.begin();
             uint32_t cachedSeq = nextIter->first;
-            uint32_t cachedEnd = seqAdd(cachedSeq, (uint32_t)(nextIter->second.data.size()));
+            const auto& segment = nextIter->second;
+            uint32_t cachedEnd = seqAdd(cachedSeq, (uint32_t)(segment.data.size()));
             /* 防御性检查: 序列号有效性 - 检查是否回绕异常 */
             if (seqLt(cachedEnd, cachedSeq))
             {
@@ -1476,26 +1560,26 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
                 continue;
             }
             /* 检查 cachedSeq 是否在 [nextExpectedSeq, nextExpectedSeq + maxStreamSize] 范围内 */
-            uint32_t maxValidSeq = seqAdd(streamInfo->nextExpectedSeq, static_cast<uint32_t>(m_tcpReassemblyCfg.maxStreamSize));
+            uint32_t maxValidSeq = seqAdd(streamInfo->nextExpectedSeq, (uint32_t)(m_tcpReassemblyCfg.maxStreamSize));
             if (!seqInRange(cachedSeq, streamInfo->nextExpectedSeq, maxValidSeq))
             {
                 streamInfo->segments.erase(nextIter);
                 continue;
             }
-            if (seqLe(cachedSeq, streamInfo->nextExpectedSeq))
+            else if (seqLe(cachedSeq, streamInfo->nextExpectedSeq)) /* 处理重叠/连续段 */
             {
                 if (seqLt(streamInfo->nextExpectedSeq, cachedEnd))
                 {
                     uint32_t offset = streamInfo->nextExpectedSeq - cachedSeq; /* 安全: cachedSeq <= nextExpectedSeq < cachedEnd */
-                    if (offset < nextIter->second.data.size())
+                    if (offset < segment.data.size())
                     {
-                        result->insert(result->end(), nextIter->second.data.begin() + offset, nextIter->second.data.end());
+                        result->insert(result->end(), segment.data.begin() + offset, segment.data.end());
                         streamInfo->nextExpectedSeq = cachedEnd;
                     }
                 }
                 streamInfo->segments.erase(nextIter);
             }
-            else
+            else /* 不连续, 停止整合 */
             {
                 break;
             }

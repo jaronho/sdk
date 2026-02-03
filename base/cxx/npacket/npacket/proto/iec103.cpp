@@ -61,7 +61,7 @@ namespace npacket
  * ----------------------------------------------------
  */
 
-uint32_t Iec103Parser::getProtocol() const
+uint32_t Iec103Parser::getProtocol() const noexcept
 {
     return ApplicationProtocol::IEC103;
 }

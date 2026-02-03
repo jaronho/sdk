@@ -9,7 +9,7 @@ ModbusTcpParser::ModbusTcpParser(const std::vector<uint16_t>& portList)
 {
 }
 
-uint32_t ModbusTcpParser::getProtocol() const
+uint32_t ModbusTcpParser::getProtocol() const noexcept
 {
     return ApplicationProtocol::MODBUS_TCP;
 }

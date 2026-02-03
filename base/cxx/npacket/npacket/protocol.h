@@ -42,7 +42,7 @@ public:
      * @brief 获取(网络层/传输层)协议
      * @return 协议类型(NetworkProtocol/TransportProtocol)
      */
-    virtual uint32_t getProtocol() const = 0;
+    virtual uint32_t getProtocol() const noexcept = 0;
 
     /**
      * @brief 重置对象状态(复用时需要)
@@ -74,7 +74,7 @@ public:
      * @brief 获取协议类型
      * @return 物理层返回值恒为0
      */
-    uint32_t getProtocol() const override
+    uint32_t getProtocol() const noexcept override
     {
         return 0;
     }
@@ -136,7 +136,7 @@ public:
      * @brief 获取协议类型
      * @return 网络层IPv4协议类型(NetworkProtocol)
      */
-    uint32_t getProtocol() const override
+    uint32_t getProtocol() const noexcept override
     {
         return NetworkProtocol::IPv4;
     }
@@ -218,7 +218,7 @@ public:
      * @brief 获取协议类型
      * @return 网络层ARP协议类型(NetworkProtocol)
      */
-    uint32_t getProtocol() const override
+    uint32_t getProtocol() const noexcept override
     {
         return NetworkProtocol::ARP;
     }
@@ -314,7 +314,7 @@ public:
      * @brief 获取协议类型
      * @return 网络层IPv6协议类型(NetworkProtocol)
      */
-    uint32_t getProtocol() const override
+    uint32_t getProtocol() const noexcept override
     {
         return NetworkProtocol::IPv6;
     }
@@ -399,7 +399,7 @@ public:
      * @brief 获取协议类型
      * @return 传输层TCP协议类型(TransportProtocol)
      */
-    uint32_t getProtocol() const override
+    uint32_t getProtocol() const noexcept override
     {
         return TransportProtocol::TCP;
     }
@@ -469,7 +469,7 @@ public:
      * @brief 获取协议类型
      * @return 传输层UDP协议类型(TransportProtocol)
      */
-    uint32_t getProtocol() const override
+    uint32_t getProtocol() const noexcept override
     {
         return TransportProtocol::UDP;
     }
@@ -513,7 +513,7 @@ public:
      * @brief 获取协议类型
      * @return 传输层ICMP协议类型(TransportProtocol)
      */
-    uint32_t getProtocol() const override
+    uint32_t getProtocol() const noexcept override
     {
         return TransportProtocol::ICMP;
     }
@@ -555,7 +555,7 @@ public:
      * @brief 获取协议类型
      * @return 传输层ICMPv6协议类型(TransportProtocol)
      */
-    uint32_t getProtocol() const override
+    uint32_t getProtocol() const noexcept override
     {
         return TransportProtocol::ICMPv6;
     }

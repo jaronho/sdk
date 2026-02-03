@@ -117,7 +117,7 @@ public:
      * @brief 获取应用层协议
      * @return 协议类型(ApplicationProtocol)
      */
-    uint32_t getProtocol() const override;
+    uint32_t getProtocol() const noexcept override;
 
     /**
      * @brief 解析
