@@ -12,7 +12,7 @@
 #include "../npacket/analyzer.h"
 #include "../npacket/device/pcap_device.h"
 
-static npacket::Analyzer s_inPktAnalyzer; /* 接收包分析器 */
+static std::shared_ptr<npacket::Analyzer> s_inPktAnalyzer = nullptr; /* 接收包分析器 */
 static npacket::PcapDevice s_inPacpDevice; /* 接收抓包设备 */
 static std::atomic<uint64_t> s_inPkt{0}; /* 接收包总数 */
 static std::atomic<uint64_t> s_inByte{0}; /* 接收字节总数 */
@@ -21,7 +21,7 @@ static std::atomic<uint64_t> s_inTcpByte{0}; /* 接收TCP字节总数 */
 static std::atomic<uint64_t> s_inUdpPkt{0}; /* 接收UDP包总数 */
 static std::atomic<uint64_t> s_inUdpByte{0}; /* 接收UDP字节总数 */
 
-static npacket::Analyzer s_outPktAnalyzer; /* 发送包分析器 */
+static std::shared_ptr<npacket::Analyzer> s_outPktAnalyzer = nullptr; /* 发送包分析器 */
 static npacket::PcapDevice s_outPacpDevice; /* 发送抓包设备 */
 static std::atomic<uint64_t> s_outPkt{0}; /* 发送包总数 */
 static std::atomic<uint64_t> s_outByte{0}; /* 发送字节总数 */
@@ -246,7 +246,11 @@ int main(int argc, char* argv[])
     }
     printf("设备名: %s\n", name.c_str());
     /* 接收包 */
-    s_inPktAnalyzer.setLayerCallback(handleInEthernetLayer, nullptr, handleInTransportLayer);
+    npacket::CallbackConfig inCbCfg;
+    inCbCfg.ethernetLayerCb = handleInEthernetLayer;
+    inCbCfg.networkLayerCb = nullptr;
+    inCbCfg.transportLayerCb = handleInTransportLayer;
+    s_inPktAnalyzer = std::make_shared<npacket::Analyzer>(inCbCfg);
     if (!s_inPacpDevice.open(name, 1, 0, 0))
     {
 #ifdef _WIN32
@@ -258,18 +262,25 @@ int main(int argc, char* argv[])
     }
     s_inPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) {
         static size_t num = 1;
-        s_inPktAnalyzer.parse(num++, data, dataLen);
+        s_inPktAnalyzer->parse(num++, data, dataLen);
     });
     s_inPacpDevice.startCapture();
 #ifndef _WIN32
     /* 发送包 */
-    s_outPktAnalyzer.setLayerCallback(handleOutEthernetLayer, nullptr, handleOutTransportLayer);
+    npacket::CallbackConfig outCbCfg;
+    outCbCfg.ethernetLayerCb = handleOutEthernetLayer;
+    outCbCfg.networkLayerCb = nullptr;
+    outCbCfg.transportLayerCb = handleOutTransportLayer;
+    s_outPktAnalyzer = std::make_shared<npacket::Analyzer>(outCbCfg);
     if (!s_outPacpDevice.open(name, 2, 0, 0))
     {
         printf("发送包设备打开失败\n");
         return 0;
     }
-    s_outPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) { s_outPktAnalyzer.parse(data, dataLen); });
+    s_outPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) {
+        static size_t num = 1;
+        s_outPktAnalyzer->parse(num++, data, dataLen);
+    });
     s_outPacpDevice.startCapture();
 #endif
     /* 创建抓包线程 */

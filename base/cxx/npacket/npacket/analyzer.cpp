@@ -148,18 +148,11 @@ inline TcpReassemblyConfig limitTcpReassemblyConfig(TcpReassemblyConfig cfg)
     return cfg;
 }
 
-Analyzer::Analyzer(IpReassemblyConfig ipReassemblyCfg, TcpReassemblyConfig tcpReassemblyCfg)
-    : m_ipReassemblyCfg(limitIpReassemblyConfig(ipReassemblyCfg)), m_tcpReassemblyCfg(limitTcpReassemblyConfig(tcpReassemblyCfg))
+Analyzer::Analyzer(const CallbackConfig& cbCfg, IpReassemblyConfig ipReassemblyCfg, TcpReassemblyConfig tcpReassemblyCfg)
+    : m_cbCfg(cbCfg)
+    , m_ipReassemblyCfg(limitIpReassemblyConfig(ipReassemblyCfg))
+    , m_tcpReassemblyCfg(limitTcpReassemblyConfig(tcpReassemblyCfg))
 {
-}
-
-void Analyzer::setLayerCallback(const LAYER_CALLBACK& ethernetLayerCb, const LAYER_CALLBACK& networkLayerCb,
-                                const LAYER_CALLBACK& transportLayerCb)
-{
-    std::lock_guard<std::mutex> locker(m_mutexLayerCb);
-    m_ethernetLayerCb = ethernetLayerCb;
-    m_networkLayerCb = networkLayerCb;
-    m_transportLayerCb = transportLayerCb;
 }
 
 bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
@@ -182,13 +175,30 @@ bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
 
 bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolParser>& parser)
 {
-    addProtocolParser(parser); /* 保留遍历能力 */
-    if (parser && port > 0)
+    if (parser)
     {
-        std::lock_guard<std::mutex> locker(m_mutexParserMap);
-        if (m_applicationParserMap.end() == m_applicationParserMap.find(port))
+        std::lock_guard<std::mutex> locker(m_mutexParserList);
+        /* 保留遍历能力 */
+        bool findFlag = false;
+        for (const auto& item : m_applicationParserList)
         {
-            m_applicationParserMap.insert(std::make_pair(port, parser));
+            if (item && item->getProtocol() == parser->getProtocol())
+            {
+                findFlag = true;
+                break;
+            }
+        }
+        if (!findFlag)
+        {
+            m_applicationParserList.emplace_back(parser);
+        }
+        /* 绑定端口 */
+        if (port > 0)
+        {
+            if (m_applicationParserMap.end() == m_applicationParserMap.find(port))
+            {
+                m_applicationParserMap.insert(std::make_pair(port, parser));
+            }
         }
         return true;
     }
@@ -197,29 +207,24 @@ bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolPa
 
 void Analyzer::removeProtocolParser(uint32_t protocol)
 {
+    std::lock_guard<std::mutex> locker(m_mutexParserList);
+    for (auto iter = m_applicationParserList.begin(); m_applicationParserList.end() != iter; ++iter)
     {
-        std::lock_guard<std::mutex> locker(m_mutexParserList);
-        for (auto iter = m_applicationParserList.begin(); m_applicationParserList.end() != iter; ++iter)
+        if (*iter && (*iter)->getProtocol() == protocol)
         {
-            if (*iter && (*iter)->getProtocol() == protocol)
-            {
-                m_applicationParserList.erase(iter);
-                break;
-            }
+            m_applicationParserList.erase(iter);
+            break;
         }
     }
+    for (auto iter = m_applicationParserMap.begin(); m_applicationParserMap.end() != iter;)
     {
-        std::lock_guard<std::mutex> locker(m_mutexParserMap);
-        for (auto iter = m_applicationParserMap.begin(); m_applicationParserMap.end() != iter;)
+        if (iter->second && iter->second->getProtocol() == protocol)
         {
-            if (iter->second && iter->second->getProtocol() == protocol)
-            {
-                iter = m_applicationParserMap.erase(iter);
-            }
-            else
-            {
-                ++iter;
-            }
+            iter = m_applicationParserMap.erase(iter);
+        }
+        else
+        {
+            ++iter;
         }
     }
 }
@@ -258,13 +263,6 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
     if (DataSource::NETWORK == dataSource) /* 标准网络数据包 */
     {
         uint32_t headerLen = 0, networkProtocol = 0, transportProtocol = 0;
-        LAYER_CALLBACK ehternetLayerCb = nullptr, networkLayerCb = nullptr, transportLayerCb = nullptr;
-        {
-            std::lock_guard<std::mutex> locker(m_mutexLayerCb);
-            ehternetLayerCb = m_ethernetLayerCb;
-            networkLayerCb = m_networkLayerCb;
-            transportLayerCb = m_transportLayerCb;
-        }
         /* step1. 解析以太网层 */
         ethernetHeader = handleEthernetLayer(num, data + offset, remainLen, ethHeader, headerLen, networkProtocol);
         if (!ethernetHeader)
@@ -273,7 +271,7 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
         }
         remainLen -= headerLen;
         offset += headerLen;
-        if (ehternetLayerCb && !ehternetLayerCb(num, ntp, dataLen, ethernetHeader, data + offset, remainLen))
+        if (m_cbCfg.ethernetLayerCb && !m_cbCfg.ethernetLayerCb(num, ntp, dataLen, ethernetHeader, data + offset, remainLen))
         {
             return 0;
         }
@@ -300,7 +298,7 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
             networkHeader->parent = ethernetHeader;
             remainLen -= headerLen;
             offset += headerLen;
-            if (networkLayerCb && !networkLayerCb(num, ntp, dataLen, networkHeader, data + offset, remainLen))
+            if (m_cbCfg.networkLayerCb && !m_cbCfg.networkLayerCb(num, ntp, dataLen, networkHeader, data + offset, remainLen))
             {
                 return 0;
             }
@@ -344,7 +342,7 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
                         tcpPlayoadLen = 0;
                     }
                 }
-                if (transportLayerCb && !transportLayerCb(num, ntp, dataLen, transportHeader, data + offset, tcpPlayoadLen))
+                if (m_cbCfg.transportLayerCb && !m_cbCfg.transportLayerCb(num, ntp, dataLen, transportHeader, data + offset, tcpPlayoadLen))
                 {
                     return 0;
                 }
@@ -527,8 +525,8 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     /* 获取候选解析器 */
     std::vector<std::shared_ptr<ProtocolParser>> candidateParsers;
     {
+        std::lock_guard<std::mutex> locker(m_mutexParserList);
         /* 1. 端口匹配的解析器优先(端口优先级: 1.dstPort, 2.srcPort) */
-        std::lock_guard<std::mutex> locker(m_mutexParserMap);
         auto iter = m_applicationParserMap.find(dstPort);
         if (m_applicationParserMap.end() != iter)
         {
@@ -542,10 +540,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                 candidateParsers.emplace_back(iter->second);
             }
         }
-    }
-    {
         /* 2. 全局解析器列表(排除已添加的端口匹配协议) */
-        std::lock_guard<std::mutex> locker(m_mutexParserList);
         for (const auto& parser : m_applicationParserList)
         {
             bool alreadyAdded = false;
@@ -570,7 +565,6 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     std::shared_ptr<TcpStreamInfo> streamInfo = nullptr;
     if (tcpKey)
     {
-        std::lock_guard<std::mutex> locker(m_mutexTcpStreamCache);
         auto iter = m_tcpStreamCache.find(*tcpKey);
         if (m_tcpStreamCache.end() != iter)
         {
@@ -675,7 +669,6 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             /* 如果之前有等待的解析器, 清空(因为成功了) */
             if (streamInfo)
             {
-                std::lock_guard<std::mutex> locker(m_mutexTcpStreamCache);
                 /* 重新查找流信息, 确保流仍然存在 */
                 auto iter = m_tcpStreamCache.find(*tcpKey);
                 if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
@@ -692,7 +685,6 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             {
                 if (streamInfo && tcpKey)
                 {
-                    std::lock_guard<std::mutex> locker(m_mutexTcpStreamCache);
                     /* 重新查找流信息, 确保流仍然存在 */
                     auto iter = m_tcpStreamCache.find(*tcpKey);
                     if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
@@ -745,7 +737,6 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             {
                 if (streamInfo && tcpKey)
                 {
-                    std::lock_guard<std::mutex> locker(m_mutexTcpStreamCache);
                     auto iter = m_tcpStreamCache.find(*tcpKey);
                     if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
                     {
@@ -760,7 +751,6 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     /* 所有数据处理完毕 */
     if (streamInfo && tcpKey)
     {
-        std::lock_guard<std::mutex> locker(m_mutexTcpStreamCache);
         auto iter = m_tcpStreamCache.find(*tcpKey);
         if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
         {
@@ -843,7 +833,6 @@ void Analyzer::cleanupFragmentCache(const std::chrono::steady_clock::time_point&
     {
         return;
     }
-    std::lock_guard<std::mutex> locker(m_mutexFragmentCache);
     if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastCleanupTime).count() <= m_ipReassemblyCfg.fragClearInterval)
     {
         return;
@@ -975,7 +964,6 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
     }
     {
         std::shared_ptr<FragmentInfo> info;
-        std::lock_guard<std::mutex> locker(m_mutexFragmentCache);
         /* 查找或创建分片缓存 */
         auto iter = m_fragmentCache.find(key);
         if (m_fragmentCache.end() == iter)
@@ -1245,7 +1233,6 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
     {
         return nullptr;
     }
-    std::lock_guard<std::mutex> locker(m_mutexTcpStreamCache);
     /* 获取或创建流信息 */
     std::shared_ptr<TcpStreamInfo> streamInfo = nullptr;
     auto iter = m_tcpStreamCache.find(key);
@@ -1658,7 +1645,6 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
     {
         return;
     }
-    std::lock_guard<std::mutex> locker(m_mutexTcpStreamCache);
     if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastTcpCleanupTime).count() <= m_tcpReassemblyCfg.streamClearInterval)
     {
         return;

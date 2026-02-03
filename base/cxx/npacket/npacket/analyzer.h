@@ -37,6 +37,16 @@ enum DataSource
 };
 
 /**
+ * @brief 回调配置
+ */
+struct CallbackConfig
+{
+    LAYER_CALLBACK ethernetLayerCb = nullptr; /* 以太网层数据回调 */
+    LAYER_CALLBACK networkLayerCb = nullptr; /* 网络层数据回调 */
+    LAYER_CALLBACK transportLayerCb = nullptr; /* 传输层数据回调 */
+};
+
+/**
  * @brief IP分片重组配置
  */
 struct IpReassemblyConfig
@@ -392,19 +402,12 @@ class Analyzer
 public:
     /**
      * @brief 构造函数
+     * @param cbCfg 回调配置
      * @param ipReassemblyCfg IP分片重组配置
      * @param tcpReassemblyCfg TCP流重组配置
      */
-    Analyzer(IpReassemblyConfig ipReassemblyCfg = IpReassemblyConfig(), TcpReassemblyConfig tcpReassemblyCfg = TcpReassemblyConfig());
-
-    /**
-     * @brief 设置层数据回调
-     * @param ethernetLayerCb 以太网层数据回调
-     * @param networkLayerCb 网络层数据回调
-     * @param transportLayerCb 传输层数据回调
-     */
-    void setLayerCallback(const LAYER_CALLBACK& ethernetLayerCb, const LAYER_CALLBACK& networkLayerCb,
-                          const LAYER_CALLBACK& transportLayerCb);
+    Analyzer(const CallbackConfig& cbCfg = CallbackConfig(), IpReassemblyConfig ipReassemblyCfg = IpReassemblyConfig(),
+             TcpReassemblyConfig tcpReassemblyCfg = TcpReassemblyConfig());
 
     /**
      * @brief 添加应用层解析器(当协议端口不固定或者未知时使用此接口)
@@ -428,8 +431,8 @@ public:
     void removeProtocolParser(uint32_t protocol);
 
     /**
-     * @brief 解析数据
-     * @param num 数据序号
+     * @brief 解析数据(注意: 非线程安全, 不可跨线程调用)
+     * @param num 数据序号, 自定义(一般是递增)
      * @param data 数据
      * @param dataLen 数据长度
      * @param dataSource 数据源
@@ -641,26 +644,18 @@ private:
                                                                       uint32_t payloadLen, TcpStreamKey& key, bool& needMoreData);
 
 private:
+    const CallbackConfig m_cbCfg; /* 回调配置 */
     const IpReassemblyConfig m_ipReassemblyCfg; /* IP分片重组配置 */
     const TcpReassemblyConfig m_tcpReassemblyCfg; /* TCP分片重组配置 */
 
-    std::mutex m_mutexLayerCb;
-    LAYER_CALLBACK m_ethernetLayerCb = nullptr; /* 以太网层数据回调 */
-    LAYER_CALLBACK m_networkLayerCb = nullptr; /* 网络层数据回调 */
-    LAYER_CALLBACK m_transportLayerCb = nullptr; /* 传输层数据回调 */
-
-    std::mutex m_mutexFragmentCache;
     std::unordered_map<FragmentKey, std::shared_ptr<FragmentInfo>> m_fragmentCache; /* IP分片缓存 */
     std::chrono::steady_clock::time_point m_lastCleanupTime = std::chrono::steady_clock::now(); /* 上次清理IP分片缓存时间 */
 
-    std::mutex m_mutexTcpStreamCache;
     std::unordered_map<TcpStreamKey, std::shared_ptr<TcpStreamInfo>> m_tcpStreamCache; /* TCP流缓存 */
     std::chrono::steady_clock::time_point m_lastTcpCleanupTime = std::chrono::steady_clock::now(); /* 上次清理TCP流缓存时间 */
 
     std::mutex m_mutexParserList;
     std::vector<std::shared_ptr<ProtocolParser>> m_applicationParserList; /* 应用层解析器列表 */
-
-    std::mutex m_mutexParserMap;
     std::unordered_map<uint16_t, std::shared_ptr<ProtocolParser>> m_applicationParserMap; /* 应用层解析器映射表, key-端口 */
 };
 } // namespace npacket

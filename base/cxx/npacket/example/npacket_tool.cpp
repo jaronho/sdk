@@ -10,7 +10,7 @@
 #include "../npacket/proto/ftp.h"
 #include "../npacket/proto/iec103.h"
 
-static npacket::Analyzer s_pktAnalyzer;
+static std::shared_ptr<npacket::Analyzer> s_pktAnalyzer = nullptr;
 static std::string s_proto;
 
 /* 打印以太网 */
@@ -495,19 +495,23 @@ int main(int argc, char* argv[])
         printf("  IPv4: %s\n", ip.c_str());
     }
     printf("包流向: %s\n", 1 == direction ? "in(接收)" : (2 == direction ? "out(发送)" : "inout(所有)"));
-    s_pktAnalyzer.setLayerCallback(handleEthernetLayer, handleNetworkLayer, handleTransportLayer);
+    npacket::CallbackConfig cbCfg;
+    cbCfg.ethernetLayerCb = handleEthernetLayer;
+    cbCfg.networkLayerCb = handleNetworkLayer;
+    cbCfg.transportLayerCb = handleTransportLayer;
+    s_pktAnalyzer = std::make_shared<npacket::Analyzer>(cbCfg);
     {
         auto ftpParser = std::make_shared<npacket::FtpParser>();
         ftpParser->setRequestCallback(handleApplicationFtpCtrlReq);
         ftpParser->setResponseCallback(handleApplicationFtpCtrlResp);
         ftpParser->setDataCallback(handleApplicationFtpData);
-        s_pktAnalyzer.addProtocolParser(ftpParser);
+        s_pktAnalyzer->addProtocolParser(ftpParser);
     }
     {
         auto iec103Parser = std::make_shared<npacket::Iec103Parser>();
         iec103Parser->setFixedFrameCallback(handleApplicationIec103FixedFrame);
         iec103Parser->setVariableFrameCallback(handleApplicationIec103VariableFrame);
-        s_pktAnalyzer.addProtocolParser(iec103Parser);
+        s_pktAnalyzer->addProtocolParser(iec103Parser);
     }
     std::shared_ptr<npacket::PcapDevice> dev;
     for (size_t i = 0; i < devList.size(); ++i)
@@ -536,7 +540,7 @@ int main(int argc, char* argv[])
     printf("\n");
     dev->setDataCallback([&](const unsigned char* data, int dataLen) {
         static size_t num = 1;
-        s_pktAnalyzer.parse(num++, data, dataLen);
+        s_pktAnalyzer->parse(num++, data, dataLen);
     });
     dev->startCapture();
     while (1)
