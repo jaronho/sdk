@@ -32,8 +32,10 @@ using LAYER_CALLBACK = std::function<bool(size_t num, const std::chrono::steady_
  */
 enum DataSource
 {
-    NETWORK = 0, /* 标准网络包 */
-    SERIAL /* 串口数据包 */
+    NETWORK_ETH = 0, /* 网络包(以太网帧) */
+    NETWORK_IPv4, /* 网络包(IPv4包) */
+    NETWORK_IPv6, /* 网络包(IPv6包) */
+    SERIAL, /* 串口数据包 */
 };
 
 /**
@@ -438,7 +440,7 @@ public:
      * @param dataSource 数据源
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int parse(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource = DataSource::NETWORK);
+    int parse(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource = DataSource::NETWORK_ETH);
 
 private:
     /**
@@ -486,11 +488,11 @@ private:
      */
     struct TcpStreamInfo
     {
+        std::chrono::steady_clock::time_point lastAccessTime; /* 最近访问时间(用于超时和LRU) */
         uint32_t nextExpectedSeq = 0; /* 期望的下一个序列号 */
         bool isSeqInitialized = false; /* 序列号是否已初始化(收到第一个SYN或数据的SYN) */
         std::map<uint32_t, TcpSegment> segments; /* 乱序段缓存(按seq排序) */
         std::vector<uint8_t> reassembledData; /* 已重组的连续数据(等待应用层消费) */
-        std::chrono::steady_clock::time_point lastAccessTime;
         std::vector<std::weak_ptr<ProtocolParser>> wpWaitingParserList; /* 等待更多数据的协议解析器列表 */
         bool needMoreData = false; /* 是否有解析器需要更多数据 */
         bool finReceived = false; /* 是否已收到FIN标记 */
@@ -510,6 +512,19 @@ private:
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
     int parseWithDepthControl(size_t num, const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
+                              const DataSource& dataSource, int depth);
+
+    /**
+     * @brief 处理从网络层开始的数据(用于重组后的IP包)
+     * @param num 数据序号
+     * @param ntp 数据包接收时间点
+     * @param data 数据（从IP头开始）
+     * @param dataLen 数据长度
+     * @param dataSource 数据源（REASSEMBLED_IPv4 或 REASSEMBLED_IPv6）
+     * @param depth 递归深度
+     * @return 0-成功, 2-解析网络层失败, 3-解析传输层失败, 5-分片重组中(等待后续分片)
+     */
+    int parseFromNetworkLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
                               const DataSource& dataSource, int depth);
 
     /**

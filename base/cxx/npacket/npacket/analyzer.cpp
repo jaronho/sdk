@@ -184,52 +184,52 @@ Analyzer::Analyzer(const CallbackConfig& cbCfg, IpReassemblyConfig ipReassemblyC
 
 bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
 {
-    if (parser)
+    if (!parser)
     {
-        std::lock_guard<std::mutex> locker(m_mutexParserList);
-        for (const auto& item : m_applicationParserList)
-        {
-            if (item && item->getProtocol() == parser->getProtocol())
-            {
-                return false;
-            }
-        }
-        m_applicationParserList.emplace_back(parser);
-        return true;
+        return false;
     }
-    return false;
+    std::lock_guard<std::mutex> locker(m_mutexParserList);
+    for (const auto& item : m_applicationParserList)
+    {
+        if (item && item->getProtocol() == parser->getProtocol())
+        {
+            return false;
+        }
+    }
+    m_applicationParserList.emplace_back(parser);
+    return true;
 }
 
 bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolParser>& parser)
 {
-    if (parser)
+    if (!parser)
     {
-        std::lock_guard<std::mutex> locker(m_mutexParserList);
-        /* 保留遍历能力 */
-        bool findFlag = false;
-        for (const auto& item : m_applicationParserList)
-        {
-            if (item && item->getProtocol() == parser->getProtocol())
-            {
-                findFlag = true;
-                break;
-            }
-        }
-        if (!findFlag)
-        {
-            m_applicationParserList.emplace_back(parser);
-        }
-        /* 绑定端口 */
-        if (port > 0)
-        {
-            if (m_applicationParserMap.end() == m_applicationParserMap.find(port))
-            {
-                m_applicationParserMap.insert(std::make_pair(port, parser));
-            }
-        }
-        return true;
+        return false;
     }
-    return false;
+    std::lock_guard<std::mutex> locker(m_mutexParserList);
+    /* 保留遍历能力 */
+    bool findFlag = false;
+    for (const auto& item : m_applicationParserList)
+    {
+        if (item && item->getProtocol() == parser->getProtocol())
+        {
+            findFlag = true;
+            break;
+        }
+    }
+    if (!findFlag)
+    {
+        m_applicationParserList.emplace_back(parser);
+    }
+    /* 绑定端口 */
+    if (port > 0)
+    {
+        if (m_applicationParserMap.end() == m_applicationParserMap.find(port))
+        {
+            m_applicationParserMap.insert(std::make_pair(port, parser));
+        }
+    }
+    return true;
 }
 
 void Analyzer::removeProtocolParser(uint32_t protocol)
@@ -275,6 +275,18 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
     {
         return 6;
     }
+    if (DataSource::NETWORK_IPv4 == dataSource || DataSource::NETWORK_IPv6 == dataSource) /* 处理重组后的裸IP包 */
+    {
+        return parseFromNetworkLayer(num, ntp, data, dataLen, dataSource, depth);
+    }
+    else if (DataSource::SERIAL == dataSource) /* 处理串口数据 */
+    {
+        return handleApplicationLayer(num, ntp, dataLen, nullptr, data, dataLen, nullptr, depth);
+    }
+    else if (DataSource::NETWORK_ETH != dataSource) /* 数据类型都不符合 */
+    {
+        return -1;
+    }
     uint32_t remainLen = dataLen, offset = 0;
     EthernetIIHeader ethHeader;
     Ipv4Header ipv4Header;
@@ -285,163 +297,375 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
     IcmpHeader icmpHeader;
     Icmpv6Header icmpv6Header;
     ProtocolHeader *ethernetHeader = nullptr, *networkHeader = nullptr, *transportHeader = nullptr;
-    uint32_t appDataLen = remainLen;
-    bool willParseApplication = false;
-    if (DataSource::NETWORK == dataSource) /* 标准网络数据包 */
+    uint32_t headerLen = 0, networkProtocol = 0, transportProtocol = 0;
+    /* step1. 解析以太网层 */
+    ethernetHeader = handleEthernetLayer(num, data + offset, remainLen, ethHeader, headerLen, networkProtocol);
+    if (!ethernetHeader)
     {
-        uint32_t headerLen = 0, networkProtocol = 0, transportProtocol = 0;
-        /* step1. 解析以太网层 */
-        ethernetHeader = handleEthernetLayer(num, data + offset, remainLen, ethHeader, headerLen, networkProtocol);
-        if (!ethernetHeader)
+        return 1;
+    }
+    remainLen -= headerLen;
+    offset += headerLen;
+    try
+    {
+        if (m_cbCfg.ethernetLayerCb && !m_cbCfg.ethernetLayerCb(num, ntp, dataLen, ethernetHeader, data + offset, remainLen))
         {
-            return 1;
+            return 0;
         }
-        remainLen -= headerLen;
-        offset += headerLen;
-        try
+    }
+    catch (const std::exception& e)
+    {
+        printf("[Execption] ethernetLayerCb, %s\n", e.what());
+    }
+    catch (...)
+    {
+        printf("[Execption] ethernetLayerCb, unknown\n");
+    }
+    if (0 == remainLen)
+    {
+        return 0;
+    }
+    /* step2. 解析网络层 */
+    networkHeader =
+        handleNetworkLayer(num, networkProtocol, data + offset, remainLen, ipv4Header, ipv6Header, arpHeader, headerLen, transportProtocol);
+    if (!networkHeader)
+    {
+        return 2;
+    }
+    /* step3. 检查并处理分片 */
+    bool isFragment = false;
+    auto reassembledIp = checkAndHandleFragment(ntp, networkHeader, data + offset, remainLen, isFragment);
+    if (isFragment)
+    {
+        if (reassembledIp) /* 分片已重组完成, 使用重组后的数据继续解析 */
         {
-            if (m_cbCfg.ethernetLayerCb && !m_cbCfg.ethernetLayerCb(num, ntp, dataLen, ethernetHeader, data + offset, remainLen))
+            auto reassembledSource = DataSource::NETWORK_IPv4;
+            if (NetworkProtocol::IPv6 == networkHeader->getProtocol()) /* 根据原始IP类型选择正确的数据源类型 */
             {
-                return 0;
+                reassembledSource = DataSource::NETWORK_IPv6;
+            };
+            return parseWithDepthControl(num, ntp, reassembledIp->data(), reassembledIp->size(), reassembledSource, depth + 1);
+        }
+        return 5; /* 分片未收齐, 等待后续 */
+    }
+    networkHeader->parent = ethernetHeader;
+    remainLen -= headerLen;
+    offset += headerLen;
+    try
+    {
+        if (m_cbCfg.networkLayerCb && !m_cbCfg.networkLayerCb(num, ntp, dataLen, networkHeader, data + offset, remainLen))
+        {
+            return 0;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        printf("[Execption] networkLayerCb, %s\n", e.what());
+    }
+    catch (...)
+    {
+        printf("[Execption] networkLayerCb, unknown\n");
+    }
+    if (0 == remainLen)
+    {
+        return 0;
+    }
+    /* step4. 解析传输层 */
+    transportHeader =
+        handleTransportLayer(num, transportProtocol, data + offset, remainLen, tcpHeader, udpHeader, icmpHeader, icmpv6Header, headerLen);
+    if (!transportHeader)
+    {
+        return 3;
+    }
+    transportHeader->parent = networkHeader;
+    remainLen -= headerLen;
+    offset += headerLen;
+    uint32_t payloadLen = remainLen; /* 传输层负载长度, 默认使用剩余长度 */
+    if (NetworkProtocol::IPv4 == networkProtocol)
+    {
+        uint32_t ipPayloadLenByHdr = 0;
+        bool ipLenValid = false;
+        if (ipv4Header.totalLen >= ipv4Header.headerLen)
+        {
+            ipPayloadLenByHdr = ipv4Header.totalLen - ipv4Header.headerLen;
+            if (ipPayloadLenByHdr >= headerLen && ipPayloadLenByHdr <= remainLen + headerLen)
+            {
+                ipLenValid = true;
             }
         }
-        catch (const std::exception& e)
+        if (ipLenValid) /* IP长度看起来有效, 使用它 */
         {
-            printf("[Execption] ethernetLayerCb, %s\n", e.what());
+            payloadLen = ipPayloadLenByHdr - headerLen;
         }
-        catch (...)
+        else /* IP长度无效(过小或过大), 使用实际剩余长度 */
         {
-            printf("[Execption] ethernetLayerCb, unknown\n");
+            payloadLen = remainLen;
         }
-        /* step2. 解析网络层 */
-        if (remainLen > 0)
+        if (TransportProtocol::UDP == transportProtocol) /* 对于UDP, 优先使用UDP.length(如果有效), 因为它更精确 */
         {
-            networkHeader = handleNetworkLayer(num, networkProtocol, data + offset, remainLen, ipv4Header, ipv6Header, arpHeader, headerLen,
-                                               transportProtocol);
-            if (!networkHeader)
+            auto udpHeader = (const UdpHeader*)(transportHeader);
+            uint32_t udpTotalLen = udpHeader->totalLen;
+            if (udpTotalLen >= UdpHeader::getMinLen())
             {
-                return 2;
+                uint32_t udpPayloadLen = udpTotalLen - UdpHeader::getMinLen();
+                if (udpPayloadLen <= remainLen)
+                {
+                    payloadLen = udpPayloadLen;
+                }
+                else /* 如果udpPayloadLen超过实际剩余长度, 使用实际剩余长度 */
+                {
+                    payloadLen = remainLen;
+                }
             }
-            /* step3. 检查并处理分片 */
-            bool isFragment = false;
-            auto reassembledIp = checkAndHandleFragment(ntp, networkHeader, data + offset, remainLen, isFragment);
+        }
+    }
+    else if (NetworkProtocol::IPv6 == networkHeader->getProtocol())
+    {
+        if (ipv6Header.payloadLen >= headerLen)
+        {
+            payloadLen = ipv6Header.payloadLen - headerLen; /* headerLen应包含TCP头+Extension Headers */
+        }
+        else /* 长度字段异常 */
+        {
+            payloadLen = 0;
+        }
+    }
+    if (payloadLen > remainLen)
+    {
+        payloadLen = remainLen;
+    }
+    try
+    {
+        if (m_cbCfg.transportLayerCb && !m_cbCfg.transportLayerCb(num, ntp, dataLen, transportHeader, data + offset, payloadLen))
+        {
+            return 0;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        printf("[Execption] transportLayerCb, %s\n", e.what());
+    }
+    catch (...)
+    {
+        printf("[Execption] transportLayerCb, unknown\n");
+    }
+    /* step5. 解析应用层 */
+    const uint8_t* payload = data + offset;
+    if (transportHeader && TransportProtocol::TCP == transportHeader->getProtocol()) /* 如果是TCP, 进行TCP流重组 */
+    {
+        TcpStreamKey tcpKey;
+        bool needMoreData = false;
+        auto reassembledTcp = checkAndHandleTcpReassembly(ntp, networkHeader, transportHeader, payload, payloadLen, tcpKey, needMoreData);
+        if (reassembledTcp && !reassembledTcp->empty()) /* 有重组后的数据, 解析应用层, 并传入tcpKey用于关联状态 */
+        {
+            return handleApplicationLayer(num, ntp, dataLen, transportHeader, reassembledTcp->data(), reassembledTcp->size(), &tcpKey,
+                                          depth);
+        }
+        else if (needMoreData) /* TCP流在等待更多数据, 返回CONTINUE */
+        {
+            return 5;
+        }
+        /* 流已关闭或出错, 继续尝试解析当前包(可能是RST/FIN) */
+    }
+    return handleApplicationLayer(num, ntp, dataLen, transportHeader, payload, payloadLen, nullptr, depth); /* 非TCP或无需重组, 直接解析 */
+}
+
+int Analyzer::parseFromNetworkLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
+                                    const DataSource& dataSource, int depth)
+{
+    if (!data || dataLen < Ipv4Header::getMinLen())
+    {
+        return 2;
+    }
+    Ipv4Header ipv4Header;
+    Ipv6Header ipv6Header;
+    TcpHeader tcpHeader;
+    UdpHeader udpHeader;
+    IcmpHeader icmpHeader;
+    Icmpv6Header icmpv6Header;
+    ProtocolHeader* networkHeader = nullptr;
+    ProtocolHeader* transportHeader = nullptr;
+    uint32_t remainLen = dataLen;
+    uint32_t offset = 0;
+    uint32_t headerLen = 0;
+    uint32_t transportProtocol = 0;
+    uint32_t totalLen = dataLen;
+    bool isFragment = false;
+    /* step1. 解析网络层 */
+    if (DataSource::NETWORK_IPv4 == dataSource)
+    {
+        if (dataLen < Ipv4Header::getMinLen())
+        {
+            return 2;
+        }
+        Helper::loadIpv4Header(*(RawIpv4Header*)(data), ipv4Header);
+        headerLen = ipv4Header.headerLen;
+        transportProtocol = ipv4Header.nextProtocol;
+        networkHeader = &ipv4Header;
+        /* 检查是否是分片(理论上重组后不应该再是分片, 但做防御性检查) */
+        auto reassembledIp = checkAndHandleFragment(ntp, networkHeader, data, dataLen, isFragment);
+        if (isFragment)
+        {
+            if (reassembledIp)
+            {
+                return parseWithDepthControl(num, ntp, reassembledIp->data(), reassembledIp->size(), dataSource, depth + 1);
+            }
+            return 5;
+        }
+    }
+    else if (DataSource::NETWORK_IPv6 == dataSource)
+    {
+        if (dataLen < Ipv6Header::getMinLen())
+        {
+            return 2;
+        }
+        Helper::loadIpv6Header(*(RawIpv6Header*)(data), ipv6Header);
+        headerLen = Ipv6Header::getMinLen();
+        uint8_t nextHeader = ipv6Header.nextHeader;
+        uint32_t extLen = 0;
+        if (traverseIpv6Extension(data, dataLen, nextHeader, extLen, false, nullptr))
+        {
+            headerLen = Ipv6Header::getMinLen() + extLen;
+            transportProtocol = nextHeader;
+            networkHeader = &ipv6Header;
+            auto reassembledIp = checkAndHandleFragment(ntp, networkHeader, data, dataLen, isFragment);
             if (isFragment)
             {
-                if (reassembledIp) /* 分片已重组完成, 使用重组后的数据继续解析 */
+                if (reassembledIp)
                 {
                     return parseWithDepthControl(num, ntp, reassembledIp->data(), reassembledIp->size(), dataSource, depth + 1);
                 }
-                return 5; /* 分片未收齐, 等待后续 */
-            }
-            networkHeader->parent = ethernetHeader;
-            remainLen -= headerLen;
-            offset += headerLen;
-            try
-            {
-                if (m_cbCfg.networkLayerCb && !m_cbCfg.networkLayerCb(num, ntp, dataLen, networkHeader, data + offset, remainLen))
-                {
-                    return 0;
-                }
-            }
-            catch (const std::exception& e)
-            {
-                printf("[Execption] networkLayerCb, %s\n", e.what());
-            }
-            catch (...)
-            {
-                printf("[Execption] networkLayerCb, unknown\n");
-            }
-            /* step4. 解析传输层 */
-            if (remainLen > 0)
-            {
-                transportHeader = handleTransportLayer(num, transportProtocol, data + offset, remainLen, tcpHeader, udpHeader, icmpHeader,
-                                                       icmpv6Header, headerLen);
-                if (!transportHeader)
-                {
-                    return 3;
-                }
-                transportHeader->parent = networkHeader;
-                remainLen -= headerLen;
-                offset += headerLen;
-                uint32_t tcpPlayoadLen = remainLen; /* TCP负载长度, 根据IP层的totalLen裁剪TCP负载(Ethernet Padding), 默认使用剩余长度 */
-                if (NetworkProtocol::IPv4 == networkProtocol)
-                {
-                    if (ipv4Header.totalLen >= ipv4Header.headerLen + headerLen) /* IPv4 totalLen 包含 IP头 + IP负载(TCP头 + TCP数据) */
-                    {
-                        /* 计算实际的TCP数据长度 = totalLen - IP头长度 - TCP头长度 */
-                        tcpPlayoadLen = ipv4Header.totalLen - ipv4Header.headerLen - headerLen;
-                        if (tcpPlayoadLen > remainLen) /* 防御性检查: tcpPlayoadLen 不应大于 remainLen */
-                        {
-                            tcpPlayoadLen = remainLen;
-                        }
-                    }
-                    else /* 长度字段异常 */
-                    {
-                        tcpPlayoadLen = 0;
-                    }
-                }
-                else if (NetworkProtocol::IPv6 == networkHeader->getProtocol())
-                {
-                    if (ipv6Header.payloadLen >= headerLen)
-                    {
-                        tcpPlayoadLen = ipv6Header.payloadLen - headerLen; /* headerLen应包含TCP头+Extension Headers */
-                    }
-                    else /* 长度字段异常 */
-                    {
-                        tcpPlayoadLen = 0;
-                    }
-                }
-                try
-                {
-                    if (m_cbCfg.transportLayerCb
-                        && !m_cbCfg.transportLayerCb(num, ntp, dataLen, transportHeader, data + offset, tcpPlayoadLen))
-                    {
-                        return 0;
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    printf("[Execption] transportLayerCb, %s\n", e.what());
-                }
-                catch (...)
-                {
-                    printf("[Execption] transportLayerCb, unknown\n");
-                }
-                appDataLen = tcpPlayoadLen;
-                willParseApplication = true;
-            }
-        }
-    }
-    else if (DataSource::SERIAL == dataSource) /* 串口数据包 */
-    {
-        willParseApplication = true;
-    }
-    /* 解析应用层 */
-    if (willParseApplication)
-    {
-        const uint8_t* appData = data + offset;
-        /* 如果是TCP, 进行TCP流重组 */
-        if (transportHeader && TransportProtocol::TCP == transportHeader->getProtocol())
-        {
-            TcpStreamKey tcpKey;
-            bool needMoreData = false;
-            auto reassembledTcp =
-                checkAndHandleTcpReassembly(ntp, networkHeader, transportHeader, appData, appDataLen, tcpKey, needMoreData);
-            if (reassembledTcp && !reassembledTcp->empty()) /* 有重组后的数据, 解析应用层, 并传入tcpKey用于关联状态 */
-            {
-                return handleApplicationLayer(num, ntp, dataLen, transportHeader, reassembledTcp->data(), reassembledTcp->size(), &tcpKey,
-                                              depth);
-            }
-            else if (needMoreData) /* TCP流在等待更多数据, 返回CONTINUE */
-            {
                 return 5;
             }
-            /* 流已关闭或出错, 继续尝试解析当前包(可能是RST/FIN) */
         }
-        /* 非TCP或无需重组, 直接解析 */
-        return handleApplicationLayer(num, ntp, dataLen, transportHeader, appData, appDataLen, nullptr, depth);
+        else
+        {
+            return 2;
+        }
     }
-    return 0;
+    if (!networkHeader)
+    {
+        return 2;
+    }
+    remainLen -= headerLen;
+    offset += headerLen;
+    try
+    {
+        if (m_cbCfg.networkLayerCb && !m_cbCfg.networkLayerCb(num, ntp, totalLen, networkHeader, data + offset, remainLen))
+        {
+            return 0;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        printf("[Execption] networkLayerCb, %s\n", e.what());
+    }
+    catch (...)
+    {
+        printf("[Execption] networkLayerCb, unknown\n");
+    }
+    if (0 == remainLen)
+    {
+        return 0;
+    }
+    /* step2. 解析传输层 */
+    transportHeader =
+        handleTransportLayer(num, transportProtocol, data + offset, remainLen, tcpHeader, udpHeader, icmpHeader, icmpv6Header, headerLen);
+    if (!transportHeader)
+    {
+        return 3;
+    }
+    transportHeader->parent = networkHeader;
+    remainLen -= headerLen;
+    offset += headerLen;
+    uint32_t payloadLen = remainLen;
+    if (DataSource::NETWORK_IPv4 == dataSource)
+    {
+        uint32_t ipPayloadLenByHdr = 0;
+        bool ipLenValid = false;
+        if (ipv4Header.totalLen >= ipv4Header.headerLen)
+        {
+            ipPayloadLenByHdr = ipv4Header.totalLen - ipv4Header.headerLen;
+            if (ipPayloadLenByHdr >= headerLen && ipPayloadLenByHdr <= remainLen + headerLen)
+            {
+                ipLenValid = true;
+            }
+        }
+        if (ipLenValid)
+        {
+            payloadLen = ipPayloadLenByHdr - headerLen;
+        }
+        else
+        {
+            payloadLen = remainLen;
+        }
+        if (TransportProtocol::UDP == transportProtocol)
+        {
+            auto udpHdr = (const UdpHeader*)(transportHeader);
+            uint32_t udpTotalLen = udpHdr->totalLen;
+            if (udpTotalLen >= UdpHeader::getMinLen())
+            {
+                uint32_t udpPayloadLen = udpTotalLen - UdpHeader::getMinLen();
+                if (udpPayloadLen <= remainLen)
+                {
+                    payloadLen = udpPayloadLen;
+                }
+                else
+                {
+                    payloadLen = remainLen;
+                }
+            }
+        }
+    }
+    else if (DataSource::NETWORK_IPv6 == dataSource)
+    {
+        if (ipv6Header.payloadLen >= headerLen)
+        {
+            payloadLen = ipv6Header.payloadLen - headerLen;
+        }
+        else
+        {
+            payloadLen = 0;
+        }
+    }
+    if (payloadLen > remainLen)
+    {
+        payloadLen = remainLen;
+    }
+    try
+    {
+        if (m_cbCfg.transportLayerCb && !m_cbCfg.transportLayerCb(num, ntp, totalLen, transportHeader, data + offset, payloadLen))
+        {
+            return 0;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        printf("[Execption] transportLayerCb, %s\n", e.what());
+    }
+    catch (...)
+    {
+        printf("[Execption] transportLayerCb, unknown\n");
+    }
+    /* step3. 解析应用层 */
+    const uint8_t* payload = data + offset;
+    if (transportHeader && TransportProtocol::TCP == transportHeader->getProtocol()) /* 如果是TCP, 进行TCP流重组 */
+    {
+        TcpStreamKey tcpKey;
+        bool needMoreData = false;
+        auto reassembledTcp = checkAndHandleTcpReassembly(ntp, networkHeader, transportHeader, payload, payloadLen, tcpKey, needMoreData);
+        if (reassembledTcp && !reassembledTcp->empty()) /* 有重组后的数据, 解析应用层, 并传入tcpKey用于关联状态 */
+        {
+            return handleApplicationLayer(num, ntp, dataLen, transportHeader, reassembledTcp->data(), reassembledTcp->size(), &tcpKey,
+                                          depth);
+        }
+        else if (needMoreData) /* TCP流在等待更多数据, 返回CONTINUE */
+        {
+            return 5;
+        }
+        /* 流已关闭或出错, 继续尝试解析当前包(可能是RST/FIN) */
+    }
+    return handleApplicationLayer(num, ntp, totalLen, transportHeader, payload, payloadLen, nullptr, depth); /* 非TCP或无需重组, 直接解析 */
 }
 
 ProtocolHeader* Analyzer::handleEthernetLayer(size_t num, const uint8_t* data, uint32_t dataLen, EthernetIIHeader& ethHeader,
@@ -969,13 +1193,13 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
     {
         return nullptr;
     }
-    bool isIpv4 = false;
     FragmentKey key;
     uint32_t headerLen = 0;
     uint32_t basicHeaderLen = 0; /* 基本IP头长度(不包含扩展头) */
     bool isMoreFragment = false;
     uint32_t fragOffset = 0;
     uint8_t originalProtocol = 0; /* IPv6需要保存原始协议 */
+    bool isIpv4 = false;
     if (NetworkProtocol::IPv4 == networkHeader->getProtocol()) /* IPv4 */
     {
         isIpv4 = true;
