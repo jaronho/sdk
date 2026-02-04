@@ -577,4 +577,319 @@ public:
     uint8_t code = 0; /* 代码 */
     uint16_t checksum = 0; /* 检验和 */
 };
+
+/**
+ * @brief 分片缓存键值(唯一标识一组分片)
+ */
+struct FragmentKey
+{
+    /* IPv4分片标识: 源IP + 目的IP + Identification */
+    struct Ipv4Key
+    {
+        uint8_t srcIp[4]; /* 源地址: 存储网络字节序数组 */
+        uint8_t dstIp[4]; /* 目的地址: 存储网络字节序数组 */
+        uint16_t identification;
+
+        bool operator<(const Ipv4Key& other) const
+        {
+            int cmp = memcmp(srcIp, other.srcIp, sizeof(other.srcIp));
+            if (0 != cmp)
+            {
+                return (cmp < 0);
+            }
+            cmp = memcmp(dstIp, other.dstIp, sizeof(other.dstIp));
+            if (0 != cmp)
+            {
+                return (cmp < 0);
+            }
+            return (identification < other.identification);
+        }
+    };
+
+    /* IPv6分片标识: 源IP + 目的IP + Fragment Header Identification */
+    struct Ipv6Key
+    {
+        uint8_t srcIp[16]; /* 源地址: 存储网络字节序 */
+        uint8_t dstIp[16]; /* 目的地址: 存储网络字节序 */
+        uint32_t identification;
+
+        bool operator<(const Ipv6Key& other) const
+        {
+            int cmp = memcmp(srcIp, other.srcIp, sizeof(other.srcIp));
+            if (0 != cmp)
+            {
+                return (cmp < 0);
+            }
+            cmp = memcmp(dstIp, other.dstIp, sizeof(other.dstIp));
+            if (0 != cmp)
+            {
+                return (cmp < 0);
+            }
+            return (identification < other.identification);
+        }
+    };
+
+    uint8_t ipVersion = 0; /* IP版本: 4-IPv4, 6-IPv6 */
+    Ipv4Key v4;
+    Ipv6Key v6;
+
+    /**
+     * @brief 工厂函数：创建IPv4 Key
+     * @param srcIp 源IP地址(4字节)
+     * @param dstIp 目的IP地址(4字节)
+     * @param identification 标识符
+     * @return 分片键值
+     */
+    static FragmentKey createIpv4(const uint8_t srcIp[4], const uint8_t dstIp[4], uint16_t identification)
+    {
+        FragmentKey key;
+        key.ipVersion = 4;
+        memcpy(&key.v4.srcIp, srcIp, sizeof(key.v4.srcIp));
+        memcpy(&key.v4.dstIp, dstIp, sizeof(key.v4.dstIp));
+        key.v4.identification = identification;
+        return key;
+    }
+
+    /**
+     * @brief 工厂函数：创建IPv6 Key
+     * @param srcIp 源IP地址(16字节)
+     * @param dstIp 目的IP地址(16字节)
+     * @param identification 标识符
+     * @return 分片键值
+     */
+    static FragmentKey createIpv6(const uint8_t srcIp[16], const uint8_t dstIp[16], uint32_t identification)
+    {
+        FragmentKey key;
+        key.ipVersion = 6;
+        memcpy(&key.v6.srcIp, srcIp, sizeof(key.v6.srcIp));
+        memcpy(&key.v6.dstIp, dstIp, sizeof(key.v6.dstIp));
+        key.v6.identification = identification;
+        return key;
+    }
+
+    bool operator==(const FragmentKey& other) const
+    {
+        if (ipVersion != other.ipVersion)
+        {
+            return false;
+        }
+        if (4 == ipVersion)
+        {
+            return (0 == memcmp(v4.srcIp, other.v4.srcIp, 4) && 0 == memcmp(v4.dstIp, other.v4.dstIp, 4)
+                    && v4.identification == other.v4.identification);
+        }
+        return (0 == memcmp(v6.srcIp, other.v6.srcIp, 16) && 0 == memcmp(v6.dstIp, other.v6.dstIp, 16)
+                && v6.identification == other.v6.identification);
+    }
+
+    bool operator<(const FragmentKey& other) const
+    {
+        if (ipVersion != other.ipVersion)
+        {
+            return ipVersion < other.ipVersion;
+        }
+        if (4 == ipVersion)
+        {
+            return (v4 < other.v4);
+        }
+        return (v6 < other.v6);
+    }
+};
+
+/**
+ * @brief TCP流标识键(四元组)
+ */
+struct TcpStreamKey
+{
+    /* IPv4地址 */
+    struct Ipv4Key
+    {
+        uint8_t srcIp[4]; /* 源地址: 存储网络字节序数组 */
+        uint8_t dstIp[4]; /* 目的地址: 存储网络字节序数组 */
+        uint16_t srcPort; /* 源端口 */
+        uint16_t dstPort; /* 目的端口 */
+
+        bool operator<(const Ipv4Key& other) const
+        {
+            int cmp = memcmp(srcIp, other.srcIp, sizeof(srcIp));
+            if (0 != cmp)
+            {
+                return (cmp < 0);
+            }
+            cmp = memcmp(dstIp, other.dstIp, sizeof(dstIp));
+            if (0 != cmp)
+            {
+                return (cmp < 0);
+            }
+            if (srcPort != other.srcPort)
+            {
+                return srcPort < other.srcPort;
+            }
+            return dstPort < other.dstPort;
+        }
+    };
+
+    /* IPv6地址 */
+    struct Ipv6Key
+    {
+        uint8_t srcIp[16]; /* 源地址: 存储网络字节序 */
+        uint8_t dstIp[16]; /* 目的地址: 存储网络字节序数组 */
+        uint16_t srcPort; /* 源端口 */
+        uint16_t dstPort; /* 目的端口 */
+
+        bool operator<(const Ipv6Key& other) const
+        {
+            int cmp = memcmp(srcIp, other.srcIp, sizeof(srcIp));
+            if (0 != cmp)
+            {
+                return (cmp < 0);
+            }
+            cmp = memcmp(dstIp, other.dstIp, sizeof(dstIp));
+            if (0 != cmp)
+            {
+                return (cmp < 0);
+            }
+            if (srcPort != other.srcPort)
+            {
+                return srcPort < other.srcPort;
+            }
+            return dstPort < other.dstPort;
+        }
+    };
+
+    uint8_t ipVersion = 0; /* IP版本: 4-IPv4, 6-IPv6 */
+    Ipv4Key v4;
+    Ipv6Key v6;
+
+    /**
+     * @brief 工厂函数：创建IPv4 Key
+     * @param srcIp 源IP地址(4字节)
+     * @param dstIp 目的IP地址(4字节)
+     * @param srcPort 源端口
+     * @param dstPort 目的端口
+     * @return 流键值
+     */
+    static TcpStreamKey createIpv4(const uint8_t srcIp[4], const uint8_t dstIp[4], uint16_t srcPort, uint16_t dstPort)
+    {
+        TcpStreamKey key;
+        key.ipVersion = 4;
+        memcpy(key.v4.srcIp, srcIp, 4);
+        memcpy(key.v4.dstIp, dstIp, 4);
+        key.v4.srcPort = srcPort;
+        key.v4.dstPort = dstPort;
+        return key;
+    }
+
+    /**
+     * @brief 工厂函数：创建IPv6 Key
+     * @param srcIp 源IP地址(16字节)
+     * @param dstIp 目的IP地址(16字节)
+     * @param srcPort 源端口
+     * @param dstPort 目的端口
+     * @return 流键值
+     */
+    static TcpStreamKey createIpv6(const uint8_t srcIp[16], const uint8_t dstIp[16], uint16_t srcPort, uint16_t dstPort)
+    {
+        TcpStreamKey key;
+        key.ipVersion = 6;
+        memcpy(key.v6.srcIp, srcIp, 16);
+        memcpy(key.v6.dstIp, dstIp, 16);
+        key.v6.srcPort = srcPort;
+        key.v6.dstPort = dstPort;
+        return key;
+    }
+
+    bool operator==(const TcpStreamKey& other) const
+    {
+        if (ipVersion != other.ipVersion)
+        {
+            return false;
+        }
+        if (4 == ipVersion)
+        {
+            return (0 == memcmp(v4.srcIp, other.v4.srcIp, 4) && 0 == memcmp(v4.dstIp, other.v4.dstIp, 4) && v4.srcPort == other.v4.srcPort
+                    && v4.dstPort == other.v4.dstPort);
+        }
+        return (0 == memcmp(v6.srcIp, other.v6.srcIp, 16) && 0 == memcmp(v6.dstIp, other.v6.dstIp, 16) && v6.srcPort == other.v6.srcPort
+                && v6.dstPort == other.v6.dstPort);
+    }
+
+    bool operator<(const TcpStreamKey& other) const
+    {
+        if (ipVersion != other.ipVersion)
+        {
+            return (ipVersion < other.ipVersion);
+        }
+        if (4 == ipVersion)
+        {
+            return (v4 < other.v4);
+        }
+        return (v6 < other.v6);
+    }
+};
 } // namespace npacket
+
+namespace std
+{
+template<>
+struct hash<npacket::FragmentKey>
+{
+    size_t operator()(const npacket::FragmentKey& k) const noexcept
+    {
+        size_t h = std::hash<uint8_t>{}(k.ipVersion);
+        if (4 == k.ipVersion)
+        {
+            uint32_t srcIp, dstIp;
+            memcpy(&srcIp, k.v4.srcIp, sizeof(srcIp));
+            memcpy(&dstIp, k.v4.dstIp, sizeof(dstIp));
+            h ^= std::hash<uint32_t>{}(srcIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint32_t>{}(dstIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint16_t>{}(k.v4.identification) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        }
+        else
+        {
+            uint64_t src[2], dst[2];
+            memcpy(&src, k.v6.srcIp, sizeof(src));
+            memcpy(&dst, k.v6.dstIp, sizeof(dst));
+            h ^= std::hash<uint64_t>{}(src[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint64_t>{}(src[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint64_t>{}(dst[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint64_t>{}(dst[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint32_t>{}(k.v6.identification) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        }
+        return h;
+    }
+};
+
+template<>
+struct hash<npacket::TcpStreamKey>
+{
+    size_t operator()(const npacket::TcpStreamKey& k) const noexcept
+    {
+        size_t h = std::hash<uint8_t>{}(k.ipVersion);
+        if (4 == k.ipVersion)
+        {
+            uint32_t srcIp, dstIp;
+            memcpy(&srcIp, k.v4.srcIp, sizeof(srcIp));
+            memcpy(&dstIp, k.v4.dstIp, sizeof(dstIp));
+            h ^= std::hash<uint32_t>{}(srcIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint32_t>{}(dstIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint16_t>{}(k.v4.srcPort) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint16_t>{}(k.v4.dstPort) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        }
+        else
+        {
+            uint64_t src[2], dst[2];
+            memcpy(&src, k.v6.srcIp, sizeof(src));
+            memcpy(&dst, k.v6.dstIp, sizeof(dst));
+            h ^= std::hash<uint64_t>{}(src[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint64_t>{}(src[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint64_t>{}(dst[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint64_t>{}(dst[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint16_t>{}(k.v6.srcPort) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint16_t>{}(k.v6.dstPort) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        }
+        return h;
+    }
+};
+} // namespace std
