@@ -210,6 +210,22 @@ private:
                               const DataSource& dataSource, int depth);
 
     /**
+     * @brief 统一处理传输层到应用层的完整流程
+     * @param num 数据序号
+     * @param ntp 数据包接收时间点
+     * @param totalLen 数据包总长度
+     * @param networkHeader 网络层头部
+     * @param transportProtocol 传输层协议类型
+     * @param data 数据
+     * @param dataLen 数据长度
+     * @param depth 递归深度
+     * @return 0-成功, 3-解析传输层失败, 5-分片重组中(等待后续分片)
+     */
+    int processTransportToApplication(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                      const ProtocolHeader* networkHeader, uint32_t transportProtocol, const uint8_t* data,
+                                      uint32_t dataLen, int depth);
+
+    /**
      * @brief 处理以太网层数据
      * @param num 数据序号
      * @param data 层数据
