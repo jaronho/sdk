@@ -1,6 +1,7 @@
 #include "analyzer.h"
 
 #include <algorithm>
+#include <unordered_set>
 
 #include "helper.h"
 
@@ -188,16 +189,18 @@ bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
     {
         return false;
     }
+    uint32_t protocol = parser->getProtocol();
     std::lock_guard<std::mutex> locker(m_mutexParserList);
-    for (const auto& item : m_applicationParserList)
+    if (m_parserEntryList.end() == m_parserEntryList.find(protocol)) /* 注册 */
     {
-        if (item && item->getProtocol() == parser->getProtocol())
-        {
-            return false;
-        }
+        ParserEntry entry;
+        entry.protocol = protocol;
+        entry.ref = parser;
+        m_parserEntryList[protocol] = std::move(entry);
+        m_parserProtocolList.push_back(protocol);
+        return true;
     }
-    m_applicationParserList.emplace_back(parser);
-    return true;
+    return false;
 }
 
 bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolParser>& parser)
@@ -206,28 +209,20 @@ bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolPa
     {
         return false;
     }
+    uint32_t protocol = parser->getProtocol();
     std::lock_guard<std::mutex> locker(m_mutexParserList);
-    /* 保留遍历能力 */
-    bool findFlag = false;
-    for (const auto& item : m_applicationParserList)
+    auto iter = m_parserEntryList.find(protocol);
+    if (m_parserEntryList.end() == iter) /* 注册 */
     {
-        if (item && item->getProtocol() == parser->getProtocol())
-        {
-            findFlag = true;
-            break;
-        }
+        ParserEntry entry;
+        entry.protocol = protocol;
+        entry.ref = parser;
+        m_parserEntryList[protocol] = std::move(entry);
+        m_parserProtocolList.push_back(protocol);
     }
-    if (!findFlag)
+    if (port > 0) /* 绑定端口到协议 */
     {
-        m_applicationParserList.emplace_back(parser);
-    }
-    /* 绑定端口 */
-    if (port > 0)
-    {
-        if (m_applicationParserMap.end() == m_applicationParserMap.find(port))
-        {
-            m_applicationParserMap.insert(std::make_pair(port, parser));
-        }
+        m_portToProtocolList[port] = protocol;
     }
     return true;
 }
@@ -235,19 +230,19 @@ bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolPa
 void Analyzer::removeProtocolParser(uint32_t protocol)
 {
     std::lock_guard<std::mutex> locker(m_mutexParserList);
-    for (auto iter = m_applicationParserList.begin(); m_applicationParserList.end() != iter; ++iter)
+    /* 从注册表删除 */
+    m_parserEntryList.erase(protocol);
+    auto iter = std::find(m_parserProtocolList.begin(), m_parserProtocolList.end(), protocol);
+    if (m_parserProtocolList.end() != iter)
     {
-        if (*iter && (*iter)->getProtocol() == protocol)
-        {
-            m_applicationParserList.erase(iter);
-            break;
-        }
+        m_parserProtocolList.erase(iter);
     }
-    for (auto iter = m_applicationParserMap.begin(); m_applicationParserMap.end() != iter;)
+    /* 清理端口映射 */
+    for (auto iter = m_portToProtocolList.begin(); iter != m_portToProtocolList.end();)
     {
-        if (iter->second && iter->second->getProtocol() == protocol)
+        if (protocol == iter->second)
         {
-            iter = m_applicationParserMap.erase(iter);
+            iter = m_portToProtocolList.erase(iter);
         }
         else
         {
@@ -670,42 +665,11 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             }
         }
     }
-    /* 获取候选解析器 */
-    std::vector<std::weak_ptr<ProtocolParser>> candidateParsers;
+    /* 收集候选协议 */
+    auto protocolList = collectProtocolList(dstPort, srcPort);
+    if (protocolList.empty())
     {
-        std::lock_guard<std::mutex> locker(m_mutexParserList);
-        /* 1. 端口匹配的解析器优先(端口优先级: 1.dstPort, 2.srcPort) */
-        auto iter = m_applicationParserMap.find(dstPort);
-        if (m_applicationParserMap.end() != iter)
-        {
-            candidateParsers.emplace_back(iter->second);
-        }
-        else
-        {
-            iter = m_applicationParserMap.find(srcPort);
-            if (m_applicationParserMap.end() != iter)
-            {
-                candidateParsers.emplace_back(iter->second);
-            }
-        }
-        /* 2. 全局解析器列表(排除已添加的端口匹配协议) */
-        for (const auto& parser : m_applicationParserList)
-        {
-            bool findFlag = false;
-            for (const auto& wpParser : candidateParsers)
-            {
-                auto cp = wpParser.lock();
-                if (cp == parser || (cp && parser && cp->getProtocol() == parser->getProtocol()))
-                {
-                    findFlag = true;
-                    break;
-                }
-            }
-            if (!findFlag)
-            {
-                candidateParsers.push_back(parser);
-            }
-        }
+        return 4;
     }
     /* 准备解析数据(可能是合并后的) */
     std::vector<uint8_t> combinedData;
@@ -733,80 +697,142 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                     /* 清空已合并的缓存, 避免重复处理 */
                     streamInfo->reassembledData.clear();
                 }
-                /* 如果有之前等待数据的协议, 优先尝试它们 */
-                if (!streamInfo->wpWaitingParserList.empty())
-                {
-                    /* 将等待的解析器移到最前面 */
-                    std::vector<std::weak_ptr<ProtocolParser>> tempParserList;
-                    for (const auto& wpParser : streamInfo->wpWaitingParserList)
-                    {
-                        auto parser = wpParser.lock();
-                        /* 检查是否仍在全局列表中(未被删除) */
-                        bool stillValid = false;
-                        for (const auto& cp : candidateParsers)
-                        {
-                            if (cp.lock() == parser)
-                            {
-                                stillValid = true;
-                                tempParserList.push_back(wpParser);
-                                break;
-                            }
-                        }
-                    }
-                    /* 移除已失效的等待解析器 */
-                    streamInfo->wpWaitingParserList = tempParserList;
-                    /* 重组候选列表: 等待的优先, 然后是其他 */
-                    std::vector<std::weak_ptr<ProtocolParser>> newCandidates;
-                    for (const auto& wpParser : streamInfo->wpWaitingParserList)
-                    {
-                        auto parser = wpParser.lock();
-                        if (parser)
-                        {
-                            newCandidates.emplace_back(parser);
-                        }
-                    }
-                    for (const auto& cp : candidateParsers)
-                    {
-                        auto parser = cp.lock();
-                        bool isWaiting = false;
-                        for (const auto& wpParser : streamInfo->wpWaitingParserList)
-                        {
-                            if (parser == wpParser.lock())
-                            {
-                                isWaiting = true;
-                                break;
-                            }
-                        }
-                        if (!isWaiting)
-                        {
-                            newCandidates.push_back(cp);
-                        }
-                    }
-                    candidateParsers = std::move(newCandidates);
-                }
+                /* 优化候选协议 */
+                prioritizeProtocolList(streamInfo->waitingProtocolList, protocolList);
             }
         }
     }
-    /* 协议解析 */
-    uint32_t offset = 0; /* 已消费的字节偏移 */
-    std::vector<std::weak_ptr<ProtocolParser>> continueParsers; /* 返回CONTINUE的解析器 */
-    uint32_t successConsumeLen = 0;
-    while (offset < fullDataLen)
+    /* 获取协议解析器 */
+    auto parserList = resolveParserList(protocolList);
+    if (parserList.empty())
     {
-        continueParsers.clear();
+        return 4;
+    }
+    /* 处理应用层 */
+    return processApplication(num, ntp, totalLen, header, fullData, fullDataLen, parserList, streamInfo);
+}
+
+std::vector<uint32_t> Analyzer::collectProtocolList(uint16_t dstPort, uint16_t srcPort)
+{
+    std::vector<uint32_t> protocolList;
+    protocolList.reserve(8); /* 预分配 */
+    std::lock_guard<std::mutex> locker(m_mutexParserList);
+    /* 1. 端口匹配的解析器优先(端口优先级: 1.dstPort, 2.srcPort) */
+    auto iter = m_portToProtocolList.find(dstPort);
+    if (m_portToProtocolList.end() != iter)
+    {
+        protocolList.push_back(iter->second);
+    }
+    else
+    {
+        iter = m_portToProtocolList.find(srcPort);
+        if (m_portToProtocolList.end() != iter)
+        {
+            protocolList.push_back(iter->second);
+        }
+    }
+    /* 2. 全局解析器列表(排除已添加的端口匹配协议) */
+    if (protocolList.empty())
+    {
+        protocolList = m_parserProtocolList;
+    }
+    else
+    {
+        uint32_t portProtocol = protocolList[0];
+        for (uint32_t id : m_parserProtocolList)
+        {
+            if (id != portProtocol)
+            {
+                protocolList.push_back(id);
+            }
+        }
+    }
+    return protocolList;
+}
+
+void Analyzer::prioritizeProtocolList(const std::vector<uint32_t>& waitingProtocolList, std::vector<uint32_t>& protocolList)
+{
+    if (waitingProtocolList.empty())
+    {
+        return;
+    }
+    /* 过滤失效的等待协议(检查是否仍在注册表中) */
+    std::vector<uint32_t> validWaiting;
+    validWaiting.reserve(waitingProtocolList.size());
+    {
+        std::lock_guard<std::mutex> locker(m_mutexParserList);
+        for (const auto& protocol : waitingProtocolList)
+        {
+            if (m_parserEntryList.end() != m_parserEntryList.find(protocol))
+            {
+                validWaiting.push_back(protocol);
+            }
+        }
+    }
+    /* 重建列表: 等待的优先, 其他保持顺序 */
+    std::vector<uint32_t> newProtocolList;
+    newProtocolList.reserve(protocolList.size());
+    /* 使用快速去重(O(1)查找)*/
+    std::unordered_set<uint32_t> added;
+    added.reserve(protocolList.size() * 2);
+    /* 先加等待的 */
+    for (const auto& protocol : validWaiting)
+    {
+        if (added.insert(protocol).second) /* 可插入, 表示未重复 */
+        {
+            newProtocolList.push_back(protocol);
+        }
+    }
+    /* 再加其他的 */
+    for (const auto& protocol : protocolList)
+    {
+        if (added.insert(protocol).second) /* 可插入, 表示未重复 */
+        {
+            newProtocolList.push_back(protocol);
+        }
+    }
+    protocolList = std::move(newProtocolList);
+}
+
+std::vector<std::shared_ptr<ProtocolParser>> Analyzer::resolveParserList(const std::vector<uint32_t>& protocolList)
+{
+    std::vector<std::shared_ptr<ProtocolParser>> parserList;
+    parserList.reserve(protocolList.size());
+    std::lock_guard<std::mutex> locker(m_mutexParserList);
+    for (const auto& protocol : protocolList)
+    {
+        auto iter = m_parserEntryList.find(protocol);
+        if (m_parserEntryList.end() != iter)
+        {
+            parserList.push_back(iter->second.ref);
+        }
+    }
+    return parserList;
+}
+
+int Analyzer::processApplication(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                                 const ProtocolHeader* header, const uint8_t* data, uint32_t dataLen,
+                                 const std::vector<std::shared_ptr<ProtocolParser>>& parserList,
+                                 const std::shared_ptr<TcpStreamInfo>& streamInfo)
+{
+    if (parserList.empty())
+    {
+        return 4;
+    }
+    uint32_t offset = 0; /* 已消费的字节偏移 */
+    std::vector<uint32_t> continueProtocolList; /* 返回CONTINUE的协议 */
+    while (offset < dataLen)
+    {
+        continueProtocolList.clear();
         bool anySuccess = false;
-        for (const auto& wpParser : candidateParsers) /* 尝试所有候选解析器 */
+        uint32_t successConsumeLen = 0;
+        for (const auto& parser : parserList) /* 尝试所有候选解析器 */
         {
             uint32_t consumeLen = 0;
-            auto parser = wpParser.lock();
-            if (!parser)
-            {
-                continue;
-            }
             ParseResult result;
             try
             {
-                result = parser->parse(num, ntp, totalLen, header, fullData + offset, fullDataLen - offset, consumeLen);
+                result = parser->parse(num, ntp, totalLen, header, data + offset, dataLen - offset, consumeLen);
             }
             catch (const std::exception& e)
             {
@@ -820,7 +846,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             }
             if (ParseResult::SUCCESS == result)
             {
-                if (consumeLen > 0 && consumeLen <= fullDataLen - offset)
+                if (consumeLen > 0 && consumeLen <= dataLen - offset)
                 {
                     successConsumeLen = consumeLen;
                     anySuccess = true;
@@ -829,104 +855,87 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             }
             else if (ParseResult::CONTINUE == result)
             {
-                continueParsers.push_back(parser);
+                continueProtocolList.push_back(parser->getProtocol());
             }
             /* FAILURE, 继续尝试下一个 */
         }
         if (anySuccess) /* 成功处理, 更新状态 */
         {
             offset += successConsumeLen;
+
             /* 如果之前有等待的解析器, 清空(因为成功了) */
             if (streamInfo)
             {
-                /* 重新查找流信息, 确保流仍然存在 */
-                auto iter = m_tcpStreamCache.find(*tcpKey);
-                if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
-                {
-                    streamInfo->wpWaitingParserList.clear();
-                    streamInfo->needMoreData = false;
-                }
+                streamInfo->waitingProtocolList.clear();
+                streamInfo->needMoreData = false;
             }
-            continue;
         }
         else /* 没有解析器成功 */
         {
-            if (!continueParsers.empty()) /* 有解析器需要更多数据 */
+            if (continueProtocolList.empty()) /* 所有解析器都失败 */
             {
-                if (streamInfo && tcpKey)
+                if (streamInfo)
                 {
-                    /* 重新查找流信息, 确保流仍然存在 */
-                    auto iter = m_tcpStreamCache.find(*tcpKey);
-                    if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
+                    streamInfo->waitingProtocolList.clear();
+                    streamInfo->needMoreData = false;
+                }
+                return (offset > 0 ? 0 : 4); /* 部分成功或完全失败 */
+            }
+            else /* 有解析器需要更多数据 */
+            {
+                if (streamInfo)
+                {
+                    /* 更新等待列表 */
+                    streamInfo->waitingProtocolList = std::move(continueProtocolList);
+                    streamInfo->needMoreData = true;
+                    /* 保存未消费的数据(相对于合并后的数据) */
+                    std::vector<uint8_t> unconsumedData(data + offset, data + dataLen);
+                    if (streamInfo->reassembledData.empty())
                     {
-                        streamInfo->wpWaitingParserList = continueParsers;
-                        streamInfo->needMoreData = true;
-                        /* 保存未消费的数据(相对于合并后的数据) */
-                        std::vector<uint8_t> newUnconsumedData(fullData + offset, fullData + fullDataLen);
-                        if (streamInfo->reassembledData.empty())
+                        streamInfo->reassembledData = std::move(unconsumedData);
+                    }
+                    else
+                    {
+                        /* 先检查合并后大小, 避免超过限制 */
+                        size_t totalSize = streamInfo->reassembledData.size() + unconsumedData.size();
+                        if (totalSize > m_tcpReassemblyCfg.maxStreamSize)
                         {
-                            streamInfo->reassembledData = std::move(newUnconsumedData);
+                            /* 保留最新的数据(尾部) */
+                            size_t excess = totalSize - m_tcpReassemblyCfg.maxStreamSize;
+                            if (excess >= streamInfo->reassembledData.size())
+                            {
+                                /* 旧数据全部废弃, 使用新数据 */
+                                streamInfo->reassembledData = std::move(unconsumedData);
+                                /* 调整期望序列号, 标记有数据丢失 */
+                                if (streamInfo->nextExpectedSeq > excess)
+                                {
+                                    streamInfo->nextExpectedSeq -= (streamInfo->reassembledData.size() - excess);
+                                }
+                            }
+                            else /* 删除旧数据的头部, 腾出空间给新数据 */
+                            {
+                                streamInfo->reassembledData.erase(streamInfo->reassembledData.begin(),
+                                                                  streamInfo->reassembledData.begin() + excess);
+                                streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), unconsumedData.begin(),
+                                                                   unconsumedData.end());
+                            }
                         }
                         else
                         {
-                            /* 先检查合并后大小, 避免超过限制 */
-                            size_t totalSize = streamInfo->reassembledData.size() + newUnconsumedData.size();
-                            if (totalSize > m_tcpReassemblyCfg.maxStreamSize)
-                            {
-                                /* 保留最新的数据(尾部) */
-                                size_t excess = totalSize - m_tcpReassemblyCfg.maxStreamSize;
-                                if (excess >= streamInfo->reassembledData.size())
-                                {
-                                    /* 旧数据全部废弃, 使用新数据 */
-                                    streamInfo->reassembledData = std::move(newUnconsumedData);
-                                    /* 调整期望序列号, 标记有数据丢失 */
-                                    if (streamInfo->nextExpectedSeq > excess)
-                                    {
-                                        streamInfo->nextExpectedSeq -= (streamInfo->reassembledData.size() - excess);
-                                    }
-                                }
-                                else /* 删除旧数据的头部, 腾出空间给新数据 */
-                                {
-                                    streamInfo->reassembledData.erase(streamInfo->reassembledData.begin(),
-                                                                      streamInfo->reassembledData.begin() + excess);
-                                    streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), newUnconsumedData.begin(),
-                                                                       newUnconsumedData.end());
-                                }
-                            }
-                            else
-                            {
-                                streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), newUnconsumedData.begin(),
-                                                                   newUnconsumedData.end());
-                            }
+                            streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), unconsumedData.begin(),
+                                                               unconsumedData.end());
                         }
                     }
                 }
                 return 5; /* CONTINUE, 等待更多数据 */
             }
-            else /* 所有解析器都失败 */
-            {
-                if (streamInfo && tcpKey)
-                {
-                    auto iter = m_tcpStreamCache.find(*tcpKey);
-                    if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
-                    {
-                        streamInfo->wpWaitingParserList.clear();
-                        streamInfo->needMoreData = false;
-                    }
-                }
-                return (offset > 0 ? 0 : 4); /* 部分成功或完全失败 */
-            }
         }
     }
-    /* 所有数据处理完毕 */
-    if (streamInfo && tcpKey)
+    /* 全部处理完成 */
+    if (streamInfo)
     {
-        auto iter = m_tcpStreamCache.find(*tcpKey);
-        if (m_tcpStreamCache.end() != iter && iter->second == streamInfo)
-        {
-            streamInfo->wpWaitingParserList.clear();
-            streamInfo->needMoreData = false;
-        }
+        streamInfo->waitingProtocolList.clear();
+        streamInfo->needMoreData = false;
     }
     return 0;
 }
@@ -1675,9 +1684,9 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
         if (result->size() > m_tcpReassemblyCfg.maxStreamSize)
         {
             /* 截断前强制通知所有等待的解析器, 防止内存泄露 */
-            if (!streamInfo->wpWaitingParserList.empty())
+            if (!streamInfo->waitingProtocolList.empty())
             {
-                streamInfo->wpWaitingParserList.clear();
+                streamInfo->waitingProtocolList.clear();
                 streamInfo->needMoreData = false;
             }
             size_t excess = result->size() - m_tcpReassemblyCfg.maxStreamSize;
@@ -1793,7 +1802,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
                     streamInfo->isSeqInitialized = true;
                     streamInfo->segments.clear();
                     streamInfo->reassembledData.clear();
-                    streamInfo->wpWaitingParserList.clear();
+                    streamInfo->waitingProtocolList.clear();
                     streamInfo->needMoreData = false;
                     streamInfo->finReceived = false;
                     streamInfo->rstReceived = false;
