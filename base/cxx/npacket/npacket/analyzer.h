@@ -2,6 +2,7 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <list>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -138,6 +139,7 @@ private:
         uint32_t totalLen = 0; /* 重组后总长度 */
         uint32_t totalPayloadSize = 0; /* 已缓存分片负载总大小(非重组后长度) */
         size_t fragmentCount = 0; /* 分片数量计数 */
+        std::list<FragmentKey>::iterator lruIter; /* LRU链表钩子 */
     };
 
     /**
@@ -180,6 +182,7 @@ private:
         bool finReceived = false; /* 是否已收到FIN标记 */
         std::chrono::steady_clock::time_point finRecvTime; /* FIN接收时间 */
         bool rstReceived = false; /* 是否已收到RST标记 */
+        std::list<TcpStreamKey>::iterator lruIter; /* LRU链表钩子 */
     };
 
     /**
@@ -409,9 +412,11 @@ private:
     const TcpReassemblyConfig m_tcpReassemblyCfg; /* TCP分片重组配置 */
 
     std::unordered_map<FragmentKey, std::shared_ptr<FragmentInfo>> m_fragmentCache; /* IP分片缓存 */
+    std::list<FragmentKey> m_fragmentLruList; /* LRU链表: 头部-最旧, 尾部-最新 */
     std::chrono::steady_clock::time_point m_lastCleanupTime = std::chrono::steady_clock::now(); /* 上次清理IP分片缓存时间 */
 
     std::unordered_map<TcpStreamKey, std::shared_ptr<TcpStreamInfo>> m_tcpStreamCache; /* TCP流缓存 */
+    std::list<TcpStreamKey> m_tcpStreamLruList; /* LRU链表: 头部-最旧, 尾部-最新 */
     std::chrono::steady_clock::time_point m_lastTcpCleanupTime = std::chrono::steady_clock::now(); /* 上次清理TCP流缓存时间 */
 
     std::mutex m_mutexParserList;
