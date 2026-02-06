@@ -959,7 +959,8 @@ void Analyzer::cleanupFragmentCache(const std::chrono::steady_clock::time_point&
     {
         auto needRemoveCount = cacheSize - m_ipReassemblyCfg.maxCacheCount;
         /* 收集条目 */
-        std::vector<std::pair<FragmentKey, std::chrono::steady_clock::time_point>> entries;
+        static thread_local std::vector<std::pair<FragmentKey, std::chrono::steady_clock::time_point>> entries;
+        entries.clear();
         entries.reserve(cacheSize);
         for (const auto& kv : m_fragmentCache)
         {
@@ -1181,10 +1182,8 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
                 {
                     uint32_t skipLen = newEnd - existStart; /* 需要跳过的重复字节数 */
                     uint32_t newOffset = newEnd / 8; /* 新偏移量(按8字节对齐) */
-
                     std::vector<uint8_t> newData(iterFrag->second.begin() + skipLen, iterFrag->second.end());
                     info->totalPayloadSize -= skipLen;
-
                     iterFrag = info->fragments.erase(iterFrag);
                     info->fragments[newOffset] = std::move(newData);
                 }
@@ -1328,7 +1327,8 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
     {
         auto needRemove = m_tcpStreamCache.size() - m_tcpReassemblyCfg.maxStreamCount;
         /* 收集条目 */
-        std::vector<std::pair<TcpStreamKey, std::chrono::steady_clock::time_point>> entries;
+        static thread_local std::vector<std::pair<TcpStreamKey, std::chrono::steady_clock::time_point>> entries;
+        entries.clear();
         entries.reserve(m_tcpStreamCache.size());
         for (const auto& kv : m_tcpStreamCache)
         {
@@ -1420,7 +1420,8 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
             if (!streamInfo->segments.empty())
             {
                 uint32_t currentSeq = streamInfo->nextExpectedSeq;
-                std::vector<uint8_t> additionalData;
+                static thread_local std::vector<uint8_t> additionalData;
+                additionalData.clear();
                 while (!streamInfo->segments.empty())
                 {
                     auto segIter = streamInfo->segments.begin();
