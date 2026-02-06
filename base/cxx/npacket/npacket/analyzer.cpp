@@ -666,7 +666,8 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         }
     }
     /* 收集候选协议 */
-    auto protocolList = collectProtocolList(dstPort, srcPort);
+    std::unordered_map<uint32_t, ParserEntry> parserEntryList;
+    auto protocolList = collectProtocolList(dstPort, srcPort, parserEntryList);
     if (protocolList.empty())
     {
         return 4;
@@ -698,12 +699,12 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                     streamInfo->reassembledData.clear();
                 }
                 /* 优化候选协议 */
-                prioritizeProtocolList(streamInfo->waitingProtocolList, protocolList);
+                prioritizeProtocolList(parserEntryList, streamInfo->waitingProtocolList, protocolList);
             }
         }
     }
     /* 获取协议解析器 */
-    auto parserList = resolveParserList(protocolList);
+    auto parserList = resolveParserList(parserEntryList, protocolList);
     if (parserList.empty())
     {
         return 4;
@@ -712,11 +713,13 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     return processApplication(num, ntp, totalLen, header, fullData, fullDataLen, parserList, streamInfo);
 }
 
-std::vector<uint32_t> Analyzer::collectProtocolList(uint16_t dstPort, uint16_t srcPort)
+std::vector<uint32_t> Analyzer::collectProtocolList(uint16_t dstPort, uint16_t srcPort,
+                                                    std::unordered_map<uint32_t, ParserEntry>& parserEntryList)
 {
     std::vector<uint32_t> protocolList;
     protocolList.reserve(8); /* 预分配 */
     std::lock_guard<std::mutex> locker(m_mutexParserList);
+    parserEntryList = m_parserEntryList;
     /* 1. 端口匹配的解析器优先(端口优先级: 1.dstPort, 2.srcPort) */
     auto iter = m_portToProtocolList.find(dstPort);
     if (m_portToProtocolList.end() != iter)
@@ -750,7 +753,8 @@ std::vector<uint32_t> Analyzer::collectProtocolList(uint16_t dstPort, uint16_t s
     return protocolList;
 }
 
-void Analyzer::prioritizeProtocolList(const std::vector<uint32_t>& waitingProtocolList, std::vector<uint32_t>& protocolList)
+void Analyzer::prioritizeProtocolList(const std::unordered_map<uint32_t, ParserEntry>& parserEntryList,
+                                      const std::vector<uint32_t>& waitingProtocolList, std::vector<uint32_t>& protocolList)
 {
     if (waitingProtocolList.empty())
     {
@@ -759,14 +763,11 @@ void Analyzer::prioritizeProtocolList(const std::vector<uint32_t>& waitingProtoc
     /* 过滤失效的等待协议(检查是否仍在注册表中) */
     std::vector<uint32_t> validWaiting;
     validWaiting.reserve(waitingProtocolList.size());
+    for (const auto& protocol : waitingProtocolList)
     {
-        std::lock_guard<std::mutex> locker(m_mutexParserList);
-        for (const auto& protocol : waitingProtocolList)
+        if (parserEntryList.end() != parserEntryList.find(protocol))
         {
-            if (m_parserEntryList.end() != m_parserEntryList.find(protocol))
-            {
-                validWaiting.push_back(protocol);
-            }
+            validWaiting.push_back(protocol);
         }
     }
     /* 重建列表: 等待的优先, 其他保持顺序 */
@@ -794,15 +795,15 @@ void Analyzer::prioritizeProtocolList(const std::vector<uint32_t>& waitingProtoc
     protocolList = std::move(newProtocolList);
 }
 
-std::vector<std::shared_ptr<ProtocolParser>> Analyzer::resolveParserList(const std::vector<uint32_t>& protocolList)
+std::vector<std::shared_ptr<ProtocolParser>> Analyzer::resolveParserList(const std::unordered_map<uint32_t, ParserEntry>& parserEntryList,
+                                                                         const std::vector<uint32_t>& protocolList)
 {
     std::vector<std::shared_ptr<ProtocolParser>> parserList;
     parserList.reserve(protocolList.size());
-    std::lock_guard<std::mutex> locker(m_mutexParserList);
     for (const auto& protocol : protocolList)
     {
-        auto iter = m_parserEntryList.find(protocol);
-        if (m_parserEntryList.end() != iter)
+        auto iter = parserEntryList.find(protocol);
+        if (parserEntryList.end() != iter)
         {
             parserList.push_back(iter->second.ref);
         }

@@ -303,23 +303,29 @@ private:
      * @brief 收集候选协议(端口优先)
      * @param dstPort 目标端口
      * @param srcPort 源端口
+     * @param parserEntryList [输出]原始解析器列表
      * @return 候选协议列表
      */
-    std::vector<uint32_t> collectProtocolList(uint16_t dstPort, uint16_t srcPort);
+    std::vector<uint32_t> collectProtocolList(uint16_t dstPort, uint16_t srcPort,
+                                              std::unordered_map<uint32_t, ParserEntry>& parserEntryList);
 
     /**
      * @brief 优化候选协议(等待数据的协议优先)
+     * @param parserEntryList 原始解析器列表
      * @param waitingProtocolList 等待数据的协议
      * @param protocolList [输入/输出]候选协议列表
      */
-    void prioritizeProtocolList(const std::vector<uint32_t>& waitingProtocolList, std::vector<uint32_t>& protocolList);
+    void prioritizeProtocolList(const std::unordered_map<uint32_t, ParserEntry>& parserEntryList,
+                                const std::vector<uint32_t>& waitingProtocolList, std::vector<uint32_t>& protocolList);
 
     /**
      * @brief 根据协议获取解析器
+     * @param parserEntryList 原始解析器列表
      * @param protocolList 候选协议列表
      * @return 解析器列表
      */
-    std::vector<std::shared_ptr<ProtocolParser>> resolveParserList(const std::vector<uint32_t>& protocolList);
+    std::vector<std::shared_ptr<ProtocolParser>> resolveParserList(const std::unordered_map<uint32_t, ParserEntry>& parserEntryList,
+                                                                   const std::vector<uint32_t>& protocolList);
 
     /**
      * @brief 执行应用层解析循环
