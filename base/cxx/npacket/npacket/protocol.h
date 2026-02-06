@@ -7,6 +7,43 @@
 namespace npacket
 {
 /**
+ * @brief 单字节转十进制字符串
+ * @param val 单字节
+ * @param p [输出]十进制字符串
+ */
+static inline void byteToDecStr(uint8_t val, char*& p)
+{
+    if (p)
+    {
+        if (val >= 100)
+        {
+            *p++ = '0' + val / 100;
+            val %= 100;
+        }
+        if (val >= 10)
+        {
+            *p++ = '0' + val / 10;
+        }
+        *p++ = '0' + val % 10;
+    }
+}
+
+/**
+ * @brief 单字节转十六进制字符串
+ * @param val 单字节
+ * @param p [输出]十六进制字符串
+ */
+static inline void byteToHexStr(uint8_t val, char*& p)
+{
+    static const char hex[] = "0123456789abcdef";
+    if (p)
+    {
+        *p++ = hex[val >> 4];
+        *p++ = hex[val & 0xf];
+    }
+}
+
+/**
  * @brief 网络层协议
  */
 enum NetworkProtocol
@@ -94,20 +131,38 @@ public:
     /**
      * @brief 目标MAC地址字符串
      */
-    std::string dstMacStr() const
+    const char* dstMacStr() const
     {
-        char buf[18] = {0};
-        snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", dstMac[0], dstMac[1], dstMac[2], dstMac[3], dstMac[4], dstMac[5]);
+        static thread_local char buf[18] = {0};
+        char* p = buf;
+        for (int i = 0; i < 6; ++i)
+        {
+            if (i > 0)
+            {
+                *p++ = ':';
+            }
+            byteToHexStr(dstMac[i], p);
+        }
+        *p = '\0';
         return buf;
     }
 
     /**
      * @brief 源MAC地址字符串
      */
-    std::string srcMacStr() const
+    const char* srcMacStr() const
     {
-        char buf[18] = {0};
-        snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", srcMac[0], srcMac[1], srcMac[2], srcMac[3], srcMac[4], srcMac[5]);
+        static thread_local char buf[18] = {0};
+        char* p = buf;
+        for (int i = 0; i < 6; ++i)
+        {
+            if (i > 0)
+            {
+                *p++ = ':';
+            }
+            byteToHexStr(srcMac[i], p);
+        }
+        *p = '\0';
         return buf;
     }
 
@@ -166,20 +221,36 @@ public:
     /**
      * @brief 源IP地址字符串
      */
-    std::string srcAddrStr() const
+    const char* srcAddrStr() const
     {
-        char buf[16] = {0};
-        snprintf(buf, sizeof(buf), "%d.%d.%d.%d", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3]);
+        static thread_local char buf[16] = {0};
+        char* p = buf;
+        byteToDecStr(srcAddr[0], p);
+        *p++ = '.';
+        byteToDecStr(srcAddr[1], p);
+        *p++ = '.';
+        byteToDecStr(srcAddr[2], p);
+        *p++ = '.';
+        byteToDecStr(srcAddr[3], p);
+        *p = '\0';
         return buf;
     }
 
     /**
      * @brief 目的IP地址字符串
      */
-    std::string dstAddrStr() const
+    const char* dstAddrStr() const
     {
-        char buf[16] = {0};
-        snprintf(buf, sizeof(buf), "%d.%d.%d.%d", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3]);
+        static thread_local char buf[16] = {0};
+        char* p = buf;
+        byteToDecStr(dstAddr[0], p);
+        *p++ = '.';
+        byteToDecStr(dstAddr[1], p);
+        *p++ = '.';
+        byteToDecStr(dstAddr[2], p);
+        *p++ = '.';
+        byteToDecStr(dstAddr[3], p);
+        *p = '\0';
         return buf;
     }
 
@@ -244,42 +315,74 @@ public:
     /**
      * @brief 源MAC地址字符串
      */
-    std::string senderMacStr() const
+    const char* senderMacStr() const
     {
-        char buf[18] = {0};
-        snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", senderMac[0], senderMac[1], senderMac[2], senderMac[3], senderMac[4],
-                 senderMac[5]);
+        static thread_local char buf[18] = {0};
+        char* p = buf;
+        for (int i = 0; i < 6; ++i)
+        {
+            if (i > 0)
+            {
+                *p++ = ':';
+            }
+            byteToHexStr(senderMac[i], p);
+        }
+        *p = '\0';
         return buf;
     }
 
     /**
      * @brief 源IP地址字符串
      */
-    std::string senderIpStr() const
+    const char* senderIpStr() const
     {
-        char buf[16] = {0};
-        snprintf(buf, sizeof(buf), "%d.%d.%d.%d", senderIp[0], senderIp[1], senderIp[2], senderIp[3]);
+        static thread_local char buf[16] = {0};
+        char* p = buf;
+        byteToDecStr(senderIp[0], p);
+        *p++ = '.';
+        byteToDecStr(senderIp[1], p);
+        *p++ = '.';
+        byteToDecStr(senderIp[2], p);
+        *p++ = '.';
+        byteToDecStr(senderIp[3], p);
+        *p = '\0';
         return buf;
     }
 
     /**
      * @brief 目标MAC地址字符串
      */
-    std::string targetMacStr() const
+    const char* targetMacStr() const
     {
-        char buf[18] = {0};
-        snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", targetMac[0], targetMac[1], targetMac[2], targetMac[3], targetMac[4],
-                 targetMac[5]);
+        static thread_local char buf[18] = {0};
+        char* p = buf;
+        for (int i = 0; i < 6; ++i)
+        {
+            if (i > 0)
+            {
+                *p++ = ':';
+            }
+            byteToHexStr(targetMac[i], p);
+        }
+        *p = '\0';
         return buf;
     }
 
     /**
      * @brief 目的IP地址字符串
      */
-    std::string targetIpStr() const
+    const char* targetIpStr() const
     {
-        char buf[16] = {0};
-        snprintf(buf, sizeof(buf), "%d.%d.%d.%d", targetIp[0], targetIp[1], targetIp[2], targetIp[3]);
+        static thread_local char buf[16] = {0};
+        char* p = buf;
+        byteToDecStr(targetIp[0], p);
+        *p++ = '.';
+        byteToDecStr(targetIp[1], p);
+        *p++ = '.';
+        byteToDecStr(targetIp[2], p);
+        *p++ = '.';
+        byteToDecStr(targetIp[3], p);
+        *p = '\0';
         return buf;
     }
 
@@ -343,22 +446,40 @@ public:
     /**
      * @brief 源IP地址字符串
      */
-    std::string srcAddrStr() const
+    const char* srcAddrStr() const
     {
-        char buf[40] = {0};
-        snprintf(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", srcAddr[0], srcAddr[1], srcAddr[2], srcAddr[3], srcAddr[4], srcAddr[5],
-                 srcAddr[6], srcAddr[7]);
+        static thread_local char buf[40] = {0};
+        char* p = buf;
+        for (int i = 0; i < 8; ++i)
+        {
+            if (i > 0)
+            {
+                *p++ = ':';
+            }
+            byteToHexStr((srcAddr[i] >> 8) & 0xFF, p);
+            byteToHexStr(srcAddr[i] & 0xFF, p);
+        }
+        *p = '\0';
         return buf;
     }
 
     /**
      * @brief 目的IP地址字符串
      */
-    std::string dstAddrStr() const
+    const char* dstAddrStr() const
     {
-        char buf[40] = {0};
-        snprintf(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x", dstAddr[0], dstAddr[1], dstAddr[2], dstAddr[3], dstAddr[4], dstAddr[5],
-                 dstAddr[6], dstAddr[7]);
+        static thread_local char buf[40] = {0};
+        char* p = buf;
+        for (int i = 0; i < 8; ++i)
+        {
+            if (i > 0)
+            {
+                *p++ = ':';
+            }
+            byteToHexStr((dstAddr[i] >> 8) & 0xFF, p);
+            byteToHexStr(dstAddr[i] & 0xFF, p);
+        }
+        *p = '\0';
         return buf;
     }
 

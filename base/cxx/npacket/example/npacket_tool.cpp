@@ -17,7 +17,7 @@ static std::string s_proto;
 void printEthernet(const npacket::EthernetIIHeader* h)
 {
     printf("=============== EthernetII ===============\n");
-    printf("src mac: %s, dst mac: %s\n", h->srcMacStr().c_str(), h->dstMacStr().c_str());
+    printf("src mac: %s, dst mac: %s\n", h->srcMacStr(), h->dstMacStr());
     printf("type: 0x%04x\n", h->nextProtocol);
 }
 
@@ -32,7 +32,7 @@ void printIPv4(const npacket::Ipv4Header* h)
     printf("    ttl: %d\n", h->ttl);
     printf("    protocol: %d\n", h->nextProtocol);
     printf("    checksum: 0x%04x\n", h->checksum);
-    printf("    src addr: %s, dst addr: %s\n", h->srcAddrStr().c_str(), h->dstAddrStr().c_str());
+    printf("    src addr: %s, dst addr: %s\n", h->srcAddrStr(), h->dstAddrStr());
 }
 
 /* 打印ARP */
@@ -43,8 +43,8 @@ void printARP(const npacket::ArpHeader* h)
     printf("    hardware type: 0x%04x, hardware size: %d\n", h->hardwareType, h->hardwareSize);
     printf("    protocol type: 0x%04x, protocol size: %d\n", h->protocolType, h->protocolSize);
     printf("    opcode: %d\n", h->opcode);
-    printf("    sender mac: %s, sender ip: %s\n", h->senderMacStr().c_str(), h->senderIpStr().c_str());
-    printf("    target mac: %s, target ip: %s\n", h->targetMacStr().c_str(), h->targetIpStr().c_str());
+    printf("    sender mac: %s, sender ip: %s\n", h->senderMacStr(), h->senderIpStr());
+    printf("    target mac: %s, target ip: %s\n", h->targetMacStr(), h->targetIpStr());
 }
 
 /* 打印IPv6 */
@@ -55,7 +55,7 @@ void printIPv6(const npacket::Ipv6Header* h)
            h->payloadLen);
     printf("    next header: %d\n", h->nextHeader);
     printf("    hop limit: %d\n", h->hopLimit);
-    printf("    srcAddr: %s, dstAddr: %s\n", h->srcAddrStr().c_str(), h->dstAddrStr().c_str());
+    printf("    srcAddr: %s, dstAddr: %s\n", h->srcAddrStr(), h->dstAddrStr());
     if (0 == h->nextHeader) /* 扩展包头: Hop-by-Hop */
     {
         printf("    [hop by hop] next header: %d\n", h->hopByHopHeader.nextHeader);
