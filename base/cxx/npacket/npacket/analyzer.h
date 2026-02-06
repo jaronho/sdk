@@ -2,7 +2,6 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
-#include <list>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -139,7 +138,6 @@ private:
         uint32_t totalLen = 0; /* 重组后总长度 */
         uint32_t totalPayloadSize = 0; /* 已缓存分片负载总大小(非重组后长度) */
         size_t fragmentCount = 0; /* 分片数量计数 */
-        std::list<FragmentKey>::iterator lruIter; /* LRU链表钩子 */
     };
 
     /**
@@ -177,21 +175,11 @@ private:
         bool isSeqInitialized = false; /* 序列号是否已初始化(收到第一个SYN或数据的SYN) */
         std::map<uint32_t, TcpSegment> segments; /* 乱序段缓存(按seq排序) */
         std::vector<uint8_t> reassembledData; /* 已重组的连续数据(等待应用层消费) */
-        std::vector<uint32_t> waitingProtocolList; /* 等待更多数据的协议列表 */
+        std::vector<std::weak_ptr<ProtocolParser>> wpWaitingParserList; /* 等待更多数据的协议解析器列表 */
         bool needMoreData = false; /* 是否有解析器需要更多数据 */
         bool finReceived = false; /* 是否已收到FIN标记 */
         std::chrono::steady_clock::time_point finRecvTime; /* FIN接收时间 */
         bool rstReceived = false; /* 是否已收到RST标记 */
-        std::list<TcpStreamKey>::iterator lruIter; /* LRU链表钩子 */
-    };
-
-    /**
-     * @brief 解析器注册项
-     */
-    struct ParserEntry
-    {
-        uint32_t protocol = 0; /* 协议ID(应用层协议类型) */
-        std::shared_ptr<ProtocolParser> ref = nullptr; /* 解析器 */
     };
 
 private:
@@ -300,50 +288,6 @@ private:
                                const TcpStreamKey* tcpKey = nullptr, int depth = 0);
 
     /**
-     * @brief 收集候选协议(端口优先)
-     * @param dstPort 目标端口
-     * @param srcPort 源端口
-     * @param parserEntryList [输出]原始解析器列表
-     * @return 候选协议列表
-     */
-    std::vector<uint32_t> collectProtocolList(uint16_t dstPort, uint16_t srcPort,
-                                              std::unordered_map<uint32_t, ParserEntry>& parserEntryList);
-
-    /**
-     * @brief 优化候选协议(等待数据的协议优先)
-     * @param parserEntryList 原始解析器列表
-     * @param waitingProtocolList 等待数据的协议
-     * @param protocolList [输入/输出]候选协议列表
-     */
-    void prioritizeProtocolList(const std::unordered_map<uint32_t, ParserEntry>& parserEntryList,
-                                const std::vector<uint32_t>& waitingProtocolList, std::vector<uint32_t>& protocolList);
-
-    /**
-     * @brief 根据协议获取解析器
-     * @param parserEntryList 原始解析器列表
-     * @param protocolList 候选协议列表
-     * @return 解析器列表
-     */
-    std::vector<std::shared_ptr<ProtocolParser>> resolveParserList(const std::unordered_map<uint32_t, ParserEntry>& parserEntryList,
-                                                                   const std::vector<uint32_t>& protocolList);
-
-    /**
-     * @brief 执行应用层解析循环
-     * @param num 数据序号
-     * @param ntp 数据包接收时间点
-     * @param totalLen 数据包总长度
-     * @param header 传输层头部
-     * @param data 应用层数据
-     * @param dataLen 应用层数据长度
-     * @param parserList 解析器列表
-     * @param streamInfo TCP流数据(未处理的)
-     * @return 0-成功, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片)
-     */
-    int processApplication(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
-                           const uint8_t* data, uint32_t dataLen, const std::vector<std::shared_ptr<ProtocolParser>>& parserList,
-                           const std::shared_ptr<TcpStreamInfo>& streamInfo);
-
-    /**
      * @brief 遍历IPv6扩展头链获取最终协议类型
      * @param data IPv6数据包起始位置
      * @param dataLen 数据长度
@@ -418,16 +362,13 @@ private:
     const TcpReassemblyConfig m_tcpReassemblyCfg; /* TCP分片重组配置 */
 
     std::unordered_map<FragmentKey, std::shared_ptr<FragmentInfo>> m_fragmentCache; /* IP分片缓存 */
-    std::list<FragmentKey> m_fragmentLruList; /* LRU链表: 头部-最旧, 尾部-最新 */
     std::chrono::steady_clock::time_point m_lastCleanupTime = std::chrono::steady_clock::now(); /* 上次清理IP分片缓存时间 */
 
     std::unordered_map<TcpStreamKey, std::shared_ptr<TcpStreamInfo>> m_tcpStreamCache; /* TCP流缓存 */
-    std::list<TcpStreamKey> m_tcpStreamLruList; /* LRU链表: 头部-最旧, 尾部-最新 */
     std::chrono::steady_clock::time_point m_lastTcpCleanupTime = std::chrono::steady_clock::now(); /* 上次清理TCP流缓存时间 */
 
     std::mutex m_mutexParserList;
-    std::unordered_map<uint32_t, ParserEntry> m_parserEntryList; /* 应用层解析器表, key-协议, value-注册项 */
-    std::vector<uint32_t> m_parserProtocolList; /* 全局解析器协议列表(有序) */
-    std::unordered_map<uint16_t, uint32_t> m_portToProtocolList; /* 端口到协议映射表, key-端口, value-协议 */
+    std::vector<std::shared_ptr<ProtocolParser>> m_applicationParserList; /* 应用层解析器列表 */
+    std::unordered_map<uint16_t, std::shared_ptr<ProtocolParser>> m_applicationParserMap; /* 应用层解析器映射表, key-端口 */
 };
 } // namespace npacket

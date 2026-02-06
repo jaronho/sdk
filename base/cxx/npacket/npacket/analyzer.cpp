@@ -1,7 +1,6 @@
 #include "analyzer.h"
 
 #include <algorithm>
-#include <unordered_set>
 
 #include "helper.h"
 
@@ -189,18 +188,16 @@ bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
     {
         return false;
     }
-    uint32_t protocol = parser->getProtocol();
     std::lock_guard<std::mutex> locker(m_mutexParserList);
-    if (m_parserEntryList.end() == m_parserEntryList.find(protocol)) /* 注册 */
+    for (const auto& item : m_applicationParserList)
     {
-        ParserEntry entry;
-        entry.protocol = protocol;
-        entry.ref = parser;
-        m_parserEntryList[protocol] = std::move(entry);
-        m_parserProtocolList.push_back(protocol);
-        return true;
+        if (item && item->getProtocol() == parser->getProtocol())
+        {
+            return false;
+        }
     }
-    return false;
+    m_applicationParserList.emplace_back(parser);
+    return true;
 }
 
 bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolParser>& parser)
@@ -209,20 +206,28 @@ bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolPa
     {
         return false;
     }
-    uint32_t protocol = parser->getProtocol();
     std::lock_guard<std::mutex> locker(m_mutexParserList);
-    auto iter = m_parserEntryList.find(protocol);
-    if (m_parserEntryList.end() == iter) /* 注册 */
+    /* 保留遍历能力 */
+    bool findFlag = false;
+    for (const auto& item : m_applicationParserList)
     {
-        ParserEntry entry;
-        entry.protocol = protocol;
-        entry.ref = parser;
-        m_parserEntryList[protocol] = std::move(entry);
-        m_parserProtocolList.push_back(protocol);
+        if (item && item->getProtocol() == parser->getProtocol())
+        {
+            findFlag = true;
+            break;
+        }
     }
-    if (port > 0) /* 绑定端口到协议 */
+    if (!findFlag)
     {
-        m_portToProtocolList[port] = protocol;
+        m_applicationParserList.emplace_back(parser);
+    }
+    /* 绑定端口 */
+    if (port > 0)
+    {
+        if (m_applicationParserMap.end() == m_applicationParserMap.find(port))
+        {
+            m_applicationParserMap.insert(std::make_pair(port, parser));
+        }
     }
     return true;
 }
@@ -230,19 +235,19 @@ bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolPa
 void Analyzer::removeProtocolParser(uint32_t protocol)
 {
     std::lock_guard<std::mutex> locker(m_mutexParserList);
-    /* 从注册表删除 */
-    m_parserEntryList.erase(protocol);
-    auto iter = std::find(m_parserProtocolList.begin(), m_parserProtocolList.end(), protocol);
-    if (m_parserProtocolList.end() != iter)
+    for (auto iter = m_applicationParserList.begin(); m_applicationParserList.end() != iter; ++iter)
     {
-        m_parserProtocolList.erase(iter);
-    }
-    /* 清理端口映射 */
-    for (auto iter = m_portToProtocolList.begin(); iter != m_portToProtocolList.end();)
-    {
-        if (protocol == iter->second)
+        if (*iter && (*iter)->getProtocol() == protocol)
         {
-            iter = m_portToProtocolList.erase(iter);
+            m_applicationParserList.erase(iter);
+            break;
+        }
+    }
+    for (auto iter = m_applicationParserMap.begin(); m_applicationParserMap.end() != iter;)
+    {
+        if (iter->second && iter->second->getProtocol() == protocol)
+        {
+            iter = m_applicationParserMap.erase(iter);
         }
         else
         {
@@ -642,7 +647,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     {
         return 4;
     }
-    /* 从传输层头部提取端口 */
+    /* step1. 从传输层头部提取端口 */
     uint16_t srcPort = 0, dstPort = 0;
     if (header)
     {
@@ -665,14 +670,47 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             }
         }
     }
-    /* 收集候选协议 */
-    std::unordered_map<uint32_t, ParserEntry> parserEntryList;
-    auto protocolList = collectProtocolList(dstPort, srcPort, parserEntryList);
-    if (protocolList.empty())
+    /* step2. 获取候选解析器 */
+    std::vector<std::weak_ptr<ProtocolParser>> parserList;
     {
-        return 4;
+        std::lock_guard<std::mutex> locker(m_mutexParserList);
+        /* 1. 端口匹配的解析器优先(端口优先级: 1.dstPort, 2.srcPort) */
+        if (!m_applicationParserMap.empty())
+        {
+            auto iter = m_applicationParserMap.find(dstPort);
+            if (m_applicationParserMap.end() != iter)
+            {
+                parserList.emplace_back(iter->second);
+            }
+            else
+            {
+                iter = m_applicationParserMap.find(srcPort);
+                if (m_applicationParserMap.end() != iter)
+                {
+                    parserList.emplace_back(iter->second);
+                }
+            }
+        }
+        /* 2. 全局解析器列表(排除已添加的端口匹配协议) */
+        for (const auto& parser : m_applicationParserList)
+        {
+            bool findFlag = false;
+            for (const auto& wpParser : parserList)
+            {
+                auto cp = wpParser.lock();
+                if (cp == parser || (cp && parser && cp->getProtocol() == parser->getProtocol()))
+                {
+                    findFlag = true;
+                    break;
+                }
+            }
+            if (!findFlag)
+            {
+                parserList.emplace_back(parser);
+            }
+        }
     }
-    /* 准备解析数据(可能是合并后的) */
+    /* step3. 准备解析数据(可能是合并后的) */
     std::vector<uint8_t> combinedData;
     const uint8_t* fullData = payload;
     uint32_t fullDataLen = payloadLen;
@@ -683,157 +721,91 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         if (m_tcpStreamCache.end() != iter)
         {
             streamInfo = iter->second;
-            if (streamInfo)
+            if (streamInfo && !streamInfo->reassembledData.empty()) /* 如果之前有缓存的未消费数据, 与新数据合并 */
             {
-                /* 如果之前有缓存的未消费数据, 与新数据合并 */
-                if (!streamInfo->reassembledData.empty())
+                /* 合并历史数据 + 新数据 */
+                combinedData.reserve(streamInfo->reassembledData.size() + payloadLen);
+                combinedData.insert(combinedData.end(), std::make_move_iterator(streamInfo->reassembledData.begin()),
+                                    std::make_move_iterator(streamInfo->reassembledData.end()));
+                combinedData.insert(combinedData.end(), payload, payload + payloadLen);
+                fullData = combinedData.data();
+                fullDataLen = combinedData.size();
+                /* 清空已合并的缓存, 避免重复处理 */
+                streamInfo->reassembledData.clear();
+            }
+        }
+    }
+    /* step4. 如果有之前等待数据的协议, 优先尝试它们 */
+    if (streamInfo && !streamInfo->wpWaitingParserList.empty())
+    {
+        /* 将等待的解析器移到最前面 */
+        std::vector<std::weak_ptr<ProtocolParser>> tempParserList;
+        for (const auto& wpParser : streamInfo->wpWaitingParserList)
+        {
+            auto parser = wpParser.lock();
+            /* 检查是否仍在全局列表中(未被删除) */
+            bool stillValid = false;
+            for (const auto& cp : parserList)
+            {
+                if (cp.lock() == parser)
                 {
-                    /* 合并历史数据 + 新数据 */
-                    combinedData.reserve(streamInfo->reassembledData.size() + payloadLen);
-                    combinedData.insert(combinedData.end(), std::make_move_iterator(streamInfo->reassembledData.begin()),
-                                        std::make_move_iterator(streamInfo->reassembledData.end()));
-                    combinedData.insert(combinedData.end(), payload, payload + payloadLen);
-                    fullData = combinedData.data();
-                    fullDataLen = combinedData.size();
-                    /* 清空已合并的缓存, 避免重复处理 */
-                    streamInfo->reassembledData.clear();
+                    stillValid = true;
+                    tempParserList.emplace_back(wpParser);
+                    break;
                 }
-                /* 优化候选协议 */
-                prioritizeProtocolList(parserEntryList, streamInfo->waitingProtocolList, protocolList);
             }
         }
-    }
-    /* 获取协议解析器 */
-    auto parserList = resolveParserList(parserEntryList, protocolList);
-    if (parserList.empty())
-    {
-        return 4;
-    }
-    /* 处理应用层 */
-    return processApplication(num, ntp, totalLen, header, fullData, fullDataLen, parserList, streamInfo);
-}
-
-std::vector<uint32_t> Analyzer::collectProtocolList(uint16_t dstPort, uint16_t srcPort,
-                                                    std::unordered_map<uint32_t, ParserEntry>& parserEntryList)
-{
-    std::vector<uint32_t> protocolList;
-    protocolList.reserve(8); /* 预分配 */
-    std::lock_guard<std::mutex> locker(m_mutexParserList);
-    parserEntryList = m_parserEntryList;
-    /* 1. 端口匹配的解析器优先(端口优先级: 1.dstPort, 2.srcPort) */
-    auto iter = m_portToProtocolList.find(dstPort);
-    if (m_portToProtocolList.end() != iter)
-    {
-        protocolList.push_back(iter->second);
-    }
-    else
-    {
-        iter = m_portToProtocolList.find(srcPort);
-        if (m_portToProtocolList.end() != iter)
+        /* 移除已失效的等待解析器 */
+        streamInfo->wpWaitingParserList = tempParserList;
+        /* 重组候选列表: 等待的优先, 然后是其他 */
+        std::vector<std::weak_ptr<ProtocolParser>> newCandidates;
+        for (const auto& wpParser : streamInfo->wpWaitingParserList)
         {
-            protocolList.push_back(iter->second);
-        }
-    }
-    /* 2. 全局解析器列表(排除已添加的端口匹配协议) */
-    if (protocolList.empty())
-    {
-        protocolList = m_parserProtocolList;
-    }
-    else
-    {
-        uint32_t portProtocol = protocolList[0];
-        for (uint32_t id : m_parserProtocolList)
-        {
-            if (id != portProtocol)
+            auto parser = wpParser.lock();
+            if (parser)
             {
-                protocolList.push_back(id);
+                newCandidates.emplace_back(parser);
             }
         }
-    }
-    return protocolList;
-}
-
-void Analyzer::prioritizeProtocolList(const std::unordered_map<uint32_t, ParserEntry>& parserEntryList,
-                                      const std::vector<uint32_t>& waitingProtocolList, std::vector<uint32_t>& protocolList)
-{
-    if (waitingProtocolList.empty())
-    {
-        return;
-    }
-    /* 过滤失效的等待协议(检查是否仍在注册表中) */
-    std::vector<uint32_t> validWaiting;
-    validWaiting.reserve(waitingProtocolList.size());
-    for (const auto& protocol : waitingProtocolList)
-    {
-        if (parserEntryList.end() != parserEntryList.find(protocol))
+        for (const auto& cp : parserList)
         {
-            validWaiting.push_back(protocol);
+            auto parser = cp.lock();
+            bool isWaiting = false;
+            for (const auto& wpParser : streamInfo->wpWaitingParserList)
+            {
+                if (parser == wpParser.lock())
+                {
+                    isWaiting = true;
+                    break;
+                }
+            }
+            if (!isWaiting)
+            {
+                newCandidates.emplace_back(cp);
+            }
         }
+        parserList = std::move(newCandidates);
     }
-    /* 重建列表: 等待的优先, 其他保持顺序 */
-    std::vector<uint32_t> newProtocolList;
-    newProtocolList.reserve(protocolList.size());
-    /* 使用快速去重(O(1)查找)*/
-    std::unordered_set<uint32_t> added;
-    added.reserve(protocolList.size() * 2);
-    /* 先加等待的 */
-    for (const auto& protocol : validWaiting)
-    {
-        if (added.insert(protocol).second) /* 可插入, 表示未重复 */
-        {
-            newProtocolList.push_back(protocol);
-        }
-    }
-    /* 再加其他的 */
-    for (const auto& protocol : protocolList)
-    {
-        if (added.insert(protocol).second) /* 可插入, 表示未重复 */
-        {
-            newProtocolList.push_back(protocol);
-        }
-    }
-    protocolList = std::move(newProtocolList);
-}
-
-std::vector<std::shared_ptr<ProtocolParser>> Analyzer::resolveParserList(const std::unordered_map<uint32_t, ParserEntry>& parserEntryList,
-                                                                         const std::vector<uint32_t>& protocolList)
-{
-    std::vector<std::shared_ptr<ProtocolParser>> parserList;
-    parserList.reserve(protocolList.size());
-    for (const auto& protocol : protocolList)
-    {
-        auto iter = parserEntryList.find(protocol);
-        if (parserEntryList.end() != iter)
-        {
-            parserList.push_back(iter->second.ref);
-        }
-    }
-    return parserList;
-}
-
-int Analyzer::processApplication(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                 const ProtocolHeader* header, const uint8_t* data, uint32_t dataLen,
-                                 const std::vector<std::shared_ptr<ProtocolParser>>& parserList,
-                                 const std::shared_ptr<TcpStreamInfo>& streamInfo)
-{
-    if (parserList.empty())
-    {
-        return 4;
-    }
+    /* step5. 应用层协议解析 */
     uint32_t offset = 0; /* 已消费的字节偏移 */
-    std::vector<uint32_t> continueProtocolList; /* 返回CONTINUE的协议 */
-    while (offset < dataLen)
+    std::vector<std::weak_ptr<ProtocolParser>> continueParsers; /* 返回CONTINUE的解析器 */
+    uint32_t successConsumeLen = 0;
+    while (offset < fullDataLen)
     {
-        continueProtocolList.clear();
+        continueParsers.clear();
         bool anySuccess = false;
-        uint32_t successConsumeLen = 0;
-        for (const auto& parser : parserList) /* 尝试所有候选解析器 */
+        for (const auto& wpParser : parserList) /* 尝试所有候选解析器 */
         {
             uint32_t consumeLen = 0;
+            auto parser = wpParser.lock();
+            if (!parser)
+            {
+                continue;
+            }
             ParseResult result;
             try
             {
-                result = parser->parse(num, ntp, totalLen, header, data + offset, dataLen - offset, consumeLen);
+                result = parser->parse(num, ntp, totalLen, header, fullData + offset, fullDataLen - offset, consumeLen);
             }
             catch (const std::exception& e)
             {
@@ -847,7 +819,7 @@ int Analyzer::processApplication(size_t num, const std::chrono::steady_clock::ti
             }
             if (ParseResult::SUCCESS == result)
             {
-                if (consumeLen > 0 && consumeLen <= dataLen - offset)
+                if (consumeLen > 0 && consumeLen <= fullDataLen - offset)
                 {
                     successConsumeLen = consumeLen;
                     anySuccess = true;
@@ -856,49 +828,40 @@ int Analyzer::processApplication(size_t num, const std::chrono::steady_clock::ti
             }
             else if (ParseResult::CONTINUE == result)
             {
-                continueProtocolList.push_back(parser->getProtocol());
+                continueParsers.emplace_back(parser);
             }
             /* FAILURE, 继续尝试下一个 */
         }
         if (anySuccess) /* 成功处理, 更新状态 */
         {
             offset += successConsumeLen;
-
             /* 如果之前有等待的解析器, 清空(因为成功了) */
             if (streamInfo)
             {
-                streamInfo->waitingProtocolList.clear();
+                streamInfo->wpWaitingParserList.clear();
                 streamInfo->needMoreData = false;
             }
+            continue;
         }
         else /* 没有解析器成功 */
         {
-            if (continueProtocolList.empty()) /* 所有解析器都失败 */
+            if (!continueParsers.empty()) /* 有解析器需要更多数据 */
             {
                 if (streamInfo)
                 {
-                    streamInfo->waitingProtocolList.clear();
-                    streamInfo->needMoreData = false;
-                }
-                return (offset > 0 ? 0 : 4); /* 部分成功或完全失败 */
-            }
-            else /* 有解析器需要更多数据 */
-            {
-                if (streamInfo)
-                {
-                    /* 更新等待列表 */
-                    streamInfo->waitingProtocolList = std::move(continueProtocolList);
+                    /* 重新查找流信息, 确保流仍然存在 */
+                    streamInfo->wpWaitingParserList = continueParsers;
                     streamInfo->needMoreData = true;
                     /* 保存未消费的数据(相对于合并后的数据) */
-                    std::vector<uint8_t> unconsumedData(data + offset, data + dataLen);
+                    std::vector<uint8_t> newUnconsumedData(fullData + offset, fullData + fullDataLen);
                     if (streamInfo->reassembledData.empty())
                     {
-                        streamInfo->reassembledData = std::move(unconsumedData);
+                        streamInfo->reassembledData = std::move(newUnconsumedData);
                     }
                     else
                     {
                         /* 先检查合并后大小, 避免超过限制 */
-                        size_t totalSize = streamInfo->reassembledData.size() + unconsumedData.size();
+                        size_t totalSize = streamInfo->reassembledData.size() + newUnconsumedData.size();
                         if (totalSize > m_tcpReassemblyCfg.maxStreamSize)
                         {
                             /* 保留最新的数据(尾部) */
@@ -906,7 +869,7 @@ int Analyzer::processApplication(size_t num, const std::chrono::steady_clock::ti
                             if (excess >= streamInfo->reassembledData.size())
                             {
                                 /* 旧数据全部废弃, 使用新数据 */
-                                streamInfo->reassembledData = std::move(unconsumedData);
+                                streamInfo->reassembledData = std::move(newUnconsumedData);
                                 /* 调整期望序列号, 标记有数据丢失 */
                                 if (streamInfo->nextExpectedSeq > excess)
                                 {
@@ -917,25 +880,34 @@ int Analyzer::processApplication(size_t num, const std::chrono::steady_clock::ti
                             {
                                 streamInfo->reassembledData.erase(streamInfo->reassembledData.begin(),
                                                                   streamInfo->reassembledData.begin() + excess);
-                                streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), unconsumedData.begin(),
-                                                                   unconsumedData.end());
+                                streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), newUnconsumedData.begin(),
+                                                                   newUnconsumedData.end());
                             }
                         }
                         else
                         {
-                            streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), unconsumedData.begin(),
-                                                               unconsumedData.end());
+                            streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), newUnconsumedData.begin(),
+                                                               newUnconsumedData.end());
                         }
                     }
                 }
                 return 5; /* CONTINUE, 等待更多数据 */
             }
+            else /* 所有解析器都失败 */
+            {
+                if (streamInfo)
+                {
+                    streamInfo->wpWaitingParserList.clear();
+                    streamInfo->needMoreData = false;
+                }
+                return (offset > 0 ? 0 : 4); /* 部分成功或完全失败 */
+            }
         }
     }
-    /* 全部处理完成 */
+    /* 所有数据处理完毕 */
     if (streamInfo)
     {
-        streamInfo->waitingProtocolList.clear();
+        streamInfo->wpWaitingParserList.clear();
         streamInfo->needMoreData = false;
     }
     return 0;
@@ -1018,49 +990,37 @@ void Analyzer::cleanupFragmentCache(const std::chrono::steady_clock::time_point&
         return;
     }
     m_lastCleanupTime = ntp;
-    /* step1. 清理超时分片缓存, 从LRU链表头部(最旧)开始检查, 直到遇到未超时的条目 */
-    std::vector<std::list<FragmentKey>::iterator> removeList;
-    auto iter = m_fragmentLruList.begin();
-    while (m_fragmentLruList.end() != iter)
+    /* step1. 清理超时分片缓存 */
+    for (auto iter = m_fragmentCache.begin(); m_fragmentCache.end() != iter;)
     {
-        auto mapIter = m_fragmentCache.find(*iter);
-        if (m_fragmentCache.end() == mapIter) /* 异常情况: LRU中有但map中无, 直接删除LRU节点 */
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - iter->second->lastAccessTime).count()
+            > m_ipReassemblyCfg.fragTimeout)
         {
-            iter = m_fragmentLruList.erase(iter);
-            continue;
+            iter = m_fragmentCache.erase(iter);
         }
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - mapIter->second->lastAccessTime).count();
-        if (elapsed <= (int64_t)m_ipReassemblyCfg.fragTimeout) /* 遇到未超时的, 停止遍历(LRU有序, 后面的更新) */
+        else
         {
-            break;
+            ++iter;
         }
-        removeList.push_back(iter); /* 记录待删除 */
-        ++iter;
     }
-    for (auto& listIter : removeList) /* 批量删除超时的 */
-    {
-        auto mapIter = m_fragmentCache.find(*listIter);
-        if (m_fragmentCache.end() != mapIter)
-        {
-            m_fragmentCache.erase(mapIter);
-        }
-        m_fragmentLruList.erase(listIter);
-    }
-    /* step2. 限制分片缓存大小, 直接从LRU尾部删除最旧的, 无需排序 */
+    /* step2. 限制分片缓存大小 */
     auto cacheSize = m_fragmentCache.size();
     if (cacheSize > m_ipReassemblyCfg.maxCacheCount)
     {
-        auto needRemove = cacheSize - m_ipReassemblyCfg.maxCacheCount;
-        iter = m_fragmentLruList.begin(); /* 从头部(最旧)直接删除N个 */
-        while (needRemove > 0 && m_fragmentLruList.end() != iter)
+        auto needRemoveCount = cacheSize - m_ipReassemblyCfg.maxCacheCount;
+        /* 收集条目 */
+        std::vector<std::pair<FragmentKey, std::chrono::steady_clock::time_point>> entries;
+        entries.reserve(cacheSize);
+        for (const auto& kv : m_fragmentCache)
         {
-            auto mapIter = m_fragmentCache.find(*iter);
-            if (m_fragmentCache.end() != mapIter)
-            {
-                m_fragmentCache.erase(mapIter);
-            }
-            iter = m_fragmentLruList.erase(iter);
-            --needRemove;
+            entries.emplace_back(kv.first, kv.second->lastAccessTime);
+        }
+        std::nth_element(entries.begin(), entries.begin() + needRemoveCount, entries.end(),
+                         [](const auto& a, const auto& b) { return a.second < b.second; });
+        /* 删除最旧的条目 */
+        for (size_t i = 0; i < needRemoveCount && i < entries.size(); ++i)
+        {
+            m_fragmentCache.erase(entries[i].first);
         }
     }
 }
@@ -1154,224 +1114,215 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
     {
         return nullptr;
     }
-    /* 查找或创建分片缓存 */
-    std::shared_ptr<FragmentInfo> info;
-    auto iter = m_fragmentCache.find(key);
-    if (m_fragmentCache.end() == iter)
     {
-        info = std::make_shared<FragmentInfo>();
-        info->originalProtocol = originalProtocol; /* 保存原始协议 */
-        m_fragmentCache.insert(std::make_pair(key, info));
-        /* 插入LRU尾部(最新) */
-        m_fragmentLruList.push_back(key);
-        info->lruIter = std::prev(m_fragmentLruList.end());
-    }
-    else
-    {
-        info = iter->second;
-        /* 从当前位置删除 */
-        m_fragmentLruList.erase(info->lruIter);
-        /* 插入尾部(最新) */
-        m_fragmentLruList.push_back(key);
-        info->lruIter = std::prev(m_fragmentLruList.end());
-    }
-    info->lastAccessTime = ntp; /* 更新访问时间 */
-    if (info->fragmentCount >= m_ipReassemblyCfg.maxFragmentCount) /* 检查分片数量(疑似DoS攻击) */
-    {
-        m_fragmentCache.erase(key);
-        m_fragmentLruList.erase(info->lruIter);
-        return nullptr;
-    }
-    if (info->totalPayloadSize + payloadLen > m_ipReassemblyCfg.maxReassembleSize) /* 检查缓存总大小 */
-    {
-        m_fragmentCache.erase(key);
-        m_fragmentLruList.erase(info->lruIter);
-        return nullptr;
-    }
-    /* 分片重叠处理 */
-    uint32_t newStart = fragOffset * 8;
-    uint32_t newEnd = newStart + payloadLen;
-    if (isIpv4) /* IPv4: RFC 791 允许重叠分片, 采用"后到的覆盖先到的"策略处理四种重叠场景 */
-    {
-        for (auto iterFrag = info->fragments.begin(); iterFrag != info->fragments.end();)
+        std::shared_ptr<FragmentInfo> info;
+        /* 查找或创建分片缓存 */
+        auto iter = m_fragmentCache.find(key);
+        if (m_fragmentCache.end() == iter)
         {
-            uint32_t existStart = iterFrag->first * 8;
-            uint32_t existEnd = existStart + iterFrag->second.size();
-            /* 场景0: 无重叠(新分片完全在前或在后) */
-            if (newStart >= existEnd || newEnd <= existStart)
+            info = std::make_shared<FragmentInfo>();
+            info->originalProtocol = originalProtocol; /* 保存原始协议 */
+            m_fragmentCache.insert(std::make_pair(key, info));
+        }
+        else
+        {
+            info = iter->second;
+        }
+        info->lastAccessTime = ntp; /* 更新访问时间 */
+        if (info->fragmentCount >= m_ipReassemblyCfg.maxFragmentCount) /* 检查分片数量(疑似DoS攻击) */
+        {
+            m_fragmentCache.erase(key);
+            return nullptr;
+        }
+        if (info->totalPayloadSize + payloadLen > m_ipReassemblyCfg.maxReassembleSize) /* 检查缓存总大小 */
+        {
+            m_fragmentCache.erase(key);
+            return nullptr;
+        }
+        /* 分片重叠处理 */
+        uint32_t newStart = fragOffset * 8;
+        uint32_t newEnd = newStart + payloadLen;
+        if (isIpv4) /* IPv4: RFC 791 允许重叠分片, 采用"后到的覆盖先到的"策略处理四种重叠场景 */
+        {
+            for (auto iterFrag = info->fragments.begin(); iterFrag != info->fragments.end();)
             {
-                ++iterFrag;
-                continue;
-            }
-            /* 场景1: 新分片完全覆盖旧分片(新 < 旧 且 新 > 旧尾) */
-            if (newStart <= existStart && newEnd >= existEnd)
-            {
-                info->totalPayloadSize -= iterFrag->second.size();
-                iterFrag = info->fragments.erase(iterFrag);
-            }
-            /* 场景2: 新分片内嵌在旧分片内部(旧 < 新 且 旧尾 > 新尾) */
-            else if (existStart < newStart && existEnd > newEnd)
-            {
-                uint32_t frontLen = newStart - existStart; /* 前段保留长度 */
-                uint32_t backStart = newEnd; /* 后段起始字节偏移 */
-                uint32_t backLen = existEnd - newEnd; /* 后段保留长度 */
-                /* 保存旧数据引用 */
-                std::vector<uint8_t> oldData = std::move(iterFrag->second);
-                /* 删除原条目(迭代器失效, 需要重新获取) */
-                iterFrag = info->fragments.erase(iterFrag);
-                info->totalPayloadSize -= oldData.size();
-                if (0 == frontLen && backLen > 0) /* 情况1: 只有后段(前段为空, 新分片从旧分片开头开始) */
+                uint32_t existStart = iterFrag->first * 8;
+                uint32_t existEnd = existStart + iterFrag->second.size();
+                /* 场景0: 无重叠(新分片完全在前或在后) */
+                if (newStart >= existEnd || newEnd <= existStart)
                 {
-                    size_t skipLen = newEnd - existStart; /* 跳过新分片覆盖的部分 */
-                    oldData.erase(oldData.begin(), oldData.begin() + skipLen);
-                    uint32_t backOffset = backStart / 8;
-                    info->fragments[backOffset] = std::move(oldData); /* 移动, 零拷贝 */
-                    info->totalPayloadSize += backLen;
+                    ++iterFrag;
+                    continue;
                 }
-                else if (frontLen > 0 && 0 == backLen) /* 情况2: 只有前段(后段为空, 新分片延伸到旧分片末尾) */
+                /* 场景1: 新分片完全覆盖旧分片(新 < 旧 且 新 > 旧尾) */
+                if (newStart <= existStart && newEnd >= existEnd)
                 {
-                    oldData.resize(frontLen); /* 直接截断oldData */
-                    uint32_t frontOffset = existStart / 8;
-                    info->fragments[frontOffset] = std::move(oldData); /* 移动, 零拷贝 */
-                    info->totalPayloadSize += frontLen;
+                    info->totalPayloadSize -= iterFrag->second.size();
+                    iterFrag = info->fragments.erase(iterFrag);
                 }
-                else if (frontLen > 0 && backLen > 0) /* 情况3: 前后段都存在(必须分割) */
+                /* 场景2: 新分片内嵌在旧分片内部(旧 < 新 且 旧尾 > 新尾) */
+                else if (existStart < newStart && existEnd > newEnd)
                 {
-                    size_t backStartPos = backStart - existStart;
-                    if (frontLen <= backLen) /* 移动前段, 拷贝后段(因为后段需要重新分配) */
+                    uint32_t frontLen = newStart - existStart; /* 前段保留长度 */
+                    uint32_t backStart = newEnd; /* 后段起始字节偏移 */
+                    uint32_t backLen = existEnd - newEnd; /* 后段保留长度 */
+                    /* 保存旧数据引用 */
+                    std::vector<uint8_t> oldData = std::move(iterFrag->second);
+                    /* 删除原条目(迭代器失效, 需要重新获取) */
+                    iterFrag = info->fragments.erase(iterFrag);
+                    info->totalPayloadSize -= oldData.size();
+                    if (0 == frontLen && backLen > 0) /* 情况1: 只有后段(前段为空, 新分片从旧分片开头开始) */
                     {
-                        /* 前段小, 拷贝前段, 移动后段 */
-                        std::vector<uint8_t> backData;
-                        backData.reserve(backLen);
-                        backData.assign(oldData.begin() + backStartPos, oldData.end()); /* 拷贝后段 */
-                        oldData.resize(frontLen); /* 截断为前段 */
-                        uint32_t frontOffset = existStart / 8;
+                        size_t skipLen = newEnd - existStart; /* 跳过新分片覆盖的部分 */
+                        oldData.erase(oldData.begin(), oldData.begin() + skipLen);
                         uint32_t backOffset = backStart / 8;
-                        info->fragments[frontOffset] = std::move(oldData); /* 移动前段 */
-                        info->fragments[backOffset] = std::move(backData); /* 移动后段 */
+                        info->fragments[backOffset] = std::move(oldData); /* 移动, 零拷贝 */
+                        info->totalPayloadSize += backLen;
                     }
-                    else /* 移动后段, 拷贝前段(选择数据量小的拷贝) */
+                    else if (frontLen > 0 && 0 == backLen) /* 情况2: 只有前段(后段为空, 新分片延伸到旧分片末尾) */
                     {
-                        /* 后段小, 拷贝后段, 移动前段 */
-                        std::vector<uint8_t> frontData(oldData.begin(), oldData.begin() + frontLen); /* 拷贝前段 */
-                        //* 构造后段: 复用oldData的内存 */
-                        std::vector<uint8_t> backData;
-                        backData.reserve(backLen);
-                        backData.assign(oldData.begin() + backStartPos, oldData.end());
+                        oldData.resize(frontLen); /* 直接截断oldData */
                         uint32_t frontOffset = existStart / 8;
-                        uint32_t backOffset = backStart / 8;
-                        info->fragments[frontOffset] = std::move(frontData); /* 移动前段(新分配) */
-                        info->fragments[backOffset] = std::move(backData); /* 移动后段(新分配) */
+                        info->fragments[frontOffset] = std::move(oldData); /* 移动, 零拷贝 */
+                        info->totalPayloadSize += frontLen;
                     }
-                    info->totalPayloadSize += (frontLen + backLen);
+                    else if (frontLen > 0 && backLen > 0) /* 情况3: 前后段都存在(必须分割) */
+                    {
+                        size_t backStartPos = backStart - existStart;
+                        if (frontLen <= backLen) /* 移动前段, 拷贝后段(因为后段需要重新分配) */
+                        {
+                            /* 前段小, 拷贝前段, 移动后段 */
+                            std::vector<uint8_t> backData;
+                            backData.reserve(backLen);
+                            backData.assign(oldData.begin() + backStartPos, oldData.end()); /* 拷贝后段 */
+                            oldData.resize(frontLen); /* 截断为前段 */
+                            uint32_t frontOffset = existStart / 8;
+                            uint32_t backOffset = backStart / 8;
+                            info->fragments[frontOffset] = std::move(oldData); /* 移动前段 */
+                            info->fragments[backOffset] = std::move(backData); /* 移动后段 */
+                        }
+                        else /* 移动后段, 拷贝前段(选择数据量小的拷贝) */
+                        {
+                            /* 后段小, 拷贝后段, 移动前段 */
+                            std::vector<uint8_t> frontData(oldData.begin(), oldData.begin() + frontLen); /* 拷贝前段 */
+                            //* 构造后段: 复用oldData的内存 */
+                            std::vector<uint8_t> backData;
+                            backData.reserve(backLen);
+                            backData.assign(oldData.begin() + backStartPos, oldData.end());
+                            uint32_t frontOffset = existStart / 8;
+                            uint32_t backOffset = backStart / 8;
+                            info->fragments[frontOffset] = std::move(frontData); /* 移动前段(新分配) */
+                            info->fragments[backOffset] = std::move(backData); /* 移动后段(新分配) */
+                        }
+                        info->totalPayloadSize += (frontLen + backLen);
+                    }
+                    /* 注意: 内嵌场景后, 当前旧分片已被分割, 继续检查下一个旧分片 */
                 }
-                /* 注意: 内嵌场景后, 当前旧分片已被分割, 继续检查下一个旧分片 */
-            }
-            /* 场景3: 尾部重叠(新分片头部与旧分片尾部重叠) */
-            else if (existStart < newStart && existEnd <= newEnd && existEnd > newStart)
-            {
-                uint32_t keepLen = newStart - existStart; /* 旧分片保留长度 */
-                iterFrag->second.resize(keepLen);
-                info->totalPayloadSize -= (existEnd - existStart - keepLen);
-                ++iterFrag;
-            }
-            /* 场景4: 头部重叠(新分片尾部与旧分片头部重叠) */
-            else if (existStart >= newStart && existEnd > newEnd && existStart < newEnd)
-            {
-                uint32_t skipLen = newEnd - existStart; /* 需要跳过的重复字节数 */
-                uint32_t newOffset = newEnd / 8; /* 新偏移量(按8字节对齐) */
+                /* 场景3: 尾部重叠(新分片头部与旧分片尾部重叠) */
+                else if (existStart < newStart && existEnd <= newEnd && existEnd > newStart)
+                {
+                    uint32_t keepLen = newStart - existStart; /* 旧分片保留长度 */
+                    iterFrag->second.resize(keepLen);
+                    info->totalPayloadSize -= (existEnd - existStart - keepLen);
+                    ++iterFrag;
+                }
+                /* 场景4: 头部重叠(新分片尾部与旧分片头部重叠) */
+                else if (existStart >= newStart && existEnd > newEnd && existStart < newEnd)
+                {
+                    uint32_t skipLen = newEnd - existStart; /* 需要跳过的重复字节数 */
+                    uint32_t newOffset = newEnd / 8; /* 新偏移量(按8字节对齐) */
 
-                std::vector<uint8_t> newData(iterFrag->second.begin() + skipLen, iterFrag->second.end());
-                info->totalPayloadSize -= skipLen;
+                    std::vector<uint8_t> newData(iterFrag->second.begin() + skipLen, iterFrag->second.end());
+                    info->totalPayloadSize -= skipLen;
 
-                iterFrag = info->fragments.erase(iterFrag);
-                info->fragments[newOffset] = std::move(newData);
-            }
-            else
-            {
-                /* 其他边界情况(理论上不应到达) */
-                ++iterFrag;
+                    iterFrag = info->fragments.erase(iterFrag);
+                    info->fragments[newOffset] = std::move(newData);
+                }
+                else
+                {
+                    /* 其他边界情况(理论上不应到达) */
+                    ++iterFrag;
+                }
             }
         }
-    }
-    else /* IPv6: RFC 5722 严格禁止重叠分片, 发现任何重叠立即废弃整个分片组 */
-    {
+        else /* IPv6: RFC 5722 严格禁止重叠分片, 发现任何重叠立即废弃整个分片组 */
+        {
+            for (auto& kv : info->fragments)
+            {
+                uint32_t existStart = kv.first * 8;
+                uint32_t existEnd = existStart + kv.second.size();
+                if (newStart < existEnd && newEnd > existStart) /* 任何重叠都视为攻击 */
+                {
+                    m_fragmentCache.erase(key);
+                    return nullptr;
+                }
+            }
+        }
+        /* 存储分片数据(跳过IP头, 只存payload) */
+        info->fragments[fragOffset] = std::vector<uint8_t>(payload, payload + payloadLen);
+        info->totalPayloadSize += payloadLen;
+        ++info->fragmentCount;
+        if (!isMoreFragment) /* 处理最后一个分片 */
+        {
+            info->gotLastFragment = true;
+            info->lastOffset = fragOffset;
+            info->totalLen = (uint32_t)estimatedTotal;
+        }
+        if (!info->gotLastFragment) /* 检查是否收齐所有分片, 继续等待 */
+        {
+            return nullptr;
+        }
+        m_fragmentCache.erase(key); /* 清理缓存 */
+        if (0 == info->totalLen || info->totalLen > m_ipReassemblyCfg.maxReassembleSize) /* 验证总长度 */
+        {
+            return nullptr;
+        }
+        /* 重组数据 */
+        auto reassembledIp = std::make_shared<std::vector<uint8_t>>();
+        reassembledIp->reserve(basicHeaderLen + info->totalLen);
+        reassembledIp->insert(reassembledIp->end(), data, data + basicHeaderLen); /* 先复制IP头部 */
+        /* 检查分片连续性 */
+        uint32_t currentPos = 0;
         for (auto& kv : info->fragments)
         {
-            uint32_t existStart = kv.first * 8;
-            uint32_t existEnd = existStart + kv.second.size();
-            if (newStart < existEnd && newEnd > existStart) /* 任何重叠都视为攻击 */
+            uint32_t expectedBytePos = kv.first * 8; /* 将块索引转换为字节偏移 */
+            if (expectedBytePos != currentPos) /* 分片不连续 */
             {
-                m_fragmentCache.erase(key);
-                m_fragmentLruList.erase(info->lruIter);
                 return nullptr;
             }
+            reassembledIp->insert(reassembledIp->end(), kv.second.begin(), kv.second.end());
+            currentPos += kv.second.size();
         }
-    }
-    /* 存储分片数据(跳过IP头, 只存payload) */
-    info->fragments[fragOffset] = std::vector<uint8_t>(payload, payload + payloadLen);
-    info->totalPayloadSize += payloadLen;
-    ++info->fragmentCount;
-    if (!isMoreFragment) /* 处理最后一个分片 */
-    {
-        info->gotLastFragment = true;
-        info->lastOffset = fragOffset;
-        info->totalLen = (uint32_t)estimatedTotal;
-    }
-    if (!info->gotLastFragment) /* 检查是否收齐所有分片, 继续等待 */
-    {
-        return nullptr;
-    }
-    m_fragmentCache.erase(key); /* 清理缓存 */
-    m_fragmentLruList.erase(info->lruIter);
-    if (0 == info->totalLen || info->totalLen > m_ipReassemblyCfg.maxReassembleSize) /* 验证总长度 */
-    {
-        return nullptr;
-    }
-    /* 重组数据 */
-    auto reassembledIp = std::make_shared<std::vector<uint8_t>>();
-    reassembledIp->reserve(basicHeaderLen + info->totalLen);
-    reassembledIp->insert(reassembledIp->end(), data, data + basicHeaderLen); /* 先复制IP头部 */
-    /* 检查分片连续性 */
-    uint32_t currentPos = 0;
-    for (auto& kv : info->fragments)
-    {
-        uint32_t expectedBytePos = kv.first * 8; /* 将块索引转换为字节偏移 */
-        if (expectedBytePos != currentPos) /* 分片不连续 */
+        if (currentPos != info->totalLen) /* 验证重组结果 */
         {
             return nullptr;
         }
-        reassembledIp->insert(reassembledIp->end(), kv.second.begin(), kv.second.end());
-        currentPos += kv.second.size();
-    }
-    if (currentPos != info->totalLen) /* 验证重组结果 */
-    {
-        return nullptr;
-    }
-    /* 更新IP头部中的长度字段 */
-    if (isIpv4) /* IPv4 */
-    {
-        uint16_t newTotalLen = (uint16_t)(reassembledIp->size());
-        auto ipHeader = (RawIpv4Header*)(reassembledIp->data());
-        ipHeader->totalLen[0] = ((newTotalLen >> 8) & 0xFF);
-        ipHeader->totalLen[1] = (newTotalLen & 0xFF);
-        /* 清除MF标志和片段偏移 */
-        ipHeader->flags_offset[0] &= 0xE0; /* 清除MF和偏移 */
-        ipHeader->flags_offset[1] = 0; /* 清除偏移低位 */
-    }
-    else /* IPv6 */
-    {
-        if (0 == info->originalProtocol) /* 原始协议无效 */
+        /* 更新IP头部中的长度字段 */
+        if (isIpv4) /* IPv4 */
         {
-            return nullptr;
+            uint16_t newTotalLen = (uint16_t)(reassembledIp->size());
+            auto ipHeader = (RawIpv4Header*)(reassembledIp->data());
+            ipHeader->totalLen[0] = ((newTotalLen >> 8) & 0xFF);
+            ipHeader->totalLen[1] = (newTotalLen & 0xFF);
+            /* 清除MF标志和片段偏移 */
+            ipHeader->flags_offset[0] &= 0xE0; /* 清除MF和偏移 */
+            ipHeader->flags_offset[1] = 0; /* 清除偏移低位 */
         }
-        uint16_t newPayloadLen = (uint16_t)(reassembledIp->size() - Ipv6Header::getMinLen());
-        auto ipHeader = (RawIpv6Header*)(reassembledIp->data());
-        ipHeader->payloadLen[0] = ((newPayloadLen >> 8) & 0xFF);
-        ipHeader->payloadLen[1] = (newPayloadLen & 0xFF);
-        ipHeader->nextHeader = info->originalProtocol; /* 恢复原始协议 */
+        else /* IPv6 */
+        {
+            if (0 == info->originalProtocol) /* 原始协议无效 */
+            {
+                return nullptr;
+            }
+            uint16_t newPayloadLen = (uint16_t)(reassembledIp->size() - Ipv6Header::getMinLen());
+            auto ipHeader = (RawIpv6Header*)(reassembledIp->data());
+            ipHeader->payloadLen[0] = ((newPayloadLen >> 8) & 0xFF);
+            ipHeader->payloadLen[1] = (newPayloadLen & 0xFF);
+            ipHeader->nextHeader = info->originalProtocol; /* 恢复原始协议 */
+        }
+        return reassembledIp;
     }
-    return reassembledIp;
+    return nullptr;
 }
 
 bool Analyzer::parseIpv6FragmentHeader(const Ipv6Header* header, const uint8_t* data, uint32_t dataLen, uint8_t& originalProtocol,
@@ -1394,6 +1345,53 @@ bool Analyzer::parseIpv6FragmentHeader(const Ipv6Header* header, const uint8_t* 
         return true;
     }
     return false;
+}
+
+void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point& ntp)
+{
+    if (!m_tcpReassemblyCfg.enable)
+    {
+        return;
+    }
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastTcpCleanupTime).count() <= m_tcpReassemblyCfg.streamClearInterval)
+    {
+        return;
+    }
+    m_lastTcpCleanupTime = ntp;
+    /* 清理超时的流 */
+    for (auto iter = m_tcpStreamCache.begin(); iter != m_tcpStreamCache.end();)
+    {
+        auto& streamInfo = iter->second;
+        /* FIN状态使用短超时, 正常状态使用标准超时 */
+        size_t timeoutThreshold = streamInfo->finReceived ? m_tcpReassemblyCfg.finWaitTimeout : m_tcpReassemblyCfg.streamTimeout;
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - streamInfo->lastAccessTime).count() > timeoutThreshold)
+        {
+            iter = m_tcpStreamCache.erase(iter);
+        }
+        else
+        {
+            ++iter;
+        }
+    }
+    /* 限制流数量(LRU) */
+    if (m_tcpStreamCache.size() > m_tcpReassemblyCfg.maxStreamCount)
+    {
+        auto needRemove = m_tcpStreamCache.size() - m_tcpReassemblyCfg.maxStreamCount;
+        /* 收集条目 */
+        std::vector<std::pair<TcpStreamKey, std::chrono::steady_clock::time_point>> entries;
+        entries.reserve(m_tcpStreamCache.size());
+        for (const auto& kv : m_tcpStreamCache)
+        {
+            entries.emplace_back(kv.first, kv.second->lastAccessTime);
+        }
+        std::nth_element(entries.begin(), entries.begin() + needRemove, entries.end(),
+                         [](const auto& a, const auto& b) { return a.second < b.second; });
+        /* 删除最旧的条目 */
+        for (size_t i = 0; i < needRemove && i < entries.size(); ++i)
+        {
+            m_tcpStreamCache.erase(entries[i].first);
+        }
+    }
 }
 
 std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(const std::chrono::steady_clock::time_point& ntp,
@@ -1447,9 +1445,6 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
         streamInfo = std::make_shared<TcpStreamInfo>();
         streamInfo->lastAccessTime = ntp;
         iter = m_tcpStreamCache.insert(std::make_pair(key, streamInfo)).first;
-        /* 插入LRU尾部 */
-        m_tcpStreamLruList.push_back(key);
-        streamInfo->lruIter = std::prev(m_tcpStreamLruList.end());
     }
     else /* 旧流 */
     {
@@ -1460,12 +1455,8 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
             m_tcpStreamCache.erase(iter);
             return nullptr;
         }
-        /* 从当前位置删除 */
-        m_tcpStreamLruList.erase(streamInfo->lruIter);
-        /* 插入尾部 */
-        m_tcpStreamLruList.push_back(key);
-        streamInfo->lruIter = std::prev(m_tcpStreamLruList.end());
-        if (streamInfo->finReceived && !streamInfo->reassembledData.empty()) /* 如果流之前被标记为半关闭, 且有残留数据, 优先返回 */
+        /* 如果流之前被标记为半关闭, 且有残留数据, 优先返回 */
+        if (streamInfo->finReceived && !streamInfo->reassembledData.empty())
         {
             auto result = std::make_shared<std::vector<uint8_t>>();
             result->swap(streamInfo->reassembledData);
@@ -1539,7 +1530,6 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
             result->insert(result->end(), payload, payload + payloadLen);
         }
         m_tcpStreamCache.erase(iter);
-        m_tcpStreamLruList.erase(streamInfo->lruIter);
         return result;
     }
     if (tcpHeader->flagFin) /* 处理FIN: 进入半关闭状态, 不立即删除流 */
@@ -1604,7 +1594,6 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
         if (result->empty() && streamInfo->segments.empty())
         {
             m_tcpStreamCache.erase(iter);
-            m_tcpStreamLruList.erase(streamInfo->lruIter);
         }
         else
         {
@@ -1715,9 +1704,9 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
         if (result->size() > m_tcpReassemblyCfg.maxStreamSize)
         {
             /* 截断前强制通知所有等待的解析器, 防止内存泄露 */
-            if (!streamInfo->waitingProtocolList.empty())
+            if (!streamInfo->wpWaitingParserList.empty())
             {
-                streamInfo->waitingProtocolList.clear();
+                streamInfo->wpWaitingParserList.clear();
                 streamInfo->needMoreData = false;
             }
             size_t excess = result->size() - m_tcpReassemblyCfg.maxStreamSize;
@@ -1833,7 +1822,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
                     streamInfo->isSeqInitialized = true;
                     streamInfo->segments.clear();
                     streamInfo->reassembledData.clear();
-                    streamInfo->waitingProtocolList.clear();
+                    streamInfo->wpWaitingParserList.clear();
                     streamInfo->needMoreData = false;
                     streamInfo->finReceived = false;
                     streamInfo->rstReceived = false;
@@ -1848,65 +1837,5 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
         needMoreData = true;
     }
     return nullptr;
-}
-
-void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point& ntp)
-{
-    if (!m_tcpReassemblyCfg.enable)
-    {
-        return;
-    }
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastTcpCleanupTime).count() <= m_tcpReassemblyCfg.streamClearInterval)
-    {
-        return;
-    }
-    m_lastTcpCleanupTime = ntp;
-    /* step1. 清理超时流缓存, 从LRU链表头部(最旧)开始检查, 直到遇到未超时的条目 */
-    std::vector<std::list<TcpStreamKey>::iterator> removeList;
-    auto iter = m_tcpStreamLruList.begin();
-    while (m_tcpStreamLruList.end() != iter)
-    {
-        auto mapIter = m_tcpStreamCache.find(*iter);
-        if (m_tcpStreamCache.end() == mapIter)
-        {
-            iter = m_tcpStreamLruList.erase(iter);
-            continue;
-        }
-        /* FIN状态使用短超时, 正常状态使用标准超时 */
-        size_t timeoutThreshold = mapIter->second->finReceived ? m_tcpReassemblyCfg.finWaitTimeout : m_tcpReassemblyCfg.streamTimeout;
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - mapIter->second->lastAccessTime).count();
-        if (elapsed <= (int64_t)timeoutThreshold) /* 遇到未超时的, 停止遍历(LRU有序, 后面的更新) */
-        {
-            break;
-        }
-        removeList.push_back(iter); /* 记录待删除 */
-        ++iter;
-    }
-    for (auto& listIter : removeList) /* 批量删除超时的 */
-    {
-        auto mapIter = m_tcpStreamCache.find(*listIter);
-        if (m_tcpStreamCache.end() != mapIter)
-        {
-            m_tcpStreamCache.erase(mapIter);
-        }
-        m_tcpStreamLruList.erase(listIter);
-    }
-    /* step2. 限制流缓存大小, , 直接从LRU尾部删除最旧的, 无需排序 */
-    size_t cacheSize = m_tcpStreamCache.size();
-    if (cacheSize > m_tcpReassemblyCfg.maxStreamCount)
-    {
-        size_t needRemove = cacheSize - m_tcpReassemblyCfg.maxStreamCount;
-        iter = m_tcpStreamLruList.begin(); /* 从头部(最旧)直接删除N个 */
-        while (needRemove > 0 && m_tcpStreamLruList.end() != iter)
-        {
-            auto mapIter = m_tcpStreamCache.find(*iter);
-            if (m_tcpStreamCache.end() != mapIter)
-            {
-                m_tcpStreamCache.erase(mapIter);
-            }
-            iter = m_tcpStreamLruList.erase(iter);
-            --needRemove;
-        }
-    }
 }
 } // namespace npacket
