@@ -1,6 +1,7 @@
 #include "analyzer.h"
 
 #include <algorithm>
+#include <unordered_set>
 
 #include "helper.h"
 
@@ -671,7 +672,6 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         }
     }
     /* step2. 准备解析数据(可能是合并后的) */
-    std::vector<uint8_t> combinedData;
     const uint8_t* fullData = payload;
     uint32_t fullDataLen = payloadLen;
     std::shared_ptr<TcpStreamInfo> streamInfo = nullptr;
@@ -681,9 +681,11 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         if (m_tcpStreamCache.end() != iter)
         {
             streamInfo = iter->second;
-            if (streamInfo && !streamInfo->reassembledData.empty()) /* 如果之前有缓存的未消费数据, 与新数据合并 */
+            if (streamInfo && !streamInfo->reassembledData.empty()) /* 如果之前有缓存的未消费数据 */
             {
                 /* 合并历史数据 + 新数据 */
+                static thread_local std::vector<uint8_t> combinedData;
+                combinedData.clear();
                 combinedData.reserve(streamInfo->reassembledData.size() + payloadLen);
                 combinedData.insert(combinedData.end(), std::make_move_iterator(streamInfo->reassembledData.begin()),
                                     std::make_move_iterator(streamInfo->reassembledData.end()));
@@ -696,7 +698,10 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         }
     }
     /* step3. 获取候选解析器 */
-    std::vector<std::shared_ptr<ProtocolParser>> parserList;
+    static thread_local std::vector<std::shared_ptr<ProtocolParser>> parserList;
+    static thread_local std::unordered_set<uint32_t> addedList;
+    parserList.clear();
+    addedList.clear();
     {
         std::lock_guard<std::mutex> locker(m_mutexParserList);
         /* 1. 首先查找等待数据的解析器 */
@@ -708,7 +713,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                 auto waitingParser = wpParser.lock();
                 for (const auto& parser : m_applicationParserList) /* 检查是否仍在全局列表中(未被删除) */
                 {
-                    if (waitingParser == parser)
+                    if (waitingParser == parser && addedList.insert(parser->getProtocol()).second)
                     {
                         parserList.emplace_back(parser);
                         waitingParserList.emplace_back(wpParser);
@@ -726,36 +731,15 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             {
                 iter = m_applicationParserMap.find(srcPort);
             }
-            if (m_applicationParserMap.end() != iter)
+            if (m_applicationParserMap.end() != iter && addedList.insert(iter->second->getProtocol()).second)
             {
-                bool findFlag = false;
-                for (const auto& parser : parserList)
-                {
-                    if (iter->second == parser)
-                    {
-                        findFlag = true;
-                        break;
-                    }
-                }
-                if (!findFlag)
-                {
-                    parserList.emplace_back(iter->second);
-                }
+                parserList.emplace_back(iter->second);
             }
         }
         /* 3. 最后查找其他解析器(排除已添加的端口匹配协议) */
         for (const auto& parser : m_applicationParserList)
         {
-            bool findFlag = false;
-            for (const auto& item : parserList)
-            {
-                if (item == parser)
-                {
-                    findFlag = true;
-                    break;
-                }
-            }
-            if (!findFlag)
+            if (addedList.insert(parser->getProtocol()).second)
             {
                 parserList.emplace_back(parser);
             }
@@ -805,8 +789,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         if (anySuccess) /* 成功处理, 更新状态 */
         {
             offset += successConsumeLen;
-            /* 如果之前有等待的解析器, 清空(因为成功了) */
-            if (streamInfo)
+            if (streamInfo) /* 如果之前有等待的解析器, 清空(因为成功了) */
             {
                 streamInfo->wpWaitingParserList.clear();
                 streamInfo->needMoreData = false;
@@ -819,19 +802,18 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             {
                 if (streamInfo)
                 {
-                    /* 重新查找流信息, 确保流仍然存在 */
                     streamInfo->wpWaitingParserList = continueParserList;
                     streamInfo->needMoreData = true;
-                    /* 保存未消费的数据(相对于合并后的数据) */
-                    std::vector<uint8_t> newUnconsumedData(fullData + offset, fullData + fullDataLen);
+                    /* 保存未使用的数据(相对于合并后的数据) */
+                    std::vector<uint8_t> unusedData(fullData + offset, fullData + fullDataLen);
                     if (streamInfo->reassembledData.empty())
                     {
-                        streamInfo->reassembledData = std::move(newUnconsumedData);
+                        streamInfo->reassembledData = std::move(unusedData);
                     }
                     else
                     {
                         /* 先检查合并后大小, 避免超过限制 */
-                        size_t totalSize = streamInfo->reassembledData.size() + newUnconsumedData.size();
+                        size_t totalSize = streamInfo->reassembledData.size() + unusedData.size();
                         if (totalSize > m_tcpReassemblyCfg.maxStreamSize)
                         {
                             /* 保留最新的数据(尾部) */
@@ -839,7 +821,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                             if (excess >= streamInfo->reassembledData.size())
                             {
                                 /* 旧数据全部废弃, 使用新数据 */
-                                streamInfo->reassembledData = std::move(newUnconsumedData);
+                                streamInfo->reassembledData = std::move(unusedData);
                                 /* 调整期望序列号, 标记有数据丢失 */
                                 if (streamInfo->nextExpectedSeq > excess)
                                 {
@@ -850,14 +832,12 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                             {
                                 streamInfo->reassembledData.erase(streamInfo->reassembledData.begin(),
                                                                   streamInfo->reassembledData.begin() + excess);
-                                streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), newUnconsumedData.begin(),
-                                                                   newUnconsumedData.end());
+                                streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), unusedData.begin(), unusedData.end());
                             }
                         }
                         else
                         {
-                            streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), newUnconsumedData.begin(),
-                                                               newUnconsumedData.end());
+                            streamInfo->reassembledData.insert(streamInfo->reassembledData.end(), unusedData.begin(), unusedData.end());
                         }
                     }
                 }
