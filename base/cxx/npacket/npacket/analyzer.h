@@ -55,11 +55,11 @@ struct IpReassemblyConfig
 {
     bool enable = true; /* 是否启用IP分片重组功能 */
     size_t fragTimeout = 30000; /* 分片重组超时时间(毫秒) */
-    size_t fragClearInterval = 6000; /* 分片缓存清理间隔(毫秒) */
+    size_t fragClearInterval = 10001; /* 分片缓存清理间隔(毫秒) */
     size_t maxFragSize = 8192; /* 单个分片最大负载大小(防止大分片攻击) */
     size_t maxFragmentCount = 32; /* 每组分片最大数量(防止分片攻击) */
     size_t maxReassembleSize = 65535; /* 最大重组后数据包大小(防止分片攻击) */
-    size_t maxCacheCount = 500; /* 最大分片缓存数量(防止分片攻击) */
+    size_t maxCacheCount = 1000; /* 最大分片缓存数量(防止分片攻击) */
     size_t maxRecursionDepth = 3; /* 最大递归深度(防止分片嵌套攻击) */
 };
 
@@ -70,7 +70,7 @@ struct TcpReassemblyConfig
 {
     bool enable = true; /* 是否启用IP分片重组功能 */
     size_t streamTimeout = 30000; /* 流超时时间(毫秒) */
-    size_t streamClearInterval = 6000; /* 流缓存清理间隔(毫秒) */
+    size_t streamClearInterval = 10001; /* 流缓存清理间隔(毫秒) */
     size_t maxStreamSize = 1048576; /* 单个流最大缓存大小(1MB) */
     size_t maxStreamCount = 1000; /* 最大流数量 */
     size_t maxSegmentsPerStream = 32; /* 单流最大乱序段数(防止DoS攻击) */
