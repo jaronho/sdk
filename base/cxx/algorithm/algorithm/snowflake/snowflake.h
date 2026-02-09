@@ -12,8 +12,8 @@ class Snowflake
 public:
     /**
      * @brief 构造函数
-     * @param datacenterId 数据中心ID(5位), 例如: 0~99999
-     * @param workerId 工作机器ID(5位), 例如: 0~99999
+     * @param datacenterId 数据中心ID(5位), 例如: 0~31
+     * @param workerId 工作机器ID(6位), 例如: 0~63
      */
     Snowflake(uint64_t datacenterId = 0, uint64_t workerId = 0);
 
@@ -32,8 +32,8 @@ public:
 private:
     uint64_t m_timestamp; /* 时间戳(41位),精确到毫秒,支持2^41/365/24/60/60/1000=69.7年 */
     /* 整个分布式系统内不会产生ID碰撞(由datacenterId和workerId作区分),支持1024个进程 */
-    uint64_t m_datacenterId; /* 数据中心ID(5位) */
-    uint64_t m_workerId; /* 工作机器ID(5位) */
+    uint64_t m_datacenterId; /* 数据中心ID(5位), 值: 0~31 */
+    uint64_t m_workerId; /* 工作机器ID(6位), 值: 0~63 */
     uint64_t m_sequence; /* 序列号(12位),每毫秒从0开始自增,支持4096个编号 */
     std::atomic_flag m_lock; /* 实例级锁, 非全局锁 */
 };
