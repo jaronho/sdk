@@ -134,24 +134,37 @@ inline void appendString(char*& p, const std::string& s)
 
 inline void appendInt(char*& p, int v)
 {
-    if (v < 10000)
+    if (0 == v)
     {
-        if (v >= 1000)
+        *p++ = '0';
+        return;
+    }
+    if (v < 0)
+    {
+        *p++ = '-';
+        v = -v;
+    }
+    if (v < 1000) /* 小整数展开 */
+    {
+        if (v >= 100)
         {
-            *p++ = '0' + v / 1000;
-            v %= 1000;
-        }
-        else if (v >= 100)
-        {
-            *p++ = '0' + v / 100, v %= 100;
+            *p++ = (char)('0' + v / 100);
+            v %= 100;
+            *p++ = (char)('0' + v / 10);
+            *p++ = (char)('0' + v % 10);
         }
         else if (v >= 10)
         {
-            *p++ = '0' + v / 10, v %= 10;
+            *p++ = (char)('0' + v / 10);
+            *p++ = (char)('0' + v % 10);
         }
-        *p++ = '0' + v;
+        else
+        {
+            *p++ = (char)('0' + v);
+        }
         return;
     }
+    /* 大整数通用实现 */
     char tmp[16];
     int i = 0;
     while (v > 0)
