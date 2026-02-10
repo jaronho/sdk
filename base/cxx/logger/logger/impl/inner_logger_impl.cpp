@@ -368,7 +368,7 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
         useHeap = true;
     }
     char* p = buf;
-    DateTime& dt = getDateTime();
+    const auto& dt = getDateTime();
     /* 级别 */
     appendChar(p, getLevelShortName(level));
     /* 时间, [YYYY-MM-DD HH:MM:SS.mmm] */

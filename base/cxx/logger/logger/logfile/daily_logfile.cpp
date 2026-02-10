@@ -2,6 +2,23 @@
 
 #include <stdio.h>
 
+inline struct tm& getLocalTime()
+{
+    static thread_local struct tm localTime;
+    static thread_local time_t lastSec = 0;
+    time_t nowSec = time(nullptr); /* 只获取秒级时间 */
+    if (nowSec != lastSec)
+    {
+        lastSec = nowSec;
+#ifdef _WIN32
+        localtime_s(&localTime, &nowSec);
+#else
+        localtime_r(&nowSec, &localTime);
+#endif
+    }
+    return localTime;
+}
+
 DailyLogfile::DailyLogfile(const std::string& path, const std::string& prefixName, const std::string& suffixName,
                            const std::string& extName, size_t maxSize, size_t maxFiles, bool indexFixed, bool createDailyFolder)
 {
@@ -57,13 +74,7 @@ void DailyLogfile::setMaxFiles(size_t maxFiles)
 
 Logfile::Result DailyLogfile::record(const std::string& content, bool newline, bool immediateFlush)
 {
-    time_t now = time(nullptr);
-    struct tm localTm;
-#ifdef _WIN32
-    localtime_s(&localTm, &now);
-#else
-    localTm = *localtime(&now);
-#endif
+    const auto& localTm = getLocalTime();
     auto today = (localTm.tm_year + 1900) * 10000 + (localTm.tm_mon + 1) * 100 + localTm.tm_mday; /* 用本地时间的年月日组合作为天数标识 */
     if (today != m_today.load(std::memory_order_relaxed)) /* 优先原子判断(避免格式化时间字符串, 避免加锁, 提升性能) */
     {
