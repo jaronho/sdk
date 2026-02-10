@@ -13,84 +13,7 @@
 
 namespace logger
 {
-struct DateTime
-{
-    char ymd[12]; /* 年月日 */
-    char hms[12]; /* 时分秒 */
-    char ms[4]; /* 毫秒 */
-};
-
-DateTime getDateTime()
-{
-    struct tm t;
-#ifdef _WIN32
-    SYSTEMTIME now;
-    GetLocalTime(&now);
-    t.tm_year = now.wYear - 1900;
-    t.tm_mon = now.wMonth - 1;
-    t.tm_mday = now.wDay;
-    t.tm_hour = now.wHour;
-    t.tm_min = now.wMinute;
-    t.tm_sec = now.wSecond;
-    long milliseconds = now.wMilliseconds;
-#else
-    struct timeval now;
-    gettimeofday(&now, NULL);
-    localtime_r(&now.tv_sec, &t);
-    long milliseconds = now.tv_usec / 1000;
-#endif
-    DateTime dt;
-    strftime(dt.ymd, sizeof(dt.ymd), "%Y-%m-%d", &t);
-    strftime(dt.hms, sizeof(dt.hms), "%H:%M:%S", &t);
-#ifdef _WIN32
-    sprintf_s(dt.ms, sizeof(dt.ms), "%03d", milliseconds);
-#else
-    sprintf(dt.ms, "%03d", milliseconds);
-#endif
-    return dt;
-}
-
-std::string getLevelShortName(int level)
-{
-    switch (level)
-    {
-    case LEVEL_TRACE:
-        return std::string("T");
-    case LEVEL_DEBUG:
-        return std::string("D");
-    case LEVEL_INFO:
-        return std::string("I");
-    case LEVEL_WARN:
-        return std::string("W");
-    case LEVEL_ERROR:
-        return std::string("E");
-    case LEVEL_FATAL:
-        return std::string("F");
-    }
-    return std::to_string(level);
-}
-
-fmt::v7::text_style getLevelTextStyle(const int level)
-{
-    switch (level)
-    {
-    case LEVEL_TRACE:
-        return fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(255, 77, 222)));
-    case LEVEL_DEBUG:
-        return fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(75, 204, 239)));
-    case LEVEL_INFO:
-        return fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(236, 236, 236)));
-    case LEVEL_WARN:
-        return fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(222, 220, 21)));
-    case LEVEL_ERROR:
-        return fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(255, 128, 114)));
-    case LEVEL_FATAL:
-        return fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(255, 0, 0)));
-    }
-    return fmt::v7::fg(fmt::v7::color::white);
-}
-
-int getProcessId()
+inline int getProcessId()
 {
 #ifdef _WIN32
     return _getpid();
@@ -99,13 +22,147 @@ int getProcessId()
 #endif
 }
 
-int getThreadId()
+inline int getThreadId()
 {
 #ifdef _WIN32
     return GetCurrentThreadId();
 #else
     return syscall(__NR_gettid);
 #endif
+}
+
+struct DateTime
+{
+    char ymd[12]; /* 年月日 */
+    char hms[12]; /* 时分秒 */
+    char ms[4]; /* 毫秒 */
+};
+
+inline DateTime& getDateTime()
+{
+    static thread_local DateTime dt;
+    static thread_local uint64_t lastMs = 0;
+    struct timeval tv;
+#ifdef _WIN32
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    tv.tv_sec = time(nullptr);
+    tv.tv_usec = st.wMilliseconds * 1000;
+#else
+    gettimeofday(&tv, nullptr);
+#endif
+    uint64_t nowMs = (uint64_t)(tv.tv_sec) * 1000 + tv.tv_usec / 1000;
+    if (nowMs != lastMs)
+    {
+        lastMs = nowMs;
+        struct tm t;
+#ifdef _WIN32
+        localtime_s(&t, (const time_t*)(&tv.tv_sec));
+#else
+        localtime_r((const time_t*)(&tv.tv_sec), &t);
+#endif
+        /* 手动格式化, 避免strftime */
+        auto itoa2 = [](int v, char* p) {
+            *p = (char)('0' + v / 10);
+            *(p + 1) = (char)('0' + v % 10);
+        };
+        auto itoa4 = [](int v, char* p) {
+            *(p + 3) = (char)('0' + v % 10);
+            v /= 10;
+            *(p + 2) = (char)('0' + v % 10);
+            v /= 10;
+            *(p + 1) = (char)('0' + v % 10);
+            v /= 10;
+            *p = (char)('0' + v);
+        };
+        itoa4(t.tm_year + 1900, dt.ymd);
+        dt.ymd[4] = '-';
+        itoa2(t.tm_mon + 1, dt.ymd + 5);
+        dt.ymd[7] = '-';
+        itoa2(t.tm_mday, dt.ymd + 8);
+        dt.ymd[10] = '\0';
+        itoa2(t.tm_hour, dt.hms);
+        dt.hms[2] = ':';
+        itoa2(t.tm_min, dt.hms + 3);
+        dt.hms[5] = ':';
+        itoa2(t.tm_sec, dt.hms + 6);
+        dt.hms[8] = '\0';
+        int ms = tv.tv_usec / 1000;
+        dt.ms[0] = (char)('0' + ms / 100);
+        dt.ms[1] = (char)('0' + (ms / 10) % 10);
+        dt.ms[2] = (char)('0' + ms % 10);
+        dt.ms[3] = '\0';
+    }
+    return dt;
+}
+
+inline char getLevelShortName(int level)
+{
+    static const char LEVEL_NAME[] = "TDIWEF";
+    return (level >= 0 && level <= 5) ? LEVEL_NAME[level] : (char)('0' + level);
+}
+
+inline fmt::v7::text_style getLevelTextStyle(const int level)
+{
+    static const fmt::v7::text_style LEVEL_STYLES[] = {
+        fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(255, 77, 222))),
+        fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(75, 204, 239))),
+        fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(236, 236, 236))),
+        fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(222, 220, 21))),
+        fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(255, 128, 114))),
+        fmt::v7::fg(fmt::v7::detail::color_type(fmt::v7::rgb(255, 0, 0))),
+    };
+    return (level >= 0 && level <= 5) ? LEVEL_STYLES[level] : fmt::v7::fg(fmt::v7::color::white);
+}
+
+inline void appendChar(char*& p, char c)
+{
+    *p++ = c;
+}
+
+inline void appendCstr(char*& p, const char* s, size_t n)
+{
+    memcpy(p, s, n);
+    p += n;
+}
+
+inline void appendString(char*& p, const std::string& s)
+{
+    memcpy(p, s.data(), s.size());
+    p += s.size();
+}
+
+inline void appendInt(char*& p, int v)
+{
+    if (v < 10000)
+    {
+        if (v >= 1000)
+        {
+            *p++ = '0' + v / 1000;
+            v %= 1000;
+        }
+        else if (v >= 100)
+        {
+            *p++ = '0' + v / 100, v %= 100;
+        }
+        else if (v >= 10)
+        {
+            *p++ = '0' + v / 10, v %= 10;
+        }
+        *p++ = '0' + v;
+        return;
+    }
+    char tmp[16];
+    int i = 0;
+    while (v > 0)
+    {
+        tmp[i++] = (char)('0' + (v % 10));
+        v /= 10;
+    }
+    while (i--)
+    {
+        *p++ = tmp[i];
+    }
 }
 
 InnerLoggerImpl::InnerLoggerImpl(const LogConfig& cfg) : InnerLogger(cfg.path, cfg.name)
@@ -272,50 +329,104 @@ void InnerLoggerImpl::setConsoleMode(int mode)
 void InnerLoggerImpl::print(int level, const std::string& tag, const std::string& file, int line, const std::string& func,
                             const std::string& msg)
 {
-    static const std::string PID = std::to_string(getProcessId());
-    DateTime dt = getDateTime();
-    /* 拼接日志内容 */
-    std::string content;
-    content.append(getLevelShortName(level)); /* 级别 */
-    content.append("[").append(dt.ymd).append(" ").append(dt.hms).append(".").append(dt.ms).append("]"); /* 时间 */
-    content.append("[").append(PID).append(":").append(std::to_string(getThreadId())).append("]"); /* 进程:线程 */
+    if (level < m_level.load(std::memory_order_relaxed))
+    {
+        return;
+    }
+    /* 静态缓存 */
+    static const int PID = getProcessId();
+    static thread_local int TID = getThreadId();
+    static const size_t STACK_BUF_SIZE = 4096;
+    static thread_local char stackBuf[STACK_BUF_SIZE];
+    static thread_local std::string heapBuf;
+    static thread_local size_t heapCapacity = 0;
+    char* buf = stackBuf;
+    bool useHeap = false;
+    size_t totalLen = 512 + msg.size(); /* 预计算总长度 */
+    if (totalLen > STACK_BUF_SIZE)
+    {
+        if (heapCapacity < totalLen)
+        {
+            heapBuf.reserve(totalLen);
+            heapCapacity = heapBuf.capacity();
+        }
+        heapBuf.clear();
+        buf = (char*)heapBuf.data();
+        useHeap = true;
+    }
+    char* p = buf;
+    DateTime& dt = getDateTime();
+    /* 级别 */
+    appendChar(p, getLevelShortName(level));
+    /* 时间, [YYYY-MM-DD HH:MM:SS.mmm] */
+    appendChar(p, '[');
+    appendCstr(p, dt.ymd, 10);
+    appendChar(p, ' ');
+    appendCstr(p, dt.hms, 8);
+    appendChar(p, '.');
+    appendCstr(p, dt.ms, 3);
+    appendChar(p, ']');
+    /* [进程:线程] */
+    appendChar(p, '[');
+    appendInt(p, PID);
+    appendChar(p, ':');
+    appendInt(p, TID);
+    appendChar(p, ']');
+    /* [标签] */
     if (!tag.empty())
     {
-        content.append("[").append(tag).append("]"); /* 标签 */
+        appendChar(p, '[');
+        appendString(p, tag);
+        appendChar(p, ']');
     }
-    if (!file.empty()) /* 文件名 行号 */
+    /* [文件名 函数名 行号] */
+    if (!file.empty() || !func.empty())
     {
-        content.append("[").append(file).append(" ").append(std::to_string(line));
-        if (!func.empty()) /* 函数名 */
+        appendChar(p, '[');
+        if (!file.empty())
         {
-            content.append(" ").append(func);
+            appendString(p, file);
+            if (!func.empty())
+            {
+                appendChar(p, ' ');
+            }
         }
-        content.append("]");
+        if (!func.empty())
+        {
+            appendString(p, func);
+        }
+        appendChar(p, ' ');
+        appendInt(p, line);
+        appendChar(p, ']');
     }
-    else if (!func.empty()) /* 函数名 */
+    /* 内容 */
+    appendChar(p, ' ');
+    appendString(p, msg);
+    size_t bufLen = (size_t)(p - buf);
+    /* 记录到文件 */
+    auto dailyLog = getDailyLog(level);
+    if (dailyLog)
     {
-        content.append("[").append(func).append("]");
+        bool immediateFlush = (level >= m_flushLevel);
+        if (useHeap)
+        {
+            dailyLog->record(std::move(heapBuf), immediateFlush); /* 直接移动(零拷贝) */
+            heapCapacity = 0; /* 标记已转移, 下次重新分配 */
+        }
+        else
+        {
+            dailyLog->record(buf, bufLen, immediateFlush);
+        }
     }
-    content.append(" ").append(msg); /* 内容 */
-    /* 日志记录/打印 */
-    if (level >= m_level)
+    /* 打印到控制台 */
+    if (1 == m_consoleMode)
     {
-        /* 记录到文件 */
-        auto dailyLog = getDailyLog(level);
-        if (dailyLog)
-        {
-            bool immediateFlush = (level >= m_flushLevel);
-            dailyLog->record(content, true, immediateFlush);
-        }
-        /* 打印到控制台 */
-        if (1 == m_consoleMode)
-        {
-            fmt::print(fmt::v7::text_style(), "{}\n", content);
-        }
-        else if (2 == m_consoleMode)
-        {
-            fmt::print(getLevelTextStyle(level), "{}\n", content);
-        }
+        fwrite(buf, 1, bufLen, stdout);
+        fwrite("\n", 1, 1, stdout);
+    }
+    else if (2 == m_consoleMode)
+    {
+        fmt::print(getLevelTextStyle(level), "{}\n", fmt::v7::string_view(buf, bufLen));
     }
 }
 
