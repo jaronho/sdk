@@ -349,25 +349,9 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
     /* 静态缓存 */
     static const int PID = getProcessId();
     static thread_local int TID = getThreadId();
-    static const size_t STACK_BUF_SIZE = 4096;
-    static thread_local char stackBuf[STACK_BUF_SIZE];
-    static thread_local std::string heapBuf;
-    static thread_local size_t heapCapacity = 0;
-    char* buf = stackBuf;
-    bool useHeap = false;
-    size_t totalLen = 512 + msg.size(); /* 预计算总长度 */
-    if (totalLen > STACK_BUF_SIZE)
-    {
-        if (heapCapacity < totalLen)
-        {
-            heapBuf.reserve(totalLen);
-            heapCapacity = heapBuf.capacity();
-        }
-        heapBuf.clear();
-        buf = (char*)heapBuf.data();
-        useHeap = true;
-    }
-    char* p = buf;
+    static thread_local std::vector<char> buffer;
+    buffer.reserve(512 + msg.size()); /* 预分配总长度 */
+    char* p = (char*)buffer.data();
     const auto& dt = getDateTime();
     /* 级别 */
     appendChar(p, getLevelShortName(level));
@@ -415,31 +399,24 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
     /* 内容 */
     appendChar(p, ' ');
     appendString(p, msg);
-    size_t bufLen = (size_t)(p - buf);
+    /* 换行符 */
+    appendChar(p, '\n');
+    size_t bufLen = p - buffer.data();
     /* 记录到文件 */
     auto dailyLog = getDailyLog(level);
     if (dailyLog)
     {
         bool immediateFlush = (level >= m_flushLevel);
-        if (useHeap)
-        {
-            dailyLog->record(std::move(heapBuf), immediateFlush); /* 直接移动(零拷贝) */
-            heapCapacity = 0; /* 标记已转移, 下次重新分配 */
-        }
-        else
-        {
-            dailyLog->record(buf, bufLen, immediateFlush);
-        }
+        dailyLog->record(std::string(buffer.data(), bufLen), false, immediateFlush);
     }
     /* 打印到控制台 */
     if (1 == m_consoleMode)
     {
-        fwrite(buf, 1, bufLen, stdout);
-        fwrite("\n", 1, 1, stdout);
+        fwrite(buffer.data(), 1, bufLen, stdout);
     }
     else if (2 == m_consoleMode)
     {
-        fmt::print(getLevelTextStyle(level), "{}\n", fmt::v7::string_view(buf, bufLen));
+        fmt::print(getLevelTextStyle(level), "{}", fmt::v7::string_view(buffer.data(), bufLen));
     }
 }
 
