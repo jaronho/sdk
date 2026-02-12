@@ -940,36 +940,28 @@ void Analyzer::cleanupFragmentCache(const std::chrono::steady_clock::time_point&
         return;
     }
     m_lastCleanupTime = ntp;
-    /* step1. 清理超时分片缓存 */
+    static thread_local std::vector<std::pair<FragmentKey, std::chrono::steady_clock::time_point>> entries;
+    entries.clear();
+    entries.reserve(m_fragmentCache.size());
     for (auto iter = m_fragmentCache.begin(); m_fragmentCache.end() != iter;)
     {
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - iter->second->lastAccessTime).count()
-            > m_ipReassemblyCfg.fragTimeout)
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - iter->second->lastAccessTime).count();
+        if (elapsed > m_ipReassemblyCfg.fragTimeout) /* 清理超时分片缓存 */
         {
             iter = m_fragmentCache.erase(iter);
         }
         else
         {
+            entries.emplace_back(iter->first, iter->second->lastAccessTime); /* 收集条目 */
             ++iter;
         }
     }
-    /* step2. 限制分片缓存大小 */
-    auto cacheSize = m_fragmentCache.size();
-    if (cacheSize > m_ipReassemblyCfg.maxCacheCount)
+    if (entries.size() > m_ipReassemblyCfg.maxCacheCount) /* 限制分片缓存大小 */
     {
-        auto needRemoveCount = cacheSize - m_ipReassemblyCfg.maxCacheCount;
-        /* 收集条目 */
-        static thread_local std::vector<std::pair<FragmentKey, std::chrono::steady_clock::time_point>> entries;
-        entries.clear();
-        entries.reserve(cacheSize);
-        for (const auto& kv : m_fragmentCache)
-        {
-            entries.emplace_back(kv.first, kv.second->lastAccessTime);
-        }
-        std::nth_element(entries.begin(), entries.begin() + needRemoveCount, entries.end(),
-                         [](const auto& a, const auto& b) { return a.second < b.second; });
-        /* 删除最旧的条目 */
-        for (size_t i = 0; i < needRemoveCount && i < entries.size(); ++i)
+        auto needRemoveCount = entries.size() - m_ipReassemblyCfg.maxCacheCount;
+        static const auto compareFunc = [](const auto& a, const auto& b) { return a.second < b.second; };
+        std::nth_element(entries.begin(), entries.begin() + needRemoveCount, entries.end(), compareFunc);
+        for (size_t i = 0; i < needRemoveCount; ++i) /* 删除最旧的条目 */
         {
             m_fragmentCache.erase(entries[i].first);
         }
@@ -1307,37 +1299,30 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
         return;
     }
     m_lastTcpCleanupTime = ntp;
-    /* 清理超时的流 */
+    static thread_local std::vector<std::pair<TcpStreamKey, std::chrono::steady_clock::time_point>> entries;
+    entries.clear();
+    entries.reserve(m_tcpStreamCache.size());
     for (auto iter = m_tcpStreamCache.begin(); iter != m_tcpStreamCache.end();)
     {
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - iter->second->lastAccessTime).count();
         /* FIN状态使用短超时, 正常状态使用标准超时 */
-        size_t timeoutThreshold = iter->second->finReceived ? m_tcpReassemblyCfg.finWaitTimeout : m_tcpReassemblyCfg.streamTimeout;
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - iter->second->lastAccessTime).count() > timeoutThreshold)
+        auto timeoutThreshold = iter->second->finReceived ? m_tcpReassemblyCfg.finWaitTimeout : m_tcpReassemblyCfg.streamTimeout;
+        if (elapsed > timeoutThreshold) /* 清理超时的流 */
         {
             iter = m_tcpStreamCache.erase(iter);
         }
         else
         {
+            entries.emplace_back(iter->first, iter->second->lastAccessTime); /* 收集条目 */
             ++iter;
         }
     }
-    /* 限制流数量(LRU) */
-    auto cacheSize = m_tcpStreamCache.size();
-    if (cacheSize > m_tcpReassemblyCfg.maxStreamCount)
+    if (entries.size() > m_tcpReassemblyCfg.maxStreamCount) /* 限制流数量(LRU) */
     {
-        auto needRemoveCount = cacheSize - m_tcpReassemblyCfg.maxStreamCount;
-        /* 收集条目 */
-        static thread_local std::vector<std::pair<TcpStreamKey, std::chrono::steady_clock::time_point>> entries;
-        entries.clear();
-        entries.reserve(cacheSize);
-        for (const auto& kv : m_tcpStreamCache)
-        {
-            entries.emplace_back(kv.first, kv.second->lastAccessTime);
-        }
-        std::nth_element(entries.begin(), entries.begin() + needRemoveCount, entries.end(),
-                         [](const auto& a, const auto& b) { return a.second < b.second; });
-        /* 删除最旧的条目 */
-        for (size_t i = 0; i < needRemoveCount && i < entries.size(); ++i)
+        auto needRemoveCount = entries.size() - m_tcpReassemblyCfg.maxStreamCount;
+        static const auto compareFunc = [](const auto& a, const auto& b) { return a.second < b.second; };
+        std::nth_element(entries.begin(), entries.begin() + needRemoveCount, entries.end(), compareFunc);
+        for (size_t i = 0; i < needRemoveCount; ++i) /* 删除最旧的条目 */
         {
             m_tcpStreamCache.erase(entries[i].first);
         }
