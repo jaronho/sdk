@@ -59,7 +59,7 @@ struct IpReassemblyConfig
     size_t maxFragSize = 8192; /* 单个分片最大负载大小(防止大分片攻击) */
     size_t maxFragmentCount = 32; /* 每组分片最大数量(防止分片攻击) */
     size_t maxReassembleSize = 65535; /* 最大重组后数据包大小(防止分片攻击) */
-    size_t maxCacheCount = 1000; /* 最大分片缓存数量(防止分片攻击) */
+    size_t maxCacheCount = 10000; /* 最大分片缓存数量(防止分片攻击) */
     size_t maxRecursionDepth = 3; /* 最大递归深度(防止分片嵌套攻击) */
 };
 
@@ -72,7 +72,7 @@ struct TcpReassemblyConfig
     size_t streamTimeout = 30000; /* 流超时时间(毫秒) */
     size_t streamClearInterval = 10001; /* 流缓存清理间隔(毫秒) */
     size_t maxStreamSize = 1048576; /* 单个流最大缓存大小(1MB) */
-    size_t maxStreamCount = 1000; /* 最大流数量 */
+    size_t maxStreamCount = 10000; /* 最大流数量 */
     size_t maxSegmentsPerStream = 32; /* 单流最大乱序段数(防止DoS攻击) */
     size_t finWaitTimeout = 5000; /* 收到FIN后等待乱序数据重组的超时时间(毫秒) */
     size_t gapSizeThreshold = 4096; /* 尽力交付(Gap Tolerance)阈值(字节), 0-无限等待丢包数据, >0-当>=该值(跳过丢包), 当<该值(流重置) */

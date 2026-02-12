@@ -1310,10 +1310,9 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
     /* 清理超时的流 */
     for (auto iter = m_tcpStreamCache.begin(); iter != m_tcpStreamCache.end();)
     {
-        auto& streamInfo = iter->second;
         /* FIN状态使用短超时, 正常状态使用标准超时 */
-        size_t timeoutThreshold = streamInfo->finReceived ? m_tcpReassemblyCfg.finWaitTimeout : m_tcpReassemblyCfg.streamTimeout;
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - streamInfo->lastAccessTime).count() > timeoutThreshold)
+        size_t timeoutThreshold = iter->second->finReceived ? m_tcpReassemblyCfg.finWaitTimeout : m_tcpReassemblyCfg.streamTimeout;
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - iter->second->lastAccessTime).count() > timeoutThreshold)
         {
             iter = m_tcpStreamCache.erase(iter);
         }
@@ -1323,21 +1322,22 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
         }
     }
     /* 限制流数量(LRU) */
-    if (m_tcpStreamCache.size() > m_tcpReassemblyCfg.maxStreamCount)
+    auto cacheSize = m_tcpStreamCache.size();
+    if (cacheSize > m_tcpReassemblyCfg.maxStreamCount)
     {
-        auto needRemove = m_tcpStreamCache.size() - m_tcpReassemblyCfg.maxStreamCount;
+        auto needRemoveCount = cacheSize - m_tcpReassemblyCfg.maxStreamCount;
         /* 收集条目 */
         static thread_local std::vector<std::pair<TcpStreamKey, std::chrono::steady_clock::time_point>> entries;
         entries.clear();
-        entries.reserve(m_tcpStreamCache.size());
+        entries.reserve(cacheSize);
         for (const auto& kv : m_tcpStreamCache)
         {
             entries.emplace_back(kv.first, kv.second->lastAccessTime);
         }
-        std::nth_element(entries.begin(), entries.begin() + needRemove, entries.end(),
+        std::nth_element(entries.begin(), entries.begin() + needRemoveCount, entries.end(),
                          [](const auto& a, const auto& b) { return a.second < b.second; });
         /* 删除最旧的条目 */
-        for (size_t i = 0; i < needRemove && i < entries.size(); ++i)
+        for (size_t i = 0; i < needRemoveCount && i < entries.size(); ++i)
         {
             m_tcpStreamCache.erase(entries[i].first);
         }
