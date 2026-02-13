@@ -14,11 +14,11 @@
     } \
     catch (const std::exception& e) \
     { \
-        (logger).warn(filename, lineNumber, funcName, e.what()); \
+        (logger).warn(filename, lineNumber, funcName, e.what(), strlen(e.what())); \
     } \
     catch (...) \
     { \
-        (logger).warn(filename, lineNumber, funcName, "unknown exception"); \
+        (logger).warn(filename, lineNumber, funcName, "unknown exception", strlen("unknown exception")); \
     }
 
 #ifdef _WIN32

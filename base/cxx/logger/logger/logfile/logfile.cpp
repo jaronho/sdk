@@ -218,7 +218,7 @@ void Logfile::clear()
     }
 }
 
-Logfile::Result Logfile::record(const std::string& content, bool newline, bool immediateFlush)
+Logfile::Result Logfile::record(const char* content, size_t contentSize, bool newline, bool immediateFlush)
 {
     std::lock_guard<std::mutex> locker(m_mutex);
     if (!m_f)
@@ -229,7 +229,6 @@ Logfile::Result Logfile::record(const std::string& content, bool newline, bool i
     {
         return Result::disabled;
     }
-    size_t contentSize = content.size();
     if (m_maxSize > 0) /* 有限制文件大小 */
     {
         if (contentSize > m_maxSize)
@@ -255,7 +254,7 @@ Logfile::Result Logfile::record(const std::string& content, bool newline, bool i
     }
     if (contentSize > 0)
     {
-        if (0 == fwrite(content.c_str(), 1, contentSize, m_f))
+        if (0 == fwrite(content, 1, contentSize, m_f))
         {
             fclose(m_f);
             m_f = nullptr;
@@ -276,6 +275,11 @@ Logfile::Result Logfile::record(const std::string& content, bool newline, bool i
         m_flushed = true;
     }
     return Result::ok;
+}
+
+Logfile::Result Logfile::record(const std::string& content, bool newline, bool immediateFlush)
+{
+    return record(content.data(), content.size(), newline, immediateFlush);
 }
 
 bool Logfile::forceFlush()

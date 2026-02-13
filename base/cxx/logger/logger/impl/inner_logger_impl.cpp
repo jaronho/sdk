@@ -120,16 +120,10 @@ inline void appendChar(char*& p, char c)
     *p++ = c;
 }
 
-inline void appendCstr(char*& p, const char* s, size_t n)
+inline void appendString(char*& p, const char* s, size_t n)
 {
     memcpy(p, s, n);
     p += n;
-}
-
-inline void appendString(char*& p, const std::string& s)
-{
-    memcpy(p, s.data(), s.size());
-    p += s.size();
 }
 
 inline void appendInt(char*& p, int v)
@@ -339,8 +333,7 @@ void InnerLoggerImpl::setConsoleMode(int mode)
     m_consoleMode = mode;
 }
 
-void InnerLoggerImpl::print(int level, const std::string& tag, const std::string& file, int line, const std::string& func,
-                            const std::string& msg)
+void InnerLoggerImpl::print(int level, const std::string& tag, const char* file, int line, const char* func, const char* msg, size_t msgLen)
 {
     if (level < m_level.load(std::memory_order_relaxed))
     {
@@ -350,18 +343,24 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
     static const int PID = getProcessId();
     static thread_local int TID = getThreadId();
     static thread_local std::vector<char> buffer;
-    buffer.reserve(512 + msg.size()); /* 预分配总长度 */
+    static thread_local size_t bufferCapacity = 0;
+    size_t totalLen = 512 + msgLen; /* 预计算总长度 */
+    if (bufferCapacity < totalLen) /* 缓冲区扩容 */
+    {
+        buffer.reserve(totalLen);
+        bufferCapacity = buffer.capacity();
+    }
     char* p = (char*)buffer.data();
     const auto& dt = getDateTime();
     /* 级别 */
     appendChar(p, getLevelShortName(level));
     /* 时间, [YYYY-MM-DD HH:MM:SS.mmm] */
     appendChar(p, '[');
-    appendCstr(p, dt.ymd, 10);
+    appendString(p, dt.ymd, 10);
     appendChar(p, ' ');
-    appendCstr(p, dt.hms, 8);
+    appendString(p, dt.hms, 8);
     appendChar(p, '.');
-    appendCstr(p, dt.ms, 3);
+    appendString(p, dt.ms, 3);
     appendChar(p, ']');
     /* [进程:线程] */
     appendChar(p, '[');
@@ -373,32 +372,37 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
     if (!tag.empty())
     {
         appendChar(p, '[');
-        appendString(p, tag);
+        appendString(p, tag.data(), tag.size());
         appendChar(p, ']');
     }
     /* [文件名 函数名 行号] */
-    if (!file.empty() || !func.empty())
+    auto fileLen = (file ? strlen(file) : 0);
+    auto funcLen = (func ? strlen(func) : 0);
+    if (fileLen > 0 || funcLen > 0)
     {
         appendChar(p, '[');
-        if (!file.empty())
+        if (fileLen > 0)
         {
-            appendString(p, file);
-            if (!func.empty())
+            appendString(p, file, fileLen);
+            if (funcLen > 0)
             {
                 appendChar(p, ' ');
             }
         }
-        if (!func.empty())
+        if (funcLen > 0)
         {
-            appendString(p, func);
+            appendString(p, func, funcLen);
         }
         appendChar(p, ' ');
         appendInt(p, line);
         appendChar(p, ']');
     }
     /* 内容 */
-    appendChar(p, ' ');
-    appendString(p, msg);
+    if (msg && msgLen > 0)
+    {
+        appendChar(p, ' ');
+        appendString(p, msg, msgLen);
+    }
     /* 换行符 */
     appendChar(p, '\n');
     size_t bufLen = p - buffer.data();
@@ -407,7 +411,7 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
     if (dailyLog)
     {
         bool immediateFlush = (level >= m_flushLevel);
-        dailyLog->record(std::string(buffer.data(), bufLen), false, immediateFlush);
+        dailyLog->record(buffer.data(), bufLen, false, immediateFlush);
     }
     /* 打印到控制台 */
     if (1 == m_consoleMode)
@@ -418,6 +422,11 @@ void InnerLoggerImpl::print(int level, const std::string& tag, const std::string
     {
         fmt::print(getLevelTextStyle(level), "{}", fmt::v7::string_view(buffer.data(), bufLen));
     }
+}
+
+void InnerLoggerImpl::print(int level, const std::string& tag, const char* file, int line, const char* func, const std::string& msg)
+{
+    print(level, tag, file, line, func, msg.data(), msg.size());
 }
 
 void InnerLoggerImpl::forceFlush()

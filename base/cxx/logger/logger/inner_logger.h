@@ -115,9 +115,20 @@ public:
      * @param line 行号
      * @param func 函数名
      * @param msg 日志消息
+     * @param msgLen 日志消息长度
      */
-    virtual void print(int level, const std::string& tag, const std::string& file, int line, const std::string& func,
-                       const std::string& msg) = 0;
+    virtual void print(int level, const std::string& tag, const char* file, int line, const char* func, const char* msg, size_t msgLen) = 0;
+
+    /**
+     * @brief 打印日志
+     * @param level 日志等级
+     * @param tag 日志标签
+     * @param file 文件名
+     * @param line 行号
+     * @param func 函数名
+     * @param msg 日志消息
+     */
+    virtual void print(int level, const std::string& tag, const char* file, int line, const char* func, const std::string& msg) = 0;
 
     /**
      * @brief 强制刷新日志内容

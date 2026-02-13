@@ -72,7 +72,7 @@ void DailyLogfile::setMaxFiles(size_t maxFiles)
     }
 }
 
-Logfile::Result DailyLogfile::record(const std::string& content, bool newline, bool immediateFlush)
+Logfile::Result DailyLogfile::record(const char* content, size_t contentSize, bool newline, bool immediateFlush)
 {
     const auto& localTm = getLocalTime();
     auto today = (localTm.tm_year + 1900) * 10000 + (localTm.tm_mon + 1) * 100 + localTm.tm_mday; /* 用本地时间的年月日组合作为天数标识 */
@@ -100,7 +100,12 @@ Logfile::Result DailyLogfile::record(const std::string& content, bool newline, b
             m_today.store(today, std::memory_order_release);
         }
     }
-    return m_rotatingLogfile->record(content, newline, immediateFlush);
+    return m_rotatingLogfile->record(content, contentSize, newline, immediateFlush);
+}
+
+Logfile::Result DailyLogfile::record(const std::string& content, bool newline, bool immediateFlush)
+{
+    return record(content.data(), content.size(), newline, immediateFlush);
 }
 
 bool DailyLogfile::forceFlush()

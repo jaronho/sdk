@@ -113,12 +113,23 @@ public:
      */
     void setConsoleMode(int mode);
 
-    void trace(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
-    void debug(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
-    void info(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
-    void warn(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
-    void error(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
-    void fatal(const std::string& file, int line, const std::string& fun, const std::string& msg) const;
+    void trace(const char* file, int line, const char* func, const char* msg, size_t msgLen) const;
+    void trace(const char* file, int line, const char* func, const std::string& msg) const;
+
+    void debug(const char* file, int line, const char* func, const char* msg, size_t msgLen) const;
+    void debug(const char* file, int line, const char* func, const std::string& msg) const;
+
+    void info(const char* file, int line, const char* func, const char* msg, size_t msgLen) const;
+    void info(const char* file, int line, const char* func, const std::string& msg) const;
+
+    void warn(const char* file, int line, const char* func, const char* msg, size_t msgLen) const;
+    void warn(const char* file, int line, const char* func, const std::string& msg) const;
+
+    void error(const char* file, int line, const char* func, const char* msg, size_t msgLen) const;
+    void error(const char* file, int line, const char* func, const std::string& msg) const;
+
+    void fatal(const char* file, int line, const char* func, const char* msg, size_t msgLen) const;
+    void fatal(const char* file, int line, const char* func, const std::string& msg) const;
 
     /**
      * @brief 强制刷新日志内容

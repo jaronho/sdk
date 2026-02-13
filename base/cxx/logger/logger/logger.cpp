@@ -129,52 +129,82 @@ void Logger::setConsoleMode(int mode)
     }
 }
 
-void Logger::trace(const std::string& file, int line, const std::string& func, const std::string& msg) const
+void Logger::trace(const char* file, int line, const char* func, const char* msg, size_t msgLen) const
 {
     if (m_inner)
     {
-        m_inner->print(LEVEL_TRACE, m_tag, file, line, func, msg);
+        m_inner->print(LEVEL_TRACE, m_tag, file, line, func, msg, msgLen);
     }
 }
 
-void Logger::debug(const std::string& file, int line, const std::string& func, const std::string& msg) const
+void Logger::trace(const char* file, int line, const char* func, const std::string& msg) const
+{
+    trace(file, line, func, msg.data(), msg.size());
+}
+
+void Logger::debug(const char* file, int line, const char* func, const char* msg, size_t msgLen) const
 {
     if (m_inner)
     {
-        m_inner->print(LEVEL_DEBUG, m_tag, file, line, func, msg);
+        m_inner->print(LEVEL_DEBUG, m_tag, file, line, func, msg, msgLen);
     }
 }
 
-void Logger::info(const std::string& file, int line, const std::string& func, const std::string& msg) const
+void Logger::debug(const char* file, int line, const char* func, const std::string& msg) const
+{
+    debug(file, line, func, msg.data(), msg.size());
+}
+
+void Logger::info(const char* file, int line, const char* func, const char* msg, size_t msgLen) const
 {
     if (m_inner)
     {
-        m_inner->print(LEVEL_INFO, m_tag, file, line, func, msg);
+        m_inner->print(LEVEL_INFO, m_tag, file, line, func, msg, msgLen);
     }
 }
 
-void Logger::warn(const std::string& file, int line, const std::string& func, const std::string& msg) const
+void Logger::info(const char* file, int line, const char* func, const std::string& msg) const
+{
+    info(file, line, func, msg.data(), msg.size());
+}
+
+void Logger::warn(const char* file, int line, const char* func, const char* msg, size_t msgLen) const
 {
     if (m_inner)
     {
-        m_inner->print(LEVEL_WARN, m_tag, file, line, func, msg);
+        m_inner->print(LEVEL_WARN, m_tag, file, line, func, msg, msgLen);
     }
 }
 
-void Logger::error(const std::string& file, int line, const std::string& func, const std::string& msg) const
+void Logger::warn(const char* file, int line, const char* func, const std::string& msg) const
+{
+    warn(file, line, func, msg.data(), msg.size());
+}
+
+void Logger::error(const char* file, int line, const char* func, const char* msg, size_t msgLen) const
 {
     if (m_inner)
     {
-        m_inner->print(LEVEL_ERROR, m_tag, file, line, func, msg);
+        m_inner->print(LEVEL_ERROR, m_tag, file, line, func, msg, msgLen);
     }
 }
 
-void Logger::fatal(const std::string& file, int line, const std::string& func, const std::string& msg) const
+void Logger::error(const char* file, int line, const char* func, const std::string& msg) const
+{
+    error(file, line, func, msg.data(), msg.size());
+}
+
+void Logger::fatal(const char* file, int line, const char* func, const char* msg, size_t msgLen) const
 {
     if (m_inner)
     {
-        m_inner->print(LEVEL_FATAL, m_tag, file, line, func, msg);
+        m_inner->print(LEVEL_FATAL, m_tag, file, line, func, msg, msgLen);
     }
+}
+
+void Logger::fatal(const char* file, int line, const char* func, const std::string& msg) const
+{
+    fatal(file, line, func, msg.data(), msg.size());
 }
 
 void Logger::forceFlush()
