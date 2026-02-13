@@ -17,13 +17,19 @@ static std::string s_proto;
 void printEthernet(const npacket::EthernetIIHeader* h)
 {
     printf("=============== EthernetII ===============\n");
-    printf("src mac: %s, dst mac: %s\n", h->srcMacStr(), h->dstMacStr());
+    std::string srcMac, dstMac;
+    h->srcMacStr(srcMac);
+    h->dstMacStr(dstMac);
+    printf("src mac: %s, dst mac: %s\n", srcMac.c_str(), dstMac.c_str());
     printf("type: 0x%04x\n", h->nextProtocol);
 }
 
 /* 打印IPv4 */
 void printIPv4(const npacket::Ipv4Header* h)
 {
+    std::string srcAddr, dstAddr;
+    h->srcAddrStr(srcAddr);
+    h->dstAddrStr(dstAddr);
     printf("    ----- IPv4 -----\n");
     printf("    version: %d, header len: %d, tos: %d, total len: %d\n", h->version, h->headerLen, h->tos, h->totalLen);
     printf("    identification: 0x%04x (%d)\n", h->identification, h->identification);
@@ -32,30 +38,38 @@ void printIPv4(const npacket::Ipv4Header* h)
     printf("    ttl: %d\n", h->ttl);
     printf("    protocol: %d\n", h->nextProtocol);
     printf("    checksum: 0x%04x\n", h->checksum);
-    printf("    src addr: %s, dst addr: %s\n", h->srcAddrStr(), h->dstAddrStr());
+    printf("    src addr: %s, dst addr: %s\n", srcAddr.c_str(), dstAddr.c_str());
 }
 
 /* 打印ARP */
 void printARP(const npacket::ArpHeader* h)
 {
+    std::string senderMac, senderIp, targetMac, targetIp;
+    h->senderMacStr(senderMac);
+    h->senderIpStr(senderIp);
+    h->targetMacStr(targetMac);
+    h->targetIpStr(targetIp);
     printf("    ----- ARP -----\n");
     printf("    header len: %d\n", h->headerLen);
     printf("    hardware type: 0x%04x, hardware size: %d\n", h->hardwareType, h->hardwareSize);
     printf("    protocol type: 0x%04x, protocol size: %d\n", h->protocolType, h->protocolSize);
     printf("    opcode: %d\n", h->opcode);
-    printf("    sender mac: %s, sender ip: %s\n", h->senderMacStr(), h->senderIpStr());
-    printf("    target mac: %s, target ip: %s\n", h->targetMacStr(), h->targetIpStr());
+    printf("    sender mac: %s, sender ip: %s\n", senderMac.c_str(), senderIp.c_str());
+    printf("    target mac: %s, target ip: %s\n", targetMac.c_str(), targetIp.c_str());
 }
 
 /* 打印IPv6 */
 void printIPv6(const npacket::Ipv6Header* h)
 {
+    std::string srcAddr, dstAddr;
+    h->srcAddrStr(srcAddr);
+    h->dstAddrStr(dstAddr);
     printf("    ----- IPv6 -----\n");
     printf("    version: %d, traffic class: %d, flow label: %u, payload len: %d\n", h->version, h->trafficClass, h->flowLabel,
            h->payloadLen);
     printf("    next header: %d\n", h->nextHeader);
     printf("    hop limit: %d\n", h->hopLimit);
-    printf("    srcAddr: %s, dstAddr: %s\n", h->srcAddrStr(), h->dstAddrStr());
+    printf("    srcAddr: %s, dstAddr: %s\n", srcAddr.c_str(), dstAddr.c_str());
     if (0 == h->nextHeader) /* 扩展包头: Hop-by-Hop */
     {
         printf("    [hop by hop] next header: %d\n", h->hopByHopHeader.nextHeader);

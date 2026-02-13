@@ -130,10 +130,11 @@ public:
 
     /**
      * @brief 目标MAC地址字符串
+     * @param out [输出]字符串
      */
-    const char* dstMacStr() const
+    void dstMacStr(std::string& out) const
     {
-        static thread_local char buf[18] = {0};
+        char buf[18];
         char* p = buf;
         for (int i = 0; i < 6; ++i)
         {
@@ -144,15 +145,16 @@ public:
             byteToHexStr(dstMac[i], p);
         }
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     /**
      * @brief 源MAC地址字符串
+     * @param out [输出]字符串
      */
-    const char* srcMacStr() const
+    void srcMacStr(std::string& out) const
     {
-        static thread_local char buf[18] = {0};
+        char buf[18];
         char* p = buf;
         for (int i = 0; i < 6; ++i)
         {
@@ -163,7 +165,7 @@ public:
             byteToHexStr(srcMac[i], p);
         }
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     uint8_t headerLen = 0; /* 头部长度 */
@@ -220,10 +222,11 @@ public:
 
     /**
      * @brief 源IP地址字符串
+     * @param out [输出]字符串
      */
-    const char* srcAddrStr() const
+    void srcAddrStr(std::string& out) const
     {
-        static thread_local char buf[16] = {0};
+        char buf[16];
         char* p = buf;
         byteToDecStr(srcAddr[0], p);
         *p++ = '.';
@@ -233,15 +236,16 @@ public:
         *p++ = '.';
         byteToDecStr(srcAddr[3], p);
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     /**
      * @brief 目的IP地址字符串
+     * @param out [输出]字符串
      */
-    const char* dstAddrStr() const
+    void dstAddrStr(std::string& out) const
     {
-        static thread_local char buf[16] = {0};
+        char buf[16];
         char* p = buf;
         byteToDecStr(dstAddr[0], p);
         *p++ = '.';
@@ -251,7 +255,7 @@ public:
         *p++ = '.';
         byteToDecStr(dstAddr[3], p);
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     uint8_t version = 0; /* 版本 */
@@ -314,10 +318,11 @@ public:
 
     /**
      * @brief 源MAC地址字符串
+     * @param out [输出]字符串
      */
-    const char* senderMacStr() const
+    void senderMacStr(std::string& out) const
     {
-        static thread_local char buf[18] = {0};
+        char buf[18];
         char* p = buf;
         for (int i = 0; i < 6; ++i)
         {
@@ -328,15 +333,16 @@ public:
             byteToHexStr(senderMac[i], p);
         }
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     /**
      * @brief 源IP地址字符串
+     * @param out [输出]字符串
      */
-    const char* senderIpStr() const
+    void senderIpStr(std::string& out) const
     {
-        static thread_local char buf[16] = {0};
+        char buf[16];
         char* p = buf;
         byteToDecStr(senderIp[0], p);
         *p++ = '.';
@@ -346,15 +352,16 @@ public:
         *p++ = '.';
         byteToDecStr(senderIp[3], p);
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     /**
      * @brief 目标MAC地址字符串
+     * @param out [输出]字符串
      */
-    const char* targetMacStr() const
+    void targetMacStr(std::string& out) const
     {
-        static thread_local char buf[18] = {0};
+        char buf[18];
         char* p = buf;
         for (int i = 0; i < 6; ++i)
         {
@@ -365,15 +372,16 @@ public:
             byteToHexStr(targetMac[i], p);
         }
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     /**
      * @brief 目的IP地址字符串
+     * @param out [输出]字符串
      */
-    const char* targetIpStr() const
+    void targetIpStr(std::string& out) const
     {
-        static thread_local char buf[16] = {0};
+        char buf[16];
         char* p = buf;
         byteToDecStr(targetIp[0], p);
         *p++ = '.';
@@ -383,7 +391,7 @@ public:
         *p++ = '.';
         byteToDecStr(targetIp[3], p);
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     uint8_t headerLen = 0; /* 头部长度 */
@@ -445,10 +453,11 @@ public:
 
     /**
      * @brief 源IP地址字符串
+     * @param out [输出]字符串
      */
-    const char* srcAddrStr() const
+    void srcAddrStr(std::string& out) const
     {
-        static thread_local char buf[40] = {0};
+        char buf[40];
         char* p = buf;
         for (int i = 0; i < 8; ++i)
         {
@@ -460,15 +469,16 @@ public:
             byteToHexStr(srcAddr[i] & 0xFF, p);
         }
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     /**
      * @brief 目的IP地址字符串
+     * @param out [输出]字符串
      */
-    const char* dstAddrStr() const
+    void dstAddrStr(std::string& out) const
     {
-        static thread_local char buf[40] = {0};
+        char buf[40];
         char* p = buf;
         for (int i = 0; i < 8; ++i)
         {
@@ -480,7 +490,7 @@ public:
             byteToHexStr(dstAddr[i] & 0xFF, p);
         }
         *p = '\0';
-        return buf;
+        out.assign(buf, p - buf);
     }
 
     uint8_t version = 0; /* 版本 */

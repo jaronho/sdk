@@ -260,11 +260,11 @@ void Analyzer::removeProtocolParser(uint32_t protocol)
 int Analyzer::parse(size_t num, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource)
 {
     auto ntp = std::chrono::steady_clock::now();
-    return parseWithDepthControl(num, ntp, data, dataLen, dataSource, 0);
+    return parseWithDepthControl(num, ntp, nullptr, data, dataLen, dataSource, 0);
 }
 
-int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
-                                    const DataSource& dataSource, int depth)
+int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* ethernetHeader,
+                                    const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth)
 {
     cleanupFragmentCache(ntp); /* 清空超时IP分片缓存 */
     cleanupTcpStreamCache(ntp); /* 清理超时TCP流缓存 */
@@ -278,7 +278,7 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
     }
     if (DataSource::NETWORK_IPv4 == dataSource || DataSource::NETWORK_IPv6 == dataSource) /* 处理重组后的裸IP包 */
     {
-        return parseFromNetworkLayer(num, ntp, data, dataLen, dataSource, depth);
+        return parseFromNetworkLayer(num, ntp, ethernetHeader, data, dataLen, dataSource, depth);
     }
     else if (DataSource::SERIAL == dataSource) /* 处理串口数据 */
     {
@@ -292,7 +292,7 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
     /* step1. 解析以太网层 */
     EthernetIIHeader ethHeader;
     uint32_t headerLen = 0, networkProtocol = 0;
-    auto ethernetHeader = handleEthernetLayer(num, data + offset, remainLen, ethHeader, headerLen, networkProtocol);
+    ethernetHeader = handleEthernetLayer(num, data + offset, remainLen, ethHeader, headerLen, networkProtocol);
     if (!ethernetHeader)
     {
         return 1;
@@ -337,7 +337,8 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
         if (reassembledIp) /* 分片已重组完成, 使用重组后的数据继续解析 */
         {
             auto reassembledSource = (NetworkProtocol::IPv4 == networkProtocol ? DataSource::NETWORK_IPv4 : DataSource::NETWORK_IPv6);
-            return parseWithDepthControl(num, ntp, reassembledIp->data(), reassembledIp->size(), reassembledSource, depth + 1);
+            return parseWithDepthControl(num, ntp, ethernetHeader, reassembledIp->data(), reassembledIp->size(), reassembledSource,
+                                         depth + 1);
         }
         return 5; /* 分片未收齐, 等待后续 */
     }
@@ -367,8 +368,8 @@ int Analyzer::parseWithDepthControl(size_t num, const std::chrono::steady_clock:
     return processTransportToApplication(num, ntp, dataLen, networkHeader, transportProtocol, data + offset, remainLen, depth);
 }
 
-int Analyzer::parseFromNetworkLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
-                                    const DataSource& dataSource, int depth)
+int Analyzer::parseFromNetworkLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* ethernetHeader,
+                                    const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth)
 {
     if (!data || dataLen < Ipv4Header::getMinLen())
     {
@@ -399,6 +400,7 @@ int Analyzer::parseFromNetworkLayer(size_t num, const std::chrono::steady_clock:
     {
         return 2;
     }
+    networkHeader->parent = ethernetHeader;
     /* step2. 分片检查 */
     bool isFragment = false;
     auto reassembledIp = checkAndHandleFragment(ntp, networkHeader, data, dataLen, isFragment);
@@ -406,7 +408,7 @@ int Analyzer::parseFromNetworkLayer(size_t num, const std::chrono::steady_clock:
     {
         if (reassembledIp)
         {
-            return parseWithDepthControl(num, ntp, reassembledIp->data(), reassembledIp->size(), dataSource, depth + 1);
+            return parseWithDepthControl(num, ntp, ethernetHeader, reassembledIp->data(), reassembledIp->size(), dataSource, depth + 1);
         }
         return 5;
     }

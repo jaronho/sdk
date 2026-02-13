@@ -363,14 +363,14 @@ void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp,
         if (NetworkProtocol::IPv4 == header->parent->getProtocol())
         {
             auto ipv4Header = (const Ipv4Header*)(header->parent);
-            scrAddr = ipv4Header->srcAddrStr();
-            dstAddr = ipv4Header->dstAddrStr();
+            ipv4Header->srcAddrStr(scrAddr);
+            ipv4Header->dstAddrStr(dstAddr);
         }
         else if (NetworkProtocol::IPv6 == header->parent->getProtocol())
         {
             auto ipv6Header = (const Ipv6Header*)(header->parent);
-            scrAddr = ipv6Header->srcAddrStr();
-            dstAddr = ipv6Header->dstAddrStr();
+            ipv6Header->srcAddrStr(scrAddr);
+            ipv6Header->dstAddrStr(dstAddr);
         }
         auto tcpHeader = (const TcpHeader*)(header);
         auto dci = std::make_shared<DataConnectInfo>();
@@ -424,14 +424,14 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
     if (NetworkProtocol::IPv4 == header->parent->getProtocol())
     {
         auto ipv4Header = (const Ipv4Header*)(header->parent);
-        scrAddr = ipv4Header->srcAddrStr();
-        dstAddr = ipv4Header->dstAddrStr();
+        ipv4Header->srcAddrStr(scrAddr);
+        ipv4Header->dstAddrStr(dstAddr);
     }
     else if (NetworkProtocol::IPv6 == header->parent->getProtocol())
     {
         auto ipv6Header = (const Ipv6Header*)(header->parent);
-        scrAddr = ipv6Header->srcAddrStr();
-        dstAddr = ipv6Header->dstAddrStr();
+        ipv6Header->srcAddrStr(scrAddr);
+        ipv6Header->dstAddrStr(dstAddr);
     }
     auto tcpHeader = (const TcpHeader*)(header);
     auto srcKey = scrAddr + ":" + std::to_string(tcpHeader->srcPort);
