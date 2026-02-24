@@ -46,6 +46,9 @@ ${base_algorithm_squeue_files}
 ${base_algorithm_tvalue_files}
 
 [源文件]
+${base_algorithm_uuid_files}
+
+[源文件]
 ${base_algorithm_xxhash_files}
 ]]
 
@@ -85,6 +88,9 @@ set(base_algorithm_squeue_files ${src_list} CACHE INTERNAL "")
 get_cxx_files(algorithm/tvalue src_list)
 set(base_algorithm_tvalue_files ${src_list} CACHE INTERNAL "")
 
+get_cxx_files(algorithm/uuid src_list)
+set(base_algorithm_uuid_files ${src_list} CACHE INTERNAL "")
+
 get_cxx_files(algorithm/xxhash src_list)
 set(base_algorithm_xxhash_files ${src_list} CACHE INTERNAL "")
 
@@ -101,6 +107,7 @@ set(base_algorithm_files
     ${base_algorithm_snowflake_files}
     ${base_algorithm_squeue_files}
     ${base_algorithm_tvalue_files}
+    ${base_algorithm_uuid_files}
     ${base_algorithm_xxhash_files}
     CACHE INTERNAL "")
 

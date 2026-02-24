@@ -30,6 +30,14 @@ public:
     static uint64_t easyGenerate();
 
 private:
+    /**
+     * @brief 等待下一毫秒
+     * @param lastTimestamp 上一个毫秒
+     * @return 下一个毫秒
+     */
+    uint64_t waitNextMillis(uint64_t lastTimestamp);
+
+private:
     uint64_t m_timestamp; /* 时间戳(41位),精确到毫秒,支持2^41/365/24/60/60/1000=69.7年 */
     /* 整个分布式系统内不会产生ID碰撞(由datacenterId和workerId作区分),支持1024个进程 */
     uint64_t m_datacenterId; /* 数据中心ID(5位), 值: 0~31 */

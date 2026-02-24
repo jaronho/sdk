@@ -8,7 +8,7 @@
 namespace algorithm
 {
 Snowflake::Snowflake(uint64_t datacenterId, uint64_t workerId)
-    : m_datacenterId(datacenterId), m_workerId(workerId), m_sequence(0), m_lock(ATOMIC_FLAG_INIT)
+    : m_datacenterId(datacenterId & 0x1F), m_workerId(workerId & 0x3F), m_sequence(0)
 {
     auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
     m_timestamp = (ntp.time_since_epoch().count() & 0x1FFFFFFFFFF);
@@ -17,30 +17,25 @@ Snowflake::Snowflake(uint64_t datacenterId, uint64_t workerId)
 uint64_t Snowflake::generate()
 {
     auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    uint64_t newTime = (ntp.time_since_epoch().count() & 0x1FFFFFFFFFF);
+    uint64_t timestamp = (ntp.time_since_epoch().count() & 0x1FFFFFFFFFF);
     while (m_lock.test_and_set(std::memory_order_acquire)) /* 等待原子锁 */
     {
         std::this_thread::yield();
     }
-    if (newTime == m_timestamp)
+    if (timestamp == m_timestamp)
     {
         m_sequence = (m_sequence + 1) & 0xFFF;
         if (0 == m_sequence) /* 序列号溢出, 等待下一毫秒 */
         {
-            while (newTime == m_timestamp)
-            {
-                ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-                newTime = (ntp.time_since_epoch().count() & 0x1FFFFFFFFFF);
-            }
-            m_timestamp = newTime;
+            m_timestamp = waitNextMillis(timestamp);
         }
     }
     else
     {
         m_sequence = 0;
-        m_timestamp = newTime;
+        m_timestamp = timestamp;
     }
-    uint64_t result = (m_timestamp << 22) | (m_datacenterId << 17) | (m_workerId << 11) | m_sequence;
+    uint64_t result = (m_timestamp << 22) | (m_datacenterId << 17) | (m_workerId << 12) | m_sequence;
     m_lock.clear(std::memory_order_release);
     return result;
 }
@@ -61,5 +56,16 @@ uint64_t Snowflake::easyGenerate()
         s_sf = std::make_unique<Snowflake>(datacenterId, workerId);
     }
     return s_sf->generate();
+}
+
+uint64_t Snowflake::waitNextMillis(uint64_t lastTimestamp)
+{
+    uint64_t timestamp;
+    do
+    {
+        auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+        timestamp = ntp.time_since_epoch().count() & 0x1FFFFFFFFFF;
+    } while (timestamp <= lastTimestamp);
+    return timestamp;
 }
 } // namespace algorithm
