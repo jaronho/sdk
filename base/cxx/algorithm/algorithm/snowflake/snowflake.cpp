@@ -17,26 +17,26 @@ Snowflake::Snowflake(uint64_t datacenterId, uint64_t workerId)
 uint64_t Snowflake::generate()
 {
     auto ntp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    uint64_t timestamp = (ntp.time_since_epoch().count() & 0x1FFFFFFFFFF);
-    while (m_lock.test_and_set(std::memory_order_acquire)) /* 等待原子锁 */
+    uint64_t timestamp = (ntp.time_since_epoch().count() & 0x1FFFFFFFFFF), sequence = 0;
     {
-        std::this_thread::yield();
-    }
-    if (timestamp == m_timestamp)
-    {
-        m_sequence = (m_sequence + 1) & 0xFFF;
-        if (0 == m_sequence) /* 序列号溢出, 等待下一毫秒 */
+        std::lock_guard<std::mutex> locker(m_mutex);
+        if (timestamp == m_timestamp)
         {
-            m_timestamp = waitNextMillis(timestamp);
+            m_sequence = (m_sequence + 1) & 0xFFF;
+            if (0 == m_sequence) /* 序列号溢出, 等待下一毫秒 */
+            {
+                timestamp = waitNextMillis(timestamp);
+                m_timestamp = timestamp;
+            }
         }
+        else
+        {
+            m_sequence = 0;
+            m_timestamp = timestamp;
+        }
+        sequence = m_sequence;
     }
-    else
-    {
-        m_sequence = 0;
-        m_timestamp = timestamp;
-    }
-    uint64_t result = (m_timestamp << 22) | (m_datacenterId << 17) | (m_workerId << 12) | m_sequence;
-    m_lock.clear(std::memory_order_release);
+    uint64_t result = ((timestamp << 22) | (m_datacenterId << 17) | (m_workerId << 12) | sequence);
     return result;
 }
 
