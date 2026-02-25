@@ -12,7 +12,7 @@ void HttpClient::start(size_t threadCount, const threading::ExecutorPtr& respExe
 {
     if (!s_workers)
     {
-        s_workers = threading::ThreadProxy::createAsioExecutor("http", std::max<size_t>(1U, threadCount));
+        s_workers = threading::ThreadProxy::createAsioExecutor("thd::http", std::max<size_t>(1U, threadCount));
     }
     s_respExecutor = respExecutor;
     s_respExecutorHook = respExecutorHook;
