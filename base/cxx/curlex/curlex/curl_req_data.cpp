@@ -33,9 +33,10 @@ std::string RawRequestData::toString() const
     return str;
 }
 
-std::vector<char> RawRequestData::getBytes() const
+const char* RawRequestData::getBytes(size_t& byteCount) const
 {
-    return m_bytes;
+    byteCount = m_bytes.size();
+    return m_bytes.data();
 }
 
 bool RawRequestData::isChunk() const

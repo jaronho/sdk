@@ -161,33 +161,35 @@ int onDebugFunc(CURL* handle, curl_infotype type, char* data, size_t size, void*
     return 0;
 }
 
-bool CurlObject::SendObject::reset(const std::string& data, bool chunk)
+bool CurlObject::SendObject::reset(const char* data, size_t dataLen, bool chunk)
 {
-    if (data.empty())
+    m_data.clear();
+    if (!data || 0 == dataLen)
     {
+        m_readed = 0;
+        m_chunk = chunk;
         return false;
     }
-    m_data = data;
-    m_length = data.size();
+    m_data.insert(m_data.begin(), data, data + dataLen);
     m_readed = 0;
     m_chunk = chunk;
     return true;
 }
 
-std::string& CurlObject::SendObject::data()
+std::vector<char>& CurlObject::SendObject::data()
 {
     return m_data;
 }
 
 size_t CurlObject::SendObject::read(void* dest, size_t count)
 {
-    auto left = m_length - m_readed;
+    auto left = m_data.size() - m_readed;
     if (!dest || count <= 0 || left <= 0)
     {
         return 0;
     }
     auto total = std::min<size_t>(count, left);
-    memcpy(dest, m_data.c_str() + m_readed, total);
+    memcpy(dest, m_data.data() + m_readed, total);
     m_readed += total;
     return total;
 }
@@ -619,19 +621,15 @@ bool CurlObject::setResumeOffset(int64_t index)
     return (CURLE_OK == code);
 }
 
-bool CurlObject::setRawData(const std::vector<char>& bytes, bool chunk)
+bool CurlObject::setRawData(const char* bytes, size_t byteCount, bool chunk)
 {
-    if (bytes.empty())
-    {
-        return false;
-    }
-    if (!m_sendObject.reset(std::string(bytes.begin(), bytes.end()), chunk))
+    if (!m_sendObject.reset(bytes, byteCount, chunk))
     {
         return false;
     }
     if (chunk)
     {
-        auto code = setOption(CURLOPT_INFILESIZE_LARGE, bytes.size());
+        auto code = setOption(CURLOPT_INFILESIZE_LARGE, byteCount);
         if (CURLE_OK != code)
         {
             return false;
@@ -656,7 +654,7 @@ bool CurlObject::setFormData(const std::map<std::string, std::string>& fieldMap)
         }
         data.append(iter->first).append("=").append(iter->second);
     }
-    if (!m_sendObject.reset(data, false))
+    if (!m_sendObject.reset(data.data(), data.size(), false))
     {
         return false;
     }
@@ -751,7 +749,7 @@ bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::str
             }
             else
             {
-                code = setOption(CURLOPT_POSTFIELDS, m_sendObject.data().c_str());
+                code = setOption(CURLOPT_POSTFIELDS, m_sendObject.data().data());
                 if (CURLE_OK != code)
                 {
                     break;

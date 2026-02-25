@@ -62,9 +62,10 @@ public:
 
     /**
      * @brief 获取字节流
+     * @param byteCount [输出]字节流长度
      * @return 字节流
      */
-    std::vector<char> getBytes() const;
+    const char* getBytes(size_t& byteCount) const;
 
     /**
      * @brief 是否数据分块

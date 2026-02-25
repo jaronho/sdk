@@ -210,10 +210,11 @@ public:
     /**
      * @brief 设置原始字节流数据(适用于POST/PUT/DELETE)
      * @param bytes 字节流
+     * @param byteCount 字节流长度
      * @param chunk 是否数据分块(默认否)
      * @return true-成功, false-失败
      */
-    bool setRawData(const std::vector<char>& bytes, bool chunk = false);
+    bool setRawData(const char* bytes, size_t byteCount, bool chunk = false);
 
     /**
      * @brief 设置表单数据(适用于POST/PUT/DELETE), 格式: application/x-www-form-urlencoded
@@ -286,16 +287,17 @@ private:
         /**
          * @brief 重置函数
          * @param data 数据
+         * @param dataLen 数据长度
          * @param chunk 是否数据分块(默认否)
          * @return true-成功, false-失败
          */
-        bool reset(const std::string& data, bool chunk = false);
+        bool reset(const char* data, size_t dataLen, bool chunk = false);
 
         /**
          * @brief 获取全部数据
          * @return 全部数据(引用)
          */
-        std::string& data();
+        std::vector<char>& data();
 
         /**
          * @brief 读数据
@@ -312,8 +314,7 @@ private:
         bool isChunk();
 
     private:
-        std::string m_data; /* 要发送的数据 */
-        size_t m_length = 0; /* 数据总长度 */
+        std::vector<char> m_data; /* 要发送的数据 */
         size_t m_readed = 0; /* 已读的数据长度 */
         bool m_chunk = false; /* 是否数据分块(默认否) */
     };

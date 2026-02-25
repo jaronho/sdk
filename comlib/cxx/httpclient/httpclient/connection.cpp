@@ -154,12 +154,24 @@ void Connection::doDelete(const ResponseCallback& respCb, bool asyncOp)
     m_req->setData(m_data);
     if (asyncOp)
     {
-        HttpClient::easyDelete(m_req, m_funcSet, respCb);
+        HttpClient::easyDelete(m_req, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
+            if (req)
+            {
+                req->setData(nullptr); /* 清空数据 */
+            }
+            if (respCb)
+            {
+                respCb(resp);
+            }
+        });
     }
     else
     {
         curlex::Response resp;
         curlex::curlDelete(m_req, m_funcSet, resp);
+        /* 清空数据 */
+        m_data.reset();
+        m_req->setData(nullptr);
         if (respCb)
         {
             respCb(resp);
@@ -172,12 +184,24 @@ void Connection::doGet(const ResponseCallback& respCb, bool asyncOp)
     m_req->setData(m_data);
     if (asyncOp)
     {
-        HttpClient::easyGet(m_req, m_funcSet, respCb);
+        HttpClient::easyGet(m_req, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
+            if (req)
+            {
+                req->setData(nullptr); /* 清空数据 */
+            }
+            if (respCb)
+            {
+                respCb(resp);
+            }
+        });
     }
     else
     {
         curlex::Response resp;
         curlex::curlGet(m_req, m_funcSet, resp);
+        /* 清空数据 */
+        m_data.reset();
+        m_req->setData(nullptr);
         if (respCb)
         {
             respCb(resp);
@@ -190,12 +214,24 @@ void Connection::doPut(const ResponseCallback& respCb, bool asyncOp)
     m_req->setData(m_data);
     if (asyncOp)
     {
-        HttpClient::easyPut(m_req, m_funcSet, respCb);
+        HttpClient::easyPut(m_req, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
+            if (req)
+            {
+                req->setData(nullptr); /* 清空数据 */
+            }
+            if (respCb)
+            {
+                respCb(resp);
+            }
+        });
     }
     else
     {
         curlex::Response resp;
         curlex::curlPut(m_req, m_funcSet, resp);
+        /* 清空数据 */
+        m_data.reset();
+        m_req->setData(nullptr);
         if (respCb)
         {
             respCb(resp);
@@ -208,12 +244,24 @@ void Connection::doPost(const ResponseCallback& respCb, bool asyncOp)
     m_req->setData(m_data);
     if (asyncOp)
     {
-        HttpClient::easyPost(m_req, m_funcSet, respCb);
+        HttpClient::easyPost(m_req, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
+            if (req)
+            {
+                req->setData(nullptr); /* 清空数据 */
+            }
+            if (respCb)
+            {
+                respCb(resp);
+            }
+        });
     }
     else
     {
         curlex::Response resp;
         curlex::curlPost(m_req, m_funcSet, resp);
+        /* 清空数据 */
+        m_data.reset();
+        m_req->setData(nullptr);
         if (respCb)
         {
             respCb(resp);
@@ -226,12 +274,24 @@ void Connection::doDownload(const std::string& filename, bool recover, const Res
     m_req->setData(m_data);
     if (asyncOp)
     {
-        HttpClient::easyDownload(m_req, filename, recover, m_funcSet, respCb);
+        HttpClient::easyDownload(m_req, filename, recover, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
+            if (req)
+            {
+                req->setData(nullptr); /* 清空数据 */
+            }
+            if (respCb)
+            {
+                respCb(resp);
+            }
+        });
     }
     else
     {
         curlex::Response resp;
         curlex::curlDownload(m_req, filename, recover, m_funcSet, resp);
+        /* 清空数据 */
+        m_data.reset();
+        m_req->setData(nullptr);
         if (respCb)
         {
             respCb(resp);
