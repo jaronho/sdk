@@ -129,12 +129,12 @@ void Request::setCookieFile(const std::string& filename)
     m_cookieFilename = filename;
 }
 
-RequestDataPtr Request::getData() const
+std::shared_ptr<RequestData> Request::getData() const
 {
     return m_data;
 }
 
-void Request::setData(const RequestDataPtr& data)
+void Request::setData(const std::shared_ptr<RequestData>& data)
 {
     m_data = data;
 }

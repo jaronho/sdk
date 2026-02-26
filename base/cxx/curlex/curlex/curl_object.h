@@ -82,6 +82,9 @@ public:
      */
     CurlObject(const std::string& user, const std::string& password);
 
+    /**
+     * @brief 析构函数
+     */
     ~CurlObject();
 
     /**
@@ -272,6 +275,7 @@ private:
     bool initialize(const FileFormat& fileFmt, const std::string& certFile, const std::string& privateKeyFile,
                     const std::string& privateKeyFilePwd);
     bool initialize(const std::string& user, const std::string& password);
+    void cleanup();
     friend size_t onSendDataFunc(void* buffer, size_t size, size_t number, void* userdata);
     friend size_t onRecvDataFunc(void* buffer, size_t size, size_t number, void* userdata);
     friend size_t onResponseHeaderFunc(void* buffer, size_t size, size_t number, void* userdata);
@@ -291,13 +295,19 @@ private:
          * @param chunk 是否数据分块(默认否)
          * @return true-成功, false-失败
          */
-        bool reset(const char* data, size_t dataLen, bool chunk = false);
+        bool reset(const char* data = nullptr, size_t dataLen = 0, bool chunk = false);
 
         /**
-         * @brief 获取全部数据
-         * @return 全部数据(引用)
+         * @brief 获取数据
+         * @return 数据
          */
-        std::vector<char>& data();
+        const char* data();
+
+        /**
+         * @brief 获取数据长度
+         * @return 数据长度
+         */
+        size_t dataLen();
 
         /**
          * @brief 读数据
@@ -314,7 +324,8 @@ private:
         bool isChunk();
 
     private:
-        std::vector<char> m_data; /* 要发送的数据 */
+        const char* m_data = nullptr; /* 要发送的数据 */
+        size_t m_dataLen = 0; /* 数据长度 */
         size_t m_readed = 0; /* 已读的数据长度 */
         bool m_chunk = false; /* 是否数据分块(默认否) */
     };

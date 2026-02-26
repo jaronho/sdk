@@ -163,33 +163,40 @@ int onDebugFunc(CURL* handle, curl_infotype type, char* data, size_t size, void*
 
 bool CurlObject::SendObject::reset(const char* data, size_t dataLen, bool chunk)
 {
-    m_data.clear();
     if (!data || 0 == dataLen)
     {
+        m_data = nullptr;
+        m_dataLen = 0;
         m_readed = 0;
         m_chunk = chunk;
         return false;
     }
-    m_data.insert(m_data.begin(), data, data + dataLen);
+    m_data = data;
+    m_dataLen = dataLen;
     m_readed = 0;
     m_chunk = chunk;
     return true;
 }
 
-std::vector<char>& CurlObject::SendObject::data()
+const char* CurlObject::SendObject::data()
 {
     return m_data;
 }
 
+size_t CurlObject::SendObject::dataLen()
+{
+    return m_dataLen;
+}
+
 size_t CurlObject::SendObject::read(void* dest, size_t count)
 {
-    auto left = m_data.size() - m_readed;
+    auto left = m_dataLen - m_readed;
     if (!dest || count <= 0 || left <= 0)
     {
         return 0;
     }
     auto total = std::min<size_t>(count, left);
-    memcpy(dest, m_data.data() + m_readed, total);
+    memcpy(dest, m_data + m_readed, total);
     m_readed += total;
     return total;
 }
@@ -270,17 +277,7 @@ CurlObject::CurlObject(const std::string& user, const std::string& password)
 
 CurlObject::~CurlObject(void)
 {
-    if (m_httpPost)
-    {
-        curl_formfree(m_httpPost);
-        m_httpPost = nullptr;
-    }
-    m_lastPost = nullptr;
-    if (m_headers)
-    {
-        curl_slist_free_all(m_headers);
-        m_headers = nullptr;
-    }
+    cleanup();
     if (m_curl)
     {
         curl_easy_cleanup(m_curl);
@@ -449,6 +446,22 @@ bool CurlObject::initialize(const std::string& user, const std::string& password
     }
     code = setOption(CURLOPT_NOSIGNAL, 1L);
     return (CURLE_OK == code);
+}
+
+void CurlObject::cleanup()
+{
+    if (m_httpPost)
+    {
+        curl_formfree(m_httpPost);
+        m_httpPost = nullptr;
+    }
+    m_lastPost = nullptr;
+    if (m_headers)
+    {
+        curl_slist_free_all(m_headers);
+        m_headers = nullptr;
+    }
+    m_sendObject.reset();
 }
 
 bool CurlObject::isValid(void) const
@@ -726,13 +739,14 @@ bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::str
     auto beg = std::chrono::steady_clock::now();
     if (!m_curl)
     {
+        cleanup();
         respElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
         return false;
     }
     CURLcode code;
     do
     {
-        if (!m_sendObject.data().empty())
+        if (m_sendObject.dataLen() > 0)
         {
             if (m_sendObject.isChunk())
             {
@@ -749,7 +763,7 @@ bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::str
             }
             else
             {
-                code = setOption(CURLOPT_POSTFIELDS, m_sendObject.data().data());
+                code = setOption(CURLOPT_POSTFIELDS, m_sendObject.data());
                 if (CURLE_OK != code)
                 {
                     break;
@@ -825,15 +839,13 @@ bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::str
             code = setOption(CURLOPT_HTTPPOST, m_httpPost);
             if (CURLE_OK != code)
             {
-                curl_formfree(m_httpPost);
-                m_httpPost = nullptr;
-                m_lastPost = nullptr;
                 break;
             }
         }
     } while (0);
     if (CURLE_OK != code)
     {
+        cleanup();
         curlCode = static_cast<int>(code);
         errorDesc = m_errorBuffer;
         respElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
@@ -855,12 +867,7 @@ bool CurlObject::perform(std::string& localIp, unsigned int& localPort, std::str
     curlCode = static_cast<int>(code);
     errorDesc = m_errorBuffer;
     curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &respCode);
-    if (m_httpPost)
-    {
-        curl_formfree(m_httpPost);
-        m_httpPost = nullptr;
-    }
-    m_lastPost = nullptr;
+    cleanup();
     respElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
     return (CURLE_OK == code);
 }

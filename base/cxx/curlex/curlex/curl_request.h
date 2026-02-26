@@ -188,13 +188,13 @@ public:
      * @brief 获取数据
      * @return 数据
      */
-    RequestDataPtr getData() const;
+    std::shared_ptr<RequestData> getData() const;
 
     /**
      * @brief 设置数据
      * @param data 数据
      */
-    void setData(const RequestDataPtr& data);
+    void setData(const std::shared_ptr<RequestData>& data);
 
 private:
     Type m_type = Type::simple; /* 类型 */
@@ -213,7 +213,7 @@ private:
     size_t m_maxRecvSpeed = 0; /* 最大接收速度(字节/秒) */
     std::map<std::string, std::string> m_headers; /* 头部 */
     std::string m_cookieFilename; /* cookie文件名 */
-    RequestDataPtr m_data; /* 数据 */
+    std::shared_ptr<RequestData> m_data = nullptr; /* 数据 */
 };
 
 using RequestPtr = std::shared_ptr<Request>;

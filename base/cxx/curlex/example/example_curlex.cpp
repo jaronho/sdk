@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <thread>
 
 #include "curlex/curlex.h"
 
@@ -117,8 +118,8 @@ void printSimpleResponse(const curlex::Response& resp)
         std::cout << "        " << headerName << ":" << headerValue << (headerCount == headerIndex ? "" : ",") << std::endl;
     }
     std::cout << "    }," << std::endl;
-    std::cout << "    body:" << std::endl;
-    std::cout << resp.body << "," << std::endl;
+    //std::cout << "    body:" << std::endl;
+    //std::cout << resp.body << "," << std::endl;
     std::cout << "    elapsed:" << resp.elapsed << "(ms)" << std::endl;
     std::cout << "}" << std::endl;
 }
@@ -209,91 +210,8 @@ void printProgressInfo(const std::string& tag, int64_t now, int64_t total, doubl
     std::cout << "--- " << tag << " --- [" << totalDesc << " / " << nowDesc << "], [" << speedDesc << "]" << std::endl;
 }
 
-/**
- * @brief 准备测试文件
- */
-void prepareTestFiles()
-{
-    /* 创建测试文本文件 */
-    std::string text1 = "Hello world!";
-    writeDataToFile(text1.c_str(), text1.size(), "test1.txt");
-
-    std::string text2 = "Reading the fucking source code!!!";
-    writeDataToFile(text2.c_str(), text2.size(), "test2.txt");
-
-    /* 创建测试图片文件 */
-    unsigned char buffer1[] = {
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x4B, 0x00,
-        0x00, 0x00, 0x40, 0x08, 0x02, 0x00, 0x00, 0x00, 0xDD, 0xEB, 0x1D, 0x7E, 0x00, 0x00, 0x00, 0x01, 0x73, 0x52, 0x47, 0x42, 0x00,
-        0xAE, 0xCE, 0x1C, 0xE9, 0x00, 0x00, 0x00, 0x04, 0x67, 0x41, 0x4D, 0x41, 0x00, 0x00, 0xB1, 0x8F, 0x0B, 0xFC, 0x61, 0x05, 0x00,
-        0x00, 0x00, 0x09, 0x70, 0x48, 0x59, 0x73, 0x00, 0x00, 0x12, 0x74, 0x00, 0x00, 0x12, 0x74, 0x01, 0xDE, 0x66, 0x1F, 0x78, 0x00,
-        0x00, 0x00, 0x61, 0x49, 0x44, 0x41, 0x54, 0x68, 0x43, 0xED, 0xCF, 0x41, 0x0D, 0x00, 0x20, 0x0C, 0x00, 0x31, 0x84, 0xEC, 0x39,
-        0xFF, 0xCE, 0xF0, 0x80, 0x8E, 0x23, 0x4D, 0x6A, 0xA0, 0xE7, 0xCE, 0xFE, 0xCD, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF,
-        0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0,
-        0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF,
-        0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xCF, 0xB0, 0xEF, 0xF7, 0xE1, 0xEC, 0x03, 0x62, 0x31, 0x0D, 0x0B, 0xE7,
-        0x00, 0x3E, 0x45, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82};
-    writeDataToFile((const char*)buffer1, sizeof(buffer1) / sizeof(unsigned char), "test1.png");
-}
-
 /* 可以用于测试的HTTP服务器 */
 const std::string HOST = "http://httpbin.org";
-
-/**
- * @brief 测试DELETE
- */
-void testCurlDelete()
-{
-    std::string url = HOST + "/anything";
-    std::cout << "===================== test curl DELETE" << std::endl;
-    std::cout << "url: " << url << std::endl;
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    curlex::FuncSet funcSet;
-    curlex::Response resp;
-    auto ret = curlex::curlDelete(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief 测试GET
- */
-void testCurlGet()
-{
-#if 0
-     std::string url = "https://www.baidu.com";
-#else
-    std::string url = HOST + "/base64/SFRUUEJJTiBpcyBhd2Vzb21l";
-#endif
-    std::cout << "===================== test curl GET" << std::endl;
-    std::cout << "url: " << url << std::endl;
-
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    curlex::FuncSet funcSet;
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("GET, recv", now, total, speed); };
-    curlex::Response resp;
-    auto ret = curlex::curlGet(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief 测试PUT
- */
-void testCurlPut()
-{
-    std::string url = HOST + "/anything";
-    std::cout << "===================== test curl PUT" << std::endl;
-    std::cout << "url: " << url << std::endl;
-
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    curlex::FuncSet funcSet;
-    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("PUT, send", now, total, speed); };
-    curlex::Response resp;
-    auto ret = curlex::curlPut(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
 
 /**
  * @brief 测试POST：字节流(分块)
@@ -305,7 +223,7 @@ void testCurlPostRawChunk()
     std::cout << "url: " << url << std::endl;
 
     long length = 0;
-    char* buffer = getFileData("test1.png", &length, false);
+    char* buffer = getFileData("D:\\temp\\bingdu.zip", &length, false);
     auto data = std::make_shared<curlex::RawRequestData>(buffer, length, true);
     if (buffer)
     {
@@ -327,131 +245,12 @@ void testCurlPostRawChunk()
     printSimpleResponse(resp);
 }
 
-/**
- * @brief 测试POST：字节流(非分块)
- */
-void testCurlPostRawNotChunk()
-{
-    std::string url = HOST + "/anything";
-    std::cout << "===================== test curl POST raw (not chunk)" << std::endl;
-    std::cout << "url: " << url << std::endl;
-    std::string str = "{\"school\":\"yi zhong\",\"class\":[{\"grade\":1,\"number\":6,\"count\":42}]}";
-    auto data = std::make_shared<curlex::RawRequestData>(str.c_str(), str.size(), false);
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    req->setData(data);
-    curlex::FuncSet funcSet;
-    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) {
-        printProgressInfo("POST raw (not chunk), send", now, total, speed);
-    };
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) {
-        printProgressInfo("POST raw (not chunk), recv", now, total, speed);
-    };
-    curlex::Response resp;
-    auto ret = curlex::curlPost(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief 测试POST：表单数据
- */
-void testCurlPostForm()
-{
-    std::string url = HOST + "/anything";
-    std::cout << "===================== test curl POST form" << std::endl;
-    std::cout << "url: " << url << std::endl;
-
-    std::map<std::string, std::string> fieldMap;
-    fieldMap.insert(std::make_pair("name", "jaronho"));
-    fieldMap.insert(std::make_pair("sex", "male"));
-    fieldMap.insert(std::make_pair("age", "33"));
-    auto data = std::make_shared<curlex::FormRequestData>(fieldMap);
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    req->setData(data);
-    curlex::FuncSet funcSet;
-    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST form, send", now, total, speed); };
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST form, recv", now, total, speed); };
-    curlex::Response resp;
-    auto ret = curlex::curlPost(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief 测试POST：多部份表单
- */
-void testCurlPostMultipartForm()
-{
-    std::string url = HOST + "/anything";
-    std::cout << "===================== test curl POST multipart form" << std::endl;
-    std::cout << "url: " << url << std::endl;
-
-    auto data = std::make_shared<curlex::MultipartFormRequestData>();
-    data->addText("name", "jaronho");
-    data->addText("sex", "male");
-    data->addText("age", "33");
-    data->addText("json", "{\"company\":\"jh\",\"address\":\"Xiamen\"}", "application/json");
-    data->addFile("file1", "test1.txt");
-    data->addFile("file2", "test2.txt");
-    data->addFile("file3", "test1.png");
-    auto req = std::make_shared<curlex::SimpleRequest>(url);
-    req->setData(data);
-    curlex::FuncSet funcSet;
-    funcSet.sendProgressFunc = [&](int64_t now, int64_t total, double speed) {
-        printProgressInfo("POST multipart form, send", now, total, speed);
-    };
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) {
-        printProgressInfo("POST multipart form, recv", now, total, speed);
-    };
-    curlex::Response resp;
-    auto ret = curlex::curlPost(req, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printSimpleResponse(resp);
-}
-
-/**
- * @brief 测试文件下载
- */
-void testCurlDownload()
-{
-    std::string url = "http://127.0.0.1/";
-    std::string filename = "qt-everywhere-src-5.12.0.tar.xz";
-    std::cout << "===================== test curl DOWNLOAD" << std::endl;
-    std::cout << "url: " << url << std::endl;
-
-    auto req = std::make_shared<curlex::SimpleRequest>(url + filename);
-    curlex::FuncSet funcSet;
-    funcSet.recvProgressFunc = [&](int64_t now, int64_t total, double speed) { printProgressInfo("DOWDLOAD", now, total, speed); };
-    curlex::Response resp;
-    auto ret = curlex::curlDownload(req, filename, false, funcSet, resp);
-    std::cout << "ret: " << ret << std::endl;
-    printResponse(resp);
-}
-
 int main()
 {
-    prepareTestFiles();
-
-    testCurlDelete();
-    std::cout << std::endl << std::endl;
-
-    testCurlGet();
-    std::cout << std::endl << std::endl;
-
-    testCurlPut();
-    std::cout << std::endl << std::endl;
-
-    testCurlPostRawChunk();
-    std::cout << std::endl << std::endl;
-
-    testCurlPostRawNotChunk();
-    std::cout << std::endl << std::endl;
-
-    testCurlPostForm();
-    std::cout << std::endl << std::endl;
-
-    testCurlPostMultipartForm();
-    std::cout << std::endl << std::endl;
-
-    testCurlDownload();
+    while (1)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        testCurlPostRawChunk();
+        std::cout << std::endl << std::endl;
+    }
 }

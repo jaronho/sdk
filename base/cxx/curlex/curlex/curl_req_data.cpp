@@ -28,7 +28,7 @@ std::string RawRequestData::toString() const
     std::string str;
     str.append("{").append("\n");
     str.append("    \"count\": ").append(std::to_string(m_bytes.size())).append(",").append("\n");
-    str.append("    \"data\": \"").append(std::string(m_bytes.begin(), m_bytes.end())).append("\"").append("\n");
+    str.append("    \"data\": \"").append(m_bytes.data(), m_bytes.size()).append("\"").append("\n");
     str.append("}");
     return str;
 }

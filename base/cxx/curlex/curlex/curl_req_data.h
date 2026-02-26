@@ -38,8 +38,6 @@ public:
     virtual std::string toString() const = 0;
 };
 
-using RequestDataPtr = std::shared_ptr<RequestData>;
-
 /**
  * @brief 二进制字节流数据
  */
@@ -78,8 +76,6 @@ private:
     bool m_chunk = false; /* 是否数据分块 */
 };
 
-using RawRequestDataPtr = std::shared_ptr<RawRequestData>;
-
 /**
  * @brief 表单数据, 格式: application/x-www-form-urlencoded
  */
@@ -107,8 +103,6 @@ public:
 private:
     std::map<std::string, std::string> m_fieldMap; /* 表单内容 */
 };
-
-using FormRequestDataPtr = std::shared_ptr<FormRequestData>;
 
 /**
  * @brief 多部分表单数据, 格式: multipart/form-data
@@ -196,6 +190,4 @@ private:
     std::map<std::string, std::string> m_fileMap; /* 文件列表 */
     std::map<std::string, BufferInfo> m_bufferMap; /* 缓冲区列表 */
 };
-
-using MultipartFormRequestDataPtr = std::shared_ptr<MultipartFormRequestData>;
 } // namespace curlex
