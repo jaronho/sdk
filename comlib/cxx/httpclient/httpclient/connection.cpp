@@ -67,65 +67,71 @@ void Connection::setRecvProgressFunc(const std::function<void(int64_t now, int64
 
 bool Connection::setRawData(const char* bytes, size_t count, bool chunk)
 {
-    if (m_data)
+    auto data = m_req->getData();
+    if (data)
     {
-        if (curlex::RequestData::Type::raw != m_data->getType())
+        if (curlex::RequestData::Type::raw != data->getType())
         {
             return false;
         }
         return true;
     }
-    m_data = HttpClient::makeRawData(bytes, count, chunk);
+    m_req->setData(HttpClient::makeRawData(bytes, count, chunk));
     return true;
 }
 
 bool Connection::setFormData(const std::map<std::string, std::string>& fieldMap)
 {
-    if (m_data)
+    auto data = m_req->getData();
+    if (data)
     {
-        if (curlex::RequestData::Type::form != m_data->getType())
+        if (curlex::RequestData::Type::form != data->getType())
         {
             return false;
         }
         return true;
     }
-    m_data = HttpClient::makeFormData(fieldMap);
+    m_req->setData(HttpClient::makeFormData(fieldMap));
     return true;
 }
 
 bool Connection::appendContentText(const std::string& key, const std::string& value, const std::string& contentType)
 {
-    if (m_data)
+    auto data = m_req->getData();
+    if (data)
     {
-        if (curlex::RequestData::Type::multipart_form != m_data->getType())
+        if (curlex::RequestData::Type::multipart_form != data->getType())
         {
             return false;
         }
     }
     else
     {
-        m_data = HttpClient::makeMultipartFormData();
+        data = HttpClient::makeMultipartFormData();
+        m_req->setData(data);
     }
-    auto data = std::dynamic_pointer_cast<curlex::MultipartFormRequestData>(m_data);
-    data->addText(key, value, contentType);
+    auto mfrdData = std::dynamic_pointer_cast<curlex::MultipartFormRequestData>(data);
+    mfrdData->addText(key, value, contentType);
     return true;
 }
 
 bool Connection::appendContentFile(const std::string& key, const std::string& filename)
 {
-    if (m_data)
+    auto data = m_req->getData();
+    if (data)
     {
-        if (curlex::RequestData::Type::multipart_form != m_data->getType())
+        if (curlex::RequestData::Type::multipart_form != data->getType())
         {
             return false;
         }
     }
     else
     {
-        m_data = HttpClient::makeMultipartFormData();
+        data = HttpClient::makeMultipartFormData();
+        m_req->setData(data);
     }
-    auto data = std::dynamic_pointer_cast<curlex::MultipartFormRequestData>(m_data);
-    data->addFile(key, filename);
+    auto mfrdData = std::dynamic_pointer_cast<curlex::MultipartFormRequestData>(data);
+    mfrdData->addFile(key, filename);
     return true;
 }
 
@@ -141,17 +147,17 @@ std::string Connection::toString()
         str.append(iter->first).append(": ").append(iter->second).append("\n");
     }
     /* 内容实体 */
-    if (m_data)
+    auto data = m_req->getData();
+    if (data)
     {
         str.append("\n");
-        str.append(m_data->toString());
+        str.append(data->toString());
     }
     return str;
 }
 
 void Connection::doDelete(const ResponseCallback& respCb, bool asyncOp)
 {
-    m_req->setData(m_data);
     if (asyncOp)
     {
         HttpClient::easyDelete(m_req, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
@@ -169,9 +175,7 @@ void Connection::doDelete(const ResponseCallback& respCb, bool asyncOp)
     {
         curlex::Response resp;
         curlex::curlDelete(m_req, m_funcSet, resp);
-        /* 清空数据 */
-        m_data.reset();
-        m_req->setData(nullptr);
+        m_req->setData(nullptr); /* 清空数据 */
         if (respCb)
         {
             respCb(resp);
@@ -181,7 +185,6 @@ void Connection::doDelete(const ResponseCallback& respCb, bool asyncOp)
 
 void Connection::doGet(const ResponseCallback& respCb, bool asyncOp)
 {
-    m_req->setData(m_data);
     if (asyncOp)
     {
         HttpClient::easyGet(m_req, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
@@ -199,9 +202,7 @@ void Connection::doGet(const ResponseCallback& respCb, bool asyncOp)
     {
         curlex::Response resp;
         curlex::curlGet(m_req, m_funcSet, resp);
-        /* 清空数据 */
-        m_data.reset();
-        m_req->setData(nullptr);
+        m_req->setData(nullptr); /* 清空数据 */
         if (respCb)
         {
             respCb(resp);
@@ -211,7 +212,6 @@ void Connection::doGet(const ResponseCallback& respCb, bool asyncOp)
 
 void Connection::doPut(const ResponseCallback& respCb, bool asyncOp)
 {
-    m_req->setData(m_data);
     if (asyncOp)
     {
         HttpClient::easyPut(m_req, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
@@ -229,9 +229,7 @@ void Connection::doPut(const ResponseCallback& respCb, bool asyncOp)
     {
         curlex::Response resp;
         curlex::curlPut(m_req, m_funcSet, resp);
-        /* 清空数据 */
-        m_data.reset();
-        m_req->setData(nullptr);
+        m_req->setData(nullptr); /* 清空数据 */
         if (respCb)
         {
             respCb(resp);
@@ -241,7 +239,6 @@ void Connection::doPut(const ResponseCallback& respCb, bool asyncOp)
 
 void Connection::doPost(const ResponseCallback& respCb, bool asyncOp)
 {
-    m_req->setData(m_data);
     if (asyncOp)
     {
         HttpClient::easyPost(m_req, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
@@ -259,9 +256,7 @@ void Connection::doPost(const ResponseCallback& respCb, bool asyncOp)
     {
         curlex::Response resp;
         curlex::curlPost(m_req, m_funcSet, resp);
-        /* 清空数据 */
-        m_data.reset();
-        m_req->setData(nullptr);
+        m_req->setData(nullptr); /* 清空数据 */
         if (respCb)
         {
             respCb(resp);
@@ -271,7 +266,6 @@ void Connection::doPost(const ResponseCallback& respCb, bool asyncOp)
 
 void Connection::doDownload(const std::string& filename, bool recover, const ResponseCallback& respCb, bool asyncOp)
 {
-    m_req->setData(m_data);
     if (asyncOp)
     {
         HttpClient::easyDownload(m_req, filename, recover, m_funcSet, [req = m_req, respCb](const curlex::Response& resp) {
@@ -289,9 +283,7 @@ void Connection::doDownload(const std::string& filename, bool recover, const Res
     {
         curlex::Response resp;
         curlex::curlDownload(m_req, filename, recover, m_funcSet, resp);
-        /* 清空数据 */
-        m_data.reset();
-        m_req->setData(nullptr);
+        m_req->setData(nullptr); /* 清空数据 */
         if (respCb)
         {
             respCb(resp);

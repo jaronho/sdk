@@ -180,7 +180,6 @@ public:
 
 private:
     curlex::RequestPtr m_req = nullptr; /* 请求对象 */
-    curlex::RequestDataPtr m_data = nullptr; /* 请求数据 */
     curlex::FuncSet m_funcSet; /* 函数集 */
     ResponseCallback m_respCallback = nullptr; /* 响应回调 */
 };

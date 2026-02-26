@@ -91,20 +91,20 @@ public:
      * @param chunk 是否数据分块(默认否)
      * @return 数据对象
      */
-    static curlex::RawRequestDataPtr makeRawData(const char* bytes, size_t count, bool chunk = false);
+    static std::shared_ptr<curlex::RawRequestData> makeRawData(const char* bytes, size_t count, bool chunk = false);
 
     /**
      * @brief 创建表单数据对象
      * @param fieldMap 表单数据
      * @return 数据对象
      */
-    static curlex::FormRequestDataPtr makeFormData(const std::map<std::string, std::string>& fieldMap);
+    static std::shared_ptr<curlex::FormRequestData> makeFormData(const std::map<std::string, std::string>& fieldMap);
 
     /**
      * @brief 创建多部份表单数据对象
      * @return 数据对象
      */
-    static curlex::MultipartFormRequestDataPtr makeMultipartFormData();
+    static std::shared_ptr<curlex::MultipartFormRequestData> makeMultipartFormData();
 
     /**
      * @brief 简单DELETE请求

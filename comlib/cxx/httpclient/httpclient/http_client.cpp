@@ -56,18 +56,17 @@ curlex::UserpwdRequestPtr HttpClient::makeUserpwdRequest(const std::string& user
 {
     return std::make_shared<curlex::UserpwdRequest>(username, password, url, localPort);
 }
-
-curlex::RawRequestDataPtr HttpClient::makeRawData(const char* bytes, size_t count, bool chunk)
+std::shared_ptr<curlex::RawRequestData> HttpClient::makeRawData(const char* bytes, size_t count, bool chunk)
 {
     return std::make_shared<curlex::RawRequestData>(bytes, count, chunk);
 }
 
-curlex::FormRequestDataPtr HttpClient::makeFormData(const std::map<std::string, std::string>& fieldMap)
+std::shared_ptr<curlex::FormRequestData> HttpClient::makeFormData(const std::map<std::string, std::string>& fieldMap)
 {
     return std::make_shared<curlex::FormRequestData>(fieldMap);
 }
 
-curlex::MultipartFormRequestDataPtr HttpClient::makeMultipartFormData()
+std::shared_ptr<curlex::MultipartFormRequestData> HttpClient::makeMultipartFormData()
 {
     return std::make_shared<curlex::MultipartFormRequestData>();
 }
