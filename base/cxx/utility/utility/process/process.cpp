@@ -416,6 +416,7 @@ int Process::runProcess(const std::string& exeFile, const std::string& args, int
     }
     else if (0 == pid) /* 创建成功, 进入子进程空间 */
     {
+        signal(SIGCHLD, SIG_DFL); /* 子进程恢复默认行为 */
         setpgid(0, 0);
         if (0 == flag)
         {
