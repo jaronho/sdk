@@ -2,10 +2,12 @@
 
 #include <algorithm>
 #include <chrono>
+#include <fcntl.h>
 #include <stdexcept>
 #include <string.h>
 #ifdef _WIN32
 #include <Windows.h>
+#include <io.h>
 #else
 #include <unistd.h>
 #endif
@@ -254,7 +256,7 @@ bool FileInfo::remove() const
 
 FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCode, size_t* destFileSize,
                                     const std::function<bool(size_t now, size_t total)>& progressCb,
-                                    const std::vector<FileInfo::CopyBlock>& blocks, unsigned int retryTime) const
+                                    const std::vector<FileInfo::CopyBlock>& blocks, size_t syncSize, unsigned int retryTime) const
 {
     if (errCode)
     {
@@ -263,6 +265,10 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     if (destFileSize)
     {
         *destFileSize = 0;
+    }
+    if (syncSize > 0 && syncSize < 64 * 1024 * 1024) /* 最小64MB, 太小的话对于几十G或更大的文件会导致同步太频繁 */
+    {
+        syncSize = 64 * 1024 * 1024;
     }
     if (retryTime <= 0)
     {
@@ -330,7 +336,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         return CopyResult::memory_alloc_failed;
     }
     /* 拷贝文件内容 */
-    size_t nowSize = 0, readSize = 0, wantRead = 0, readed = 0, writeSize = 0, written = 0;
+    size_t nowSize = 0, readSize = 0, wantRead = 0, readed = 0, writeSize = 0, written = 0, lastSyncSize = 0;
     auto tp = std::chrono::steady_clock::now();
     CopyResult result = CopyResult::ok;
     while (nowSize < srcFileSize)
@@ -394,6 +400,17 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         }
         nowSize += writeSize;
         tp = std::chrono::steady_clock::now();
+        if (syncSize > 0 && nowSize - lastSyncSize >= syncSize) /* 同步 */
+        {
+            lastSyncSize = nowSize;
+            fflush(destFile);
+            /* 确保数据落盘 */
+#ifdef _WIN32
+            _commit(_fileno(destFile));
+#else
+            fsync(fileno(destFile));
+#endif
+        }
         if (progressCb && !progressCb(nowSize, srcFileSize))
         {
             result = CopyResult::stop;
@@ -408,6 +425,14 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
         if (nowSize == srcFileSize)
         {
             fflush(destFile);
+            if (syncSize > 0) /* 确保数据落盘 */
+            {
+#ifdef _WIN32
+                _commit(_fileno(destFile));
+#else
+                fsync(fileno(destFile));
+#endif
+            }
         }
         else
         {

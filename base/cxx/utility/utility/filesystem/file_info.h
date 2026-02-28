@@ -148,12 +148,13 @@ public:
      * @param destFileSize [输出]目标文件大小(选填)
      * @param progressCb 进度回调, 参数: now-已拷贝字节数, total-总字节数, 返回值: true-继续, false-停止拷贝
      * @param blocks 拷贝块大小, 为空时表示使用默认(最大64Kb)
+     * @param syncSize 定期同步大小(字节), 当新拷贝的数据大等于该值时进行同步(最小64Mb), 0-表示不同步
      * @param retryTime 读写失败时重试时间(毫秒), 值必须大于0(否则可能会死循环)
      * @return 拷贝结果
      */
     CopyResult copy(const std::string& destFilename, int* errCode = nullptr, size_t* destFileSize = nullptr,
                     const std::function<bool(size_t now, size_t total)>& progressCb = nullptr,
-                    const std::vector<FileInfo::CopyBlock>& blocks = {}, unsigned int retryTime = 3000) const;
+                    const std::vector<FileInfo::CopyBlock>& blocks = {}, size_t syncSize = 0, unsigned int retryTime = 3000) const;
 
     /**
      * @brief 文件大小

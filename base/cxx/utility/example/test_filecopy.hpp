@@ -8,11 +8,12 @@
 void testFileCopy(int argc, char** argv)
 {
     cmdline::parser parser;
-    parser.add<std::string>("src", 's', "source directory", true);
-    parser.add<std::string>("files", 'f', "assign source files to copy (divide with ','), will copy all src directory if not set", false);
-    parser.add<std::string>("dest", 'd', "destination directory", true);
-    parser.add<int>("clear", 'c', "whether clear destination directory before copy", false, 0);
-    parser.add<int>("cover", 'r', "whether cover same name file in destination directory", false, 0);
+    parser.add<std::string>("src", 's', "源目录, 例如: /home/test", true);
+    parser.add<std::string>("files", 'f', "指定源目录下要拷贝的文件(全路径), 多个用逗号','分隔, 如果没设置, 则将拷贝源目录所有文件", false);
+    parser.add<std::string>("dest", 'd', "目标目录, 例如: /home/temp", true);
+    parser.add<int>("clear", 'c', "拷贝前是否清空目标目录, 0-不清空, 1-清空", false, 0);
+    parser.add<int>("cover", 'r', "是否覆盖目标目录同名文件, 否将另外命名, 0-否, 1-是", false, 0);
+    parser.add<size_t>("syncsize", 'w', "定期同步磁盘大小(字节), 最小64Mb, 0-不同步, >0-新拷贝超过该值则同步", false, 0);
     parser.parse_check(argc, argv);
     /* 解析参数 */
     auto srcPath = parser.get<std::string>("src");
@@ -20,6 +21,7 @@ void testFileCopy(int argc, char** argv)
     auto destPath = parser.get<std::string>("dest");
     auto clearDest = parser.get<int>("clear");
     auto coverDest = parser.get<int>("cover");
+    auto syncSize = parser.get<size_t>("syncsize");
     /* 参数设置 */
     auto srcFilelist = utility::StrTool::split(filelist, ",");
     auto destNameAlterFunc = [](const std::string& relativePath) { return relativePath; };
@@ -61,8 +63,8 @@ void testFileCopy(int argc, char** argv)
     int failCode;
     /* 开始拷贝 */
     std::chrono::steady_clock::time_point tm1 = std::chrono::steady_clock::now();
-    utility::FileCopy fc(srcPath, destPath, clearDest, coverDest, destNameAlterFunc, filterFunc, nullptr, ".tmp",
-                         std::vector<utility::FileInfo::CopyBlock>{}, 3000);
+    utility::FileCopy fc(srcPath, destPath, clearDest, coverDest, destNameAlterFunc, filterFunc, nullptr, ".tmp_",
+                         std::vector<utility::FileInfo::CopyBlock>{}, syncSize, 3000);
     fc.setCallback(beginCb, totalProgressCb, singleProgressCb, singleOkCb);
     auto result = fc.start(srcFilelist, nullptr, &failSrcFile, &failDestFile, &failCode);
     std::chrono::steady_clock::time_point tm2 = std::chrono::steady_clock::now();

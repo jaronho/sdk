@@ -90,12 +90,13 @@ public:
      * @param stopFunc 停止函数(选填)
      * @param tmpSuffix 临时后缀名(选填), 默认不使用临时文件
      * @param blocks 拷贝块大小, 为空时表示使用默认(最大64Kb)
+     * @param syncSize 定期同步大小(字节), 当新拷贝的数据大等于该值时进行同步(最小64Mb), 0-表示不同步
      * @param retryTime 读写失败时重试时间(毫秒), 值必须大于0(否则可能会死循环)
      */
     FileCopy(const std::string& srcPath, const std::string& destPath, bool clearDest, bool coverDest,
              const FileCopyDestNameAlterFunc& destNameAlterFunc, const FileCopyFilterFunc& filterFunc,
              const FileCopyStopFunc& stopFunc = nullptr, const std::string& tmpSuffix = "",
-             const std::vector<FileInfo::CopyBlock>& blocks = {}, unsigned int retryTime = 3000);
+             const std::vector<FileInfo::CopyBlock>& blocks = {}, size_t syncSize = 0, unsigned int retryTime = 3000);
     FileCopy() = default;
     virtual ~FileCopy() = default;
 
@@ -163,6 +164,7 @@ private:
     bool m_coverDestFile; /* 当目标目录已有同名文件时是否覆盖 */
     std::string m_tmpSuffix; /* 临时后缀名 */
     std::vector<FileInfo::CopyBlock> m_blocks; /* 文件块列表 */
+    size_t m_syncSize; /* 定期同步大小 */
     unsigned int m_retryTime; /* 重试时间 */
     FileCopyDestNameAlterFunc m_destNameAlterFunc; /* 目标文件名变更函数 */
     FileCopyFilterFunc m_filterFunc; /* 过滤函数 */
