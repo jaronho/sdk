@@ -312,19 +312,20 @@ void testHttpPostRawChunk()
     std::cout << str;
 
     long length = 0;
-    char* buffer = getFileData("test1.png", &length, false);
+    char* rawData = getFileData("test1.png", &length, false);
     http::Connection conn(url);
-    conn.setRawData(buffer, length, true);
-    if (buffer)
-    {
-        delete[] buffer;
-        buffer = nullptr;
-    }
+    conn.setRawData(rawData, length, true);
     conn.setSendProgressFunc(
         [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw (chunk), send", now, total, speed); });
     conn.setRecvProgressFunc(
         [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw (chunk), recv", now, total, speed); });
-    conn.doPost([](const curlex::Response& resp) { printSimpleResponse(resp); });
+    conn.doPost([rawData](const curlex::Response& resp) {
+        if (rawData)
+        {
+            delete[] rawData;
+        }
+        printSimpleResponse(resp);
+    });
 }
 
 /**
@@ -338,14 +339,14 @@ void testHttpPostRawNotChunk()
     str.append("===================== test curl POST raw (not chunk), url: " + url + "\n");
     std::cout << str;
 
-    std::string data = "{\"school\":\"yi zhong\",\"class\":[{\"grade\":1,\"number\":6,\"count\":42}]}";
+    auto rawData = std::make_shared<std::string>("school\":\"yi zhong\",\"class\":[{\"grade\":1,\"number\":6,\"count\":42}]}");
     http::Connection conn(url);
-    conn.setRawData(data.c_str(), data.size(), false);
+    conn.setRawData(rawData->data(), rawData->size(), false);
     conn.setSendProgressFunc(
         [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw (not chunk), send", now, total, speed); });
     conn.setRecvProgressFunc(
         [&](int64_t now, int64_t total, double speed) { printProgressInfo("POST raw (not chunk), recv", now, total, speed); });
-    conn.doPost([](const curlex::Response& resp) { printSimpleResponse(resp); });
+    conn.doPost([rawData](const curlex::Response& resp) { printSimpleResponse(resp); });
 }
 
 /**

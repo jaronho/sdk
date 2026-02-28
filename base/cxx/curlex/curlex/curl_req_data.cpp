@@ -13,7 +13,8 @@ RawRequestData::RawRequestData(const char* bytes, size_t count, bool chunk)
 {
     if (bytes && count > 0)
     {
-        m_bytes.insert(m_bytes.end(), bytes, bytes + count);
+        m_bytes = bytes;
+        m_byteCount = count;
     }
     m_chunk = chunk;
 }
@@ -26,17 +27,20 @@ RequestData::Type RawRequestData::getType() const
 std::string RawRequestData::toString() const
 {
     std::string str;
-    str.append("{").append("\n");
-    str.append("    \"count\": ").append(std::to_string(m_bytes.size())).append(",").append("\n");
-    str.append("    \"data\": \"").append(m_bytes.data(), m_bytes.size()).append("\"").append("\n");
-    str.append("}");
+    if (m_bytes && m_byteCount > 0)
+    {
+        str.append("{").append("\n");
+        str.append("    \"count\": ").append(std::to_string(m_byteCount)).append(",").append("\n");
+        str.append("    \"data\": \"").append(m_bytes, m_byteCount).append("\"").append("\n");
+        str.append("}");
+    }
     return str;
 }
 
 const char* RawRequestData::getBytes(size_t& byteCount) const
 {
-    byteCount = m_bytes.size();
-    return m_bytes.data();
+    byteCount = m_byteCount;
+    return m_bytes;
 }
 
 bool RawRequestData::isChunk() const

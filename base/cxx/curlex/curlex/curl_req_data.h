@@ -72,7 +72,8 @@ public:
     bool isChunk() const;
 
 private:
-    std::vector<char> m_bytes; /* 字节流 */
+    const char* m_bytes = nullptr; /* 字节流 */
+    size_t m_byteCount = 0; /* 字节数量 */
     bool m_chunk = false; /* 是否数据分块 */
 };
 
@@ -125,7 +126,7 @@ public:
     struct BufferInfo
     {
         std::string name; /* 缓冲区名称 */
-        const char* buffer; /* 缓冲区数据 */
+        const char* buffer = nullptr; /* 缓冲区数据 */
         size_t bufferSize = 0; /* 缓冲区大小 */
     };
 
