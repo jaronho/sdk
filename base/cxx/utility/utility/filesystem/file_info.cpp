@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <chrono>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdexcept>
 #include <string.h>
+#include <thread>
 #ifdef _WIN32
 #include <Windows.h>
 #include <io.h>
@@ -256,7 +258,8 @@ bool FileInfo::remove() const
 
 FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCode, size_t* destFileSize,
                                     const std::function<bool(size_t now, size_t total)>& progressCb,
-                                    const std::vector<FileInfo::CopyBlock>& blocks, size_t syncSize, unsigned int retryTime) const
+                                    const std::vector<FileInfo::CopyBlock>& blocks, size_t syncSize, unsigned int retryTime,
+                                    const std::vector<unsigned int>& sleepTime) const
 {
     if (errCode)
     {
@@ -338,6 +341,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
     /* 拷贝文件内容 */
     size_t nowSize = 0, readSize = 0, wantRead = 0, readed = 0, writeSize = 0, written = 0, lastSyncSize = 0;
     auto tp = std::chrono::steady_clock::now();
+    size_t sleepIndex = 0;
     CopyResult result = CopyResult::ok;
     while (nowSize < srcFileSize)
     {
@@ -349,6 +353,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
 #endif
         readSize = 0;
         wantRead = (nowSize + blockSize <= srcFileSize) ? blockSize : (srcFileSize - nowSize);
+        sleepIndex = 0;
         while (readSize < wantRead)
         {
             readed = fread(block + readSize, 1, wantRead - readSize, srcFile);
@@ -358,6 +363,25 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
             }
             else
             {
+                if (feof(srcFile)) /* 检查是否到达文件末尾(正常结束)或发生错误 */
+                {
+                    if (errCode)
+                    {
+                        *errCode = EIO;
+                    }
+                    result = CopyResult::src_read_failed;
+                    break;
+                }
+                if (!ferror(srcFile)) /* 检查是否可重试(有错误标志才重试) */
+                {
+                    if (errCode)
+                    {
+                        *errCode = EIO;
+                    }
+                    result = CopyResult::src_read_failed;
+                    break;
+                }
+                clearerr(srcFile); /* 清除错误, 准备重试 */
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
                 {
                     if (errCode)
@@ -367,6 +391,17 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
                     result = CopyResult::src_read_failed;
                     break;
                 }
+                if (sleepIndex < sleepTime.size())
+                {
+                    if (sleepTime[sleepIndex] > 0)
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime[sleepIndex]));
+                    }
+                    if (sleepIndex < sleepTime.size() - 1)
+                    {
+                        ++sleepIndex;
+                    }
+                }
             }
         }
         if (CopyResult::ok != result)
@@ -374,6 +409,7 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
             break;
         }
         writeSize = 0;
+        sleepIndex = 0;
         while (writeSize < readSize)
         {
             written = fwrite(block + writeSize, 1, readSize - writeSize, destFile);
@@ -383,6 +419,16 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
             }
             else
             {
+                if (!ferror(destFile)) /* 无错误标志但返回0 */
+                {
+                    if (errCode)
+                    {
+                        *errCode = EIO;
+                    }
+                    result = CopyResult::dest_write_failed;
+                    break;
+                }
+                clearerr(destFile);
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count() >= retryTime)
                 {
                     if (errCode)
@@ -391,6 +437,17 @@ FileInfo::CopyResult FileInfo::copy(const std::string& destFilename, int* errCod
                     }
                     result = CopyResult::dest_write_failed;
                     break;
+                }
+                if (sleepIndex < sleepTime.size())
+                {
+                    if (sleepTime[sleepIndex] > 0)
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime[sleepIndex]));
+                    }
+                    if (sleepIndex < sleepTime.size() - 1)
+                    {
+                        ++sleepIndex;
+                    }
                 }
             }
         }

@@ -63,7 +63,7 @@ void testFileCopy(int argc, char** argv)
     int failCode;
     /* 开始拷贝 */
     std::chrono::steady_clock::time_point tm1 = std::chrono::steady_clock::now();
-    utility::FileCopy fc(srcPath, destPath, clearDest, coverDest, destNameAlterFunc, filterFunc, nullptr, ".tmp_",
+    utility::FileCopy fc(srcPath, destPath, clearDest, coverDest, destNameAlterFunc, filterFunc, nullptr, "",
                          std::vector<utility::FileInfo::CopyBlock>{}, syncSize, 3000);
     fc.setCallback(beginCb, totalProgressCb, singleProgressCb, singleOkCb);
     auto result = fc.start(srcFilelist, nullptr, &failSrcFile, &failDestFile, &failCode);
