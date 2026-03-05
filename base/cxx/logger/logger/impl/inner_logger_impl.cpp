@@ -42,6 +42,13 @@ inline DateTime& getDateTime()
 {
     static thread_local DateTime dt;
     static thread_local uint64_t lastMs = 0;
+#ifdef _WIN32
+    struct timeval /* Windows平台补充timeval结构体定义 */
+    {
+        long tv_sec; /* 秒 */
+        long tv_usec; /* 微秒 */
+    };
+#endif
     struct timeval tv;
 #ifdef _WIN32
     SYSTEMTIME st;
