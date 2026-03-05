@@ -261,8 +261,9 @@ int main(int argc, char* argv[])
         return 0;
     }
     s_inPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) {
-        static size_t num = 1;
-        s_inPktAnalyzer->parse(num++, data, dataLen);
+        static size_t num = 0;
+        ++num;
+        s_inPktAnalyzer->parse(num, std::chrono::steady_clock::now(), data, dataLen);
     });
     s_inPacpDevice.startCapture();
 #ifndef _WIN32
@@ -278,8 +279,9 @@ int main(int argc, char* argv[])
         return 0;
     }
     s_outPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) {
-        static size_t num = 1;
-        s_outPktAnalyzer->parse(num++, data, dataLen);
+        static size_t num = 0;
+        ++num;
+        s_outPktAnalyzer->parse(num, std::chrono::steady_clock::now(), data, dataLen);
     });
     s_outPacpDevice.startCapture();
 #endif

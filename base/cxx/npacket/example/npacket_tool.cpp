@@ -553,8 +553,9 @@ int main(int argc, char* argv[])
     printf("开始抓包 ...\n");
     printf("\n");
     dev->setDataCallback([&](const unsigned char* data, int dataLen) {
-        static size_t num = 1;
-        s_pktAnalyzer->parse(num++, data, dataLen);
+        static size_t num = 0;
+        ++num;
+        s_pktAnalyzer->parse(num, std::chrono::steady_clock::now(), data, dataLen);
     });
     dev->startCapture();
     while (1)
