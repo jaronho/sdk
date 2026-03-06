@@ -57,6 +57,10 @@ set(base_npacket_device_src_list)
 get_cxx_files(npacket/device src_list)
 list(APPEND base_npacket_device_src_list ${src_list})
 
+set(base_npacket_parallel_hashmap_src_list)
+get_cxx_files(npacket/parallel_hashmap src_list)
+list(APPEND base_npacket_parallel_hashmap_src_list ${src_list})
+
 set(base_npacket_proto_src_list)
 get_cxx_files(npacket/proto src_list)
 list(APPEND base_npacket_proto_src_list ${src_list})
@@ -71,12 +75,14 @@ set(base_npacket_device_files
     CACHE INTERNAL "")
     
 set(base_npacket_parser_files
+    ${base_npacket_parallel_hashmap_src_list}
     ${base_npacket_proto_src_list}
     ${base_npacket_parser_list}
     CACHE INTERNAL "")
     
 set(base_npacket_files
     ${base_npacket_device_src_list}
+    ${base_npacket_parallel_hashmap_src_list}
     ${base_npacket_proto_src_list}
     ${base_npacket_parser_list}
     CACHE INTERNAL "")

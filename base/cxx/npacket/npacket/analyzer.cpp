@@ -1060,20 +1060,15 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleFragment(const std
         return nullptr;
     }
     {
-        FragmentInfo* info = nullptr;
         /* 查找或创建分片缓存 */
         auto iter = m_fragmentCache.find(key);
         if (m_fragmentCache.end() == iter)
         {
             auto fragInfo = std::make_shared<FragmentInfo>();
             fragInfo->originalProtocol = originalProtocol; /* 保存原始协议 */
-            m_fragmentCache.insert(std::make_pair(key, fragInfo));
-            info = fragInfo.get();
+            iter = m_fragmentCache.insert(std::make_pair(key, fragInfo)).first;
         }
-        else
-        {
-            info = iter->second.get();
-        }
+        std::shared_ptr<FragmentInfo> info = iter->second;
         info->lastAccessTime = ntp; /* 更新访问时间 */
         if (info->fragmentCount >= m_ipReassemblyCfg.maxFragmentCount) /* 检查分片数量(疑似DoS攻击) */
         {
@@ -1371,7 +1366,7 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
         return nullptr;
     }
     /* 获取或创建流信息 */
-    TcpStreamInfo* streamInfo = nullptr;
+    std::shared_ptr<TcpStreamInfo> streamInfo = nullptr;
     auto iter = m_tcpStreamCache.find(key);
     if (m_tcpStreamCache.end() == iter) /* 新流 */
     {
@@ -1383,11 +1378,11 @@ std::shared_ptr<std::vector<uint8_t>> Analyzer::checkAndHandleTcpReassembly(cons
         auto info = std::make_shared<TcpStreamInfo>();
         info->lastAccessTime = ntp;
         iter = m_tcpStreamCache.insert(std::make_pair(key, info)).first;
-        streamInfo = iter->second.get();
+        streamInfo = iter->second;
     }
     else /* 旧流 */
     {
-        streamInfo = iter->second.get();
+        streamInfo = iter->second;
         streamInfo->lastAccessTime = ntp;
         if (!streamInfo) /* 防御性检查: 防止map中存在空指针 */
         {

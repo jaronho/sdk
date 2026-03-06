@@ -1,16 +1,36 @@
 #pragma once
-#include <atomic>
 #include <chrono>
 #include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string.h>
-#include <unordered_map>
 #include <vector>
 
+#include "parallel_hashmap/phmap.h"
 #include "protocol.h"
 #include "protocol_parser.h"
+
+namespace phmap
+{
+template<>
+struct Hash<npacket::FragmentKey>
+{
+    size_t operator()(const npacket::FragmentKey& k) const noexcept
+    {
+        return k.hash();
+    }
+};
+
+template<>
+struct Hash<npacket::TcpStreamKey>
+{
+    size_t operator()(const npacket::TcpStreamKey& k) const noexcept
+    {
+        return k.hash();
+    }
+};
+} // namespace phmap
 
 namespace npacket
 {
@@ -72,7 +92,7 @@ struct TcpReassemblyConfig
     size_t streamTimeout = 30000; /* 流超时时间(毫秒) */
     size_t streamClearInterval = 10001; /* 流缓存清理间隔(毫秒) */
     size_t maxStreamSize = 1048576; /* 单个流最大缓存大小(1MB) */
-    size_t maxStreamCount = 10000; /* 最大流数量 */
+    size_t maxStreamCount = 10000; /* 最大流缓存数量 */
     size_t maxSegmentsPerStream = 32; /* 单流最大乱序段数(防止DoS攻击) */
     size_t finWaitTimeout = 5000; /* 收到FIN后等待乱序数据重组的超时时间(毫秒) */
     size_t gapSizeThreshold = 4096; /* 尽力交付(Gap Tolerance)阈值(字节), 0-无限等待丢包数据, >0-当>=该值(跳过丢包), 当<该值(流重置) */
@@ -365,14 +385,14 @@ private:
     const IpReassemblyConfig m_ipReassemblyCfg; /* IP分片重组配置 */
     const TcpReassemblyConfig m_tcpReassemblyCfg; /* TCP分片重组配置 */
 
-    std::unordered_map<FragmentKey, std::shared_ptr<FragmentInfo>> m_fragmentCache; /* IP分片缓存 */
+    phmap::flat_hash_map<FragmentKey, std::shared_ptr<FragmentInfo>> m_fragmentCache; /* IP分片缓存 */
     std::chrono::steady_clock::time_point m_lastCleanupTime = std::chrono::steady_clock::now(); /* 上次清理IP分片缓存时间 */
 
-    std::unordered_map<TcpStreamKey, std::shared_ptr<TcpStreamInfo>> m_tcpStreamCache; /* TCP流缓存 */
+    phmap::flat_hash_map<TcpStreamKey, std::shared_ptr<TcpStreamInfo>> m_tcpStreamCache; /* TCP流缓存 */
     std::chrono::steady_clock::time_point m_lastTcpCleanupTime = std::chrono::steady_clock::now(); /* 上次清理TCP流缓存时间 */
 
     std::mutex m_mutexParserList;
     std::vector<std::shared_ptr<ProtocolParser>> m_applicationParserList; /* 应用层解析器列表 */
-    std::unordered_map<uint16_t, std::shared_ptr<ProtocolParser>> m_applicationParserMap; /* 应用层解析器映射表, key-端口 */
+    phmap::flat_hash_map<uint16_t, std::shared_ptr<ProtocolParser>> m_applicationParserMap; /* 应用层解析器映射表, key-端口 */
 };
 } // namespace npacket
