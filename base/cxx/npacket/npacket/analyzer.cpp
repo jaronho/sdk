@@ -157,9 +157,9 @@ inline TcpReassemblyConfig limitTcpReassemblyConfig(TcpReassemblyConfig cfg)
     {
         cfg.maxStreamSize = 1048576;
     }
-    if (0 == cfg.maxStreamCount || cfg.maxStreamCount > 100000)
+    if (0 == cfg.maxCacheCount || cfg.maxCacheCount > 100000)
     {
-        cfg.maxStreamCount = 1000;
+        cfg.maxCacheCount = 1000;
     }
     if (0 == cfg.maxSegmentsPerStream || cfg.maxSegmentsPerStream > 256)
     {
@@ -676,13 +676,13 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     /* step2. 准备解析数据(可能是合并后的) */
     const uint8_t* fullData = payload;
     uint32_t fullDataLen = payloadLen;
-    TcpStreamInfo* streamInfo = nullptr;
+    std::shared_ptr<TcpStreamInfo> streamInfo = nullptr;
     if (tcpKey)
     {
         auto iter = m_tcpStreamCache.find(*tcpKey);
         if (m_tcpStreamCache.end() != iter)
         {
-            streamInfo = iter->second.get();
+            streamInfo = iter->second;
             if (streamInfo && !streamInfo->reassembledData.empty()) /* 如果之前有缓存的未消费数据 */
             {
                 /* 合并历史数据 + 新数据 */
@@ -1315,9 +1315,9 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
             ++iter;
         }
     }
-    if (entries.size() > m_tcpReassemblyCfg.maxStreamCount) /* 限制流数量(LRU) */
+    if (entries.size() > m_tcpReassemblyCfg.maxCacheCount) /* 限制流数量(LRU) */
     {
-        auto needRemoveCount = entries.size() - m_tcpReassemblyCfg.maxStreamCount;
+        auto needRemoveCount = entries.size() - m_tcpReassemblyCfg.maxCacheCount;
         static const auto compareFunc = [](const auto& a, const auto& b) { return a.second < b.second; };
         std::nth_element(entries.begin(), entries.begin() + needRemoveCount, entries.end(), compareFunc);
         for (size_t i = 0; i < needRemoveCount; ++i) /* 删除最旧的条目 */

@@ -1,7 +1,6 @@
 #pragma once
 #include <chrono>
 #include <functional>
-#include <map>
 #include <memory>
 #include <mutex>
 #include <string.h>
@@ -74,13 +73,13 @@ struct CallbackConfig
 struct IpReassemblyConfig
 {
     bool enable = true; /* 是否启用IP分片重组功能 */
-    size_t fragTimeout = 30000; /* 分片重组超时时间(毫秒) */
-    size_t fragClearInterval = 10001; /* 分片缓存清理间隔(毫秒) */
-    size_t maxFragSize = 8192; /* 单个分片最大负载大小(防止大分片攻击) */
-    size_t maxFragmentCount = 32; /* 每组分片最大数量(防止分片攻击) */
-    size_t maxReassembleSize = 65535; /* 最大重组后数据包大小(防止分片攻击) */
-    size_t maxCacheCount = 10000; /* 最大分片缓存数量(防止分片攻击) */
-    size_t maxRecursionDepth = 3; /* 最大递归深度(防止分片嵌套攻击) */
+    size_t fragTimeout = 30000; /* 分片重组超时时间(单位:毫秒) */
+    size_t fragClearInterval = 10001; /* 分片缓存清理间隔(单位:毫秒) */
+    size_t maxFragSize = 8192; /* 单个分片最大负载大小(单位:字节), 防止大分片攻击 */
+    size_t maxFragmentCount = 32; /* 每组分片最大数量(单位:个数), 防止分片攻击 */
+    size_t maxReassembleSize = 65535; /* 最大重组后数据包大小(单位:字节), 防止分片攻击 */
+    size_t maxCacheCount = 10000; /* 最大分片缓存数量(单位:个数), 防止分片攻击 */
+    size_t maxRecursionDepth = 3; /* 最大递归深度(单位:深度), 防止分片嵌套攻击 */
 };
 
 /**
@@ -89,13 +88,13 @@ struct IpReassemblyConfig
 struct TcpReassemblyConfig
 {
     bool enable = true; /* 是否启用IP分片重组功能 */
-    size_t streamTimeout = 30000; /* 流超时时间(毫秒) */
-    size_t streamClearInterval = 10001; /* 流缓存清理间隔(毫秒) */
-    size_t maxStreamSize = 1048576; /* 单个流最大缓存大小(1MB) */
-    size_t maxStreamCount = 10000; /* 最大流缓存数量 */
-    size_t maxSegmentsPerStream = 32; /* 单流最大乱序段数(防止DoS攻击) */
-    size_t finWaitTimeout = 5000; /* 收到FIN后等待乱序数据重组的超时时间(毫秒) */
-    size_t gapSizeThreshold = 4096; /* 尽力交付(Gap Tolerance)阈值(字节), 0-无限等待丢包数据, >0-当>=该值(跳过丢包), 当<该值(流重置) */
+    size_t streamTimeout = 30000; /* 流超时时间(单位:毫秒) */
+    size_t streamClearInterval = 10001; /* 流缓存清理间隔(单位:毫秒) */
+    size_t maxStreamSize = 1048576; /* 单个流最大缓存大小(单位:字节), 默认: 1Mb */
+    size_t maxCacheCount = 10000; /* 最大流缓存数量(单位:个数) */
+    size_t maxSegmentsPerStream = 32; /* 单流最大乱序段数(单位:个数), 防止DoS攻击 */
+    size_t finWaitTimeout = 5000; /* 收到FIN后等待乱序数据重组的超时时间(单位:毫秒) */
+    size_t gapSizeThreshold = 4096; /* 尽力交付(Gap Tolerance)阈值(单位:字节), 0-无限等待丢包数据, >0-当>=该值(跳过丢包), 当<该值(流重置) */
 };
 
 /**
@@ -154,7 +153,7 @@ private:
     {
         std::chrono::steady_clock::time_point lastAccessTime; /* 最近访问时间(用于超时和LRU) */
         uint8_t originalProtocol = 0; /* 原始协议类型(IPv6需要) */
-        std::map<uint32_t, std::vector<uint8_t>> fragments; /* 分片集合(key-偏移量, value-分片数据) */
+        phmap::flat_hash_map<uint32_t, std::vector<uint8_t>> fragments; /* 分片集合(key-偏移量, value-分片数据) */
         bool gotLastFragment = false; /* 是否已收到最后一片 */
         uint32_t lastOffset = 0; /* 最后一片的偏移量 */
         uint32_t totalLen = 0; /* 重组后总长度 */
@@ -195,7 +194,7 @@ private:
         std::chrono::steady_clock::time_point lastAccessTime; /* 最近访问时间(用于超时和LRU) */
         uint32_t nextExpectedSeq = 0; /* 期望的下一个序列号 */
         bool isSeqInitialized = false; /* 序列号是否已初始化(收到第一个SYN或数据的SYN) */
-        std::map<uint32_t, TcpSegment> segments; /* 乱序段缓存(按seq排序) */
+        phmap::flat_hash_map<uint32_t, TcpSegment> segments; /* 乱序段缓存(按seq排序) */
         std::vector<uint8_t> reassembledData; /* 已重组的连续数据(等待应用层消费) */
         std::vector<std::weak_ptr<ProtocolParser>> wpWaitingParserList; /* 等待更多数据的协议解析器列表 */
         bool needMoreData = false; /* 是否有解析器需要更多数据 */
