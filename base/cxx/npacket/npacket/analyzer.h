@@ -195,7 +195,7 @@ private:
         uint32_t nextExpectedSeq = 0; /* 期望的下一个序列号 */
         bool isSeqInitialized = false; /* 序列号是否已初始化(收到第一个SYN或数据的SYN) */
         phmap::flat_hash_map<uint32_t, TcpSegment> segments; /* 乱序段缓存(按seq排序) */
-        std::vector<uint8_t> reassembledData; /* 已重组的连续数据(等待应用层消费) */
+        std::vector<uint8_t> streams; /* 已重组的连续流数据(等待应用层消费) */
         std::vector<std::weak_ptr<ProtocolParser>> wpWaitingParserList; /* 等待更多数据的协议解析器列表 */
         bool needMoreData = false; /* 是否有解析器需要更多数据 */
         bool finReceived = false; /* 是否已收到FIN标记 */
@@ -215,8 +215,8 @@ private:
      * @param depth 递归深度(防止无限递归)
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int parseWithDepthControl(size_t num, const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* ethernetHeader,
-                              const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth);
+    int parseWithDepth(size_t num, const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* ethernetHeader,
+                       const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth);
 
     /**
      * @brief 处理从网络层开始的数据(用于重组后的IP包)
