@@ -73,13 +73,13 @@ struct CallbackConfig
 struct IpReassemblyConfig
 {
     bool enable = true; /* 是否启用IP分片重组功能 */
-    size_t fragTimeout = 30000; /* 分片重组超时时间(单位:毫秒) */
-    size_t fragClearInterval = 10001; /* 分片缓存清理间隔(单位:毫秒) */
-    size_t maxFragSize = 8192; /* 单个分片最大负载大小(单位:字节), 防止大分片攻击 */
-    size_t maxFragmentCount = 32; /* 每组分片最大数量(单位:个数), 防止分片攻击 */
-    size_t maxReassembleSize = 65535; /* 最大重组后数据包大小(单位:字节), 防止分片攻击 */
-    size_t maxCacheCount = 10000; /* 最大分片缓存数量(单位:个数), 防止分片攻击 */
-    size_t maxRecursionDepth = 3; /* 最大递归深度(单位:深度), 防止分片嵌套攻击 */
+    size_t fragTimeout = 30000; /* 分片重组超时时间(单位:毫秒), 值: [1秒, 5分钟] */
+    size_t fragClearInterval = 10001; /* 分片缓存清理间隔(单位:毫秒), 值: [5秒, 1分钟] */
+    size_t maxReassembleSize = 65535; /* 最大重组后数据包大小(单位:字节), 防止分片攻击, 值: [1280B, 16Mb] */
+    size_t maxFragSize = 8192; /* 单个分片最大负载大小(单位:字节), 防止大分片攻击, 值: [8B, 16Kb] */
+    size_t maxFragmentCount = 32; /* 每组分片最大数量(单位:个数), 防止分片攻击, 值: [1, 256] */
+    size_t maxCacheCount = 10000; /* 最大分片缓存数量(单位:个数), 防止分片攻击, 值: [1, 5000] */
+    size_t maxRecursionDepth = 3; /* 最大递归深度(单位:深度), 防止分片嵌套攻击, 值: [1, 5] */
 };
 
 /**
@@ -88,13 +88,13 @@ struct IpReassemblyConfig
 struct TcpReassemblyConfig
 {
     bool enable = true; /* 是否启用IP分片重组功能 */
-    size_t streamTimeout = 30000; /* 流超时时间(单位:毫秒) */
-    size_t streamClearInterval = 10001; /* 流缓存清理间隔(单位:毫秒) */
-    size_t maxStreamSize = 1048576; /* 单个流最大缓存大小(单位:字节), 默认: 1Mb */
-    size_t maxCacheCount = 10000; /* 最大流缓存数量(单位:个数) */
-    size_t maxSegmentsPerStream = 32; /* 单流最大乱序段数(单位:个数), 防止DoS攻击 */
-    size_t finWaitTimeout = 5000; /* 收到FIN后等待乱序数据重组的超时时间(单位:毫秒) */
-    size_t gapSizeThreshold = 4096; /* 尽力交付(Gap Tolerance)阈值(单位:字节), 0-无限等待丢包数据, >0-当>=该值(跳过丢包), 当<该值(流重置) */
+    size_t streamTimeout = 30000; /* 流超时时间(单位:毫秒), 值: [1秒, 5分钟] */
+    size_t streamClearInterval = 10001; /* 流缓存清理间隔(单位:毫秒), 值: [5秒, 1分钟] */
+    size_t maxStreamSize = 1048576; /* 单个流最大缓存大小(单位:字节), 值: [64Kb, 64Mb]*/
+    size_t maxCacheCount = 10000; /* 最大流缓存数量(单位:个数), 值: [1000, 100000] */
+    size_t maxSegmentsPerStream = 32; /* 单流最大乱序段数(单位:个数), 防止DoS攻击, 值: [1, 256] */
+    size_t finWaitTimeout = 5000; /* 收到FIN后等待乱序数据重组的超时时间(单位:毫秒), 值: [1, streamTimeout] */
+    size_t gapSizeThreshold = 4096; /* 尽力交付阈值(单位:字节), 0-等待丢包数据, >0-当>=该值(跳过丢包), 当<该值(流重置), 值: [0, 1Mb] */
 };
 
 /**
@@ -336,11 +336,10 @@ private:
      * @param data 当前分片数据(含IP头)
      * @param dataLen 数据长度
      * @param isFragment [输出]是否为分片报文, true-是分片报文, false-不是分片报文
-     * @return 返回重组后的完整数据
+     * @param reassembledData [输出]重组后的完整数据
      */
-    std::shared_ptr<std::vector<uint8_t>> checkAndHandleFragment(const std::chrono::steady_clock::time_point& ntp,
-                                                                 const ProtocolHeader* networkHeader, const uint8_t* data, uint32_t dataLen,
-                                                                 bool& isFragment);
+    void checkAndHandleFragment(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader, const uint8_t* data,
+                                uint32_t dataLen, bool& isFragment, std::vector<uint8_t>& reassembledData);
 
     /**
      * @brief 解析IPv6分片头部
@@ -372,12 +371,11 @@ private:
      * @param payloadLen 负载数据长度
      * @param key [输出]TCP流标识健
      * @param needMoreData [输出]是否需要更多数据
-     * @return 返回重组后的完整数据
+     * @param reassembledData [输出]重组后的完整数据
      */
-    std::shared_ptr<std::vector<uint8_t>> checkAndHandleTcpReassembly(const std::chrono::steady_clock::time_point& ntp,
-                                                                      const ProtocolHeader* networkHeader,
-                                                                      const ProtocolHeader* transportHeader, const uint8_t* payload,
-                                                                      uint32_t payloadLen, TcpStreamKey& key, bool& needMoreData);
+    void checkAndHandleTcpReassembly(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader,
+                                     const ProtocolHeader* transportHeader, const uint8_t* payload, uint32_t payloadLen, TcpStreamKey& key,
+                                     bool& needMoreData, std::vector<uint8_t>& reassembledData);
 
 private:
     const CallbackConfig m_cbCfg; /* 回调配置 */
