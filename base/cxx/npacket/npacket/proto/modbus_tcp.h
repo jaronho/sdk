@@ -21,7 +21,7 @@ public:
      * @param data Modbus数据
      */
     using DATA_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                             const ProtocolHeader* header, const std::shared_ptr<modbus::DataSt>& data)>;
+                                             const ProtocolHeader* header, const modbus::DataSt& data)>;
 
 public:
     /**

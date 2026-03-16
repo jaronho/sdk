@@ -173,6 +173,10 @@ inline TcpReassemblyConfig limitTcpReassemblyConfig(TcpReassemblyConfig cfg)
     {
         cfg.gapSizeThreshold = 1048576;
     }
+    if (cfg.maxPendingSize < 1024 || cfg.maxPendingSize > cfg.maxStreamSize / 4)
+    {
+        cfg.maxPendingSize = 16384; /* 默认16KB */
+    }
     return cfg;
 }
 
@@ -706,26 +710,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     std::unordered_set<uint32_t> addedList;
     {
         std::lock_guard<std::mutex> locker(m_mutexParserList);
-        /* 1. 首先查找等待数据的解析器 */
-        if (streamInfo && !streamInfo->wpWaitingParserList.empty())
-        {
-            std::vector<std::weak_ptr<ProtocolParser>> waitingParserList;
-            for (const auto& wpParser : streamInfo->wpWaitingParserList)
-            {
-                auto waitingParser = wpParser.lock();
-                for (const auto& parser : m_applicationParserList) /* 检查是否仍在全局列表中(未被删除) */
-                {
-                    if (waitingParser == parser && addedList.insert(parser->getProtocol()).second)
-                    {
-                        parserList.emplace_back(parser);
-                        waitingParserList.emplace_back(wpParser);
-                        break;
-                    }
-                }
-            }
-            streamInfo->wpWaitingParserList = std::move(waitingParserList);
-        }
-        /* 2. 其次查找端口匹配的解析器(端口优先级: 1.dstPort, 2.srcPort) */
+        /* 1. 查找端口匹配的解析器(端口优先级: 1.dstPort, 2.srcPort) */
         if (!m_applicationParserMap.empty())
         {
             auto iter = m_applicationParserMap.find(dstPort);
@@ -738,7 +723,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
                 parserList.emplace_back(iter->second);
             }
         }
-        /* 3. 最后查找其他解析器(排除已添加的端口匹配协议) */
+        /* 2. 查找其他解析器(排除已添加的端口匹配协议) */
         for (const auto& parser : m_applicationParserList)
         {
             if (addedList.insert(parser->getProtocol()).second)
@@ -751,121 +736,156 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     {
         return 4;
     }
-    /* step5. 应用层协议解析 */
-    uint32_t offset = 0; /* 已消费的字节偏移 */
-    std::vector<std::weak_ptr<ProtocolParser>> continueParserList; /* 返回CONTINUE的解析器 */
-    uint32_t successConsumeLen = 0;
-    while (offset < fullDataLen)
+    /* step4. 为每个解析器准备独立的数据视图 */
+    struct ParserContext /* 解析器上下文 */
     {
-        continueParserList.clear();
-        bool anySuccess = false;
-        for (const auto& parser : parserList) /* 尝试所有候选解析器 */
+        uint32_t protocol = 0; /* 协议 */
+        std::shared_ptr<ProtocolParser> parser = nullptr; /* 解析器 */
+        const uint8_t* data = nullptr; /* 数据(所有解析器共享) */
+        uint32_t dataLen = 0; /* 数据长度 */
+        uint32_t offset = 0; /* 已消费的字节数 */
+        std::vector<uint8_t> pendingData; /* 历史未消费数据(与其他解析器隔离) */
+        bool needMoreData = false; /* 是否需要更多数据 */
+        bool isActive = true; /* 是否仍在参与解析 */
+    };
+    std::vector<ParserContext> parserContextList;
+    parserContextList.reserve(parserList.size());
+    for (const auto& parser : parserList) /* 初始化每个解析器的执行状态 */
+    {
+        ParserContext context;
+        context.protocol = parser->getProtocol();
+        context.parser = parser;
+        if (streamInfo) /* 检查是否有该解析器的历史状态(TCP流场景) */
         {
+            auto iterOffset = streamInfo->parserConsumedOffset.find(context.protocol);
+            auto iterPending = streamInfo->parserPendingData.find(context.protocol);
+            if (streamInfo->parserConsumedOffset.end() != iterOffset && streamInfo->parserPendingData.end() != iterPending
+                && !iterPending->second.empty())
+            {
+                /* 恢复历史状态: 历史未消费数据 + 新数据 */
+                context.pendingData = std::move(iterPending->second);
+                context.pendingData.insert(context.pendingData.end(), fullData, fullData + fullDataLen);
+                context.data = context.pendingData.data();
+                context.dataLen = (uint32_t)context.pendingData.size();
+                context.offset = 0; /* 重置, 因为已经合并到新buffer */
+            }
+            else
+            {
+                /* 新数据或无需恢复: 直接引用共享数据(零拷贝) */
+                context.data = fullData;
+                context.dataLen = fullDataLen;
+                context.offset = 0;
+            }
+        }
+        else /* UDP或无流场景: 直接引用 */
+        {
+            context.data = fullData;
+            context.dataLen = fullDataLen;
+            context.offset = 0;
+        }
+        parserContextList.push_back(std::move(context));
+    }
+    /* step5. 应用层协议解析 */
+    bool anySuccess = false;
+    std::vector<uint32_t> needMoreDataProtocol;
+    for (auto& context : parserContextList)
+    {
+        if (!context.isActive)
+        {
+            continue;
+        }
+        while (context.offset < context.dataLen && context.isActive) /* 每个解析器独立解析循环, 直到消费完所有数据或失败 */
+        {
+            uint32_t remainingLen = context.dataLen - context.offset;
             uint32_t consumeLen = 0;
             ParseResult result;
             try
             {
-                result = parser->parse(num, ntp, totalLen, header, fullData + offset, fullDataLen - offset, consumeLen);
+                result = context.parser->parse(num, ntp, totalLen, header, context.data + context.offset, remainingLen, consumeLen);
             }
             catch (const std::exception& e)
             {
-                printf("[Exception] parse, %s\n", e.what());
-                continue;
+                printf("[Exception] parser[%u]: %s\n", context.protocol, e.what());
+                result = ParseResult::FAILURE;
+                consumeLen = 0;
             }
             catch (...)
             {
-                printf("[Exception] parse, unknown\n");
-                continue;
+                printf("[Exception] parser[%u]: unknown\n", context.protocol);
+                result = ParseResult::FAILURE;
+                consumeLen = 0;
             }
             if (ParseResult::SUCCESS == result)
             {
-                if (consumeLen > 0 && consumeLen <= fullDataLen - offset)
+                if (consumeLen > 0 && consumeLen <= remainingLen) /* 校验消费长度合理性(防止错误值影响该解析器自身) */
                 {
-                    successConsumeLen = consumeLen;
+                    context.offset += consumeLen;
                     anySuccess = true;
-                    break; /* 找到成功的, 跳出循环 */
+                    /* 继续循环, 可能还有数据可消费(如多条消息) */
                 }
-            }
-            else if (ParseResult::CONTINUE == result)
-            {
-                continueParserList.emplace_back(parser);
-            }
-            /* FAILURE, 继续尝试下一个 */
-        }
-        if (anySuccess) /* 成功处理, 更新状态 */
-        {
-            offset += successConsumeLen;
-            if (streamInfo) /* 如果之前有等待的解析器, 清空(因为成功了) */
-            {
-                streamInfo->wpWaitingParserList.clear();
-                streamInfo->needMoreData = false;
-            }
-            continue;
-        }
-        else /* 没有解析器成功 */
-        {
-            if (!continueParserList.empty()) /* 有解析器需要更多数据 */
-            {
-                if (streamInfo)
+                else
                 {
-                    streamInfo->wpWaitingParserList = continueParserList;
-                    streamInfo->needMoreData = true;
-                    /* 保存未使用的数据(相对于合并后的数据) */
-                    std::vector<uint8_t> unusedData(fullData + offset, fullData + fullDataLen);
-                    if (streamInfo->streams.empty())
-                    {
-                        streamInfo->streams = std::move(unusedData);
-                    }
-                    else
-                    {
-                        /* 先检查合并后大小, 避免超过限制 */
-                        size_t totalSize = streamInfo->streams.size() + unusedData.size();
-                        if (totalSize > m_tcpReassemblyCfg.maxStreamSize)
-                        {
-                            /* 保留最新的数据(尾部) */
-                            size_t excess = totalSize - m_tcpReassemblyCfg.maxStreamSize;
-                            if (excess >= streamInfo->streams.size())
-                            {
-                                /* 旧数据全部废弃, 使用新数据 */
-                                streamInfo->streams = std::move(unusedData);
-                                /* 调整期望序列号, 标记有数据丢失 */
-                                if (streamInfo->nextExpectedSeq > excess)
-                                {
-                                    streamInfo->nextExpectedSeq -= (streamInfo->streams.size() - excess);
-                                }
-                            }
-                            else /* 删除旧数据的头部, 腾出空间给新数据 */
-                            {
-                                streamInfo->streams.erase(streamInfo->streams.begin(), streamInfo->streams.begin() + excess);
-                                streamInfo->streams.insert(streamInfo->streams.end(), unusedData.begin(), unusedData.end());
-                            }
-                        }
-                        else
-                        {
-                            streamInfo->streams.insert(streamInfo->streams.end(), unusedData.begin(), unusedData.end());
-                        }
-                    }
+                    context.isActive = false;
+                    break;
                 }
-                return 5; /* CONTINUE, 等待更多数据 */
             }
-            else /* 所有解析器都失败 */
+            else if (ParseResult::CONTINUE == result) /* 需要更多数据: 保存未消费部分 */
             {
-                if (streamInfo)
+                if (remainingLen > 0) /* 拷贝未消费数据(存储隔离) */
                 {
-                    streamInfo->wpWaitingParserList.clear();
-                    streamInfo->needMoreData = false;
+                    context.pendingData.assign(context.data + context.offset, context.data + context.offset + remainingLen);
                 }
-                return (offset > 0 ? 0 : 4); /* 部分成功或完全失败 */
+                context.needMoreData = true;
+                needMoreDataProtocol.push_back(context.protocol);
+                break; /* 跳出该解析器的循环, 等待更多数据 */
             }
+            else
+            {
+                context.isActive = false;
+                break;
+            }
+        }
+        if (context.offset >= context.dataLen && !context.needMoreData) /* 如果解析器成功消费了所有数据, 清空暂存数据 */
+        {
+            context.pendingData.clear();
         }
     }
-    /* 所有数据处理完毕 */
+    /* step6. 保存状态(TCP流场景) */
     if (streamInfo)
     {
-        streamInfo->wpWaitingParserList.clear();
-        streamInfo->needMoreData = false;
+        for (const auto& context : parserContextList)
+        {
+            auto pendingSize = context.pendingData.size();
+            if (m_tcpReassemblyCfg.maxPendingSize > 0 && pendingSize > m_tcpReassemblyCfg.maxPendingSize) /* 单协议流大小检查 */
+            {
+                streamInfo->parserConsumedOffset.erase(context.protocol);
+                streamInfo->parserPendingData.erase(context.protocol);
+                continue;
+            }
+            if (context.needMoreData && pendingSize > 0) /* 暂存未消费数据 */
+            {
+                streamInfo->parserConsumedOffset[context.protocol] = 0; /* 下次从0开始消费 */
+                streamInfo->parserPendingData.erase(context.protocol); /* 先删除旧的, 释放内存 */
+                streamInfo->parserPendingData[context.protocol] = std::move(context.pendingData); /* 移动 */
+            }
+            else if (context.offset > 0 || !context.isActive) /* 清理该协议的所有状态 */
+            {
+                streamInfo->parserConsumedOffset.erase(context.protocol);
+                streamInfo->parserPendingData.erase(context.protocol);
+            }
+        }
     }
-    return 0;
+    /* step7. 返回结果决策 */
+    if (anySuccess) /* 至少一个解析器成功消费了数据 */
+    {
+        return 0;
+    }
+    else if (!needMoreDataProtocol.empty()) /* 没有成功, 但有解析器需要更多数据 */
+    {
+        return 5;
+    }
+    /* 全部失败 */
+    return 4;
 }
 
 bool Analyzer::traverseIpv6Extension(const uint8_t* data, uint32_t dataLen, uint8_t& nextHeader, uint32_t& totalExtLen, bool stopAtFragment,
@@ -1643,8 +1663,8 @@ void Analyzer::checkAndHandleTcpReassembly(const std::chrono::steady_clock::time
         if (reassembledData.size() > m_tcpReassemblyCfg.maxStreamSize)
         {
             /* 截断前强制清空解析器数据, 防止内存泄露 */
-            info->wpWaitingParserList.clear();
-            info->needMoreData = false;
+            info->parserConsumedOffset.clear();
+            info->parserPendingData.clear();
             size_t excess = reassembledData.size() - m_tcpReassemblyCfg.maxStreamSize;
             if (excess < reassembledData.size())
             {
@@ -1758,8 +1778,8 @@ void Analyzer::checkAndHandleTcpReassembly(const std::chrono::steady_clock::time
                     info->isSeqInitialized = true;
                     info->segments.clear();
                     info->streams.clear();
-                    info->wpWaitingParserList.clear();
-                    info->needMoreData = false;
+                    info->parserConsumedOffset.clear();
+                    info->parserPendingData.clear();
                     info->finReceived = false;
                     info->rstReceived = false;
                     if (payloadLen > 0)

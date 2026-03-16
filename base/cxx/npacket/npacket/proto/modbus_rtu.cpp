@@ -205,26 +205,26 @@ ParseResult ModbusRtuParser::tryParseBuffer(const std::chrono::steady_clock::tim
         }
     }
     /* 生成数据包 */
-    auto d = std::make_shared<modbus::DataSt>();
-    d->transactionId = generateTransactionId();
-    d->slaveAddress = slaveAddress;
-    d->isBroadcast = (0 == slaveAddress);
-    d->funcCode = funcCode;
-    d->isRequest = isRequest;
-    d->isException = isException;
+    modbus::DataSt d;
+    d.transactionId = generateTransactionId();
+    d.slaveAddress = slaveAddress;
+    d.isBroadcast = (0 == slaveAddress);
+    d.funcCode = funcCode;
+    d.isRequest = isRequest;
+    d.isException = isException;
     if (isException)
     {
-        d->rawData = nullptr;
-        d->rawDataLen = 0;
-        d->funcDataOffset = 0;
-        d->funcDataLen = 0;
+        d.rawData = nullptr;
+        d.rawDataLen = 0;
+        d.funcDataOffset = 0;
+        d.funcDataLen = 0;
     }
     else
     {
-        d->rawData = m_buffer.data();
-        d->rawDataLen = m_buffer.size();
-        d->funcDataOffset = 2;
-        d->funcDataLen = actualDataLen;
+        d.rawData = m_buffer.data();
+        d.rawDataLen = m_buffer.size();
+        d.funcDataOffset = 2;
+        d.funcDataLen = actualDataLen;
     }
     /* 成功解析, 触发回调 */
     if (m_dataCallback)

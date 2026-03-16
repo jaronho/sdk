@@ -29,8 +29,7 @@ public:
      * @param ntp 数据包接收时间点
      * @param data Modbus数据
      */
-    using DATA_CALLBACK =
-        std::function<void(const std::chrono::steady_clock::time_point& ntp, const std::shared_ptr<modbus::DataSt>& data)>;
+    using DATA_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, const modbus::DataSt& data)>;
 
     /**
      * @brief 超时数据回调

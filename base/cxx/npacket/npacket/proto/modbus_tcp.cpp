@@ -79,26 +79,26 @@ ParseResult ModbusTcpParser::parse(size_t num, const std::chrono::steady_clock::
     }
     /* 判断报文方向: 如果源端口是Modbus端口, 说明是从站响应 */
     bool isRequest = !isModbusPort(tcpHeader->srcPort);
-    auto d = std::make_shared<modbus::DataSt>();
-    d->transactionId = mbap.transactionId;
-    d->slaveAddress = mbap.unitId;
-    d->isBroadcast = false; /* TCP无广播概念 */
-    d->funcCode = funcCode;
-    d->isRequest = isRequest;
-    d->isException = isException;
+    modbus::DataSt d;
+    d.transactionId = mbap.transactionId;
+    d.slaveAddress = mbap.unitId;
+    d.isBroadcast = false; /* TCP无广播概念 */
+    d.funcCode = funcCode;
+    d.isRequest = isRequest;
+    d.isException = isException;
     if (isException)
     {
-        d->rawData = nullptr;
-        d->rawDataLen = 0;
-        d->funcDataOffset = 0;
-        d->funcDataLen = 0;
+        d.rawData = nullptr;
+        d.rawDataLen = 0;
+        d.funcDataOffset = 0;
+        d.funcDataLen = 0;
     }
     else
     {
-        d->rawData = payload;
-        d->rawDataLen = fullFrameLen;
-        d->funcDataOffset = mbapHeaderLen + 1;
-        d->funcDataLen = funcDataLen;
+        d.rawData = payload;
+        d.rawDataLen = fullFrameLen;
+        d.funcDataOffset = mbapHeaderLen + 1;
+        d.funcDataLen = funcDataLen;
     }
     if (m_dataCallback)
     {

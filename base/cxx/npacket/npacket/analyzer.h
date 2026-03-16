@@ -95,6 +95,7 @@ struct TcpReassemblyConfig
     size_t maxSegmentsPerStream = 32; /* 单流最大乱序段数(单位:个数), 防止DoS攻击, 值: [1, 256] */
     size_t finWaitTimeout = 5000; /* 收到FIN后等待乱序数据重组的超时时间(单位:毫秒), 值: [1, streamTimeout] */
     size_t gapSizeThreshold = 4096; /* 尽力交付阈值(单位:字节), 0-等待丢包数据, >0-当>=该值(跳过丢包), 当<该值(流重置), 值: [0, 1Mb] */
+    size_t maxPendingSize = 16384; /* 协议解析器单流最大缓存大小(单位:字节), 值: [1024, maxStreamSize/4] */
 };
 
 /**
@@ -196,8 +197,8 @@ private:
         bool isSeqInitialized = false; /* 序列号是否已初始化(收到第一个SYN或数据的SYN) */
         phmap::flat_hash_map<uint32_t, TcpSegment> segments; /* 乱序段缓存(按seq排序) */
         std::vector<uint8_t> streams; /* 已重组的连续流数据(等待应用层消费) */
-        std::vector<std::weak_ptr<ProtocolParser>> wpWaitingParserList; /* 等待更多数据的协议解析器列表 */
-        bool needMoreData = false; /* 是否有解析器需要更多数据 */
+        phmap::flat_hash_map<uint32_t, uint32_t> parserConsumedOffset; /* 解析器已消费的字节数, key-协议, value-偏移值 */
+        phmap::flat_hash_map<uint32_t, std::vector<uint8_t>> parserPendingData; /* 解析器未消费的数据, key-协议, value-数据 */
         bool finReceived = false; /* 是否已收到FIN标记 */
         std::chrono::steady_clock::time_point finRecvTime; /* FIN接收时间 */
         bool rstReceived = false; /* 是否已收到RST标记 */
