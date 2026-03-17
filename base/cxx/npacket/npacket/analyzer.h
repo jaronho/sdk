@@ -383,10 +383,10 @@ private:
     const IpReassemblyConfig m_ipReassemblyCfg; /* IP分片重组配置 */
     const TcpReassemblyConfig m_tcpReassemblyCfg; /* TCP分片重组配置 */
 
-    phmap::flat_hash_map<FragmentKey, std::shared_ptr<FragmentInfo>> m_fragmentCache; /* IP分片缓存 */
+    phmap::flat_hash_map<FragmentKey, std::unique_ptr<FragmentInfo>> m_fragmentCache; /* IP分片缓存 */
     std::chrono::steady_clock::time_point m_lastCleanupTime = std::chrono::steady_clock::now(); /* 上次清理IP分片缓存时间 */
 
-    phmap::flat_hash_map<TcpStreamKey, std::shared_ptr<TcpStreamInfo>> m_tcpStreamCache; /* TCP流缓存 */
+    phmap::flat_hash_map<TcpStreamKey, std::unique_ptr<TcpStreamInfo>> m_tcpStreamCache; /* TCP流缓存 */
     std::chrono::steady_clock::time_point m_lastTcpCleanupTime = std::chrono::steady_clock::now(); /* 上次清理TCP流缓存时间 */
 
     std::mutex m_mutexParserList;

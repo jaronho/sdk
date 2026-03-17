@@ -683,14 +683,14 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     /* step2. 准备解析数据(可能是合并后的) */
     const uint8_t* fullData = payload;
     uint32_t fullDataLen = payloadLen;
-    std::shared_ptr<TcpStreamInfo> streamInfo = nullptr;
+    TcpStreamInfo* streamInfo = nullptr;
     std::vector<uint8_t> combinedData;
     if (tcpKey)
     {
         auto iter = m_tcpStreamCache.find(*tcpKey);
         if (m_tcpStreamCache.end() != iter)
         {
-            streamInfo = iter->second;
+            streamInfo = iter->second.get();
             if (streamInfo && !streamInfo->streams.empty()) /* 如果之前有缓存的未消费数据 */
             {
                 /* 合并历史数据 + 新数据 */
@@ -1083,17 +1083,18 @@ void Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
         return;
     }
     /* 查找或创建分片缓存 */
-    std::shared_ptr<FragmentInfo> info = nullptr;
+    FragmentInfo* info = nullptr;
     auto iter = m_fragmentCache.find(key);
     if (m_fragmentCache.end() == iter) /* 新分片 */
     {
-        info = std::make_shared<FragmentInfo>();
+        auto fragmentInfo = std::make_unique<FragmentInfo>();
+        info = fragmentInfo.get();
         info->originalProtocol = originalProtocol; /* 保存原始协议 */
-        iter = m_fragmentCache.insert(std::make_pair(key, info)).first;
+        iter = m_fragmentCache.insert(std::make_pair(key, std::move(fragmentInfo))).first;
     }
     else /* 旧分片 */
     {
-        info = iter->second;
+        info = iter->second.get();
         if (!info) /* 防御性检查: 防止map中存在空指针 */
         {
             m_fragmentCache.erase(iter);
@@ -1242,6 +1243,8 @@ void Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
     {
         return;
     }
+    auto fragmentInfo = std::move(iter->second); /* 需要先将数据移出暂存, 避免数据被销毁 */
+    info = fragmentInfo.get(); /* 修改指针指向地址 */
     m_fragmentCache.erase(key); /* 清理缓存 */
     if (0 == info->totalLen || info->totalLen > m_ipReassemblyCfg.maxReassembleSize) /* 验证总长度 */
     {
@@ -1394,7 +1397,7 @@ void Analyzer::checkAndHandleTcpReassembly(const std::chrono::steady_clock::time
         return;
     }
     /* 获取或创建流信息 */
-    std::shared_ptr<TcpStreamInfo> info = nullptr;
+    TcpStreamInfo* info = nullptr;
     auto iter = m_tcpStreamCache.find(key);
     if (m_tcpStreamCache.end() == iter) /* 新流 */
     {
@@ -1404,13 +1407,14 @@ void Analyzer::checkAndHandleTcpReassembly(const std::chrono::steady_clock::time
             reassembledData.insert(reassembledData.end(), payload, payload + payloadLen);
             return;
         }
-        info = std::make_shared<TcpStreamInfo>();
+        auto streamInfo = std::make_unique<TcpStreamInfo>();
+        info = streamInfo.get();
         info->lastAccessTime = ntp;
-        iter = m_tcpStreamCache.insert(std::make_pair(key, info)).first;
+        iter = m_tcpStreamCache.insert(std::make_pair(key, std::move(streamInfo))).first;
     }
     else /* 旧流 */
     {
-        info = iter->second;
+        info = iter->second.get();
         if (!info) /* 防御性检查: 防止map中存在空指针 */
         {
             m_tcpStreamCache.erase(iter);
