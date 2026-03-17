@@ -1785,7 +1785,6 @@ void Analyzer::checkAndHandleTcpReassembly(const std::chrono::steady_clock::time
                     info->parserConsumedOffset.clear();
                     info->parserPendingData.clear();
                     info->finReceived = false;
-                    info->rstReceived = false;
                     if (payloadLen > 0)
                     {
                         reassembledData.insert(reassembledData.end(), payload, payload + payloadLen);

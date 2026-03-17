@@ -201,7 +201,6 @@ private:
         phmap::flat_hash_map<uint32_t, std::vector<uint8_t>> parserPendingData; /* 解析器未消费的数据, key-协议, value-数据 */
         bool finReceived = false; /* 是否已收到FIN标记 */
         std::chrono::steady_clock::time_point finRecvTime; /* FIN接收时间 */
-        bool rstReceived = false; /* 是否已收到RST标记 */
     };
 
 private:
