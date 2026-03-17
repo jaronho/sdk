@@ -764,6 +764,7 @@ struct FragmentKey
         }
     };
 
+    mutable size_t hashValue = 0;
     uint8_t ipVersion = 0; /* IP版本: 4-IPv4, 6-IPv6 */
     Ipv4Key v4;
     Ipv6Key v6;
@@ -782,6 +783,7 @@ struct FragmentKey
         memcpy(&key.v4.srcIp, srcIp, 4);
         memcpy(&key.v4.dstIp, dstIp, 4);
         key.v4.identification = identification;
+        key.hashValue = key.hash();
         return key;
     }
 
@@ -799,6 +801,7 @@ struct FragmentKey
         memcpy(&key.v6.srcIp, srcIp, 16);
         memcpy(&key.v6.dstIp, dstIp, 16);
         key.v6.identification = identification;
+        key.hashValue = key.hash();
         return key;
     }
 
@@ -831,22 +834,26 @@ struct FragmentKey
      */
     size_t hash() const
     {
-        size_t h = std::hash<uint8_t>{}(ipVersion);
-        if (4 == ipVersion)
+        if (0 == hashValue)
         {
-            h ^= std::hash<uint32_t>{}(v4.srcIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint32_t>{}(v4.dstIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint16_t>{}(v4.identification) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            size_t h = ipVersion;
+            if (4 == ipVersion)
+            {
+                h = (h << 13) ^ (h >> 19) ^ v4.srcIp;
+                h = (h << 13) ^ (h >> 19) ^ v4.dstIp;
+                h = (h << 13) ^ (h >> 19) ^ v4.identification;
+            }
+            else
+            {
+                h = (h << 13) ^ (h >> 19) ^ v6.srcIp[0];
+                h = (h << 13) ^ (h >> 19) ^ v6.srcIp[1];
+                h = (h << 13) ^ (h >> 19) ^ v6.dstIp[0];
+                h = (h << 13) ^ (h >> 19) ^ v6.dstIp[1];
+                h = (h << 13) ^ (h >> 19) ^ v6.identification;
+            }
+            hashValue = h ^ (h >> 16);
         }
-        else
-        {
-            h ^= std::hash<uint64_t>{}(v6.srcIp[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint64_t>{}(v6.srcIp[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint64_t>{}(v6.dstIp[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint64_t>{}(v6.dstIp[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint32_t>{}(v6.identification) + 0x9e3779b9 + (h << 6) + (h >> 2);
-        }
-        return h;
+        return hashValue;
     }
 };
 
@@ -915,6 +922,7 @@ struct TcpStreamKey
         }
     };
 
+    mutable size_t hashValue = 0;
     uint8_t ipVersion = 0; /* IP版本: 4-IPv4, 6-IPv6 */
     Ipv4Key v4;
     Ipv6Key v6;
@@ -935,6 +943,7 @@ struct TcpStreamKey
         memcpy(&key.v4.dstIp, dstIp, 4);
         key.v4.srcPort = srcPort;
         key.v4.dstPort = dstPort;
+        key.hashValue = key.hash();
         return key;
     }
 
@@ -954,6 +963,7 @@ struct TcpStreamKey
         memcpy(&key.v6.dstIp, dstIp, 16);
         key.v6.srcPort = srcPort;
         key.v6.dstPort = dstPort;
+        key.hashValue = key.hash();
         return key;
     }
 
@@ -987,24 +997,28 @@ struct TcpStreamKey
      */
     size_t hash() const
     {
-        size_t h = std::hash<uint8_t>{}(ipVersion);
-        if (4 == ipVersion)
+        if (0 == hashValue)
         {
-            h ^= std::hash<uint32_t>{}(v4.srcIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint32_t>{}(v4.dstIp) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint16_t>{}(v4.srcPort) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint16_t>{}(v4.dstPort) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            size_t h = ipVersion;
+            if (4 == ipVersion)
+            {
+                h = (h << 13) ^ (h >> 19) ^ v4.srcIp;
+                h = (h << 13) ^ (h >> 19) ^ v4.dstIp;
+                h = (h << 13) ^ (h >> 19) ^ v4.srcPort;
+                h = (h << 13) ^ (h >> 19) ^ v4.dstPort;
+            }
+            else
+            {
+                h = (h << 13) ^ (h >> 19) ^ v6.srcIp[0];
+                h = (h << 13) ^ (h >> 19) ^ v6.srcIp[1];
+                h = (h << 13) ^ (h >> 19) ^ v6.dstIp[0];
+                h = (h << 13) ^ (h >> 19) ^ v6.dstIp[1];
+                h = (h << 13) ^ (h >> 19) ^ v6.srcPort;
+                h = (h << 13) ^ (h >> 19) ^ v6.dstPort;
+            }
+            hashValue = h ^ (h >> 16);
         }
-        else
-        {
-            h ^= std::hash<uint64_t>{}(v6.srcIp[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint64_t>{}(v6.srcIp[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint64_t>{}(v6.dstIp[0]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint64_t>{}(v6.dstIp[1]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint16_t>{}(v6.srcPort) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<uint16_t>{}(v6.dstPort) + 0x9e3779b9 + (h << 6) + (h >> 2);
-        }
-        return h;
+        return hashValue;
     }
 };
 } // namespace npacket
