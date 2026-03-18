@@ -684,7 +684,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
     const uint8_t* fullData = payload;
     uint32_t fullDataLen = payloadLen;
     TcpStreamInfo* streamInfo = nullptr;
-    std::vector<uint8_t> combinedData;
+    std::vector<uint8_t> combinedData; /* 合并后的数据(定义在这里用于保持生命周期) */
     if (tcpKey)
     {
         auto iter = m_tcpStreamCache.find(*tcpKey);
@@ -706,8 +706,10 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         }
     }
     /* step3. 获取候选解析器 */
-    std::vector<std::shared_ptr<ProtocolParser>> parserList;
-    std::unordered_set<uint32_t> addedList;
+    static thread_local std::vector<std::shared_ptr<ProtocolParser>> parserList;
+    static thread_local std::unordered_set<uint32_t> addedList;
+    parserList.clear();
+    addedList.clear();
     {
         std::lock_guard<std::mutex> locker(m_mutexParserList);
         /* 1. 查找端口匹配的解析器(端口优先级: 1.dstPort, 2.srcPort) */
@@ -732,6 +734,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             }
         }
     }
+    addedList.clear();
     if (parserList.empty())
     {
         return 4;
@@ -785,6 +788,7 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
         }
         parserContextList.push_back(std::move(context));
     }
+    parserList.clear();
     /* step5. 应用层协议解析 */
     bool anySuccess = false;
     std::vector<uint32_t> needMoreDataProtocol;
