@@ -70,7 +70,7 @@ public:
      * @param header 传输层头部
      * @param payload 传输层负载
      * @param payloadLen 传输层负载长度
-     * @param consumeLen [输出]消耗的长度
+     * @param consumeLen [输出]消耗的长度, 重要: 解析成功时, 需要在接口内部对此变量赋值所解析的数据长度, 解析失败/数据不足时赋值0
      * @return 解析结果
      */
     virtual ParseResult parse(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
