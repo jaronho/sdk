@@ -174,8 +174,15 @@ TcpServer::TcpServer(const std::string& name, size_t threadCount, const std::str
 TcpServer::~TcpServer()
 {
     std::lock_guard<std::mutex> locker(m_mutex);
-    m_acceptor->close();
-    m_contextPool->join();
+    if (m_acceptor)
+    {
+        m_acceptor->close();
+        m_acceptor = nullptr;
+    }
+    if (m_contextPool)
+    {
+        m_contextPool->join();
+    }
     m_connectionMap.clear();
     m_handshakeMap.clear();
     m_running = false;
