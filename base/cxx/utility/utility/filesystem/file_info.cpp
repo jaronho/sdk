@@ -1023,7 +1023,7 @@ bool FileInfo::isTextData(FILE* f, float ratio, size_t maxSampleSize, size_t buf
         }
         fsetpos(f, &oriPos); /* 恢复文件指针到原始位置 */
         free(buffer);
-        if ((double)illegalCount / totalRead >= ratio)
+        if (totalRead > 0 && illegalCount > 0 && (double)illegalCount / totalRead >= ratio)
         {
             return false;
         }
