@@ -5,7 +5,7 @@
 #include "../utility/filesystem/file_copy.h"
 #include "../utility/strtool/strtool.h"
 
-void testFileCopy(int argc, char** argv)
+int main(int argc, char** argv)
 {
     cmdline::parser parser;
     parser.add<std::string>("src", 's', "源目录, 例如: /home/test", true);
@@ -106,4 +106,5 @@ void testFileCopy(int argc, char** argv)
                failDestFile.realFile.c_str(), result);
         break;
     }
+    return 0;
 }
