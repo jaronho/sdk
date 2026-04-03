@@ -162,6 +162,7 @@ std::string Tool::md5Directory(
     auto mutexInner = std::make_shared<std::mutex>();
     auto md5List = std::make_shared<std::vector<std::string>>();
     auto result = std::make_shared<std::promise<void>>();
+    std::atomic_bool resultSetted{false};
     auto innerFunc = [&, segSizeFunc, stopFunc, blockSize, totalFileCount, mutexInner, md5List,
                       result](const std::string& name, const utility::FileAttribute& attr, int depth) {
         std::vector<size_t> segSizeList;
@@ -177,20 +178,31 @@ std::string Tool::md5Directory(
                 return stopFlag;
             },
             blockSize);
+        bool resultFlag = false;
         {
             std::lock_guard<std::mutex> locker(*mutexInner);
             if (stopFlag)
             {
                 md5List->clear();
-                result->set_value();
+                resultFlag = true;
             }
             else
             {
                 md5List->emplace_back(value);
                 if (md5List->size() == totalFileCount)
                 {
-                    result->set_value();
+                    resultFlag = true;
                 }
+            }
+        }
+        if (resultFlag && !resultSetted.exchange(true))
+        {
+            try
+            {
+                result->set_value();
+            }
+            catch (...)
+            {
             }
         }
         return value;
@@ -223,7 +235,16 @@ std::string Tool::md5Directory(
             {
                 std::lock_guard<std::mutex> locker(*mutexInner);
                 md5List->clear();
-                result->set_value();
+            }
+            if (stopFlag && !resultSetted.exchange(true))
+            {
+                try
+                {
+                    result->set_value();
+                }
+                catch (...)
+                {
+                }
             }
             return stopFlag;
         },
@@ -387,6 +408,7 @@ uint64_t Tool::xxhashDirectory(
     auto mutexInner = std::make_shared<std::mutex>();
     auto xxhashList = std::make_shared<std::vector<std::string>>();
     auto result = std::make_shared<std::promise<void>>();
+    std::atomic_bool resultSetted{false};
     auto innerFunc = [&, segSizeFunc, stopFunc, blockSize, totalFileCount, mutexInner, xxhashList,
                       result](const std::string& name, const utility::FileAttribute& attr, int depth) {
         std::vector<size_t> segSizeList;
@@ -402,12 +424,13 @@ uint64_t Tool::xxhashDirectory(
                 return stopFlag;
             },
             blockSize);
+        bool resultFlag = false;
         {
             std::lock_guard<std::mutex> locker(*mutexInner);
             if (stopFlag)
             {
                 xxhashList->clear();
-                result->set_value();
+                resultFlag = true;
             }
             else
             {
@@ -416,8 +439,18 @@ uint64_t Tool::xxhashDirectory(
                 xxhashList->emplace_back(tmp);
                 if (xxhashList->size() == totalFileCount)
                 {
-                    result->set_value();
+                    resultFlag = true;
                 }
+            }
+        }
+        if (resultFlag && !resultSetted.exchange(true))
+        {
+            try
+            {
+                result->set_value();
+            }
+            catch (...)
+            {
             }
         }
         return value;
@@ -446,7 +479,16 @@ uint64_t Tool::xxhashDirectory(
             {
                 std::lock_guard<std::mutex> locker(*mutexInner);
                 xxhashList->clear();
-                result->set_value();
+            }
+            if (stopFlag && !resultSetted.exchange(true))
+            {
+                try
+                {
+                    result->set_value();
+                }
+                catch (...)
+                {
+                }
             }
             return stopFlag;
         },
