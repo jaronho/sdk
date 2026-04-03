@@ -13,6 +13,7 @@
 #else
 #include <dirent.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "client/linux/handler/exception_handler.h"
@@ -311,12 +312,12 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     auto fi = stripFileInfo(oldDumpFile);
     std::string baseName = g_procBasename + "_" + g_procVersion;
     std::string newDumpFile = fi[0] + baseName + "_" + datetime + msBuf + (fi[3].empty() ? "" : "." + fi[3]);
+    /* 堆栈文件处理 */
+#ifdef _WIN32
     if (0 != rename(oldDumpFile.c_str(), newDumpFile.c_str()))
     {
         newDumpFile = oldDumpFile;
     }
-    /* 堆栈文件处理 */
-#ifdef _WIN32
     if (g_callback)
     {
         std::string json = "{\"code\":0,\"file\":\"" + newDumpFile + "\",\"msg\":\"ok\"}";
@@ -324,21 +325,34 @@ bool dumpHandler(const google_breakpad::MinidumpDescriptor& descriptor, void* co
     }
 #else
     std::string command = "dump_assist.sh -pname " + g_procFile + " -pver " + g_procVersion + " -dname " + newDumpFile;
-    if (g_callback)
+    pid_t pid = fork(); /* 需要创建子进程, 因为不能在主进程的崩溃信号处理函数中调用: malloc, new, popen, fopen, printf等接口, 否则会阻塞 */
+    if (0 == pid) /* 子进程 */
     {
-        std::vector<std::string> result;
-        shellCmd(command, &result);
-        /* 回调到外部 */
-        std::string json;
-        if (!result.empty())
+        if (0 != rename(oldDumpFile.c_str(), newDumpFile.c_str()))
         {
-            json = result[result.size() - 1];
+            newDumpFile = oldDumpFile;
         }
-        g_callback(json);
+        if (g_callback)
+        {
+            std::vector<std::string> result;
+            shellCmd(command, &result);
+            /* 回调到外部 */
+            std::string json;
+            if (!result.empty())
+            {
+                json = result[result.size() - 1];
+            }
+            g_callback(json);
+        }
+        else
+        {
+            shellCmd(command);
+        }
+        _exit(0); /* 子进程必须立即退出 */
     }
-    else
+    else if (pid > 0) /* 父进程 */
     {
-        shellCmd(command);
+        waitpid(pid, nullptr, 0); /* 等待子进程完成所有操作再退出 */
     }
 #endif
     return succeeded;
