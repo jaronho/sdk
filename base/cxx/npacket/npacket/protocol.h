@@ -93,6 +93,39 @@ public:
 };
 
 /**
+ * @brief 未知协议头部
+ */
+class UnknownHeader final : public ProtocolHeader
+{
+public:
+    /**
+     * @brief 构造函数
+     * @param protocol 协议类型
+     */
+    UnknownHeader(uint32_t protocol) : m_protocol(protocol) {}
+
+    /**
+     * @brief 获取协议类型
+     * @return 协议类型
+     */
+    uint32_t getProtocol() const noexcept override
+    {
+        return m_protocol;
+    }
+
+    /**
+     * @brief 重置对象状态
+     */
+    void reset() override
+    {
+        ProtocolHeader::reset();
+    }
+
+private:
+    uint32_t m_protocol = 0; /* 协议类型 */
+};
+
+/**
  * @brief 以太网II协议头部
  */
 class EthernetIIHeader final : public ProtocolHeader

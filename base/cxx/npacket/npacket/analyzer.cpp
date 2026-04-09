@@ -312,11 +312,11 @@ int Analyzer::parseWithDepth(size_t num, const std::chrono::steady_clock::time_p
     }
     catch (const std::exception& e)
     {
-        printf("[Exception] ethernetLayerCb, %s\n", e.what());
+        printf("[Exception][%s %d %s] ethernetLayerCb, %s\n", __FILE__, __LINE__, __FUNCTION__, e.what());
     }
     catch (...)
     {
-        printf("[Exception] ethernetLayerCb, unknown\n");
+        printf("[Exception][%s %d %s] ethernetLayerCb, unknown\n", __FILE__, __LINE__, __FUNCTION__);
     }
     if (0 == remainLen)
     {
@@ -331,6 +331,24 @@ int Analyzer::parseWithDepth(size_t num, const std::chrono::steady_clock::time_p
         handleNetworkLayer(num, networkProtocol, data + offset, remainLen, ipv4Header, ipv6Header, arpHeader, headerLen, transportProtocol);
     if (!networkHeader)
     {
+        UnknownHeader unknownHeader(networkProtocol);
+        unknownHeader.parent = ethernetHeader;
+        try
+        {
+            if (m_cbCfg.networkLayerCb)
+            {
+                m_cbCfg.networkLayerCb(num, ntp, dataLen, &unknownHeader, data + offset, remainLen);
+                return 0;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            printf("[Exception][%s %d %s] networkLayerCb for unknown protocol, %s\n", __FILE__, __LINE__, __FUNCTION__, e.what());
+        }
+        catch (...)
+        {
+            printf("[Exception][%s %d %s] networkLayerCb for unknown protocol, unknown\n", __FILE__, __LINE__, __FUNCTION__);
+        }
         return 2;
     }
     /* step3. 检查并处理分片 */
@@ -358,11 +376,11 @@ int Analyzer::parseWithDepth(size_t num, const std::chrono::steady_clock::time_p
     }
     catch (const std::exception& e)
     {
-        printf("[Exception] networkLayerCb, %s\n", e.what());
+        printf("[Exception][%s %d %s] networkLayerCb, %s\n", __FILE__, __LINE__, __FUNCTION__, e.what());
     }
     catch (...)
     {
-        printf("[Exception] networkLayerCb, unknown\n");
+        printf("[Exception][%s %d %s] networkLayerCb, unknown\n", __FILE__, __LINE__, __FUNCTION__);
     }
     if (0 == remainLen)
     {
@@ -402,6 +420,24 @@ int Analyzer::parseFromNetworkLayer(size_t num, const std::chrono::steady_clock:
         handleNetworkLayer(num, networkProtocol, data, dataLen, ipv4Header, ipv6Header, arpHeader, headerLen, transportProtocol);
     if (!networkHeader)
     {
+        UnknownHeader unknownHeader(networkProtocol);
+        unknownHeader.parent = ethernetHeader;
+        try
+        {
+            if (m_cbCfg.networkLayerCb)
+            {
+                m_cbCfg.networkLayerCb(num, ntp, dataLen, &unknownHeader, data, dataLen);
+                return 0;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            printf("[Exception][%s %d %s] networkLayerCb for unknown protocol, %s\n", __FILE__, __LINE__, __FUNCTION__, e.what());
+        }
+        catch (...)
+        {
+            printf("[Exception][%s %d %s] networkLayerCb for unknown protocol, unknown\n", __FILE__, __LINE__, __FUNCTION__);
+        }
         return 2;
     }
     networkHeader->parent = ethernetHeader;
@@ -428,11 +464,11 @@ int Analyzer::parseFromNetworkLayer(size_t num, const std::chrono::steady_clock:
     }
     catch (const std::exception& e)
     {
-        printf("[Exception] networkLayerCb, %s\n", e.what());
+        printf("[Exception][%s %d %s] networkLayerCb, %s\n", __FILE__, __LINE__, __FUNCTION__, e.what());
     }
     catch (...)
     {
-        printf("[Exception] networkLayerCb, unknown\n");
+        printf("[Exception][%s %d %s] networkLayerCb, unknown\n", __FILE__, __LINE__, __FUNCTION__);
     }
     if (0 == remainLen)
     {
@@ -513,11 +549,11 @@ int Analyzer::processTransportToApplication(size_t num, const std::chrono::stead
     }
     catch (const std::exception& e)
     {
-        printf("[Exception] transportLayerCb, %s\n", e.what());
+        printf("[Exception][%s %d %s] transportLayerCb, %s\n", __FILE__, __LINE__, __FUNCTION__, e.what());
     }
     catch (...)
     {
-        printf("[Exception] transportLayerCb, unknown\n");
+        printf("[Exception][%s %d %s] transportLayerCb, unknown\n", __FILE__, __LINE__, __FUNCTION__);
     }
     /* step3. 解析应用层 */
     const uint8_t* payload = data + offset;
@@ -809,13 +845,13 @@ int Analyzer::handleApplicationLayer(size_t num, const std::chrono::steady_clock
             }
             catch (const std::exception& e)
             {
-                printf("[Exception] parser[%u]: %s\n", context.protocol, e.what());
+                printf("[Exception][%s %d %s] parser[%u]: %s\n", __FILE__, __LINE__, __FUNCTION__, context.protocol, e.what());
                 result = ParseResult::FAILURE;
                 consumeLen = 0;
             }
             catch (...)
             {
-                printf("[Exception] parser[%u]: unknown\n", context.protocol);
+                printf("[Exception][%s %d %s] parser[%u]: unknown\n", __FILE__, __LINE__, __FUNCTION__, context.protocol);
                 result = ParseResult::FAILURE;
                 consumeLen = 0;
             }
