@@ -142,7 +142,7 @@ void printTransportHeaderTcp(const npacket::ProtocolHeader* h)
 }
 
 /* 处理以太网层 */
-bool handleEthernetLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+bool handleEthernetLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                          const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     auto h = (const npacket::EthernetIIHeader*)(header);
@@ -154,7 +154,7 @@ bool handleEthernetLayer(size_t num, const std::chrono::steady_clock::time_point
 }
 
 /* 处理网络层 */
-bool handleNetworkLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+bool handleNetworkLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                         const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::NetworkProtocol)header->getProtocol())
@@ -200,7 +200,7 @@ bool handleNetworkLayer(size_t num, const std::chrono::steady_clock::time_point&
 }
 
 /* 处理传输层 */
-bool handleTransportLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+bool handleTransportLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                           const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
@@ -555,7 +555,7 @@ int main(int argc, char* argv[])
     dev->setDataCallback([&](const unsigned char* data, int dataLen) {
         static size_t num = 0;
         ++num;
-        s_pktAnalyzer->parse(num, std::chrono::steady_clock::now(), data, dataLen);
+        s_pktAnalyzer->parse(0, num, std::chrono::steady_clock::now(), data, dataLen);
     });
     dev->startCapture();
     while (1)

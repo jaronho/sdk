@@ -35,6 +35,7 @@ namespace npacket
 {
 /**
  * @brief 层数据回调
+ * @param flag 数据标志
  * @param num 数据序号
  * @param ntp 数据包接收时间点
  * @param totalLen 数据包总长度
@@ -43,7 +44,7 @@ namespace npacket
  * @param payloadLen 层负载长度
  * @return true-继续处理下一层, false-停止后续处理
  */
-using LAYER_CALLBACK = std::function<bool(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+using LAYER_CALLBACK = std::function<bool(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                                           const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)>;
 
 /**
@@ -136,14 +137,15 @@ public:
 
     /**
      * @brief 解析数据(注意: 非线程安全, 不可跨线程调用)
+     * @param flag 数据标志, 自定义(可用于区分不同数据来源或类型)
      * @param num 数据序号, 自定义(一般是递增)
      * @param ntp 数据包接收时间点(注意: 尽量不要频繁调用std::chrono::steady_clock::now()获取, 建议1秒获取1次)
-     * @param data 数据
+     * @param data 数据指针
      * @param dataLen 数据长度
-     * @param dataSource 数据源
+     * @param dataSource 数据源, 默认为NETWORK_ETH(以太网帧), 注意: 当data不是以太网帧时, 需要正确设置数据源类型, 以便分析器正确解析数据
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int parse(size_t num, const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
+    int parse(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, const uint8_t* data, uint32_t dataLen,
               const DataSource& dataSource = DataSource::NETWORK_ETH);
 
 private:
@@ -206,6 +208,7 @@ private:
 private:
     /**
      * @brief 递归解析重组后的数据包(防止栈溢出)
+     * @param flag 数据标志
      * @param num 数据序号
      * @param ntp 数据包接收时间点
      * @param ethernetHeader 以太网层头部
@@ -215,11 +218,12 @@ private:
      * @param depth 递归深度(防止无限递归)
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int parseWithDepth(size_t num, const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* ethernetHeader,
+    int parseWithDepth(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* ethernetHeader,
                        const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth);
 
     /**
      * @brief 处理从网络层开始的数据(用于重组后的IP包)
+     * @param flag 数据标志
      * @param num 数据序号
      * @param ntp 数据包接收时间点
      * @param ethernetHeader 以太网层头部
@@ -229,11 +233,13 @@ private:
      * @param depth 递归深度
      * @return 0-成功, 2-解析网络层失败, 3-解析传输层失败, 5-分片重组中(等待后续分片)
      */
-    int parseFromNetworkLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* ethernetHeader,
-                              const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth);
+    int parseFromNetworkLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp,
+                              const ProtocolHeader* ethernetHeader, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource,
+                              int depth);
 
     /**
      * @brief 统一处理传输层到应用层的完整流程
+     * @param flag 数据标志
      * @param num 数据序号
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
@@ -244,12 +250,13 @@ private:
      * @param depth 递归深度
      * @return 0-成功, 3-解析传输层失败, 5-分片重组中(等待后续分片)
      */
-    int processTransportToApplication(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+    int processTransportToApplication(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                                       const ProtocolHeader* networkHeader, uint32_t transportProtocol, const uint8_t* data,
                                       uint32_t dataLen, int depth);
 
     /**
      * @brief 处理以太网层数据
+     * @param flag 数据标志
      * @param num 数据序号
      * @param data 层数据
      * @param dataLen 层数据长度
@@ -258,11 +265,12 @@ private:
      * @param networkProtocol [输出]网络层协议类型
      * @return 指向实际类型的基类指针
      */
-    ProtocolHeader* handleEthernetLayer(size_t num, const uint8_t* data, uint32_t dataLen, EthernetIIHeader& ethHeader, uint32_t& headerLen,
-                                        uint32_t& networkProtocol);
+    ProtocolHeader* handleEthernetLayer(size_t flag, size_t num, const uint8_t* data, uint32_t dataLen, EthernetIIHeader& ethHeader,
+                                        uint32_t& headerLen, uint32_t& networkProtocol);
 
     /**
      * @brief 处理网络层数据
+     * @param flag 数据标志
      * @param num 数据序号
      * @param networkProtocol 网络层协议类型
      * @param data 层数据
@@ -274,11 +282,13 @@ private:
      * @param transportProtocol [输出]传输层协议类型
      * @return 指向实际类型的基类指针
      */
-    ProtocolHeader* handleNetworkLayer(size_t num, uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen, Ipv4Header& ipv4Header,
-                                       Ipv6Header& ipv6Header, ArpHeader& arpHeader, uint32_t& headerLen, uint32_t& transportProtocol);
+    ProtocolHeader* handleNetworkLayer(size_t flag, size_t num, uint32_t networkProtocol, const uint8_t* data, uint32_t dataLen,
+                                       Ipv4Header& ipv4Header, Ipv6Header& ipv6Header, ArpHeader& arpHeader, uint32_t& headerLen,
+                                       uint32_t& transportProtocol);
 
     /**
      * @brief 处理传输层数据
+     * @param flag 数据标志
      * @param num 数据序号
      * @param transportProtocol 传输层协议类型
      * @param data 层数据
@@ -290,12 +300,13 @@ private:
      * @param headerLen [输出]协议头部长度
      * @return 指向实际类型的基类指针
      */
-    ProtocolHeader* handleTransportLayer(size_t num, uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
+    ProtocolHeader* handleTransportLayer(size_t flag, size_t num, uint32_t transportProtocol, const uint8_t* data, uint32_t dataLen,
                                          TcpHeader& tcpHeader, UdpHeader& udpHeader, IcmpHeader& icmpHeader, Icmpv6Header& icmpv6Header,
                                          uint32_t& headerLen);
 
     /**
      * @brief 处理应用层数据
+     * @param flag 数据标志
      * @param num 数据序号
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
@@ -306,7 +317,7 @@ private:
      * @param depth 递归深度(防止无限递归)
      * @return 0-成功, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
-    int handleApplicationLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+    int handleApplicationLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                                const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen,
                                const TcpStreamKey* tcpKey = nullptr, int depth = 0);
 

@@ -66,7 +66,7 @@ uint32_t Iec103Parser::getProtocol() const noexcept
     return ApplicationProtocol::IEC103;
 }
 
-ParseResult Iec103Parser::parse(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+ParseResult Iec103Parser::parse(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                                 const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     consumeLen = 0;

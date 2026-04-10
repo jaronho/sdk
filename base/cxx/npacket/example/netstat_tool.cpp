@@ -12,6 +12,9 @@
 #include "../npacket/analyzer.h"
 #include "../npacket/device/pcap_device.h"
 
+#define IN_FLAG 1 /* 接收数据标志 */
+#define OUT_FLAG 2 /* 发送数据标志 */
+
 static std::shared_ptr<npacket::Analyzer> s_inPktAnalyzer = nullptr; /* 接收包分析器 */
 static npacket::PcapDevice s_inPacpDevice; /* 接收抓包设备 */
 static std::atomic<uint64_t> s_inPkt{0}; /* 接收包总数 */
@@ -63,7 +66,7 @@ std::string getDateTime()
 /**
  * @brief 处理接收以太网层
  */
-bool handleInEthernetLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+bool handleInEthernetLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                            const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     ++s_inPkt;
@@ -74,7 +77,7 @@ bool handleInEthernetLayer(size_t num, const std::chrono::steady_clock::time_poi
 /**
  * @brief 处理接收传输层
  */
-bool handleInTransportLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+bool handleInTransportLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                             const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
@@ -96,8 +99,8 @@ bool handleInTransportLayer(size_t num, const std::chrono::steady_clock::time_po
 /**
  * @brief 处理发送以太网层
  */
-bool handleOutEthernetLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
-                            const uint8_t* payload, uint32_t payloadLen)
+bool handleOutEthernetLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                            const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     ++s_outPkt;
     s_outByte += totalLen;
@@ -107,8 +110,8 @@ bool handleOutEthernetLayer(size_t num, const std::chrono::steady_clock::time_po
 /**
  * @brief 处理发送传输层
  */
-bool handleOutTransportLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
-                             const uint8_t* payload, uint32_t payloadLen)
+bool handleOutTransportLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+                             const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
     {
@@ -239,7 +242,7 @@ int main(int argc, char* argv[])
     s_inPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) {
         static size_t num = 0;
         ++num;
-        s_inPktAnalyzer->parse(num, std::chrono::steady_clock::now(), data, dataLen);
+        s_inPktAnalyzer->parse(IN_FLAG, num, std::chrono::steady_clock::now(), data, dataLen);
     });
     s_inPacpDevice.startCapture();
 #ifndef _WIN32
@@ -257,7 +260,7 @@ int main(int argc, char* argv[])
     s_outPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) {
         static size_t num = 0;
         ++num;
-        s_outPktAnalyzer->parse(num, std::chrono::steady_clock::now(), data, dataLen);
+        s_outPktAnalyzer->parse(OUT_FLAG, num, std::chrono::steady_clock::now(), data, dataLen);
     });
     s_outPacpDevice.startCapture();
 #endif

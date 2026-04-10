@@ -14,7 +14,7 @@ uint32_t ModbusTcpParser::getProtocol() const noexcept
     return ApplicationProtocol::MODBUS_TCP;
 }
 
-ParseResult ModbusTcpParser::parse(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
+ParseResult ModbusTcpParser::parse(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                                    const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
 {
     consumeLen = 0;
