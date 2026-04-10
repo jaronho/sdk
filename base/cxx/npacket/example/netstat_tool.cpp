@@ -96,7 +96,7 @@ bool handleInTransportLayer(size_t num, const std::chrono::steady_clock::time_po
 /**
  * @brief 处理发送以太网层
  */
-bool handleOutEthernetLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+bool handleOutEthernetLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
                             const uint8_t* payload, uint32_t payloadLen)
 {
     ++s_outPkt;
@@ -107,7 +107,7 @@ bool handleOutEthernetLayer(const std::chrono::steady_clock::time_point& ntp, ui
 /**
  * @brief 处理发送传输层
  */
-bool handleOutTransportLayer(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
+bool handleOutTransportLayer(size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const npacket::ProtocolHeader* header,
                              const uint8_t* payload, uint32_t payloadLen)
 {
     switch ((npacket::TransportProtocol)header->getProtocol())
@@ -127,9 +127,9 @@ bool handleOutTransportLayer(const std::chrono::steady_clock::time_point& ntp, u
 }
 
 /**
- * @brief 响应发送线程
+ * @brief 响应线程
  */
-void onInThread()
+void onThread()
 {
     while (1)
     {
@@ -138,7 +138,10 @@ void onInThread()
             while (1)
             {
                 s_inPacpDevice.captureOnce();
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+#ifndef _WIN32
+                s_outPacpDevice.captureOnce();
+#endif
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
         catch (const std::exception& e)
@@ -148,33 +151,6 @@ void onInThread()
         catch (...)
         {
             printf("抓取接收数据异常: 未知错误\n");
-        }
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-}
-
-/**
- * @brief 响应接收线程
- */
-void onOutThread()
-{
-    while (1)
-    {
-        try
-        {
-            while (1)
-            {
-                s_outPacpDevice.captureOnce();
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            }
-        }
-        catch (const std::exception& e)
-        {
-            printf("抓取发送数据异常: %s\n", e.what());
-        }
-        catch (...)
-        {
-            printf("抓取发送数据异常: 未知错误\n");
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -286,10 +262,7 @@ int main(int argc, char* argv[])
     s_outPacpDevice.startCapture();
 #endif
     /* 创建抓包线程 */
-    std::thread([&] { onInThread(); }).detach();
-#ifndef _WIN32
-    std::thread([&] { onOutThread(); }).detach();
-#endif
+    std::thread([&] { onThread(); }).detach();
     /* 主循环 */
     printf("\n");
     std::chrono::steady_clock::time_point lastSecondTimePoint{}; /* 上一秒时间点 */
