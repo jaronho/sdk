@@ -15,6 +15,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#ifndef PACKET_IGNORE_OUTGOING
+#define PACKET_IGNORE_OUTGOING 27
+#endif
+
 namespace npacket
 {
 AfPacketDevice::~AfPacketDevice()
