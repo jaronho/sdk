@@ -1412,11 +1412,11 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList, int timeoutS = 5)
     std::vector<std::string> outVec;
     if (timeoutS > 0)
     {
-        runCommand("timeout " + std::to_string(timeoutS) + " lsblk -abOP", nullptr, &outVec);
+        runCommand("timeout " + std::to_string(timeoutS) + " lsblk -abOPp", nullptr, &outVec);
     }
     else
     {
-        runCommand("lsblk -abOP", nullptr, &outVec);
+        runCommand("lsblk -abOPp", nullptr, &outVec);
     }
     auto udevList = enumerateUsbUdevs();
     for (const auto& info : udevList)
@@ -1431,7 +1431,7 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList, int timeoutS = 5)
         if (info.isBlock) /* 存储设备 */
         {
             auto it = std::find_if(outVec.begin(), outVec.end(), [&](const std::string& line) {
-                return (std::string::npos != line.find("PATH=\"" + info.devNodeName + "\"")); /* 找到设备节点对应信息 */
+                return (std::string::npos != line.find("NAME=\"" + info.devNodeName + "\"")); /* 找到设备节点对应信息 */
             });
             if (outVec.end() == it)
             {
