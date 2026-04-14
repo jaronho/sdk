@@ -10,7 +10,55 @@
 #include <Windows.h>
 #include <shellapi.h>
 #else
+#include <linux/types.h>
 #include <sys/statfs.h>
+#include <sys/syscall.h>
+#endif
+
+#ifdef __linux
+extern "C" long syscall(long number, ...);
+/* 手动定义statx相关结构与宏, 让老系统也能编译, 不依赖系统头文件 */
+#ifndef __NR_statx
+#define __NR_statx 332
+#endif
+#ifndef STATX_ALL
+#define STATX_ALL 0x00000fffU
+#endif
+#ifndef STATX_BTIME
+#define STATX_BTIME 0x00000800U
+#endif
+#if !defined(_STATX_H) && !defined(STATX_TYPE) && !defined(__statx_defined)
+struct statx_timestamp
+{
+    __s64 tv_sec;
+    __u32 tv_nsec;
+    __u32 __spare;
+};
+struct statx
+{
+    __u32 stx_mask;
+    __u32 stx_blksize;
+    __u64 stx_attributes;
+    __u32 stx_nlink;
+    __u32 stx_uid;
+    __u32 stx_gid;
+    __u16 stx_mode;
+    __u16 __spare0[1];
+    __u64 stx_ino;
+    __u64 stx_size;
+    __u64 stx_blocks;
+    __u64 stx_attributes_mask;
+    struct statx_timestamp stx_atime;
+    struct statx_timestamp stx_btime;
+    struct statx_timestamp stx_ctime;
+    struct statx_timestamp stx_mtime;
+    __u32 stx_rdev_major;
+    __u32 stx_rdev_minor;
+    __u32 stx_dev_major;
+    __u32 stx_dev_minor;
+    __u64 __spare1[14];
+};
+#endif
 #endif
 
 namespace utility
@@ -190,8 +238,16 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
     struct _stat64 st;
     int ret = _wstat64(wname.c_str(), &st);
 #else
-    struct statx st;
-    int ret = statx(AT_FDCWD, name.c_str(), AT_SYMLINK_NOFOLLOW, STATX_ALL, &st);
+    struct stat stOld;
+    int ret = lstat(name.c_str(), &stOld);
+    bool useStatx = false;
+    struct statx st = {};
+    /* 调用statx系统调用(不依赖头文件, 永远可编译) */
+    ret = syscall(__NR_statx, AT_FDCWD, name.c_str(), AT_SYMLINK_NOFOLLOW, STATX_ALL, &st);
+    if (0 == ret)
+    {
+        useStatx = true;
+    }
 #endif
     if (0 != ret)
     {
@@ -206,19 +262,31 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
     attr.isFile = S_IFREG & st.st_mode;
 #else
     /* Linux平台: 优先使用birth time作为创建时间 */
-    if (st.stx_mask & STATX_BTIME)
+    if (useStatx) /* 新内核: 获取真实创建时间btime */
     {
-        attr.createTime = st.stx_btime.tv_sec; /* 真实的文件创建时间 */
+        if (st.stx_mask & STATX_BTIME)
+        {
+            attr.createTime = st.stx_btime.tv_sec;
+        }
+        else
+        {
+            attr.createTime = st.stx_ctime.tv_sec;
+        }
+        attr.modifyTime = st.stx_mtime.tv_sec;
+        attr.accessTime = st.stx_atime.tv_sec;
+        attr.size = st.stx_size;
+        attr.isDir = S_ISDIR(st.stx_mode);
+        attr.isFile = S_ISREG(st.stx_mode);
     }
-    else
+    else /* 老内核: 自动降级 */
     {
-        attr.createTime = st.stx_ctime.tv_sec; /* 旧内核不支持则回退到状态改变时间 */
+        attr.createTime = stOld.st_ctime;
+        attr.modifyTime = stOld.st_mtime;
+        attr.accessTime = stOld.st_atime;
+        attr.size = stOld.st_size;
+        attr.isDir = S_ISDIR(stOld.st_mode);
+        attr.isFile = S_ISREG(stOld.st_mode);
     }
-    attr.modifyTime = st.stx_mtime.tv_sec;
-    attr.accessTime = st.stx_atime.tv_sec;
-    attr.size = st.stx_size;
-    attr.isDir = S_ISDIR(st.stx_mode);
-    attr.isFile = S_ISREG(st.stx_mode);
 #endif
 #ifdef _WIN32
     DWORD dwAttrib = GetFileAttributesW(wname.c_str());
@@ -233,8 +301,16 @@ bool getFileAttribute(const std::string& name, FileAttribute& attr)
 #else
     attr.isSymLink = isSymbolicLink(name);
     attr.isHidden = subName.empty() ? false : '.' == subName[0]; /* linux中文件名第1个字符为.表示隐藏 */
-    attr.isWritable = S_IWUSR & st.stx_mode;
-    attr.isExecutable = S_IEXEC & st.stx_mode;
+    if (useStatx)
+    {
+        attr.isWritable = S_IWUSR & st.stx_mode;
+        attr.isExecutable = S_IEXEC & st.stx_mode;
+    }
+    else
+    {
+        attr.isWritable = S_IWUSR & stOld.st_mode;
+        attr.isExecutable = S_IEXEC & stOld.st_mode;
+    }
 #endif
     return true;
 }
