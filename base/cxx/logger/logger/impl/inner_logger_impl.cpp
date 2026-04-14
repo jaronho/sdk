@@ -49,24 +49,28 @@ inline DateTime& getDateTime()
         long tv_usec; /* 微秒 */
     };
 #endif
-    struct timeval tv;
+    time_t sec; /* 秒 */
+    int ms = 0; /* 毫秒 */
 #ifdef _WIN32
     SYSTEMTIME st;
     GetLocalTime(&st);
-    tv.tv_sec = time(nullptr);
-    tv.tv_usec = st.wMilliseconds * 1000;
+    sec = time(nullptr);
+    ms = st.wMilliseconds;
 #else
+    struct timeval tv;
     gettimeofday(&tv, nullptr);
+    sec = tv.tv_sec;
+    ms = tv.tv_usec / 1000;
 #endif
-    uint64_t nowMs = (uint64_t)(tv.tv_sec) * 1000 + tv.tv_usec / 1000;
+    uint64_t nowMs = (uint64_t)(sec)*1000 + ms;
     if (nowMs != lastMs)
     {
         lastMs = nowMs;
         struct tm t;
 #ifdef _WIN32
-        localtime_s(&t, (const time_t*)(&tv.tv_sec));
+        localtime_s(&t, &sec);
 #else
-        localtime_r((const time_t*)(&tv.tv_sec), &t);
+        localtime_r(&sec, &t);
 #endif
         /* 手动格式化, 避免strftime */
         auto itoa2 = [](int v, char* p) {
@@ -94,7 +98,6 @@ inline DateTime& getDateTime()
         dt.hms[5] = ':';
         itoa2(t.tm_sec, dt.hms + 6);
         dt.hms[8] = '\0';
-        int ms = tv.tv_usec / 1000;
         dt.ms[0] = (char)('0' + ms / 100);
         dt.ms[1] = (char)('0' + (ms / 10) % 10);
         dt.ms[2] = (char)('0' + ms % 10);
