@@ -35,9 +35,10 @@ public:
      * @brief 构造函数
      * @param capacity 队列最大容量, 0表示不限制
      * @param dropFunc 丢弃回调函数, 参数: data-丢弃的数据
+     * @param strictFIFO 是否严格遵循FIFO顺序, true-严格FIFO(内部加锁保证), false-不保证跨线程顺序(高性能模式)
      */
-    explicit SQueue(size_t capacity = 0, std::function<void(const T& data)> dropFunc = nullptr)
-        : m_capacity(capacity), m_dropFunc(std::move(dropFunc)), m_stopFlag(false)
+    explicit SQueue(size_t capacity = 0, std::function<void(const T& data)> dropFunc = nullptr, bool strictFIFO = true)
+        : m_capacity(capacity), m_dropFunc(std::move(dropFunc)), m_strictFIFO(strictFIFO), m_stopFlag(false)
     {
     }
 
@@ -185,14 +186,30 @@ private:
         {
             return false;
         }
-        switch (strategy)
+        if (m_strictFIFO) /* 严格FIFO模式: 加锁使所有push串行化, 保证全局顺序 */
         {
-        case SQueuePushStrategy::waitting:
-            return pushWait(std::forward<U>(value));
-        case SQueuePushStrategy::drop_current:
-            return pushDropCurrent(std::forward<U>(value));
-        case SQueuePushStrategy::drop_oldest:
-            return pushDropOldest(std::forward<U>(value));
+            std::lock_guard<std::mutex> locker(m_mutexPush);
+            switch (strategy)
+            {
+            case SQueuePushStrategy::waitting:
+                return pushWait(std::forward<U>(value));
+            case SQueuePushStrategy::drop_current:
+                return pushDropCurrent(std::forward<U>(value));
+            case SQueuePushStrategy::drop_oldest:
+                return pushDropOldest(std::forward<U>(value));
+            }
+        }
+        else
+        {
+            switch (strategy)
+            {
+            case SQueuePushStrategy::waitting:
+                return pushWait(std::forward<U>(value));
+            case SQueuePushStrategy::drop_current:
+                return pushDropCurrent(std::forward<U>(value));
+            case SQueuePushStrategy::drop_oldest:
+                return pushDropOldest(std::forward<U>(value));
+            }
         }
         return false;
     }
@@ -269,32 +286,29 @@ private:
         {
             return m_queue.enqueue(std::forward<U>(value));
         }
-        /* 关键: 用锁包裹整个"检查-丢弃-插入"序列 */
-        std::lock_guard<std::mutex> locker(m_mutexDropAction);
-        if (m_queue.size_approx() < m_capacity)
+        if (m_queue.size_approx() >= m_capacity)
         {
-            return m_queue.enqueue(std::forward<U>(value));
-        }
-        T data;
-        if (m_queue.try_dequeue(data)) /* 队列已满, 必须丢弃 */
-        {
-            if (m_dropFunc)
+            T data;
+            if (m_queue.try_dequeue(data)) /* 队列已满, 必须丢弃 */
             {
-                try
+                if (m_dropFunc)
                 {
-                    m_dropFunc(std::move(data));
-                }
-                catch (...)
-                {
+                    try
+                    {
+                        m_dropFunc(std::move(data));
+                    }
+                    catch (...)
+                    {
+                    }
                 }
             }
-            return m_queue.enqueue(std::forward<U>(value));
         }
-        return m_queue.enqueue(std::forward<U>(value)); /* 罕见: 队列为空(其他消费者已取走), 直接入队 */
+        return m_queue.enqueue(std::forward<U>(value));
     }
 
 private:
     const size_t m_capacity; /* 队列容量, 0表示无限制 */
+    const bool m_strictFIFO; /* 是否严格FIFO顺序 */
     moodycamel::BlockingConcurrentQueue<T> m_queue; /* 消息队列 */
     std::function<void(const T& data)> m_dropFunc = nullptr; /* 丢弃回调 */
     std::atomic<bool> m_stopFlag{false}; /* 停止标志 */
@@ -302,6 +316,6 @@ private:
     std::mutex m_mutexStopCv; /* 停止同步 */
     std::condition_variable_any m_stopCv; /* 支持任意锁类型 */
 
-    std::mutex m_mutexDropAction; /* DropOldest策略专用锁 */
+    std::mutex m_mutexPush; /* 严格FIFO全局串行锁 */
 };
 } // namespace algorithm
