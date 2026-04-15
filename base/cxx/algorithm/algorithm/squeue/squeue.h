@@ -318,7 +318,7 @@ private:
     std::mutex m_mutexStopCv; /* 停止同步 */
     std::condition_variable_any m_stopCv; /* 支持任意锁类型 */
 
-    std::mutex m_mutexDropAction; /* pushDropOldest策略专用锁, 保护"检查-丢弃-插入"序列 */
+    std::mutex m_mutexDropAction; /* DropOldest策略专用锁, 保护"检查-丢弃-插入"序列 */
     std::mutex m_mutexPush; /* 严格FIFO全局串行锁 */
 };
 } // namespace algorithm
