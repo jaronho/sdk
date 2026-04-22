@@ -187,54 +187,40 @@ Analyzer::Analyzer(const CallbackConfig& cbCfg, IpReassemblyConfig ipReassemblyC
 {
 }
 
-bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser)
+bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser, const std::vector<uint16_t>& ports)
 {
     if (!parser)
     {
         return false;
     }
     std::lock_guard<std::mutex> locker(m_mutexParserList);
+    /* 遍历能力 */
+    bool addFlag = true;
     for (const auto& item : m_applicationParserList)
     {
         if (item && item->getProtocol() == parser->getProtocol())
         {
-            return false;
-        }
-    }
-    m_applicationParserList.emplace_back(parser);
-    return true;
-}
-
-bool Analyzer::addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolParser>& parser)
-{
-    if (!parser)
-    {
-        return false;
-    }
-    std::lock_guard<std::mutex> locker(m_mutexParserList);
-    /* 保留遍历能力 */
-    bool findFlag = false;
-    for (const auto& item : m_applicationParserList)
-    {
-        if (item && item->getProtocol() == parser->getProtocol())
-        {
-            findFlag = true;
+            addFlag = false;
             break;
         }
     }
-    if (!findFlag)
+    if (addFlag)
     {
         m_applicationParserList.emplace_back(parser);
     }
     /* 绑定端口 */
-    if (port > 0)
+    for (const auto& port : ports)
     {
-        if (m_applicationParserMap.end() == m_applicationParserMap.find(port))
+        if (port > 0)
         {
-            m_applicationParserMap.insert(std::make_pair(port, parser));
+            if (m_applicationParserMap.end() == m_applicationParserMap.find(port))
+            {
+                m_applicationParserMap.insert(std::make_pair(port, parser));
+                addFlag = true;
+            }
         }
     }
-    return true;
+    return addFlag;
 }
 
 void Analyzer::removeProtocolParser(uint32_t protocol)

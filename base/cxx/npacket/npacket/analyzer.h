@@ -117,17 +117,10 @@ public:
     /**
      * @brief 添加应用层解析器(当协议端口不固定或者未知时使用此接口)
      * @param parser 应用层协议解析器
+     * @param ports 端口号列表, 当协议端口固定且已知时, 可以把解析器绑定到所指定端口
      * @return true-添加成功, false-添加失败
      */
-    bool addProtocolParser(const std::shared_ptr<ProtocolParser>& parser);
-
-    /**
-     * @brief 添加应用层解析器(当协议端口固定且已知时使用此接口)
-     * @param port 端口号
-     * @param parser 应用层协议解析器
-     * @return true-添加成功, false-添加失败
-     */
-    bool addProtocolParser(uint16_t port, const std::shared_ptr<ProtocolParser>& parser);
+    bool addProtocolParser(const std::shared_ptr<ProtocolParser>& parser, const std::vector<uint16_t>& ports = {});
 
     /**
      * @brief 删除应用层解析器
