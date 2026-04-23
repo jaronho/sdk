@@ -13,7 +13,7 @@ enum ApplicationProtocol
     NONE = 0, /* 无 */
     AMQP, /* 高级消息队列协议(Advanced Message Queuing Protocol), 是一种开放标准的应用层消息中间件协议, 设计用于面向消息的中间件(MOM)系统 */
     BACNET, /* BACNET协议(主要基于UDP传输) */
-    COTP, /* 面向连接的传输协议(Connection-Oriented Transport Protocol), 上层协议为TPKT协议 */
+    TPKT_COTP, /* 传输层轻量级封装(Transport Packet) -> 面向连接的传输协议(Connection-Oriented Transport Protocol) */
     DNP3, /* DNP3协议(主要用于电力和水务自动化) */
     ETHERNET_IP, /* 以太网工业协议(Ethernet Industrial Protocol), 它是CIP(Common Industrial Protocol)在标准以太网上的具体实现 */
     FTP, /* 文件传输协议 */
@@ -28,7 +28,6 @@ enum ApplicationProtocol
     OPC_UA, /* 开放平台通信统一架构(Open Platform Communications Unified Architecture), 是一种跨平台面向服务的工业通信协议 */
     POP3, /* 邮局协议3(用于电子邮件接收) */
     PROFINET, /* PROFINET协议(主要用于工业自动化) */
-    S7COMM, /* (S7 Communication)是西门子S7通讯协议簇里的一种, 上层协议为COTP协议 */
     SMTP, /* 简单邮件传输协议(用于电子邮件发送) */
     TELNET, /* 基于TCP的远程登录协议 */
     TPKT, /* 介于TCP和COTP协议之间, 属于传输服务类的协议, 主要用来在TCP和COTP之间建立桥梁, 一般与COTP一起发送, 当作Header段 */
