@@ -38,7 +38,12 @@ public:
      * @param strictFIFO 是否严格遵循FIFO顺序, true-严格FIFO(内部加锁保证), false-不保证跨线程顺序(高性能模式)
      */
     explicit SQueue(size_t capacity = 0, std::function<void(const T& data)> dropFunc = nullptr, bool strictFIFO = true)
-        : m_capacity(capacity), m_dropFunc(std::move(dropFunc)), m_strictFIFO(strictFIFO), m_stopFlag(false)
+        : m_capacity(capacity)
+        , m_dropFunc(std::move(dropFunc))
+        , m_strictFIFO(strictFIFO)
+        , m_producerToken(m_queue)
+        , m_consumerToken(m_queue)
+        , m_stopFlag(false)
     {
     }
 
@@ -76,7 +81,21 @@ public:
       */
     bool tryPop(T& value)
     {
-        return m_queue.try_dequeue(value);
+        bool ret = false;
+        if (m_strictFIFO)
+        {
+            ret = m_queue.try_dequeue(m_consumerToken, value);
+        }
+        else
+        {
+            ret = m_queue.try_dequeue(value);
+        }
+        if (ret && m_capacity > 0) /* 有界队列消费成功后，唤醒可能正在阻塞等待的生产者 */
+        {
+            std::lock_guard<std::mutex> locker(m_mutexStopCv);
+            m_stopCv.notify_one();
+        }
+        return ret;
     }
 
     /**
@@ -87,12 +106,36 @@ public:
       */
     bool waitPop(T& value, size_t timeout = 0)
     {
+        bool ret = false;
         if (0 == timeout)
         {
-            m_queue.wait_dequeue(value);
-            return true;
+            if (m_strictFIFO)
+            {
+                m_queue.wait_dequeue(m_consumerToken, value);
+            }
+            else
+            {
+                m_queue.wait_dequeue(value);
+            }
+            ret = true;
         }
-        return m_queue.wait_dequeue_timed(value, timeout);
+        else
+        {
+            if (m_strictFIFO)
+            {
+                ret = m_queue.wait_dequeue_timed(m_consumerToken, value, timeout);
+            }
+            else
+            {
+                ret = m_queue.wait_dequeue_timed(value, timeout);
+            }
+        }
+        if (ret && m_capacity > 0) /* 有界队列消费成功后，唤醒可能正在阻塞等待的生产者 */
+        {
+            std::lock_guard<std::mutex> locker(m_mutexStopCv);
+            m_stopCv.notify_one();
+        }
+        return ret;
     }
 
     /**
@@ -103,19 +146,44 @@ public:
     {
         size_t count = 0;
         T data;
-        while (m_queue.try_dequeue(data))
+        if (m_strictFIFO)
         {
-            if (m_dropFunc)
+            while (m_queue.try_dequeue(m_consumerToken, data))
             {
-                try
+                if (m_dropFunc)
                 {
-                    m_dropFunc(data);
+                    try
+                    {
+                        m_dropFunc(data);
+                    }
+                    catch (...)
+                    {
+                    }
                 }
-                catch (...)
-                {
-                }
+                ++count;
             }
-            ++count;
+        }
+        else
+        {
+            while (m_queue.try_dequeue(data))
+            {
+                if (m_dropFunc)
+                {
+                    try
+                    {
+                        m_dropFunc(data);
+                    }
+                    catch (...)
+                    {
+                    }
+                }
+                ++count;
+            }
+        }
+        if (count > 0 && m_capacity > 0) /* 有界队列清空后，唤醒所有可能正在阻塞等待的生产者 */
+        {
+            std::lock_guard<std::mutex> locker(m_mutexStopCv);
+            m_stopCv.notify_all();
         }
         return count;
     }
@@ -224,7 +292,14 @@ private:
     {
         if (0 == m_capacity)
         {
-            return m_queue.enqueue(std::forward<U>(value));
+            if (m_strictFIFO)
+            {
+                return m_queue.enqueue(m_producerToken, std::forward<U>(value));
+            }
+            else
+            {
+                return m_queue.enqueue(std::forward<U>(value));
+            }
         }
         size_t spinCount = 0;
         while (true)
@@ -235,9 +310,19 @@ private:
             }
             if (m_queue.size_approx() < m_capacity) /* 快速路径检查 */
             {
-                if (m_queue.enqueue(std::forward<U>(value)))
+                if (m_strictFIFO)
                 {
-                    return true;
+                    if (m_queue.enqueue(m_producerToken, std::forward<U>(value)))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    if (m_queue.enqueue(std::forward<U>(value)))
+                    {
+                        return true;
+                    }
                 }
             }
             /* 自旋阶段 */
@@ -255,7 +340,7 @@ private:
             }
             m_stopCv.wait(locker, [this] { return (m_stopFlag.load(std::memory_order_acquire) || m_queue.size_approx() < m_capacity); });
             locker.unlock();
-            spinCount = 0; /* 重置自旋计数 */
+            spinCount = 0; /* 重置自旋计数, 回到循环开头重新尝试入队 */
         }
     }
 
@@ -271,7 +356,14 @@ private:
         {
             return false;
         }
-        return m_queue.enqueue(std::forward<U>(value));
+        if (m_strictFIFO)
+        {
+            return m_queue.enqueue(m_producerToken, std::forward<U>(value));
+        }
+        else
+        {
+            return m_queue.enqueue(std::forward<U>(value));
+        }
     }
 
     /**
@@ -284,34 +376,67 @@ private:
     {
         if (0 == m_capacity)
         {
-            return m_queue.enqueue(std::forward<U>(value));
-        }
-        /* 严格模式: 用锁包裹整个"检查-丢弃-插入"序列, 防止多消费者场景下丢失元素 */
-        std::lock_guard<std::mutex> locker(m_mutexDropAction);
-        if (m_queue.size_approx() >= m_capacity)
-        {
-            T data;
-            if (m_queue.try_dequeue(data)) /* 队列已满, 丢弃最旧 */
+            if (m_strictFIFO)
             {
-                if (m_dropFunc)
+                return m_queue.enqueue(m_producerToken, std::forward<U>(value));
+            }
+            else
+            {
+                return m_queue.enqueue(std::forward<U>(value));
+            }
+        }
+        if (m_strictFIFO)
+        {
+            if (m_queue.size_approx() >= m_capacity)
+            {
+                T data;
+                if (m_queue.try_dequeue(m_consumerToken, data))
                 {
-                    try
+                    if (m_dropFunc)
                     {
-                        m_dropFunc(std::move(data));
-                    }
-                    catch (...)
-                    {
+                        try
+                        {
+                            m_dropFunc(std::move(data));
+                        }
+                        catch (...)
+                        {
+                        }
                     }
                 }
             }
+            return m_queue.enqueue(m_producerToken, std::forward<U>(value));
         }
-        return m_queue.enqueue(std::forward<U>(value));
+        else
+        {
+            /* 非严格模式: 用锁包裹整个"检查-丢弃-插入"序列 */
+            std::lock_guard<std::mutex> locker(m_mutexDropAction);
+            if (m_queue.size_approx() >= m_capacity)
+            {
+                T data;
+                if (m_queue.try_dequeue(data))
+                {
+                    if (m_dropFunc)
+                    {
+                        try
+                        {
+                            m_dropFunc(std::move(data));
+                        }
+                        catch (...)
+                        {
+                        }
+                    }
+                }
+            }
+            return m_queue.enqueue(std::forward<U>(value));
+        }
     }
 
 private:
     const size_t m_capacity; /* 队列容量, 0表示无限制 */
     const bool m_strictFIFO; /* 是否严格FIFO顺序 */
-    moodycamel::BlockingConcurrentQueue<T> m_queue; /* 消息队列 */
+    moodycamel::BlockingConcurrentQueue<T> m_queue; /* 消息队列, 必须在 m_producerToken/m_consumerToken 之前声明，确保初始化顺序正确 */
+    typename moodycamel::BlockingConcurrentQueue<T>::producer_token_t m_producerToken; /* 严格模式用: 强制单生产者 */
+    typename moodycamel::BlockingConcurrentQueue<T>::consumer_token_t m_consumerToken; /* 严格模式用: 固定消费顺序 */
     std::function<void(const T& data)> m_dropFunc = nullptr; /* 丢弃回调 */
     std::atomic<bool> m_stopFlag{false}; /* 停止标志 */
 
