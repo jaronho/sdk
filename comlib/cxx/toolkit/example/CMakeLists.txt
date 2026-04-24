@@ -46,6 +46,18 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/fileparse 3rdp
 include_directories(${base_fileparse_dir})
 source_group(TREE ${base_fileparse_dir} PREFIX 3rdparty/base FILES ${base_fileparse_files})
 
+# 添加logger基础库
+option(enable_logger_detail "是否启用日志详情(包含文件名,行号,函数名)" ON)
+if (enable_logger_detail)
+    add_definitions(-DENABLE_LOGGER_DETAIL=2)
+else ()
+    add_definitions(-DENABLE_LOGGER_DETAIL=0)
+endif ()
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/logger 3rdparty/base/logger)
+include_directories(${fmt_include_dir})
+include_directories(${base_logger_dir})
+source_group(TREE ${base_logger_dir} PREFIX 3rdparty/base FILES ${base_logger_files})
+
 # 添加threading基础库
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../base/cxx/threading 3rdparty/base/threading)
 include_directories(${base_threading_dir})
@@ -75,12 +87,12 @@ add_executable(example_app_singleton
 
 add_executable(example_toolkit
 			   ${base_algorithm_files}
-			   ${base_utility_filesystem_files}
-			   ${base_utility_net_files}
-			   ${base_utility_strtool_files}
-			   ${base_utility_system_files}
-			   ${comlib_toolkit_net_config_files}
-			   ${comlib_toolkit_tool_files}
+               ${base_fileparse_files}
+               ${base_logger_files}
+			   ${base_threading_files}
+			   ${base_utility_files}
+			   ${comlib_toolkit_files}
+               loop_proxy.hpp
 			   example_toolkit.cpp)
 
 add_executable(file_deleter_tool
