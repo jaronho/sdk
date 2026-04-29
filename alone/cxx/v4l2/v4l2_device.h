@@ -54,7 +54,7 @@ extern "C"
      * @param devName 设备名, 如 "/dev/video0"
      * @param width [输入/输出]请求宽度(会被修改为实际值)
      * @param height [输入/输出]请求高度(会被修改为实际值)
-     * @param reqFmt 请求的像素格式, 如: V4L2_PIX_FMT_YUYV
+     * @param reqFmt 请求的像素格式, 如: V4L2_PIX_FMT_YUYV, V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_BGR24, V4L2_PIX_FMT_YUV420
      * @param actualFmt [输出]实际使用的像素格式, 可为 NULL
      * @return >0=设备描述符, <=0=错误码
      */
@@ -100,10 +100,10 @@ extern "C"
      * @param buffers 缓冲区数组
      * @param bufferCount 缓冲区数量
      * @param outBufIndex [输出]缓冲区索引(用于后续归还)
-     * @param timeoutMs 超时毫秒, -1=无限等待
+     * @param timeout 超时时间(单位: 毫秒), <=0表示无限等待
      * @return 指向帧数据的指针(mmap地址, 不要free), NULL=失败或超时
      */
-    void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int* outBufIndex, int timeoutMs);
+    void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int* outBufIndex, int timeout);
 
     /**
      * @brief 归还缓冲区到驱动队列

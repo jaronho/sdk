@@ -248,7 +248,7 @@ int v4l2_stream(int fd, void** buffers, unsigned int bufferCount, int enable)
 #endif
 }
 
-void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int* outBufIndex, int timeoutMs)
+void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int* outBufIndex, int timeout)
 {
 #ifdef __linux__
     struct v4l2_buffer buf;
@@ -260,12 +260,12 @@ void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int*
         return NULL;
     }
     /* 等待数据 */
-    if (timeoutMs >= 0)
+    if (timeout > 0)
     {
         FD_ZERO(&fds);
         FD_SET(fd, &fds);
-        tv.tv_sec = timeoutMs / 1000;
-        tv.tv_usec = (timeoutMs % 1000) * 1000;
+        tv.tv_sec = timeout / 1000;
+        tv.tv_usec = (timeout % 1000) * 1000;
         r = select(fd + 1, &fds, NULL, NULL, &tv);
         if (r < 0)
         {
