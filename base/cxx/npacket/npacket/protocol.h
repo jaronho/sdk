@@ -15,12 +15,14 @@ static inline void byteToDecStr(uint8_t val, char*& p)
 {
     if (p)
     {
+        uint8_t hundredFlag = 0;
         if (val >= 100)
         {
             *p++ = '0' + val / 100;
             val %= 100;
+            hundredFlag = 1;
         }
-        if (val >= 10)
+        if (val >= 10 || hundredFlag > 0)
         {
             *p++ = '0' + val / 10;
         }
