@@ -1,4 +1,4 @@
-#include "v4l2_capture.h"
+#include "v4l2_device.h"
 
 #include <errno.h>
 #include <fcntl.h>
