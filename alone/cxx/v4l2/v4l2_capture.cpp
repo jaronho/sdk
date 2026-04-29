@@ -5,7 +5,7 @@ V4L2Capture::~V4L2Capture()
     close();
 }
 
-bool V4L2Capture::open(const std::string& device, unsigned int width, unsigned int height, unsigned int pixFmt)
+bool V4L2Capture::open(const std::string& device, uint32_t width, uint32_t height, uint32_t pixFmt)
 {
     close();
     /* step1. 打开设备 */
@@ -75,39 +75,40 @@ bool V4L2Capture::isOpened() const
     return (m_fd > 0);
 }
 
-unsigned int V4L2Capture::getWidth() const
+uint32_t V4L2Capture::getWidth() const
 {
     return m_width.load();
 }
 
-unsigned int V4L2Capture::getHeight() const
+uint32_t V4L2Capture::getHeight() const
 {
     return m_height.load();
 }
 
-unsigned int V4L2Capture::getPixFmt() const
+uint32_t V4L2Capture::getPixFmt() const
 {
     return m_pixFmt.load();
 }
 
 bool V4L2Capture::captureFrame(
-    const std::function<void(void* frame, unsigned int width, unsigned int height, unsigned int pixFmt)>& frameCb, int timeout)
+    const std::function<void(void* frame, size_t dataLen, uint32_t width, uint32_t height, uint32_t pixFmt)>& frameCb, int timeout)
 {
     if (m_fd <= 0 || !m_streaming)
     {
         return false;
     }
-    unsigned int bufIndex = 0;
+    uint32_t bufIndex = 0;
     /* 取出帧 */
     void* data = v4l2_dqbuf(m_fd, m_buffers, m_bufferCount, &bufIndex, timeout);
     if (!data)
     {
         return false;
     }
+    size_t dataLen = m_lengths[bufIndex];
     /* 回调通知 */
     if (frameCb)
     {
-        frameCb(data, m_width.load(), m_height.load(), m_pixFmt.load());
+        frameCb(data, dataLen, m_width.load(), m_height.load(), m_pixFmt.load());
     }
     /* 归还缓冲区 */
     v4l2_qbuf(m_fd, bufIndex);

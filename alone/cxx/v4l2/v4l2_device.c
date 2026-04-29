@@ -361,37 +361,65 @@ void v4l2_print_info(int fd)
 #endif
 }
 
+static int s_yuv2rgb_init = 0;
+static int s_yuv2rgb_r_v[256] = {0};
+static int s_yuv2rgb_g_u[256] = {0};
+static int s_yuv2rgb_g_v[256] = {0};
+static int s_yuv2rgb_b_u[256] = {0};
+
+static void v4l2_yuyv_to_rgb24_init(void)
+{
+    int i;
+    if (0 == s_yuv2rgb_init)
+    {
+        s_yuv2rgb_init = 1;
+        for (i = 0; i < 256; ++i)
+        {
+            int v = i - 128;
+            int u = i - 128;
+            s_yuv2rgb_r_v[i] = (409 * v + 128) >> 8;
+            s_yuv2rgb_g_u[i] = (100 * u + 128) >> 8;
+            s_yuv2rgb_g_v[i] = (208 * v + 128) >> 8;
+            s_yuv2rgb_b_u[i] = (516 * u + 128) >> 8;
+        }
+    }
+}
+
 void v4l2_yuyv_to_rgb24(const unsigned char* yuyv, unsigned char* rgb, int width, int height)
 {
     int i, j;
-    int y0, y1, u, v;
-    int r, g, b;
-    int rgbIdx = 0;
-    if (!yuyv || !rgb || width <= 0 || height <= 0)
-    {
-        return;
-    }
+    int rgbIndex = 0;
+    v4l2_yuyv_to_rgb24_init();
     for (i = 0; i < height; ++i)
     {
         for (j = 0; j < width; j += 2)
         {
             int idx = (i * width + j) * 2;
-            y0 = yuyv[idx];
-            u = yuyv[idx + 1] - 128;
-            y1 = yuyv[idx + 2];
-            v = yuyv[idx + 3] - 128;
-            r = (298 * y0 + 409 * v + 128) >> 8;
-            g = (298 * y0 - 100 * u - 208 * v + 128) >> 8;
-            b = (298 * y0 + 516 * u + 128) >> 8;
-            rgb[rgbIdx++] = r < 0 ? 0 : (r > 255 ? 255 : r);
-            rgb[rgbIdx++] = g < 0 ? 0 : (g > 255 ? 255 : g);
-            rgb[rgbIdx++] = b < 0 ? 0 : (b > 255 ? 255 : b);
-            r = (298 * y1 + 409 * v + 128) >> 8;
-            g = (298 * y1 - 100 * u - 208 * v + 128) >> 8;
-            b = (298 * y1 + 516 * u + 128) >> 8;
-            rgb[rgbIdx++] = r < 0 ? 0 : (r > 255 ? 255 : r);
-            rgb[rgbIdx++] = g < 0 ? 0 : (g > 255 ? 255 : g);
-            rgb[rgbIdx++] = b < 0 ? 0 : (b > 255 ? 255 : b);
+            int y0 = yuyv[idx];
+            int y1 = yuyv[idx + 2];
+            int u = yuyv[idx + 1];
+            int v = yuyv[idx + 3];
+
+            int r_v = s_yuv2rgb_r_v[v];
+            int g_u = s_yuv2rgb_g_u[u];
+            int g_v = s_yuv2rgb_g_v[v];
+            int b_u = s_yuv2rgb_b_u[u];
+
+            int r0 = (298 * y0 + r_v) >> 8;
+            int g0 = (298 * y0 - g_u - g_v) >> 8;
+            int b0 = (298 * y0 + b_u) >> 8;
+
+            rgb[rgbIndex++] = r0 < 0 ? 0 : (r0 > 255 ? 255 : r0);
+            rgb[rgbIndex++] = g0 < 0 ? 0 : (g0 > 255 ? 255 : g0);
+            rgb[rgbIndex++] = b0 < 0 ? 0 : (b0 > 255 ? 255 : b0);
+
+            int r1 = (298 * y1 + r_v) >> 8;
+            int g1 = (298 * y1 - g_u - g_v) >> 8;
+            int b1 = (298 * y1 + b_u) >> 8;
+
+            rgb[rgbIndex++] = r1 < 0 ? 0 : (r1 > 255 ? 255 : r1);
+            rgb[rgbIndex++] = g1 < 0 ? 0 : (g1 > 255 ? 255 : g1);
+            rgb[rgbIndex++] = b1 < 0 ? 0 : (b1 > 255 ? 255 : b1);
         }
     }
 }
