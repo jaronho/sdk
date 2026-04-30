@@ -91,7 +91,7 @@ uint32_t V4L2Capture::getPixFmt() const
 }
 
 bool V4L2Capture::captureFrame(
-    const std::function<void(void* frame, size_t dataLen, uint32_t width, uint32_t height, uint32_t pixFmt)>& frameCb, int timeout)
+    const std::function<void(const void* frame, size_t dataLen, uint32_t width, uint32_t height, uint32_t pixFmt)>& frameCb, int timeout)
 {
     if (m_fd <= 0 || !m_streaming)
     {
@@ -99,7 +99,7 @@ bool V4L2Capture::captureFrame(
     }
     uint32_t bufIndex = 0;
     /* 取出帧 */
-    void* data = v4l2_dqbuf(m_fd, m_buffers, m_bufferCount, &bufIndex, timeout);
+    const void* data = v4l2_dqbuf(m_fd, m_buffers, m_bufferCount, &bufIndex, timeout);
     if (!data)
     {
         return false;

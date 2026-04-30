@@ -59,8 +59,9 @@ public:
      * @param timeout 超时时间(单位: 毫秒), <=0表示无限等待
      * @return true=成功捕获并回调
      */
-    bool captureFrame(const std::function<void(void* data, size_t dataLen, uint32_t width, uint32_t height, uint32_t pixFmt)>& frameCb,
-                      int timeout = 100);
+    bool
+    captureFrame(const std::function<void(const void* data, size_t dataLen, uint32_t width, uint32_t height, uint32_t pixFmt)>& frameCb,
+                 int timeout = 100);
 
 private:
     int m_fd = -1; /* 设备描述符 */

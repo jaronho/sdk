@@ -248,7 +248,7 @@ int v4l2_stream(int fd, void** buffers, unsigned int bufferCount, int enable)
 #endif
 }
 
-void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int* outBufIndex, int timeout)
+const void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int* outBufIndex, int timeout)
 {
 #ifdef __linux__
     struct v4l2_buffer buf;

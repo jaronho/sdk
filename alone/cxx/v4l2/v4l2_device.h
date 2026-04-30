@@ -103,7 +103,7 @@ extern "C"
      * @param timeout 超时时间(单位: 毫秒), <=0表示无限等待
      * @return 指向帧数据的指针(mmap地址, 不要free), NULL=失败或超时
      */
-    void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int* outBufIndex, int timeout);
+    const void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int* outBufIndex, int timeout);
 
     /**
      * @brief 归还缓冲区到驱动队列
