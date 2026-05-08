@@ -34,19 +34,19 @@ extern "C"
 
 /* 像素格式定义(仅在未包含V4L2头文件时生效, 用于非Linux平台或文档目的) */
 #ifndef V4L2_PIX_FMT_YUYV
-#define V4L2_PIX_FMT_YUYV ((unsigned int)v4l2_fourcc('Y', 'U', 'Y', 'V'))
+#define V4L2_PIX_FMT_YUYV ((unsigned int)v4l2_fourcc('Y', 'U', 'Y', 'V')) /* 1448695129 */
 #endif
 #ifndef V4L2_PIX_FMT_MJPEG
-#define V4L2_PIX_FMT_MJPEG ((unsigned int)v4l2_fourcc('M', 'J', 'P', 'G'))
+#define V4L2_PIX_FMT_MJPEG ((unsigned int)v4l2_fourcc('M', 'J', 'P', 'G')) /* 1196444237 */
 #endif
 #ifndef V4L2_PIX_FMT_RGB24
-#define V4L2_PIX_FMT_RGB24 ((unsigned int)v4l2_fourcc('R', 'G', '2', '4'))
+#define V4L2_PIX_FMT_RGB24 ((unsigned int)v4l2_fourcc('R', 'G', '2', '4')) /* 875710290 */
 #endif
 #ifndef V4L2_PIX_FMT_BGR24
-#define V4L2_PIX_FMT_BGR24 ((unsigned int)v4l2_fourcc('B', 'G', '2', '4'))
+#define V4L2_PIX_FMT_BGR24 ((unsigned int)v4l2_fourcc('B', 'G', '2', '4')) /* 875710274 */
 #endif
 #ifndef V4L2_PIX_FMT_YUV420
-#define V4L2_PIX_FMT_YUV420 ((unsigned int)v4l2_fourcc('Y', 'U', '1', '2'))
+#define V4L2_PIX_FMT_YUV420 ((unsigned int)v4l2_fourcc('Y', 'U', '1', '2')) /* 842093913 */
 #endif
 
     /**
@@ -127,6 +127,51 @@ extern "C"
      * @param height 图像高度
      */
     void v4l2_yuyv_to_rgb24(const unsigned char* yuyv, unsigned char* rgb, int width, int height);
+
+    /**
+     * @brief YUYV转BGR24
+     * @param yuyv YUYV数据
+     * @param bgr [输出]BGR缓冲区(调用方分配 width*height*3 字节)
+     * @param width 图像宽度
+     * @param height 图像高度
+     */
+    void v4l2_yuyv_to_bgr24(const unsigned char* yuyv, unsigned char* bgr, int width, int height);
+
+    /**
+     * @brief YUV420转RGB24
+     * @param yuv YUV420数据
+     * @param rgb [输出]RGB缓冲区(调用方分配 width*height*3 字节)
+     * @param width 图像宽度
+     * @param height 图像高度
+     */
+    void v4l2_yuv420_to_rgb24(const unsigned char* yuv, unsigned char* rgb, int width, int height);
+
+    /**
+     * @brief YUV420转BGR24
+     * @param yuv YUV420数据
+     * @param bgr [输出]BGR缓冲区(调用方分配 width*height*3 字节)
+     * @param width 图像宽度
+     * @param height 图像高度
+     */
+    void v4l2_yuv420_to_bgr24(const unsigned char* yuv, unsigned char* bgr, int width, int height);
+
+    /**
+     * @brief RGB24转BGR24
+     * @param rgb rgb数据
+     * @param bgr [输出]BGR缓冲区(调用方分配 width*height*3 字节)
+     * @param width 图像宽度
+     * @param height 图像高度
+     */
+    void v4l2_rgb24_to_bgr24(const unsigned char* rgb, unsigned char* bgr, int width, int height);
+
+    /**
+     * @brief BGR24转RGB24
+     * @param bgr bgr数据
+     * @param rgb [输出]RGB缓冲区(调用方分配 width*height*3 字节)
+     * @param width 图像宽度
+     * @param height 图像高度
+     */
+    void v4l2_bgr24_to_rgb24(const unsigned char* bgr, unsigned char* rgb, int width, int height);
 #ifdef __cplusplus
 }
 #endif

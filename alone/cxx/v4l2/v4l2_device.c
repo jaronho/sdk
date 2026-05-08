@@ -367,6 +367,12 @@ static int s_yuv2rgb_g_u[256] = {0};
 static int s_yuv2rgb_g_v[256] = {0};
 static int s_yuv2rgb_b_u[256] = {0};
 
+static int s_yuv420_r_v[256] = {0};
+static int s_yuv420_g_u[256] = {0};
+static int s_yuv420_g_v[256] = {0};
+static int s_yuv420_b_u[256] = {0};
+static int s_yuv420_init = 0;
+
 static void v4l2_yuyv_to_rgb24_init(void)
 {
     int i;
@@ -381,6 +387,24 @@ static void v4l2_yuyv_to_rgb24_init(void)
             s_yuv2rgb_g_u[i] = (100 * u + 128) >> 8;
             s_yuv2rgb_g_v[i] = (208 * v + 128) >> 8;
             s_yuv2rgb_b_u[i] = (516 * u + 128) >> 8;
+        }
+    }
+}
+
+static void v4l2_yuv420_to_rgb24_init(void)
+{
+    int i;
+    if (0 == s_yuv420_init)
+    {
+        s_yuv420_init = 1;
+        for (i = 0; i < 256; ++i)
+        {
+            int v = i - 128;
+            int u = i - 128;
+            s_yuv420_r_v[i] = (359 * v + 128) >> 8;
+            s_yuv420_g_u[i] = (89 * u + 128) >> 8;
+            s_yuv420_g_v[i] = (183 * v + 128) >> 8;
+            s_yuv420_b_u[i] = (455 * u + 128) >> 8;
         }
     }
 }
@@ -422,6 +446,151 @@ void v4l2_yuyv_to_rgb24(const unsigned char* yuyv, unsigned char* rgb, int width
             rgb[rgbIndex++] = r1 < 0 ? 0 : (r1 > 255 ? 255 : r1);
             rgb[rgbIndex++] = g1 < 0 ? 0 : (g1 > 255 ? 255 : g1);
             rgb[rgbIndex++] = b1 < 0 ? 0 : (b1 > 255 ? 255 : b1);
+        }
+    }
+}
+
+void v4l2_yuyv_to_bgr24(const unsigned char* yuyv, unsigned char* bgr, int width, int height)
+{
+    int i, j;
+    int bgrIndex = 0;
+    v4l2_yuyv_to_rgb24_init();
+    for (i = 0; i < height; ++i)
+    {
+        for (j = 0; j < width; j += 2)
+        {
+            int idx = (i * width + j) * 2;
+            int y0 = yuyv[idx];
+            int u = yuyv[idx + 1];
+            int y1 = yuyv[idx + 2];
+            int v = yuyv[idx + 3];
+
+            int r_v = s_yuv2rgb_r_v[v];
+            int g_u = s_yuv2rgb_g_u[u];
+            int g_v = s_yuv2rgb_g_v[v];
+            int b_u = s_yuv2rgb_b_u[u];
+
+            int y0_base = (298 * (y0 - 16) + 128) >> 8;
+            int r0 = y0_base + r_v;
+            int g0 = y0_base - g_u - g_v;
+            int b0 = y0_base + b_u;
+
+            bgr[bgrIndex++] = b0 < 0 ? 0 : (b0 > 255 ? 255 : b0);
+            bgr[bgrIndex++] = g0 < 0 ? 0 : (g0 > 255 ? 255 : g0);
+            bgr[bgrIndex++] = r0 < 0 ? 0 : (r0 > 255 ? 255 : r0);
+
+            int y1_base = (298 * (y1 - 16) + 128) >> 8;
+            int r1 = y1_base + r_v;
+            int g1 = y1_base - g_u - g_v;
+            int b1 = y1_base + b_u;
+
+            bgr[bgrIndex++] = b1 < 0 ? 0 : (b1 > 255 ? 255 : b1);
+            bgr[bgrIndex++] = g1 < 0 ? 0 : (g1 > 255 ? 255 : g1);
+            bgr[bgrIndex++] = r1 < 0 ? 0 : (r1 > 255 ? 255 : r1);
+        }
+    }
+}
+
+void v4l2_yuv420_to_rgb24(const unsigned char* yuv, unsigned char* rgb, int width, int height)
+{
+    int i, j;
+    int rgbIndex = 0;
+    int y_size = width * height;
+    const unsigned char* y_buf = yuv;
+    const unsigned char* uv_buf = yuv + y_size;
+    v4l2_yuv420_to_rgb24_init();
+    for (i = 0; i < height; ++i)
+    {
+        for (j = 0; j < width; ++j)
+        {
+            int y = y_buf[i * width + j];
+            int uv_idx = (i / 2) * (width) + (j & ~1);
+            int u = uv_buf[uv_idx];
+            int v = uv_buf[uv_idx + 1];
+
+            int rv = s_yuv420_r_v[v];
+            int gu = s_yuv420_g_u[u];
+            int gv = s_yuv420_g_v[v];
+            int bu = s_yuv420_b_u[u];
+
+            int y_base = (298 * (y - 16) + 128) >> 8;
+            int r = y_base + rv;
+            int g = y_base - gu - gv;
+            int b = y_base + bu;
+
+            rgb[rgbIndex++] = r < 0 ? 0 : (r > 255 ? 255 : r);
+            rgb[rgbIndex++] = g < 0 ? 0 : (g > 255 ? 255 : g);
+            rgb[rgbIndex++] = b < 0 ? 0 : (b > 255 ? 255 : b);
+        }
+    }
+}
+
+void v4l2_yuv420_to_bgr24(const unsigned char* yuv, unsigned char* bgr, int width, int height)
+{
+    int i, j;
+    int bgrIndex = 0;
+    int y_size = width * height;
+    const unsigned char* y_buf = yuv;
+    const unsigned char* uv_buf = yuv + y_size;
+    v4l2_yuv420_to_rgb24_init();
+    for (i = 0; i < height; ++i)
+    {
+        for (j = 0; j < width; ++j)
+        {
+            int y = y_buf[i * width + j];
+            int uv_idx = (i / 2) * width + (j & ~1);
+            int u = uv_buf[uv_idx];
+            int v = uv_buf[uv_idx + 1];
+
+            int rv = s_yuv420_r_v[v];
+            int gu = s_yuv420_g_u[u];
+            int gv = s_yuv420_g_v[v];
+            int bu = s_yuv420_b_u[u];
+
+            int y_base = (298 * (y - 16) + 128) >> 8;
+            int r = y_base + rv;
+            int g = y_base - gu - gv;
+            int b = y_base + bu;
+
+            bgr[bgrIndex++] = b < 0 ? 0 : (b > 255 ? 255 : b);
+            bgr[bgrIndex++] = g < 0 ? 0 : (g > 255 ? 255 : g);
+            bgr[bgrIndex++] = r < 0 ? 0 : (r > 255 ? 255 : r);
+        }
+    }
+}
+
+void v4l2_rgb24_to_bgr24(const unsigned char* rgb, unsigned char* bgr, int width, int height)
+{
+    int i, j;
+    int index = 0;
+    for (i = 0; i < height; ++i)
+    {
+        for (j = 0; j < width; ++j)
+        {
+            unsigned char r = rgb[index];
+            unsigned char g = rgb[index + 1];
+            unsigned char b = rgb[index + 2];
+            bgr[index++] = b;
+            bgr[index++] = g;
+            bgr[index++] = r;
+        }
+    }
+}
+
+void v4l2_bgr24_to_rgb24(const unsigned char* bgr, unsigned char* rgb, int width, int height)
+{
+    int i, j;
+    int index = 0;
+    for (i = 0; i < height; ++i)
+    {
+        for (j = 0; j < width; ++j)
+        {
+            unsigned char b = bgr[index];
+            unsigned char g = bgr[index + 1];
+            unsigned char r = bgr[index + 2];
+            rgb[index++] = r;
+            rgb[index++] = g;
+            rgb[index++] = b;
         }
     }
 }
