@@ -396,8 +396,8 @@ void v4l2_yuyv_to_rgb24(const unsigned char* yuyv, unsigned char* rgb, int width
         {
             int idx = (i * width + j) * 2;
             int y0 = yuyv[idx];
-            int y1 = yuyv[idx + 2];
             int u = yuyv[idx + 1];
+            int y1 = yuyv[idx + 2];
             int v = yuyv[idx + 3];
 
             int r_v = s_yuv2rgb_r_v[v];
@@ -405,17 +405,19 @@ void v4l2_yuyv_to_rgb24(const unsigned char* yuyv, unsigned char* rgb, int width
             int g_v = s_yuv2rgb_g_v[v];
             int b_u = s_yuv2rgb_b_u[u];
 
-            int r0 = (298 * y0 + r_v) >> 8;
-            int g0 = (298 * y0 - g_u - g_v) >> 8;
-            int b0 = (298 * y0 + b_u) >> 8;
+            int y0_base = (298 * (y0 - 16) + 128) >> 8;
+            int r0 = y0_base + r_v;
+            int g0 = y0_base - g_u - g_v;
+            int b0 = y0_base + b_u;
 
             rgb[rgbIndex++] = r0 < 0 ? 0 : (r0 > 255 ? 255 : r0);
             rgb[rgbIndex++] = g0 < 0 ? 0 : (g0 > 255 ? 255 : g0);
             rgb[rgbIndex++] = b0 < 0 ? 0 : (b0 > 255 ? 255 : b0);
 
-            int r1 = (298 * y1 + r_v) >> 8;
-            int g1 = (298 * y1 - g_u - g_v) >> 8;
-            int b1 = (298 * y1 + b_u) >> 8;
+            int y1_base = (298 * (y1 - 16) + 128) >> 8;
+            int r1 = y1_base + r_v;
+            int g1 = y1_base - g_u - g_v;
+            int b1 = y1_base + b_u;
 
             rgb[rgbIndex++] = r1 < 0 ? 0 : (r1 > 255 ? 255 : r1);
             rgb[rgbIndex++] = g1 < 0 ? 0 : (g1 > 255 ? 255 : g1);
