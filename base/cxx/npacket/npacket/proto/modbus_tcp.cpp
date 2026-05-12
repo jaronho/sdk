@@ -104,11 +104,6 @@ ParseResult ModbusTcpParser::parse(const ProtocolData& pd, uint32_t& consumeLen)
         m_dataCallback(pd.ntp, pd.totalLen, pd.header, d);
     }
     consumeLen = fullFrameLen;
-    if (pd.reassemblyFlag > 0)
-    {
-        printf("MODBUS, num: %zu, totalLen: %zu, payloadLen: %zu, reassemblyFlag: %d\n", pd.num, pd.totalLen, pd.payloadLen,
-               pd.reassemblyFlag);
-    }
     return ParseResult::SUCCESS;
 }
 
