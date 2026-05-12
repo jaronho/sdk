@@ -35,17 +35,10 @@ namespace npacket
 {
 /**
  * @brief 层数据回调
- * @param flag 数据标志
- * @param num 数据序号
- * @param ntp 数据包接收时间点
- * @param totalLen 数据包总长度
- * @param header 层头部
- * @param payload 层负载
- * @param payloadLen 层负载长度
+ * @param pd 协议数据
  * @return true-继续处理下一层, false-停止后续处理
  */
-using LAYER_CALLBACK = std::function<bool(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                          const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)>;
+using LAYER_CALLBACK = std::function<bool(const ProtocolData& pd)>;
 
 /**
  * @brief 数据源
@@ -209,10 +202,11 @@ private:
      * @param dataLen 数据长度
      * @param dataSource 数据源
      * @param depth 递归深度(防止无限递归)
+     * @param reassemblyFlag 重组数据标志(0-非重组, 1-分片重组, 2-流重组, 3-分片+流重组)
      * @return -1-数据为空, 0-成功, 1-解析以太网层失败, 2-解析网络层失败, 3-解析传输层失败, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
     int parseWithDepth(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* ethernetHeader,
-                       const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth);
+                       const uint8_t* data, uint32_t dataLen, const DataSource& dataSource, int depth, int reassemblyFlag);
 
     /**
      * @brief 处理从网络层开始的数据(用于重组后的IP包)
@@ -223,12 +217,13 @@ private:
      * @param data 数据（从IP头开始）
      * @param dataLen 数据长度
      * @param dataSource 数据源（REASSEMBLED_IPv4 或 REASSEMBLED_IPv6）
-     * @param depth 递归深度
+     * @param depth 递归深度(防止无限递归)
+     * @param reassemblyFlag 重组数据标志(0-非重组, 1-分片重组, 2-流重组, 3-分片+流重组)
      * @return 0-成功, 2-解析网络层失败, 3-解析传输层失败, 5-分片重组中(等待后续分片)
      */
     int parseFromNetworkLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp,
                               const ProtocolHeader* ethernetHeader, const uint8_t* data, uint32_t dataLen, const DataSource& dataSource,
-                              int depth);
+                              int depth, int reassemblyFlag);
 
     /**
      * @brief 统一处理传输层到应用层的完整流程
@@ -240,12 +235,13 @@ private:
      * @param transportProtocol 传输层协议类型
      * @param data 数据
      * @param dataLen 数据长度
-     * @param depth 递归深度
+     * @param depth 递归深度(防止无限递归)
+     * @param reassemblyFlag 重组数据标志(0-非重组, 1-分片重组, 2-流重组, 3-分片+流重组)
      * @return 0-成功, 3-解析传输层失败, 5-分片重组中(等待后续分片)
      */
     int processTransportToApplication(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                                       const ProtocolHeader* networkHeader, uint32_t transportProtocol, const uint8_t* data,
-                                      uint32_t dataLen, int depth);
+                                      uint32_t dataLen, int depth, int reassemblyFlag);
 
     /**
      * @brief 处理以太网层数据
@@ -308,11 +304,12 @@ private:
      * @param payloadLen 传输层负载长度
      * @param tcpKey TCP流键
      * @param depth 递归深度(防止无限递归)
+     * @param reassemblyFlag 重组数据标志(0-非重组, 1-分片重组, 2-流重组, 3-分片+流重组)
      * @return 0-成功, 4-无匹配的应用层解析器, 5-分片重组中(等待后续分片), 6-达到最大递归深度
      */
     int handleApplicationLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                               const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen,
-                               const TcpStreamKey* tcpKey = nullptr, int depth = 0);
+                               const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, const TcpStreamKey* tcpKey,
+                               int depth, int reassemblyFlag);
 
     /**
      * @brief 遍历IPv6扩展头链获取最终协议类型
@@ -339,11 +336,11 @@ private:
      * @param networkHeader 网络层头部
      * @param data 当前分片数据(含IP头)
      * @param dataLen 数据长度
-     * @param isFragment [输出]是否为分片报文, true-是分片报文, false-不是分片报文
      * @param reassembledData [输出]重组后的完整数据
+     * @return true-重组数据, false-非重组数据
      */
-    void checkAndHandleFragment(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader, const uint8_t* data,
-                                uint32_t dataLen, bool& isFragment, std::vector<uint8_t>& reassembledData);
+    bool checkAndHandleFragment(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader, const uint8_t* data,
+                                uint32_t dataLen, std::vector<uint8_t>& reassembledData);
 
     /**
      * @brief 解析IPv6分片头部
@@ -376,10 +373,11 @@ private:
      * @param key [输出]TCP流标识健
      * @param needMoreData [输出]是否需要更多数据
      * @param reassembledData [输出]重组后的完整数据
+     * @return true-重组数据, false-非重组数据
      */
-    void checkAndHandleTcpReassembly(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader,
-                                     const ProtocolHeader* transportHeader, const uint8_t* payload, uint32_t payloadLen, TcpStreamKey& key,
-                                     bool& needMoreData, std::vector<uint8_t>& reassembledData);
+    bool checkAndHandleTcpStream(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader,
+                                 const ProtocolHeader* transportHeader, const uint8_t* payload, uint32_t payloadLen, TcpStreamKey& key,
+                                 bool& needMoreData, std::vector<uint8_t>& reassembledData);
 
 private:
     const CallbackConfig m_cbCfg; /* 回调配置 */

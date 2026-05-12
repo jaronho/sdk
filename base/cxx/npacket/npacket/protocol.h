@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <string.h>
 #include <string>
 
@@ -1055,5 +1056,20 @@ struct TcpStreamKey
         }
         return hashValue;
     }
+};
+
+/**
+ * @brief 协议数据
+ */
+struct ProtocolData
+{
+    size_t flag = 0; /* 数据标志, 自定义(可用于区分不同数据来源或类型) */
+    size_t num = 0; /* 数据序号, 自定义(一般是递增) */
+    std::chrono::steady_clock::time_point ntp; /* 数据包接收时间点 */
+    uint32_t totalLen = 0; /* 数据包总长度 */
+    const ProtocolHeader* header = nullptr; /* 头部 */
+    const uint8_t* payload = nullptr; /* 负载数据 */
+    uint32_t payloadLen = 0; /* 负载长度 */
+    int reassemblyFlag = 0; /* 重组标志(0-非重组, 1-分片重组, 2-流重组, 3-分片+流重组) */
 };
 } // namespace npacket

@@ -66,41 +66,40 @@ uint32_t Iec103Parser::getProtocol() const noexcept
     return ApplicationProtocol::IEC103;
 }
 
-ParseResult Iec103Parser::parse(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
+ParseResult Iec103Parser::parse(const ProtocolData& pd, uint32_t& consumeLen)
 {
     consumeLen = 0;
-    if (header && TransportProtocol::TCP != header->getProtocol() && TransportProtocol::UDP != header->getProtocol())
+    if (pd.header && TransportProtocol::TCP != pd.header->getProtocol() && TransportProtocol::UDP != pd.header->getProtocol())
     {
         return ParseResult::FAILURE;
     }
-    if (0x10 != payload[0] && 0x68 != payload[0]) /* 不符合协议规范 */
+    if (0x10 != pd.payload[0] && 0x68 != pd.payload[0]) /* 不符合协议规范 */
     {
         return ParseResult::FAILURE;
     }
-    if (payloadLen < 5) /* IEC103包最小5个字节 */
+    if (pd.payloadLen < 5) /* IEC103包最小5个字节 */
     {
         return ParseResult::CONTINUE;
     }
-    if (parseFixedFrame(ntp, totalLen, header, payload, payloadLen, consumeLen))
+    if (parseFixedFrame(pd.ntp, pd.totalLen, pd.header, pd.payload, pd.payloadLen, consumeLen))
     {
         return ParseResult::SUCCESS;
     }
-    if (payloadLen < 9) /* 固定帧失败且长度<9, 可能是可变帧被分片, 等待更多数据 */
+    if (pd.payloadLen < 9) /* 固定帧失败且长度<9, 可能是可变帧被分片, 等待更多数据 */
     {
         return ParseResult::CONTINUE;
     }
-    if (parseVariableFrame(ntp, totalLen, header, payload, payloadLen, consumeLen))
+    if (parseVariableFrame(pd.ntp, pd.totalLen, pd.header, pd.payload, pd.payloadLen, consumeLen))
     {
         return ParseResult::SUCCESS;
     }
     /* 检查是否是长度不足导致的失败, 如果前驱字符是0x68但长度不够, 等待重组 */
-    if (payloadLen >= 4 && 0x68 == payload[0] && payload[1] == payload[2] && 0x68 == payload[3])
+    if (pd.payloadLen >= 4 && 0x68 == pd.payload[0] && pd.payload[1] == pd.payload[2] && 0x68 == pd.payload[3])
     {
-        uint8_t length = payload[1]; /* L字段 = 控制域(1) + 地址域(1) + ASDU数据域(n) */
+        uint8_t length = pd.payload[1]; /* L字段 = 控制域(1) + 地址域(1) + ASDU数据域(n) */
         uint32_t expectedFrameLen = 4 + length + 2; /* 4字节头部(68H+L+L+68H) + 数据域 + CS + 16H */
         /* 如果检测到是可变帧格式但数据未收齐，返回CONTINUE等待重组 */
-        if (payloadLen < expectedFrameLen)
+        if (pd.payloadLen < expectedFrameLen)
         {
             return ParseResult::CONTINUE;
         }

@@ -14,15 +14,14 @@ uint32_t ModbusTcpParser::getProtocol() const noexcept
     return ApplicationProtocol::MODBUS_TCP;
 }
 
-ParseResult ModbusTcpParser::parse(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                   const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
+ParseResult ModbusTcpParser::parse(const ProtocolData& pd, uint32_t& consumeLen)
 {
     consumeLen = 0;
-    if (!header || TransportProtocol::TCP != header->getProtocol())
+    if (!pd.header || TransportProtocol::TCP != pd.header->getProtocol())
     {
         return ParseResult::FAILURE;
     }
-    auto tcpHeader = (const TcpHeader*)(header);
+    auto tcpHeader = (const TcpHeader*)(pd.header);
     if (!tcpHeader)
     {
         return ParseResult::FAILURE;
@@ -34,9 +33,9 @@ ParseResult ModbusTcpParser::parse(size_t flag, size_t num, const std::chrono::s
     /* 解析MBAP头 */
     MbapHeader mbap;
     uint32_t mbapHeaderLen = 0, pduLen = 0;
-    if (!parseMbapHeader(payload, payloadLen, mbap, mbapHeaderLen, pduLen))
+    if (!parseMbapHeader(pd.payload, pd.payloadLen, mbap, mbapHeaderLen, pduLen))
     {
-        if (payloadLen < modbus::MBAP_HEADER_LEN) /* 长度不足(可能被分包) */
+        if (pd.payloadLen < modbus::MBAP_HEADER_LEN) /* 长度不足(可能被分包) */
         {
             return ParseResult::CONTINUE;
         }
@@ -48,12 +47,12 @@ ParseResult ModbusTcpParser::parse(size_t flag, size_t num, const std::chrono::s
     }
     /* 检查是否收齐完整的PDU数据 */
     uint32_t fullFrameLen = mbapHeaderLen + pduLen;
-    if (payloadLen < fullFrameLen) /* PDU数据未收齐(被TCP分片) */
+    if (pd.payloadLen < fullFrameLen) /* PDU数据未收齐(被TCP分片) */
     {
         return ParseResult::CONTINUE;
     }
     /* 定位PDU */
-    const uint8_t* pduStart = payload + mbapHeaderLen;
+    const uint8_t* pduStart = pd.payload + mbapHeaderLen;
     /* 解析功能码 */
     uint8_t rawFuncCode = pduStart[0];
     bool isException = (0 != (rawFuncCode & (uint8_t)(modbus::FunctionCode::EXCEPTION_MASK)));
@@ -95,16 +94,21 @@ ParseResult ModbusTcpParser::parse(size_t flag, size_t num, const std::chrono::s
     }
     else
     {
-        d.rawData = payload;
+        d.rawData = pd.payload;
         d.rawDataLen = fullFrameLen;
         d.funcDataOffset = mbapHeaderLen + 1;
         d.funcDataLen = funcDataLen;
     }
     if (m_dataCallback)
     {
-        m_dataCallback(ntp, totalLen, header, d);
+        m_dataCallback(pd.ntp, pd.totalLen, pd.header, d);
     }
     consumeLen = fullFrameLen;
+    if (pd.reassemblyFlag > 0)
+    {
+        printf("MODBUS, num: %zu, totalLen: %zu, payloadLen: %zu, reassemblyFlag: %d\n", pd.num, pd.totalLen, pd.payloadLen,
+               pd.reassemblyFlag);
+    }
     return ParseResult::SUCCESS;
 }
 

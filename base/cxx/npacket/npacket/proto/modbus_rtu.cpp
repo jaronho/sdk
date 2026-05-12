@@ -29,18 +29,17 @@ uint32_t ModbusRtuParser::getProtocol() const noexcept
     return ApplicationProtocol::MODBUS_RTU;
 }
 
-ParseResult ModbusRtuParser::parse(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                   const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
+ParseResult ModbusRtuParser::parse(const ProtocolData& pd, uint32_t& consumeLen)
 {
     consumeLen = 0;
-    cleanupBuffer(ntp);
-    if (!payload || 0 == payloadLen)
+    cleanupBuffer(pd.ntp);
+    if (!pd.payload || 0 == pd.payloadLen)
     {
         return ParseResult::FAILURE; /* 这里返回失败, 防止空数据占用 */
     }
     /* 追加数据到缓冲区 */
-    m_buffer.insert(m_buffer.end(), payload, payload + payloadLen);
-    m_lastReceiveTime = ntp;
+    m_buffer.insert(m_buffer.end(), pd.payload, pd.payload + pd.payloadLen);
+    m_lastReceiveTime = pd.ntp;
     /* 处理缓冲区数据 */
     ParseResult result = ParseResult::FAILURE;
     if (m_buffer.size() <= m_cfg.maxBufferSize)
@@ -54,7 +53,7 @@ ParseResult ModbusRtuParser::parse(size_t flag, size_t num, const std::chrono::s
                 return ParseResult::CONTINUE;
             }
             uint32_t frameLen = 0;
-            result = tryParseBuffer(ntp, frameLen);
+            result = tryParseBuffer(pd.ntp, frameLen);
             consumeLen += frameLen;
             if (ParseResult::FAILURE == result) /* 无效数据 */
             {

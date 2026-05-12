@@ -7,20 +7,19 @@ uint32_t TpktCotpParser::getProtocol() const noexcept
     return ApplicationProtocol::TPKT_COTP;
 }
 
-ParseResult TpktCotpParser::parse(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                  const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
+ParseResult TpktCotpParser::parse(const ProtocolData& pd, uint32_t& consumeLen)
 {
     consumeLen = 0;
-    if (header && TransportProtocol::TCP != header->getProtocol())
+    if (pd.header && TransportProtocol::TCP != pd.header->getProtocol())
     {
         return ParseResult::FAILURE;
     }
-    if (payloadLen < 7) /* 最小长度检查: TPKT(4) + COTP最小(3) */
+    if (pd.payloadLen < 7) /* 最小长度检查: TPKT(4) + COTP最小(3) */
     {
         return ParseResult::FAILURE;
     }
-    const uint8_t* buffer = payload;
-    uint32_t bufferLen = payloadLen;
+    const uint8_t* buffer = pd.payload;
+    uint32_t bufferLen = pd.payloadLen;
     TpktInfo tpktInfo;
     uint32_t tpktLen = 0;
     /* 解析TPKT */
@@ -29,7 +28,7 @@ ParseResult TpktCotpParser::parse(size_t flag, size_t num, const std::chrono::st
         return ParseResult::FAILURE;
     }
     /* TPKT长度应等于整个payload长度(单帧场景) */
-    if (tpktInfo.length != payloadLen)
+    if (tpktInfo.length != pd.payloadLen)
     {
         /* 可能是多TPKT包合并, 按tpktInfo.length处理当前包, 剩余数据留给下次解析 */
     }
@@ -48,7 +47,7 @@ ParseResult TpktCotpParser::parse(size_t flag, size_t num, const std::chrono::st
     /* 回调通知 */
     if (m_dataCallback)
     {
-        m_dataCallback(flag, num, ntp, totalLen, header, tpktInfo, cotpInfo, buffer, bufferLen);
+        m_dataCallback(pd.flag, pd.num, pd.ntp, pd.totalLen, pd.header, tpktInfo, cotpInfo, buffer, bufferLen);
     }
     return ParseResult::SUCCESS;
 }

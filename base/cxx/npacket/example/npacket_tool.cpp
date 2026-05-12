@@ -142,10 +142,9 @@ void printTransportHeaderTcp(const npacket::ProtocolHeader* h)
 }
 
 /* 处理以太网层 */
-bool handleEthernetLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                         const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
+bool handleEthernetLayer(const npacket::ProtocolData& pd)
 {
-    auto h = (const npacket::EthernetIIHeader*)(header);
+    auto h = (const npacket::EthernetIIHeader*)(pd.header);
     if (s_proto.empty() || "ehternet" == s_proto)
     {
         printEthernet(h);
@@ -154,13 +153,12 @@ bool handleEthernetLayer(size_t flag, size_t num, const std::chrono::steady_cloc
 }
 
 /* 处理网络层 */
-bool handleNetworkLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                        const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
+bool handleNetworkLayer(const npacket::ProtocolData& pd)
 {
-    switch ((npacket::NetworkProtocol)header->getProtocol())
+    switch ((npacket::NetworkProtocol)pd.header->getProtocol())
     {
     case npacket::NetworkProtocol::IPv4: {
-        auto h = (const npacket::Ipv4Header*)(header);
+        auto h = (const npacket::Ipv4Header*)(pd.header);
         if (s_proto.empty() || "ipv4" == s_proto)
         {
             if (!s_proto.empty())
@@ -172,7 +170,7 @@ bool handleNetworkLayer(size_t flag, size_t num, const std::chrono::steady_clock
     }
     break;
     case npacket::NetworkProtocol::ARP: {
-        auto h = (const npacket::ArpHeader*)(header);
+        auto h = (const npacket::ArpHeader*)(pd.header);
         if (s_proto.empty() || "arp" == s_proto)
         {
             if (!s_proto.empty())
@@ -184,7 +182,7 @@ bool handleNetworkLayer(size_t flag, size_t num, const std::chrono::steady_clock
     }
     break;
     case npacket::NetworkProtocol::IPv6: {
-        auto h = (const npacket::Ipv6Header*)(header);
+        auto h = (const npacket::Ipv6Header*)(pd.header);
         if (s_proto.empty() || "ipv4" == s_proto)
         {
             if (!s_proto.empty())
@@ -200,13 +198,12 @@ bool handleNetworkLayer(size_t flag, size_t num, const std::chrono::steady_clock
 }
 
 /* 处理传输层 */
-bool handleTransportLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                          const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
+bool handleTransportLayer(const npacket::ProtocolData& pd)
 {
-    switch ((npacket::TransportProtocol)header->getProtocol())
+    switch ((npacket::TransportProtocol)pd.header->getProtocol())
     {
     case npacket::TransportProtocol::TCP: {
-        auto h = (const npacket::TcpHeader*)(header);
+        auto h = (const npacket::TcpHeader*)(pd.header);
         if (s_proto.empty() || "tcp" == s_proto)
         {
             if (!s_proto.empty())
@@ -227,7 +224,7 @@ bool handleTransportLayer(size_t flag, size_t num, const std::chrono::steady_clo
     }
     break;
     case npacket::TransportProtocol::UDP: {
-        auto h = (const npacket::UdpHeader*)(header);
+        auto h = (const npacket::UdpHeader*)(pd.header);
         if (s_proto.empty() || "udp" == s_proto)
         {
             if (!s_proto.empty())
@@ -248,7 +245,7 @@ bool handleTransportLayer(size_t flag, size_t num, const std::chrono::steady_clo
     }
     break;
     case npacket::TransportProtocol::ICMP: {
-        auto h = (const npacket::IcmpHeader*)(header);
+        auto h = (const npacket::IcmpHeader*)(pd.header);
         if (s_proto.empty() || "icmp" == s_proto)
         {
             if (!s_proto.empty())
@@ -264,7 +261,7 @@ bool handleTransportLayer(size_t flag, size_t num, const std::chrono::steady_clo
     }
     break;
     case npacket::TransportProtocol::ICMPv6: {
-        auto h = (const npacket::Icmpv6Header*)(header);
+        auto h = (const npacket::Icmpv6Header*)(pd.header);
         if (s_proto.empty() || "icmpv6" == s_proto)
         {
             if (!s_proto.empty())

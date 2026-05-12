@@ -28,13 +28,13 @@ enum ApplicationProtocol
     OPC_UA, /* 开放平台通信统一架构(Open Platform Communications Unified Architecture), 是一种跨平台面向服务的工业通信协议 */
     POP3, /* 邮局协议3(用于电子邮件接收) */
     PROFINET, /* PROFINET协议(主要用于工业自动化) */
+    SMB2, /* 第二代服务器消息块协议(Server Message Block v2) */
     SMTP, /* 简单邮件传输协议(用于电子邮件发送) */
     TELNET, /* 基于TCP的远程登录协议 */
-    TPKT, /* 介于TCP和COTP协议之间, 属于传输服务类的协议, 主要用来在TCP和COTP之间建立桥梁, 一般与COTP一起发送, 当作Header段 */
 };
 
 /**
- * @brief 帧解析结果
+ * @brief 解析结果
  */
 enum ParseResult
 {
@@ -63,18 +63,11 @@ public:
 
     /**
      * @brief 解析
-     * @param flag 数据标志
-     * @param num 数据序号
-     * @param ntp 数据包接收时间点
-     * @param totalLen 数据包总长度
-     * @param header 传输层头部
-     * @param payload 传输层负载
-     * @param payloadLen 传输层负载长度
+     * @param pd 协议数据
      * @param consumeLen [输出]消耗的长度, 重要: 解析成功时, 需要在接口内部对此变量赋值所解析的数据长度, 解析失败/数据不足时赋值0
      * @return 解析结果
      */
-    virtual ParseResult parse(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                              const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen) = 0;
+    virtual ParseResult parse(const ProtocolData& pd, uint32_t& consumeLen) = 0;
 
     /**
      * @brief 重置

@@ -66,30 +66,28 @@ std::string getDateTime()
 /**
  * @brief 处理接收以太网层
  */
-bool handleInEthernetLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                           const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
+bool handleInEthernetLayer(const npacket::ProtocolData& pd)
 {
     ++s_inPkt;
-    s_inByte += totalLen;
+    s_inByte += pd.totalLen;
     return true;
 }
 
 /**
  * @brief 处理接收传输层
  */
-bool handleInTransportLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                            const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
+bool handleInTransportLayer(const npacket::ProtocolData& pd)
 {
-    switch ((npacket::TransportProtocol)header->getProtocol())
+    switch ((npacket::TransportProtocol)pd.header->getProtocol())
     {
     case npacket::TransportProtocol::TCP: {
         ++s_inTcpPkt;
-        s_inTcpByte += totalLen;
+        s_inTcpByte += pd.totalLen;
     }
     break;
     case npacket::TransportProtocol::UDP: {
         ++s_inUdpPkt;
-        s_inUdpByte += totalLen;
+        s_inUdpByte += pd.totalLen;
     }
     break;
     }
@@ -99,30 +97,28 @@ bool handleInTransportLayer(size_t flag, size_t num, const std::chrono::steady_c
 /**
  * @brief 处理发送以太网层
  */
-bool handleOutEthernetLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                            const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
+bool handleOutEthernetLayer(const npacket::ProtocolData& pd)
 {
     ++s_outPkt;
-    s_outByte += totalLen;
+    s_outByte += pd.totalLen;
     return true;
 }
 
 /**
  * @brief 处理发送传输层
  */
-bool handleOutTransportLayer(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                             const npacket::ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen)
+bool handleOutTransportLayer(const npacket::ProtocolData& pd)
 {
-    switch ((npacket::TransportProtocol)header->getProtocol())
+    switch ((npacket::TransportProtocol)pd.header->getProtocol())
     {
     case npacket::TransportProtocol::TCP: {
         ++s_outTcpPkt;
-        s_outTcpByte += totalLen;
+        s_outTcpByte += pd.totalLen;
     }
     break;
     case npacket::TransportProtocol::UDP: {
         ++s_outUdpPkt;
-        s_outUdpByte += totalLen;
+        s_outUdpByte += pd.totalLen;
     }
     break;
     }

@@ -124,31 +124,31 @@ uint32_t FtpParser::getProtocol() const noexcept
     return ApplicationProtocol::FTP;
 }
 
-ParseResult FtpParser::parse(size_t flag, size_t num, const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                             const ProtocolHeader* header, const uint8_t* payload, uint32_t payloadLen, uint32_t& consumeLen)
+ParseResult FtpParser::parse(const ProtocolData& pd, uint32_t& consumeLen)
 {
     consumeLen = 0;
-    recyleDataConnect(ntp);
-    if (!header || !header->parent || TransportProtocol::TCP != header->getProtocol()
-        || (NetworkProtocol::IPv4 != header->parent->getProtocol() && NetworkProtocol::IPv6 != header->parent->getProtocol()))
+    recyleDataConnect(pd.ntp);
+    if (!pd.header || !pd.header->parent || TransportProtocol::TCP != pd.header->getProtocol()
+        || (NetworkProtocol::IPv4 != pd.header->parent->getProtocol() && NetworkProtocol::IPv6 != pd.header->parent->getProtocol()))
     {
         return ParseResult::FAILURE;
     }
-    if (parseData(ntp, totalLen, header, payload, payloadLen))
+    if (parseData(pd.ntp, pd.totalLen, pd.header, pd.payload, pd.payloadLen))
     {
-        consumeLen = payloadLen;
+        consumeLen = pd.payloadLen;
         return ParseResult::SUCCESS;
     }
-    if (payloadLen >= 5 && '\r' == payload[payloadLen - 2] && '\n' == payload[payloadLen - 1]) /* FTP控制包最小5个字节且都以'\r\n'结尾 */
+    if (pd.payloadLen >= 5 && '\r' == pd.payload[pd.payloadLen - 2]
+        && '\n' == pd.payload[pd.payloadLen - 1]) /* FTP控制包最小5个字节且都以'\r\n'结尾 */
     {
-        if (parseRequest(ntp, totalLen, header, payload, payloadLen))
+        if (parseRequest(pd.ntp, pd.totalLen, pd.header, pd.payload, pd.payloadLen))
         {
-            consumeLen = payloadLen;
+            consumeLen = pd.payloadLen;
             return ParseResult::SUCCESS;
         }
-        else if (parseResponse(ntp, totalLen, header, payload, payloadLen))
+        else if (parseResponse(pd.ntp, pd.totalLen, pd.header, pd.payload, pd.payloadLen))
         {
-            consumeLen = payloadLen;
+            consumeLen = pd.payloadLen;
             return ParseResult::SUCCESS;
         }
     }
