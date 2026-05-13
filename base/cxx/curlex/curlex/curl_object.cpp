@@ -161,21 +161,53 @@ int onDebugFunc(CURL* handle, curl_infotype type, char* data, size_t size, void*
     return 0;
 }
 
-bool CurlObject::SendObject::reset(const char* data, size_t dataLen, bool chunk)
+bool CurlObject::SendObject::setRawData(const char* data, size_t dataLen, bool chunk)
 {
+    m_data = nullptr;
+    m_dataLen = 0;
+    m_readed = 0;
+    m_chunk = chunk;
+    m_formData.clear();
     if (!data || 0 == dataLen)
     {
-        m_data = nullptr;
-        m_dataLen = 0;
-        m_readed = 0;
-        m_chunk = chunk;
         return false;
     }
     m_data = data;
     m_dataLen = dataLen;
-    m_readed = 0;
-    m_chunk = chunk;
     return true;
+}
+
+bool CurlObject::SendObject::setFormData(const std::map<std::string, std::string>& fieldMap)
+{
+    m_data = nullptr;
+    m_dataLen = 0;
+    m_readed = 0;
+    m_chunk = false;
+    m_formData.clear();
+    if (fieldMap.empty())
+    {
+        return false;
+    }
+    for (auto iter = fieldMap.begin(); fieldMap.end() != iter; ++iter)
+    {
+        if (!m_formData.empty())
+        {
+            m_formData.append("&");
+        }
+        m_formData.append(iter->first).append("=").append(iter->second);
+    }
+    m_data = m_formData.data();
+    m_dataLen = m_formData.size();
+    return true;
+}
+
+void CurlObject::SendObject::reset()
+{
+    m_data = nullptr;
+    m_dataLen = 0;
+    m_readed = 0;
+    m_chunk = false;
+    m_formData.clear();
 }
 
 const char* CurlObject::SendObject::data()
@@ -636,7 +668,7 @@ bool CurlObject::setResumeOffset(int64_t index)
 
 bool CurlObject::setRawData(const char* bytes, size_t byteCount, bool chunk)
 {
-    if (!m_sendObject.reset(bytes, byteCount, chunk))
+    if (!m_sendObject.setRawData(bytes, byteCount, chunk))
     {
         return false;
     }
@@ -654,20 +686,7 @@ bool CurlObject::setRawData(const char* bytes, size_t byteCount, bool chunk)
 
 bool CurlObject::setFormData(const std::map<std::string, std::string>& fieldMap)
 {
-    if (fieldMap.empty())
-    {
-        return false;
-    }
-    std::string data;
-    for (auto iter = fieldMap.begin(); fieldMap.end() != iter; ++iter)
-    {
-        if (!data.empty())
-        {
-            data.append("&");
-        }
-        data.append(iter->first).append("=").append(iter->second);
-    }
-    if (!m_sendObject.reset(data.data(), data.size(), false))
+    if (!m_sendObject.setFormData(fieldMap))
     {
         return false;
     }

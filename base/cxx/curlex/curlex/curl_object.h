@@ -289,13 +289,25 @@ private:
     {
     public:
         /**
-         * @brief 重置函数
-         * @param data 数据
-         * @param dataLen 数据长度
+         * @brief 设置原始字节流数据
+         * @param data 字节流数据
+         * @param dataLen 字节流数据长度
          * @param chunk 是否数据分块(默认否)
          * @return true-成功, false-失败
          */
-        bool reset(const char* data = nullptr, size_t dataLen = 0, bool chunk = false);
+        bool setRawData(const char* data, size_t dataLen, bool chunk = false);
+
+        /**
+         * @brief 设置表单数据, 格式: application/x-www-form-urlencoded
+         * @param data fieldMap, 底层会自动转为如: "name=jaron&gender=male&age=33"
+         * @return true-成功, false-失败
+         */
+        bool setFormData(const std::map<std::string, std::string>& fieldMap);
+
+        /**
+         * @brief 重置函数
+         */
+        void reset();
 
         /**
          * @brief 获取数据
@@ -328,6 +340,7 @@ private:
         size_t m_dataLen = 0; /* 数据长度 */
         size_t m_readed = 0; /* 已读的数据长度 */
         bool m_chunk = false; /* 是否数据分块(默认否) */
+        std::string m_formData; /* 表单数据, 例如: "name=jaron&gender=male&age=33" */
     };
 
     /**
