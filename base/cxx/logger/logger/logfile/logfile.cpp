@@ -11,6 +11,12 @@
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#define FILE_SYNC(fp) _commit(_fileno(fp))
+#else
+#define FILE_SYNC(fp) fsync(fileno(fp))
+#endif
+
 bool Logfile::createPath(const std::string& path)
 {
     if (path.empty())
@@ -144,7 +150,8 @@ void Logfile::close()
     std::lock_guard<std::mutex> locker(m_mutex);
     if (m_f)
     {
-        fflush(m_f);
+        fflush(m_f); /* 写到系统内核缓存 */
+        FILE_SYNC(m_f); /* 写入磁盘 */
         fclose(m_f);
         m_f = nullptr;
     }
@@ -266,8 +273,9 @@ Logfile::Result Logfile::record(const char* content, size_t contentSize, bool ne
     }
     if (needFlush && immediateFlush)
     {
-        if (0 != fflush(m_f))
+        if (0 != fflush(m_f)) /* 写到系统内核缓存 */
         {
+            FILE_SYNC(m_f); /* 写入磁盘 */
             fclose(m_f);
             m_f = nullptr;
             return Result::flush_failed;
@@ -287,9 +295,10 @@ bool Logfile::forceFlush()
     std::lock_guard<std::mutex> locker(m_mutex);
     if (m_f)
     {
-        if (m_flushed || 0 == fflush(m_f))
+        if (m_flushed || 0 == fflush(m_f)) /* 写到系统内核缓存 */
         {
             m_flushed = true;
+            FILE_SYNC(m_f); /* 写入磁盘 */
             return true;
         }
     }

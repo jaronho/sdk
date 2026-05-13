@@ -131,7 +131,7 @@ public:
     virtual void print(int level, const std::string& tag, const char* file, int line, const char* func, const std::string& msg) = 0;
 
     /**
-     * @brief 强制刷新日志内容
+     * @brief 强制刷新日志内容(耗时, 调用频率不宜过高, 建议间隔1秒以上)
      */
     virtual void forceFlush() = 0;
 

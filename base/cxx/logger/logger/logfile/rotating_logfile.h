@@ -130,7 +130,7 @@ public:
     Logfile::Result record(const std::string& content, bool newline = true, bool immediateFlush = true);
 
     /**
-     * @brief 强制刷新日志内容
+     * @brief 强制刷新日志内容(耗时, 调用频率不宜过高, 建议间隔1秒以上)
      * @return true-成功, false-失败
      */
     bool forceFlush();

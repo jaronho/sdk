@@ -132,7 +132,7 @@ public:
     void fatal(const char* file, int line, const char* func, const std::string& msg) const;
 
     /**
-     * @brief 强制刷新日志内容
+     * @brief 强制刷新日志内容(耗时, 调用频率不宜过高, 建议间隔1秒以上)
      */
     void forceFlush();
 

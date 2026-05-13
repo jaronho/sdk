@@ -193,7 +193,7 @@ public:
     static void setConsoleMode(int mode, const std::string& loggerName = std::string());
 
     /**
-     * @brief 强制刷新日志内容
+     * @brief 强制刷新日志内容(耗时, 调用频率不宜过高, 建议间隔1秒以上)
      * @param loggerName 日志记录器名称(选填)
      */
     static void forceFlush(const std::string& loggerName = std::string());
