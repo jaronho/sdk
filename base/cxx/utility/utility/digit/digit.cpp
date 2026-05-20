@@ -23,6 +23,24 @@ bool Digit::isBin(const std::string& binStr)
     return true;
 }
 
+bool Digit::isDec(const std::string& decStr)
+{
+    size_t len = decStr.size();
+    if (0 == len)
+    {
+        return false;
+    }
+    for (size_t i = 0; i < len; ++i)
+    {
+        const char& ch = decStr.at(i);
+        if (ch < '0' || ch > '9')
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool Digit::isHex(const std::string& hexStr)
 {
     size_t len = hexStr.size();

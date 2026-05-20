@@ -14,6 +14,13 @@ public:
     static bool isBin(const std::string& binStr);
 
     /**
+     * @brief 检查是否为十进制字符串
+     * @param decStr 十进制字符串, 例如: "102"
+     * @return true-是, false-否
+     */
+    static bool isDec(const std::string& decStr);
+
+    /**
      * @brief 检查是否为十六进制字符串
      * @param binStr 十六进制字符串, 例如: "FF88FF", "0xFF88FF"
      * @return true-是, false-否
