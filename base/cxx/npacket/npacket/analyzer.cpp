@@ -95,7 +95,7 @@ inline IpReassemblyConfig limitIpReassemblyConfig(IpReassemblyConfig cfg)
     /* 限制不超过5分钟, 超过5分钟的分片几乎不可能是正常的网络延 */
     if (cfg.fragTimeout < 1000 || cfg.fragTimeout > 300000)
     {
-        cfg.fragTimeout = 1000;
+        cfg.fragTimeout = 30000;
     }
     /* 限制不超过超时实际的1/5, 平衡CPU开销和响应速度, 过长导致僵尸缓存清理不及时 */
     if (cfg.fragClearInterval < 100 || cfg.fragClearInterval > 60000 || cfg.fragClearInterval > cfg.fragTimeout)
@@ -121,10 +121,10 @@ inline IpReassemblyConfig limitIpReassemblyConfig(IpReassemblyConfig cfg)
     {
         cfg.maxFragmentCount = 32;
     }
-    /* 限制缓存数量不超过5000条 */
-    if (0 == cfg.maxCacheCount || cfg.maxCacheCount > 5000)
+    /* 限制缓存数量不超过10000条 */
+    if (0 == cfg.maxCacheCount || cfg.maxCacheCount > 10000)
     {
-        cfg.maxCacheCount = 1000;
+        cfg.maxCacheCount = 4096;
     }
     /* 限制递归栈不超过5层(理论安全值), 超过风险急剧上升 */
     if (0 == cfg.maxRecursionDepth || cfg.maxRecursionDepth > 5)
@@ -143,7 +143,7 @@ inline TcpReassemblyConfig limitTcpReassemblyConfig(TcpReassemblyConfig cfg)
 {
     if (cfg.streamTimeout < 1000 || cfg.streamTimeout > 300000)
     {
-        cfg.streamTimeout = 60000;
+        cfg.streamTimeout = 30000;
     }
     if (cfg.streamClearInterval < 100 || cfg.streamClearInterval > 60000 || cfg.streamClearInterval > cfg.streamTimeout)
     {
@@ -159,11 +159,11 @@ inline TcpReassemblyConfig limitTcpReassemblyConfig(TcpReassemblyConfig cfg)
     }
     if (0 == cfg.maxCacheCount || cfg.maxCacheCount > 100000)
     {
-        cfg.maxCacheCount = 1000;
+        cfg.maxCacheCount = 16384;
     }
     if (0 == cfg.maxSegmentsPerStream || cfg.maxSegmentsPerStream > 256)
     {
-        cfg.maxSegmentsPerStream = 32; /* 默认32个, 超过将淘汰最旧的 */
+        cfg.maxSegmentsPerStream = 128; /* 默认128个, 超过将淘汰最旧的 */
     }
     if (cfg.finWaitTimeout < 1000 || cfg.finWaitTimeout > cfg.streamTimeout)
     {
@@ -171,11 +171,11 @@ inline TcpReassemblyConfig limitTcpReassemblyConfig(TcpReassemblyConfig cfg)
     }
     if (cfg.gapSizeThreshold > 1048576) /* 限制不超过1MB */
     {
-        cfg.gapSizeThreshold = 1048576;
+        cfg.gapSizeThreshold = 131072;
     }
     if (cfg.maxPendingSize < 1024 || cfg.maxPendingSize > cfg.maxStreamSize / 4)
     {
-        cfg.maxPendingSize = 16384; /* 默认16KB */
+        cfg.maxPendingSize = 65536; /* 默认64KB */
     }
     return cfg;
 }
@@ -1469,6 +1469,19 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
     }
 }
 
+phmap::flat_hash_map<uint32_t, Analyzer::TcpSegment>::iterator Analyzer::oldestSegment(phmap::flat_hash_map<uint32_t, TcpSegment>& segments)
+{
+    auto oldestIter = segments.begin();
+    for (auto iter = segments.begin(); segments.end() != iter; ++iter)
+    {
+        if (seqLt(iter->first, oldestIter->first))
+        {
+            oldestIter = iter;
+        }
+    }
+    return oldestIter;
+}
+
 bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader,
                                        const ProtocolHeader* transportHeader, const uint8_t* payload, uint32_t payloadLen,
                                        TcpStreamKey& key, bool& needMoreData, std::vector<uint8_t>& reassembledData)
@@ -1551,7 +1564,7 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
                 std::vector<uint8_t> additionalData;
                 while (!info->segments.empty())
                 {
-                    auto segIter = info->segments.begin();
+                    auto segIter = oldestSegment(info->segments);
                     uint32_t segSeq = segIter->first;
                     /* 防御性检查: 使用回绕安全比较检查序列号有效性 */
                     uint32_t maxSeq = seqAdd(currentSeq, (uint32_t)(m_tcpReassemblyCfg.maxStreamSize));
@@ -1586,7 +1599,6 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
                 {
                     reassembledData.insert(reassembledData.end(), additionalData.begin(), additionalData.end());
                     info->nextExpectedSeq = currentSeq;
-                    isReassembly = true; /* 合并乱序段, 标记为重组 */
                 }
             }
             /* 检查是否可以彻底删除流(无剩余数据且在FIN超时时间内) */
@@ -1637,7 +1649,7 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
             uint32_t currentSeq = info->nextExpectedSeq;
             while (!info->segments.empty())
             {
-                auto segIter = info->segments.begin();
+                auto segIter = oldestSegment(info->segments);
                 uint32_t segSeq = segIter->first;
                 /* 防御性检查: 使用回绕安全比较 */
                 uint32_t maxSeq = seqAdd(currentSeq, (uint32_t)(m_tcpReassemblyCfg.maxStreamSize));
@@ -1742,14 +1754,18 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
             return isReassembly;
         }
     }
-    if (seq == info->nextExpectedSeq && payloadLen > 0) /* 按序到达 */
+    if (payloadLen <= 0)
+    {
+        return isReassembly;
+    }
+    if (seq == info->nextExpectedSeq) /* 按序到达 */
     {
         info->nextExpectedSeq = seqAdd(seq, payloadLen);
         reassembledData.insert(reassembledData.end(), payload, payload + payloadLen);
         /* 整合乱序段 */
         while (!info->segments.empty())
         {
-            auto nextIter = info->segments.begin();
+            auto nextIter = oldestSegment(info->segments);
             uint32_t cachedSeq = nextIter->first;
             const auto& segment = nextIter->second;
             uint32_t cachedEnd = seqAdd(cachedSeq, (uint32_t)(segment.data.size()));
@@ -1807,10 +1823,8 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
                 info->streams.clear();
             }
         }
-        return isReassembly;
     }
-    /* 乱序到达, 缓存 */
-    if (payloadLen > 0)
+    else /* 乱序到达, 缓存 */
     {
         /* 检查单流总数据量(已重组 + 乱序缓存 + 新数据) */
         size_t currentCachedSize = info->streams.size();
@@ -1825,14 +1839,14 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         /* 如果添加新数据会超过限制, 先淘汰最旧的乱序段 */
         while (currentCachedSize + payloadLen > m_tcpReassemblyCfg.maxStreamSize && !info->segments.empty())
         {
-            auto oldest = info->segments.begin();
+            auto oldest = oldestSegment(info->segments);
             currentCachedSize -= oldest->second.data.size();
             info->segments.erase(oldest);
         }
         /* 检查段数量限制 */
         if (info->segments.size() >= m_tcpReassemblyCfg.maxSegmentsPerStream)
         {
-            auto oldest = info->segments.begin();
+            auto oldest = oldestSegment(info->segments);
             currentCachedSize -= oldest->second.data.size();
             info->segments.erase(oldest);
         }
@@ -1851,49 +1865,12 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         /* 双阈值策略: 尽力交付 + 流重置 */
         if (m_tcpReassemblyCfg.gapSizeThreshold > 0 && !info->segments.empty())
         {
-            uint32_t firstCachedSeq = info->segments.begin()->first;
+            uint32_t firstCachedSeq = oldestSegment(info->segments)->first;
             /* 检测到空缺: 缓存的最早数据与期望值之间存在差距 */
             if (seqLt(info->nextExpectedSeq, firstCachedSeq))
             {
                 uint32_t gapSize = firstCachedSeq - info->nextExpectedSeq;
-                if (gapSize <= m_tcpReassemblyCfg.gapSizeThreshold) /* 小空缺(<=阈值): 尽力交付, 跳过缺失部分 */
-                {
-                    /* 跳过缺失部分, 从最早可用数据开始 */
-                    info->nextExpectedSeq = firstCachedSeq;
-                    /* 构造返回数据: 从最早段开始交付 */
-                    auto firstIter = info->segments.begin();
-                    reassembledData.insert(reassembledData.end(), firstIter->second.data.begin(), firstIter->second.data.end());
-                    info->nextExpectedSeq = seqAdd(firstIter->first, (uint32_t)(firstIter->second.data.size()));
-                    info->segments.erase(firstIter);
-                    isReassembly = true; /* 合并乱序段, 标记为重组 */
-                    /* 继续整合后续可能连续的乱序段 */
-                    while (!info->segments.empty())
-                    {
-                        auto nextIter = info->segments.begin();
-                        uint32_t nextSeq = nextIter->first;
-                        if (nextIter->first <= info->nextExpectedSeq)
-                        {
-                            uint32_t overlap = 0;
-                            if (seqLt(nextSeq, info->nextExpectedSeq))
-                            {
-                                overlap = info->nextExpectedSeq - nextIter->first;
-                            }
-                            if (overlap < nextIter->second.data.size())
-                            {
-                                reassembledData.insert(reassembledData.end(), nextIter->second.data.begin() + overlap,
-                                                       nextIter->second.data.end());
-                                info->nextExpectedSeq = seqAdd(nextIter->first, (uint32_t)(nextIter->second.data.size()));
-                            }
-                            info->segments.erase(nextIter);
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    return isReassembly;
-                }
-                else /* 大空缺(>阈值): 流重置, 视为新连接 */
+                if (gapSize > m_tcpReassemblyCfg.gapSizeThreshold) /* 大空缺(>阈值): 流重置, 视为新连接 */
                 {
                     /* 将当前包视为新连接的第一个包重新初始化 */
                     uint32_t initialSeq = tcpHeader->seq;
@@ -1915,6 +1892,7 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
                     }
                     return isReassembly;
                 }
+                /* 小缺口(<=阈值): 继续等待按序数据, 绝不提前交付乱序段, 保证重组后顺序严格正确 */
             }
         }
         needMoreData = true;
