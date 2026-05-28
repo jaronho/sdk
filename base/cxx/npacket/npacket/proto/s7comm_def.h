@@ -183,7 +183,7 @@ struct BlockInfoRequest
 {
     uint8_t blockType = 0; /* 块类型 */
     uint32_t blockNumber = 0; /* 块号 */
-    uint8_t fileSystem = 0; /* 文件系统: 'A'=Active(0x41), 'P'=Passive(0x50), 'B'=Both(0x42) */
+    uint8_t fileSystem = 0; /* 文件系统(ASCII): 'A'=Active(0x41), 'P'=Passive(0x50), 'B'=Both(0x42) */
 };
 
 /**
@@ -211,9 +211,9 @@ struct BlockInfoResponse
     uint16_t addLength = 0; /* ADD长度 */
     uint16_t localDataLength = 0; /* 本地数据长度 */
     uint16_t mc7CodeLength = 0; /* MC7代码长度 */
-    char author[8] = {0}; /* 作者: 8字节ASCII, 以00截止 */
-    char family[8] = {0}; /* 家族: 8字节ASCII, 以00截止 */
-    char name[8] = {0}; /* 名称: 8字节ASCII, 以00截止 */
+    char author[9] = {0}; /* 作者(字符串) */
+    char family[9] = {0}; /* 家族(字符串) */
+    char name[9] = {0}; /* 名称(字符串) */
     uint8_t versionMajor = 0; /* 版本主号(高4位) */
     uint8_t versionMinor = 0; /* 版本次号(低4位) */
     uint8_t unknownByte2 = 0; /* 未知字节 */
@@ -393,9 +393,9 @@ struct DownloadFunctionStatus
 struct DownloadFilename
 {
     char fileIdentifier = 0; /* 文件标识符, 5f 表示为 '_', 值定义为: '_'表示完整模块, '$'表示子模块 */
-    char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
-    char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
-    char destFileSystem = 0; /* 目标文件系统, 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
+    char blockType[3] = {0}; /* 块类型(字符串), 值定义: 0A=DB, 0B=OB, 0C=FC, 0D=FB, 0E=... */
+    char blockNumber[6] = {0}; /* 块号(字符串), 例如: "00001" */
+    char destFileSystem = 0; /* 目标文件系统(ASCII), 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
 };
 
 /**
@@ -409,9 +409,9 @@ struct RequestDownloadParam
     uint8_t filenameLen = 0; /* 文件名长度 */
     DownloadFilename filename; /* 文件名 */
     uint8_t lengthPart2 = 0; /* 第二部分长度 */
-    char unknownCharBeforeLoadMem = 0; /* 未知字符(原始值需要转为ASCII字符), 31 表示为 '1' */
-    char lengthOfLoadMemory[6] = {0}; /* 装载内存大小(原始值需要转为ASCII字符), 30 30 30 35 30 30 表示为 "000500" */
-    char lengthOfMc7Code[6] = {0}; /* MC7代码大小(原始值需要转为ASCII字符), 30 30 30 34 30 30 表示为 "000400" */
+    char unknownCharBeforeLoadMem = 0; /* 未知字符(ASCII), 31 表示为 '1' */
+    char lengthOfLoadMemory[7] = {0}; /* 装载内存大小(十六进制字符串), 例如: "000500" */
+    char lengthOfMc7Code[7] = {0}; /* MC7代码大小(十六进制字符串), 例如: "000400" */
 };
 
 /**
@@ -470,9 +470,9 @@ struct StartUploadParam
     uint8_t blockTypeLen = 0;
     uint8_t blockNumLen = 0;
     uint8_t fileSystemLen = 0;
-    char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
-    char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
-    char fileSystem = 0; /* 文件系统, 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
+    char blockType[3] = {0}; /* 块类型(字符串), 值定义: 0A=DB, 0B=OB, 0C=FC, 0D=FB, 0E=... */
+    char blockNumber[6] = {0}; /* 块号(字符串), 例如: "00001" */
+    char fileSystem = 0; /* 文件系统(ASCII), 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
 };
 
 /**
@@ -544,9 +544,9 @@ struct PlcControlData
  */
 struct PiServiceFilename
 {
-    char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
-    char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
-    char destFileSystem = 0; /* 目标文件系统, 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
+    char blockType[3] = {0}; /* 块类型(字符串), 值定义: 0A=DB, 0B=OB, 0C=FC, 0D=FB, 0E=... */
+    char blockNumber[6] = {0}; /* 块号(字符串), 例如: "00001" */
+    char destFileSystem = 0; /* 目标文件系统(ASCII), 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
 };
 
 /**
@@ -568,7 +568,7 @@ struct PiServiceParam
     uint16_t paramBlockLength = 0; /* 参数块长度 */
     PiServiceParameterBlock paramBlock; /* 参数块 */
     uint8_t serviceNameLength = 0; /* 服务名长度 */
-    char serviceName[32] = {0}; /* 服务名, 如: "_INSE", "_MODU"等 */
+    char serviceName[32] = {0}; /* 服务名(字符串), 如: "_INSE", "_MODU"等 */
 };
 
 /**
@@ -603,8 +603,8 @@ struct PlcStopData
 struct CopyRamToRomParam
 {
     uint8_t paramCount = 0; /* 参数个数 */
-    char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
-    char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
+    char blockType[3] = {0}; /* 块类型(字符串), 值定义: 0A=DB, 0B=OB, 0C=FC, 0D=FB, 0E=... */
+    char blockNumber[6] = {0}; /* 块号(字符串), 例如: "00001" */
 };
 
 /**
@@ -641,9 +641,9 @@ struct CompressData
 struct BlockOperationParam
 {
     uint8_t paramCount = 0;
-    char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
-    char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
-    char fileSystem = 0; /* 'A' or 'P' */
+    char blockType[3] = {0}; /* 块类型(字符串), 值定义: 0A=DB, 0B=OB, 0C=FC, 0D=FB, 0E=... */
+    char blockNumber[6] = {0}; /* 块号(字符串), 例如: "00001" */
+    char fileSystem = 0; /* 文件系统(ASCII), 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
 };
 
 /**
