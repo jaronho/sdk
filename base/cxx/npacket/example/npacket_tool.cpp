@@ -389,7 +389,7 @@ void handleApplicationIec103VariableFrame(const std::chrono::steady_clock::time_
     }
 }
 
-const char* getRosctrDesc(npacket::s7comm::RosctrType rosctr)
+const char* getRosctrStr(npacket::s7comm::RosctrType rosctr)
 {
     switch (rosctr)
     {
@@ -416,9 +416,9 @@ const char* getRosctrDesc(npacket::s7comm::RosctrType rosctr)
     }
 }
 
-const char* getFunctionCodeDesc(npacket::s7comm::FunctionCode funcCode)
+const char* getFuncCodeStr(uint8_t funcCode)
 {
-    switch (funcCode)
+    switch ((npacket::s7comm::FunctionCode)funcCode)
     {
     case npacket::s7comm::FunctionCode::CPU_SERVICES:
         return "CPU_SERVICES";
@@ -456,17 +456,170 @@ const char* getFunctionCodeDesc(npacket::s7comm::FunctionCode funcCode)
         return "BLOCK_STATUS";
     case npacket::s7comm::FunctionCode::SETUP_COMMUNICATION:
         return "SETUP_COMMUNICATION";
-    default:
-        return "Unknown";
     }
+    return "Unknown";
+}
+
+const char* getFuncGroupStr(uint8_t functionGroup)
+{
+    switch (functionGroup)
+    {
+    case 0x00:
+        return "Mode transition";
+    case 0x01:
+        return "Programmer commands";
+    case 0x02:
+        return "Cyclic data";
+    case 0x03:
+        return "Block functions";
+    case 0x04:
+        return "CPU functions";
+    case 0x05:
+        return "Security";
+    case 0x06:
+        return "PBC";
+    case 0x07:
+        return "Time functions";
+    }
+    return "Unknown";
+}
+
+const char* getSubFuncStr(uint8_t functionGroup, uint8_t subFunction)
+{
+    if (0x00 == functionGroup)
+    {
+        switch (subFunction)
+        {
+        case 0x00:
+            return "Stop";
+        case 0x01:
+            return "Warm restart";
+        case 0x02:
+            return "Run";
+        case 0x03:
+            return "Hot restart";
+        case 0x04:
+            return "Cold restart";
+        }
+    }
+    else if (0x03 == functionGroup)
+    {
+        switch (subFunction)
+        {
+        case 0x01:
+            return "List blocks";
+        case 0x02:
+            return "List blocks of type";
+        case 0x03:
+            return "Get block info";
+        }
+    }
+    else if (0x04 == functionGroup)
+    {
+        switch (subFunction)
+        {
+        case 0x01:
+            return "Read SZL";
+        case 0x02:
+            return "Message service";
+        case 0x03:
+            return "Diagnostic message";
+        case 0x04:
+            return "ALARM";
+        case 0x05:
+            return "ALARM_8";
+        case 0x06:
+            return "ALARM_8P";
+        case 0x07:
+            return "NOTIFY";
+        case 0x08:
+            return "AR_SEND";
+        case 0x09:
+        case 0x0f:
+            return "Reserved";
+        case 0x10:
+            return "Time functions";
+        case 0x11:
+            return "Time functions Set";
+        case 0x12:
+            return "Read clock";
+        case 0x13:
+            return "Set clock";
+        case 0x14:
+            return "Communication status";
+        case 0x15:
+            return "Block status";
+        case 0x16:
+            return "CPU status";
+        }
+    }
+    else if (0x07 == functionGroup)
+    {
+        switch (subFunction)
+        {
+        case 0x01:
+            return "Read clock";
+        case 0x02:
+            return "Set clock";
+        }
+    }
+    return "Unknown";
+}
+
+const char* getReturnCodeStr(uint8_t returnCode)
+{
+    switch (returnCode)
+    {
+    case 0xFF:
+        return "Success";
+    case 0x0A:
+        return "Object does not exist";
+    case 0x05:
+        return "Invalid address";
+    case 0x03:
+        return "Access not allowed";
+    case 0x06:
+        return "Data type not supported";
+    case 0x07:
+        return "Data type inconsistent";
+    case 0x01:
+        return "Hardware error";
+    case 0x81:
+        return "Application error";
+    }
+    return "Unknown";
+}
+
+const char* getTransportSizeStr(uint8_t transportSize)
+{
+    switch (transportSize)
+    {
+    case 0x01:
+        return "BIT";
+    case 0x02:
+        return "BYTE";
+    case 0x03:
+        return "BIT_ARRAY";
+    case 0x04:
+        return "BYTE/WORD/DWORD";
+    case 0x05:
+        return "INTEGER";
+    case 0x06:
+        return "DWORD";
+    case 0x07:
+        return "REAL";
+    case 0x09:
+        return "OCTET STRING";
+    }
+    return "Unknown";
 }
 
 /* 处理应用层S7COMM帧 */
 void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
                                   const npacket::ProtocolHeader* header, const npacket::TpktInfo& tpktInfo,
-                                  const npacket::CotpInfo& cotpInfo, const npacket::s7comm::S7CommInfo& s7commInfo)
+                                  const npacket::CotpInfo& cotpInfo, const npacket::s7comm::S7CommInfo& s7Info)
 {
-    if (s_proto.empty() || "iec103" == s_proto)
+    if (s_proto.empty() || "s7" == s_proto)
     {
         printTransportHeaderTcp(header);
         printf("            ----- S7COMM -----\n");
@@ -501,242 +654,93 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
         }
         printf("            s7comm\n");
         printf("                Header\n");
-        printf("                    protocolId: 0x%02x\n", s7commInfo.header.protocolId);
-        printf("                    rosctr: %s (%d)\n", getRosctrDesc(s7commInfo.header.rosctr), (int)s7commInfo.header.rosctr);
-        printf("                    redundancyIdentification: 0x%04x\n", s7commInfo.header.redundancyIdentification);
-        printf("                    protocolDataUnitReference: %d\n", s7commInfo.header.protocolDataUnitReference);
-        printf("                    parameterLength: %d\n", s7commInfo.header.parameterLength);
-        printf("                    dataLength: %d\n", s7commInfo.header.dataLength);
-        if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr)
+        printf("                    protocolId: 0x%02x\n", s7Info.header.protocolId);
+        printf("                    rosctr: %s (%d)\n", getRosctrStr(s7Info.header.rosctr), (int)s7Info.header.rosctr);
+        printf("                    redundancyIdentification: 0x%04x\n", s7Info.header.redundancyIdentification);
+        printf("                    protocolDataUnitReference: %d\n", s7Info.header.protocolDataUnitReference);
+        printf("                    parameterLength: %d\n", s7Info.header.parameterLength);
+        printf("                    dataLength: %d\n", s7Info.header.dataLength);
+        if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr)
         {
-            printf("                    errorClass: 0x%02x\n", s7commInfo.header.errorClass);
-            printf("                    errorCode: 0x%02x\n", s7commInfo.header.errorCode);
+            printf("                    errorClass: 0x%02x\n", s7Info.header.errorClass);
+            printf("                    errorCode: 0x%02x\n", s7Info.header.errorCode);
         }
         printf("                Parameter\n");
-        printf("                    functionCode: %s (0x%02x)\n",
-               getFunctionCodeDesc((npacket::s7comm::FunctionCode)s7commInfo.functionCode), s7commInfo.functionCode);
-        switch ((npacket::s7comm::FunctionCode)s7commInfo.functionCode)
+        switch ((npacket::s7comm::FunctionCode)s7Info.funcCode)
         {
         case npacket::s7comm::FunctionCode::CPU_SERVICES: {
             printf("                    CpuServiceParam\n");
-            printf("                        functionCode: %s (0x%02x)\n", getFunctionCodeDesc(npacket::s7comm::FunctionCode::CPU_SERVICES),
-                   s7commInfo.cpuServiceParam.functionCode);
-            printf("                        itemCount: %d\n", s7commInfo.cpuServiceParam.itemCount);
-            for (const auto& cpuItem : s7commInfo.cpuServiceParam.items)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        itemCount: %d\n", s7Info.cpuParam.itemCount);
+            for (size_t i = 0; i < s7Info.cpuParam.items.size(); ++i)
             {
-                printf("                    Item\n");
-                printf("                        variableSpecification: 0x%02x\n", cpuItem.variableSpecification);
-                printf("                        lengthOfFollowingAddressSpecification: %d\n",
-                       cpuItem.lengthOfFollowingAddressSpecification);
-                printf("                        syntaxId: 0x%02x\n", cpuItem.syntaxId);
-                printf("                        type: %s (%d)\n",
-                       cpuItem.type == 1 ? "Request" : (cpuItem.type == 2 ? "Response" : "Unknown"), cpuItem.type);
-                printf("                        functionGroup: ");
-                switch (cpuItem.functionGroup)
+                const auto& item = s7Info.cpuParam.items[i];
+                printf("                    Item (list count no. %zu)\n", i + 1);
+                printf("                        variableSpecification: 0x%02x\n", item.variableSpecification);
+                printf("                        lengthOfFollowingAddressSpecification: %d\n", item.lengthOfFollowingAddressSpecification);
+                printf("                        syntaxId: 0x%02x\n", item.syntaxId);
+                printf("                        type: %s (%d)\n", item.type == 1 ? "Request" : (item.type == 2 ? "Response" : "Unknown"),
+                       item.type);
+                printf("                        functionGroup: %s (%d)\n", getFuncGroupStr(item.functionGroup), item.functionGroup);
+                printf("                        subFunction: %s (%d)\n", getSubFuncStr(item.functionGroup, item.subFunction),
+                       item.subFunction);
+                printf("                        sequenceNumber: %d\n", item.sequenceNumber);
+                if (0x12 == item.syntaxId)
                 {
-                case 0x00:
-                    printf("Mode transition");
-                    break;
-                case 0x01:
-                    printf("Programmer commands");
-                    break;
-                case 0x02:
-                    printf("Cyclic data");
-                    break;
-                case 0x03:
-                    printf("Block functions");
-                    break;
-                case 0x04:
-                    printf("CPU functions");
-                    break;
-                case 0x05:
-                    printf("Security");
-                    break;
-                case 0x06:
-                    printf("PBC");
-                    break;
-                case 0x07:
-                    printf("Time functions");
-                    break;
-                default:
-                    printf("Unknown");
-                    break;
-                }
-                printf(" (%d)\n", cpuItem.functionGroup);
-                printf("                        subFunction: ");
-                if (0x00 == cpuItem.functionGroup)
-                {
-                    switch (cpuItem.subFunction)
-                    {
-                    case 0x00:
-                        printf("Stop");
-                        break;
-                    case 0x01:
-                        printf("Warm restart");
-                        break;
-                    case 0x02:
-                        printf("Run");
-                        break;
-                    case 0x03:
-                        printf("Hot restart");
-                        break;
-                    case 0x04:
-                        printf("Cold restart");
-                        break;
-                    default:
-                        printf("Unknown");
-                        break;
-                    }
-                }
-                else if (0x03 == cpuItem.functionGroup)
-                {
-                    switch (cpuItem.subFunction)
-                    {
-                    case 0x01:
-                        printf("List blocks");
-                        break;
-                    case 0x02:
-                        printf("List blocks of type");
-                        break;
-                    case 0x03:
-                        printf("Get block info");
-                        break;
-                    default:
-                        printf("Unknown");
-                        break;
-                    }
-                }
-                else if (0x04 == cpuItem.functionGroup)
-                {
-                    switch (cpuItem.subFunction)
-                    {
-                    case 0x01:
-                        printf("Read SZL");
-                        break;
-                    case 0x02:
-                        printf("Message service");
-                        break;
-                    case 0x03:
-                        printf("Diagnostic message");
-                        break;
-                    case 0x04:
-                        printf("ALARM");
-                        break;
-                    case 0x05:
-                        printf("ALARM_8");
-                        break;
-                    case 0x06:
-                        printf("ALARM_8P");
-                        break;
-                    case 0x07:
-                        printf("NOTIFY");
-                        break;
-                    case 0x08:
-                        printf("AR_SEND");
-                        break;
-                    case 0x09:
-                    case 0x0f:
-                        printf("Reserved");
-                        break;
-                    case 0x10:
-                        printf("Time functions");
-                        break;
-                    case 0x11:
-                        printf("Time functions Set");
-                        break;
-                    case 0x12:
-                        printf("Read clock");
-                        break;
-                    case 0x13:
-                        printf("Set clock");
-                        break;
-                    case 0x14:
-                        printf("Communication status");
-                        break;
-                    case 0x15:
-                        printf("Block status");
-                        break;
-                    case 0x16:
-                        printf("CPU status");
-                        break;
-                    default:
-                        printf("Unknown");
-                        break;
-                    }
-                }
-                else if (0x07 == cpuItem.functionGroup)
-                {
-                    switch (cpuItem.subFunction)
-                    {
-                    case 0x01:
-                        printf("Read clock");
-                        break;
-                    case 0x02:
-                        printf("Set clock");
-                        break;
-                    default:
-                        printf("Unknown");
-                        break;
-                    }
-                }
-                printf(" (%d)\n", cpuItem.subFunction);
-                printf("                        sequenceNumber: %d\n", cpuItem.sequenceNumber);
-                if (0x12 == cpuItem.syntaxId)
-                {
-                    printf("                        dataUnitReferenceNumber: %d\n", cpuItem.dataUnitReferenceNumber);
-                    printf("                        lastDataUnit: %d\n", cpuItem.lastDataUnit);
-                    printf("                        errorCode: 0x%04x\n", cpuItem.errorCode);
+                    printf("                        dataUnitReferenceNumber: %d\n", item.dataUnitReferenceNumber);
+                    printf("                        lastDataUnit: %d\n", item.lastDataUnit);
+                    printf("                        errorCode: 0x%04x\n", item.errorCode);
                 }
             }
-            if ((npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr
-                 || npacket::s7comm::RosctrType::USERDATA == s7commInfo.header.rosctr)
-                && s7commInfo.header.dataLength > 0)
+            if ((npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr
+                 || npacket::s7comm::RosctrType::USERDATA == s7Info.header.rosctr)
+                && s7Info.header.dataLength > 0)
             {
                 printf("                    CpuServiceData\n");
-                printf("                        returnCode: 0x%02x\n", s7commInfo.cpuServiceData.returnCode);
-                printf("                        transportSize: 0x%02x\n", s7commInfo.cpuServiceData.transportSize);
-                printf("                        length: %d\n", s7commInfo.cpuServiceData.length);
-                if (s7commInfo.cpuServiceData.hasBlockList)
+                printf("                        returnCode: 0x%02x\n", s7Info.cpuData.returnCode);
+                printf("                        transportSize: 0x%02x\n", s7Info.cpuData.transportSize);
+                printf("                        length: %d\n", s7Info.cpuData.length);
+                if (s7Info.cpuData.hasBlockList)
                 {
-                    const auto& bl = s7commInfo.cpuServiceData.blockList;
+                    const auto& bl = s7Info.cpuData.blockList;
                     for (size_t i = 0; i < bl.size(); ++i)
                     {
-                        printf("                        Item [%d]\n", i + 1);
+                        printf("                        Item (list count no. %zu)\n", i + 1);
                         printf("                            block type: 0x%02X\n", bl[i].blockType);
                         printf("                            block count: %d\n", bl[i].blockCount);
                     }
                 }
-                if (s7commInfo.cpuServiceData.hasBlockType)
+                if (s7Info.cpuData.hasBlockType)
                 {
-                    if (s7commInfo.cpuServiceData.blockListOfType.isRequest)
+                    if (s7Info.cpuData.blockListOfType.isRequest)
                     {
-                        printf("                        block type: 0x%02X\n", s7commInfo.cpuServiceData.blockListOfType.request.blockType);
+                        printf("                        block type: 0x%02X\n", s7Info.cpuData.blockListOfType.req.blockType);
                     }
                     else
                     {
-                        const auto& itemList = s7commInfo.cpuServiceData.blockListOfType.response.items;
+                        const auto& itemList = s7Info.cpuData.blockListOfType.resp.items;
                         for (size_t i = 0; i < itemList.size(); ++i)
                         {
-                            printf("                        Item [%d]\n", i + 1);
+                            printf("                        Item (list count no. %zu)\n", i + 1);
                             printf("                            block number: %d\n", itemList[i].blockNumber);
                             printf("                            block flags: 0x%02x\n", itemList[i].blockFlags);
                             printf("                            block language: 0x%02X\n", itemList[i].blockLanguage);
                         }
                     }
                 }
-                if (s7commInfo.cpuServiceData.hasBlockInfo)
+                if (s7Info.cpuData.hasBlockInfo)
                 {
                     printf("                    Block Data\n");
-                    if (s7commInfo.cpuServiceData.blockInfo.isRequest)
+                    if (s7Info.cpuData.blockInfo.isRequest)
                     {
-                        const auto& bi = s7commInfo.cpuServiceData.blockInfo.request;
+                        const auto& bi = s7Info.cpuData.blockInfo.req;
                         printf("                        block type: 0x%02X\n", bi.blockType);
                         printf("                        block number: %d\n", bi.blockNumber);
                         printf("                        filesystem: %c\n", bi.fileSystem);
                     }
                     else
                     {
-                        const auto& bi = s7commInfo.cpuServiceData.blockInfo.response;
+                        const auto& bi = s7Info.cpuData.blockInfo.resp;
                         printf("                        block type: 0x%04X\n", bi.blockType);
                         printf("                        length of info: %d\n", bi.lengthOfInfo);
                         printf("                        unknown blockinfo2: 0x%04x\n", bi.unknownBlockinfo2);
@@ -766,7 +770,7 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
                         printf("\n");
                         printf("                        SSB length: %d\n", bi.ssbLength);
                         printf("                        ADD length: %d\n", bi.addLength);
-                        printf("                        Localdata length: %d\n", bi.localdataLength);
+                        printf("                        Localdata length: %d\n", bi.localDataLength);
                         printf("                        MC7 code length: %d\n", bi.mc7CodeLength);
                         printf("                        author: %.8s\n", bi.author);
                         printf("                        family: %.8s\n", bi.family);
@@ -778,9 +782,9 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
                         printf("                        reserved 2: 0x%08x\n", bi.reserved2);
                     }
                 }
-                if (s7commInfo.cpuServiceData.hasSzl)
+                if (s7Info.cpuData.hasSzl)
                 {
-                    const auto& hdr = s7commInfo.cpuServiceData.szlHeader;
+                    const auto& hdr = s7Info.cpuData.szlHeader;
                     printf("                    SZL Data\n");
                     printf("                        SZL-ID: 0x%04x\n", hdr.szlId.rawId);
                     printf("                            diagnostic type: %d\n", hdr.szlId.diagnosticType);
@@ -791,11 +795,11 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
                     {
                         printf("                        list length in bytes: %d\n", hdr.listLength);
                         printf("                        list count: %d\n", hdr.listCount);
-                        for (size_t i = 0; i < s7commInfo.cpuServiceData.szlDatas.size(); ++i)
+                        for (size_t i = 0; i < s7Info.cpuData.szlDatas.size(); ++i)
                         {
-                            const auto& rec = s7commInfo.cpuServiceData.szlDatas[i];
+                            const auto& rec = s7Info.cpuData.szlDatas[i];
                             printf("                        SZL data (list count no. %zu)\n", i + 1);
-                            printf("                            (%zu bytes): ", rec.length);
+                            printf("                            (%u bytes): ", rec.length);
                             for (uint16_t n = 0; n < rec.length; ++n)
                             {
                                 printf("%02x ", rec.data[n]);
@@ -804,28 +808,28 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
                         }
                     }
                 }
-                if (s7commInfo.cpuServiceData.hasMessageService)
+                if (s7Info.cpuData.hasMessageService)
                 {
-                    const auto& msrv = s7commInfo.cpuServiceData.msgService;
+                    const auto& msrv = s7Info.cpuData.msgService;
                     printf("                    Message Service\n");
                     if (msrv.isRequest)
                     {
-                        printf("                        [subscribed events] mode-transition: %d\n", msrv.request.modeTransition);
-                        printf("                        [subscribed events] system-diagnostics: %d\n", msrv.request.systemDiagnostics);
-                        printf("                        [subscribed events] userdefined: %d\n", msrv.request.userDefined);
-                        printf("                        [subscribed events] alarms: %d\n", msrv.request.alarms);
-                        printf("                        reserved: 0x%02x\n", msrv.request.reserved);
-                        printf("                        username: %s\n", msrv.request.username.c_str());
+                        printf("                        [subscribed events] mode-transition: %d\n", msrv.req.modeTransition);
+                        printf("                        [subscribed events] system-diagnostics: %d\n", msrv.req.systemDiagnostics);
+                        printf("                        [subscribed events] userdefined: %d\n", msrv.req.userDefined);
+                        printf("                        [subscribed events] alarms: %d\n", msrv.req.alarms);
+                        printf("                        reserved: 0x%02x\n", msrv.req.reserved);
+                        printf("                        username: %s\n", msrv.req.username.c_str());
                     }
                     else
                     {
-                        printf("                        result: 0x%02x\n", msrv.response.result);
-                        printf("                        reserved: 0x%02x\n", msrv.response.reserved);
+                        printf("                        result: 0x%02x\n", msrv.resp.result);
+                        printf("                        reserved: 0x%02x\n", msrv.resp.reserved);
                     }
                 }
-                if (s7commInfo.cpuServiceData.hasTimestamp)
+                if (s7Info.cpuData.hasTimestamp)
                 {
-                    const auto& ts = s7commInfo.cpuServiceData.timestamp;
+                    const auto& ts = s7Info.cpuData.timestamp;
                     printf("                    S7 Timestamp\n");
                     printf("                        reserved: 0x%02x\n", ts.reserved);
                     printf("                        year 1: %d\n", ts.year1);
@@ -844,111 +848,87 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
         case npacket::s7comm::FunctionCode::READ_VARIABLE:
         case npacket::s7comm::FunctionCode::WRITE_VARIABLE: {
             printf("                    ReadWriteParam\n");
-            printf("                        functionCode: %s (0x%02x)\n",
-                   getFunctionCodeDesc((npacket::s7comm::FunctionCode)s7commInfo.rwParam.functionCode), s7commInfo.rwParam.functionCode);
-            printf("                        itemCount: %d\n", s7commInfo.rwParam.itemCount);
-            for (const auto& rwItem : s7commInfo.rwParam.items)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        itemCount: %d\n", s7Info.rwParam.itemCount);
+            for (size_t i = 0; i < s7Info.rwParam.items.size(); ++i)
             {
-                printf("                        Item\n");
-                printf("                            variableSpecification: 0x%02x\n", rwItem.variableSpecification);
-                printf("                            addressLength: %d\n", rwItem.addressLength);
-                printf("                            syntaxId: 0x%02x\n", rwItem.syntaxId);
-                printf("                            transportSize: 0x%02x\n", rwItem.transportSize);
-                printf("                            length: %d\n", rwItem.length);
-                printf("                            dbNumber: %d\n", rwItem.dbNumber);
-                printf("                            area: 0x%02x\n", rwItem.area);
-                printf("                            address: 0x%06x\n", rwItem.address);
+                const auto& item = s7Info.rwParam.items[i];
+                printf("                        Item (list count no. %zu)\n", i + 1);
+                printf("                            variableSpecification: 0x%02x\n", item.variableSpecification);
+                printf("                            addressLength: %d\n", item.addressLength);
+                printf("                            syntaxId: 0x%02x\n", item.syntaxId);
+                printf("                            transportSize: 0x%02x\n", item.transportSize);
+                printf("                            length: %d\n", item.length);
+                printf("                            dbNumber: %d\n", item.dbNumber);
+                printf("                            area: 0x%02x\n", item.area);
+                printf("                            address: 0x%06x\n", item.address);
             }
         }
         break;
         case npacket::s7comm::FunctionCode::REQUEST_DOWNLOAD: {
             printf("                    RequestDownloadParam\n");
-            printf("                        functionCode: %s (0x%02x)\n",
-                   getFunctionCodeDesc(npacket::s7comm::FunctionCode::REQUEST_DOWNLOAD), s7commInfo.requestDownloadParam.functionCode);
-            if (s7commInfo.header.parameterLength > 1)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            if (s7Info.header.parameterLength > 1)
             {
-                printf("                        functionStatus.moreDataFollowing: %d\n",
-                       s7commInfo.requestDownloadParam.functionStatus.moreDataFollowing);
-                printf("                        functionStatus.error: %d\n", s7commInfo.requestDownloadParam.functionStatus.error);
-                if (s7commInfo.header.parameterLength > 8)
+                printf("                        funcStatus.moreDataFollowing: %d\n", s7Info.reqDownloadParam.funcStatus.moreDataFollowing);
+                printf("                        funcStatus.error: %d\n", s7Info.reqDownloadParam.funcStatus.error);
+                if (s7Info.header.parameterLength > 8)
                 {
                     printf("                        unknownByteInBlockControl1: 0x%04x\n",
-                           s7commInfo.requestDownloadParam.unknownByteInBlockControl1);
+                           s7Info.reqDownloadParam.unknownByteInBlockControl1);
                     printf("                        unknownByteInBlockControl2: 0x%08x\n",
-                           s7commInfo.requestDownloadParam.unknownByteInBlockControl2);
-                    if (s7commInfo.downloadBlockParam.filenameLen > 0)
+                           s7Info.reqDownloadParam.unknownByteInBlockControl2);
+                    if (s7Info.downloadBlockParam.filenameLen > 0)
                     {
-                        printf("                        filenameLen: %d\n", s7commInfo.requestDownloadParam.filenameLen);
-                        printf("                        filename.fileIdentifier: %c\n",
-                               s7commInfo.requestDownloadParam.filename.fileIdentifier);
-                        printf("                        filename.blockType: %c%c\n", s7commInfo.requestDownloadParam.filename.blockType[0],
-                               s7commInfo.requestDownloadParam.filename.blockType[1]);
-                        printf("        filename.blockNumber: %c%c%c%c%c\n", s7commInfo.requestDownloadParam.filename.blockNumber[0],
-                               s7commInfo.requestDownloadParam.filename.blockNumber[1],
-                               s7commInfo.requestDownloadParam.filename.blockNumber[2],
-                               s7commInfo.requestDownloadParam.filename.blockNumber[3],
-                               s7commInfo.requestDownloadParam.filename.blockNumber[4]);
-                        printf("                        filename.destinationFilesystem: %c\n",
-                               s7commInfo.requestDownloadParam.filename.destinationFilesystem);
+                        printf("                        filenameLen: %d\n", s7Info.reqDownloadParam.filenameLen);
+                        printf("                        filename.fileIdentifier: %c\n", s7Info.reqDownloadParam.filename.fileIdentifier);
+                        printf("                        filename.blockType: %s\n", s7Info.reqDownloadParam.filename.blockType);
+                        printf("        filename.blockNumber: %s\n", s7Info.reqDownloadParam.filename.blockNumber);
+                        printf("                        filename.destFileSystem: %c\n", s7Info.reqDownloadParam.filename.destFileSystem);
                     }
-                    printf("                        lengthPart2: %d\n", s7commInfo.requestDownloadParam.lengthPart2);
-                    printf("                        unknownCharBeforeLoadMem: %c\n",
-                           s7commInfo.requestDownloadParam.unknownCharBeforeLoadMem);
-                    printf("                        lengthOfLoadMemory: %c%c%c%c%c%c\n",
-                           s7commInfo.requestDownloadParam.lengthOfLoadMemory[0], s7commInfo.requestDownloadParam.lengthOfLoadMemory[1],
-                           s7commInfo.requestDownloadParam.lengthOfLoadMemory[2], s7commInfo.requestDownloadParam.lengthOfLoadMemory[3],
-                           s7commInfo.requestDownloadParam.lengthOfLoadMemory[4], s7commInfo.requestDownloadParam.lengthOfLoadMemory[5]);
-                    printf("                        lengthOfMc7Code: %c%c%c%c%c%c\n", s7commInfo.requestDownloadParam.lengthOfMc7Code[0],
-                           s7commInfo.requestDownloadParam.lengthOfMc7Code[1], s7commInfo.requestDownloadParam.lengthOfMc7Code[2],
-                           s7commInfo.requestDownloadParam.lengthOfMc7Code[3], s7commInfo.requestDownloadParam.lengthOfMc7Code[4],
-                           s7commInfo.requestDownloadParam.lengthOfMc7Code[5]);
+                    printf("                        lengthPart2: %d\n", s7Info.reqDownloadParam.lengthPart2);
+                    printf("                        unknownCharBeforeLoadMem: %c\n", s7Info.reqDownloadParam.unknownCharBeforeLoadMem);
+                    printf("                        lengthOfLoadMemory: %s\n", s7Info.reqDownloadParam.lengthOfLoadMemory);
+                    printf("                        lengthOfMc7Code: %s\n", s7Info.reqDownloadParam.lengthOfMc7Code);
                 }
             }
         }
         break;
         case npacket::s7comm::FunctionCode::DOWNLOAD_BLOCK: {
             printf("                    DownloadBlockParam\n");
-            printf("                        functionCode: %s (0x%02x)\n",
-                   getFunctionCodeDesc(npacket::s7comm::FunctionCode::DOWNLOAD_BLOCK), s7commInfo.downloadBlockParam.functionCode);
-            if (s7commInfo.header.parameterLength > 1)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            if (s7Info.header.parameterLength > 1)
             {
-                printf("                        functionStatus.moreDataFollowing: %d\n",
-                       s7commInfo.downloadBlockParam.functionStatus.moreDataFollowing);
-                printf("                        functionStatus.error: %d\n", s7commInfo.downloadBlockParam.functionStatus.error);
-                if (s7commInfo.header.parameterLength > 8)
+                printf("                        funcStatus.moreDataFollowing: %d\n",
+                       s7Info.downloadBlockParam.funcStatus.moreDataFollowing);
+                printf("                        funcStatus.error: %d\n", s7Info.downloadBlockParam.funcStatus.error);
+                if (s7Info.header.parameterLength > 8)
                 {
                     printf("                        unknownByteInBlockControl1: 0x%04x\n",
-                           s7commInfo.downloadBlockParam.unknownByteInBlockControl1);
+                           s7Info.downloadBlockParam.unknownByteInBlockControl1);
                     printf("                        unknownByteInBlockControl2: 0x%08x\n",
-                           s7commInfo.downloadBlockParam.unknownByteInBlockControl2);
-                    if (s7commInfo.downloadBlockParam.filenameLen > 0)
+                           s7Info.downloadBlockParam.unknownByteInBlockControl2);
+                    if (s7Info.downloadBlockParam.filenameLen > 0)
                     {
-                        printf("                        filenameLen: %d\n", s7commInfo.downloadBlockParam.filenameLen);
-                        printf("                        filename.fileIdentifier: %c\n",
-                               s7commInfo.downloadBlockParam.filename.fileIdentifier);
-                        printf("                        filename.blockType: %c%c\n", s7commInfo.downloadBlockParam.filename.blockType[0],
-                               s7commInfo.downloadBlockParam.filename.blockType[1]);
-                        printf("                        filename.blockNumber: %c%c%c%c%c\n",
-                               s7commInfo.downloadBlockParam.filename.blockNumber[0], s7commInfo.downloadBlockParam.filename.blockNumber[1],
-                               s7commInfo.downloadBlockParam.filename.blockNumber[2], s7commInfo.downloadBlockParam.filename.blockNumber[3],
-                               s7commInfo.downloadBlockParam.filename.blockNumber[4]);
-                        printf("                        filename.destinationFilesystem: %c\n",
-                               s7commInfo.downloadBlockParam.filename.destinationFilesystem);
+                        printf("                        filenameLen: %d\n", s7Info.downloadBlockParam.filenameLen);
+                        printf("                        filename.fileIdentifier: %c\n", s7Info.downloadBlockParam.filename.fileIdentifier);
+                        printf("                        filename.blockType: %s\n", s7Info.downloadBlockParam.filename.blockType);
+                        printf("                        filename.blockNumber: %s\n", s7Info.downloadBlockParam.filename.blockNumber);
+                        printf("                        filename.destFileSystem: %c\n", s7Info.downloadBlockParam.filename.destFileSystem);
                     }
                 }
             }
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    DownloadBlockData\n");
-                printf("                        length: %d\n", s7commInfo.downloadBlockData.length);
-                printf("                        unknownByteInBlockControl: 0x%04x\n",
-                       s7commInfo.downloadBlockData.unknownByteInBlockControl);
-                if (s7commInfo.downloadBlockData.data && s7commInfo.downloadBlockData.length > 0)
+                printf("                        length: %d\n", s7Info.downloadBlockData.length);
+                printf("                        unknownByteInBlockControl: 0x%04x\n", s7Info.downloadBlockData.unknownByteInBlockControl);
+                if (s7Info.downloadBlockData.data && s7Info.downloadBlockData.length > 0)
                 {
                     printf("                        data: ");
-                    for (uint16_t i = 0; i < s7commInfo.downloadBlockData.length; ++i)
+                    for (uint16_t i = 0; i < s7Info.downloadBlockData.length; ++i)
                     {
-                        printf("%02x ", s7commInfo.downloadBlockData.data[i]);
+                        printf("%02x ", s7Info.downloadBlockData.data[i]);
                     }
                     printf("\n");
                 }
@@ -957,69 +937,62 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
         break;
         case npacket::s7comm::FunctionCode::DOWNLOAD_ENDED: {
             printf("                    downloadEndedParam\n");
-            printf("                        functionCode: %s (0x%02x)\n",
-                   getFunctionCodeDesc(npacket::s7comm::FunctionCode::DOWNLOAD_ENDED), s7commInfo.downloadEndedParam.functionCode);
-            if (s7commInfo.header.parameterLength > 1)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            if (s7Info.header.parameterLength > 1)
             {
-                printf("                        functionStatus.moreDataFollowing: %d\n",
-                       s7commInfo.downloadEndedParam.functionStatus.moreDataFollowing);
-                printf("                        functionStatus.error: %d\n", s7commInfo.downloadEndedParam.functionStatus.error);
-                if (s7commInfo.header.parameterLength > 8)
+                printf("                        funcStatus.moreDataFollowing: %d\n",
+                       s7Info.downloadEndedParam.funcStatus.moreDataFollowing);
+                printf("                        funcStatus.error: %d\n", s7Info.downloadEndedParam.funcStatus.error);
+                if (s7Info.header.parameterLength > 8)
                 {
-                    printf("                        errorCode: 0x%04x\n", s7commInfo.downloadEndedParam.errorCode);
+                    printf("                        errorCode: 0x%04x\n", s7Info.downloadEndedParam.errorCode);
                     printf("                        unknownByteInBlockControl: 0x%08x\n",
-                           s7commInfo.downloadEndedParam.unknownByteInBlockControl);
+                           s7Info.downloadEndedParam.unknownByteInBlockControl);
                 }
             }
-            if (s7commInfo.downloadEndedParam.filenameLen > 0)
+            if (s7Info.downloadEndedParam.filenameLen > 0)
             {
-                printf("                        filenameLen: %d\n", s7commInfo.downloadEndedParam.filenameLen);
-                printf("                        filename.fileIdentifier: %c\n", s7commInfo.downloadEndedParam.filename.fileIdentifier);
-                printf("                        filename.blockType: %c%c\n", s7commInfo.downloadEndedParam.filename.blockType[0],
-                       s7commInfo.downloadEndedParam.filename.blockType[1]);
-                printf("                        filename.blockNumber: %c%c%c%c%c\n", s7commInfo.downloadEndedParam.filename.blockNumber[0],
-                       s7commInfo.downloadEndedParam.filename.blockNumber[1], s7commInfo.downloadEndedParam.filename.blockNumber[2],
-                       s7commInfo.downloadEndedParam.filename.blockNumber[3], s7commInfo.downloadEndedParam.filename.blockNumber[4]);
-                printf("                        filename.destinationFilesystem: %c\n",
-                       s7commInfo.downloadEndedParam.filename.destinationFilesystem);
+                printf("                        filenameLen: %d\n", s7Info.downloadEndedParam.filenameLen);
+                printf("                        filename.fileIdentifier: %c\n", s7Info.downloadEndedParam.filename.fileIdentifier);
+                printf("                        filename.blockType: %s\n", s7Info.downloadEndedParam.filename.blockType);
+                printf("                        filename.blockNumber: %s\n", s7Info.downloadEndedParam.filename.blockNumber);
+                printf("                        filename.destFileSystem: %c\n", s7Info.downloadEndedParam.filename.destFileSystem);
             }
         }
         break;
         case npacket::s7comm::FunctionCode::START_UPLOAD: {
             printf("                    StartUploadParam\n");
-            printf("                        functionCode: %s (0x%02x)\n", getFunctionCodeDesc(npacket::s7comm::FunctionCode::START_UPLOAD),
-                   s7commInfo.startUploadParam.functionCode);
-            printf("                        blockTypeLen: %d\n", s7commInfo.startUploadParam.blockTypeLen);
-            printf("                        blockNumLen: %d\n", s7commInfo.startUploadParam.blockNumLen);
-            printf("                        fileSystemLen: %d\n", s7commInfo.startUploadParam.fileSystemLen);
-            printf("                        blockType: 0x%04x\n", s7commInfo.startUploadParam.blockType);
-            printf("                        blockNumber: %s\n", s7commInfo.startUploadParam.blockNumber);
-            printf("                        fileSystem: %c\n", s7commInfo.startUploadParam.fileSystem);
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        blockTypeLen: %d\n", s7Info.startUploadParam.blockTypeLen);
+            printf("                        blockNumLen: %d\n", s7Info.startUploadParam.blockNumLen);
+            printf("                        fileSystemLen: %d\n", s7Info.startUploadParam.fileSystemLen);
+            printf("                        blockType: %s\n", s7Info.startUploadParam.blockType);
+            printf("                        blockNumber: %s\n", s7Info.startUploadParam.blockNumber);
+            printf("                        fileSystem: %c\n", s7Info.startUploadParam.fileSystem);
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    StartUploadData\n");
-                printf("                        uploadId: 0x%08x\n", s7commInfo.startUploadData.uploadId);
-                printf("                        status: %d\n", s7commInfo.startUploadData.status);
+                printf("                        uploadId: 0x%08x\n", s7Info.startUploadData.uploadId);
+                printf("                        status: %d\n", s7Info.startUploadData.status);
             }
         }
         break;
         case npacket::s7comm::FunctionCode::UPLOAD_BLOCK: {
             printf("                    UploadParam\n");
-            printf("                        functionCode: %s (0x%02x)\n", getFunctionCodeDesc(npacket::s7comm::FunctionCode::UPLOAD_BLOCK),
-                   s7commInfo.uploadParam.functionCode);
-            printf("                        uploadId: 0x%08x\n", s7commInfo.uploadParam.uploadId);
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        uploadId: 0x%08x\n", s7Info.uploadParam.uploadId);
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    UploadData\n");
-                printf("                        dataOffset: %d\n", s7commInfo.uploadData.dataOffset);
-                printf("                        dataLen: %d\n", s7commInfo.uploadData.dataLen);
-                printf("                        isLastBlock: %s\n", s7commInfo.uploadData.isLastBlock ? "true" : "false");
-                if (s7commInfo.uploadData.blockData && s7commInfo.uploadData.dataLen > 0)
+                printf("                        dataOffset: %d\n", s7Info.uploadData.dataOffset);
+                printf("                        dataLen: %d\n", s7Info.uploadData.dataLen);
+                printf("                        isLastBlock: %s\n", s7Info.uploadData.isLastBlock ? "true" : "false");
+                if (s7Info.uploadData.blockData && s7Info.uploadData.dataLen > 0)
                 {
                     printf("                        blockData: ");
-                    for (uint16_t i = 0; i < s7commInfo.uploadData.dataLen; ++i)
+                    for (uint16_t i = 0; i < s7Info.uploadData.dataLen; ++i)
                     {
-                        printf("%02x ", s7commInfo.uploadData.blockData[i]);
+                        printf("%02x ", s7Info.uploadData.blockData[i]);
                     }
                     printf("\n");
                 }
@@ -1028,73 +1001,66 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
         break;
         case npacket::s7comm::FunctionCode::END_UPLOAD: {
             printf("                    EndUploadParam\n");
-            printf("                        functionCode: %s (0x%02x)\n", getFunctionCodeDesc(npacket::s7comm::FunctionCode::END_UPLOAD),
-                   s7commInfo.endUploadParam.functionCode);
-            printf("                        uploadId: 0x%08x\n", s7commInfo.endUploadParam.uploadId);
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        uploadId: 0x%08x\n", s7Info.endUploadParam.uploadId);
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    EndUploadData\n");
-                printf("                        returnCode: 0x%02x\n", s7commInfo.endUploadData.returnCode);
-                printf("                        errorClass: 0x%02x\n", s7commInfo.endUploadData.errorClass);
-                printf("                        errorCode: 0x%02x\n", s7commInfo.endUploadData.errorCode);
+                printf("                        returnCode: 0x%02x\n", s7Info.endUploadData.returnCode);
+                printf("                        errorClass: 0x%02x\n", s7Info.endUploadData.errorClass);
+                printf("                        errorCode: 0x%02x\n", s7Info.endUploadData.errorCode);
             }
         }
         break;
         case npacket::s7comm::FunctionCode::PLC_CONTROL: {
             printf("                    PlcControlParam\n");
-            printf("                        functionCode: %s (0x%02x)\n", getFunctionCodeDesc(npacket::s7comm::FunctionCode::PLC_CONTROL),
-                   s7commInfo.plcCtrlParam.functionCode);
-            printf("                        paramCount: %d\n", s7commInfo.plcCtrlParam.paramCount);
-            for (const auto& str : s7commInfo.plcCtrlParam.params)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        paramCount: %d\n", s7Info.plcCtrlParam.paramCount);
+            for (const auto& str : s7Info.plcCtrlParam.params)
             {
                 printf("                        param: %s\n", str.c_str());
             }
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    PlcControlData\n");
-                printf("                        returnCode: 0x%02x\n", s7commInfo.plcCtrlData.returnCode);
-                if (!s7commInfo.plcCtrlData.statusMsg.empty())
+                printf("                        returnCode: 0x%02x\n", s7Info.plcCtrlData.returnCode);
+                if (!s7Info.plcCtrlData.statusMsg.empty())
                 {
-                    printf("                        statusMsg: %s\n", s7commInfo.plcCtrlData.statusMsg.c_str());
+                    printf("                        statusMsg: %s\n", s7Info.plcCtrlData.statusMsg.c_str());
                 }
             }
         }
         break;
         case npacket::s7comm::FunctionCode::PI_SERVICE: {
             printf("                    PiServiceParam\n");
-            printf("                        functionCode: %s (0x%02x)\n", getFunctionCodeDesc(npacket::s7comm::FunctionCode::PI_SERVICE),
-                   s7commInfo.piParam.functionCode);
-            printf("                        unknownBytes: 0x%016llx\n", (unsigned long long)s7commInfo.piParam.unknownBytes);
-            if (s7commInfo.piParam.parameterBlockLength > 0)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        unknownBytes: 0x%016llx\n", (unsigned long long)s7Info.piParam.unknownBytes);
+            if (s7Info.piParam.paramBlockLength > 0)
             {
-                printf("                        parameterBlockLength: %d\n", s7commInfo.piParam.parameterBlockLength);
-                printf("                        parameterBlock.numberOfBlocks: %d\n", s7commInfo.piParam.parameterBlock.numberOfBlocks);
-                printf("                        parameterBlock.unknownByte: 0x%02x\n", s7commInfo.piParam.parameterBlock.unknownByte);
-                printf("                        parameterBlock.filename.blockType: %c%c\n",
-                       s7commInfo.piParam.parameterBlock.filename.blockType[0], s7commInfo.piParam.parameterBlock.filename.blockType[1]);
-                printf("                        parameterBlock.filename.blockNumber: %c%c%c%c%c\n",
-                       s7commInfo.piParam.parameterBlock.filename.blockNumber[0], s7commInfo.piParam.parameterBlock.filename.blockNumber[1],
-                       s7commInfo.piParam.parameterBlock.filename.blockNumber[2], s7commInfo.piParam.parameterBlock.filename.blockNumber[3],
-                       s7commInfo.piParam.parameterBlock.filename.blockNumber[4]);
-                printf("                        parameterBlock.filename.destinationFilesystem: %c\n",
-                       s7commInfo.piParam.parameterBlock.filename.destinationFilesystem);
+                printf("                        paramBlockLength: %d\n", s7Info.piParam.paramBlockLength);
+                printf("                        paramBlock.numberOfBlocks: %d\n", s7Info.piParam.paramBlock.numberOfBlocks);
+                printf("                        paramBlock.unknownByte: 0x%02x\n", s7Info.piParam.paramBlock.unknownByte);
+                printf("                        paramBlock.filename.blockType: %s\n", s7Info.piParam.paramBlock.filename.blockType);
+                printf("                        paramBlock.filename.blockNumber: %s\n", s7Info.piParam.paramBlock.filename.blockNumber);
+                printf("                        paramBlock.filename.destFileSystem: %c\n",
+                       s7Info.piParam.paramBlock.filename.destFileSystem);
             }
-            if (s7commInfo.piParam.serviceNameLength > 0)
+            if (s7Info.piParam.serviceNameLength > 0)
             {
-                printf("                        serviceNameLength: %d\n", s7commInfo.piParam.serviceNameLength);
-                printf("                        serviceName: %s\n", s7commInfo.piParam.serviceName);
+                printf("                        serviceNameLength: %d\n", s7Info.piParam.serviceNameLength);
+                printf("                        serviceName: %s\n", s7Info.piParam.serviceName);
             }
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    PiServiceData\n");
-                printf("                        returnCode: 0x%02x\n", s7commInfo.piData.returnCode);
-                printf("                        dataLen: %d\n", s7commInfo.piData.dataLen);
-                if (s7commInfo.piData.responseData && s7commInfo.piData.dataLen > 0)
+                printf("                        returnCode: 0x%02x\n", s7Info.piData.returnCode);
+                printf("                        dataLen: %d\n", s7Info.piData.dataLen);
+                if (s7Info.piData.responseData && s7Info.piData.dataLen > 0)
                 {
                     printf("                        responseData: ");
-                    for (uint16_t i = 0; i < s7commInfo.piData.dataLen; ++i)
+                    for (uint16_t i = 0; i < s7Info.piData.dataLen; ++i)
                     {
-                        printf("%02x ", s7commInfo.piData.responseData[i]);
+                        printf("%02x ", s7Info.piData.responseData[i]);
                     }
                     printf("\n");
                 }
@@ -1103,43 +1069,40 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
         break;
         case npacket::s7comm::FunctionCode::PLC_STOP: {
             printf("                    PlcStopParam\n");
-            printf("                        functionCode: %s (0x%02x)\n", getFunctionCodeDesc(npacket::s7comm::FunctionCode::PLC_STOP),
-                   s7commInfo.plcStopParam.functionCode);
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    PlcStopData\n");
-                printf("                        returnCode: 0x%02x\n", s7commInfo.plcStopData.returnCode);
-                printf("                        stopStatus: %d\n", s7commInfo.plcStopData.stopStatus);
+                printf("                        returnCode: 0x%02x\n", s7Info.plcStopData.returnCode);
+                printf("                        stopStatus: %d\n", s7Info.plcStopData.stopStatus);
             }
         }
         break;
         case npacket::s7comm::FunctionCode::COPY_RAM_TO_ROM: {
             printf("                    CopyRamToRomParam\n");
-            printf("                        functionCode: %s (0x%02x)\n",
-                   getFunctionCodeDesc(npacket::s7comm::FunctionCode::COPY_RAM_TO_ROM), s7commInfo.copyRamToRomParam.functionCode);
-            printf("                        paramCount: %d\n", s7commInfo.copyRamToRomParam.paramCount);
-            printf("                        blockType: 0x%04x\n", s7commInfo.copyRamToRomParam.blockType);
-            printf("                        blockNumber: %s\n", s7commInfo.copyRamToRomParam.blockNumber);
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        paramCount: %d\n", s7Info.copyRamToRomParam.paramCount);
+            printf("                        blockType: %s\n", s7Info.copyRamToRomParam.blockType);
+            printf("                        blockNumber: %s\n", s7Info.copyRamToRomParam.blockNumber);
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    CopyRamToRomData\n");
-                printf("                        returnCode: 0x%02x\n", s7commInfo.copyRamToRomData.returnCode);
-                printf("                        copyStatus: %d\n", s7commInfo.copyRamToRomData.copyStatus);
+                printf("                        returnCode: 0x%02x\n", s7Info.copyRamToRomData.returnCode);
+                printf("                        copyStatus: %d\n", s7Info.copyRamToRomData.copyStatus);
             }
         }
         break;
         case npacket::s7comm::FunctionCode::COMPRESS: {
             printf("                    CompressParam\n");
-            printf("                        functionCode: %s (0x%02x)\n", getFunctionCodeDesc(npacket::s7comm::FunctionCode::COMPRESS),
-                   s7commInfo.compressParam.functionCode);
-            printf("                        memoryType: %d\n", s7commInfo.compressParam.memoryType);
-            printf("                        reserved: 0x%02x\n", s7commInfo.compressParam.reserved);
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        memoryType: %d\n", s7Info.compressParam.memoryType);
+            printf("                        reserved: 0x%02x\n", s7Info.compressParam.reserved);
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    CompressData\n");
-                printf("                        returnCode: 0x%02x\n", s7commInfo.compressData.returnCode);
-                printf("                        compressStatus: %d\n", s7commInfo.compressData.compressStatus);
-                printf("                        freedBytes: %u\n", s7commInfo.compressData.freedBytes);
+                printf("                        returnCode: 0x%02x\n", s7Info.compressData.returnCode);
+                printf("                        compressStatus: %d\n", s7Info.compressData.compressStatus);
+                printf("                        freedBytes: %u\n", s7Info.compressData.freedBytes);
             }
         }
         break;
@@ -1147,165 +1110,68 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
         case npacket::s7comm::FunctionCode::REPLACE_BLOCK:
         case npacket::s7comm::FunctionCode::BLOCK_STATUS: {
             printf("                    BlockOperationParam\n");
-            printf("                        functionCode: %s (0x%02x)\n",
-                   getFunctionCodeDesc((npacket::s7comm::FunctionCode)s7commInfo.blockOpParam.functionCode),
-                   s7commInfo.blockOpParam.functionCode);
-            printf("                        paramCount: %d\n", s7commInfo.blockOpParam.paramCount);
-            printf("                        blockType: 0x%04x\n", s7commInfo.blockOpParam.blockType);
-            printf("                        blockNumber: %s\n", s7commInfo.blockOpParam.blockNumber);
-            printf("                        fileSystem: %c\n", s7commInfo.blockOpParam.fileSystem);
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        paramCount: %d\n", s7Info.blockOpParam.paramCount);
+            printf("                        blockType: %s\n", s7Info.blockOpParam.blockType);
+            printf("                        blockNumber: %s\n", s7Info.blockOpParam.blockNumber);
+            printf("                        fileSystem: %c\n", s7Info.blockOpParam.fileSystem);
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    BlockOperationData\n");
-                printf("                        returnCode: 0x%02x\n", s7commInfo.blockOpData.returnCode);
-                printf("                        blockStatus: %d\n", s7commInfo.blockOpData.blockStatus);
-                printf("                        errorClass: 0x%02x\n", s7commInfo.blockOpData.errorClass);
-                printf("                        errorCode: 0x%02x\n", s7commInfo.blockOpData.errorCode);
+                printf("                        returnCode: 0x%02x\n", s7Info.blockOpData.returnCode);
+                printf("                        blockStatus: %d\n", s7Info.blockOpData.blockStatus);
+                printf("                        errorClass: 0x%02x\n", s7Info.blockOpData.errorClass);
+                printf("                        errorCode: 0x%02x\n", s7Info.blockOpData.errorCode);
             }
         }
         break;
         case npacket::s7comm::FunctionCode::SETUP_COMMUNICATION: {
             printf("                    SetupCommParam\n");
-            printf("                        functionCode: %s (0x%02x)\n",
-                   getFunctionCodeDesc(npacket::s7comm::FunctionCode::SETUP_COMMUNICATION), s7commInfo.setupCommParam.functionCode);
-            printf("                        reserved: 0x%02x\n", s7commInfo.setupCommParam.reserved);
-            printf("                        maxAmqCalling: %d\n", s7commInfo.setupCommParam.maxAmqCalling);
-            printf("                        maxAmqCalled: %d\n", s7commInfo.setupCommParam.maxAmqCalled);
-            printf("                        pduLength: %d\n", s7commInfo.setupCommParam.pduLength);
-            if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr && s7commInfo.header.dataLength > 0)
+            printf("                        functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
+            printf("                        reserved: 0x%02x\n", s7Info.setupCommParam.reserved);
+            printf("                        maxAmqCalling: %d\n", s7Info.setupCommParam.maxAmqCalling);
+            printf("                        maxAmqCalled: %d\n", s7Info.setupCommParam.maxAmqCalled);
+            printf("                        pduLength: %d\n", s7Info.setupCommParam.pduLength);
+            if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr && s7Info.header.dataLength > 0)
             {
                 printf("                    SetupCommData\n");
-                printf("                        returnCode: 0x%02x\n", s7commInfo.setupCommData.returnCode);
-                printf("                        maxAmqCaller: %d\n", s7commInfo.setupCommData.maxAmqCaller);
-                printf("                        maxAmqCallee: %d\n", s7commInfo.setupCommData.maxAmqCallee);
-                printf("                        pduLength: %d\n", s7commInfo.setupCommData.pduLength);
+                printf("                        returnCode: 0x%02x\n", s7Info.setupCommData.returnCode);
+                printf("                        maxAmqCaller: %d\n", s7Info.setupCommData.maxAmqCaller);
+                printf("                        maxAmqCallee: %d\n", s7Info.setupCommData.maxAmqCallee);
+                printf("                        pduLength: %d\n", s7Info.setupCommData.pduLength);
             }
         }
         break;
+        default: {
+            printf("                    functionCode: %s (0x%02x)\n", getFuncCodeStr(s7Info.funcCode), s7Info.funcCode);
         }
-        if (!s7commInfo.rwData.empty())
+        break;
+        }
+        if (!s7Info.rwData.empty())
         {
-            printf("                    Data\n");
-            for (const auto& item : s7commInfo.rwData)
+            printf("                Data\n");
+            for (size_t i = 0; i < s7Info.rwData.size(); ++i)
             {
-                printf("                        Item\n");
-                if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr
-                    && npacket::s7comm::FunctionCode::WRITE_VARIABLE == (npacket::s7comm::FunctionCode)s7commInfo.functionCode)
+                const auto& item = s7Info.rwData[i];
+                printf("                    Item (list count no. %zu)\n", i + 1);
+                printf("                        returnCode: %s (0x%02x)\n", getReturnCodeStr(item.returnCode), item.returnCode);
+                if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr
+                    && npacket::s7comm::FunctionCode::WRITE_VARIABLE == (npacket::s7comm::FunctionCode)s7Info.funcCode)
                 {
-                    /* 写响应: 仅returnCode */
-                    printf("                            returnCode: ");
-                    switch (item.returnCode)
-                    {
-                    case 0xFF:
-                        printf("Success");
-                        break;
-                    case 0x0A:
-                        printf("Object does not exist");
-                        break;
-                    case 0x05:
-                        printf("Invalid address");
-                        break;
-                    case 0x03:
-                        printf("Access not allowed");
-                        break;
-                    case 0x06:
-                        printf("Data type not supported");
-                        break;
-                    case 0x07:
-                        printf("Data type inconsistent");
-                        break;
-                    case 0x01:
-                        printf("Hardware error");
-                        break;
-                    case 0x81:
-                        printf("Application error");
-                        break;
-                    default:
-                        printf("Unknown");
-                        break;
-                    }
-                    printf(" (0x%02x)\n", item.returnCode);
                     continue; /* 写响应无后续字段 */
                 }
-                else if (npacket::s7comm::RosctrType::ACK_DATA == s7commInfo.header.rosctr) /* 读响应或写请求: 有完整数据项格式 */
+                else if (npacket::s7comm::RosctrType::ACK_DATA == s7Info.header.rosctr) /* 读响应或写请求: 有完整数据项格式 */
                 {
-                    printf("                            returnCode: ");
-                    switch (item.returnCode)
-                    {
-                    case 0xFF:
-                        printf("Success");
-                        break;
-                    case 0x0A:
-                        printf("Object does not exist");
-                        break;
-                    case 0x05:
-                        printf("Invalid address");
-                        break;
-                    case 0x03:
-                        printf("Access not allowed");
-                        break;
-                    case 0x06:
-                        printf("Data type not supported");
-                        break;
-                    case 0x07:
-                        printf("Data type inconsistent");
-                        break;
-                    case 0x01:
-                        printf("Hardware error");
-                        break;
-                    case 0x81:
-                        printf("Application error");
-                        break;
-                    default:
-                        printf("Unknown");
-                        break;
-                    }
-                    printf(" (0x%02x)\n", item.returnCode);
                     if (0xFF != item.returnCode) /* 非成功项无有效数据 */
                     {
                         continue;
                     }
                 }
-                else /* 写请求: 无returnCode, 打印占位 */
-                {
-                    printf("                            returnCode: N/A (Write Request)\n");
-                }
-                printf("                            transportSize: ");
-                switch (item.transportSize)
-                {
-                case 0x01:
-                    printf("BIT");
-                    break;
-                case 0x02:
-                    printf("BYTE");
-                    break;
-                case 0x03:
-                    printf("BIT_ARRAY");
-                    break;
-                case 0x04:
-                    printf("BYTE/WORD/DWORD");
-                    break;
-                case 0x05:
-                    printf("INTEGER");
-                    break;
-                case 0x06:
-                    printf("DWORD");
-                    break;
-                case 0x07:
-                    printf("REAL");
-                    break;
-                case 0x09:
-                    printf("OCTET STRING");
-                    break;
-                default:
-                    printf("Unknown");
-                    break;
-                }
-                printf(" (0x%02x)\n", item.transportSize);
-                printf("                            length: %u (bytes)\n", item.length);
+                printf("                        transportSize: %s (0x%02x)\n", getTransportSizeStr(item.transportSize), item.transportSize);
+                printf("                        length: %u (bytes)\n", item.length);
                 if (item.length > 0 && item.data)
                 {
-                    printf("                            [rawData]: ");
+                    printf("                        [rawData]: ");
                     for (uint16_t i = 0; i < item.length; ++i)
                     {
                         printf("%02x ", item.data[i]);
@@ -1313,49 +1179,49 @@ void handleApplicationS7CommFrame(const std::chrono::steady_clock::time_point& n
                     printf("\n");
                     if (0x01 == item.transportSize && 1 == item.length) /* BIT */
                     {
-                        printf("                            BIT value: %d\n", item.data[0] & 0x01);
+                        printf("                        BIT value: %d\n", item.data[0] & 0x01);
                     }
                     else if (0x04 == item.transportSize) /* BYTE/WORD/DWORD */
                     {
                         if (1 == item.length)
                         {
-                            printf("                            BYTE value: 0x%02x\n", item.data[0]);
+                            printf("                        BYTE value: 0x%02x\n", item.data[0]);
                         }
                         else if (2 == item.length)
                         {
                             uint16_t wValue = ((uint16_t)item.data[0] << 8) | item.data[1];
-                            printf("                            WORD value: 0x%04x (%u)\n", wValue, wValue);
+                            printf("                        WORD value: 0x%04x (%u)\n", wValue, wValue);
                         }
                         else if (4 == item.length)
                         {
                             uint32_t dwValue = ((uint32_t)item.data[0] << 24) | ((uint32_t)item.data[1] << 16)
                                                | ((uint32_t)item.data[2] << 8) | item.data[3];
-                            printf("                            DWORD value: 0x%08x (%u)\n", dwValue, dwValue);
+                            printf("                        DWORD value: 0x%08x (%u)\n", dwValue, dwValue);
                         }
                     }
                     else if (0x05 == item.transportSize && 2 == item.length) /* INTEGER */
                     {
                         int16_t iValue = ((int16_t)item.data[0] << 8) | item.data[1];
-                        printf("                            INTEGER value: %d\n", iValue);
+                        printf("                        INTEGER value: %d\n", iValue);
                     }
                     else if (0x07 == item.transportSize && 4 == item.length) /* REAL */
                     {
                         float fValue = 0.0f;
                         memcpy(&fValue, item.data, sizeof(float));
-                        printf("                            REAL value: %f\n", fValue);
+                        printf("                        REAL value: %f\n", fValue);
                     }
                     else if (0x09 == item.transportSize && 10 == item.length) /* OCTET STRING: S7 Timestamp */
                     {
-                        printf("                            S7 Timestamp - Reserved: 0x%02x\n", item.data[0]);
-                        printf("                            S7 Timestamp - Year 1: %d\n", item.data[1]);
-                        printf("                            S7 Timestamp - Year 2: %d\n", item.data[2]);
-                        printf("                            S7 Timestamp - Month: %d\n", item.data[3]);
-                        printf("                            S7 Timestamp - Day: %d\n", item.data[4]);
-                        printf("                            S7 Timestamp - Hour: %d\n", item.data[5]);
-                        printf("                            S7 Timestamp - Minute: %d\n", item.data[6]);
-                        printf("                            S7 Timestamp - Second: %d\n", item.data[7]);
-                        printf("                            S7 Timestamp - Milliseconds: %d\n", item.data[8]);
-                        printf("                            S7 Timestamp - Weekday: %d\n", item.data[9] & 0xF);
+                        printf("                        S7 Timestamp - Reserved: 0x%02x\n", item.data[0]);
+                        printf("                        S7 Timestamp - Year 1: %d\n", item.data[1]);
+                        printf("                        S7 Timestamp - Year 2: %d\n", item.data[2]);
+                        printf("                        S7 Timestamp - Month: %d\n", item.data[3]);
+                        printf("                        S7 Timestamp - Day: %d\n", item.data[4]);
+                        printf("                        S7 Timestamp - Hour: %d\n", item.data[5]);
+                        printf("                        S7 Timestamp - Minute: %d\n", item.data[6]);
+                        printf("                        S7 Timestamp - Second: %d\n", item.data[7]);
+                        printf("                        S7 Timestamp - Milliseconds: %d\n", item.data[8]);
+                        printf("                        S7 Timestamp - Weekday: %d\n", item.data[9] & 0xF);
                     }
                 }
             }
@@ -1381,7 +1247,7 @@ int main(int argc, char* argv[])
     printf("** [-Q 流向]           抓包流向, 值范围: [inout-所有(默认), in-接收, out-发送]                             **\n");
 #endif
     printf("** [-p 协议]           指定只显示的协议, 例如: ehternet, ipv4, arp, ipv6, tcp, udp, icmp, icmpv6,          **\n");
-    printf("**                     ftp, ftp-data, iec103等                                                             **\n");
+    printf("**                     ftp, ftp-data, iec103, s7 等                                                        **\n");
     printf("**                                                                                                         **\n");
     printf("** 示例:                                                                                                   **\n");
     printf("**       npacket_tool.exe -i enp2s0 -Q out -p ftp                                                          **\n");

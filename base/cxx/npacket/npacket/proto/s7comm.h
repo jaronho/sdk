@@ -38,11 +38,11 @@ public:
      * @param header 传输层头部(TCP)
      * @param tpktInfo TPKT包信息
      * @param cotpInfo COTP包信息
-     * @param s7commInfo S7COMM信息
+     * @param s7Info S7COMM信息
      */
     using FRAME_CALLBACK =
         std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
-                           const TpktInfo& tpktInfo, const CotpInfo& cotpInfo, const s7comm::S7CommInfo& s7commInfo)>;
+                           const TpktInfo& tpktInfo, const CotpInfo& cotpInfo, const s7comm::S7CommInfo& s7Info)>;
 
 public:
     /**

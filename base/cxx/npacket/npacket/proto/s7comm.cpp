@@ -37,15 +37,15 @@ bool S7CommParser::parse(size_t flag, size_t num, const std::chrono::steady_cloc
     {
         return false;
     }
-    s7comm::S7CommInfo s7commInfo;
-    if (!parseS7CommInfo(ntp, header, payload, payloadLen, s7commInfo))
+    s7comm::S7CommInfo s7Info;
+    if (!parseS7CommInfo(ntp, header, payload, payloadLen, s7Info))
     {
         return false;
     }
     /* 如果是USERDATA CPU services的分片(非最后一片), 暂不上报 */
-    if (s7comm::RosctrType::USERDATA == s7commInfo.header.rosctr && !s7commInfo.cpuServiceParam.items.empty())
+    if (s7comm::RosctrType::USERDATA == s7Info.header.rosctr && !s7Info.cpuParam.items.empty())
     {
-        const auto& item = s7commInfo.cpuServiceParam.items[0];
+        const auto& item = s7Info.cpuParam.items[0];
         if (0x12 == item.syntaxId && 0x01 == item.lastDataUnit)
         {
             return true; /* 已缓存, 等待后续分片 */
@@ -53,7 +53,7 @@ bool S7CommParser::parse(size_t flag, size_t num, const std::chrono::steady_cloc
     }
     if (m_frameCb)
     {
-        m_frameCb(ntp, totalLen, header, tpktInfo, cotpInfo, s7commInfo);
+        m_frameCb(ntp, totalLen, header, tpktInfo, cotpInfo, s7Info);
     }
     return true;
 }
@@ -106,22 +106,22 @@ bool S7CommParser::parseS7CommInfo(const std::chrono::steady_clock::time_point& 
     if (info.header.parameterLength > 0)
     {
         const uint8_t* parameterPtr = buffer;
-        info.rawParameter = parameterPtr;
+        info.rawParam = parameterPtr;
         buffer += info.header.parameterLength;
         bufferLen -= info.header.parameterLength;
         /* 解析参数 */
-        info.functionCode = parameterPtr[0];
-        switch ((s7comm::FunctionCode)info.functionCode)
+        info.funcCode = parameterPtr[0];
+        switch ((s7comm::FunctionCode)info.funcCode)
         {
         case s7comm::FunctionCode::CPU_SERVICES:
-            parseCpuServiceParam(info.header.rosctr, parameterPtr, info.header.parameterLength, info.cpuServiceParam);
+            parseCpuServiceParam(info.header.rosctr, parameterPtr, info.header.parameterLength, info.cpuParam);
             break;
         case s7comm::FunctionCode::READ_VARIABLE:
         case s7comm::FunctionCode::WRITE_VARIABLE:
             parseReadWriteParam(info.header.rosctr, parameterPtr, info.header.parameterLength, info.rwParam);
             break;
         case s7comm::FunctionCode::REQUEST_DOWNLOAD:
-            parseRequestDownloadParam(info.header.rosctr, parameterPtr, info.header.parameterLength, info.requestDownloadParam);
+            parseRequestDownloadParam(info.header.rosctr, parameterPtr, info.header.parameterLength, info.reqDownloadParam);
             break;
         case s7comm::FunctionCode::DOWNLOAD_BLOCK:
             parseDownloadBlockParam(info.header.rosctr, parameterPtr, info.header.parameterLength, info.downloadBlockParam);
@@ -173,27 +173,27 @@ bool S7CommParser::parseS7CommInfo(const std::chrono::steady_clock::time_point& 
         buffer += info.header.dataLength;
         bufferLen -= info.header.dataLength;
         /* 解析数据 */
-        switch ((s7comm::FunctionCode)info.functionCode)
+        switch ((s7comm::FunctionCode)info.funcCode)
         {
         case s7comm::FunctionCode::CPU_SERVICES:
-            parseCpuServiceData(info.header.rosctr, dataPtr, info.header.dataLength, info.cpuServiceData);
-            if (s7comm::RosctrType::USERDATA == info.header.rosctr && !info.cpuServiceParam.items.empty()) /* 对USERDATA类型进行分片重组 */
+            parseCpuServiceData(info.header.rosctr, dataPtr, info.header.dataLength, info.cpuData);
+            if (s7comm::RosctrType::USERDATA == info.header.rosctr && !info.cpuParam.items.empty()) /* 对USERDATA类型进行分片重组 */
             {
-                const auto& item = info.cpuServiceParam.items[0];
+                const auto& item = info.cpuParam.items[0];
                 if (0x12 == item.syntaxId && !tryReassembleCpuServiceData(ntp, header, info)) /* 分片未完整, 暂不解析详细内容 */
                 {
                     break;
                 }
             }
-            parseCpuServiceDataDetail(info.cpuServiceParam, info.cpuServiceData); /* 根据参数解析详细内容 */
+            parseCpuServiceDataDetail(info.cpuParam, info.cpuData); /* 根据参数解析详细内容 */
             break;
         case s7comm::FunctionCode::READ_VARIABLE: /* 读响应: 数据项列表 */
         case s7comm::FunctionCode::WRITE_VARIABLE: /* 写请求: 数据项列表 */
-            parseReadWriteData(info.header.rosctr, (s7comm::FunctionCode)info.functionCode, dataPtr, info.header.dataLength,
+            parseReadWriteData(info.header.rosctr, (s7comm::FunctionCode)info.funcCode, dataPtr, info.header.dataLength,
                                info.rwParam.itemCount, info.rwData);
             break;
         case s7comm::FunctionCode::REQUEST_DOWNLOAD:
-            parseRequestDownloadData(info.header.rosctr, dataPtr, info.header.dataLength, info.requestDownloadData);
+            parseRequestDownloadData(info.header.rosctr, dataPtr, info.header.dataLength, info.reqDownloadData);
             break;
         case s7comm::FunctionCode::DOWNLOAD_BLOCK:
             parseDownloadBlockData(info.header.rosctr, dataPtr, info.header.dataLength, info.downloadBlockData);
@@ -294,7 +294,6 @@ bool S7CommParser::parseCpuServiceParam(const s7comm::RosctrType& rosctr, const 
     {
         return false;
     }
-    param.functionCode = data[0];
     param.itemCount = data[1];
     if (0 == param.itemCount)
     {
@@ -386,7 +385,7 @@ bool S7CommParser::parseCpuServiceBlockListOfTypeData(bool isRequest, const uint
         dataOut.blockListOfType.isRequest = isRequest;
         /* 块类型: 第1-2字节为ASCII十六进制字符串, 如"0B" */
         char typeStr[3] = {(char)data[0], (char)data[1], '\0'};
-        dataOut.blockListOfType.request.blockType = (uint8_t)strtoul(typeStr, nullptr, 16);
+        dataOut.blockListOfType.req.blockType = (uint8_t)strtoul(typeStr, nullptr, 16);
     }
     else
     {
@@ -404,7 +403,7 @@ bool S7CommParser::parseCpuServiceBlockListOfTypeData(bool isRequest, const uint
             item.blockNumber = ((uint16_t)data[offset] << 8) | data[offset + 1];
             item.blockFlags = data[offset + 2];
             item.blockLanguage = data[offset + 3];
-            dataOut.blockListOfType.response.items.emplace_back(item);
+            dataOut.blockListOfType.resp.items.emplace_back(item);
         }
     }
     return true;
@@ -422,13 +421,13 @@ bool S7CommParser::parseCpuServiceBlockInfoData(bool isRequest, const uint8_t* d
         dataOut.blockInfo.isRequest = isRequest;
         /* 块类型: 第1-2字节为ASCII十六进制字符串, 如"0B" */
         char typeStr[3] = {(char)data[0], (char)data[1], '\0'};
-        dataOut.blockInfo.request.blockType = (uint8_t)strtoul(typeStr, nullptr, 16);
+        dataOut.blockInfo.req.blockType = (uint8_t)strtoul(typeStr, nullptr, 16);
         /* 块号: 第3-7字节为ASCII十进制数字字符串, 如"32768" */
         char numStr[6] = {0};
         memcpy(numStr, data + 2, 5);
-        dataOut.blockInfo.request.blockNumber = (uint32_t)strtoul(numStr, nullptr, 10);
+        dataOut.blockInfo.req.blockNumber = (uint32_t)strtoul(numStr, nullptr, 10);
         /* 文件系统: 第8字节为ASCII字符 */
-        dataOut.blockInfo.request.fileSystem = data[7];
+        dataOut.blockInfo.req.fileSystem = data[7];
     }
     else
     {
@@ -438,7 +437,7 @@ bool S7CommParser::parseCpuServiceBlockInfoData(bool isRequest, const uint8_t* d
         }
         dataOut.hasBlockInfo = true;
         dataOut.blockInfo.isRequest = isRequest;
-        auto& resp = dataOut.blockInfo.response;
+        auto& resp = dataOut.blockInfo.resp;
         /* 第1-2字节: Block type(大端) */
         resp.blockType = ((uint16_t)data[0] << 8) | data[1];
         /* 第2-3字节: Length of Info(大端) */
@@ -473,7 +472,7 @@ bool S7CommParser::parseCpuServiceBlockInfoData(bool isRequest, const uint8_t* d
         /* 第36-37字节: ADD length(大端) */
         resp.addLength = ((uint16_t)data[36] << 8) | data[37];
         /* 第38-39字节: Localdata length(大端) */
-        resp.localdataLength = ((uint16_t)data[38] << 8) | data[39];
+        resp.localDataLength = ((uint16_t)data[38] << 8) | data[39];
         /* 第40-41字节: MC7 code length(大端) */
         resp.mc7CodeLength = ((uint16_t)data[40] << 8) | data[41];
         /* 第42-49字节: Author(8字节ASCII, 以00截止) */
@@ -551,23 +550,23 @@ bool S7CommParser::parseCpuServiceMessageData(bool isRequest, const uint8_t* dat
     {
         /* 前2字节固定: 订阅事件掩码 + 保留字节 */
         uint8_t subscribedEvents = data[0];
-        dataOut.msgService.request.modeTransition = subscribedEvents & 0x01; /* bit0: 模式切换 */
-        dataOut.msgService.request.systemDiagnostics = (subscribedEvents >> 1) & 0x01; /* bit1: 系统诊断 */
-        dataOut.msgService.request.userDefined = (subscribedEvents >> 2) & 0x01; /* bit2: 用户自定义 */
-        dataOut.msgService.request.alarms = (subscribedEvents >> 7) & 0x01; /* bit7: 报警 */
-        dataOut.msgService.request.reserved = data[1];
+        dataOut.msgService.req.modeTransition = subscribedEvents & 0x01; /* bit0: 模式切换 */
+        dataOut.msgService.req.systemDiagnostics = (subscribedEvents >> 1) & 0x01; /* bit1: 系统诊断 */
+        dataOut.msgService.req.userDefined = (subscribedEvents >> 2) & 0x01; /* bit2: 用户自定义 */
+        dataOut.msgService.req.alarms = (subscribedEvents >> 7) & 0x01; /* bit7: 报警 */
+        dataOut.msgService.req.reserved = data[1];
         /* 用户名: 从第3字节开始, 到数据末尾或遇到'\0'为止 */
         if (dataLen > 2)
         {
             const uint8_t* nameStart = data + 2;
             uint32_t nameLen = dataLen - 2;
-            parseAsciiString(nameStart, nameLen, dataOut.msgService.request.username);
+            parseAsciiString(nameStart, nameLen, dataOut.msgService.req.username);
         }
     }
     else /* 响应 */
     {
-        dataOut.msgService.response.result = data[0];
-        dataOut.msgService.response.reserved = data[1];
+        dataOut.msgService.resp.result = data[0];
+        dataOut.msgService.resp.reserved = data[1];
     }
     return true;
 }
@@ -705,18 +704,17 @@ bool S7CommParser::tryReassembleCpuServiceData(const std::chrono::steady_clock::
             key.dstPort = tcpHeader->dstPort;
         }
     }
-    key.dataUnitReferenceNumber = info.cpuServiceParam.items[0].dataUnitReferenceNumber;
-    const auto& item = info.cpuServiceParam.items[0];
+    key.dataUnitReferenceNumber = info.cpuParam.items[0].dataUnitReferenceNumber;
+    const auto& item = info.cpuParam.items[0];
     if (0x00 == item.lastDataUnit) /* 最后一片 */
     {
         auto iter = m_cpuServiceFragments.find(key);
         if (m_cpuServiceFragments.end() != iter)
         {
             iter->second.lastAccess = ntp;
-            if (info.cpuServiceData.rawData && info.cpuServiceData.length > 0) /* 合并之前缓存的数据 */
+            if (info.cpuData.rawData && info.cpuData.length > 0) /* 合并之前缓存的数据 */
             {
-                iter->second.data.insert(iter->second.data.end(), info.cpuServiceData.rawData,
-                                         info.cpuServiceData.rawData + info.cpuServiceData.length);
+                iter->second.data.insert(iter->second.data.end(), info.cpuData.rawData, info.cpuData.rawData + info.cpuData.length);
             }
             /* 追加长度: 只累加纯数据部分(去掉本片的4字节头部) */
             iter->second.totalDataLength += (info.header.dataLength >= 4 ? info.header.dataLength - 4 : 0);
@@ -727,13 +725,13 @@ bool S7CommParser::tryReassembleCpuServiceData(const std::chrono::steady_clock::
             m_cpuServiceFragments.erase(iter);
             if (info.reassembledData.empty())
             {
-                info.cpuServiceData.rawData = nullptr;
-                info.cpuServiceData.length = 0;
+                info.cpuData.rawData = nullptr;
+                info.cpuData.length = 0;
             }
             else
             {
-                info.cpuServiceData.rawData = info.reassembledData.data();
-                info.cpuServiceData.length = (uint16_t)(info.reassembledData.size());
+                info.cpuData.rawData = info.reassembledData.data();
+                info.cpuData.length = (uint16_t)(info.reassembledData.size());
             }
         }
         /* else: 没有缓存(单帧或缓存丢失), 直接使用当前帧数据 */
@@ -748,9 +746,9 @@ bool S7CommParser::tryReassembleCpuServiceData(const std::chrono::steady_clock::
             frag.lastAccess = ntp;
             frag.firstProtocolDataUnitReference = info.header.protocolDataUnitReference;
             frag.totalDataLength = info.header.dataLength;
-            if (info.cpuServiceData.rawData && info.cpuServiceData.length > 0)
+            if (info.cpuData.rawData && info.cpuData.length > 0)
             {
-                frag.data.insert(frag.data.end(), info.cpuServiceData.rawData, info.cpuServiceData.rawData + info.cpuServiceData.length);
+                frag.data.insert(frag.data.end(), info.cpuData.rawData, info.cpuData.rawData + info.cpuData.length);
             }
             m_cpuServiceFragments[key] = std::move(frag);
         }
@@ -759,10 +757,9 @@ bool S7CommParser::tryReassembleCpuServiceData(const std::chrono::steady_clock::
             iter->second.lastAccess = ntp;
             /* 追加长度: 只累加纯数据部分(去掉本片的4字节头部) */
             iter->second.totalDataLength += (info.header.dataLength >= 4 ? info.header.dataLength - 4 : 0);
-            if (info.cpuServiceData.rawData && info.cpuServiceData.length > 0) /* 追加数据 */
+            if (info.cpuData.rawData && info.cpuData.length > 0) /* 追加数据 */
             {
-                iter->second.data.insert(iter->second.data.end(), info.cpuServiceData.rawData,
-                                         info.cpuServiceData.rawData + info.cpuServiceData.length);
+                iter->second.data.insert(iter->second.data.end(), info.cpuData.rawData, info.cpuData.rawData + info.cpuData.length);
             }
         }
         return false; /* 分片未完整 */
@@ -810,7 +807,6 @@ bool S7CommParser::parseReadWriteParam(const s7comm::RosctrType& rosctr, const u
     {
         return false;
     }
-    param.functionCode = data[0];
     param.itemCount = data[1];
     if (0 == param.itemCount)
     {
@@ -937,7 +933,6 @@ bool S7CommParser::parseRequestDownloadParam(const s7comm::RosctrType& rosctr, c
     {
         return false;
     }
-    param.functionCode = data[0]; /* 字节0: 功能码 */
     if (s7comm::RosctrType::JOB == rosctr)
     {
         if (dataLen < 9) /* 最小长度检查, 确保能安全访问到filenameLen字段(offset=8) */
@@ -945,8 +940,8 @@ bool S7CommParser::parseRequestDownloadParam(const s7comm::RosctrType& rosctr, c
             return true; /* 数据不足, 只解析functionCode */
         }
         /* 字节1: 功能状态(位域) */
-        param.functionStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
-        param.functionStatus.error = (data[1] & 0x02) ? 1 : 0;
+        param.funcStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
+        param.funcStatus.error = (data[1] & 0x02) ? 1 : 0;
         /* 字节2-3: 保留控制字1(大端) */
         param.unknownByteInBlockControl1 = ((uint16_t)data[2] << 8) | data[3];
         /* 字节4-7: 保留控制字2(大端) */
@@ -997,7 +992,7 @@ bool S7CommParser::parseRequestDownloadParam(const s7comm::RosctrType& rosctr, c
         }
         if (copyLen >= 9)
         {
-            param.filename.destinationFilesystem = (char)data[offset + 8];
+            param.filename.destFileSystem = (char)data[offset + 8];
         }
         offset += param.filenameLen; /* 按协议声明的长度跳过, 而非固定9 */
         /* 字节18+: 可选扩展字段 */
@@ -1035,10 +1030,10 @@ bool S7CommParser::parseRequestDownloadParam(const s7comm::RosctrType& rosctr, c
     }
     else if (s7comm::RosctrType::ACK_DATA == rosctr)
     {
-        if (dataLen >= 2) /* 如果 dataLen > 1, 可能包含functionStatus */
+        if (dataLen >= 2) /* 如果 dataLen > 1, 可能包含funcStatus */
         {
-            param.functionStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
-            param.functionStatus.error = (data[1] & 0x02) ? 1 : 0;
+            param.funcStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
+            param.funcStatus.error = (data[1] & 0x02) ? 1 : 0;
         }
     }
     return true;
@@ -1058,7 +1053,6 @@ bool S7CommParser::parseDownloadBlockParam(const s7comm::RosctrType& rosctr, con
     {
         return false;
     }
-    param.functionCode = data[0]; /* 字节0: 功能码 */
     if (s7comm::RosctrType::JOB == rosctr)
     {
         if (dataLen < 9) /* JOB分支最小长度检查: 至少9字节(到filenameLen) */
@@ -1066,8 +1060,8 @@ bool S7CommParser::parseDownloadBlockParam(const s7comm::RosctrType& rosctr, con
             return false;
         }
         /* 字节1: 功能状态(位域) */
-        param.functionStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
-        param.functionStatus.error = (data[1] & 0x02) ? 1 : 0;
+        param.funcStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
+        param.funcStatus.error = (data[1] & 0x02) ? 1 : 0;
         /* 字节2-3: 保留控制字1(大端) */
         param.unknownByteInBlockControl1 = ((uint16_t)data[2] << 8) | data[3];
         /* 字节4-7: 保留控制字2(大端) */
@@ -1118,7 +1112,7 @@ bool S7CommParser::parseDownloadBlockParam(const s7comm::RosctrType& rosctr, con
         }
         if (copyLen >= 9)
         {
-            param.filename.destinationFilesystem = (char)data[offset + 8];
+            param.filename.destFileSystem = (char)data[offset + 8];
         }
     }
     else if (s7comm::RosctrType::ACK_DATA == rosctr)
@@ -1128,8 +1122,8 @@ bool S7CommParser::parseDownloadBlockParam(const s7comm::RosctrType& rosctr, con
             return false;
         }
         /* 字节1: 功能状态(位域) */
-        param.functionStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
-        param.functionStatus.error = (data[1] & 0x02) ? 1 : 0;
+        param.funcStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
+        param.funcStatus.error = (data[1] & 0x02) ? 1 : 0;
     }
     return true;
 }
@@ -1157,7 +1151,6 @@ bool S7CommParser::parseDownloadEndedParam(const s7comm::RosctrType& rosctr, con
     {
         return false;
     }
-    param.functionCode = data[0]; /* 字节0: 功能码 */
     if (s7comm::RosctrType::JOB == rosctr)
     {
         if (dataLen < 9) /* JOB分支最小长度检查: 至少9字节(到filenameLen字段) */
@@ -1165,8 +1158,8 @@ bool S7CommParser::parseDownloadEndedParam(const s7comm::RosctrType& rosctr, con
             return false;
         }
         /* 字节1: 功能状态(位域) */
-        param.functionStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
-        param.functionStatus.error = (data[1] & 0x02) ? 1 : 0;
+        param.funcStatus.moreDataFollowing = (data[1] & 0x01) ? 1 : 0;
+        param.funcStatus.error = (data[1] & 0x02) ? 1 : 0;
         /* 字节2-3: 错误码 */
         param.errorCode = ((uint16_t)data[2] << 8) | data[3];
         /* 字节4-7: 保留控制字 */
@@ -1217,7 +1210,7 @@ bool S7CommParser::parseDownloadEndedParam(const s7comm::RosctrType& rosctr, con
         }
         if (copyLen >= 9)
         {
-            param.filename.destinationFilesystem = (char)data[offset + 8];
+            param.filename.destFileSystem = (char)data[offset + 8];
         }
     }
     else if (s7comm::RosctrType::ACK_DATA == rosctr)
@@ -1241,20 +1234,18 @@ bool S7CommParser::parseStartUploadParam(const s7comm::RosctrType& rosctr, const
     {
         return false;
     }
-    param.functionCode = data[0];
     param.blockTypeLen = data[1];
     param.blockNumLen = data[2];
     param.fileSystemLen = data[3];
     uint32_t offset = 4;
     if (2 == param.blockTypeLen && offset + 2 <= dataLen)
     {
-        param.blockType = ((uint16_t)data[offset] << 8) | data[offset + 1];
+        memcpy(param.blockType, data + offset, 2);
         offset += 2;
     }
     if (param.blockNumLen <= 5 && offset + param.blockNumLen <= dataLen)
     {
         memcpy(param.blockNumber, data + offset, param.blockNumLen);
-        param.blockNumber[param.blockNumLen] = '\0';
         offset += param.blockNumLen;
     }
     if (1 == param.fileSystemLen && offset < dataLen)
@@ -1282,7 +1273,6 @@ bool S7CommParser::parseUploadParam(const s7comm::RosctrType& rosctr, const uint
     {
         return false;
     }
-    param.functionCode = data[0];
     param.uploadId = ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 8) | (uint32_t)data[4];
     return true;
 }
@@ -1310,7 +1300,6 @@ bool S7CommParser::parseEndUploadParam(const s7comm::RosctrType& rosctr, const u
     {
         return false;
     }
-    param.functionCode = data[0];
     param.uploadId = ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 8) | (uint32_t)data[4];
     return true;
 }
@@ -1338,7 +1327,6 @@ bool S7CommParser::parsePlcControlParam(const s7comm::RosctrType& rosctr, const 
     {
         return false;
     }
-    param.functionCode = data[0];
     param.paramCount = data[1];
     uint32_t offset = 2;
     for (uint8_t i = 0; i < param.paramCount && offset < dataLen; ++i)
@@ -1381,7 +1369,6 @@ bool S7CommParser::parsePiServiceParam(const s7comm::RosctrType& rosctr, const u
     {
         return false;
     }
-    param.functionCode = data[0]; /* 功能码 */
     if (dataLen < 10)
     {
         return true;
@@ -1389,31 +1376,31 @@ bool S7CommParser::parsePiServiceParam(const s7comm::RosctrType& rosctr, const u
     param.unknownBytes = ((uint64_t)data[1] << 48) | ((uint64_t)data[2] << 40) | ((uint64_t)data[3] << 32) | ((uint64_t)data[4] << 24)
                          | ((uint64_t)data[5] << 16) | ((uint64_t)data[6] << 8) | data[7];
     /* 参数块长度 */
-    param.parameterBlockLength = ((uint16_t)data[8] << 8) | data[9];
+    param.paramBlockLength = ((uint16_t)data[8] << 8) | data[9];
     /* 解析参数块 */
     uint32_t offset = 10;
-    if (param.parameterBlockLength > 0 && offset + param.parameterBlockLength <= dataLen)
+    if (param.paramBlockLength > 0 && offset + param.paramBlockLength <= dataLen)
     {
         /* 块数量 */
         if (offset < dataLen)
         {
-            param.parameterBlock.numberOfBlocks = data[offset];
+            param.paramBlock.numberOfBlocks = data[offset];
             offset += 1;
         }
         /* 未知字节 */
         if (offset < dataLen)
         {
-            param.parameterBlock.unknownByte = data[offset];
+            param.paramBlock.unknownByte = data[offset];
             offset += 1;
         }
         /* 文件名(8字节ASCII) */
         if (offset + 8 <= dataLen)
         {
-            memcpy(param.parameterBlock.filename.blockType, data + offset, 2);
+            memcpy(param.paramBlock.filename.blockType, data + offset, 2);
             offset += 2;
-            memcpy(param.parameterBlock.filename.blockNumber, data + offset, 5);
+            memcpy(param.paramBlock.filename.blockNumber, data + offset, 5);
             offset += 5;
-            param.parameterBlock.filename.destinationFilesystem = data[offset];
+            param.paramBlock.filename.destFileSystem = data[offset];
             offset += 1;
         }
     }
@@ -1453,7 +1440,6 @@ bool S7CommParser::parsePlcStopParam(const s7comm::RosctrType& rosctr, const uin
     {
         return false;
     }
-    param.functionCode = data[0];
     return true;
 }
 
@@ -1475,14 +1461,12 @@ bool S7CommParser::parseCopyRamToRomParam(const s7comm::RosctrType& rosctr, cons
     {
         return false;
     }
-    param.functionCode = data[0];
     param.paramCount = data[1];
     uint32_t offset = 2;
     if (param.paramCount > 0 && offset + 8 <= dataLen)
     {
-        param.blockType = ((uint16_t)data[offset] << 8) | data[offset + 1];
+        memcpy(param.blockType, data + offset, 2);
         memcpy(param.blockNumber, data + offset + 2, 5);
-        param.blockNumber[5] = '\0';
     }
     return true;
 }
@@ -1505,7 +1489,6 @@ bool S7CommParser::parseCompressParam(const s7comm::RosctrType& rosctr, const ui
     {
         return false;
     }
-    param.functionCode = data[0];
     param.memoryType = data[1];
     param.reserved = data[2];
     return true;
@@ -1530,7 +1513,6 @@ bool S7CommParser::parseBlockOperationParam(const s7comm::RosctrType& rosctr, co
     {
         return false;
     }
-    param.functionCode = data[0];
     param.paramCount = data[1];
     uint32_t offset = 2;
     for (uint8_t i = 0; i < param.paramCount && offset < dataLen; ++i)
@@ -1548,9 +1530,8 @@ bool S7CommParser::parseBlockOperationParam(const s7comm::RosctrType& rosctr, co
         /* 标准块操作参数: 2字节类型 + 5字节编号 + 1字节文件系统 */
         if (0 == i && paramLen >= 8)
         {
-            param.blockType = ((uint16_t)data[offset] << 8) | data[offset + 1];
+            memcpy(param.blockType, data + offset, 2);
             memcpy(param.blockNumber, data + offset + 2, 5);
-            param.blockNumber[5] = '\0';
             param.fileSystem = data[offset + 7];
         }
         offset += paramLen;
@@ -1585,7 +1566,6 @@ bool S7CommParser::parseSetupCommParam(const s7comm::RosctrType& rosctr, const u
     {
         return false;
     }
-    param.functionCode = data[0];
     param.reserved = data[1];
     param.maxAmqCalling = ((uint16_t)data[2] << 8) | data[3];
     param.maxAmqCalled = ((uint16_t)data[4] << 8) | data[5];

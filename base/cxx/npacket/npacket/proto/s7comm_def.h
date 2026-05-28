@@ -2,7 +2,7 @@
 #include <memory>
 #include <vector>
 
-#include "../../../3rdparty/base_npacket/npacket/proto/tpkt_cotp.h"
+#include "tpkt_cotp.h"
 
 namespace npacket
 {
@@ -127,7 +127,6 @@ struct CpuServiceParamItem
  */
 struct CpuServiceParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint8_t itemCount = 0; /* 条目数 */
     std::vector<CpuServiceParamItem> items; /* 参数项列表 */
 };
@@ -173,8 +172,8 @@ struct BlockListOfTypeResponse
 struct BlockListOfTypeData
 {
     bool isRequest = false; /* true=请求, false=响应 */
-    BlockListOfTypeRequest request; /* 请求数据 */
-    BlockListOfTypeResponse response; /* 响应数据 */
+    BlockListOfTypeRequest req; /* 请求数据 */
+    BlockListOfTypeResponse resp; /* 响应数据 */
 };
 
 /**
@@ -210,7 +209,7 @@ struct BlockInfoResponse
     uint8_t interfaceTimestamp[6] = {0}; /* 接口时间戳: 6字节 */
     uint16_t ssbLength = 0; /* SSB长度 */
     uint16_t addLength = 0; /* ADD长度 */
-    uint16_t localdataLength = 0; /* 本地数据长度 */
+    uint16_t localDataLength = 0; /* 本地数据长度 */
     uint16_t mc7CodeLength = 0; /* MC7代码长度 */
     char author[8] = {0}; /* 作者: 8字节ASCII, 以00截止 */
     char family[8] = {0}; /* 家族: 8字节ASCII, 以00截止 */
@@ -229,8 +228,8 @@ struct BlockInfoResponse
 struct BlockInfoData
 {
     bool isRequest = false; /* true=请求, false=响应 */
-    BlockInfoRequest request; /* 请求数据 */
-    BlockInfoResponse response; /* 响应数据 */
+    BlockInfoRequest req; /* 请求数据 */
+    BlockInfoResponse resp; /* 响应数据 */
 };
 
 /**
@@ -292,8 +291,8 @@ struct MessageServiceResponse
 struct MessageServiceData
 {
     bool isRequest = false; /* true=请求, false=响应 */
-    MessageServiceRequest request; /* 请求数据 */
-    MessageServiceResponse response; /* 响应数据 */
+    MessageServiceRequest req; /* 请求数据 */
+    MessageServiceResponse resp; /* 响应数据 */
 };
 
 /**
@@ -364,7 +363,6 @@ struct ReadWriteParamItem
  */
 struct ReadWriteParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint8_t itemCount = 0; /* 条目数 */
     std::vector<ReadWriteParamItem> items; /* 变量条目列表 */
 };
@@ -397,7 +395,7 @@ struct DownloadFilename
     char fileIdentifier = 0; /* 文件标识符, 5f 表示为 '_', 值定义为: '_'表示完整模块, '$'表示子模块 */
     char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
     char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
-    char destinationFilesystem = 0; /* 目标文件系统, 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
+    char destFileSystem = 0; /* 目标文件系统, 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
 };
 
 /**
@@ -405,8 +403,7 @@ struct DownloadFilename
  */
 struct RequestDownloadParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
-    DownloadFunctionStatus functionStatus; /* 功能状态 */
+    DownloadFunctionStatus funcStatus; /* 功能状态 */
     uint16_t unknownByteInBlockControl1 = 0; /* 未知1 */
     uint32_t unknownByteInBlockControl2 = 0; /* 未知2 */
     uint8_t filenameLen = 0; /* 文件名长度 */
@@ -429,8 +426,7 @@ struct RequestDownloadData
  */
 struct DownloadBlockParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
-    DownloadFunctionStatus functionStatus; /* 功能状态 */
+    DownloadFunctionStatus funcStatus; /* 功能状态 */
     uint16_t unknownByteInBlockControl1 = 0; /* 未知1 */
     uint32_t unknownByteInBlockControl2 = 0; /* 未知2 */
     uint8_t filenameLen = 0; /* 文件名长度 */
@@ -452,8 +448,7 @@ struct DownloadBlockData
  */
 struct DownloadEndedParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
-    DownloadFunctionStatus functionStatus; /* 功能状态 */
+    DownloadFunctionStatus funcStatus; /* 功能状态 */
     uint16_t errorCode = 0; /* 错误码 */
     uint32_t unknownByteInBlockControl = 0; /* 未知 */
     uint8_t filenameLen = 0; /* 文件名长度 */
@@ -472,13 +467,12 @@ struct DownloadEndedData
  */
 struct StartUploadParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint8_t blockTypeLen = 0;
     uint8_t blockNumLen = 0;
     uint8_t fileSystemLen = 0;
-    uint16_t blockType = 0;
-    char blockNumber[6] = {0};
-    char fileSystem = 0;
+    char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
+    char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
+    char fileSystem = 0; /* 文件系统, 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
 };
 
 /**
@@ -495,7 +489,6 @@ struct StartUploadData
  */
 struct UploadParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint32_t uploadId = 0; /* 上传会话ID(大端) */
 };
 
@@ -515,7 +508,6 @@ struct UploadData
  */
 struct EndUploadParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint32_t uploadId = 0; /* 上传会话ID (大端) */
 };
 
@@ -534,7 +526,6 @@ struct EndUploadData
  */
 struct PlcControlParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint8_t paramCount = 0; /* 参数字符串数量 */
     std::vector<std::string> params; /* 参数列表, 如"P_PROGRAM" */
 };
@@ -555,7 +546,7 @@ struct PiServiceFilename
 {
     char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
     char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
-    char destinationFilesystem = 0; /* 目标文件系统, 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
+    char destFileSystem = 0; /* 目标文件系统, 50 表示为 'P', 值定义为: 'A'表示Active, 'P'表示Passive */
 };
 
 /**
@@ -573,10 +564,9 @@ struct PiServiceParameterBlock
  */
 struct PiServiceParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint64_t unknownBytes = 0; /* 未知字节 */
-    uint16_t parameterBlockLength = 0; /* 参数块长度 */
-    PiServiceParameterBlock parameterBlock; /* 参数块 */
+    uint16_t paramBlockLength = 0; /* 参数块长度 */
+    PiServiceParameterBlock paramBlock; /* 参数块 */
     uint8_t serviceNameLength = 0; /* 服务名长度 */
     char serviceName[32] = {0}; /* 服务名, 如: "_INSE", "_MODU"等 */
 };
@@ -596,7 +586,6 @@ struct PiServiceData
  */
 struct PlcStopParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
 };
 
 /**
@@ -613,10 +602,9 @@ struct PlcStopData
  */
 struct CopyRamToRomParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint8_t paramCount = 0; /* 参数个数 */
-    uint16_t blockType = 0; /* 块类型(ASCII) */
-    char blockNumber[6] = {0}; /* 块号 */
+    char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
+    char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
 };
 
 /**
@@ -633,7 +621,6 @@ struct CopyRamToRomData
  */
 struct CompressParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint8_t memoryType = 0; /* 内存类型: 0=Load memory, 1=Work memory */
     uint8_t reserved = 0; /* 保留字段 */
 };
@@ -653,10 +640,9 @@ struct CompressData
  */
 struct BlockOperationParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint8_t paramCount = 0;
-    uint16_t blockType = 0; /* ASCII编码 */
-    char blockNumber[6] = {0}; /* ASCII编码块号 */
+    char blockType[2] = {0}; /* 块类型, 30 41 表示为 "0A", 值定义: 0x0A=DB, 0x0B=OB, 0x0C=FC, 0x0D=FB, 0x0E=... */
+    char blockNumber[5] = {0}; /* 块号, 30 30 30 30 31 表示为 "00001" */
     char fileSystem = 0; /* 'A' or 'P' */
 };
 
@@ -676,7 +662,6 @@ struct BlockOperationData
  */
 struct SetupCommParam
 {
-    uint8_t functionCode = 0; /* 功能码 */
     uint8_t reserved = 0;
     uint16_t maxAmqCalling = 0; /* 请求方最大并行作业数 */
     uint16_t maxAmqCalled = 0; /* 响应方最大并行作业数 */
@@ -700,18 +685,18 @@ struct SetupCommData
 struct S7CommInfo
 {
     S7Header header; /* 头部 */
-    const uint8_t* rawParameter = nullptr; /* 原始参数域 */
+    const uint8_t* rawParam = nullptr; /* 原始参数域 */
     const uint8_t* rawData = nullptr; /* 原始数据域 */
-    uint8_t functionCode = 0; /* 当前功能码 */
+    uint8_t funcCode = 0; /* 当前功能码 */
 
-    CpuServiceParam cpuServiceParam; /* CPU服务(0x00) */
-    CpuServiceData cpuServiceData; /* CPU服务数据 */
+    CpuServiceParam cpuParam; /* CPU服务(0x00) */
+    CpuServiceData cpuData; /* CPU服务数据 */
 
     ReadWriteParam rwParam; /* 读/写参数(0x04/0x05) */
     std::vector<ReadWriteData> rwData; /* 读/写数据 */
 
-    RequestDownloadParam requestDownloadParam; /* 请求下载(0x1A) */
-    RequestDownloadData requestDownloadData; /* 请求下载响应数据 */
+    RequestDownloadParam reqDownloadParam; /* 请求下载(0x1A) */
+    RequestDownloadData reqDownloadData; /* 请求下载响应数据 */
 
     DownloadBlockParam downloadBlockParam; /* 下载块(0x1B) */
     DownloadBlockData downloadBlockData; /* 下载块数据 */
