@@ -1,5 +1,6 @@
 #include "net.h"
 
+#include <map>
 #include <string.h>
 #ifdef _WIN32
 #include <WinSock2.h>
@@ -9,6 +10,7 @@
 #else
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <linux/if_packet.h>
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <sys/ioctl.h>
@@ -244,27 +246,81 @@ std::vector<Net::IfaceInfo> Net::getAllInterfaces()
         struct ifaddrs* ifList = NULL;
         if (getifaddrs(&ifList) >= 0)
         {
+            /* step1. 收集所有唯一接口名(含DOWN), 同时从AF_PACKET获取链路层信息 */
+            std::vector<std::string> ifNames;
+            std::map<std::string, IfaceInfo> pktMap; /* 从AF_PACKET解析的网卡类型和MAC */
             for (struct ifaddrs* ifa = ifList; NULL != ifa; ifa = ifa->ifa_next)
             {
-                bool alreadyExist = false;
-                for (size_t i = 0; i < ifaceList.size(); ++i)
+                if (!ifa->ifa_name)
                 {
-                    if (0 == ifaceList[i].name.compare(ifa->ifa_name))
+                    continue;
+                }
+                bool alreadyExist = false;
+                for (const auto& name : ifNames)
+                {
+                    if (name == ifa->ifa_name)
                     {
                         alreadyExist = true;
                         break;
                     }
                 }
-                if (alreadyExist)
+                if (!alreadyExist)
                 {
-                    continue;
+                    ifNames.push_back(ifa->ifa_name);
                 }
+                /* 从AF_PACKET获取网卡类型和MAC地址(支持DOWN状态) */
+                if (ifa->ifa_addr && AF_PACKET == ifa->ifa_addr->sa_family)
+                {
+                    struct sockaddr_ll* sll = (struct sockaddr_ll*)ifa->ifa_addr;
+                    IfaceInfo& iface = pktMap[ifa->ifa_name];
+                    iface.name = ifa->ifa_name;
+                    /* 网卡类型 */
+                    iface.realType = sll->sll_hatype;
+                    switch (iface.realType)
+                    {
+                    case ARPHRD_ETHER:
+                        iface.type = IfaceInfo::Type::ethernet;
+                        break;
+                    case ARPHRD_PRONET:
+                        iface.type = IfaceInfo::Type::tokenring;
+                        break;
+                    case ARPHRD_FDDI:
+                        iface.type = IfaceInfo::Type::fddi;
+                        break;
+                    case ARPHRD_PPP:
+                        iface.type = IfaceInfo::Type::ppp;
+                        break;
+                    case ARPHRD_LOOPBACK:
+                        iface.type = IfaceInfo::Type::loopback;
+                        break;
+                    case ARPHRD_SLIP:
+                        iface.type = IfaceInfo::Type::slip;
+                        break;
+                    default:
+                        iface.type = IfaceInfo::Type::other;
+                        break;
+                    }
+                    /* MAC地址 */
+                    iface.mac.clear();
+                    for (int i = 0; i < sll->sll_halen && i < 6; ++i)
+                    {
+                        char hex[4] = {0};
+                        snprintf(hex, sizeof(hex), "%02x", sll->sll_addr[i]);
+                        iface.mac.emplace_back(hex);
+                    }
+                }
+            }
+            freeifaddrs(ifList);
+            /* step2. 逐个接口获取详细信息 */
+            for (const auto& name : ifNames)
+            {
                 IfaceInfo iface;
                 struct ifreq ifreq;
+                memset(&ifreq, 0, sizeof(ifreq));
+                strcpy(ifreq.ifr_name, name.c_str());
                 /* 网卡名 */
-                strcpy(ifreq.ifr_name, ifa->ifa_name);
-                iface.name = ifa->ifa_name;
-                /* 网卡类型,MAC地址 */
+                iface.name = name;
+                /* 网卡类型, MAC地址 */
                 if (!ioctl(fd, SIOCGIFHWADDR, &ifreq))
                 {
                     /* 网卡类型 */
@@ -301,6 +357,21 @@ std::vector<Net::IfaceInfo> Net::getAllInterfaces()
                         iface.mac.emplace_back(hex);
                     }
                 }
+                else if (pktMap.end() != pktMap.find(name)) /* ioctl失败时, 使用从AF_PACKET获取的信息(支持DOWN状态) */
+                {
+                    iface.realType = pktMap[name].realType;
+                    iface.type = pktMap[name].type;
+                    iface.mac = pktMap[name].mac;
+                }
+                /* 接口状态 */
+                if (!ioctl(fd, SIOCGIFFLAGS, &ifreq))
+                {
+                    iface.isUp = 0 != (ifreq.ifr_flags & IFF_UP);
+                }
+                else
+                {
+                    iface.isUp = false;
+                }
                 /* IPv4地址 */
                 if (!ioctl(fd, SIOCGIFADDR, &ifreq))
                 {
@@ -325,7 +396,6 @@ std::vector<Net::IfaceInfo> Net::getAllInterfaces()
                 /* 保存到列表 */
                 ifaceList.emplace_back(iface);
             }
-            freeifaddrs(ifList);
         }
         close(fd);
     }

@@ -68,13 +68,14 @@ public:
 #endif
 
         std::string name; /* 名称 */
-        int realType; /* 网卡类型(实际的类型值, 不同平台可能不一样) */
-        Type type; /* 网卡类型(转换后的类型值) */
+        int realType = 0; /* 网卡类型(实际的类型值, 不同平台可能不一样) */
+        Type type = Type::other; /* 网卡类型(转换后的类型值) */
         std::vector<std::string> mac; /* MAC地址 */
 #ifdef _WIN32
         std::string desc; /* 描述 */
         std::vector<IPv4Mask> ipv4List; /* IPv4列表 */
 #else
+        bool isUp = false; /* 网卡是否启动: true=UP, false=DOWN */
         std::string ipv4; /* IPv4地址 */
         std::string netmask; /* 子网掩码 */
         std::string broadcast; /* 广播的地址 */
