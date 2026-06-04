@@ -129,15 +129,6 @@ Net::IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmas
     sprintf(broadcast, "%d.%d.%d.%d", b1, b2, b3, b4);
 #endif
     info.broadcast = broadcast;
-    /* 计算默认网关: 网络地址 + 主机地址(除最后一位其他都置1) */
-    unsigned char g1 = n1 + h1, g2 = n2 + h2, g3 = n3 + h3, g4 = n4 + (h4 | 0xFE);
-    char defaultGateway[16] = {0};
-#ifdef _WIN32
-    sprintf_s(defaultGateway, sizeof(defaultGateway), "%d.%d.%d.%d", g1, g2, g3, g4);
-#else
-    sprintf(defaultGateway, "%d.%d.%d.%d", g1, g2, g3, g4);
-#endif
-    info.defaultGateway = defaultGateway;
     /* 计算主机数: 255.255.255.255 - 子网掩码 - 2 */
     static const unsigned long long MAX_COUNT = (unsigned long long)256 * 256 * 256 * 256;
     auto sCount = (unsigned long long)m1 * (256 * 256 * 256) + (unsigned long long)m2 * (256 * 256) + (unsigned long long)m3 * (256) + m4;

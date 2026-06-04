@@ -16,7 +16,6 @@ void testNet()
     printf("--- network: %s\n", ipv4Info.network.c_str());
     printf("--- host: %s\n", ipv4Info.host.c_str());
     printf("--- broadcast: %s\n", ipv4Info.broadcast.c_str());
-    printf("--- default gateway: %s\n", ipv4Info.defaultGateway.c_str());
     printf("--- host count: %d\n", ipv4Info.hostCount);
     printf("\n-------------------- net card:\n");
     auto interfaceList = utility::Net::getAllInterfaces();

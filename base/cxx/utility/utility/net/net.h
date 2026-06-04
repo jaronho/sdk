@@ -17,7 +17,6 @@ public:
         std::string network; /* 网络地址, 例如: 192.168.3.0 */
         std::string host; /* 主机地址, 例如: 0.0.0.10 */
         std::string broadcast; /* 广播地址, 例如: 192.168.3.255 */
-        std::string defaultGateway; /* 默认网关, 例如: 192.168.3.254 */
         int hostCount; /* 主机数, 例如: 254 */
     };
 
@@ -98,7 +97,7 @@ public:
     static bool isIPv4Inner(const std::string& ip);
 
     /**
-     * @brief 根据IPv4地址和子网掩码计算IPv4信息
+     * @brief 根据IPv4地址和子网掩码计算IPv4信息(说明: 网关无法自动计算, 必须是人为配置)
      * @param ip IPv4地址, 例如: 192.168.3.10
      * @param netmask 子网掩码, 例如: 255.255.255.0
      * @return IPv4信息
