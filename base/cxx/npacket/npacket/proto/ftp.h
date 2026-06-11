@@ -50,11 +50,11 @@ public:
      * @param ntp 数据包接收时间点
      * @param totalLen 数据包总长度
      * @param header 传输层头部
-     * @param flag 命令/代码
+     * @param cmdOrCode 命令/响应码
      * @param arg 参数
      */
     using CTRL_PKT_CALLBACK = std::function<void(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen,
-                                                 const ProtocolHeader* header, const std::string& flag, const std::string& arg)>;
+                                                 const ProtocolHeader* header, const std::string& cmdOrCode, const std::string& arg)>;
 
     /**
      * @brief 数据包回调

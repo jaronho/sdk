@@ -750,10 +750,6 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
     {
         return 6; /* 达到最大递归深度 */
     }
-    if (!payload || 0 == payloadLen)
-    {
-        return 4;
-    }
     /* step1. 从传输层头部提取端口 */
     uint16_t srcPort = 0, dstPort = 0;
     if (header)
@@ -794,7 +790,10 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
                 combinedData.reserve(streamInfo->streams.size() + payloadLen);
                 combinedData.insert(combinedData.end(), std::make_move_iterator(streamInfo->streams.begin()),
                                     std::make_move_iterator(streamInfo->streams.end()));
-                combinedData.insert(combinedData.end(), payload, payload + payloadLen);
+                if (payload && payloadLen > 0)
+                {
+                    combinedData.insert(combinedData.end(), payload, payload + payloadLen);
+                }
                 fullData = combinedData.data();
                 fullDataLen = combinedData.size();
                 /* 清空已合并的缓存, 避免重复处理 */
@@ -864,7 +863,10 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
             {
                 /* 恢复历史状态: 历史未消费数据 + 新数据 */
                 context.pendingData = std::move(iterPending->second);
-                context.pendingData.insert(context.pendingData.end(), fullData, fullData + fullDataLen);
+                if (fullData && fullDataLen > 0)
+                {
+                    context.pendingData.insert(context.pendingData.end(), fullData, fullData + fullDataLen);
+                }
                 context.data = context.pendingData.data();
                 context.dataLen = (uint32_t)context.pendingData.size();
                 context.offset = 0; /* 重置, 因为已经合并到新buffer */
@@ -895,7 +897,7 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
         {
             continue;
         }
-        while (context.offset < context.dataLen && context.isActive) /* 每个解析器独立解析循环, 直到消费完所有数据或失败 */
+        while (context.offset <= context.dataLen && context.isActive) /* 每个解析器独立解析循环, 直到消费完所有数据或失败 */
         {
             uint32_t remainingLen = context.dataLen - context.offset;
             ProtocolData pd;
@@ -904,7 +906,10 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
             pd.ntp = ntp;
             pd.totalLen = totalLen;
             pd.header = header;
-            pd.payload = context.data + context.offset;
+            if (context.data)
+            {
+                pd.payload = context.data + context.offset;
+            }
             pd.payloadLen = remainingLen;
             pd.reassemblyFlag = reassemblyFlag;
             uint32_t consumeLen = 0;
@@ -941,7 +946,7 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
             }
             else if (ParseResult::CONTINUE == result) /* 需要更多数据: 保存未消费部分 */
             {
-                if (remainingLen > 0) /* 拷贝未消费数据(存储隔离) */
+                if (context.data && remainingLen > 0) /* 拷贝未消费数据(存储隔离) */
                 {
                     context.pendingData.assign(context.data + context.offset, context.data + context.offset + remainingLen);
                 }
