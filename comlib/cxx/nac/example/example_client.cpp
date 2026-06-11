@@ -288,7 +288,7 @@ int main(int argc, char* argv[])
                 }
                 auto seqId = s_accessCtrl->sendMsg(
                     bizCode, 0, data,
-                    [&, bizCode, count](bool ok, const std::string& data) {
+                    [&, count](int32_t bizCode, int64_t seqId, bool ok, const std::string& data) {
                         INFO_LOG(s_logger, "响应第[{:5d}]次消息, bizCode: {} {}", count, bizCode, ok ? "成功." : "失败.");
                     },
                     10);

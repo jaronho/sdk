@@ -72,7 +72,7 @@ public:
         if (wrapper)
         {
             WARN_LOG(wrapper->myLogger(), "会话超时({}秒): 未收到响应数据, bizCode[{}], seqId[{}].", m_timeout, m_bizCode, m_seqId);
-            wrapper->onRespCallback(false, m_bizCode, m_seqId, true, m_respCb);
+            wrapper->onRespCallback(m_bizCode, m_seqId, true, false, m_respCb);
         }
     }
 
@@ -81,7 +81,7 @@ public:
         stopTimer();
         if (m_respCb)
         {
-            m_respCb(true, m_bizCode, m_seqId, data);
+            m_respCb(m_bizCode, m_seqId, true, data);
         }
     }
 
@@ -90,7 +90,7 @@ public:
         stopTimer();
         if (m_respCb)
         {
-            m_respCb(false, m_bizCode, m_seqId, "");
+            m_respCb(m_bizCode, m_seqId, false, "");
         }
     }
 
@@ -126,7 +126,7 @@ int64_t SessionWrapper::sendMsg(int32_t bizCode, int64_t seqId, const std::strin
                         {
                             if (code) /* 发送失败 */
                             {
-                                self->onRespCallback(false, bizCode, seqId, timeout > 0, callback);
+                                self->onRespCallback(bizCode, seqId, timeout > 0, false, callback);
                             }
                             else /* 发送成功 */
                             {
@@ -136,7 +136,7 @@ int64_t SessionWrapper::sendMsg(int32_t bizCode, int64_t seqId, const std::strin
                                 }
                                 else /* 不需要应答, 直接通知成功 */
                                 {
-                                    self->onRespCallback(true, bizCode, seqId, false, callback);
+                                    self->onRespCallback(bizCode, seqId, false, true, callback);
                                 }
                             }
                         }
@@ -203,7 +203,7 @@ std::shared_ptr<threading::Executor> SessionWrapper::myTimerExecutor()
     return nullptr;
 }
 
-void SessionWrapper::onRespCallback(bool sendOk, int32_t bizCode, int64_t seqId, bool waitResp, const RespCallback& callback)
+void SessionWrapper::onRespCallback(int32_t bizCode, int64_t seqId, bool waitResp, bool sendOk, const RespCallback& callback)
 {
     bool found = false;
     {
@@ -221,7 +221,7 @@ void SessionWrapper::onRespCallback(bool sendOk, int32_t bizCode, int64_t seqId,
         auto beg = std::chrono::steady_clock::now();
         if (callback)
         {
-            callback(sendOk, bizCode, seqId, "");
+            callback(bizCode, seqId, sendOk, "");
         }
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg);
         if (elapsed.count() > 0)

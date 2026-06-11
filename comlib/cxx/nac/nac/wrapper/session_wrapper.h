@@ -18,12 +18,12 @@ class SessionWrapper : public std::enable_shared_from_this<SessionWrapper>
 public:
     /**
      * @brief 响应回调
-     * @param sendOk 是否发送成功
      * @param bizCode 业务码
      * @param seqId 序列ID
+     * @param sendOk 是否发送成功
      * @param data 数据
      */
-    using RespCallback = std::function<void(bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data)>;
+    using RespCallback = std::function<void(int32_t bizCode, int64_t seqId, bool sendOk, const std::string& data)>;
 
 public:
     /**
@@ -87,13 +87,13 @@ protected:
 private:
     /**
      * @brief 响应回调
-     * @param sendOk 是否发送成功
      * @param bizcode 业务码
      * @param seqId 序列ID
      * @param waitResp 是否需要等待响应数据
+     * @param sendOk 是否发送成功
      * @param callback 响应回调
      */
-    void onRespCallback(bool sendOk, int32_t bizCode, int64_t seqId, bool waitResp, const RespCallback& callback);
+    void onRespCallback(int32_t bizCode, int64_t seqId, bool waitResp, bool sendOk, const RespCallback& callback);
 
 private:
     class Session;

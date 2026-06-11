@@ -15,10 +15,12 @@ namespace tcli
 {
 /**
  * @brief 响应回调
+ * @param bizCode 业务码
+ * @param seqId 序列ID
  * @param ok 是否成功
  * @param data 数据
  */
-using RespCallback = std::function<void(bool ok, const std::string& data)>;
+using RespCallback = std::function<void(int32_t bizCode, int64_t seqId, bool ok, const std::string& data)>;
 
 /**
  * @brief 业务执行器钩子
