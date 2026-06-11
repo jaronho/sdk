@@ -618,7 +618,7 @@ int64_t FileInfo::write(const char* data, size_t length, bool isAppend, int* err
         }
         return -1;
     }
-    auto written = write(f, 0, data, length);
+    auto written = write(f, isAppend ? -1 : 0, data, length);
     if (written == length)
     {
         fflush(f);
@@ -893,7 +893,7 @@ bool FileInfo::readLine(FILE* f, std::string& line, std::string& bomFlag, std::s
     return true;
 }
 
-int64_t FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
+int64_t FileInfo::write(FILE* f, int64_t offset, const char* data, size_t count)
 {
     if (!f || !data)
     {
@@ -907,7 +907,7 @@ int64_t FileInfo::write(FILE* f, size_t offset, const char* data, size_t count)
     return fwrite(data, 1, count, f);
 }
 
-int64_t FileInfo::write(FILE* f, size_t offset, const std::string& data)
+int64_t FileInfo::write(FILE* f, int64_t offset, const std::string& data)
 {
     return write(f, offset, data.c_str(), data.size());
 }

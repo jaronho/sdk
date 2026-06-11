@@ -270,21 +270,21 @@ public:
     /**
      * @brief 向文件中写入数据
      * @param f 文件指针
-     * @param offset 写入的偏移值, 为0时表示从头开始
+     * @param offset 写入的偏移值, <0表示从末尾开始写, >=0时表示从指定位置开始写
      * @param data 数据
      * @param count 要写入的字节数
      * @return 写入的数据长度
      */
-    static int64_t write(FILE* f, size_t offset, const char* data, size_t count);
+    static int64_t write(FILE* f, int64_t offset, const char* data, size_t count);
 
     /**
      * @brief 向文件中写入数据
      * @param f 文件指针
-     * @param offset 写入的偏移值, 为0时表示从头开始
+     * @param offset 写入的偏移值, <0表示从末尾开始写, >=0时表示从指定位置开始写
      * @param data 数据
      * @return 写入的数据长度
      */
-    static int64_t write(FILE* f, size_t offset, const std::string& data);
+    static int64_t write(FILE* f, int64_t offset, const std::string& data);
 
     /**
      * @brief 编辑文件中的数据
