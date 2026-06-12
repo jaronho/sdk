@@ -67,11 +67,10 @@ struct CallbackConfig
 struct IpReassemblyConfig
 {
     bool enable = true; /* 是否启用IP分片重组功能 */
-    size_t fragTimeout = 30000; /* 分片重组超时时间(单位:毫秒), 值: [1秒, 5分钟] */
-    size_t fragClearInterval = 10001; /* 分片缓存清理间隔(单位:毫秒), 值: [5秒, 1分钟] */
-    size_t maxReassembleSize = 65535; /* 最大重组后数据包大小(单位:字节), 防止分片攻击, 值: [1280B, 16Mb] */
-    size_t maxFragSize = 8192; /* 单个分片最大负载大小(单位:字节), 防止大分片攻击, 值: [8B, 16Kb] */
-    size_t maxFragmentCount = 32; /* 每组分片最大数量(单位:个数), 防止分片攻击, 值: [1, 256] */
+    size_t timeout = 10000; /* 分片重组超时时间(单位:毫秒), 值: [1秒, 5分钟] */
+    size_t maxReassembleSize = (128 * 1024); /* 最大重组后数据包大小(单位:字节), 防止分片攻击, 值: [1280B, 16Mb] */
+    size_t maxFragSize = (8 * 1024); /* 单个分片最大负载大小(单位:字节), 防止大分片攻击, 值: [8B, 16Kb] */
+    size_t maxFragmentCount = 64; /* 每组分片最大数量(单位:个数), 防止分片攻击, 值: [1, 256] */
     size_t maxCacheCount = 4096; /* 最大分片缓存数量(单位:个数), 防止分片攻击, 值: [1, 10000] */
     size_t maxRecursionDepth = 3; /* 最大递归深度(单位:深度), 防止分片嵌套攻击, 值: [1, 5] */
 };
@@ -82,14 +81,11 @@ struct IpReassemblyConfig
 struct TcpReassemblyConfig
 {
     bool enable = true; /* 是否启用IP分片重组功能 */
-    size_t streamTimeout = 30000; /* 流超时时间(单位:毫秒), 值: [1秒, 5分钟] */
-    size_t streamClearInterval = 10001; /* 流缓存清理间隔(单位:毫秒), 值: [5秒, 1分钟] */
-    size_t maxStreamSize = 1048576; /* 单个流最大缓存大小(单位:字节), 值: [64Kb, 64Mb]*/
+    size_t timeout = 30000; /* 流超时时间(单位:毫秒), 值: [1秒, 5分钟] */
+    size_t maxStreamSize = (5 * 1024 * 1024); /* 单个流最大缓存大小(单位:字节), 值: [64Kb, 64Mb]*/
     size_t maxCacheCount = 16384; /* 最大流缓存数量(单位:个数), 值: [1000, 100000] */
-    size_t maxSegmentsPerStream = 128; /* 单流最大乱序段数(单位:个数), 防止DoS攻击, 值: [1, 256] */
-    size_t finWaitTimeout = 5000; /* 收到FIN后等待乱序数据重组的超时时间(单位:毫秒), 值: [1, streamTimeout] */
-    size_t gapSizeThreshold = 131072; /* 尽力交付阈值(单位:字节), 0-等待丢包数据, >0-当>=该值(跳过丢包), 当<该值(流重置), 值: [0, 1Mb] */
-    size_t maxPendingSize = 65536; /* 协议解析器单流最大缓存大小(单位:字节), 值: [1024, maxStreamSize/4] */
+    size_t maxSegmentsPerStream = 1024; /* 单流最大乱序段数(单位:个数), 防止DoS攻击, 值: [1, 10000] */
+    size_t maxPendingSize = (128 * 1024); /* 协议解析器单流最大缓存大小(单位:字节), 值: [1024, maxStreamSize/4] */
 };
 
 /**
@@ -188,7 +184,6 @@ private:
         phmap::flat_hash_map<uint32_t, uint32_t> parserConsumedOffset; /* 解析器已消费的字节数, key-协议, value-偏移值 */
         phmap::flat_hash_map<uint32_t, std::vector<uint8_t>> parserPendingData; /* 解析器未消费的数据, key-协议, value-数据 */
         bool finReceived = false; /* 是否已收到FIN标记 */
-        std::chrono::steady_clock::time_point finRecvTime; /* FIN接收时间 */
     };
 
 private:
@@ -362,13 +357,6 @@ private:
      * @param ntp 当前时间点
      */
     void cleanupTcpStreamCache(const std::chrono::steady_clock::time_point& ntp);
-
-    /**
-     * @brief 获取最早段
-     * @param segments 段缓存
-     * @return 最早段迭代器
-     */
-    phmap::flat_hash_map<uint32_t, TcpSegment>::iterator oldestSegment(phmap::flat_hash_map<uint32_t, TcpSegment>& segments);
 
     /**
      * @brief 检查并处理TCP流
