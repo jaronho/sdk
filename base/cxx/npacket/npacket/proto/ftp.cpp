@@ -357,34 +357,47 @@ void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp,
                                const std::string& ip, uint32_t port)
 {
     auto key = ip + ":" + std::to_string(port);
-    if (m_dataConnectList.end() == m_dataConnectList.find(key))
+    if (header && m_dataConnectList.end() == m_dataConnectList.find(key))
     {
-        std::string srcAddr, dstAddr;
-        if (NetworkProtocol::IPv4 == header->parent->getProtocol())
+        std::string srcMac, dstMac, srcAddr, dstAddr;
+        if (header->parent)
         {
-            auto ipv4Header = (const Ipv4Header*)(header->parent);
-            ipv4Header->srcAddrStr(srcAddr);
-            ipv4Header->dstAddrStr(dstAddr);
-        }
-        else if (NetworkProtocol::IPv6 == header->parent->getProtocol())
-        {
-            auto ipv6Header = (const Ipv6Header*)(header->parent);
-            ipv6Header->srcAddrStr(srcAddr);
-            ipv6Header->dstAddrStr(dstAddr);
+            if (header->parent->parent)
+            {
+                auto ethHeader = (const EthernetIIHeader*)(header->parent->parent);
+                ethHeader->srcMacStr(srcMac);
+                ethHeader->dstMacStr(dstMac);
+            }
+            if (NetworkProtocol::IPv4 == header->parent->getProtocol())
+            {
+                auto ipv4Header = (const Ipv4Header*)(header->parent);
+                ipv4Header->srcAddrStr(srcAddr);
+                ipv4Header->dstAddrStr(dstAddr);
+            }
+            else if (NetworkProtocol::IPv6 == header->parent->getProtocol())
+            {
+                auto ipv6Header = (const Ipv6Header*)(header->parent);
+                ipv6Header->srcAddrStr(srcAddr);
+                ipv6Header->dstAddrStr(dstAddr);
+            }
         }
         auto tcpHeader = (const TcpHeader*)(header);
         auto dci = std::make_shared<DataConnectInfo>();
         if (DataMode::ACTIVE == mode) /* 主动模式 */
         {
+            dci->ctrl.clientMac = srcMac;
             dci->ctrl.clientIp = srcAddr;
             dci->ctrl.clientPort = tcpHeader->srcPort;
+            dci->ctrl.serverMac = dstMac;
             dci->ctrl.serverIp = dstAddr;
             dci->ctrl.serverPort = tcpHeader->dstPort;
         }
         else /* 被动模式 */
         {
+            dci->ctrl.clientMac = dstMac;
             dci->ctrl.clientIp = dstAddr;
             dci->ctrl.clientPort = tcpHeader->dstPort;
+            dci->ctrl.serverMac = srcMac;
             dci->ctrl.serverIp = srcAddr;
             dci->ctrl.serverPort = tcpHeader->srcPort;
         }

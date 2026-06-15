@@ -27,8 +27,10 @@ public:
      */
     struct CtrlInfo
     {
+        std::string clientMac; /* 客户端MAC */
         std::string clientIp; /* 客户端IP */
         uint32_t clientPort = 0; /* 客户端控制端口 */
+        std::string serverMac; /* 服务端MAC */
         std::string serverIp; /* 服务端IP */
         uint32_t serverPort = 0; /* 服务端控制端口 */
         DataMode mode = DataMode::ACTIVE; /* 数据连接模式 */
