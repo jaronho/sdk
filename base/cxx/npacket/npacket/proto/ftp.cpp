@@ -1,5 +1,6 @@
 #include "ftp.h"
 
+#include <math.h>
 #include <unordered_map>
 
 namespace npacket
@@ -117,6 +118,87 @@ const std::unordered_map<std::string, int> CODE_MAP = {
     {"553", 0} /* 请求的操作未被执行, 文件名不合法 */
 };
 
+/**
+ * @brief IPv4字符串转4字节二进制数组
+ */
+bool str2IPv4(const std::string& str, uint8_t out[4])
+{
+    int a, b, c, d;
+    if (std::sscanf(str.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d) != 4)
+    {
+        return false;
+    }
+    if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255)
+    {
+        return false;
+    }
+    out[0] = static_cast<uint8_t>(a);
+    out[1] = static_cast<uint8_t>(b);
+    out[2] = static_cast<uint8_t>(c);
+    out[3] = static_cast<uint8_t>(d);
+    return true;
+}
+
+/**
+ * @brief IPv6字符串转16字节二进制数组, 支持格式: 2001:0db8:85a3:0000:0000:8a2e:0370:7334, 压缩格式::
+ */
+bool str2IPv6(const std::string& str, uint8_t out[16])
+{
+    memset(out, 0, 16);
+    uint16_t segments[8] = {0};
+    int segIdx = 0;
+    int zeroCompressPos = -1;
+    size_t pos = 0;
+    size_t len = str.size();
+    for (size_t i = 0; i + 1 < len; ++i)
+    {
+        if (':' == str[i] && ':' == str[i + 1])
+        {
+            zeroCompressPos = segIdx;
+            break;
+        }
+    }
+    while (pos < len && segIdx < 8)
+    {
+        if (':' == str[pos])
+        {
+            pos++;
+            continue;
+        }
+        char buf[5] = {0};
+        int bufIdx = 0;
+        while (pos < len && ':' != str[pos] && bufIdx < 4)
+        {
+            buf[bufIdx++] = str[pos++];
+        }
+        uint16_t val = 0;
+        std::sscanf(buf, "%hx", &val);
+        segments[segIdx++] = val;
+        if (pos < len && ':' == str[pos])
+        {
+            pos++;
+        }
+    }
+    if (-1 != zeroCompressPos)
+    {
+        int moveCnt = segIdx - zeroCompressPos;
+        for (int i = 7; i >= zeroCompressPos + moveCnt; --i)
+        {
+            segments[i] = segments[i - moveCnt];
+        }
+        for (int i = zeroCompressPos; i < 8 - moveCnt; ++i)
+        {
+            segments[i] = 0;
+        }
+    }
+    for (int i = 0; i < 8; ++i)
+    {
+        out[i * 2] = (uint8_t)((segments[i] >> 8) & 0xFF);
+        out[i * 2 + 1] = (uint8_t)(segments[i] & 0xFF);
+    }
+    return true;
+}
+
 FtpParser::FtpParser(uint32_t dcTimeout) : m_dataConnectTimeout(dcTimeout > 0 ? dcTimeout : 15) {}
 
 uint32_t FtpParser::getProtocol() const noexcept
@@ -220,7 +302,7 @@ bool FtpParser::parseRequest(const std::chrono::steady_clock::time_point& ntp, u
         if ("PORT" == cmd) /* 主动模式, 解析客户端数据端口(服务端数据端口=服务端控制端口-1) */
         {
             std::string ip;
-            uint32_t port;
+            uint16_t port;
             if (parseDataPort(arg, ip, port))
             {
                 handleDataPort(ntp, header, DataMode::ACTIVE, ip, port);
@@ -292,7 +374,7 @@ bool FtpParser::parseResponse(const std::chrono::steady_clock::time_point& ntp, 
             if (std::string::npos != bp && std::string::npos != ep && bp < ep)
             {
                 std::string ip;
-                uint32_t port;
+                uint16_t port;
                 if (parseDataPort(arg.substr(bp + 1, ep - 1 - bp), ip, port))
                 {
                     handleDataPort(ntp, header, DataMode::PASSIVE, ip, port);
@@ -306,7 +388,7 @@ bool FtpParser::parseResponse(const std::chrono::steady_clock::time_point& ntp, 
     return false;
 }
 
-bool FtpParser::parseDataPort(const std::string& ip_port, std::string& ip, uint32_t& port)
+bool FtpParser::parseDataPort(const std::string& ip_port, std::string& ip, uint16_t& port)
 {
     ip.clear();
     port = 0;
@@ -354,9 +436,23 @@ bool FtpParser::parseDataPort(const std::string& ip_port, std::string& ip, uint3
 }
 
 void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* header, const DataMode& mode,
-                               const std::string& ip, uint32_t port)
+                               const std::string& ip, uint16_t port)
 {
-    auto key = ip + ":" + std::to_string(port);
+    IpPortKey key;
+    uint8_t ip4[4] = {0};
+    uint8_t ip6[16] = {0};
+    if (str2IPv4(ip, ip4))
+    {
+        key = IpPortKey::createIpv4(ip4, port);
+    }
+    else if (str2IPv6(ip, ip6))
+    {
+        key = IpPortKey::createIpv6(ip6, port);
+    }
+    else
+    {
+        return;
+    }
     if (header && m_dataConnectList.end() == m_dataConnectList.find(key))
     {
         std::string srcMac, dstMac, srcAddr, dstAddr;
@@ -412,6 +508,16 @@ void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp,
 
 void FtpParser::recyleDataConnect(const std::chrono::steady_clock::time_point& ntp)
 {
+    size_t interval = ceil((float)m_dataConnectTimeout / 10); /* 使用(超时时间/10)作为清理间隔 */
+    if (interval < 1)
+    {
+        interval = 1;
+    }
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastRecyleTime).count() <= interval)
+    {
+        return;
+    }
+    m_lastRecyleTime = ntp;
     for (auto iter = m_dataConnectList.begin(); m_dataConnectList.end() != iter;)
     {
         if (std::chrono::duration_cast<std::chrono::seconds>(ntp - iter->second->tp).count() >= m_dataConnectTimeout) /* 超时则回收 */
@@ -433,25 +539,30 @@ void FtpParser::recyleDataConnect(const std::chrono::steady_clock::time_point& n
 bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint32_t totalLen, const ProtocolHeader* header,
                           const uint8_t* payload, uint32_t payloadLen)
 {
-    std::string srcAddr, dstAddr;
+    if (!header || !header->parent)
+    {
+        return false;
+    }
+    IpPortKey srcKey, dstKey;
+    auto tcpHeader = (const TcpHeader*)(header);
     if (NetworkProtocol::IPv4 == header->parent->getProtocol())
     {
         auto ipv4Header = (const Ipv4Header*)(header->parent);
-        ipv4Header->srcAddrStr(srcAddr);
-        ipv4Header->dstAddrStr(dstAddr);
+        srcKey = IpPortKey::createIpv4(ipv4Header->srcAddr, tcpHeader->srcPort);
+        dstKey = IpPortKey::createIpv4(ipv4Header->dstAddr, tcpHeader->dstPort);
     }
     else if (NetworkProtocol::IPv6 == header->parent->getProtocol())
     {
         auto ipv6Header = (const Ipv6Header*)(header->parent);
-        ipv6Header->srcAddrStr(srcAddr);
-        ipv6Header->dstAddrStr(dstAddr);
+        uint8_t srcBytes[16], dstBytes[16];
+        ipv6Header->srcAddrBytes(srcBytes);
+        ipv6Header->dstAddrBytes(dstBytes);
+        srcKey = IpPortKey::createIpv6(srcBytes, tcpHeader->srcPort);
+        dstKey = IpPortKey::createIpv6(dstBytes, tcpHeader->dstPort);
     }
-    auto tcpHeader = (const TcpHeader*)(header);
-    auto srcKey = srcAddr + ":" + std::to_string(tcpHeader->srcPort);
     auto iter = m_dataConnectList.find(srcKey);
     if (m_dataConnectList.end() == iter)
     {
-        auto dstKey = dstAddr + ":" + std::to_string(tcpHeader->dstPort);
         iter = m_dataConnectList.find(dstKey);
         if (m_dataConnectList.end() == iter)
         {

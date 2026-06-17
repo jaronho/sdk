@@ -29,10 +29,10 @@ public:
     {
         std::string clientMac; /* 客户端MAC */
         std::string clientIp; /* 客户端IP */
-        uint32_t clientPort = 0; /* 客户端控制端口 */
+        uint16_t clientPort = 0; /* 客户端控制端口 */
         std::string serverMac; /* 服务端MAC */
         std::string serverIp; /* 服务端IP */
-        uint32_t serverPort = 0; /* 服务端控制端口 */
+        uint16_t serverPort = 0; /* 服务端控制端口 */
         DataMode mode = DataMode::ACTIVE; /* 数据连接模式 */
     };
 
@@ -130,13 +130,13 @@ private:
      * @param ip [输出]IP
      * @param port [输出]端口
      */
-    bool parseDataPort(const std::string& ip_port, std::string& ip, uint32_t& port);
+    bool parseDataPort(const std::string& ip_port, std::string& ip, uint16_t& port);
 
     /**
      * @brief 处理数据端口
      */
     void handleDataPort(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* header, const DataMode& mode,
-                        const std::string& ip, uint32_t port);
+                        const std::string& ip, uint16_t port);
 
     /**
      * @brief 回收数据连接
@@ -166,7 +166,7 @@ private:
     {
         CtrlInfo ctrl; /* 控制连接信息 */
         std::string ip; /* 主动模式下: 客户端的IP, 被动模式下: 服务端的IP */
-        uint32_t port = 0; /* 主动模式下: 客户端的端口, 被动模式下: 服务端的端口 */
+        uint16_t port = 0; /* 主动模式下: 客户端的端口, 被动模式下: 服务端的端口 */
         DataConnectStatus status = DataConnectStatus::READY; /* 连接状态 */
         std::chrono::steady_clock::time_point tp{}; /* 更新时间点 */
     };
@@ -178,6 +178,7 @@ private:
     CTRL_PKT_CALLBACK m_responseCb = nullptr; /* 响应包回调 */
     DATA_PKT_CALLBACK m_dataCb = nullptr; /* 数据包回调 */
 
-    std::unordered_map<std::string, std::shared_ptr<DataConnectInfo>> m_dataConnectList; /* 数据连接列表, key: IP+:+端口 */
+    std::unordered_map<IpPortKey, std::shared_ptr<DataConnectInfo>> m_dataConnectList; /* 数据连接列表, key: IP+端口 */
+    std::chrono::steady_clock::time_point m_lastRecyleTime = std::chrono::steady_clock::now(); /* 上次回收时间 */
 };
 } // namespace npacket

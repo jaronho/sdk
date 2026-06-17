@@ -488,6 +488,32 @@ public:
     }
 
     /**
+     * @brief 源IP地址转字节流
+     * @param out [输出]字节流
+     */
+    void srcAddrBytes(uint8_t out[16]) const
+    {
+        for (int i = 0; i < 8; ++i)
+        {
+            out[i * 2] = (srcAddr[i] >> 8);
+            out[i * 2 + 1] = (srcAddr[i] & 0xFF);
+        }
+    }
+
+    /**
+     * @brief 目的IP地址转字节流
+     * @param out [输出]字节流
+     */
+    void dstAddrBytes(uint8_t out[16]) const
+    {
+        for (int i = 0; i < 8; ++i)
+        {
+            out[i * 2] = (dstAddr[i] >> 8);
+            out[i * 2 + 1] = (dstAddr[i] & 0xFF);
+        }
+    }
+
+    /**
      * @brief 源IP地址字符串
      * @param out [输出]字符串
      */
@@ -806,7 +832,7 @@ struct FragmentKey
     Ipv6Key v6;
 
     /**
-     * @brief 工厂函数：创建IPv4 Key
+     * @brief 工厂函数: 创建IPv4 Key
      * @param srcIp 源IP地址(4字节)
      * @param dstIp 目的IP地址(4字节)
      * @param identification 标识符
@@ -824,7 +850,7 @@ struct FragmentKey
     }
 
     /**
-     * @brief 工厂函数：创建IPv6 Key
+     * @brief 工厂函数: 创建IPv6 Key
      * @param srcIp 源IP地址(16字节)
      * @param dstIp 目的IP地址(16字节)
      * @param identification 标识符
@@ -964,7 +990,7 @@ struct TcpStreamKey
     Ipv6Key v6;
 
     /**
-     * @brief 工厂函数：创建IPv4 Key
+     * @brief 工厂函数: 创建IPv4 Key
      * @param srcIp 源IP地址(4字节)
      * @param dstIp 目的IP地址(4字节)
      * @param srcPort 源端口
@@ -984,7 +1010,7 @@ struct TcpStreamKey
     }
 
     /**
-     * @brief 工厂函数：创建IPv6 Key
+     * @brief 工厂函数: 创建IPv6 Key
      * @param srcIp 源IP地址(16字节)
      * @param dstIp 目的IP地址(16字节)
      * @param srcPort 源端口
@@ -1059,6 +1085,132 @@ struct TcpStreamKey
 };
 
 /**
+ * @brief IP+端口标识键(二元组)
+ */
+struct IpPortKey
+{
+    /* IPv4地址 */
+    struct Ipv4Key
+    {
+        uint32_t ip; /* IP地址: 存储网络字节序 */
+        uint16_t port; /* 端口 */
+
+        bool operator<(const Ipv4Key& other) const
+        {
+            if (ip != other.ip)
+            {
+                return (ip < other.ip);
+            }
+            return (port < other.port);
+        }
+    };
+
+    /* IPv6地址 */
+    struct Ipv6Key
+    {
+        uint64_t ip[2]; /* IP地址: 存储网络字节序数组 */
+        uint16_t port; /* 端口 */
+
+        bool operator<(const Ipv6Key& other) const
+        {
+            if (ip[0] != other.ip[0])
+            {
+                return (ip[0] < other.ip[0]);
+            }
+            else if (ip[1] != other.ip[1])
+            {
+                return (ip[1] < other.ip[1]);
+            }
+            return (port < other.port);
+        }
+    };
+
+    mutable size_t hashValue = 0;
+    uint8_t ipVersion = 0; /* IP版本: 4-IPv4, 6-IPv6 */
+    Ipv4Key v4;
+    Ipv6Key v6;
+
+    /**
+     * @brief 工厂函数: 创建IPv4 Key
+     * @param ip 4字节IPv4二进制地址(网络字节序)
+     * @param port 端口
+     * @return 键值
+     */
+    static IpPortKey createIpv4(const uint8_t ip[4], uint16_t port)
+    {
+        IpPortKey key;
+        key.ipVersion = 4;
+        memcpy(&key.v4.ip, ip, 4);
+        key.v4.port = port;
+        key.hashValue = key.hash();
+        return key;
+    }
+
+    /**
+     * @brief 工厂函数: 创建IPv6 Key
+     * @param ip 16字节IPv6二进制地址(网络字节序)
+     * @param port 端口
+     * @return 键值
+     */
+    static IpPortKey createIpv6(const uint8_t ip[16], uint16_t port)
+    {
+        IpPortKey key;
+        key.ipVersion = 6;
+        memcpy(&key.v6.ip, ip, 16);
+        key.v6.port = port;
+        key.hashValue = key.hash();
+        return key;
+    }
+
+    bool operator==(const IpPortKey& other) const
+    {
+        if (ipVersion != other.ipVersion)
+        {
+            return false;
+        }
+        if (4 == ipVersion)
+        {
+            return (v4.ip == other.v4.ip && v4.port == other.v4.port);
+        }
+        return (v6.ip[0] == other.v6.ip[0] && v6.ip[1] == other.v6.ip[1] && v6.port == other.v6.port);
+    }
+
+    bool operator<(const IpPortKey& other) const
+    {
+        if (ipVersion != other.ipVersion)
+        {
+            return (ipVersion < other.ipVersion);
+        }
+        return (4 == ipVersion) ? (v4 < other.v4) : (v6 < other.v6);
+    }
+
+    /**
+     * @brief 计算哈希值
+     * @return 哈希值
+     */
+    size_t hash() const
+    {
+        if (0 == hashValue)
+        {
+            size_t h = ipVersion;
+            if (4 == ipVersion)
+            {
+                h = (h << 13) ^ (h >> 19) ^ v4.ip;
+                h = (h << 13) ^ (h >> 19) ^ v4.port;
+            }
+            else
+            {
+                h = (h << 13) ^ (h >> 19) ^ v6.ip[0];
+                h = (h << 13) ^ (h >> 19) ^ v6.ip[1];
+                h = (h << 13) ^ (h >> 19) ^ v6.port;
+            }
+            hashValue = h ^ (h >> 16);
+        }
+        return hashValue;
+    }
+};
+
+/**
  * @brief 协议数据
  */
 struct ProtocolData
@@ -1073,3 +1225,33 @@ struct ProtocolData
     int reassemblyFlag = 0; /* 重组标志(0-非重组, 1-分片重组, 2-流重组, 3-分片+流重组) */
 };
 } // namespace npacket
+
+namespace std
+{
+template<>
+struct hash<npacket::FragmentKey>
+{
+    size_t operator()(const npacket::FragmentKey& k) const noexcept
+    {
+        return k.hash();
+    }
+};
+
+template<>
+struct hash<npacket::TcpStreamKey>
+{
+    size_t operator()(const npacket::TcpStreamKey& k) const noexcept
+    {
+        return k.hash();
+    }
+};
+
+template<>
+struct hash<npacket::IpPortKey>
+{
+    size_t operator()(const npacket::IpPortKey& k) const
+    {
+        return k.hash();
+    }
+};
+} // namespace std

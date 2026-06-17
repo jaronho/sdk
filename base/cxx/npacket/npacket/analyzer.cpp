@@ -1134,13 +1134,8 @@ bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
         }
         isReassembly = true;
         uint8_t srcBytes[16], dstBytes[16];
-        for (int i = 0; i < 8; ++i)
-        {
-            srcBytes[i * 2] = (ipv6Header->srcAddr[i] >> 8);
-            srcBytes[i * 2 + 1] = (ipv6Header->srcAddr[i] & 0xFF);
-            dstBytes[i * 2] = (ipv6Header->dstAddr[i] >> 8);
-            dstBytes[i * 2 + 1] = (ipv6Header->dstAddr[i] & 0xFF);
-        }
+        ipv6Header->srcAddrBytes(srcBytes);
+        ipv6Header->dstAddrBytes(dstBytes);
         key = FragmentKey::createIpv6(srcBytes, dstBytes, identification);
         headerLen = Ipv6Header::getMinLen() + fragHeaderLen; /* 基本头 + 扩展头(含分片头) */
         basicHeaderLen = Ipv6Header::getMinLen(); /* 仅基本头40字节 */
@@ -1484,13 +1479,8 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
     {
         const Ipv6Header* ipv6Header = (const Ipv6Header*)(networkHeader);
         uint8_t srcBytes[16], dstBytes[16];
-        for (int i = 0; i < 8; ++i)
-        {
-            srcBytes[i * 2] = ipv6Header->srcAddr[i] >> 8;
-            srcBytes[i * 2 + 1] = ipv6Header->srcAddr[i] & 0xFF;
-            dstBytes[i * 2] = ipv6Header->dstAddr[i] >> 8;
-            dstBytes[i * 2 + 1] = ipv6Header->dstAddr[i] & 0xFF;
-        }
+        ipv6Header->srcAddrBytes(srcBytes);
+        ipv6Header->dstAddrBytes(dstBytes);
         key = TcpStreamKey::createIpv6(srcBytes, dstBytes, tcpHeader->srcPort, tcpHeader->dstPort);
     }
     else
