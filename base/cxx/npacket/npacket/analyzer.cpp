@@ -162,7 +162,7 @@ Analyzer::Analyzer(const CallbackConfig& cbCfg, IpReassemblyConfig ipReassemblyC
 {
 }
 
-bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser, const std::vector<uint16_t>& ports)
+bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser, const std::vector<uint16_t>& ports, bool portStrict)
 {
     if (!parser)
     {
@@ -191,6 +191,7 @@ bool Analyzer::addProtocolParser(const std::shared_ptr<ProtocolParser>& parser, 
             if (m_applicationParserMap.end() == m_applicationParserMap.find(port))
             {
                 m_applicationParserMap.insert(std::make_pair(port, parser));
+                m_portStrictMap[port] = portStrict;
                 addFlag = true;
             }
         }
@@ -783,7 +784,12 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
     addedList.clear();
     {
         std::lock_guard<std::mutex> locker(m_mutexParserList);
+        if (parserList.capacity() < m_applicationParserList.size())
+        {
+            parserList.reserve(m_applicationParserList.size());
+        }
         /* 1. 查找端口匹配的解析器(端口优先级: 1.dstPort, 2.srcPort) */
+        bool portStrict = false;
         if (!m_applicationParserMap.empty())
         {
             auto iter = m_applicationParserMap.find(dstPort);
@@ -794,18 +800,29 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
             if (m_applicationParserMap.end() != iter && addedList.insert(iter->second->getProtocol()).second)
             {
                 parserList.emplace_back(iter->second);
+                auto it = m_portStrictMap.find(dstPort);
+                if (m_portStrictMap.end() == it)
+                {
+                    it = m_portStrictMap.find(srcPort);
+                }
+                if (m_portStrictMap.end() != it)
+                {
+                    portStrict = it->second;
+                }
             }
         }
         /* 2. 查找其他解析器(排除已添加的端口匹配协议) */
-        for (const auto& parser : m_applicationParserList)
+        if (parserList.empty() || !portStrict) /* 端口未匹配到任何解析器, 或者端口非严格匹配 */
         {
-            if (addedList.insert(parser->getProtocol()).second)
+            for (const auto& parser : m_applicationParserList)
             {
-                parserList.emplace_back(parser);
+                if (addedList.insert(parser->getProtocol()).second)
+                {
+                    parserList.emplace_back(parser);
+                }
             }
         }
     }
-    addedList.clear();
     if (parserList.empty())
     {
         return 4;

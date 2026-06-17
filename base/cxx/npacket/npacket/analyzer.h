@@ -107,9 +107,10 @@ public:
      * @brief 添加应用层解析器(当协议端口不固定或者未知时使用此接口)
      * @param parser 应用层协议解析器
      * @param ports 端口号列表, 当协议端口固定且已知时, 可以把解析器绑定到所指定端口
+     * @param portStrict 端口是否严格匹配, true-严格匹配(当解析数据时根据端口有查找到对应的解析器, 则不继续查找其他解析器), false-否
      * @return true-添加成功, false-添加失败
      */
-    bool addProtocolParser(const std::shared_ptr<ProtocolParser>& parser, const std::vector<uint16_t>& ports = {});
+    bool addProtocolParser(const std::shared_ptr<ProtocolParser>& parser, const std::vector<uint16_t>& ports = {}, bool portStrict = false);
 
     /**
      * @brief 删除应用层解析器
@@ -388,5 +389,6 @@ private:
     std::mutex m_mutexParserList;
     std::vector<std::shared_ptr<ProtocolParser>> m_applicationParserList; /* 应用层解析器列表 */
     phmap::flat_hash_map<uint16_t, std::shared_ptr<ProtocolParser>> m_applicationParserMap; /* 应用层解析器映射表, key-端口 */
+    phmap::flat_hash_map<uint16_t, bool> m_portStrictMap; /* 端口严格匹配映射表, key-端口, value-是否严格匹配 */
 };
 } // namespace npacket
