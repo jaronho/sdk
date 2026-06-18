@@ -55,7 +55,7 @@ public:
      * @param direction 要捕获的数据流向, 0-所有, 1-仅接收, 2-仅发送(需要Linux 3.2+)
      * @param snapLen 快照长度, 要捕获的数据包长度, 正常设置为65536能够满足所有网络
      * @param promisc 混杂模式, 0-普通模式, 1-混杂模式
-     * @param timeout 超时读取(毫秒), <=0表示永不超时
+     * @param timeout 超时读取(毫秒), <=0表示缓冲区满时才返回缓冲区所有包, >0表示超过该时间就返回缓冲区所有包(不管缓冲区有没有满)
      * @param bufferSize 接收缓冲区大小(字节), >=8MB时自动启用TPACKET_V3
      * @return true-成功, false-失败
      */

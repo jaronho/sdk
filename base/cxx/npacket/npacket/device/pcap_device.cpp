@@ -85,7 +85,10 @@ bool PcapDevice::open(const std::string& name, int direction, int snapLen, int p
     }
     pcap_set_snaplen(m_pcap, snapLen <= 0 ? 65536 : snapLen);
     pcap_set_promisc(m_pcap, promisc);
-    pcap_set_timeout(m_pcap, timeout <= 0 ? LIBPCAP_OPEN_LIVE_TIMEOUT : timeout);
+    if (timeout > 0)
+    {
+        pcap_set_timeout(m_pcap, timeout);
+    }
     if (bufferSize >= 100)
     {
         pcap_set_buffer_size(m_pcap, bufferSize);
