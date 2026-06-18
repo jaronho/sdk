@@ -569,12 +569,12 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
             return false;
         }
     }
+    iter->second->tp = ntp;
     auto ctrl = iter->second->ctrl;
     if (0 == payloadLen)
     {
         if (1 == tcpHeader->flagAck && DataConnectStatus::READY == iter->second->status) /* 数据连接建立 */
         {
-            iter->second->tp = std::chrono::steady_clock::now();
             iter->second->status = DataConnectStatus::CREATED;
             if (m_dataCb)
             {
@@ -592,7 +592,6 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
     }
     else if (DataConnectStatus::CREATED == iter->second->status) /* 数据连接已连接 */
     {
-        iter->second->tp = std::chrono::steady_clock::now();
         if (m_dataCb)
         {
             m_dataCb(ntp, totalLen, header, ctrl, DataFlag::BODY, payload, payloadLen);
