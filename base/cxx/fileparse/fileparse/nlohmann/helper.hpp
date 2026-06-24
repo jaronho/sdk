@@ -117,7 +117,7 @@ static json parse(const std::string& str, std::string* errDesc = nullptr)
  * @return true-成功, false-失败
  */
 template<typename ValueType>
-static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errDesc = nullptr, ValueType defVal = ValueType{})
+static bool toValue(const json& j, ValueType& value, std::string* errDesc = nullptr, ValueType defVal = ValueType{})
 {
     std::string errorDescribe;
     try
@@ -154,7 +154,7 @@ static bool toValue(const nlohmann::json& j, ValueType& value, std::string* errD
  * @return 对应类型值
  */
 template<typename ValueType>
-static ValueType toValue(const nlohmann::json& j, std::string* errDesc = nullptr, ValueType defVal = ValueType{})
+static ValueType toValue(const json& j, std::string* errDesc = nullptr, ValueType defVal = ValueType{})
 {
     ValueType value = defVal;
     toValue(j, value, errDesc, defVal);
@@ -361,7 +361,7 @@ static bool dump(const json& j, std::string& str, std::string* errDesc = nullptr
     {
         if (!j.is_null())
         {
-            str = j.dump(indent, indentChar, ensureAscii, nlohmann::detail::error_handler_t::replace);
+            str = j.dump(indent, indentChar, ensureAscii, detail::error_handler_t::replace);
             return true;
         }
         errorDescribe = "null";
