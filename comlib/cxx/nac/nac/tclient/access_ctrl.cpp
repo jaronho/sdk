@@ -248,38 +248,38 @@ bool AccessCtrl::setParam(unsigned int heartbeatInterval, bool heartbeatFixedSen
 
 int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& data, const RespCallback& callback, unsigned int timeout)
 {
-    auto func = [&, callback](int32_t bizCode, int64_t seqId, bool sendOk, const std::string& data) {
+    auto func = [&, callback](int32_t bizCode, int64_t seqId, const Result& ret, const std::string& data) {
         if (!m_bizExecutor)
         {
             if (callback)
             {
-                callback(bizCode, seqId, sendOk, data);
+                callback(bizCode, seqId, ret, data);
             }
             return;
         }
-        auto name = "nac.tcli.api.resp|" + std::to_string(sendOk) + "|" + std::to_string(bizCode) + "|" + std::to_string(seqId);
-        m_bizExecutor->post(name, [&, name, bizCode, seqId, sendOk, data, callback]() {
+        auto name = "nac.tcli.api.resp|" + std::to_string(bizCode) + "|" + std::to_string(seqId) + "|" + std::to_string((int)ret);
+        m_bizExecutor->post(name, [&, name, bizCode, seqId, ret, data, callback]() {
             if (callback)
             {
                 if (m_bizExecutorHook)
                 {
-                    m_bizExecutorHook(name, [bizCode, seqId, sendOk, data, callback]() { callback(bizCode, seqId, sendOk, data); });
+                    m_bizExecutorHook(name, [bizCode, seqId, ret, data, callback]() { callback(bizCode, seqId, ret, data); });
                 }
                 else
                 {
-                    callback(bizCode, seqId, sendOk, data);
+                    callback(bizCode, seqId, ret, data);
                 }
             }
         });
     };
     if (!m_sessionManager)
     {
-        func(bizCode, seqId, false, "");
+        func(bizCode, seqId, Result::failure, "");
         return -1;
     }
     if (ConnectState::connected != m_connectState)
     {
-        func(bizCode, seqId, false, "");
+        func(bizCode, seqId, Result::failure, "");
         return -1;
     }
     AccessConfig cfg;
@@ -289,7 +289,7 @@ int64_t AccessCtrl::sendMsg(int32_t bizCode, int64_t seqId, const std::string& d
     }
     if (bizCode == cfg.authBizCode || bizCode == cfg.heartbeatBizCode) /* 鉴权和心跳内部处理 */
     {
-        func(bizCode, seqId, false, "");
+        func(bizCode, seqId, Result::failure, "");
         return -1;
     }
     return m_sessionManager->sendMsg(bizCode, seqId, data, timeout, func);

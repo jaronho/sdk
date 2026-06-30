@@ -300,11 +300,11 @@ void ConnectService::sendAuthMsg()
         }
         const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
         auto seqId = sessionManager->sendMsg(m_authBizCode, 0, authData, m_authTimeout,
-                                             [wpSelf](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
+                                             [wpSelf](int32_t bizCode, int64_t seqId, const Result& ret, const std::string& data) {
                                                  const auto self = wpSelf.lock();
                                                  if (self)
                                                  {
-                                                     self->onAuthResult(sendOk, data);
+                                                     self->onAuthResult(ret, data);
                                                  }
                                              });
         if (seqId > 0)
@@ -320,11 +320,11 @@ void ConnectService::sendAuthMsg()
     }
 }
 
-void ConnectService::onAuthResult(bool ok, const std::string& data)
+void ConnectService::onAuthResult(const Result& ret, const std::string& data)
 {
     if (ConnectState::connecting == m_connectState)
     {
-        if (ok) /* 鉴权发送成功 */
+        if (Result::success == ret) /* 鉴权发送成功 */
         {
             if (!m_authResultCb || m_authResultCb(data)) /* 鉴权成功 */
             {
@@ -334,8 +334,15 @@ void ConnectService::onAuthResult(bool ok, const std::string& data)
                 startOfflineCheckTimer();
                 return;
             }
+            else
+            {
+                ERROR_LOG(m_logger, "鉴权成功, 鉴权回调失败.");
+            }
         }
-        ERROR_LOG(m_logger, "鉴权失败.");
+        else
+        {
+            ERROR_LOG(m_logger, "鉴权{}.", Result::failure == ret ? "[失败]" : "[响应超时]");
+        }
         releaseConnection(DisconnectType::auth_fail);
         updateConnectState(ConnectState::disconnected);
     }
@@ -449,9 +456,9 @@ void ConnectService::sendHeartbeatMsg()
             }
             const std::weak_ptr<ConnectService> wpSelf = shared_from_this();
             sessionManager->sendMsg(m_heartbeatBizCode, 0, heartbeatData, 0,
-                                    [wpSelf](bool sendOk, int32_t bizCode, int64_t seqId, const std::string& data) {
+                                    [wpSelf](int32_t bizCode, int64_t seqId, const Result& ret, const std::string& data) {
                                         const auto self = wpSelf.lock();
-                                        if (self && sendOk)
+                                        if (self && Result::success == ret)
                                         {
                                             std::lock_guard<std::mutex> locker(self->m_mutexTimePoint);
                                             self->m_lastHeartbeatTime = std::chrono::steady_clock::now();

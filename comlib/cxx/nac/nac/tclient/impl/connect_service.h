@@ -166,7 +166,7 @@ private:
     /**
      * @brief 响应鉴权结果
      */
-    void onAuthResult(bool ok, const std::string& data);
+    void onAuthResult(const Result& ret, const std::string& data);
 
     /**
      * @brief 开始连接超时定时器

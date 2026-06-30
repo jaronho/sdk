@@ -11,6 +11,16 @@
 namespace nac
 {
 /**
+ * @brief 消息结果
+ */
+enum class Result
+{
+    success = 0, /* 成功 */
+    failure = 1, /* 失败 */
+    timeout = 2 /* 响应超时 */
+};
+
+/**
  * @brief 会话封装器
  */
 class SessionWrapper : public std::enable_shared_from_this<SessionWrapper>
@@ -20,10 +30,10 @@ public:
      * @brief 响应回调
      * @param bizCode 业务码
      * @param seqId 序列ID
-     * @param sendOk 是否发送成功
+     * @param ret 消息结果
      * @param data 数据
      */
-    using RespCallback = std::function<void(int32_t bizCode, int64_t seqId, bool sendOk, const std::string& data)>;
+    using RespCallback = std::function<void(int32_t bizCode, int64_t seqId, const Result& ret, const std::string& data)>;
 
 public:
     /**
@@ -90,10 +100,10 @@ private:
      * @param bizcode 业务码
      * @param seqId 序列ID
      * @param waitResp 是否需要等待响应数据
-     * @param sendOk 是否发送成功
+     * @param ret 消息结果
      * @param callback 响应回调
      */
-    void onRespCallback(int32_t bizCode, int64_t seqId, bool waitResp, bool sendOk, const RespCallback& callback);
+    void onRespCallback(int32_t bizCode, int64_t seqId, bool waitResp, const Result& ret, const RespCallback& callback);
 
 private:
     class Session;

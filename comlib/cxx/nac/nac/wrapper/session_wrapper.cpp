@@ -72,7 +72,7 @@ public:
         if (wrapper)
         {
             WARN_LOG(wrapper->myLogger(), "会话超时({}秒): 未收到响应数据, bizCode[{}], seqId[{}].", m_timeout, m_bizCode, m_seqId);
-            wrapper->onRespCallback(m_bizCode, m_seqId, true, false, m_respCb);
+            wrapper->onRespCallback(m_bizCode, m_seqId, true, Result::timeout, m_respCb);
         }
     }
 
@@ -81,7 +81,7 @@ public:
         stopTimer();
         if (m_respCb)
         {
-            m_respCb(m_bizCode, m_seqId, true, data);
+            m_respCb(m_bizCode, m_seqId, Result::success, data);
         }
     }
 
@@ -90,7 +90,7 @@ public:
         stopTimer();
         if (m_respCb)
         {
-            m_respCb(m_bizCode, m_seqId, false, "");
+            m_respCb(m_bizCode, m_seqId, Result::failure, "");
         }
     }
 
@@ -126,7 +126,7 @@ int64_t SessionWrapper::sendMsg(int32_t bizCode, int64_t seqId, const std::strin
                         {
                             if (code) /* 发送失败 */
                             {
-                                self->onRespCallback(bizCode, seqId, timeout > 0, false, callback);
+                                self->onRespCallback(bizCode, seqId, timeout > 0, Result::failure, callback);
                             }
                             else /* 发送成功 */
                             {
@@ -136,7 +136,7 @@ int64_t SessionWrapper::sendMsg(int32_t bizCode, int64_t seqId, const std::strin
                                 }
                                 else /* 不需要应答, 直接通知成功 */
                                 {
-                                    self->onRespCallback(bizCode, seqId, false, true, callback);
+                                    self->onRespCallback(bizCode, seqId, false, Result::success, callback);
                                 }
                             }
                         }
@@ -203,7 +203,7 @@ std::shared_ptr<threading::Executor> SessionWrapper::myTimerExecutor()
     return nullptr;
 }
 
-void SessionWrapper::onRespCallback(int32_t bizCode, int64_t seqId, bool waitResp, bool sendOk, const RespCallback& callback)
+void SessionWrapper::onRespCallback(int32_t bizCode, int64_t seqId, bool waitResp, const Result& ret, const RespCallback& callback)
 {
     bool found = false;
     {
@@ -217,16 +217,18 @@ void SessionWrapper::onRespCallback(int32_t bizCode, int64_t seqId, bool waitRes
     }
     if (!waitResp || found)
     {
-        TRACE_LOG(myLogger(), "发送结果{}, bizCode[{}], seqId[{}]", sendOk ? "[成功]" : "[失败]", bizCode, seqId);
+        TRACE_LOG(myLogger(), "发送结果{}, bizCode[{}], seqId[{}]",
+                  Result::success == ret ? "[成功]" : (Result::failure == ret ? "[失败]" : "[响应超时]"), bizCode, seqId);
         auto beg = std::chrono::steady_clock::now();
         if (callback)
         {
-            callback(bizCode, seqId, sendOk, "");
+            callback(bizCode, seqId, ret, "");
         }
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg);
         if (elapsed.count() > 0)
         {
-            WARN_LOG(myLogger(), "发送结果{}处理完毕, bizCode[{}], seqId[{}], 耗时: {} 毫秒.", sendOk ? "[成功]" : "[失败]", bizCode, seqId,
+            WARN_LOG(myLogger(), "发送结果{}处理完毕, bizCode[{}], seqId[{}], 耗时: {} 毫秒.",
+                     Result::success == ret ? "[成功]" : (Result::failure == ret ? "[失败]" : "[响应超时]"), bizCode, seqId,
                      elapsed.count());
         }
     }

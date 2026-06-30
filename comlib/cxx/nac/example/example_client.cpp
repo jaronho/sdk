@@ -288,8 +288,9 @@ int main(int argc, char* argv[])
                 }
                 auto seqId = s_accessCtrl->sendMsg(
                     bizCode, 0, data,
-                    [&, count](int32_t bizCode, int64_t seqId, bool ok, const std::string& data) {
-                        INFO_LOG(s_logger, "响应第[{:5d}]次消息, bizCode: {} {}", count, bizCode, ok ? "成功." : "失败.");
+                    [&, count](int32_t bizCode, int64_t seqId, const nac::Result& ret, const std::string& data) {
+                        INFO_LOG(s_logger, "响应第[{:5d}]次消息, bizCode: {} {}", count, bizCode,
+                                 nac::Result::success == ret ? "成功." : (nac::Result::failure == ret ? "失败." : "响应超时."));
                     },
                     10);
                 INFO_LOG(s_logger, "发送第[{:5d}]次消息, 包大小: {}, bizCode: {} {}", count, (size_t)16 + data.size(), bizCode,
