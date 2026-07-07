@@ -1548,14 +1548,16 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
                 while (!info->segments.empty())
                 {
                     /* 找到最小的seq(最旧的段) */
-                    uint32_t minSeq = UINT32_MAX;
                     auto oldestIt = info->segments.end();
-                    for (auto it = info->segments.begin(); info->segments.end() != it; ++it)
+                    if (!info->segments.empty())
                     {
-                        if (seqLt(it->first, minSeq))
+                        oldestIt = info->segments.begin();
+                        for (auto it = info->segments.begin(); info->segments.end() != it; ++it)
                         {
-                            minSeq = it->first;
-                            oldestIt = it;
+                            if (seqLt(it->first, oldestIt->first))
+                            {
+                                oldestIt = it;
+                            }
                         }
                     }
                     uint32_t segSeq = oldestIt->first;
@@ -1821,14 +1823,16 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         while (currentCachedSize + payloadLen > m_tcpReassemblyCfg.maxStreamSize && !info->segments.empty())
         {
             /* 找到最小的seq(最旧的段) */
-            uint32_t minSeq = UINT32_MAX;
             auto oldestIt = info->segments.end();
-            for (auto it = info->segments.begin(); info->segments.end() != it; ++it)
+            if (!info->segments.empty())
             {
-                if (seqLt(it->first, minSeq))
+                oldestIt = info->segments.begin();
+                for (auto it = info->segments.begin(); info->segments.end() != it; ++it)
                 {
-                    minSeq = it->first;
-                    oldestIt = it;
+                    if (seqLt(it->first, oldestIt->first))
+                    {
+                        oldestIt = it;
+                    }
                 }
             }
             if (info->segments.end() != oldestIt)
@@ -1845,14 +1849,16 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         if (info->segments.size() >= m_tcpReassemblyCfg.maxSegmentsPerStream)
         {
             /* 找到最小的seq(最旧的段) */
-            uint32_t minSeq = UINT32_MAX;
             auto oldestIt = info->segments.end();
-            for (auto it = info->segments.begin(); info->segments.end() != it; ++it)
+            if (!info->segments.empty())
             {
-                if (seqLt(it->first, minSeq))
+                oldestIt = info->segments.begin();
+                for (auto it = info->segments.begin(); info->segments.end() != it; ++it)
                 {
-                    minSeq = it->first;
-                    oldestIt = it;
+                    if (seqLt(it->first, oldestIt->first))
+                    {
+                        oldestIt = it;
+                    }
                 }
             }
             if (info->segments.end() != oldestIt)
