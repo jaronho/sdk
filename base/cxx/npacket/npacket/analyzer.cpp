@@ -1445,6 +1445,20 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
     entries.reserve(m_tcpStreamCache.size());
     for (auto iter = m_tcpStreamCache.begin(); iter != m_tcpStreamCache.end();)
     {
+        /* 遍历清理当前流中超时乱序段 */
+        auto& streamInfo = iter->second;
+        for (auto segIt = streamInfo->segments.begin(); streamInfo->segments.end() != segIt;)
+        {
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - segIt->second.recvTime).count();
+            if (elapsed > m_tcpReassemblyCfg.timeout)
+            {
+                segIt = streamInfo->segments.erase(segIt);
+            }
+            else
+            {
+                ++segIt;
+            }
+        }
         /* FIN状态使用短超时, 正常状态使用标准超时 */
         auto lastNtp = iter->second->lastAccessTime;
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - lastNtp).count();
