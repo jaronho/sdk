@@ -889,7 +889,7 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
         {
             continue;
         }
-        while (context.offset <= context.dataLen && context.isActive) /* 每个解析器独立解析循环, 直到消费完所有数据或失败 */
+        while (context.offset <= context.dataLen) /* 每个解析器独立解析循环, 直到消费完所有数据或失败 */
         {
             uint32_t remainingLen = context.dataLen - context.offset;
             ProtocolData pd;
@@ -928,6 +928,10 @@ int Analyzer::handleApplicationLayer(size_t flag, size_t num, const std::chrono:
                 {
                     context.offset += consumeLen;
                     anySuccess = true;
+                    if (context.offset >= context.dataLen)
+                    {
+                        break;
+                    }
                     /* 继续循环, 可能还有数据可消费(如多条消息) */
                 }
                 else
