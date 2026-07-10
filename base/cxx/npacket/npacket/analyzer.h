@@ -68,24 +68,24 @@ struct IpReassemblyConfig
 {
     bool enable = true; /* 是否启用IP分片重组功能 */
     size_t timeout = 10000; /* 分片重组超时时间(单位:毫秒), 值: [1秒, 5分钟] */
-    size_t maxReassembleSize = (128 * 1024); /* 最大重组后数据包大小(单位:字节), 防止分片攻击, 值: [1280B, 16Mb] */
-    size_t maxFragSize = (8 * 1024); /* 单个分片最大负载大小(单位:字节), 防止大分片攻击, 值: [8B, 16Kb] */
-    size_t maxFragmentCount = 64; /* 每组分片最大数量(单位:个数), 防止分片攻击, 值: [1, 256] */
-    size_t maxCacheCount = 4096; /* 最大分片缓存数量(单位:个数), 防止分片攻击, 值: [1, 10000] */
     size_t maxRecursionDepth = 3; /* 最大递归深度(单位:深度), 防止分片嵌套攻击, 值: [1, 5] */
+    size_t maxCacheCount = 5000; /* 最大分片缓存数量(单位:个数), 防止分片攻击, 值: [1, 10000] */
+    size_t maxReassembleSize = (128 * 1024); /* 最大重组后数据包大小(单位:字节), 防止分片攻击, 值: [1280B, 16Mb] */
+    size_t maxFragSize = (8 * 1024); /* (单个分片)最大负载大小(单位:字节), 防止大分片攻击, 值: [8B, 16Kb] */
+    size_t maxFragCount = 64; /* 每组分片最大数量(单位:个数), 防止分片攻击, 值: [1, 256] */
 };
 
 /**
- * @brief TCP流重组配置
+ * @brief TCP分段重组配置
  */
 struct TcpReassemblyConfig
 {
-    bool enable = true; /* 是否启用IP分片重组功能 */
-    size_t timeout = 30000; /* 流超时时间(单位:毫秒), 值: [1秒, 5分钟] */
-    size_t maxStreamSize = (5 * 1024 * 1024); /* 单个流最大缓存大小(单位:字节), 值: [64Kb, 64Mb]*/
-    size_t maxCacheCount = 16384; /* 最大流缓存数量(单位:个数), 值: [1000, 100000] */
-    size_t maxSegmentsPerStream = 1024; /* 单流最大乱序段数(单位:个数), 防止DoS攻击, 值: [1, 10000] */
-    size_t maxPendingSize = (128 * 1024); /* 协议解析器单流最大缓存大小(单位:字节), 值: [1024, maxStreamSize/4] */
+    bool enable = true; /* 是否启用TCP流重组功能 */
+    size_t timeout = 10000; /* 流超时时间(单位:毫秒), 值: [1秒, 5分钟] */
+    size_t maxCacheCount = 5000; /* 最大流缓存数量(单位:个数), 值: [1000, 100000] */
+    size_t maxSegSize = (4 * 1024 * 1024); /* (单个流)最大乱序段缓存大小(单位:字节), 防止DoS攻击, 值: [64Kb, 64Mb]*/
+    size_t maxSegCount = 256; /* (单个流)最大乱序段缓存数量(单位:个数), 防止DoS攻击, 值: [1, 10000] */
+    size_t maxPendingSize = (128 * 1024); /* 协议解析器(单个流)最大缓存大小(单位:字节), 值: [1024, maxSegSize/4] */
 };
 
 /**
@@ -98,7 +98,7 @@ public:
      * @brief 构造函数
      * @param cbCfg 回调配置
      * @param ipReassemblyCfg IP分片重组配置
-     * @param tcpReassemblyCfg TCP流重组配置
+     * @param tcpReassemblyCfg TCP分段重组配置
      */
     Analyzer(const CallbackConfig& cbCfg = CallbackConfig(), IpReassemblyConfig ipReassemblyCfg = IpReassemblyConfig(),
              TcpReassemblyConfig tcpReassemblyCfg = TcpReassemblyConfig());
@@ -133,7 +133,7 @@ public:
 
 private:
     /**
-     * @brief 分片缓存信息
+     * @brief IP分片信息
      */
     struct FragmentInfo
     {
@@ -160,7 +160,7 @@ private:
     };
 
     /**
-     * @brief TCP段信息
+     * @brief TCP分段信息
      */
     struct TcpSegment
     {
@@ -173,18 +173,18 @@ private:
     };
 
     /**
-     * @brief TCP流重组信息
+     * @brief TCP流信息
      */
     struct TcpStreamInfo
     {
         std::chrono::steady_clock::time_point lastAccessTime; /* 最近访问时间(用于超时和LRU) */
-        uint32_t nextExpectedSeq = 0; /* 期望的下一个序列号 */
         bool isSeqInitialized = false; /* 序列号是否已初始化(收到第一个SYN或数据的SYN) */
-        phmap::flat_hash_map<uint32_t, TcpSegment> segments; /* 乱序段缓存(按seq排序) */
-        std::vector<uint8_t> streams; /* 已重组的连续流数据(等待应用层消费) */
+        uint32_t nextExpectedSeq = 0; /* 期望的下一个序列号 */
+        size_t segmentsContinueCount = 0; /* 乱序分段连续出现次数 */
+        size_t segmentsTotalSize = 0; /* 乱序分段缓存总大小(字节), 插入/删除自动增减*/
+        phmap::flat_hash_map<uint32_t, TcpSegment> segments; /* 乱序分段缓存, key-seq, value-分段信息 */
         phmap::flat_hash_map<uint32_t, uint32_t> parserConsumedOffset; /* 解析器已消费的字节数, key-协议, value-偏移值 */
         phmap::flat_hash_map<uint32_t, std::vector<uint8_t>> parserPendingData; /* 解析器未消费的数据, key-协议, value-数据 */
-        bool finReceived = false; /* 是否已收到FIN标记 */
     };
 
 private:
@@ -327,7 +327,7 @@ private:
     void cleanupFragmentCache(const std::chrono::steady_clock::time_point& ntp);
 
     /**
-     * @brief 检查并处理分片
+     * @brief 检查并处理IP分片
      * @param ntp 当前时间点
      * @param networkHeader 网络层头部
      * @param data 当前分片数据(含IP头)
@@ -378,7 +378,7 @@ private:
 private:
     const CallbackConfig m_cbCfg; /* 回调配置 */
     const IpReassemblyConfig m_ipReassemblyCfg; /* IP分片重组配置 */
-    const TcpReassemblyConfig m_tcpReassemblyCfg; /* TCP分片重组配置 */
+    const TcpReassemblyConfig m_tcpReassemblyCfg; /* TCP分段重组配置 */
 
     phmap::flat_hash_map<FragmentKey, std::unique_ptr<FragmentInfo>> m_fragmentCache; /* IP分片缓存 */
     std::chrono::steady_clock::time_point m_lastCleanupTime = std::chrono::steady_clock::now(); /* 上次清理IP分片缓存时间 */
