@@ -181,7 +181,6 @@ private:
         bool isSeqInitialized = false; /* 序列号是否已初始化(收到第一个SYN或数据的SYN) */
         uint32_t nextExpectedSeq = 0; /* 期望的下一个序列号 */
         size_t segmentsContinueCount = 0; /* 乱序分段连续出现次数 */
-        size_t segmentsTotalSize = 0; /* 乱序分段缓存总大小(字节), 插入/删除自动增减*/
         phmap::flat_hash_map<uint32_t, TcpSegment> segments; /* 乱序分段缓存, key-seq, value-分段信息 */
         phmap::flat_hash_map<uint32_t, uint32_t> parserConsumedOffset; /* 解析器已消费的字节数, key-协议, value-偏移值 */
         phmap::flat_hash_map<uint32_t, std::vector<uint8_t>> parserPendingData; /* 解析器未消费的数据, key-协议, value-数据 */

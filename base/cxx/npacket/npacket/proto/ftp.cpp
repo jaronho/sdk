@@ -498,8 +498,8 @@ void FtpParser::handleDataPort(const std::chrono::steady_clock::time_point& ntp,
             dci->ctrl.serverPort = tcpHeader->srcPort;
         }
         dci->ctrl.mode = mode;
-        dci->ip = ip;
-        dci->port = port;
+        dci->ctrl.ip = ip;
+        dci->ctrl.port = port;
         dci->status = DataConnectStatus::READY;
         dci->tp = ntp;
         m_dataConnectList.insert(std::make_pair(key, dci));

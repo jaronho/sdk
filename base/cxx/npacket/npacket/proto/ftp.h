@@ -34,6 +34,8 @@ public:
         std::string serverIp; /* 服务端IP */
         uint16_t serverPort = 0; /* 服务端控制端口 */
         DataMode mode = DataMode::ACTIVE; /* 数据连接模式 */
+        std::string ip; /* 主动模式: 客户端的IP, 被动模式: 服务端的IP */
+        uint16_t port = 0; /* 主动模式: 客户端的端口, 被动模式: 服务端的端口 */
     };
 
     /**
@@ -165,8 +167,6 @@ private:
     struct DataConnectInfo
     {
         CtrlInfo ctrl; /* 控制连接信息 */
-        std::string ip; /* 主动模式下: 客户端的IP, 被动模式下: 服务端的IP */
-        uint16_t port = 0; /* 主动模式下: 客户端的端口, 被动模式下: 服务端的端口 */
         DataConnectStatus status = DataConnectStatus::READY; /* 连接状态 */
         std::chrono::steady_clock::time_point tp{}; /* 更新时间点 */
     };
