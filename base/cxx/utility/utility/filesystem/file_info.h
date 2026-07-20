@@ -131,9 +131,10 @@ public:
 
     /**
      * @brief 创建文件
+     * @param fileSize 文件大小(字节), <=0时仅创建/打开文件, >0: 文件不存在(新建文件并预分配该大小), 文件已存在(若当前文件尺寸小于该值则扩容, 若大于等于则不做任何修改)
      * @return true-成功, false-失败
      */
-    bool create() const;
+    bool create(long long fileSize = 0) const;
 
     /**
      * @brief 删除文件(注: 执行后可能需要同步下磁盘I/O, 该操作耗时, linux下为"sync")

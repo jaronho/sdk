@@ -220,7 +220,7 @@ bool FileInfo::exist() const
     return false;
 }
 
-bool FileInfo::create() const
+bool FileInfo::create(long long fileSize) const
 {
     if (m_fullName.empty())
     {
@@ -231,12 +231,70 @@ bool FileInfo::create() const
 #else
     auto f = fopen(m_fullName.c_str(), "ab+");
 #endif
-    if (f)
+    if (!f)
+    {
+        return false;
+    }
+    if (fileSize <= 0) /* 无需设置大小 */
     {
         fclose(f);
         return true;
     }
-    return false;
+    long long nowFileSize = -1;
+#ifdef _WIN32
+    _fseeki64(f, 0, SEEK_END);
+    nowFileSize = _ftelli64(f);
+#else
+    fseeko64(f, 0, SEEK_END);
+    nowFileSize = ftello64(f);
+#endif
+    rewind(f);
+    if (nowFileSize >= fileSize) /* 文件已足够大, 不做任何修改/不删除原有内容 */
+    {
+        fclose(f);
+        return true;
+    }
+    /* 预分配文件空间 */
+    bool preAllocOk = false;
+#ifdef _WIN32
+    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(f));
+    if (INVALID_HANDLE_VALUE != hFile)
+    {
+        LARGE_INTEGER li;
+        li.QuadPart = fileSize;
+        if (SetFilePointerEx(hFile, li, nullptr, FILE_BEGIN) && SetEndOfFile(hFile)) /* 扩展文件逻辑长度 */
+        {
+            SetFileValidData(hFile, li.QuadPart); /* 分配真实物理磁盘块(需要管理员权限) */
+            preAllocOk = true;
+        }
+    }
+#else
+    int fd = fileno(f);
+    if (0 == fallocate64(fd, 0, 0, (off64_t)fileSize)) /* 原生预分配物理块, 无空洞 */
+    {
+        preAllocOk = true;
+    }
+#endif
+    if (!preAllocOk) /* 预分配失败(无权限/系统不支持), 降级稀疏空洞扩容 */
+    {
+#ifdef _WIN32
+        if (0 != _fseeki64(f, fileSize - 1, SEEK_SET))
+#else
+        if (0 != fseeko64(f, fileSize - 1, SEEK_SET))
+#endif
+        {
+            fclose(f);
+            return false;
+        }
+        char zero = 0;
+        if (1 != fwrite(&zero, 1, 1, f))
+        {
+            fclose(f);
+            return false;
+        }
+    }
+    fclose(f);
+    return true;
 }
 
 bool FileInfo::remove() const
