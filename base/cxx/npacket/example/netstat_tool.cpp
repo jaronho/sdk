@@ -140,7 +140,6 @@ void onThread()
 #ifndef _WIN32
                 s_outPacpDevice.captureOnce();
 #endif
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
         catch (const std::exception& e)
@@ -238,6 +237,7 @@ int main(int argc, char* argv[])
     s_inPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) {
         static size_t num = 0;
         ++num;
+        /* 说明: 更合理是使用消息队列, 这里把收到的数据入队列, 新开线程从队列取数据进行解析, 避免解析逻辑耗时阻塞数据接收(可能导致数据被覆盖或丢失) */
         s_inPktAnalyzer->parse(IN_FLAG, num, std::chrono::steady_clock::now(), data, dataLen);
     });
     s_inPacpDevice.startCapture();
@@ -256,6 +256,7 @@ int main(int argc, char* argv[])
     s_outPacpDevice.setDataCallback([&](const unsigned char* data, int dataLen) {
         static size_t num = 0;
         ++num;
+        /* 说明: 更合理是使用消息队列, 这里把收到的数据入队列, 新开线程从队列取数据进行解析, 避免解析逻辑耗时阻塞数据接收(可能导致数据被覆盖或丢失) */
         s_outPktAnalyzer->parse(OUT_FLAG, num, std::chrono::steady_clock::now(), data, dataLen);
     });
     s_outPacpDevice.startCapture();

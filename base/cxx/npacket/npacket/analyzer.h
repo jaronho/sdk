@@ -331,11 +331,12 @@ private:
      * @param networkHeader 网络层头部
      * @param data 当前分片数据(含IP头)
      * @param dataLen 数据长度
-     * @param reassembledData [输出]重组后的完整数据
-     * @return true-重组数据, false-非重组数据
+     * @param outData [输出]处理后的数据
+     * @param isReassembly [输出]是否重组数据, true-是, false-否
+     * @return true-继续处理, false-丢弃数据
      */
     bool checkAndHandleFragment(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader, const uint8_t* data,
-                                uint32_t dataLen, std::vector<uint8_t>& reassembledData);
+                                uint32_t dataLen, std::vector<uint8_t>& outData, bool& isReassembly);
 
     /**
      * @brief 解析IPv6分片头部
@@ -367,12 +368,13 @@ private:
      * @param payloadLen 负载数据长度
      * @param key [输出]TCP流标识健
      * @param needMoreData [输出]是否需要更多数据
-     * @param reassembledData [输出]重组后的完整数据
-     * @return true-重组数据, false-非重组数据
+     * @param outData [输出]处理后的数据
+     * @param isReassembly [输出]是否重组数据, true-是, false-否
+     * @return true-继续处理, false-丢弃数据
      */
     bool checkAndHandleTcpStream(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader,
                                  const ProtocolHeader* transportHeader, const uint8_t* payload, uint32_t payloadLen, TcpStreamKey& key,
-                                 bool& needMoreData, std::vector<uint8_t>& reassembledData);
+                                 bool& needMoreData, std::vector<uint8_t>& outData, bool& isReassembly);
 
 private:
     const CallbackConfig m_cbCfg; /* 回调配置 */

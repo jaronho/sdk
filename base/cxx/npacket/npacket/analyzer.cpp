@@ -336,15 +336,18 @@ int Analyzer::parseWithDepth(size_t flag, size_t num, const std::chrono::steady_
         return 2;
     }
     /* step3. 检查并处理分片 */
-    std::vector<uint8_t> reassembledData;
-    auto isReassembly = checkAndHandleFragment(ntp, networkHeader, data + offset, remainLen, reassembledData);
+    std::vector<uint8_t> outData;
+    bool isReassembly = false;
+    if (!checkAndHandleFragment(ntp, networkHeader, data + offset, remainLen, outData, isReassembly))
+    {
+        return 2;
+    }
     if (isReassembly)
     {
-        if (!reassembledData.empty()) /* 分片已重组完成, 使用重组后的数据继续解析 */
+        if (!outData.empty()) /* 分片已重组完成, 使用重组后的数据继续解析 */
         {
             auto reassembledSource = (NetworkProtocol::IPv4 == networkProtocol ? DataSource::NETWORK_IPv4 : DataSource::NETWORK_IPv6);
-            return parseWithDepth(flag, num, ntp, ethernetHeader, reassembledData.data(), reassembledData.size(), reassembledSource,
-                                  depth + 1, 1);
+            return parseWithDepth(flag, num, ntp, ethernetHeader, outData.data(), outData.size(), reassembledSource, depth + 1, 1);
         }
         return 5; /* 分片未收齐, 等待后续 */
     }
@@ -449,13 +452,17 @@ int Analyzer::parseFromNetworkLayer(size_t flag, size_t num, const std::chrono::
     }
     networkHeader->parent = ethernetHeader;
     /* step2. 分片检查 */
-    std::vector<uint8_t> reassembledData;
-    auto isReassembly = checkAndHandleFragment(ntp, networkHeader, data, dataLen, reassembledData);
+    std::vector<uint8_t> outData;
+    bool isReassembly = false;
+    if (!checkAndHandleFragment(ntp, networkHeader, data, dataLen, outData, isReassembly))
+    {
+        return 2;
+    }
     if (isReassembly)
     {
-        if (!reassembledData.empty()) /* 分片已重组完成, 使用重组后的数据继续解析 */
+        if (!outData.empty()) /* 分片已重组完成, 使用重组后的数据继续解析 */
         {
-            return parseWithDepth(flag, num, ntp, ethernetHeader, reassembledData.data(), reassembledData.size(), dataSource, depth + 1, 1);
+            return parseWithDepth(flag, num, ntp, ethernetHeader, outData.data(), outData.size(), dataSource, depth + 1, 1);
         }
         return 5;
     }
@@ -592,17 +599,20 @@ int Analyzer::processTransportToApplication(size_t flag, size_t num, const std::
     {
         TcpStreamKey tcpKey;
         bool needMoreData = false;
-        std::vector<uint8_t> reassembledData;
-        auto isReassembly =
-            checkAndHandleTcpStream(ntp, networkHeader, transportHeader, payload, payloadLen, tcpKey, needMoreData, reassembledData);
-        if (!reassembledData.empty()) /* 有重组后的数据, 解析应用层, 并传入tcpKey用于关联状态 */
+        std::vector<uint8_t> outData;
+        bool isReassembly = false;
+        if (!checkAndHandleTcpStream(ntp, networkHeader, transportHeader, payload, payloadLen, tcpKey, needMoreData, outData, isReassembly))
+        {
+            return 3;
+        }
+        if (!outData.empty()) /* 有重组后的数据, 解析应用层, 并传入tcpKey用于关联状态 */
         {
             if (isReassembly && reassemblyFlag < 2) /* 重组数据 */
             {
                 reassemblyFlag += 2;
             }
-            return handleApplicationLayer(flag, num, ntp, totalLen, transportHeader, reassembledData.data(), reassembledData.size(),
-                                          &tcpKey, depth, reassemblyFlag);
+            return handleApplicationLayer(flag, num, ntp, totalLen, transportHeader, outData.data(), outData.size(), &tcpKey, depth,
+                                          reassemblyFlag);
         }
         else if (needMoreData) /* TCP流在等待更多数据, 返回CONTINUE */
         {
@@ -1092,17 +1102,17 @@ void Analyzer::cleanupFragmentCache(const std::chrono::steady_clock::time_point&
 }
 
 bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader,
-                                      const uint8_t* data, uint32_t dataLen, std::vector<uint8_t>& reassembledData)
+                                      const uint8_t* data, uint32_t dataLen, std::vector<uint8_t>& outData, bool& isReassembly)
 {
-    bool isReassembly = false;
-    reassembledData.clear();
+    outData.clear();
+    isReassembly = false;
     if (!networkHeader || !data || 0 == dataLen)
     {
-        return isReassembly;
+        return true;
     }
     if (!m_ipReassemblyCfg.enable)
     {
-        return isReassembly;
+        return true;
     }
     FragmentKey key;
     uint32_t headerLen = 0;
@@ -1117,7 +1127,7 @@ bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
         auto ipv4Header = (const Ipv4Header*)(networkHeader);
         if (!(ipv4Header->flagMore > 0 || ipv4Header->fragOffset > 0)) /* 非分片报文 */
         {
-            return isReassembly;
+            return true;
         }
         isReassembly = true;
         key = FragmentKey::createIpv4(ipv4Header->srcAddr, ipv4Header->dstAddr, ipv4Header->identification);
@@ -1133,7 +1143,7 @@ bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
         if (!parseIpv6FragmentHeader(ipv6Header, data, dataLen, originalProtocol, isMoreFragment, fragOffset, fragHeaderLen,
                                      identification)) /* 非分片报文 */
         {
-            return isReassembly;
+            return true;
         }
         isReassembly = true;
         uint8_t srcBytes[16], dstBytes[16];
@@ -1145,35 +1155,35 @@ bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
     }
     else /* 非IP协议, 不处理分片 */
     {
-        return isReassembly;
+        return true;
     }
     if (headerLen > dataLen) /* 头部长度不合理 */
     {
-        return isReassembly;
+        return true;
     }
     if (fragOffset > (std::numeric_limits<uint16_t>::max() / 8)) /* 偏移量过大, 非法分片 */
     {
-        return isReassembly;
+        return true;
     }
     const uint8_t* payload = data + headerLen;
     uint32_t payloadLen = dataLen - headerLen;
     if (payloadLen > m_ipReassemblyCfg.maxFragSize) /* 检查单分片负载大小 */
     {
-        return isReassembly;
+        return true;
     }
     if (fragOffset > (m_ipReassemblyCfg.maxReassembleSize / 8)) /* 检查分片偏移量计算是否越界 */
     {
-        return isReassembly;
+        return true;
     }
     if ((isMoreFragment && 0 == payloadLen) || payloadLen > 65535) /* 检查分片负载有效性 */
     {
-        return isReassembly;
+        return true;
     }
     uint64_t estimatedTotal = (uint64_t)fragOffset * 8 + payloadLen;
     if (estimatedTotal > m_ipReassemblyCfg.maxReassembleSize
         || estimatedTotal > std::numeric_limits<uint32_t>::max()) /* 预检查总大小(防止整数溢出) */
     {
-        return isReassembly;
+        return true;
     }
     /* 查找或创建分片缓存 */
     FragmentInfo* info = nullptr;
@@ -1191,19 +1201,19 @@ bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
         if (!info) /* 防御性检查: 防止map中存在空指针 */
         {
             m_fragmentCache.erase(iter);
-            return isReassembly;
+            return true;
         }
     }
     info->lastAccessTime = ntp; /* 更新访问时间 */
     if (info->fragmentCount >= m_ipReassemblyCfg.maxFragCount) /* 检查分片数量(疑似DoS攻击) */
     {
         m_fragmentCache.erase(key);
-        return isReassembly;
+        return true;
     }
     if (info->totalPayloadSize + payloadLen > m_ipReassemblyCfg.maxReassembleSize) /* 检查缓存总大小 */
     {
         m_fragmentCache.erase(key);
-        return isReassembly;
+        return true;
     }
     /* 分片重叠处理 */
     uint32_t newStart = fragOffset * 8;
@@ -1318,7 +1328,7 @@ bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
             if (newStart < existEnd && newEnd > existStart) /* 任何重叠都视为攻击 */
             {
                 m_fragmentCache.erase(key);
-                return isReassembly;
+                return true;
             }
         }
     }
@@ -1334,18 +1344,18 @@ bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
     }
     if (!info->gotLastFragment) /* 检查是否收齐所有分片, 继续等待 */
     {
-        return isReassembly;
+        return true;
     }
     auto fragmentInfo = std::move(iter->second); /* 需要先将数据移出暂存, 避免数据被销毁 */
     info = fragmentInfo.get(); /* 修改指针指向地址 */
     m_fragmentCache.erase(key); /* 清理缓存 */
     if (0 == info->totalLen || info->totalLen > m_ipReassemblyCfg.maxReassembleSize) /* 验证总长度 */
     {
-        return isReassembly;
+        return true;
     }
     /* 重组数据 */
-    reassembledData.reserve(basicHeaderLen + info->totalLen);
-    reassembledData.insert(reassembledData.end(), data, data + basicHeaderLen); /* 先复制IP头部 */
+    outData.reserve(basicHeaderLen + info->totalLen);
+    outData.insert(outData.end(), data, data + basicHeaderLen); /* 先复制IP头部 */
     /* 检查分片连续性 */
     uint32_t currentPos = 0;
     for (auto& kv : info->fragments)
@@ -1353,20 +1363,20 @@ bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
         uint32_t expectedBytePos = kv.first * 8; /* 将块索引转换为字节偏移 */
         if (expectedBytePos != currentPos) /* 分片不连续 */
         {
-            return isReassembly;
+            return true;
         }
-        reassembledData.insert(reassembledData.end(), kv.second.begin(), kv.second.end());
+        outData.insert(outData.end(), kv.second.begin(), kv.second.end());
         currentPos += kv.second.size();
     }
     if (currentPos != info->totalLen) /* 验证重组结果 */
     {
-        return isReassembly;
+        return true;
     }
     /* 更新IP头部中的长度字段 */
     if (isIpv4) /* IPv4 */
     {
-        uint16_t newTotalLen = (uint16_t)(reassembledData.size());
-        auto ipHeader = (RawIpv4Header*)(reassembledData.data());
+        uint16_t newTotalLen = (uint16_t)(outData.size());
+        auto ipHeader = (RawIpv4Header*)(outData.data());
         ipHeader->totalLen[0] = ((newTotalLen >> 8) & 0xFF);
         ipHeader->totalLen[1] = (newTotalLen & 0xFF);
         /* 清除MF标志和片段偏移 */
@@ -1377,15 +1387,15 @@ bool Analyzer::checkAndHandleFragment(const std::chrono::steady_clock::time_poin
     {
         if (0 == info->originalProtocol) /* 原始协议无效 */
         {
-            return isReassembly;
+            return true;
         }
-        uint16_t newPayloadLen = (uint16_t)(reassembledData.size() - Ipv6Header::getMinLen());
-        auto ipHeader = (RawIpv6Header*)(reassembledData.data());
+        uint16_t newPayloadLen = (uint16_t)(outData.size() - Ipv6Header::getMinLen());
+        auto ipHeader = (RawIpv6Header*)(outData.data());
         ipHeader->payloadLen[0] = ((newPayloadLen >> 8) & 0xFF);
         ipHeader->payloadLen[1] = (newPayloadLen & 0xFF);
         ipHeader->nextHeader = info->originalProtocol; /* 恢复原始协议 */
     }
-    return isReassembly;
+    return true;
 }
 
 bool Analyzer::parseIpv6FragmentHeader(const Ipv6Header* header, const uint8_t* data, uint32_t dataLen, uint8_t& originalProtocol,
@@ -1472,18 +1482,18 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
 
 bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader,
                                        const ProtocolHeader* transportHeader, const uint8_t* payload, uint32_t payloadLen,
-                                       TcpStreamKey& key, bool& needMoreData, std::vector<uint8_t>& reassembledData)
+                                       TcpStreamKey& key, bool& needMoreData, std::vector<uint8_t>& outData, bool& isReassembly)
 {
     needMoreData = false;
-    reassembledData.clear();
-    bool isReassembly = false;
+    outData.clear();
+    isReassembly = false;
     if (!networkHeader || !transportHeader || !payload) /* 注意: 不能payloadLen为0就返回 */
     {
-        return isReassembly;
+        return true;
     }
     if (!m_tcpReassemblyCfg.enable)
     {
-        return isReassembly;
+        return true;
     }
     const TcpHeader* tcpHeader = (const TcpHeader*)(transportHeader);
     /* 构建TCP流键(四元组) */
@@ -1502,7 +1512,7 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
     }
     else
     {
-        return isReassembly;
+        return true;
     }
     /* 获取或创建流信息 */
     TcpStreamInfo* info = nullptr;
@@ -1513,9 +1523,9 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         {
             if (payloadLen > 0)
             {
-                reassembledData.assign(payload, payload + payloadLen);
+                outData.assign(payload, payload + payloadLen);
             }
-            return isReassembly;
+            return true;
         }
         auto streamInfo = std::make_unique<TcpStreamInfo>();
         iter = m_tcpStreamCache.insert(std::make_pair(key, std::move(streamInfo))).first;
@@ -1524,24 +1534,24 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
     if (!info) /* 防御性检查: 防止map中存在空指针 */
     {
         m_tcpStreamCache.erase(iter);
-        return isReassembly;
+        return true;
     }
     info->lastAccessTime = ntp;
     if (tcpHeader->flagRst) /* 处理特殊控制位RST: 立即清空流, 但返回当前数据(如果有) */
     {
         if (payloadLen > 0)
         {
-            reassembledData.insert(reassembledData.end(), payload, payload + payloadLen);
+            outData.insert(outData.end(), payload, payload + payloadLen);
         }
         m_tcpStreamCache.erase(iter);
-        return isReassembly;
+        return true;
     }
     if (tcpHeader->flagFin) /* 处理FIN: 进入半关闭状态, 不立即删除流 */
     {
         /* 追加当前FIN包数据 */
-        if (payloadLen > 0 && (reassembledData.empty() || tcpHeader->seq == info->nextExpectedSeq))
+        if (payloadLen > 0 && (outData.empty() || tcpHeader->seq == info->nextExpectedSeq))
         {
-            reassembledData.insert(reassembledData.end(), payload, payload + payloadLen);
+            outData.insert(outData.end(), payload, payload + payloadLen);
             if (info->isSeqInitialized)
             {
                 info->nextExpectedSeq = seqAdd(info->nextExpectedSeq, payloadLen);
@@ -1554,14 +1564,14 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
             std::sort(sortedSegs.begin(), sortedSegs.end(), [](const auto& a, const auto& b) { return seqLt(a.first, b.first); });
             for (const auto& p : sortedSegs)
             {
-                reassembledData.insert(reassembledData.end(), p.second.data.begin(), p.second.data.end());
+                outData.insert(outData.end(), p.second.data.begin(), p.second.data.end());
             }
             info->segmentsContinueCount = 0;
             info->segments.clear();
             isReassembly = true;
         }
         m_tcpStreamCache.erase(iter); /* 收到FIN后立即删除流, 因为所有数据已经返回 */
-        return isReassembly;
+        return true;
     }
     if (!info->isSeqInitialized) /* 初始化序列号 */
     {
@@ -1574,8 +1584,8 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         info->nextExpectedSeq = seqAdd(initialSeq, payloadLen);
         if (payloadLen > 0) /* 即使没有payload, 也标记为已初始化, 但不等待更多数据 */
         {
-            reassembledData.insert(reassembledData.end(), payload, payload + payloadLen);
-            return isReassembly;
+            outData.insert(outData.end(), payload, payload + payloadLen);
+            return true;
         }
         if (tcpHeader->flagSyn && !tcpHeader->flagFin && !tcpHeader->flagRst && 0 == payloadLen) /* 纯SYN包, 不需要等待数据 */
         {
@@ -1585,7 +1595,7 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         {
             needMoreData = true;
         }
-        return isReassembly;
+        return true;
     }
     uint32_t curSeq = tcpHeader->seq;
     if (seqLt(curSeq, info->nextExpectedSeq)) /* 序列号重传/重叠处理 */
@@ -1594,13 +1604,9 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         uint32_t endSeq = seqAdd(curSeq, payloadLen);
         if (seqLe(endSeq, info->nextExpectedSeq)) /* 完全重复 */
         {
-            if (payloadLen > 0)
-            {
-                needMoreData = true;
-                isReassembly = true;
-            }
-            /* 空负载的重复包(如重复ACK)不需要等待更多数据 */
-            return isReassembly;
+            needMoreData = false;
+            outData.clear(); /* 无数据输出给业务 */
+            return false; /* 丢弃重复数据 */
         }
         /* 部分重叠, 截取新数据 */
         uint32_t offset = info->nextExpectedSeq - curSeq;
@@ -1612,12 +1618,11 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         }
         else
         {
-            if (payloadLen > 0) /* payloadLen > 0 但 offset >= payloadLen, 整个载荷都是旧的重复数据 */
+            if (payloadLen > 0)
             {
                 needMoreData = true;
-                isReassembly = true;
             }
-            return isReassembly;
+            return true;
         }
     }
     if (curSeq == info->nextExpectedSeq) /* 按序到达 */
@@ -1626,7 +1631,7 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         info->segmentsContinueCount = 0;
         if (payloadLen > 0)
         {
-            reassembledData.insert(reassembledData.end(), payload, payload + payloadLen);
+            outData.insert(outData.end(), payload, payload + payloadLen);
         }
         /* 整合乱序分段 */
         bool hasMore = true;
@@ -1672,7 +1677,7 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
                     }
                     if (offset < segment.data.size())
                     {
-                        reassembledData.insert(reassembledData.end(), segment.data.begin() + offset, segment.data.end());
+                        outData.insert(outData.end(), segment.data.begin() + offset, segment.data.end());
                         info->nextExpectedSeq = seqAdd(info->nextExpectedSeq, (uint32_t)(segment.data.size() - offset));
                     }
                     info->segments.erase(it);
@@ -1701,8 +1706,7 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
         {
             std::vector<std::pair<uint32_t, TcpSegment>> sortedSegs(info->segments.begin(), info->segments.end());
             std::sort(sortedSegs.begin(), sortedSegs.end(), [](const auto& a, const auto& b) { return seqLt(a.first, b.first); });
-            uint32_t minSeq = sortedSegs[0].first;
-            uint32_t expectSeq = minSeq;
+            uint32_t expectSeq = info->nextExpectedSeq;
             std::vector<phmap::flat_hash_map<uint32_t, TcpSegment>::iterator> continuousList;
             for (const auto& p : sortedSegs)
             {
@@ -1715,13 +1719,18 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
                         expectSeq = seqAdd(p.first, p.second.payloadLen);
                     }
                 }
-                else
+                else if (seqLt(p.first, expectSeq)) /* 该分段的seq小于期望seq, 说明是重复或已覆盖的数据, 跳过 */
+                {
+                    continue;
+                }
+                else /* 不连续, 停止收集 */
                 {
                     break;
                 }
             }
             if (continuousList.empty()) /* 无连续分段, 兜底淘汰最小seq(最旧)分段 */
             {
+                uint32_t minSeq = sortedSegs[0].first;
                 auto minIter = info->segments.find(minSeq);
                 if (info->segments.end() != minIter)
                 {
@@ -1733,18 +1742,11 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
                 uint32_t lastEndSeq = 0;
                 for (auto it : continuousList)
                 {
-                    reassembledData.insert(reassembledData.end(), it->second.data.begin(), it->second.data.end());
+                    outData.insert(outData.end(), it->second.data.begin(), it->second.data.end());
                     lastEndSeq = seqAdd(it->first, it->second.payloadLen);
                     info->segments.erase(it); /* 删除已输出分段 */
                 }
-                if (curSeq == lastEndSeq && continuousList.size() == sortedSegs.size()) /* 当前分段与缓存的分段是连续的 */
-                {
-                    info->nextExpectedSeq = seqAdd(curSeq, payloadLen);
-                }
-                else
-                {
-                    info->nextExpectedSeq = lastEndSeq;
-                }
+                info->nextExpectedSeq = lastEndSeq;
             }
         }
         if (payloadLen > 0) /* 存储当前乱序分段 */
@@ -1754,11 +1756,19 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
             segment.payloadLen = payloadLen;
             segment.data.assign(payload, payload + payloadLen);
             segment.recvTime = ntp;
-            info->segments[curSeq] = std::move(segment);
+            auto segIt = info->segments.find(curSeq);
+            if (info->segments.end() == segIt)
+            {
+                info->segments[curSeq] = std::move(segment);
+            }
+            else if (segment.payloadLen > segIt->second.payloadLen) /* 已存在分片, 仅当新分片更长时覆盖, 否则丢弃当前残缺重传包 */
+            {
+                segIt->second = std::move(segment);
+            }
+            needMoreData = true;
+            isReassembly = true;
         }
-        needMoreData = true;
-        isReassembly = true;
     }
-    return isReassembly;
+    return true;
 }
 } // namespace npacket
