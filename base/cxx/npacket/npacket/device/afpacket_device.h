@@ -71,7 +71,7 @@ public:
     bool setFilter(const std::string& bpf, int optimize = 1, int netmask = 0);
 
     /**
-     * @brief 设置数据回调
+     * @brief 设置数据回调, 说明: 收到数据后最好添加到消息队列, 然后在其他线程从队列取数据处理, 避免阻塞数据接收导致数据被覆盖或丢失
      * @param cb 数据回调, 参数: data-数据, dataLen-数据长度
      */
     void setDataCallback(const std::function<void(const unsigned char* data, unsigned int dataLen)>& cb);
