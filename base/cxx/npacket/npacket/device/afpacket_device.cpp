@@ -112,7 +112,7 @@ bool AfPacketDevice::open(const std::string& name, int direction, int snapLen, i
     /* 保存参数 */
     m_name = name;
     m_snapLen = (snapLen <= 0 || snapLen > 65536) ? 65536 : snapLen;
-    m_timeoutMs = timeout;
+    m_timeoutMs = timeout > 0 ? timeout : 1000;
     m_describe = name;
     /* 获取IPv4地址 */
     struct ifaddrs* ifaddr;
