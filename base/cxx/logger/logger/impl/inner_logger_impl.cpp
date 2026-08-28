@@ -33,8 +33,8 @@ inline int getThreadId()
 
 struct DateTime
 {
-    char ymd[12]; /* 年月日 */
-    char hms[12]; /* 时分秒 */
+    char ymd[11]; /* 年月日 */
+    char hms[9]; /* 时分秒 */
     char ms[4]; /* 毫秒 */
 };
 
@@ -42,67 +42,93 @@ inline DateTime& getDateTime()
 {
     static thread_local DateTime dt;
     static thread_local uint64_t lastMs = 0;
-#ifdef _WIN32
-    struct timeval /* Windows平台补充timeval结构体定义 */
-    {
-        long tv_sec; /* 秒 */
-        long tv_usec; /* 微秒 */
-    };
-#endif
     time_t sec; /* 秒 */
     int ms = 0; /* 毫秒 */
 #ifdef _WIN32
     SYSTEMTIME st;
     GetLocalTime(&st);
-    sec = time(nullptr);
+    sec = time(NULL);
     ms = st.wMilliseconds;
 #else
     struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    sec = tv.tv_sec;
-    ms = tv.tv_usec / 1000;
-#endif
-    uint64_t nowMs = (uint64_t)(sec)*1000 + ms;
-    if (nowMs != lastMs)
+    if (0 != gettimeofday(&tv, NULL))
     {
-        lastMs = nowMs;
-        struct tm t;
-#ifdef _WIN32
-        localtime_s(&t, &sec);
-#else
-        localtime_r(&sec, &t);
-#endif
-        /* 手动格式化, 避免strftime */
-        auto itoa2 = [](int v, char* p) {
-            *p = (char)('0' + v / 10);
-            *(p + 1) = (char)('0' + v % 10);
-        };
-        auto itoa4 = [](int v, char* p) {
-            *(p + 3) = (char)('0' + v % 10);
-            v /= 10;
-            *(p + 2) = (char)('0' + v % 10);
-            v /= 10;
-            *(p + 1) = (char)('0' + v % 10);
-            v /= 10;
-            *p = (char)('0' + v);
-        };
-        itoa4(t.tm_year + 1900, dt.ymd);
-        dt.ymd[4] = '-';
-        itoa2(t.tm_mon + 1, dt.ymd + 5);
-        dt.ymd[7] = '-';
-        itoa2(t.tm_mday, dt.ymd + 8);
-        dt.ymd[10] = '\0';
-        itoa2(t.tm_hour, dt.hms);
-        dt.hms[2] = ':';
-        itoa2(t.tm_min, dt.hms + 3);
-        dt.hms[5] = ':';
-        itoa2(t.tm_sec, dt.hms + 6);
-        dt.hms[8] = '\0';
-        dt.ms[0] = (char)('0' + ms / 100);
-        dt.ms[1] = (char)('0' + (ms / 10) % 10);
-        dt.ms[2] = (char)('0' + ms % 10);
-        dt.ms[3] = '\0';
+        tv.tv_sec = 0;
+        tv.tv_usec = 0;
     }
+    sec = tv.tv_sec;
+    ms = (int)(tv.tv_usec / 1000);
+#endif
+    uint64_t nowMs = (uint64_t)(sec) * 1000 + ms;
+    if (nowMs == lastMs)
+    {
+        return dt;
+    }
+    lastMs = nowMs;
+    struct tm t;
+#ifdef _WIN32
+    if (0 != localtime_s(&t, &sec))
+    {
+        snprintf(dt.ymd, sizeof(dt.ymd), "1970-01-01");
+        snprintf(dt.hms, sizeof(dt.hms), "00:00:00");
+        snprintf(dt.ms, sizeof(dt.ms), "000");
+        return dt;
+    }
+#else
+    if (NULL == localtime_r(&sec, &t))
+    {
+        snprintf(dt.ymd, sizeof(dt.ymd), "1970-01-01");
+        snprintf(dt.hms, sizeof(dt.hms), "00:00:00");
+        snprintf(dt.ms, sizeof(dt.ms), "000");
+        return dt;
+    }
+#endif
+    /* 手动格式化, 避免strftime */
+    auto itoa2 = [](int v, char* p) {
+        if (v < 0)
+        {
+            v = 0;
+        }
+        else if (v > 99)
+        {
+            v = 99;
+        }
+        *p = (char)('0' + v / 10);
+        *(p + 1) = (char)('0' + v % 10);
+    };
+    auto itoa4 = [](int v, char* p) {
+        if (v < 0)
+        {
+            v = 0;
+        }
+        else if (v > 9999)
+        {
+            v = 9999;
+        }
+        *(p + 3) = (char)('0' + v % 10);
+        v /= 10;
+        *(p + 2) = (char)('0' + v % 10);
+        v /= 10;
+        *(p + 1) = (char)('0' + v % 10);
+        v /= 10;
+        *p = (char)('0' + v);
+    };
+    itoa4(t.tm_year + 1900, dt.ymd);
+    dt.ymd[4] = '-';
+    itoa2(t.tm_mon + 1, dt.ymd + 5);
+    dt.ymd[7] = '-';
+    itoa2(t.tm_mday, dt.ymd + 8);
+    dt.ymd[10] = '\0';
+    itoa2(t.tm_hour, dt.hms);
+    dt.hms[2] = ':';
+    itoa2(t.tm_min, dt.hms + 3);
+    dt.hms[5] = ':';
+    itoa2(t.tm_sec, dt.hms + 6);
+    dt.hms[8] = '\0';
+    dt.ms[0] = (char)('0' + ms / 100);
+    dt.ms[1] = (char)('0' + (ms / 10) % 10);
+    dt.ms[2] = (char)('0' + ms % 10);
+    dt.ms[3] = '\0';
     return dt;
 }
 
