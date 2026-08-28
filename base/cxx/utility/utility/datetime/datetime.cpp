@@ -20,9 +20,17 @@ DateTime::DateTime(int hour, int minute, int second, int millisecond) : hour(hou
     time_t now = time(NULL);
     struct tm t;
 #ifdef _WIN32
-    localtime_s(&t, &now);
+    if (0 != localtime_s(&t, &now))
+    {
+        reset();
+        return;
+    }
 #else
-    t = *localtime(&now);
+    if (NULL == localtime_r(&now, &t))
+    {
+        reset();
+        return;
+    }
 #endif
     /* 填充 */
     year = 1900 + t.tm_year;
@@ -39,9 +47,17 @@ DateTime::DateTime(double timestamp)
     time_t now = secs > 0 ? secs : time(NULL);
     struct tm t;
 #ifdef _WIN32
-    localtime_s(&t, &now);
+    if (0 != localtime_s(&t, &now))
+    {
+        reset();
+        return;
+    }
 #else
-    localtime_r(&now, &t);
+    if (NULL == localtime_r(&now, &t))
+    {
+        reset();
+        return;
+    }
 #endif
     if (secs <= 0) /* 未指定时间戳, 获取当前时间毫秒 */
     {
@@ -51,8 +67,12 @@ DateTime::DateTime(double timestamp)
         ms = wtm.wMilliseconds;
 #else
         struct timeval tv;
-        gettimeofday(&tv, nullptr);
-        ms = tv.tv_usec / 1000;
+        if (0 != gettimeofday(&tv, NULL))
+        {
+            tv.tv_sec = 0;
+            tv.tv_usec = 0;
+        }
+        ms = (int)(tv.tv_usec / 1000);
 #endif
     }
     /* 填充 */
@@ -69,15 +89,21 @@ DateTime::DateTime(double timestamp)
 
 DateTime::DateTime(const std::string& dtString, const char sep1[1], const char sep2[1], const char sep3[1])
 {
-    std::string sep1Str = sep1[0] ? std::string(1, sep1[0]) : "";
-    std::string sep2Str = sep2[0] ? std::string(1, sep2[0]) : "";
-    std::string sep3Str = sep3[0] ? std::string(1, sep3[0]) : "";
+    reset();
+    std::string sep1Str = (sep1 && sep1[0]) ? std::string(1, sep1[0]) : "";
+    std::string sep2Str = (sep2 && sep2[0]) ? std::string(1, sep2[0]) : "";
+    std::string sep3Str = (sep3 && sep3[0]) ? std::string(1, sep3[0]) : "";
     std::string fmtStr = "%04d" + sep1Str + "%02d" + sep1Str + "%02d" + sep2Str + "%02d" + sep3Str + "%02d" + sep3Str + "%02d";
+    int matched = 0;
 #ifdef _WIN32
-    sscanf_s(dtString.c_str(), fmtStr.c_str(), &year, &month, &day, &hour, &minute, &second);
+    matched = sscanf_s(dtString.c_str(), fmtStr.c_str(), &year, &month, &day, &hour, &minute, &second);
 #else
-    sscanf(dtString.c_str(), fmtStr.c_str(), &year, &month, &day, &hour, &minute, &second);
+    matched = sscanf(dtString.c_str(), fmtStr.c_str(), &year, &month, &day, &hour, &minute, &second);
 #endif
+    if (6 != matched) /* 解析失败, 回退到默认值 */
+    {
+        reset();
+    }
 }
 
 bool DateTime::operator==(const DateTime& other) const
@@ -347,21 +373,21 @@ double DateTime::toTimestamp() const
     t.tm_min = minute;
     t.tm_sec = second;
     t.tm_isdst = -1; /* 不关心是否处于夏令时(自动根据日期来决定是否处于夏令时) */
-    double timestamp = mktime(&t);
-    timestamp += (float)millisecond / 1000;
-    return (timestamp > 0 ? timestamp : 0);
+    time_t ts = mktime(&t);
+    if ((time_t)-1 == ts)
+    {
+        return 0.0;
+    }
+    double timestamp = (double)ts + (double)millisecond / 1000.0;
+    return (timestamp > 0 ? timestamp : 0.0);
 }
 
 std::string DateTime::yyyyMMdd(const char sep[1]) const
 {
     std::string sepStr = (sep && sep[0]) ? std::string(1, sep[0]) : "";
     std::string fmtStr = "%04d" + sepStr + "%02d" + sepStr + "%02d";
-    char buf[11] = {0};
-#ifdef _WIN32
-    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day);
-#else
-    sprintf(buf, fmtStr.c_str(), year, month, day);
-#endif
+    char buf[32] = {0};
+    snprintf(buf, sizeof(buf), fmtStr.c_str(), year, month, day);
     return buf;
 }
 
@@ -369,12 +395,8 @@ std::string DateTime::hhmm(const char sep1[1]) const
 {
     std::string sep1Str = (sep1 && sep1[0]) ? std::string(1, sep1[0]) : "";
     std::string fmtStr = "%02d" + sep1Str + "%02d";
-    char buf[6] = {0};
-#ifdef _WIN32
-    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), hour, minute);
-#else
-    sprintf(buf, fmtStr.c_str(), hour, minute);
-#endif
+    char buf[16] = {0};
+    snprintf(buf, sizeof(buf), fmtStr.c_str(), hour, minute);
     return buf;
 }
 
@@ -382,24 +404,16 @@ std::string DateTime::hhmmss(const char sep1[1], const char sep2[1]) const
 {
     std::string sep1Str = (sep1 && sep1[0]) ? std::string(1, sep1[0]) : "";
     std::string fmtStr = "%02d" + sep1Str + "%02d" + sep1Str + "%02d";
-    char buf[13] = {0};
+    char buf[32] = {0};
     if (sep2)
     {
         std::string sep2Str = sep2[0] ? std::string(1, sep2[0]) : "";
         fmtStr += sep2Str + "%03d";
-#ifdef _WIN32
-        sprintf_s(buf, sizeof(buf), fmtStr.c_str(), hour, minute, second, millisecond);
-#else
-        sprintf(buf, fmtStr.c_str(), hour, minute, second, millisecond);
-#endif
+        snprintf(buf, sizeof(buf), fmtStr.c_str(), hour, minute, second, millisecond);
     }
     else
     {
-#ifdef _WIN32
-        sprintf_s(buf, sizeof(buf), fmtStr.c_str(), hour, minute, second);
-#else
-        sprintf(buf, fmtStr.c_str(), hour, minute, second);
-#endif
+        snprintf(buf, sizeof(buf), fmtStr.c_str(), hour, minute, second);
     }
     return buf;
 }
@@ -410,12 +424,8 @@ std::string DateTime::yyyyMMddhhmm(const char sep1[1], const char sep2[1], const
     std::string sep2Str = (sep2 && sep2[0]) ? std::string(1, sep2[0]) : "";
     std::string sep3Str = (sep3 && sep3[0]) ? std::string(1, sep3[0]) : "";
     std::string fmtStr = "%04d" + sep1Str + "%02d" + sep1Str + "%02d" + sep2Str + "%02d" + sep3Str + "%02d";
-    char buf[17] = {0};
-#ifdef _WIN32
-    sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute);
-#else
-    sprintf(buf, fmtStr.c_str(), year, month, day, hour, minute);
-#endif
+    char buf[32] = {0};
+    snprintf(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute);
     return buf;
 }
 
@@ -425,24 +435,16 @@ std::string DateTime::yyyyMMddhhmmss(const char sep1[1], const char sep2[1], con
     std::string sep2Str = (sep2 && sep2[0]) ? std::string(1, sep2[0]) : "";
     std::string sep3Str = (sep3 && sep3[0]) ? std::string(1, sep3[0]) : "";
     std::string fmtStr = "%04d" + sep1Str + "%02d" + sep1Str + "%02d" + sep2Str + "%02d" + sep3Str + "%02d" + sep3Str + "%02d";
-    char buf[24] = {0};
+    char buf[48] = {0};
     if (sep4)
     {
         std::string sep4Str = sep4[0] ? std::string(1, sep4[0]) : "";
         fmtStr += sep4Str + "%03d";
-#ifdef _WIN32
-        sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute, second, millisecond);
-#else
-        sprintf(buf, fmtStr.c_str(), year, month, day, hour, minute, second, millisecond);
-#endif
+        snprintf(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute, second, millisecond);
     }
     else
     {
-#ifdef _WIN32
-        sprintf_s(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute, second);
-#else
-        sprintf(buf, fmtStr.c_str(), year, month, day, hour, minute, second);
-#endif
+        snprintf(buf, sizeof(buf), fmtStr.c_str(), year, month, day, hour, minute, second);
     }
     return buf;
 }
@@ -463,9 +465,12 @@ double DateTime::getNowTimestamp()
     return (t - 11644473600.0);
 #else
     struct timeval v;
-    gettimeofday(&v, (struct timezone*)NULL);
+    if (0 != gettimeofday(&v, NULL))
+    {
+        return 0.0;
+    }
     /* Unix Epoch time (time since January 1, 1970 (UTC)) */
-    return v.tv_sec + v.tv_usec / 1.0e6;
+    return (double)v.tv_sec + (double)v.tv_usec / 1.0e6;
 #endif
 }
 
@@ -492,8 +497,13 @@ bool DateTime::setLocalTime(const DateTime& dt)
     t.tm_min = dt.minute;
     t.tm_sec = dt.second;
     t.tm_isdst = -1; /* 不关心是否处于夏令时(自动根据日期来决定是否处于夏令时) */
+    time_t tsec = mktime(&t);
+    if ((time_t)-1 == tsec)
+    {
+        return false;
+    }
     struct timeval tv;
-    tv.tv_sec = mktime(&t);
+    tv.tv_sec = tsec;
     tv.tv_usec = 0;
     if (0 == settimeofday(&tv, NULL))
     {
