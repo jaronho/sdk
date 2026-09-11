@@ -116,8 +116,10 @@ bool PcapDevice::setFilter(const std::string& bpf, int optimize, int netmask)
     }
     if (0 != pcap_setfilter(m_pcap, &filter))
     {
+        pcap_freecode(&filter);
         return false;
     }
+    pcap_freecode(&filter);
     return true;
 }
 
