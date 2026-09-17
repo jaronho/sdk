@@ -190,7 +190,7 @@ bool System::tryLockFile(const std::string& filename, bool block)
     return tryLockUnlockFile(fd, true, block);
 }
 
-bool System::tryLockFileTemporary(const std::string& filename, const std::function<void()>& func, const std::string& suffix)
+bool System::tryLockFileTemporary(const std::string& filename, const std::function<void(bool lockOk)>& func, const std::string& suffix)
 {
     if (filename.empty())
     {
@@ -212,11 +212,11 @@ bool System::tryLockFileTemporary(const std::string& filename, const std::functi
     }
 #endif
     /* 加锁 */
-    tryLockUnlockFile(fd, true, true);
+    auto lockOk = tryLockUnlockFile(fd, true, true);
     /* 执行逻辑 */
     if (func)
     {
-        func();
+        func(lockOk);
     }
     /* 解锁 */
     tryLockUnlockFile(fd, false, true);
