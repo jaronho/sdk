@@ -1,16 +1,25 @@
+#ifdef _WIN32
+#include <Windows.h>
+//
+#include <Dbt.h>
+#endif
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <stdio.h>
 #include <string.h>
 #include <sys/timeb.h>
 #include <thread>
 
-#ifdef _WIN32
-#include <Windows.h>
-#endif
-
 #include "../usb/usb.h"
 
+#ifdef _WIN32
+#define THRD_MESSAGE_EXIT WM_USER + 1
+static const TCHAR CLASS_NAME[] = "Usb Watcher";
+static HWND s_hwnd = NULL;
+#else
+static std::atomic_int s_changeFlag = {0};
+#endif
 static std::vector<std::shared_ptr<usb::Usb>> s_usbList; /* USB设备列表缓存 */
 
 std::string getDateTime()
@@ -155,6 +164,35 @@ void diffUsbList(const std::vector<std::shared_ptr<usb::Usb>>& preList, const st
     }
 }
 
+/**
+ * @brief 处理设备变更
+ */
+void handleDeviceChanged()
+{
+    auto nowUsbList = usb::Usb::getAllUsbs(true);
+    std::vector<std::shared_ptr<usb::Usb>> addedUsbList, updatedList, removedUsbList;
+    diffUsbList(s_usbList, nowUsbList, addedUsbList, updatedList, removedUsbList);
+    s_usbList = nowUsbList;
+    if (!addedUsbList.empty())
+    {
+        printf("[%s] ++++++++++++++++++++ USB设备插入 ++++++++++++++++++++\n", getDateTime().c_str());
+        displayUsbList(addedUsbList, false);
+        printf("\n");
+    }
+    if (!updatedList.empty())
+    {
+        printf("[%s] ==================== USB设备更新 ====================\n", getDateTime().c_str());
+        displayUsbList(updatedList, false);
+        printf("\n");
+    }
+    if (!removedUsbList.empty())
+    {
+        printf("[%s] -------------------- USB设备拔出 --------------------\n", getDateTime().c_str());
+        displayUsbList(removedUsbList, false);
+        printf("\n");
+    }
+}
+
 #ifdef _WIN32
 bool isRunAsAdmin()
 {
@@ -169,6 +207,65 @@ bool isRunAsAdmin()
         FreeSid(administratorsGroup);
     }
     return (TRUE == isAdmin);
+}
+
+LRESULT CALLBACK wndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+    case WM_DEVICECHANGE:
+        if (DBT_DEVICEARRIVAL == wParam) /* 设备插入 */
+        {
+            handleDeviceChanged();
+        }
+        else if (DBT_DEVICEREMOVECOMPLETE == wParam) /* 设备拔出 */
+        {
+            handleDeviceChanged();
+        }
+        return 0;
+    }
+    return DefWindowProc(hwnd, message, wParam, lParam);
+}
+
+DWORD WINAPI threadFunc(LPVOID lpParam)
+{
+    /* step1. 注册窗体 */
+    WNDCLASS wc = {0};
+    wc.lpfnWndProc = wndProc;
+    wc.hInstance = GetModuleHandle(NULL);
+    wc.lpszClassName = CLASS_NAME;
+    if (0 == RegisterClass(&wc))
+    {
+        printf("register class fail\n");
+        return -1;
+    }
+    /* step2. 创建窗体 */
+    s_hwnd = CreateWindowEx(0, CLASS_NAME, "", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL,
+                            GetModuleHandle(NULL), NULL);
+    if (NULL == s_hwnd)
+    {
+        printf("create window fail\n");
+        return -1;
+    }
+    /* step3. 注册设备通知消息 */
+    if (!usb::Usb::registerDeviceNotify(s_hwnd))
+    {
+        printf("register device notify fail\n");
+        return -1;
+    }
+    /* step4. 循环监听Windows消息 */
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+        if (THRD_MESSAGE_EXIT == msg.message)
+        {
+            printf("worker receive the exiting Message\n");
+            return 0;
+        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    return 0;
 }
 #endif
 
@@ -222,32 +319,34 @@ int main(int argc, char** argv)
     s_usbList = usb::Usb::getAllUsbs(true);
     if (monitorFlag)
     {
-        std::vector<std::shared_ptr<usb::Usb>> addedUsbList, updatedList, removedUsbList;
-        while (1)
+#ifdef _WIN32
+        /* 创建线程(控制台程序主线程无法接收Windows消息) */
+        DWORD threadId;
+        HANDLE threadHandle = CreateThread(NULL, 0, threadFunc, NULL, 0, &threadId);
+        if (!threadHandle)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            auto nowUsbList = usb::Usb::getAllUsbs(true);
-            diffUsbList(s_usbList, nowUsbList, addedUsbList, updatedList, removedUsbList);
-            s_usbList = nowUsbList;
-            if (!addedUsbList.empty())
+            printf("create thread fail\n");
+            return -1;
+        }
+        PostThreadMessage(threadId, THRD_MESSAGE_EXIT, 0, 0);
+        WaitForSingleObject(threadHandle, INFINITE);
+        CloseHandle(threadHandle);
+#else
+        std::thread([&]() {
+            usb::Usb::loopCheckDeviceNotify([&](const std::string& devPath) { ++s_changeFlag; },
+                                            [&](const std::string& devPath) { ++s_changeFlag; });
+        }).detach();
+        while (true)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            int flag = s_changeFlag;
+            if (flag > 0)
             {
-                printf("[%s] ++++++++++++++++++++ USB设备插入 ++++++++++++++++++++\n", getDateTime().c_str());
-                displayUsbList(addedUsbList, false);
-                printf("\n");
-            }
-            if (!updatedList.empty())
-            {
-                printf("[%s] ++++++++++++++++++++ USB设备更新 ++++++++++++++++++++\n", getDateTime().c_str());
-                displayUsbList(updatedList, false);
-                printf("\n");
-            }
-            if (!removedUsbList.empty())
-            {
-                printf("[%s] -------------------- USB设备拔出 --------------------\n", getDateTime().c_str());
-                displayUsbList(removedUsbList, false);
-                printf("\n");
+                s_changeFlag = 0;
+                handleDeviceChanged();
             }
         }
+#endif
     }
     else
     {

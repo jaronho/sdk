@@ -311,6 +311,14 @@ public:
      */
     typedef void* HANDLE;
     static bool registerDeviceNotify(HANDLE handle);
+#else
+    /**
+     * @brief 循环检测设备通知(用于拔插检测), 注意: 内部循环阻塞(需要在独立线程中调用)
+     * @param addCb 设备添加回调, 参数: devPath-设备路径, 注意: 回调中不要有阻塞逻辑
+     * @param removeCb 设备移除回调, 参数: devPath-设备路径, 注意: 回调中不要有阻塞逻辑
+     */
+    static void loopCheckDeviceNotify(const std::function<void(const std::string& devPath)>& addCb,
+                                      const std::function<void(const std::string& devPath)>& removeCb);
 #endif
 
 private:

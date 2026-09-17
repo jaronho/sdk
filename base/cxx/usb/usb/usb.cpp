@@ -24,6 +24,7 @@
 #pragma comment(lib, "cfgmgr32.lib")
 #else
 #include <libudev.h>
+#include <sys/select.h>
 #endif
 
 namespace usb
@@ -1390,7 +1391,7 @@ std::vector<UsbUdevImpl> enumerateUsbUdevs()
                         {
                         }
                         info.devNodeName = devNode;
-                        info.isBlock = (subSystemPtr && 0 == strcmp(subSystemPtr, "block"));
+                        info.isBlock = (subSystemPtr && 0 == strcmp("block", subSystemPtr));
                         udevList.emplace_back(info);
                     }
                 }
@@ -2328,6 +2329,65 @@ bool Usb::registerDeviceNotify(HANDLE handle)
         }
     }
     return true;
+}
+#else
+void Usb::loopCheckDeviceNotify(const std::function<void(const std::string& devPath)>& addCb,
+                                const std::function<void(const std::string& devPath)>& removeCb)
+{
+    struct udev* udev = udev_new();
+    if (!udev)
+    {
+        return;
+    }
+    /* step1. 创建监控器, 监听udev事件 */
+    struct udev_monitor* monitor = udev_monitor_new_from_netlink(udev, "udev");
+    if (!monitor)
+    {
+        udev_unref(udev);
+        return;
+    }
+    /* step2. 过滤usb子系统, USB设备层 */
+    udev_monitor_filter_add_match_subsystem_devtype(monitor, "usb", "usb_device");
+    /* step3. 启用接收 */
+    udev_monitor_enable_receiving(monitor);
+    int fd = udev_monitor_get_fd(monitor);
+    /* step4. 事件循环 */
+    while (true)
+    {
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(fd, &fds);
+        if (select(fd + 1, &fds, nullptr, nullptr, nullptr) > 0)
+        {
+            struct udev_device* dev = udev_monitor_receive_device(monitor);
+            if (dev)
+            {
+                const char* devPath = udev_device_get_devpath(dev);
+                const char* action = udev_device_get_action(dev);
+                if (devPath && action)
+                {
+                    if (0 == strcmp("bind", action))
+                    {
+                        if (addCb)
+                        {
+                            addCb(devPath);
+                        }
+                    }
+                    else if (0 == strcmp("remove", action))
+                    {
+                        if (removeCb)
+                        {
+                            removeCb(devPath);
+                        }
+                    }
+                }
+                udev_device_unref(dev);
+            }
+        }
+    }
+    /* step5. 资源回收 */
+    udev_monitor_unref(monitor);
+    udev_unref(udev);
 }
 #endif
 
