@@ -6,7 +6,19 @@
 #include "v4l2_device.h"
 
 /**
+ * @brief V4L2帧捕获结果
+ */
+enum class V4L2CaptureResult
+{
+    Ok = 0, /* 成功 */
+    Timeout, /* 等待超时, 设备暂时无数据 */
+    DeviceGone, /* 设备已拔出或视频队列已失效, 调用方必须立刻关闭并等待重连, 不能继续发起任何ioctl */
+    Error /* 其它错误 */
+};
+
+/**
  * @brief V4L2捕获(非线程安全)
+ * @note 不得跨线程操作同一个对象; 尤其captureFrame的帧回调执行期间, 其它线程不能调用本对象的任何方法(回调可能耗时较长, 期间句柄与缓冲区仍在使用中)
  */
 class V4L2Capture
 {
@@ -54,12 +66,18 @@ public:
     uint32_t getPixFmt() const;
 
     /**
+     * @brief 判断设备是否已被拔出(检测到失效后句柄即不可用, 必须先close再等待重连)
+     * @return true-设备已失效, false-正常
+     */
+    bool isDeviceGone() const;
+
+    /**
      * @brief 捕获单帧数据
      * @param frameCb 帧回调函数, 参数: data-帧数据, dataLen-数据长度, width-宽度, height-高度, pixFmt-像素格式
-     * @param timeout 超时时间(单位: 毫秒), <=0表示无限等待
-     * @return true=成功捕获并回调
+     * @param timeout 超时时间(单位: 毫秒), <=0表示不等待
+     * @return 捕获结果(若为DeviceGone则调用方必须立即close, 不应再对该句柄发起任何ioctl)
      */
-    bool
+    V4L2CaptureResult
     captureFrame(const std::function<void(const void* data, size_t dataLen, uint32_t width, uint32_t height, uint32_t pixFmt)>& frameCb,
                  int timeout = 100);
 
@@ -72,4 +90,5 @@ private:
     std::atomic_uint32_t m_height{0}; /* 视频高度 */
     std::atomic_uint32_t m_pixFmt{0}; /* 视频像素格式 */
     std::atomic_bool m_streaming{false}; /* 是否正在流式采集 */
+    std::atomic_bool m_deviceGone{false}; /* 设备是否已被拔出 */
 };

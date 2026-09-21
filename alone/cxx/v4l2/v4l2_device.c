@@ -2,14 +2,36 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 #ifdef __linux__
 #include <linux/videodev2.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/select.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
+
+/* 设备被拔出/失效时驱动返回的errno集合 */
+static int v4l2_is_device_gone_errno(int err)
+{
+    switch (err)
+    {
+    case ENODEV:
+    case ENOENT:
+    case ENXIO:
+    case EIO:
+    case EBADF:
+    case EPROTO:
+#ifdef ESHUTDOWN
+    case ESHUTDOWN:
+#endif
+        return 1;
+    default:
+        break;
+    }
+    return 0;
+}
 
 int v4l2_open_device(const char* devName, unsigned int* width, unsigned int* height, unsigned int reqFmt, unsigned int* actualFmt)
 {
@@ -215,6 +237,10 @@ int v4l2_stream(int fd, void** buffers, unsigned int bufferCount, int enable)
     }
     if (enable)
     {
+        /* 注意: 此处不能用v4l2_check_device(poll)来判断设备是否还在,
+           内核vb2_core_poll在队列未处于streaming状态时会直接返回EPOLLERR
+           (见videobuf2-core.c: "There is nothing to wait for if the queue isn't streaming"),
+           而STREAMON之前队列必然未在streaming, 因此poll必然报POLLERR, 会误判为设备已拔出 */
         /* 启动前先把所有缓冲区入队 */
         for (i = 0; i < bufferCount; ++i)
         {
@@ -252,37 +278,47 @@ const void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigne
 {
 #ifdef __linux__
     struct v4l2_buffer buf;
-    fd_set fds;
-    struct timeval tv;
+    struct pollfd pfd;
     int r;
     if (fd <= 0 || !buffers || 0 == bufferCount || !outBufIndex)
     {
         return NULL;
     }
-    /* 等待数据 */
-    if (timeout > 0)
+    /* 等待数据: 同时监听异常事件, 摄像头拔出后内核的poll会返回POLLERR/POLLHUP/POLLNVAL */
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+    pfd.revents = 0;
+    r = poll(&pfd, 1, timeout > 0 ? timeout : 0);
+    if (r < 0)
     {
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
-        tv.tv_sec = timeout / 1000;
-        tv.tv_usec = (timeout % 1000) * 1000;
-        r = select(fd + 1, &fds, NULL, NULL, &tv);
-        if (r < 0)
+        if (EINTR != errno)
         {
-            printf("select error %d, %s\n", errno, strerror(errno));
-            return NULL;
+            printf("poll error %d, %s\n", errno, strerror(errno));
         }
-        if (0 == r)
-        {
-            return NULL; /* 超时 */
-        }
+        errno = EAGAIN;
+        return NULL;
+    }
+    if (0 == r)
+    {
+        errno = EAGAIN; /* 超时, 无数据 */
+        return NULL;
+    }
+    if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
+    {
+        /* 设备已被拔出或视频队列已失效, 此时绝不能再对该fd发起任何ioctl */
+        errno = ENODEV;
+        return NULL;
     }
     memset(&buf, 0, sizeof(buf));
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf.memory = V4L2_MEMORY_MMAP;
     if (-1 == ioctl(fd, VIDIOC_DQBUF, &buf))
     {
-        if (errno != EAGAIN)
+        if (v4l2_is_device_gone_errno(errno))
+        {
+            errno = ENODEV; /* 归一化为ENODEV, 方便上层统一判定设备已拔出 */
+        }
+        else if (errno != EAGAIN)
         {
             printf("VIDIOC_DQBUF error %d, %s\n", errno, strerror(errno));
         }
@@ -314,12 +350,73 @@ int v4l2_qbuf(int fd, unsigned int bufIndex)
     buf.index = bufIndex;
     if (-1 == ioctl(fd, VIDIOC_QBUF, &buf))
     {
-        printf("VIDIOC_QBUF(return) error %d, %s\n", errno, strerror(errno));
+        if (v4l2_is_device_gone_errno(errno))
+        {
+            errno = ENODEV; /* 归一化为ENODEV, 调用方据此可直接判定设备已拔出 */
+        }
+        else
+        {
+            printf("VIDIOC_QBUF(return) error %d, %s\n", errno, strerror(errno));
+        }
         return 0;
     }
     return 1;
 #else
     return 0;
+#endif
+}
+
+int v4l2_check_device(int fd, int timeout)
+{
+#ifdef __linux__
+    struct pollfd pfd;
+    int r;
+    if (fd <= 0)
+    {
+        return V4L2_ERR_STAT;
+    }
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+    pfd.revents = 0;
+    r = poll(&pfd, 1, timeout > 0 ? timeout : 0);
+    if (r < 0)
+    {
+        if (EINTR != errno)
+        {
+            printf("poll(check device) error %d, %s\n", errno, strerror(errno));
+        }
+        return V4L2_ERR_STAT;
+    }
+    if (0 == r)
+    {
+        return V4L2_ERR_TIMEOUT;
+    }
+    if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
+    {
+        return V4L2_ERR_DEV_GONE;
+    }
+    return V4L2_OK;
+#else
+    return V4L2_ERR_STAT;
+#endif
+}
+
+int v4l2_device_node_exist(const char* devName)
+{
+#ifdef __linux__
+    struct stat st;
+    if (!devName || strlen(devName) <= 0)
+    {
+        return V4L2_ERR_STAT;
+    }
+    if (-1 == stat(devName, &st))
+    {
+        /* 摄像头拔出后内核会立刻摘除设备节点, 节点不存在即视为设备已拔出 */
+        return (ENOENT == errno) ? V4L2_ERR_DEV_GONE : V4L2_ERR_STAT;
+    }
+    return S_ISCHR(st.st_mode) ? V4L2_OK : V4L2_ERR_STAT;
+#else
+    return V4L2_ERR_STAT;
 #endif
 }
 

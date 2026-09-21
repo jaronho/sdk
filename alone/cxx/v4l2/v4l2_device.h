@@ -27,6 +27,8 @@ extern "C"
 #define V4L2_ERR_STREAMON -14
 #define V4L2_ERR_STREAMOFF -15
 #define V4L2_ERR_DQBUF -16
+#define V4L2_ERR_DEV_GONE -17 /* 设备已被拔出(或设备节点已被内核摘除) */
+#define V4L2_ERR_TIMEOUT -18 /* 等待超时 */
 
 #ifndef v4l2_fourcc
 #define v4l2_fourcc(a, b, c, d) ((unsigned int)(a) | ((unsigned int)(b) << 8) | ((unsigned int)(c) << 16) | ((unsigned int)(d) << 24))
@@ -100,8 +102,9 @@ extern "C"
      * @param buffers 缓冲区数组
      * @param bufferCount 缓冲区数量
      * @param outBufIndex [输出]缓冲区索引(用于后续归还)
-     * @param timeout 超时时间(单位: 毫秒), <=0表示无限等待
-     * @return 指向帧数据的指针(mmap地址, 不要free), NULL=失败或超时
+     * @param timeout 超时时间(单位: 毫秒), <=0表示不等待
+     * @return 指向帧数据的指针(mmap地址, 不要free), NULL=失败或超时, 失败时通过errno区分原因:
+     *         EAGAIN=超时暂无数据, ENODEV=设备已被拔出(必须立即关闭句柄), 其他=其它错误
      */
     const void* v4l2_dqbuf(int fd, void** buffers, unsigned int bufferCount, unsigned int* outBufIndex, int timeout);
 
@@ -109,9 +112,25 @@ extern "C"
      * @brief 归还缓冲区到驱动队列
      * @param fd 设备描述符
      * @param bufIndex 缓冲区索引
-     * @return 1=成功, 0=失败
+     * @return 1=成功, 0=失败, 失败时通过errno区分原因: ENODEV=设备已被拔出(必须立即关闭句柄), 其他=其它错误
      */
     int v4l2_qbuf(int fd, unsigned int bufIndex);
+
+    /**
+     * @brief 检查设备是否可读取(并同时检出设备已被拔出的异常)
+     * @param fd 设备描述符
+     * @param timeout 超时时间(单位: 毫秒), <=0表示不等待, 仅立即检查当前状态
+     * @return V4L2_OK=有数据可读, V4L2_ERR_TIMEOUT=超时暂无数据, V4L2_ERR_DEV_GONE=设备已拔出或视频队列已失效,
+     *         V4L2_ERR_STAT=参数或系统调用错误
+     */
+    int v4l2_check_device(int fd, int timeout);
+
+    /**
+     * @brief 判断设备节点是否仍然存在(摄像头拔出后内核会摘除/dev/videoX节点)
+     * @param devName 设备路径, 如: "/dev/video0"
+     * @return V4L2_OK=存在, V4L2_ERR_DEV_GONE=节点已不存在(设备已拔出), V4L2_ERR_STAT=不是字符设备或查询失败
+     */
+    int v4l2_device_node_exist(const char* devName);
 
     /**
      * @brief 查询设备信息
