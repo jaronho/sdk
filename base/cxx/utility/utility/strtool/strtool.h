@@ -37,18 +37,30 @@ public:
     static void trimDuplicate(std::string& str, char c);
 
     /**
-     * @brief 转为小写
-     * @param str 字符串
-     * @param 小写字符串
-     */
-    static std::string toLower(std::string str);
-
-    /**
      * @brief 转为大写
      * @param str 字符串
      * @return 大写字符串
      */
-    static std::string toUpper(std::string str);
+    static std::string toUpper(const std::string& str);
+
+    /**
+     * @brief 转为大写
+     * @param str [输入/输出]字符串
+     */
+    static void toUpperInPlace(std::string& str);
+
+    /**
+     * @brief 转为小写
+     * @param str 字符串
+     * @param 小写字符串
+     */
+    static std::string toLower(const std::string& str);
+
+    /**
+     * @brief 转为小写
+     * @param str [输入/输出]字符串
+     */
+    static void toLowerInPlace(std::string& str);
 
     /**
      * @brief 内容替换
@@ -154,7 +166,7 @@ public:
      * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
      * @return true-相等, false-不相等
      */
-    static bool equal(std::string str1, std::string str2, bool caseSensitive = true);
+    static bool equal(const std::string& str1, const std::string& str2, bool caseSensitive = true);
 
     /**
      * @brief 获取指定字符串的位置
@@ -164,7 +176,7 @@ public:
      * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
      * @return 位置
      */
-    static size_t indexOf(std::string str, std::string pattern, size_t offset = 0, bool caseSensitive = true);
+    static size_t indexOf(const std::string& str, const std::string& pattern, size_t offset = 0, bool caseSensitive = true);
 
     /**
      * @brief 是否包含指定字符串
@@ -174,7 +186,7 @@ public:
      * @param wholeWord 是否全词匹配(选填), true-是(例如: "aaa"中无法匹配"aa"), false-否(例如: "aaa"中可以匹配"aa")
      * @return true-是, false-否
      */
-    static bool contains(std::string str, std::string pattern, bool caseSensitive = true, bool wholeWord = false);
+    static bool contains(const std::string& str, const std::string& pattern, bool caseSensitive = true, bool wholeWord = false);
 
     /**
      * @brief 是否以指定字符串开头
@@ -183,7 +195,7 @@ public:
      * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
      * @return true-是, false-否
      */
-    static bool isBeginWith(std::string str, std::string beg, bool caseSensitive = true);
+    static bool isBeginWith(const std::string& str, const std::string& beg, bool caseSensitive = true);
 
     /**
      * @brief 是否以指定字符串结尾
@@ -192,7 +204,7 @@ public:
      * @param caseSensitive 是否区分大小写(选填), true-区分大小写, false-不区分
      * @return true-是, false-否
      */
-    static bool isEndWith(std::string str, std::string end, bool caseSensitive = true);
+    static bool isEndWith(const std::string& str, const std::string& end, bool caseSensitive = true);
 
     /**
      * @brief 查找指定字符串个数
@@ -202,7 +214,7 @@ public:
      * @param wholeWord 是否全词匹配(选填), true-是(例如: "aaa"中可找到1个"aa"), false-否(例如: "aaa"中可找到2个"aa")
      * @return 找到的个数
      */
-    static size_t findCount(std::string str, std::string pattern, bool caseSensitive = true, bool wholeWord = false);
+    static size_t findCount(const std::string& str, const std::string& pattern, bool caseSensitive = true, bool wholeWord = false);
 
     /**
      * @brief 转为16进制字符串
