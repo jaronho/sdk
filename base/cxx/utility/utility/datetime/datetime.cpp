@@ -7,6 +7,7 @@
 #else
 #include <sys/time.h>
 #endif
+#include <vector>
 
 namespace utility
 {
@@ -90,17 +91,44 @@ DateTime::DateTime(double timestamp)
 DateTime::DateTime(const std::string& dtString, const char sep1[1], const char sep2[1], const char sep3[1])
 {
     reset();
-    std::string sep1Str = (sep1 && sep1[0]) ? std::string(1, sep1[0]) : "";
-    std::string sep2Str = (sep2 && sep2[0]) ? std::string(1, sep2[0]) : "";
-    std::string sep3Str = (sep3 && sep3[0]) ? std::string(1, sep3[0]) : "";
-    std::string fmtStr = "%04d" + sep1Str + "%02d" + sep1Str + "%02d" + sep2Str + "%02d" + sep3Str + "%02d" + sep3Str + "%02d";
-    int matched = 0;
-#ifdef _WIN32
-    matched = sscanf_s(dtString.c_str(), fmtStr.c_str(), &year, &month, &day, &hour, &minute, &second);
-#else
-    matched = sscanf(dtString.c_str(), fmtStr.c_str(), &year, &month, &day, &hour, &minute, &second);
-#endif
-    if (6 != matched) /* 解析失败, 回退到默认值 */
+    char s1 = (sep1 && sep1[0]) ? sep1[0] : '\0';
+    char s2 = (sep2 && sep2[0]) ? sep2[0] : '\0';
+    char s3 = (sep3 && sep3[0]) ? sep3[0] : '\0';
+    int fields[6] = {1900, 1, 1, 0, 0, 0};
+    int index = 0;
+    const char* p = dtString.c_str();
+    while (*p && index < 6)
+    {
+        while (*p && (s1 == *p || s2 == *p || s3 == *p || ' ' == *p || '\t' == *p)) /* 跳过前导分隔符/空白 */
+        {
+            ++p;
+        }
+        if (!*p)
+        {
+            break;
+        }
+        if (*p < '0' || *p > '9')
+        {
+            break;
+        }
+        int val = 0;
+        while (*p >= '0' && *p <= '9')
+        {
+            val = val * 10 + (*p - '0');
+            ++p;
+        }
+        fields[index++] = val;
+    }
+    if (index >= 1)
+    {
+        year = fields[0];
+        month = (index >= 2) ? fields[1] : 1;
+        day = (index >= 3) ? fields[2] : 1;
+        hour = (index >= 4) ? fields[3] : 0;
+        minute = (index >= 5) ? fields[4] : 0;
+        second = (index >= 6) ? fields[5] : 0;
+    }
+    else
     {
         reset();
     }

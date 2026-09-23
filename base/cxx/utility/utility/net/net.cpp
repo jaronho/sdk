@@ -19,60 +19,92 @@
 
 namespace utility
 {
-bool Net::isIPv4(const std::string& ip)
+bool Net::isIPv4(const std::string& ip, uint8_t out[4])
 {
     if (ip.empty())
     {
         return false;
     }
-    int a1 = 0, a2 = 0, a3 = 0, a4 = 0;
-    if (4 == sscanf(ip.c_str(), "%d.%d.%d.%d", &a1, &a2, &a3, &a4))
+    int part = 0; /* 当前段的值 */
+    int dots = 0; /* 点的数量 */
+    int digits = 0; /* 当前段的位数 */
+    uint8_t seg[4] = {0}; /* 临时缓存, 校验通过后再写出 */
+    for (size_t i = 0, n = ip.size(); i < n; ++i)
     {
-        if ((a1 >= 0 && a1 <= 255) && (a2 >= 0 && a2 <= 255) && (a3 >= 0 && a3 <= 255) && (a4 >= 0 && a4 <= 255))
+        auto ch = ip[i];
+        if (ch >= '0' && ch <= '9')
         {
-            return true;
+            if (++digits > 3) /* 每段最多3位 */
+            {
+                return false;
+            }
+            part = part * 10 + (ch - '0');
+            if (part > 255) /* 每段范围值: 0~255 */
+            {
+                return false;
+            }
+        }
+        else if ('.' == ch)
+        {
+            if (0 == digits) /* 空段, 如: "1..2" */
+            {
+                return false;
+            }
+            if (++dots > 3) /* 点不能超过3个 */
+            {
+                return false;
+            }
+            seg[dots - 1] = (uint8_t)part; /* 存下刚结束的这一段 */
+            part = 0;
+            digits = 0;
+        }
+        else /* 非法字符 */
+        {
+            return false;
         }
     }
-    return false;
+    if (3 != dots || digits <= 0) /* 恰好3个点, 且最后一段非空 */
+    {
+        return false;
+    }
+    seg[3] = (uint8_t)part; /* 最后一段 */
+    if (out) /* 仅在校验全部通过后写出 */
+    {
+        out[0] = seg[0];
+        out[1] = seg[1];
+        out[2] = seg[2];
+        out[3] = seg[3];
+    }
+    return true;
 }
 
 bool Net::isIPv4Inner(const std::string& ip)
 {
     /*
      * 内网(私有)IP:
-     *     127.0.0.1
-     *     A: 10.0.0.0    - 10.255.255.255
-     *     B: 172.16.0.0  - 172.31.255.255
-     *     C: 192.168.0.0 - 192.168.255.255
+     *     回环:  127.0.0.1/8     (127.0.0.0   - 127.255.255.255)
+     *     私有A: 10.0.0.0/8      (10.0.0.0    - 10.255.255.255)
+     *     私有B: 172.16.0.0/12   (172.16.0.0  - 172.31.255.255)
+     *     私有C: 192.168.0.0/16  (192.168.0.0 - 192.168.255.255)
      */
-    /* A: 10.0.0.0    - 10.255.255.255 */
-    static const auto A_BEGIN = (unsigned long long)10 * (256 * 256 * 256);
-    static const auto A_END = (unsigned long long)10 * (256 * 256 * 256) + 255 * (256 * 256) + 255 * (256) + 255;
-    /* B: 172.16.0.0  - 172.31.255.255 */
-    static const auto B_BEGIN = (unsigned long long)172 * (256 * 256 * 256) + 16 * (256 * 256);
-    static const auto B_END = (unsigned long long)172 * (256 * 256 * 256) + 31 * (256 * 256) + 255 * (256) + 255;
-    /* C: 192.168.0.0 - 192.168.255.255 */
-    static const auto C_BEGIN = (unsigned long long)192 * (256 * 256 * 256) + 168 * (256 * 256);
-    static const auto C_END = (unsigned long long)192 * (256 * 256 * 256) + 168 * (256 * 256) + 255 * (256) + 255;
-    if (ip.empty())
+    uint8_t a[4] = {0};
+    if (!isIPv4(ip, a)) /* 格式校验 + 取四段值 */
     {
         return false;
     }
-    if (0 == ip.compare("127.0.0.1"))
+    if (127 == a[0]) /* 127.0.0.0/8 */
     {
         return true;
     }
-    int a1 = 0, a2 = 0, a3 = 0, a4 = 0;
-    if (4 != sscanf(ip.c_str(), "%d.%d.%d.%d", &a1, &a2, &a3, &a4))
+    if (10 == a[0]) /* 10.0.0.0/8 */
     {
-        return false;
+        return true;
     }
-    if ((a1 < 0 || a1 > 255) || (a2 < 0 || a2 > 255) || (a3 < 0 || a3 > 255) || (a4 < 0 || a4 > 255))
+    if (172 == a[0] && a[1] >= 16 && a[1] <= 31) /* 172.16.0.0/12 */
     {
-        return false;
+        return true;
     }
-    auto ipNum = a1 * (256 * 256 * 256) + a2 * (256 * 256) + a3 * (256) + a4;
-    if ((ipNum >= A_BEGIN && ipNum <= A_END) || (ipNum >= B_BEGIN && ipNum <= B_END) || (ipNum >= C_BEGIN && ipNum <= C_END))
+    if (192 == a[0] && 168 == a[1]) /* 192.168.0.0/16 */
     {
         return true;
     }
@@ -82,58 +114,113 @@ bool Net::isIPv4Inner(const std::string& ip)
 Net::IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmask)
 {
     IPv4Info info;
-    int a1 = 0, a2 = 0, a3 = 0, a4 = 0;
-    if (4 != sscanf(ip.c_str(), "%d.%d.%d.%d", &a1, &a2, &a3, &a4))
+    /* 校验IP并取四段值 */
+    uint8_t a[4];
+    if (!isIPv4(ip, a))
     {
         return info;
     }
-    if ((a1 < 0 || a1 > 255) || (a2 < 0 || a2 > 255) || (a3 < 0 || a3 > 255) || (a4 < 0 || a4 > 255))
+    /* 校验子网掩码并取四段值 */
+    uint8_t m[4];
+    if (!isIPv4(netmask, m))
     {
         return info;
     }
-    int m1 = 0, m2 = 0, m3 = 0, m4 = 0;
-    if (4 != sscanf(netmask.c_str(), "%d.%d.%d.%d", &m1, &m2, &m3, &m4))
+    /* 校验掩码合法性: 必须是连续的1后跟连续的0, 把四段拼成32位无符号数, 取反后应形如：000...0111...1 */
+    unsigned int mask32 = ((unsigned int)m[0] << 24) | ((unsigned int)m[1] << 16) | ((unsigned int)m[2] << 8) | (unsigned int)m[3];
+    unsigned int inv = ~mask32;
+    if ((inv & (inv + 1)) != 0) /* 取反后不是连续0后连续1, 则非法 */
     {
         return info;
     }
-    if ((m1 < 0 || m1 > 255) || (m2 < 0 || m2 > 255) || (m3 < 0 || m3 > 255) || (m4 < 0 || m4 > 255))
+    /* 求前缀长度(0~32) */
+    int prefixLen = 0;
+    unsigned int tmp = mask32;
+    while (tmp & 0x80000000u)
     {
-        return info;
+        ++prefixLen;
+        tmp <<= 1;
     }
     info.ip = ip;
     info.netmask = netmask;
-    /* 计算网络地址: ip & netmask */
-    unsigned char n1 = a1 & m1, n2 = a2 & m2, n3 = a3 & m3, n4 = a4 & m4;
-    char network[16] = {0};
-#ifdef _WIN32
-    sprintf_s(network, sizeof(network), "%d.%d.%d.%d", n1, n2, n3, n4);
-#else
-    sprintf(network, "%d.%d.%d.%d", n1, n2, n3, n4);
-#endif
-    info.network = network;
-    /* 计算主机地址: ip & ~netmask */
-    unsigned char h1 = a1 & (~m1), h2 = a2 & (~m2), h3 = a3 & (~m3), h4 = a4 & (~m4);
-    char host[16] = {0};
-#ifdef _WIN32
-    sprintf_s(host, sizeof(host), "%d.%d.%d.%d", h1, h2, h3, h4);
-#else
-    sprintf(host, "%d.%d.%d.%d", h1, h2, h3, h4);
-#endif
-    info.host = host;
-    /* 计算广播地址: (ip & netmask) | ~netmask */
-    unsigned char b1 = n1 | ~m1, b2 = n2 | ~m2, b3 = n3 | ~m3, b4 = n4 | ~m4;
-    char broadcast[16] = {0};
-#ifdef _WIN32
-    sprintf_s(broadcast, sizeof(broadcast), "%d.%d.%d.%d", b1, b2, b3, b4);
-#else
-    sprintf(broadcast, "%d.%d.%d.%d", b1, b2, b3, b4);
-#endif
-    info.broadcast = broadcast;
-    /* 计算主机数: 255.255.255.255 - 子网掩码 - 2 */
-    static const unsigned long long MAX_COUNT = (unsigned long long)256 * 256 * 256 * 256;
-    auto sCount = (unsigned long long)m1 * (256 * 256 * 256) + (unsigned long long)m2 * (256 * 256) + (unsigned long long)m3 * (256) + m4;
-    info.hostCount = MAX_COUNT - sCount - 2;
+    /* 网络地址: ip & netmask */
+    uint8_t n[4] = {0};
+    for (int i = 0; i < 4; ++i)
+    {
+        n[i] = a[i] & m[i];
+    }
+    char nBuf[16] = {0};
+    snprintf(nBuf, sizeof(nBuf), "%u.%u.%u.%u", (unsigned)n[0], (unsigned)n[1], (unsigned)n[2], (unsigned)n[3]);
+    info.network = nBuf;
+    /* 主机地址: ip & ~netmask */
+    uint8_t h[4] = {0};
+    for (int i = 0; i < 4; ++i)
+    {
+        h[i] = a[i] & (uint8_t)~m[i];
+    }
+    char hBuf[16] = {0};
+    snprintf(hBuf, sizeof(hBuf), "%u.%u.%u.%u", (unsigned)h[0], (unsigned)h[1], (unsigned)h[2], (unsigned)h[3]);
+    info.host = hBuf;
+    /* 广播地址: (ip & netmask) | ~netmask */
+    uint8_t b[4] = {0};
+    for (int i = 0; i < 4; ++i)
+    {
+        b[i] = (a[i] & m[i]) | (uint8_t)~m[i];
+    }
+    char bBuf[16] = {0};
+    snprintf(bBuf, sizeof(bBuf), "%u.%u.%u.%u", (unsigned)b[0], (unsigned)b[1], (unsigned)b[2], (unsigned)b[3]);
+    info.broadcast = bBuf;
+    /* 主机数: 2^(32-prefixLen) - 2; /31: 点对点链路(RFC 3021), 传统算法给0; /32: 单主机, 无网络/广播概念, 传统算法给0 */
+    if (prefixLen >= 31)
+    {
+        info.hostCount = 0;
+    }
+    else
+    {
+        info.hostCount = (1ULL << (32 - prefixLen)) - 2ULL;
+    }
     return info;
+}
+
+Net::IPv4Info Net::calcIPv4Info(const std::string& ipWithPrefix)
+{
+    IPv4Info info;
+    /* 拆分IP与prefix */
+    size_t slash = ipWithPrefix.find('/');
+    auto ipPart = (std::string::npos == slash) ? ipWithPrefix : ipWithPrefix.substr(0, slash);
+    /* 解析prefix, 无'/'时按0处理 */
+    int prefix = 0;
+    if (std::string::npos != slash)
+    {
+        auto prefixPart = ipWithPrefix.substr(slash + 1);
+        if (prefixPart.empty()) /* "192.168.4.23/" 这种, prefix 为空, 非法 */
+        {
+            return info;
+        }
+        int digits = 0;
+        for (char ch : prefixPart)
+        {
+            if (ch < '0' || ch > '9')
+            {
+                return info;
+            }
+            if (++digits > 2) /* 0~32 最多 2 位 */
+            {
+                return info;
+            }
+            prefix = prefix * 10 + (ch - '0');
+            if (prefix > 32)
+            {
+                return info;
+            }
+        }
+    }
+    /* 由prefix生成netmask字符串 */
+    uint32_t mask32 = (0 == prefix) ? 0u : (0xFFFFFFFFu << (32 - prefix));
+    char maskBuf[16] = {0};
+    snprintf(maskBuf, sizeof(maskBuf), "%u.%u.%u.%u", (unsigned)((mask32 >> 24) & 0xFF), (unsigned)((mask32 >> 16) & 0xFF),
+             (unsigned)((mask32 >> 8) & 0xFF), (unsigned)(mask32 & 0xFF));
+    return calcIPv4Info(ipPart, maskBuf);
 }
 
 std::vector<Net::IfaceInfo> Net::getAllInterfaces()

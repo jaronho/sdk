@@ -17,7 +17,7 @@ public:
         std::string network; /* 网络地址, 例如: 192.168.3.0 */
         std::string host; /* 主机地址, 例如: 0.0.0.10 */
         std::string broadcast; /* 广播地址, 例如: 192.168.3.255 */
-        int hostCount; /* 主机数, 例如: 254 */
+        uint64_t hostCount = 0; /* 主机数, 例如: 254 */
     };
 
     /**
@@ -85,9 +85,10 @@ public:
     /**
      * @brief 判断IP地址是否为IPv4格式
      * @param ip IP地址, 例如: 192.168.3.10
+     * @param out [输出]IP地址各段值, 例如: {192, 168, 3, 10}
      * @return true-是, false-否
      */
-    static bool isIPv4(const std::string& ip);
+    static bool isIPv4(const std::string& ip, uint8_t out[4] = nullptr);
 
     /**
      * @brief 判断IP地址是否为内网IPv4
@@ -103,6 +104,13 @@ public:
      * @return IPv4信息
      */
     static IPv4Info calcIPv4Info(const std::string& ip, const std::string& netmask);
+
+    /**
+     * @brief 根据IPv4地址计算IPv4信息(说明: 网关无法自动计算, 必须是人为配置)
+     * @param ip IPv4地址(说明: 子网掩码自动计算), 例如: 192.168.3.10/16, 192.168.3.10等价于192.168.3.10/0
+     * @return IPv4信息
+     */
+    static IPv4Info calcIPv4Info(const std::string& ipWithPrefix);
 
     /**
      * @brief 获取本机所有网络接口(网卡)
