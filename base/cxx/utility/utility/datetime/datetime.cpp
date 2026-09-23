@@ -109,7 +109,7 @@ DateTime::DateTime(const std::string& dtString, const char sep1[1], const char s
         }
         if (*p < '0' || *p > '9')
         {
-            break;
+            return;
         }
         int val = 0;
         while (*p >= '0' && *p <= '9')
@@ -119,19 +119,44 @@ DateTime::DateTime(const std::string& dtString, const char sep1[1], const char s
         }
         fields[index++] = val;
     }
-    if (index >= 1)
+    if (index < 1)
     {
-        year = fields[0];
-        month = (index >= 2) ? fields[1] : 1;
-        day = (index >= 3) ? fields[2] : 1;
-        hour = (index >= 4) ? fields[3] : 0;
-        minute = (index >= 5) ? fields[4] : 0;
-        second = (index >= 6) ? fields[5] : 0;
+        return;
     }
-    else
+    year = fields[0];
+    month = (index >= 2) ? fields[1] : 1;
+    day = (index >= 3) ? fields[2] : 1;
+    hour = (index >= 4) ? fields[3] : 0;
+    minute = (index >= 5) ? fields[4] : 0;
+    second = (index >= 6) ? fields[5] : 0;
+    if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0
+        || second > 59) /* 范围快速校验 */
     {
         reset();
+        return;
     }
+    /* 校验日期合法性并填充wday/yday */
+    struct tm t = {};
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = hour;
+    t.tm_min = minute;
+    t.tm_sec = second;
+    t.tm_isdst = -1;
+    if ((time_t)-1 == mktime(&t))
+    {
+        reset();
+        return;
+    }
+    if (t.tm_year != year - 1900 || t.tm_mon != month - 1 || t.tm_mday != day || t.tm_hour != hour || t.tm_min != minute
+        || t.tm_sec != second) /* 检查是否被改动 */
+    {
+        reset();
+        return;
+    }
+    wday = t.tm_wday;
+    yday = t.tm_yday + 1;
 }
 
 bool DateTime::operator==(const DateTime& other) const
