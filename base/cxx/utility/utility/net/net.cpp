@@ -188,8 +188,8 @@ Net::IPv4Info Net::calcIPv4Info(const std::string& ipWithPrefix)
     /* 拆分IP与prefix */
     size_t slash = ipWithPrefix.find('/');
     auto ipPart = (std::string::npos == slash) ? ipWithPrefix : ipWithPrefix.substr(0, slash);
-    /* 解析prefix, 无'/'时按0处理 */
-    int prefix = 0;
+    /* 解析prefix, 无'/'时按'/32'处理(单主机) */
+    int prefix = 32;
     if (std::string::npos != slash)
     {
         auto prefixPart = ipWithPrefix.substr(slash + 1);

@@ -107,7 +107,7 @@ public:
 
     /**
      * @brief 根据IPv4地址计算IPv4信息(说明: 网关无法自动计算, 必须是人为配置)
-     * @param ip IPv4地址(说明: 子网掩码自动计算), 例如: 192.168.3.10/16, 192.168.3.10等价于192.168.3.10/0
+     * @param ip IPv4地址(说明: 子网掩码自动计算), 例如: 192.168.3.10/16, 192.168.3.10等价于192.168.3.10/32
      * @return IPv4信息
      */
     static IPv4Info calcIPv4Info(const std::string& ipWithPrefix);
