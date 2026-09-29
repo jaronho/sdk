@@ -571,18 +571,28 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
     }
     iter->second->tp = ntp;
     auto ctrl = iter->second->ctrl;
-    if (0 == payloadLen) /* 无数据 */
-    {
-        if (1 == tcpHeader->flagAck && DataConnectStatus::READY == iter->second->status) /* 数据连接建立 */
+    /* 延迟回调READY: 被动模式下客户端可能在文件命令到达前就建立好数据连接, 此时回调READY业务还不知道操作的是哪个文件,
+       所以推迟到数据连接的首个有效事件(数据或关闭)时再回调, 保证业务能拿到正确的命令上下文 */
+    auto notifyReady = [&]() {
+        if (!iter->second->readyNotified)
         {
+            iter->second->readyNotified = true;
             iter->second->status = DataConnectStatus::CREATED;
             if (m_dataCb)
             {
                 m_dataCb(ntp, totalLen, header, ctrl, DataFlag::READY, nullptr, 0);
             }
         }
+    };
+    if (0 == payloadLen) /* 无数据 */
+    {
+        if (1 == tcpHeader->flagAck && DataConnectStatus::READY == iter->second->status) /* 数据连接建立 */
+        {
+            iter->second->status = DataConnectStatus::CREATED; /* 暂不回调READY, 延迟到有数据或关闭时再回调 */
+        }
         else if (1 == tcpHeader->flagFin && DataConnectStatus::CREATED == iter->second->status) /* 数据连接断开 */
         {
+            notifyReady(); /* 空文件等情况: 关闭前补回调一次READY */
             m_dataConnectList.erase(iter);
             if (m_dataCb)
             {
@@ -592,14 +602,7 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
     }
     else /* 有数据 */
     {
-        if (DataConnectStatus::READY == iter->second->status)
-        {
-            iter->second->status = DataConnectStatus::CREATED;
-            if (m_dataCb)
-            {
-                m_dataCb(ntp, totalLen, header, ctrl, DataFlag::READY, nullptr, 0);
-            }
-        }
+        notifyReady();
         if (m_dataCb)
         {
             m_dataCb(ntp, totalLen, header, ctrl, DataFlag::BODY, payload, payloadLen);

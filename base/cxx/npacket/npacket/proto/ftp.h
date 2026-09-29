@@ -168,6 +168,7 @@ private:
     {
         CtrlInfo ctrl; /* 控制连接信息 */
         DataConnectStatus status = DataConnectStatus::READY; /* 连接状态 */
+        bool readyNotified = false; /* 是否已回调过READY(被动模式下客户端可能在命令到达前就建好数据连接, 需延迟回调) */
         std::chrono::steady_clock::time_point tp{}; /* 更新时间点 */
     };
 
