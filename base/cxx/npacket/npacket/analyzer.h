@@ -168,8 +168,6 @@ private:
         uint32_t payloadLen = 0; /* 负载长度 */
         std::vector<uint8_t> data; /* 数据 */
         std::chrono::steady_clock::time_point recvTime; /* 接收时间 */
-        bool isFin = false; /* 是否是FIN包 */
-        bool isRst = false; /* 是否是RST包 */
     };
 
     /**
@@ -184,6 +182,18 @@ private:
         phmap::flat_hash_map<uint32_t, TcpSegment> segments; /* 乱序分段缓存, key-seq, value-分段信息 */
         phmap::flat_hash_map<uint32_t, uint32_t> parserConsumedOffset; /* 解析器已消费的字节数, key-协议, value-偏移值 */
         phmap::flat_hash_map<uint32_t, std::vector<uint8_t>> parserPendingData; /* 解析器未消费的数据, key-协议, value-数据 */
+
+        /**
+         * @brief 暂存的FIN信息(乱序时FIN可能先于数据到达, 需要等数据补齐后再把FIN交付给应用层)
+         */
+        struct PendingFin
+        {
+            uint32_t finSeq = 0; /* FIN之前所有数据的结束序号(即数据全部到达后的序号) */
+            std::shared_ptr<ProtocolHeader> networkHeader = nullptr; /* 网络层头部副本, 仅用于保证transportHeader的父层指针有效 */
+            std::shared_ptr<ProtocolHeader> transportHeader = nullptr; /* 传输层头部副本(带FIN标志) */
+        };
+        bool finPending = false; /* 是否有暂存的FIN待交付 */
+        PendingFin pendingFin; /* 暂存的FIN信息 */
     };
 
 private:
@@ -370,11 +380,13 @@ private:
      * @param needMoreData [输出]是否需要更多数据
      * @param outData [输出]处理后的数据
      * @param isReassembly [输出]是否重组数据, true-是, false-否
+     * @param finHeader [输出]待交付的FIN头部, 乱序时FIN可能先于数据到达, 此时暂不交付FIN, 等数据补齐后随最后一次数据一起交付(用该头部), 以便业务仍能按 数据->结束 的顺序处理, 为空表示没有待交付的FIN
      * @return true-继续处理, false-丢弃数据
      */
     bool checkAndHandleTcpStream(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader,
                                  const ProtocolHeader* transportHeader, const uint8_t* payload, uint32_t payloadLen, TcpStreamKey& key,
-                                 bool& needMoreData, std::vector<uint8_t>& outData, bool& isReassembly);
+                                 bool& needMoreData, std::vector<uint8_t>& outData, bool& isReassembly,
+                                 std::shared_ptr<ProtocolHeader>& finHeader);
 
 private:
     const CallbackConfig m_cbCfg; /* 回调配置 */

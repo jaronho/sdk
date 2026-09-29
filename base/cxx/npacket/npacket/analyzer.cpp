@@ -601,24 +601,39 @@ int Analyzer::processTransportToApplication(size_t flag, size_t num, const std::
         bool needMoreData = false;
         std::vector<uint8_t> outData;
         bool isReassembly = false;
-        if (!checkAndHandleTcpStream(ntp, networkHeader, transportHeader, payload, payloadLen, tcpKey, needMoreData, outData, isReassembly))
+        std::shared_ptr<ProtocolHeader> finHeader;
+        if (!checkAndHandleTcpStream(ntp, networkHeader, transportHeader, payload, payloadLen, tcpKey, needMoreData, outData,
+                                     isReassembly, finHeader))
         {
             return 3;
         }
+        /* 乱序时FIN先于数据到达, 数据补齐后用暂存的FIN头部交付, 让业务能正确识别传输结束 */
+        auto appHeader = finHeader ? finHeader.get() : transportHeader;
         if (!outData.empty()) /* 有重组后的数据, 解析应用层, 并传入tcpKey用于关联状态 */
         {
             if (isReassembly && reassemblyFlag < 2) /* 重组数据 */
             {
                 reassemblyFlag += 2;
             }
-            return handleApplicationLayer(flag, num, ntp, totalLen, transportHeader, outData.data(), outData.size(), &tcpKey, depth,
-                                          reassemblyFlag);
+            auto ret = handleApplicationLayer(flag, num, ntp, totalLen, appHeader, outData.data(), outData.size(), &tcpKey, depth,
+                                              reassemblyFlag);
+            if (finHeader) /* FIN已随本次数据交付给业务, 流结束 */
+            {
+                m_tcpStreamCache.erase(tcpKey);
+            }
+            return ret;
         }
         else if (needMoreData) /* TCP流在等待更多数据, 返回CONTINUE */
         {
             return 5;
         }
         /* 流已关闭或出错, 继续尝试解析当前包(可能是RST/FIN) */
+        auto ret = handleApplicationLayer(flag, num, ntp, totalLen, appHeader, payload, payloadLen, nullptr, depth, reassemblyFlag);
+        if (finHeader) /* FIN已交付给业务, 流结束 */
+        {
+            m_tcpStreamCache.erase(tcpKey);
+        }
+        return ret;
     }
     return handleApplicationLayer(flag, num, ntp, totalLen, transportHeader, payload, payloadLen, nullptr, depth,
                                   reassemblyFlag); /* 非TCP或无需重组 */
@@ -1480,13 +1495,41 @@ void Analyzer::cleanupTcpStreamCache(const std::chrono::steady_clock::time_point
     }
 }
 
+/**
+ * @brief 拷贝网络层头部(用于暂存FIN时保存头部信息, 因为原始头部对象的生命周期不在流的控制范围内)
+ * @param networkHeader 网络层头部
+ * @return 头部副本, 失败返回空
+ */
+static std::shared_ptr<ProtocolHeader> copyNetworkHeader(const ProtocolHeader* networkHeader)
+{
+    if (!networkHeader)
+    {
+        return nullptr;
+    }
+    if (NetworkProtocol::IPv4 == networkHeader->getProtocol())
+    {
+        auto header = std::make_shared<Ipv4Header>(*((const Ipv4Header*)(networkHeader)));
+        header->parent = nullptr; /* 父层头部(如以太网头)生命周期不确定, 不保留 */
+        return header;
+    }
+    if (NetworkProtocol::IPv6 == networkHeader->getProtocol())
+    {
+        auto header = std::make_shared<Ipv6Header>(*((const Ipv6Header*)(networkHeader)));
+        header->parent = nullptr; /* 父层头部(如以太网头)生命周期不确定, 不保留 */
+        return header;
+    }
+    return nullptr;
+}
+
 bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_point& ntp, const ProtocolHeader* networkHeader,
                                        const ProtocolHeader* transportHeader, const uint8_t* payload, uint32_t payloadLen,
-                                       TcpStreamKey& key, bool& needMoreData, std::vector<uint8_t>& outData, bool& isReassembly)
+                                       TcpStreamKey& key, bool& needMoreData, std::vector<uint8_t>& outData, bool& isReassembly,
+                                       std::shared_ptr<ProtocolHeader>& finHeader)
 {
     needMoreData = false;
     outData.clear();
     isReassembly = false;
+    finHeader = nullptr;
     if (!networkHeader || !transportHeader || !payload) /* 注意: 不能payloadLen为0就返回 */
     {
         return true;
@@ -1555,6 +1598,40 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
             if (info->isSeqInitialized)
             {
                 info->nextExpectedSeq = seqAdd(info->nextExpectedSeq, payloadLen);
+            }
+        }
+        else if (payloadLen > 0) /* FIN携带的数据乱序到达, 先缓存, 避免数据丢失 */
+        {
+            TcpSegment segment;
+            segment.seq = tcpHeader->seq;
+            segment.payloadLen = payloadLen;
+            segment.data.assign(payload, payload + payloadLen);
+            segment.recvTime = ntp;
+            auto segIt = info->segments.find(tcpHeader->seq);
+            if (info->segments.end() == segIt)
+            {
+                info->segments[tcpHeader->seq] = std::move(segment);
+            }
+            else if (segment.payloadLen > segIt->second.payloadLen) /* 已存在分片, 仅当新分片更长时覆盖 */
+            {
+                segIt->second = std::move(segment);
+            }
+        }
+        uint32_t finEndSeq = seqAdd(tcpHeader->seq, payloadLen); /* FIN之前所有数据的结束序号 */
+        if (info->isSeqInitialized && seqLt(info->nextExpectedSeq, finEndSeq)) /* 还有数据未到达(乱序时数据可能比FIN晚到) */
+        {
+            /* 暂存FIN并保留流, 等迟到的乱序数据补齐后再交付, 保证业务看到的顺序依然是: 数据 -> 结束(FIN) */
+            auto netHeader = copyNetworkHeader(networkHeader);
+            if (netHeader)
+            {
+                auto tcpHeaderCopy = std::make_shared<TcpHeader>(*tcpHeader);
+                tcpHeaderCopy->parent = netHeader.get();
+                info->finPending = true;
+                info->pendingFin.finSeq = finEndSeq;
+                info->pendingFin.networkHeader = std::move(netHeader);
+                info->pendingFin.transportHeader = std::move(tcpHeaderCopy);
+                needMoreData = true; /* 等待迟到的乱序数据 */
+                return true;
             }
         }
         /* FIN时无条件合并所有缓存的乱序数据 */
@@ -1768,6 +1845,11 @@ bool Analyzer::checkAndHandleTcpStream(const std::chrono::steady_clock::time_poi
             needMoreData = true;
             isReassembly = true;
         }
+    }
+    /* 乱序时FIN可能先于数据到达, 数据补齐后再把暂存的FIN头部交给应用层, 保证业务看到的顺序为: 数据 -> 结束(FIN) */
+    if (info->finPending && seqLe(info->pendingFin.finSeq, info->nextExpectedSeq))
+    {
+        finHeader = info->pendingFin.transportHeader; /* 用shared_ptr持有, 流删除后依然有效 */
     }
     return true;
 }

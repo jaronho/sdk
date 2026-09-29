@@ -571,7 +571,7 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
     }
     iter->second->tp = ntp;
     auto ctrl = iter->second->ctrl;
-    if (0 == payloadLen)
+    if (0 == payloadLen) /* 无数据 */
     {
         if (1 == tcpHeader->flagAck && DataConnectStatus::READY == iter->second->status) /* 数据连接建立 */
         {
@@ -590,11 +590,27 @@ bool FtpParser::parseData(const std::chrono::steady_clock::time_point& ntp, uint
             }
         }
     }
-    else if (DataConnectStatus::CREATED == iter->second->status) /* 数据连接已连接 */
+    else /* 有数据 */
     {
+        if (DataConnectStatus::READY == iter->second->status)
+        {
+            iter->second->status = DataConnectStatus::CREATED;
+            if (m_dataCb)
+            {
+                m_dataCb(ntp, totalLen, header, ctrl, DataFlag::READY, nullptr, 0);
+            }
+        }
         if (m_dataCb)
         {
             m_dataCb(ntp, totalLen, header, ctrl, DataFlag::BODY, payload, payloadLen);
+        }
+        if (1 == tcpHeader->flagFin) /* FIN和数据同包(TCP流重组时缓存的乱序数据会在收到FIN时合并输出) */
+        {
+            m_dataConnectList.erase(iter); /* 数据已随FIN输出, 数据连接结束 */
+            if (m_dataCb)
+            {
+                m_dataCb(ntp, totalLen, header, ctrl, DataFlag::FINISH, nullptr, 0);
+            }
         }
     }
     return true;
