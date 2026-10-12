@@ -54,11 +54,11 @@ public:
     static bool isNetcardExist(const std::string& name);
 
     /**
-     * @brief 判断指定网卡名是否已启动
+     * @brief 判断是否检测到指定网卡Link
      * @param name 网卡名
-     * @return true-已启动, false-未启动
+     * @return true-检测到, false-未检测到
      */
-    static bool isNetcardUp(const std::string& name);
+    static bool isLinkDetected(const std::string& name);
 
     /**
      * @brief 获取网桥列表 

@@ -108,7 +108,7 @@ bool NetConfig::isNetcardExist(const std::string& name)
     return false;
 }
 
-bool NetConfig::isNetcardUp(const std::string& name)
+bool NetConfig::isLinkDetected(const std::string& name)
 {
     if (name.empty())
     {
