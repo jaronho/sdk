@@ -192,7 +192,7 @@ std::vector<utility::Net::IfaceInfo> NetConfig::getEthernetCards()
     for (const auto& iface : interfaceList)
     {
         /* 判断是否以太网 */
-        if (utility::Net::IfaceInfo::Type::ethernet != iface.type) /* 非以太网 */
+        if (utility::Net::IfaceInfo::LinkType::ethernet != iface.linkType) /* 非以太网 */
         {
             continue;
         }
