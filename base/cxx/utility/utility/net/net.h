@@ -38,7 +38,7 @@ public:
             loopback, /* 本地回环(Linux: ARPHRD_LOOPBACK, Windows: MIB_IF_TYPE_LOOPBACK=24) */
             slip, /* 串行线路IP(Linux: ARPHRD_SLIP, Windows: MIB_IF_TYPE_SLIP=28) */
             wireless, /* 无线网卡(WiFi)(Linux: ARPHRD_IEEE80211(仅monitor模式), Windows: IF_TYPE_IEEE80211=71) */
-            virtualNic, /* 专有虚拟网卡(TAP/TUN等软件模拟的网卡)(Windows: IF_TYPE_PROP_VIRTUAL=53, Linux下TAP上报为以太网) */
+            virtual_, /* 专有虚拟网卡(TAP/TUN等软件模拟的网卡)(Windows: IF_TYPE_PROP_VIRTUAL=53, Linux下TAP上报为以太网) */
             tunnel, /* 隧道网卡(无链路层头部的封装接口)(Linux: ARPHRD_NONE, Windows: IF_TYPE_TUNNEL=131) */
             wwan /* 蜂窝网网卡(4G/5G拨号接口)(Windows: IF_TYPE_WWANPP=243, IF_TYPE_WWANPP2=244) */
         };
@@ -49,7 +49,7 @@ public:
         enum class BusType
         {
             unknown, /* 未知(判定失败) */
-            virt, /* 虚拟网卡(无实体设备) */
+            virtual_, /* 虚拟网卡(无实体设备) */
             usb, /* USB网卡(含板载USB转网口) */
             pcie, /* PCIe网卡(扩展卡或x86板载) */
             soc /* SOC板载网卡 */
@@ -73,8 +73,8 @@ public:
                 return "slip";
             case LinkType::wireless:
                 return "wireless";
-            case LinkType::virtualNic:
-                return "virtualNic";
+            case LinkType::virtual_:
+                return "virtual";
             case LinkType::tunnel:
                 return "tunnel";
             case LinkType::wwan:
@@ -92,7 +92,7 @@ public:
         {
             switch (busType)
             {
-            case BusType::virt:
+            case BusType::virtual_:
                 return "virtual";
             case BusType::usb:
                 return "usb";

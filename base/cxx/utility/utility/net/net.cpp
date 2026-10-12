@@ -363,7 +363,7 @@ static Net::IfaceInfo::BusType getIfaceBusType(const std::string& name)
     }
     if ("ROOT" == enumerator || "SW" == enumerator || "SWD" == enumerator || "VMBUS" == enumerator)
     {
-        return Net::IfaceInfo::BusType::virt;
+        return Net::IfaceInfo::BusType::virtual_;
     }
     return Net::IfaceInfo::BusType::unknown;
 #else
@@ -383,7 +383,7 @@ static Net::IfaceInfo::BusType getIfaceBusType(const std::string& name)
     std::transform(devPath.begin(), devPath.end(), devPath.begin(), [](unsigned char c) { return (char)std::tolower(c); });
     if (std::string::npos != devPath.find("/virtual/")) /* 虚拟网卡 */
     {
-        return Net::IfaceInfo::BusType::virt;
+        return Net::IfaceInfo::BusType::virtual_;
     }
     if (std::string::npos != devPath.find("/usb")) /* USB网卡, 其父控制器常同时含pci, 因此要先判断 */
     {
@@ -483,7 +483,7 @@ std::vector<Net::IfaceInfo> Net::getAllInterfaces()
                 iface.linkType = IfaceInfo::LinkType::wireless;
                 break;
             case IF_TYPE_PROP_VIRTUAL: /* 专有虚拟网卡(TAP/TUN), 例如: 53 */
-                iface.linkType = IfaceInfo::LinkType::virtualNic;
+                iface.linkType = IfaceInfo::LinkType::virtual_;
                 break;
             case IF_TYPE_TUNNEL: /* 隧道网卡, 例如: 131 */
                 iface.linkType = IfaceInfo::LinkType::tunnel;
