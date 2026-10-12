@@ -769,11 +769,11 @@ bool Charset::setLocale(const std::string& locale)
     return (currLocale ? true : false);
 }
 
-#ifdef _WIN32
 std::wstring Charset::string2wstring(const std::string& str, size_t codePage)
 {
     if (!str.empty())
     {
+#ifdef _WIN32
         int count = MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), NULL, 0);
         if (count > 0)
         {
@@ -781,6 +781,15 @@ std::wstring Charset::string2wstring(const std::string& str, size_t codePage)
             MultiByteToWideChar(codePage, 0, str.c_str(), str.size(), &wstr[0], count);
             return wstr;
         }
+#else
+        size_t len = str.length() + 1;
+        wchar_t* buf = new wchar_t[len];
+        memset(buf, 0, len);
+        mbstowcs(buf, str.c_str(), len);
+        std::wstring wstr(buf);
+        delete[] buf;
+        return wstr;
+#endif
     }
     return std::wstring();
 }
@@ -789,6 +798,7 @@ std::string Charset::wstring2string(const std::wstring& wstr, size_t codePage)
 {
     if (!wstr.empty())
     {
+#ifdef _WIN32
         int count = WideCharToMultiByte(codePage, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
         if (count > 0)
         {
@@ -796,10 +806,18 @@ std::string Charset::wstring2string(const std::wstring& wstr, size_t codePage)
             WideCharToMultiByte(codePage, 0, wstr.c_str(), wstr.size(), &str[0], count, NULL, NULL);
             return str;
         }
+#else
+        size_t len = (wstr.length() + 1) * sizeof(wchar_t);
+        char* buf = new char[len];
+        memset(buf, 0, len);
+        wcstombs(buf, wstr.c_str(), len - 1);
+        std::string str(buf);
+        delete[] buf;
+        return str;
+#endif
     }
     return std::string();
 }
-#endif
 
 Charset::Coding Charset::getCoding(const std::string& str, std::vector<unsigned int>* nonAsciiChars)
 {

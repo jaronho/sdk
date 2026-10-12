@@ -98,6 +98,14 @@ public:
     static bool isIPv4Inner(const std::string& ip);
 
     /**
+     * @brief 校验在现有IP地址取值后追加字符c, 结果是否仍为合法的IPv4前缀
+     * @param ip 当前已有取值
+     * @param c 待追加的字符(数字或点)
+     * @return true-合法, false-非法
+     */
+    static bool canAppendIPv4(const std::string& ip, char c);
+
+    /**
      * @brief 根据IPv4地址和子网掩码计算IPv4信息(说明: 网关无法自动计算, 必须是人为配置)
      * @param ip IPv4地址, 例如: 192.168.3.10
      * @param netmask 子网掩码, 例如: 255.255.255.0

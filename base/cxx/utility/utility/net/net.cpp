@@ -111,6 +111,70 @@ bool Net::isIPv4Inner(const std::string& ip)
     return false;
 }
 
+bool Net::canAppendIPv4(const std::string& ip, char c)
+{
+    /* 仅允许数字和点 */
+    if ('.' != c && (c < '0' || c > '9'))
+    {
+        return false;
+    }
+    if (ip.length() >= 15) /* IPv4最大长度15, 例如: 255.255.255.255 */
+    {
+        return false;
+    }
+    auto s = ip;
+    s += c;
+    if ('.' == s[0] || std::string::npos != s.find("..")) /* 首字符不能是点, 且不允许连续的点 */
+    {
+        return false;
+    }
+    int dots = 0; /* 点的数量: 4段IP最多3个点 */
+    for (auto ch : s)
+    {
+        if ('.' == ch)
+        {
+            dots++;
+        }
+    }
+    if (dots > 3)
+    {
+        return false;
+    }
+    /* 按点分段校验: 每段不超过3位、无前导零、数值不超过255 */
+    size_t start = 0;
+    for (size_t i = 0; i <= s.length(); ++i)
+    {
+        if (i != s.length() && '.' != s[i])
+        {
+            continue;
+        }
+        auto seg = s.substr(start, i - start);
+        if (seg.empty()) /* 末尾空段表示刚输入点号, 等待继续输入, 属于合法中间状态 */
+        {
+            return (i == s.length());
+        }
+        if (seg.length() > 3)
+        {
+            return false;
+        }
+        if (seg.length() > 1 && '0' == seg[0]) /* 不允许前导零, 例如: 01 */
+        {
+            return false;
+        }
+        int num = 0;
+        for (auto d : seg)
+        {
+            num = num * 10 + (d - '0');
+        }
+        if (num > 255)
+        {
+            return false;
+        }
+        start = i + 1;
+    }
+    return true;
+}
+
 Net::IPv4Info Net::calcIPv4Info(const std::string& ip, const std::string& netmask)
 {
     IPv4Info info;
