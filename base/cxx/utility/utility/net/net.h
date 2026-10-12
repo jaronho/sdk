@@ -25,37 +25,84 @@ public:
      */
     struct IfaceInfo
     {
-        enum class Type
+        /**
+         * @brief 网卡链路层类型, 各平台的原始取值不同(Linux为ARPHRD_*, Windows为MIB_IF_TYPE_*或IF_TYPE_*), 具体取值见rawType
+         */
+        enum class LinkType
         {
-            other,
-            ethernet,
-            tokenring,
-            fddi,
-            ppp,
-            loopback,
-            slip
+            other, /* 其它类型(原始类型未覆盖时的兜底值) */
+            ethernet, /* 以太网(Linux: ARPHRD_ETHER, Windows: MIB_IF_TYPE_ETHERNET=6) */
+            tokenring, /* 令牌环网(Linux: ARPHRD_PRONET, Windows: MIB_IF_TYPE_TOKENRING=9) */
+            fddi, /* 光纤分布式数据接口(Linux: ARPHRD_FDDI, Windows: MIB_IF_TYPE_FDDI=15) */
+            ppp, /* 点对点协议(Linux: ARPHRD_PPP, Windows: MIB_IF_TYPE_PPP=23) */
+            loopback, /* 本地回环(Linux: ARPHRD_LOOPBACK, Windows: MIB_IF_TYPE_LOOPBACK=24) */
+            slip, /* 串行线路IP(Linux: ARPHRD_SLIP, Windows: MIB_IF_TYPE_SLIP=28) */
+            wireless, /* 无线网卡(WiFi)(Linux: ARPHRD_IEEE80211(仅monitor模式), Windows: IF_TYPE_IEEE80211=71) */
+            virtualNic, /* 专有虚拟网卡(TAP/TUN等软件模拟的网卡)(Windows: IF_TYPE_PROP_VIRTUAL=53, Linux下TAP上报为以太网) */
+            tunnel, /* 隧道网卡(无链路层头部的封装接口)(Linux: ARPHRD_NONE, Windows: IF_TYPE_TUNNEL=131) */
+            wwan /* 蜂窝网网卡(4G/5G拨号接口)(Windows: IF_TYPE_WWANPP=243, IF_TYPE_WWANPP2=244) */
         };
 
-        std::string typeStr() const
+        /**
+         * @brief 网卡硬件形态(按所属总线或设备来源归类, 非严格的总线类型), virt为无实体设备的虚拟网卡, soc为芯片内置网卡(实际挂在platform总线), 二者按来源归并
+         */
+        enum class BusType
         {
-            switch (type)
+            unknown, /* 未知(判定失败) */
+            virt, /* 虚拟网卡(无实体设备) */
+            usb, /* USB网卡(含板载USB转网口) */
+            pcie, /* PCIe网卡(扩展卡或x86板载) */
+            soc /* SOC板载网卡 */
+        };
+
+        std::string linkTypeStr() const
+        {
+            switch (linkType)
             {
-            case Type::ethernet:
+            case LinkType::ethernet:
                 return "ethernet";
-            case Type::tokenring:
+            case LinkType::tokenring:
                 return "tokenring";
-            case Type::fddi:
+            case LinkType::fddi:
                 return "fddi";
-            case Type::ppp:
+            case LinkType::ppp:
                 return "ppp";
-            case Type::loopback:
+            case LinkType::loopback:
                 return "loopback";
-            case Type::slip:
+            case LinkType::slip:
                 return "slip";
+            case LinkType::wireless:
+                return "wireless";
+            case LinkType::virtualNic:
+                return "virtualNic";
+            case LinkType::tunnel:
+                return "tunnel";
+            case LinkType::wwan:
+                return "wwan";
             default:
-                break;
+                return std::to_string(rawType);
             }
-            return std::to_string(realType);
+        }
+
+        /**
+         * @brief 获取网卡硬件形态的字符串描述
+         * @return 字符串描述, 例如: pcie
+         */
+        std::string busTypeStr() const
+        {
+            switch (busType)
+            {
+            case BusType::virt:
+                return "virtual";
+            case BusType::usb:
+                return "usb";
+            case BusType::pcie:
+                return "pcie";
+            case BusType::soc:
+                return "soc";
+            default:
+                return "unknown";
+            }
         }
 
 #ifdef _WIN32
@@ -67,8 +114,9 @@ public:
 #endif
 
         std::string name; /* 名称 */
-        int realType = 0; /* 网卡类型(实际的类型值, 不同平台可能不一样) */
-        Type type = Type::other; /* 网卡类型(转换后的类型值) */
+        int rawType = 0; /* 链路层类型(平台原始值: Linux为ARPHRD_*, Windows为MIB_IF_TYPE_*) */
+        LinkType linkType = LinkType::other; /* 链路层类型(转换后的类型值) */
+        BusType busType = BusType::unknown; /* 网卡硬件形态(Windows下SOC为近似判定) */
         std::vector<std::string> mac; /* MAC地址 */
 #ifdef _WIN32
         std::string desc; /* 描述 */

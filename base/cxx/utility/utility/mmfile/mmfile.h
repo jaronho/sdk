@@ -127,8 +127,8 @@ private:
 
 #ifdef _WIN32
     typedef void* HANDLE;
-    HANDLE m_file = 0;
-    HANDLE m_mapping = 0;
+    HANDLE m_file = nullptr; /* 文件句柄, 空表示无效 */
+    HANDLE m_mapping = nullptr; /* 映射句柄, 空表示无效 */
 #else
     int m_fd = -1;
 #endif

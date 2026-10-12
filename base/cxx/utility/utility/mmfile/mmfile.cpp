@@ -60,29 +60,20 @@ bool MMFile::open(const std::string& fullName, const AccessMode& mode, size_t bl
                          FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
     if (INVALID_HANDLE_VALUE == m_file)
     {
+        /* 无效句柄统一置空, 否则close()会对无效句柄再次调用CloseHandle */
+        m_file = nullptr;
         m_lastError = GetLastError();
         return false;
-    }
-    DWORD protection = (mode == AccessMode::read_write) ? PAGE_READWRITE : PAGE_READONLY;
-    /* dwMaximumSizeHigh和dwMaximumSizeLow设置为0表示映射对象的大小由文件的实际大小决定 */
-    m_mapping = CreateFileMapping(m_file, nullptr, protection, 0, 0, nullptr);
-    if (!m_mapping)
-    {
-        m_lastError = GetLastError();
-        CloseHandle(m_file);
-        return nullptr;
     }
     LARGE_INTEGER li;
     if (AccessMode::create == mode)
     {
+        /* 先调整文件大小, 再创建映射对象, 否则对空文件调用CreateFileMapping会失败(错误码1006) */
         li.QuadPart = m_fileSize;
         if (!SetFilePointerEx(m_file, li, nullptr, FILE_BEGIN) || !SetEndOfFile(m_file))
         {
             m_lastError = GetLastError();
-            CloseHandle(m_mapping);
-            m_mapping = nullptr;
-            CloseHandle(m_file);
-            m_file = INVALID_HANDLE_VALUE;
+            close();
             return false;
         }
     }
@@ -91,13 +82,18 @@ bool MMFile::open(const std::string& fullName, const AccessMode& mode, size_t bl
         if (!GetFileSizeEx(m_file, &li))
         {
             m_lastError = GetLastError();
-            CloseHandle(m_mapping);
-            m_mapping = nullptr;
-            CloseHandle(m_file);
-            m_file = INVALID_HANDLE_VALUE;
+            close();
             return false;
         }
-        m_fileSize = li.QuadPart;
+        m_fileSize = (size_t)li.QuadPart;
+    }
+    /* dwMaximumSizeHigh和dwMaximumSizeLow设置为0表示映射对象的大小由文件的实际大小决定 */
+    m_mapping = CreateFileMapping(m_file, nullptr, dwProtection, 0, 0, nullptr);
+    if (!m_mapping)
+    {
+        m_lastError = GetLastError();
+        close();
+        return false;
     }
 #else
     int flags = O_CLOEXEC;
@@ -242,10 +238,10 @@ void MMFile::close()
         CloseHandle(m_mapping);
         m_mapping = nullptr;
     }
-    if (INVALID_HANDLE_VALUE != m_file)
+    if (m_file)
     {
         CloseHandle(m_file);
-        m_file = INVALID_HANDLE_VALUE;
+        m_file = nullptr;
     }
 #else
     if (m_fd >= 0)
@@ -261,7 +257,7 @@ void MMFile::close()
 bool MMFile::isOpen() const
 {
 #ifdef _WIN32
-    return (INVALID_HANDLE_VALUE != m_file && m_mapping);
+    return (nullptr != m_file && nullptr != m_mapping);
 #else
     return (m_fd >= 0);
 #endif
