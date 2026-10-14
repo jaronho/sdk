@@ -218,13 +218,13 @@ int sm4CryptEcb(sm4_context_t* ctx, const unsigned char* in, int inLength, unsig
     {
         return 0;
     }
-    if (ctx->mode == SM4_DECRYPT) /* 解密时输入为密文(已按16字节块对齐), 不再补位 */
-    {
-        paddingCount = 0;
-    }
-    else /* 加密时按PKCS7补位(不足16字节倍数则补齐; 恰好为16倍数则补一整块) */
+    if (SM4_ENCRYPT == ctx->mode) /* 加密时按PKCS7补位(不足16字节倍数则补齐; 恰好为16倍数则补一整块) */
     {
         paddingCount = 16 - (inLength % 16);
+    }
+    else /* 解密时输入为密文(已按16字节块对齐), 不再补位 */
+    {
+        paddingCount = 0;
     }
     /* PKCS7Padding */
     inputLength = inLength + paddingCount;
@@ -258,6 +258,14 @@ int sm4CryptEcb(sm4_context_t* ctx, const unsigned char* in, int inLength, unsig
         offset += 16;
         inputLength -= 16;
     }
+    if (SM4_DECRYPT == ctx->mode && outLength > 0) /* 解密后去除PKCS7补位(末字节为补位长度) */
+    {
+        int pad = (*out)[outLength - 1];
+        if (pad > 0 && pad <= 16 && pad <= outLength)
+        {
+            outLength -= pad;
+        }
+    }
     free(input);
     return outLength;
 }
@@ -277,15 +285,13 @@ int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned
     {
         return 0;
     }
-    if (ctx->mode == SM4_DECRYPT)
+    if (SM4_ENCRYPT == ctx->mode) /* 加密时按PKCS7补位(不足16字节倍数则补齐; 恰好为16倍数则补一整块) */
     {
-        /* 解密时输入为密文(已按16字节块对齐), 不再补位 */
-        paddingCount = 0;
-    }
-    else
-    {
-        /* 加密时按PKCS7补位(不足16字节倍数则补齐; 恰好为16倍数则补一整块) */
         paddingCount = 16 - (inLength % 16);
+    }
+    else /* 解密时输入为密文(已按16字节块对齐), 不再补位 */
+    {
+        paddingCount = 0;
     }
     /* PKCS7Padding */
     inputLength = inLength + paddingCount;
@@ -353,6 +359,14 @@ int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned
             memcpy(iv, temp, 16);
             offset += 16;
             inputLength -= 16;
+        }
+    }
+    if (SM4_DECRYPT == ctx->mode && outLength > 0) /* 解密后去除PKCS7补位(末字节为补位长度) */
+    {
+        int pad = (*out)[outLength - 1];
+        if (pad > 0 && pad <= 16 && pad <= outLength)
+        {
+            outLength -= pad;
         }
     }
     free(input);

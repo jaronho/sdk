@@ -17,7 +17,6 @@ void testSm4()
     algorithm::sm4SetKeyEnc(&ctx, (const unsigned char*)key.c_str());
     unsigned char* out1 = NULL;
     int len1 = algorithm::sm4CryptEcb(&ctx, (const unsigned char*)input.c_str(), input.size(), &out1);
-    int pad1 = len1 - input.size();
     printf("[ECB] encrypt: ");
     for (int i = 0; i < len1; i++)
     {
@@ -28,7 +27,6 @@ void testSm4()
     algorithm::sm4SetKeyDec(&ctx, (const unsigned char*)key.c_str());
     unsigned char* out2 = NULL;
     int len2 = algorithm::sm4CryptEcb(&ctx, out1, len1, &out2);
-    len2 -= pad1; /* 解密后的长度需要减去补位长度 */
     printf("[ECB] decrypt: ");
     for (int i = 0; i < len2; i++)
     {
@@ -51,7 +49,6 @@ void testSm4()
     algorithm::sm4SetKeyEnc(&ctx, (const unsigned char*)key.c_str());
     unsigned char* out3 = NULL;
     int len3 = algorithm::sm4CryptCbc(&ctx, ivec, (const unsigned char*)input.c_str(), input.size(), &out3);
-    int pad2 = len3 - input.size();
     printf("[CBC] encrypt: ");
     for (int i = 0; i < len3; ++i)
     {
@@ -61,7 +58,6 @@ void testSm4()
     algorithm::sm4SetKeyDec(&ctx, (const unsigned char*)key.c_str());
     unsigned char* out4 = NULL;
     int len4 = algorithm::sm4CryptCbc(&ctx, ivec, out3, len3, &out4);
-    len4 -= pad2; /* 解密后的长度需要减去补位长度 */
     printf("[CBC] decrypt: ");
     for (int i = 0; i < len4; ++i)
     {

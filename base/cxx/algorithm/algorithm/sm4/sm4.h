@@ -35,7 +35,7 @@ extern "C"
      * @param in 输入数据
      * @param inLength 输入数据长度
      * @param out [输出]加解密后的数据(需要外部调用free释放内存)
-     * @return 输出数据长度(注意: 如果是解密且输入数据在加密时有补位, 则返回的数据长度需要减去补位长度)
+     * @return 输出数据长度(加密为补位后长度; 解密时自动去除PKCS7补位, 返回明文长度)
      */
     int sm4CryptEcb(sm4_context_t* ctx, const unsigned char* in, int inLength, unsigned char** out);
 
@@ -46,7 +46,7 @@ extern "C"
      * @param in 输入数据
      * @param inLength 输入数据长度
      * @param out [输出]加解密后的数据(需要外部调用free释放内存)
-     * @return 输出数据长度(注意: 如果是解密且输入数据在加密时有补位, 则返回的数据长度需要减去补位长度)
+     * @return 输出数据长度(加密为补位后长度; 解密时自动去除PKCS7补位, 返回明文长度)
      */
     int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned char* in, int inLength, unsigned char** out);
 #ifdef __cplusplus
