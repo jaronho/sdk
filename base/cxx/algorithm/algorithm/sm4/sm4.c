@@ -31,7 +31,7 @@ namespace algorithm
 #endif
 
 /* rotate shift left marco definition */
-#define SHL(x, n) (((x)&0xFFFFFFFF) << n)
+#define SHL(x, n) (((x) & 0xFFFFFFFF) << n)
 #define ROTL(x, n) (SHL((x), n) | ((x) >> (32 - n)))
 
 #define SWAP(a, b) \
@@ -218,7 +218,11 @@ int sm4CryptEcb(sm4_context_t* ctx, const unsigned char* in, int inLength, unsig
     {
         return 0;
     }
-    if (inLength % 16 >= 0)
+    if (ctx->mode == SM4_DECRYPT) /* 解密时输入为密文(已按16字节块对齐), 不再补位 */
+    {
+        paddingCount = 0;
+    }
+    else /* 加密时按PKCS7补位(不足16字节倍数则补齐; 恰好为16倍数则补一整块) */
     {
         paddingCount = 16 - (inLength % 16);
     }
@@ -273,8 +277,14 @@ int sm4CryptCbc(sm4_context_t* ctx, const unsigned char ivec[16], const unsigned
     {
         return 0;
     }
-    if (inLength % 16 >= 0)
+    if (ctx->mode == SM4_DECRYPT)
     {
+        /* 解密时输入为密文(已按16字节块对齐), 不再补位 */
+        paddingCount = 0;
+    }
+    else
+    {
+        /* 加密时按PKCS7补位(不足16字节倍数则补齐; 恰好为16倍数则补一整块) */
         paddingCount = 16 - (inLength % 16);
     }
     /* PKCS7Padding */
