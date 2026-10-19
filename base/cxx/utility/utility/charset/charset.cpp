@@ -1,8 +1,10 @@
 #include "charset.h"
 
 #include <codecvt>
+#include <cstdint>
 #include <locale>
 #include <string.h>
+#include <unordered_map>
 #ifdef _WIN32
 #include <Windows.h>
 #endif
@@ -215,18 +217,28 @@ static int utf8_to_unicode(const char* utf8str, int slen, wchar* outbuf, int osi
             }
             i += cb;
             p += cb;
+            int unitBytes = (wc > 0xFFFF) ? 4 : 2;
             if (op)
             {
-                if (cnt + 2 <= osize)
+                if (cnt + unitBytes <= osize)
                 {
-                    *op++ = (wchar)wc;
+                    if (wc > 0xFFFF) /* 超出BMP的码点按UTF-16代理对输出 */
+                    {
+                        ucs4_t t = wc - 0x10000;
+                        *op++ = (wchar)(0xD800 + (t >> 10));
+                        *op++ = (wchar)(0xDC00 + (t & 0x3FF));
+                    }
+                    else
+                    {
+                        *op++ = (wchar)wc;
+                    }
                 }
                 else
                 {
                     break;
                 }
             }
-            cnt += 2;
+            cnt += unitBytes;
         }
         ret = cnt;
     } while (0);
@@ -263,6 +275,17 @@ static int unicode_to_utf8(const wchar* wstr, int wlen, char* outbuf, int osize)
         for (i = 0; i < wlen * 2; i += 2, ++p)
         {
             wc = *p;
+            /* 组合UTF-16代理对, 还原为完整码点后再编码 */
+            if (wc >= 0xD800 && wc <= 0xDBFF && (i + 2) < (wlen * 2))
+            {
+                wchar lo = p[1];
+                if (lo >= 0xDC00 && lo <= 0xDFFF)
+                {
+                    wc = 0x10000 + (((ucs4_t)wc - 0xD800) << 10) + (lo - 0xDC00);
+                    ++p;
+                    i += 2;
+                }
+            }
             if (op)
             {
                 cb = utf8_wctomb(op, wc, osize - cnt);
@@ -561,7 +584,7 @@ bool Charset::isAscii(const std::string& str)
 {
     for (size_t i = 0; i < str.size(); ++i)
     {
-        if (!isascii(str[i]))
+        if (!isascii((unsigned char)str[i]))
         {
             return false;
         }
@@ -753,13 +776,6 @@ std::string Charset::getLocale()
      *          代码页(https://docs.microsoft.com/zh-cn/windows/win32/intl/code-page-identifiers)
      */
     char* currLocale = setlocale(LC_ALL, NULL); /* currLocale不需要释放内存 */
-    if (currLocale)
-    {
-        if (0 == strcmp("C", currLocale) || 0 == strcmp("c", currLocale))
-        {
-            currLocale = setlocale(LC_ALL, "");
-        }
-    }
     return (currLocale ? currLocale : std::string());
 }
 
@@ -782,13 +798,12 @@ std::wstring Charset::string2wstring(const std::string& str, size_t codePage)
             return wstr;
         }
 #else
-        size_t len = str.length() + 1;
-        wchar_t* buf = new wchar_t[len];
-        memset(buf, 0, len);
-        mbstowcs(buf, str.c_str(), len);
-        std::wstring wstr(buf);
-        delete[] buf;
-        return wstr;
+        /* 不依赖全局locale, 按codePage显式转换, 与Windows行为保持一致 */
+        if (65001 == codePage)
+        {
+            return utf8ToUnicode(str);
+        }
+        return gbkToUnicode(str); /* CP_ACP/CP_OEMCP/936等按GBK处理 */
 #endif
     }
     return std::wstring();
@@ -807,13 +822,12 @@ std::string Charset::wstring2string(const std::wstring& wstr, size_t codePage)
             return str;
         }
 #else
-        size_t len = (wstr.length() + 1) * sizeof(wchar_t);
-        char* buf = new char[len];
-        memset(buf, 0, len);
-        wcstombs(buf, wstr.c_str(), len - 1);
-        std::string str(buf);
-        delete[] buf;
-        return str;
+        /* 不依赖全局locale, 按codePage显式转换, 与Windows行为保持一致 */
+        if (65001 == codePage)
+        {
+            return unicodeToUtf8(wstr);
+        }
+        return unicodeToGbk(wstr); /* CP_ACP/CP_OEMCP/936等按GBK处理 */
 #endif
     }
     return std::string();
@@ -841,6 +855,60 @@ Charset::Coding Charset::getCoding(const std::string& str, std::vector<unsigned 
     return Coding::unknown;
 }
 
+/* 平台无关辅助: std::wstring(Windows下为UTF-16, Linux下为UTF-32)与16位UTF-16代码单元(std::u16string)互转 */
+static std::u16string wstring_to_u16(const std::wstring& ws)
+{
+#ifdef _WIN32
+    /* Windows下wchar_t即2字节UTF-16 */
+    return std::u16string((const char16_t*)(ws.data()), ws.size());
+#else
+    /* Linux下wchar_t为4字节UTF-32, 需逐码点转为UTF-16(含代理对) */
+    std::u16string out;
+    out.reserve(ws.size());
+    for (char32_t cp : ws)
+    {
+        if (cp <= 0xFFFF)
+        {
+            out.push_back((char16_t)(cp));
+        }
+        else
+        {
+            cp -= 0x10000;
+            out.push_back((char16_t)(0xD800 + (cp >> 10)));
+            out.push_back((char16_t)(0xDC00 + (cp & 0x3FF)));
+        }
+    }
+    return out;
+#endif
+}
+
+static std::wstring u16_to_wstring(const std::u16string& u16)
+{
+#ifdef _WIN32
+    /* Windows下直接wstring */
+    return std::wstring((const wchar_t*)(u16.data()), u16.size());
+#else
+    /* Linux下将UTF-16(含代理对)解码为UTF-32 */
+    std::wstring out;
+    out.reserve(u16.size());
+    for (size_t i = 0; i < u16.size(); ++i)
+    {
+        char16_t c = u16[i];
+        if (c >= 0xD800 && c <= 0xDBFF && (i + 1) < u16.size() && u16[i + 1] >= 0xDC00 && u16[i + 1] <= 0xDFFF)
+        {
+            char32_t cp = 0x10000 + (((char32_t)c - 0xD800) << 10) + (u16[i + 1] - 0xDC00);
+            out.push_back((wchar_t)(cp));
+            ++i;
+        }
+        else
+        {
+            out.push_back((wchar_t)(c));
+        }
+    }
+    return out;
+#endif
+}
+
 std::wstring Charset::utf8ToUnicode(const std::string& str)
 {
     if (str.empty())
@@ -855,9 +923,9 @@ std::wstring Charset::utf8ToUnicode(const std::string& str)
     }
     size = utf8_to_unicode(str.c_str(), str.size(), unicode, sizeof(wchar) * (size / 2 + 1));
     unicode[size / 2] = 0;
-    std::wstring ret((wchar_t*)unicode, size / 2);
+    std::u16string u16((const char16_t*)(unicode), size / 2);
     delete[] unicode;
-    return ret;
+    return u16_to_wstring(u16);
 }
 
 std::string Charset::unicodeToUtf8(const std::wstring& wstr)
@@ -866,13 +934,14 @@ std::string Charset::unicodeToUtf8(const std::wstring& wstr)
     {
         return std::string();
     }
-    int size = unicode_to_utf8((wchar*)wstr.c_str(), wstr.size(), 0, 0);
+    std::u16string u16 = wstring_to_u16(wstr);
+    int size = unicode_to_utf8((const wchar*)(u16.data()), (int)u16.size(), 0, 0);
     char* utf8 = new char[size + 1];
     if (!utf8)
     {
         return std::string();
     }
-    size = unicode_to_utf8((wchar*)wstr.c_str(), wstr.size(), utf8, size + 1);
+    size = unicode_to_utf8((const wchar*)(u16.data()), (int)u16.size(), utf8, size + 1);
     utf8[size] = 0;
     std::string ret(utf8, size);
     delete[] utf8;
@@ -893,9 +962,9 @@ std::wstring Charset::gbkToUnicode(const std::string& str)
     }
     size = gbk_to_unicode(str.c_str(), str.size(), unicode, sizeof(wchar) * (size / 2 + 1));
     unicode[size / 2] = 0;
-    std::wstring ret((wchar_t*)unicode, size / 2);
+    std::u16string u16((const char16_t*)(unicode), size / 2);
     delete[] unicode;
-    return ret;
+    return u16_to_wstring(u16);
 }
 
 std::string Charset::unicodeToGbk(const std::wstring& wstr)
@@ -904,13 +973,14 @@ std::string Charset::unicodeToGbk(const std::wstring& wstr)
     {
         return std::string();
     }
-    int size = unicode_to_gbk((wchar*)wstr.c_str(), wstr.size(), 0, 0);
+    std::u16string u16 = wstring_to_u16(wstr);
+    int size = unicode_to_gbk((const wchar*)(u16.data()), (int)u16.size(), 0, 0);
     char* gbk = new char[size + 1];
     if (!gbk)
     {
         return std::string();
     }
-    size = unicode_to_gbk((wchar*)wstr.c_str(), wstr.size(), gbk, size + 1);
+    size = unicode_to_gbk((const wchar*)(u16.data()), (int)u16.size(), gbk, size + 1);
     gbk[size] = 0;
     std::string ret(gbk, size);
     delete[] gbk;
@@ -927,6 +997,144 @@ std::string Charset::utf8ToGbk(const std::string& str)
     return unicodeToGbk(utf8ToUnicode(str));
 }
 
+static size_t utf8_char_len(unsigned char c)
+{
+    if (c < 0x80)
+    {
+        return 1;
+    }
+    if (0xC0 == (c & 0xE0))
+    {
+        return 2;
+    }
+    if (0xE0 == (c & 0xF0))
+    {
+        return 3;
+    }
+    if (0xF0 == (c & 0xF8))
+    {
+        return 4;
+    }
+    return 0;
+}
+
+/* UTF8->GB2312正向查找表 */
+static const std::unordered_map<std::string, uint16_t>& utf8_to_gb2312_map()
+{
+    static std::unordered_map<std::string, uint16_t> m;
+    if (m.empty())
+    {
+        for (const auto& e : charset_code_map)
+        {
+            size_t len = utf8_char_len(e.utf8[0]);
+            if (len < 2) /* 兜底: 默认按3字节处理 */
+            {
+                len = 3;
+            }
+            std::string key((const char*)e.utf8, len);
+            uint16_t val = ((uint16_t)e.gb2312[0] << 8) | e.gb2312[1];
+            m[key] = val;
+        }
+    }
+    return m;
+}
+
+/* GB2312->UTF8反向查找表 */
+static const std::unordered_map<uint16_t, std::string>& gb2312_to_utf8_map()
+{
+    static std::unordered_map<uint16_t, std::string> m;
+    if (m.empty())
+    {
+        for (const auto& e : charset_code_map)
+        {
+            size_t len = utf8_char_len(e.utf8[0]);
+            if (len < 2)
+            {
+                len = 3;
+            }
+            uint16_t key = ((uint16_t)e.gb2312[0] << 8) | e.gb2312[1];
+            m[key] = std::string((const char*)e.utf8, len);
+        }
+    }
+    return m;
+}
+
+std::string Charset::gb2312ToUtf8(const std::string& str)
+{
+    if (str.empty())
+    {
+        return std::string();
+    }
+    const auto& m = gb2312_to_utf8_map();
+    std::string out;
+    out.reserve(str.size());
+    const unsigned char* p = (const unsigned char*)str.data();
+    size_t i = 0, n = str.size();
+    while (i < n)
+    {
+        unsigned char c = p[i];
+        if (c < 0x80) /* ASCII单字节直接拷贝 */
+        {
+            out.push_back((char)c);
+            ++i;
+            continue;
+        }
+        if (i + 1 < n) /* GB2312双字节 */
+        {
+            uint16_t key = ((uint16_t)c << 8) | p[i + 1];
+            auto iter = m.find(key);
+            if (m.end() != iter)
+            {
+                out += iter->second;
+                i += 2;
+                continue;
+            }
+        }
+        out.push_back('?'); /* 非法/未定义双字节 */
+        ++i;
+    }
+    return out;
+}
+
+std::string Charset::utf8ToGb2312(const std::string& str)
+{
+    if (str.empty())
+    {
+        return std::string();
+    }
+    const auto& m = utf8_to_gb2312_map();
+    std::string out;
+    out.reserve(str.size());
+    const unsigned char* p = (const unsigned char*)str.data();
+    size_t i = 0, n = str.size();
+    while (i < n)
+    {
+        unsigned char c = p[i];
+        if (c < 0x80) /* ASCII单字节直接拷贝 */
+        {
+            out.push_back((char)c);
+            ++i;
+            continue;
+        }
+        size_t len = utf8_char_len(c);
+        if ((2 == len || 3 == len) && i + len - 1 < n)
+        {
+            std::string key((const char*)p + i, len);
+            auto iter = m.find(key);
+            if (m.end() != iter)
+            {
+                out.push_back((char)(iter->second >> 8));
+                out.push_back((char)(iter->second & 0xFF));
+                i += len;
+                continue;
+            }
+        }
+        out.push_back('?'); /* 不在GB2312内或截断序列 */
+        i += (0 == len ? 1 : len);
+    }
+    return out;
+}
+
 std::string Charset::unescapeToUtf8(const std::string& in)
 {
     std::string out;
@@ -935,15 +1143,26 @@ std::string Charset::unescapeToUtf8(const std::string& in)
     {
         if (i + 3 < in.size() && '\\' == in[i] && 'x' == in[i + 1])
         {
-            int hi = std::isdigit(in[i + 2]) ? (in[i + 2] - '0') : (std::tolower(in[i + 2]) - 'a' + 10);
-            int lo = std::isdigit(in[i + 3]) ? (in[i + 3] - '0') : (std::tolower(in[i + 3]) - 'a' + 10);
-            out.push_back((char)((hi << 4) | lo));
-            i += 3;
+            unsigned char hc = (unsigned char)in[i + 2];
+            unsigned char lc = (unsigned char)in[i + 3];
+            int hi = -1, lo = -1;
+            /* 仅当后续两字符均为合法十六进制时才转换, 否则按原样输出 */
+            if (std::isxdigit(hc))
+            {
+                hi = (hc <= '9') ? (hc - '0') : (std::tolower(hc) - 'a' + 10);
+            }
+            if (std::isxdigit(lc))
+            {
+                lo = (lc <= '9') ? (lc - '0') : (std::tolower(lc) - 'a' + 10);
+            }
+            if (hi >= 0 && lo >= 0)
+            {
+                out.push_back((char)((hi << 4) | lo));
+                i += 3;
+                continue;
+            }
         }
-        else
-        {
-            out.push_back(in[i]);
-        }
+        out.push_back(in[i]);
     }
     return out;
 }

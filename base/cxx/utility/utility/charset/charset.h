@@ -27,8 +27,8 @@ public:
     static bool isAscii(const std::string& str);
 
     /**
-     * @brief 获取当前默认地域编码
-     * @return 编码, 例如: Linux下为'zh_CN.UTF-8', Windows下为'Chinese (Simplified)_China.936'
+     * @brief 获取当前地域编码
+     * @return 编码, 例如: 已初始化locale时Linux下为'zh_CN.UTF-8', Windows下为'Chinese (Simplified)_China.936'; 未初始化时为'C'
      */
     static std::string getLocale();
 
@@ -103,6 +103,20 @@ public:
      * @return GBK字符串
      */
     static std::string utf8ToGbk(const std::string& str);
+
+    /**
+     * @brief UTF8转GB2312(严格)
+     * @param str UTF8字符串
+     * @return GB2312字符串(无法映射到GB2312的字符以'?'替代)
+     */
+    static std::string utf8ToGb2312(const std::string& str);
+
+    /**
+     * @brief GB2312转UTF8(严格)
+     * @param str GB2312字符串
+     * @return UTF8字符串(无法识别的字节以'?'替代)
+     */
+    static std::string gb2312ToUtf8(const std::string& str);
 
     /**
      * @brief 把 "\xe6\x96\xb0" 这样的 6-char 序列转成 3-byte UTF-8
