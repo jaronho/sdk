@@ -8,9 +8,10 @@
 
 int main()
 {
+    LoopProxy::getInstance().setDebugDiagnose(true);
     while (1)
     {
-        LoopProxy::getInstance().onLoop([&]() {}, true);
+        LoopProxy::getInstance().onLoop([&]() {});
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     return 0;
