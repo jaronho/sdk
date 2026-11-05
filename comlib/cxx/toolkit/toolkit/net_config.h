@@ -97,5 +97,15 @@ public:
      * @return true-可通, false-不通
      */
     static bool checkPing(const std::string& src, const std::string& dest, int timeout = 1, std::string* result = nullptr);
+
+    /**
+     * @brief 通过TCP连接探测目标主机是否可访问及指定端口是否开放(不依赖ICMP, 阻塞)
+     * @param src 本机要使用的网络接口(当本机有多个网卡时, 可以指定使用哪一个), 为空表示默认, 例如: 网卡名(enp1s0) 或 IP(192.168.3.123), 注意: Windows下仅支持IP
+     * @param dest 目标地址, 可以为IP或域名
+     * @param port 目标端口, 端口未知时可任意指定, 只要目标主机返回TCP响应(连接成功或端口拒绝)即认为主机可访问
+     * @param timeout 超时时间(单位: 秒), 小等于0表示使用默认超时, 注意: 部分网络中的设备对关闭端口回RST存在延迟(反端口扫描策略, 实测可达数秒), timeout需大于该延迟, 否则"主机可达但端口关闭"会被误判为-3(超时)
+     * @return 检测结果: -4.其他错误, -3.超时(主机不可访问或端口被过滤), -2.目标地址解析失败, -1.参数错误, 0.连接成功(主机可访问, 端口开放), 1.端口拒绝连接(主机可访问, 端口未开放)
+     */
+    static int checkTcp(const std::string& src, const std::string& dest, int port, int timeout = 1);
 };
 } // namespace toolkit

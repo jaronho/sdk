@@ -28,6 +28,9 @@ struct LogicMsg
  */
 class LoopProxy final
 {
+private:
+    LoopProxy() = default;
+
 public:
     /**
      * @brief 获取单例
@@ -36,6 +39,37 @@ public:
     {
         static LoopProxy s_instance;
         return s_instance;
+    }
+
+    /**
+     * @brief 循环
+     * @param func 循环回调函数
+     */
+    void onLoop(const std::function<void()>& func)
+    {
+        if (func)
+        {
+            auto beg = std::chrono::steady_clock::now();
+            func();
+            if (m_debugDiagnose)
+            {
+                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
+                if (ms >= FPS_TIME)
+                {
+                    DEBUG_LOG(m_logger, "主线程, 循环回调, 运行耗时: {} 毫秒", ms);
+                }
+            }
+        }
+        tryHandleLogicMsg();
+    }
+
+    /**
+     * @brief 设置调试诊断
+     * @param enable true-启用, false-禁用
+     */
+    void setDebugDiagnose(bool enable)
+    {
+        m_debugDiagnose = enable;
     }
 
     /**
@@ -58,31 +92,8 @@ public:
         m_msgQueue.push(std::make_shared<LogicMsg>(name, handler, logFlag));
     }
 
-    /**
-     * @brief 循环(外部循环调用)
-     * @param func 回调函数
-     * @param debugDiagnose 是否调试诊断
-     */
-    void onLoop(const std::function<void()>& func, bool debugDiagnose)
-    {
-        if (func)
-        {
-            auto beg = std::chrono::steady_clock::now();
-            func();
-            if (debugDiagnose)
-            {
-                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
-                if (ms >= FPS_TIME)
-                {
-                    DEBUG_LOG(m_logger, "主线程, 循环回调, 运行耗时: {} 毫秒", ms);
-                }
-            }
-        }
-        tryHandleLogicMsg(debugDiagnose);
-    }
-
 private:
-    void tryHandleLogicMsg(bool debugDiagnose)
+    void tryHandleLogicMsg()
     {
         std::shared_ptr<LogicMsg> msg;
         size_t index = 0, costMs = 0, otherMs = 0;
@@ -97,7 +108,7 @@ private:
                 }
                 auto beg = std::chrono::steady_clock::now();
                 msg->handler();
-                if (debugDiagnose)
+                if (m_debugDiagnose)
                 {
                     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - beg).count();
                     if (ms >= FPS_TIME)
@@ -112,7 +123,7 @@ private:
                 }
             }
         }
-        if (debugDiagnose)
+        if (m_debugDiagnose)
         {
             if (otherMs >= FPS_TIME)
             {
@@ -122,6 +133,8 @@ private:
     }
 
 private:
+    std::function<void()> m_func = nullptr; /* 循环回调 */
     algorithm::SQueue<std::shared_ptr<LogicMsg>> m_msgQueue; /* 逻辑消息队列 */
+    std::atomic_bool m_debugDiagnose = {false}; /* 调试诊断 */
     logger::Logger m_logger = logger::LoggerManager::getLogger();
 };

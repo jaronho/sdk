@@ -1,6 +1,22 @@
 #include "net_config.h"
 
 #include <algorithm>
+#include <cerrno>
+#include <cstring>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#ifdef _MSC_VER
+#pragma comment(lib, "ws2_32.lib")
+#endif
+#else
+#include <fcntl.h>
+#include <netdb.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
 
 #include "utility/strtool/strtool.h"
 #include "utility/system/system.h"
@@ -409,4 +425,184 @@ bool NetConfig::checkPing(const std::string& src, const std::string& dest, int t
     }
     return true;
 }
+
+int NetConfig::checkTcp(const std::string& src, const std::string& dest, int port, int timeout)
+{
+    if (dest.empty() || port <= 0 || port > 65535)
+    {
+        return -1;
+    }
+    if (timeout <= 0)
+    {
+        timeout = 1;
+    }
+    /* 平台差异定义 */
+#ifdef _WIN32
+    using SocketHandle = SOCKET;
+    const SocketHandle INVALID_HANDLE = INVALID_SOCKET;
+    const int ERR_REFUSED = WSAECONNREFUSED;
+    const int ERR_TIMEDOUT = WSAETIMEDOUT;
+    const int ERR_INTR = WSAEINTR;
+    auto closeSocket = [](SocketHandle fd) { closesocket(fd); };
+    auto lastError = []() { return (int)WSAGetLastError(); };
+    auto isInProgress = [](int err) { return WSAEWOULDBLOCK == err || WSAEINPROGRESS == err; };
+#else
+    using SocketHandle = int;
+    const SocketHandle INVALID_HANDLE = -1;
+    const int ERR_REFUSED = ECONNREFUSED;
+    const int ERR_TIMEDOUT = ETIMEDOUT;
+    const int ERR_INTR = EINTR;
+    auto closeSocket = [](SocketHandle fd) { close(fd); };
+    auto lastError = []() { return errno; };
+    auto isInProgress = [](int err) { return EINPROGRESS == err; };
+#endif
+#ifdef _WIN32
+    WSADATA wsaData;
+    if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData))
+    {
+        return -4;
+    }
+#endif
+    int probeResult = -4;
+    bool timedOut = false;
+    int errCode = 0;
+    /* 解析目标地址 */
+    addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC; /* 同时支持IPv4和IPv6 */
+    hints.ai_socktype = SOCK_STREAM;
+    addrinfo* addrList = nullptr;
+    if (0 == getaddrinfo(dest.c_str(), std::to_string(port).c_str(), &hints, &addrList) && nullptr != addrList)
+    {
+        for (addrinfo* ai = addrList; nullptr != ai; ai = ai->ai_next)
+        {
+            SocketHandle fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+            if (INVALID_HANDLE == fd)
+            {
+                errCode = lastError();
+                continue;
+            }
+            /* 绑定本机要使用的网络接口 */
+            if (!src.empty())
+            {
+                bool bound = false;
+                addrinfo srcHints;
+                memset(&srcHints, 0, sizeof(srcHints));
+                srcHints.ai_family = ai->ai_family;
+                srcHints.ai_socktype = SOCK_STREAM;
+                addrinfo* srcAddr = nullptr;
+                if (0 == getaddrinfo(src.c_str(), nullptr, &srcHints, &srcAddr) && nullptr != srcAddr)
+                {
+                    bound = (0 == bind(fd, srcAddr->ai_addr, srcAddr->ai_addrlen));
+                    freeaddrinfo(srcAddr);
+                }
+#if !defined(_WIN32) && defined(SO_BINDTODEVICE)
+                if (!bound) /* 解析为IP失败时, 尝试按网卡名绑定 */
+                {
+                    bound = (0 == setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, src.c_str(), (socklen_t)src.size()));
+                }
+#endif
+                if (!bound) /* 指定的网络接口无效, 不能静默走默认网卡, 否则结果误导 */
+                {
+                    closeSocket(fd);
+                    freeaddrinfo(addrList);
+#ifdef _WIN32
+                    WSACleanup();
+#endif
+                    return -1;
+                }
+            }
+            /* 设置非阻塞模式, 用于实现连接超时 */
+#ifdef _WIN32
+            u_long nonBlock = 1;
+            if (0 != ioctlsocket(fd, FIONBIO, &nonBlock))
+            {
+                errCode = lastError();
+                closeSocket(fd);
+                continue;
+            }
+#else
+            int flags = fcntl(fd, F_GETFL, 0);
+            if (flags < 0 || 0 != fcntl(fd, F_SETFL, flags | O_NONBLOCK)) /* 设置失败会退化为阻塞连接, 不能继续 */
+            {
+                errCode = lastError();
+                closeSocket(fd);
+                continue;
+            }
+#endif
+            /* 发起非阻塞连接 */
+            errCode = 0;
+            bool connected = (0 == connect(fd, ai->ai_addr, ai->ai_addrlen));
+            if (!connected)
+            {
+                errCode = lastError();
+                if (isInProgress(errCode)) /* 连接进行中, 等待结果 */
+                {
+                    timeval tv;
+                    tv.tv_sec = timeout;
+                    tv.tv_usec = 0;
+                    int ret = 0;
+                    do
+                    {
+                        fd_set writeSet;
+                        fd_set errSet;
+                        FD_ZERO(&writeSet);
+                        FD_ZERO(&errSet);
+                        FD_SET(fd, &writeSet);
+                        FD_SET(fd, &errSet);
+                        ret = select((int)fd + 1, nullptr, &writeSet, &errSet, &tv);
+                    } while (ret < 0 && ERR_INTR == lastError()); /* 被信号中断时重试 */
+                    if (ret > 0) /* 连接有结果, 获取实际错误码 */
+                    {
+                        int soErr = 0;
+                        socklen_t len = sizeof(soErr);
+                        if (0 != getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)&soErr, &len))
+                        {
+                            errCode = lastError(); /* 获取失败时不能当作连接成功 */
+                        }
+                        else
+                        {
+                            errCode = soErr;
+                        }
+                    }
+                    else if (0 == ret) /* 等待超时 */
+                    {
+                        timedOut = true;
+                        errCode = ERR_TIMEDOUT;
+                    }
+                    else
+                    {
+                        errCode = lastError();
+                    }
+                }
+            }
+            closeSocket(fd);
+            if (0 == errCode) /* 连接成功 */
+            {
+                probeResult = 0;
+                break;
+            }
+            if (ERR_REFUSED == errCode) /* 目标主机返回了RST响应, 说明主机可达, 只是该端口未开放 */
+            {
+                probeResult = 1;
+                break;
+            }
+            /* 其他错误(如超时), 继续尝试下一个地址 */
+        }
+        freeaddrinfo(addrList);
+    }
+    else
+    {
+        probeResult = -2;
+    }
+    if (-4 == probeResult && timedOut) /* 至少有一次等待超时, 统一归类为超时 */
+    {
+        probeResult = -3;
+    }
+#ifdef _WIN32
+    WSACleanup();
+#endif
+    return probeResult;
+}
+
 } // namespace toolkit
