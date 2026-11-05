@@ -106,6 +106,6 @@ public:
      * @param timeout 超时时间(单位: 秒), 小等于0表示使用默认超时, 注意: 部分网络中的设备对关闭端口回RST存在延迟(反端口扫描策略, 实测可达数秒), timeout需大于该延迟, 否则"主机可达但端口关闭"会被误判为-3(超时)
      * @return 检测结果: -4.其他错误, -3.超时(主机不可访问或端口被过滤), -2.目标地址解析失败, -1.参数错误, 0.连接成功(主机可访问, 端口开放), 1.端口拒绝连接(主机可访问, 端口未开放)
      */
-    static int checkTcp(const std::string& src, const std::string& dest, int port, int timeout = 1);
+    static int checkTcp(const std::string& src, const std::string& dest, int port, int timeout = 3);
 };
 } // namespace toolkit
