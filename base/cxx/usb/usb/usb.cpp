@@ -8,6 +8,7 @@
 #include <map>
 #include <sstream>
 #include <string.h>
+#include <tuple>
 
 #ifdef _WIN32
 // initguid.h必须在devpkey.h前面包含
@@ -1340,6 +1341,11 @@ std::vector<UsbUdevImpl> enumerateUsbUdevs()
         {
             continue;
         }
+        /* 先按syspath预过滤: 非USB总线下的设备(syspath不含/usb段)直接跳过, 避免无谓的udev_device构造和uevent读取 */
+        if (!strstr(entryName, "/usb"))
+        {
+            continue;
+        }
         struct udev_device* dev = udev_device_new_from_syspath(udev, entryName);
         if (dev)
         {
@@ -1409,48 +1415,53 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
     {
         return;
     }
+    /* 预先建立(busNum, portNum, address)索引, 把逐条udev记录的全表扫描降为O(log n)查找 */
+    std::map<std::tuple<int, int, int>, size_t> indexMap;
+    for (size_t i = 0; i < usbList.size(); ++i)
+    {
+        indexMap.emplace(std::make_tuple(usbList[i].busNum, usbList[i].portNum, usbList[i].address), i);
+    }
     auto udevList = enumerateUsbUdevs();
     for (const auto& info : udevList)
     {
-        auto iter = std::find_if(usbList.begin(), usbList.end(), [&](const UsbImpl& item) {
-            return (item.busNum == info.busNum && item.portNum == info.portNum && item.address == info.address);
-        });
-        if (usbList.end() == iter)
+        auto iter = indexMap.find(std::make_tuple(info.busNum, info.portNum, info.address));
+        if (indexMap.end() == iter)
         {
             continue;
         }
+        auto& item = usbList[iter->second];
         if (info.isBlock) /* 存储设备 */
         {
-            if (iter->model.empty())
+            if (item.model.empty())
             {
-                iter->model = info.model;
+                item.model = info.model;
             }
-            if (iter->vendor.empty())
+            if (item.vendor.empty())
             {
-                iter->vendor = info.vendor;
+                item.vendor = info.vendor;
             }
             if ("disk" == info.devType) /* 磁盘 */
             {
                 if (0 == info.devNodeName.rfind("/dev/sr", 0)) /* 光驱 */
                 {
-                    iter->storageType = "cdrom";
-                    iter->blockDevNodes.emplace_back(DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity));
+                    item.storageType = "cdrom";
+                    item.blockDevNodes.emplace_back(DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity));
                 }
                 else
                 {
-                    iter->storageType = "disk";
-                    iter->blockDevRootNode = DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity);
+                    item.storageType = "disk";
+                    item.blockDevRootNode = DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity);
                 }
             }
             else if ("partition" == info.devType) /* 分区 */
             {
-                iter->storageType = "part";
-                iter->blockDevNodes.emplace_back(DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity));
+                item.storageType = "part";
+                item.blockDevNodes.emplace_back(DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity));
             }
         }
         else /* 非存储设备 */
         {
-            iter->nonblockDevNodes.emplace_back(DevNode(info.devNodeName));
+            item.nonblockDevNodes.emplace_back(DevNode(info.devNodeName));
         }
     }
     for (auto& item : usbList)
@@ -1510,6 +1521,71 @@ static std::string unescapeMountPath(const std::string& src)
         i += 1;
     }
     return dst;
+}
+
+/* 挂载项: first-挂载源设备全路径(已还原转义), second-挂载点(已还原转义) */
+typedef std::pair<std::string, std::string> MountEntry;
+
+/**
+ * @brief 一次性解析/proc/mounts生成挂载快照
+ * @return 挂载项列表, 文件打不开时返回空列表
+ * @note 纯读取procfs不触发文件系统系统调用, 不会阻塞; 供多个设备节点复用, 避免重复打开解析
+ */
+static std::vector<MountEntry> getMountSnapshot()
+{
+    std::vector<MountEntry> snapshot;
+    std::ifstream file("/proc/mounts");
+    if (!file.is_open())
+    {
+        return snapshot;
+    }
+    std::string line;
+    while (std::getline(file, line))
+    {
+        /* 格式: 设备 挂载点 文件系统 其他字段, 以空格分隔 */
+        auto devEnd = line.find(' ');
+        if (std::string::npos == devEnd)
+        {
+            continue;
+        }
+        auto mountStart = line.find_first_not_of(' ', devEnd);
+        if (std::string::npos == mountStart)
+        {
+            continue;
+        }
+        auto mountEnd = line.find(' ', mountStart);
+        if (std::string::npos == mountEnd)
+        {
+            continue;
+        }
+        snapshot.emplace_back(unescapeMountPath(line.substr(0, devEnd)), unescapeMountPath(line.substr(mountStart, mountEnd - mountStart)));
+    }
+    return snapshot;
+}
+
+/**
+ * @brief 从挂载快照中按设备名查找挂载点
+ * @param snapshot 挂载快照
+ * @param devName 设备节点名, 如: /dev/sdb1
+ * @return 挂载点, 未挂载时返回空串
+ */
+static std::string findMountpoint(const std::vector<MountEntry>& snapshot, const std::string& devName)
+{
+    if (0 != devName.find("/dev/"))
+    {
+        return std::string();
+    }
+    auto pos = devName.find_last_of("/");
+    std::string basename = (std::string::npos != pos) ? devName.substr(pos + 1) : devName;
+    for (const auto& entry : snapshot)
+    {
+        auto devPos = entry.first.find_last_of('/');
+        if (std::string::npos != devPos && basename == entry.first.substr(devPos + 1)) /* 挂载源设备名精确匹配 */
+        {
+            return entry.second;
+        }
+    }
+    return std::string();
 }
 #endif
 
@@ -1819,50 +1895,11 @@ DevNode::DevNode(const std::string& name, const std::string& pkname, const std::
 
 std::string DevNode::getMountpoint() const
 {
-    std::string mountpoint;
 #if _WIN32
-    mountpoint = m_winDriver;
+    return m_winDriver;
 #else
-    if (0 == name.find("/dev/"))
-    {
-        auto pos = name.find_last_of("/");
-        auto basename = (pos < name.size()) ? name.substr(pos + 1) : name;
-        /* 通过按行解析/proc/mounts按设备名精确匹配挂载点, 纯读取procfs不触发文件系统系统调用 */
-        std::ifstream file("/proc/mounts");
-        if (file.is_open())
-        {
-            std::string line;
-            while (std::getline(file, line))
-            {
-                /* 格式: 设备 挂载点 文件系统 其他字段, 以空格分隔 */
-                auto devEnd = line.find(' ');
-                if (std::string::npos == devEnd)
-                {
-                    continue;
-                }
-                auto dev = unescapeMountPath(line.substr(0, devEnd));
-                pos = dev.find_last_of('/');
-                if (std::string::npos != pos && basename == dev.substr(pos + 1)) /* 挂载源设备名精确匹配 */
-                {
-                    auto mountStart = line.find_first_not_of(' ', devEnd);
-                    if (std::string::npos == mountStart)
-                    {
-                        continue;
-                    }
-                    auto mountEnd = line.find(' ', mountStart);
-                    if (std::string::npos == mountEnd)
-                    {
-                        continue;
-                    }
-                    /* /proc/mounts会对挂载点中的特殊字符转义, 这里还原后返回 */
-                    mountpoint = unescapeMountPath(line.substr(mountStart, mountEnd - mountStart));
-                    break;
-                }
-            }
-        }
-    }
+    return findMountpoint(getMountSnapshot(), name);
 #endif
-    return mountpoint;
 }
 
 Usb::Usb(const Usb& src)
@@ -1934,8 +1971,8 @@ int Usb::getClassCode() const
 
 std::string Usb::getClassHex() const
 {
-    char buf[4] = {0};
-    sprintf(buf, "%02Xh", m_classCode);
+    char buf[16] = {0};
+    snprintf(buf, sizeof(buf), "%02Xh", m_classCode);
     return buf;
 }
 
@@ -2142,6 +2179,9 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
         desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
         desc += "\"devNodes\": ";
         desc += "[";
+#ifndef _WIN32
+        const auto mountSnapshot = getMountSnapshot(); /* 一次解析挂载表, 供全部设备节点复用 */
+#endif
         for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
             desc += (i > 0) ? "," : "";
@@ -2176,7 +2216,11 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
                 desc += (++fieldCount > 1) ? ", " : "";
                 desc += "\"partlabel\": \"" + m_devNodes[i].partlabel + "\"";
             }
+#ifdef _WIN32
             auto mountpoint = m_devNodes[i].getMountpoint();
+#else
+            auto mountpoint = findMountpoint(mountSnapshot, m_devNodes[i].name);
+#endif
             if (!mountpoint.empty())
             {
                 desc += (++fieldCount > 1) ? ", " : "";
@@ -2186,8 +2230,8 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
                 {
                     desc += "\\"; /* JSON字符串要再增加1个反斜杠"\"进行转义 */
                 }
-                desc += "\"";
 #endif
+                desc += "\""; /* 闭合引号两个平台都需要 */
             }
 #ifdef _WIN32
             if (!m_cdromInfo.name.empty() && mountpoint == m_cdromInfo.name)
@@ -2195,7 +2239,7 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
             if (!m_cdromInfo.name.empty() && m_devNodes[i].name == m_cdromInfo.name)
 #endif
             {
-                desc += ", ";
+                desc += (++fieldCount > 1) ? ", " : ""; /* 首个字段前不能有逗号 */
                 desc += "\"CD-R\": " + std::to_string(m_cdromInfo.can_write_CD_R) + ", ";
                 desc += "\"CD-RW\": " + std::to_string(m_cdromInfo.can_write_CD_RW) + ", ";
                 desc += "\"DVD-ROM\": " + std::to_string(m_cdromInfo.can_read_DVD) + ", ";
@@ -2215,12 +2259,14 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
         desc += ",";
         desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
         desc += "\"children\": [";
+        bool firstChild = true; /* 用已输出计数控制逗号, 避免weak_ptr失效导致首个元素前多逗号 */
         for (size_t i = 0; i < m_children.size(); ++i)
         {
             const auto child = m_children[i].lock();
             if (child)
             {
-                desc += (i > 0) ? "," : "";
+                desc += firstChild ? "" : ",";
+                firstChild = false;
                 desc += crlfStr; /* 换行 */
                 desc += child->describe(showChildren, allIntend + intend + intend, intend);
             }
@@ -2456,73 +2502,70 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
     if (detailFlag) /* 获取详细信息 */
     {
         /* 获取详细信息 */
-        bool firstFound = false;
-        UsbImpl temp;
+        const UsbImpl* temp = nullptr; /* 用指针引用匹配项, 避免整个UsbImpl(含多个容器)的值拷贝 */
         for (const auto& item : implList)
         {
             if (item.busNum == info->m_busNum && item.portNum == info->m_portNum && item.address == info->m_address
                 && item.vid == info->m_vid && item.pid == info->m_pid) /* 先完全匹配 */
             {
-                firstFound = true;
-                temp = item;
+                temp = &item;
                 break;
             }
         }
-        bool secondFound = false;
-        if (!firstFound)
+        if (!temp)
         {
+            /* 降级匹配: 只比对portNum/address/vid/pid, 不要求busNum相等。
+             * Windows平台enumerateHostControllers的busNum是自行校准的root hub枚举序号(见enumerateHostControllers),
+             * 与libusb的bus编号在控制器顺序不一致时并不相等, 要求busNum相等会导致Windows上永远匹配不到(详情全空);
+             * Linux平台Bus=/Port=/Dev#=与libusb取自内核同一字段, 正常情况下首个循环即可命中, 不会走到这里。
+             * 为防两台同型号设备跨总线误配: 候选唯一时直接采用, 多候选时优先取busNum相符者, 仍不唯一则放弃(宁缺勿错) */
             for (const auto& item : implList)
             {
                 if (item.portNum == info->m_portNum && item.address == info->m_address && item.vid == info->m_vid
                     && item.pid == info->m_pid) /* 降级匹配 */
                 {
-                    secondFound = true;
-                    temp = item;
-                    break;
+                    temp = &item;
                 }
             }
         }
-        if (firstFound || secondFound)
+        if (temp)
         {
             if (info->m_serial.empty())
             {
-                info->m_serial = temp.serial;
+                info->m_serial = temp->serial;
             }
             if (info->m_product.empty())
             {
-                info->m_product = temp.product;
+                info->m_product = temp->product;
             }
             if (info->m_manufacturer.empty())
             {
-                info->m_manufacturer = temp.manufacturer;
+                info->m_manufacturer = temp->manufacturer;
             }
             if (info->m_model.empty())
             {
-                info->m_model = temp.model;
+                info->m_model = temp->model;
             }
             if (info->m_vendor.empty())
             {
-                info->m_vendor = temp.vendor;
+                info->m_vendor = temp->vendor;
             }
             if (info->m_storageType.empty())
             {
-                info->m_storageType = temp.storageType;
+                info->m_storageType = temp->storageType;
             }
 #ifdef _WIN32
-            for (const auto& di : temp.driverList)
+            for (const auto& di : temp->driverList)
             {
                 info->m_devNodes.emplace_back(DevNode("", "", di.fstype, di.label, "", 0, di.driver));
             }
-            for (const auto& ci : temp.comList)
+            for (const auto& ci : temp->comList)
             {
                 info->m_devNodes.emplace_back(DevNode(ci.portName));
             }
 #else
-            info->m_devNodes = temp.blockDevNodes;
-            for (const auto& devNode : temp.nonblockDevNodes)
-            {
-                info->m_devNodes.emplace_back(devNode);
-            }
+            info->m_devNodes = temp->blockDevNodes;
+            info->m_devNodes.insert(info->m_devNodes.end(), temp->nonblockDevNodes.begin(), temp->nonblockDevNodes.end());
 #endif
             if ("cdrom" == info->m_storageType && !info->m_devNodes.empty())
             {
