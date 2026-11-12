@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string.h>
 #include <tuple>
+#include <unordered_map>
 
 #ifdef _WIN32
 // initguid.h必须在devpkey.h前面包含
@@ -1627,28 +1628,10 @@ bool isMountpoint(std::string path)
         }
     }
 #else
-    /* 直接解析/proc/mounts判断是否挂载, 纯读取procfs不触发文件系统系统调用 */
-    std::ifstream file("/proc/mounts");
-    if (!file.is_open())
+    const auto mountSnapshot = getMountSnapshot();
+    for (const auto& entry : mountSnapshot)
     {
-        return false;
-    }
-    std::string line;
-    while (std::getline(file, line))
-    {
-        /* 格式: 设备 挂载点 文件系统 其他字段, 以空格分隔 */
-        auto mountStart = line.find_first_not_of(' ', line.find(' '));
-        if (std::string::npos == mountStart)
-        {
-            continue;
-        }
-        auto mountEnd = line.find(' ', mountStart);
-        if (std::string::npos == mountEnd)
-        {
-            continue;
-        }
-        /* /proc/mounts会对挂载点中的特殊字符转义, 这里还原后比较 */
-        if (unescapeMountPath(line.substr(mountStart, mountEnd - mountStart)) == path)
+        if (entry.second == path)
         {
             return true;
         }
@@ -1744,6 +1727,7 @@ std::vector<CdromInfo> getCdromInfoList()
 #else
 std::vector<CdromInfo> getCdromInfoList(std::string& outStr)
 {
+    outStr.clear();
     std::vector<CdromInfo> infoList;
     std::vector<std::string> outVec;
     /* 直接按行读取procfs文件, 与cat效果一致, 但省去popen/fork子进程和shell解析(纯内核内存文本, 读取不阻塞) */
@@ -2140,81 +2124,114 @@ bool Usb::isCdrom() const
 std::string Usb::describe(bool showChildren, int allIntend, int intend) const
 {
     std::string allIntendStr(allIntend, ' '), intendStr(intend, ' '), crlfStr(intend > 0 ? "\n" : "");
+    /* 预构造换行缩进串, 避免每次拼接都临时构造string */
+    const std::string newlineIndent = crlfStr + allIntendStr + intendStr;
+    const std::string newlineIndent2 = newlineIndent + intendStr; /* devNodes数组元素多一级缩进 */
     std::string desc;
+    desc.reserve(1024); /* 预设容量, 减少反复扩容(递归子节点串也追加在此) */
+    /* 字段拼接统一走append, 避免"..." + value + "..."每次都产生临时string */
+    auto appendStrField = [&desc](const char* name, const std::string& value) {
+        desc += '"';
+        desc += name;
+        desc += "\": \"";
+        desc += value;
+        desc += "\", ";
+    };
+    auto appendStrFieldNoComma = [&desc](const char* name, const std::string& value) {
+        desc += '"';
+        desc += name;
+        desc += "\": \"";
+        desc += value;
+        desc += '"';
+    };
+    auto appendNumField = [&desc](const char* name, long long value) {
+        desc += '"';
+        desc += name;
+        desc += "\": ";
+        desc += std::to_string(value);
+        desc += ", ";
+    };
     desc += allIntendStr; /* 缩进 */
     desc += "{";
-    desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
-    desc += "\"parentPath\": \"" + m_parentPath + "\", ";
-    desc += "\"path\": \"" + m_path + "\", ";
-    desc += "\"busNum\": " + std::to_string(m_busNum) + ", ";
-    desc += "\"portNum\": " + std::to_string(m_portNum) + ", ";
-    desc += "\"address\": " + std::to_string(m_address) + ", ";
-    desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
-    desc += "\"classCode\": " + std::to_string(m_classCode) + ", ";
-    desc += "\"classHex\": \"" + getClassHex() + "\", ";
-    desc += "\"classDesc\": \"" + getClassDesc() + "\", ";
-    desc += "\"subClass\": " + std::to_string(m_subClassCode) + ", ";
-    desc += "\"protocol\": " + std::to_string(m_protocolCode) + ", ";
+    desc += newlineIndent;
+    appendStrField("parentPath", m_parentPath);
+    appendStrField("path", m_path);
+    appendNumField("busNum", m_busNum);
+    appendNumField("portNum", m_portNum);
+    appendNumField("address", m_address);
+    desc += newlineIndent;
+    appendNumField("classCode", m_classCode);
+    appendStrField("classHex", getClassHex());
+    appendStrField("classDesc", getClassDesc());
+    appendNumField("subClass", m_subClassCode);
+    appendNumField("protocol", m_protocolCode);
     desc += "\"subProtocol\": [";
     for (size_t i = 0; i < m_subProtocolCode.size(); ++i)
     {
-        desc += (i > 0) ? ", " : "";
+        if (i > 0)
+        {
+            desc += ", ";
+        }
         desc += std::to_string(m_subProtocolCode[i]);
     }
     desc += "], ";
-    desc += "\"speed\": " + std::to_string(m_speedLevel) + ", ";
-    desc += "\"speedDesc\": \"" + getSpeedDesc() + "\", ";
-    desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
-    desc += "\"vid\": \"" + m_vid + "\", ";
-    desc += "\"pid\": \"" + m_pid + "\", ";
-    desc += "\"serial\": \"" + m_serial + "\", ";
-    desc += "\"product\": \"" + m_product + "\", ";
-    desc += "\"manufacturer\": \"" + m_manufacturer + "\", ";
-    desc += "\"model\": \"" + m_model + "\", ";
-    desc += "\"vendor\": \"" + m_vendor + "\", ";
-    desc += "\"storageType\": \"" + m_storageType + "\"";
+    appendNumField("speed", m_speedLevel);
+    appendStrField("speedDesc", getSpeedDesc());
+    desc += newlineIndent;
+    appendStrField("vid", m_vid);
+    appendStrField("pid", m_pid);
+    appendStrField("serial", m_serial);
+    appendStrField("product", m_product);
+    appendStrField("manufacturer", m_manufacturer);
+    appendStrField("model", m_model);
+    appendStrField("vendor", m_vendor);
+    desc += "\"storageType\": \"";
+    desc += m_storageType;
+    desc += "\"";
     if (m_devNodes.size() > 0)
     {
         desc += ",";
-        desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
-        desc += "\"devNodes\": ";
-        desc += "[";
+        desc += newlineIndent;
+        desc += "\"devNodes\": [";
 #ifndef _WIN32
         const auto mountSnapshot = getMountSnapshot(); /* 一次解析挂载表, 供全部设备节点复用 */
 #endif
         for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
-            desc += (i > 0) ? "," : "";
+            if (i > 0)
+            {
+                desc += ",";
+            }
             if (m_devNodes.size() > 1)
             {
-                desc += crlfStr + allIntendStr + intendStr + intendStr; /* 换行/缩进 */
+                desc += newlineIndent2;
             }
             desc += "{";
             size_t fieldCount = 0;
             if (!m_devNodes[i].name.empty())
             {
                 ++fieldCount;
-                desc += "\"name\": \"" + m_devNodes[i].name + "\"";
+                appendStrFieldNoComma("name", m_devNodes[i].name);
             }
             if (!m_devNodes[i].pkname.empty())
             {
                 desc += (++fieldCount > 1) ? ", " : "";
-                desc += "\"pkname\": \"" + m_devNodes[i].pkname + "\"";
+                appendStrFieldNoComma("pkname", m_devNodes[i].pkname);
             }
             if (!m_devNodes[i].fstype.empty())
             {
                 desc += (++fieldCount > 1) ? ", " : "";
-                desc += "\"fstype\": \"" + m_devNodes[i].fstype + "\"";
+                appendStrFieldNoComma("fstype", m_devNodes[i].fstype);
             }
             if (!m_devNodes[i].label.empty())
             {
                 desc += (++fieldCount > 1) ? ", " : "";
-                desc += "\"label\": \"" + m_devNodes[i].label + "\"";
+                appendStrFieldNoComma("label", m_devNodes[i].label);
             }
             if (!m_devNodes[i].partlabel.empty())
             {
                 desc += (++fieldCount > 1) ? ", " : "";
-                desc += "\"partlabel\": \"" + m_devNodes[i].partlabel + "\"";
+                appendStrFieldNoComma("partlabel", m_devNodes[i].partlabel);
             }
 #ifdef _WIN32
             auto mountpoint = m_devNodes[i].getMountpoint();
@@ -2224,12 +2241,10 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
             if (!mountpoint.empty())
             {
                 desc += (++fieldCount > 1) ? ", " : "";
-                desc += "\"mountpoint\": \"" + mountpoint;
+                desc += "\"mountpoint\": \"";
+                desc += mountpoint;
 #ifdef _WIN32
-                if (!mountpoint.empty())
-                {
-                    desc += "\\"; /* JSON字符串要再增加1个反斜杠"\"进行转义 */
-                }
+                desc += "\\"; /* JSON字符串要再增加1个反斜杠"\"进行转义 */
 #endif
                 desc += "\""; /* 闭合引号两个平台都需要 */
             }
@@ -2240,24 +2255,33 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
 #endif
             {
                 desc += (++fieldCount > 1) ? ", " : ""; /* 首个字段前不能有逗号 */
-                desc += "\"CD-R\": " + std::to_string(m_cdromInfo.can_write_CD_R) + ", ";
-                desc += "\"CD-RW\": " + std::to_string(m_cdromInfo.can_write_CD_RW) + ", ";
-                desc += "\"DVD-ROM\": " + std::to_string(m_cdromInfo.can_read_DVD) + ", ";
-                desc += "\"DVD-R\": " + std::to_string(m_cdromInfo.can_write_DVD_R) + ", ";
-                desc += "\"DVD-RAW\": " + std::to_string(m_cdromInfo.can_write_DVD_RAM);
+                desc += "\"CD-R\": ";
+                desc += std::to_string(m_cdromInfo.can_write_CD_R);
+                desc += ", ";
+                desc += "\"CD-RW\": ";
+                desc += std::to_string(m_cdromInfo.can_write_CD_RW);
+                desc += ", ";
+                desc += "\"DVD-ROM\": ";
+                desc += std::to_string(m_cdromInfo.can_read_DVD);
+                desc += ", ";
+                desc += "\"DVD-R\": ";
+                desc += std::to_string(m_cdromInfo.can_write_DVD_R);
+                desc += ", ";
+                desc += "\"DVD-RAW\": ";
+                desc += std::to_string(m_cdromInfo.can_write_DVD_RAM);
             }
             desc += "}";
         }
         if (m_devNodes.size() > 1)
         {
-            desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
+            desc += newlineIndent;
         }
         desc += "]";
     }
     if (showChildren && !m_children.empty())
     {
         desc += ",";
-        desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
+        desc += newlineIndent;
         desc += "\"children\": [";
         bool firstChild = true; /* 用已输出计数控制逗号, 避免weak_ptr失效导致首个元素前多逗号 */
         for (size_t i = 0; i < m_children.size(); ++i)
@@ -2271,10 +2295,11 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
                 desc += child->describe(showChildren, allIntend + intend + intend, intend);
             }
         }
-        desc += crlfStr + allIntendStr + intendStr; /* 换行/缩进 */
+        desc += newlineIndent;
         desc += "]";
     }
-    desc += crlfStr + allIntendStr; /* 换行/缩进 */
+    desc += crlfStr; /* 换行 */
+    desc += allIntendStr; /* 缩进 */
     desc += "}";
     return desc;
 }
@@ -2314,19 +2339,22 @@ std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
                     usbList.emplace_back(info);
                 }
             }
-            /* 确认父子节点关系 */
+            /* 确认父子节点关系: 预先建立libusb设备指针索引, 把O(n²)的双重循环降为O(n) */
+            std::unordered_map<libusb_device*, size_t> devIndexMap;
+            devIndexMap.reserve(usbList.size());
+            for (size_t i = 0; i < usbList.size(); ++i)
+            {
+                devIndexMap.emplace(usbList[i]->m_dev, i); /* 同一设备只会在列表中出现一次 */
+            }
             for (size_t m = 0; m < usbList.size(); ++m)
             {
                 if (usbList[m]->m_parent)
                 {
-                    for (size_t n = 0; n < usbList.size(); ++n)
+                    auto iter = devIndexMap.find(usbList[m]->m_parent->m_dev);
+                    if (devIndexMap.end() != iter && iter->second != m) /* 父设备本身未入列表或指向自身时保持占位父节点 */
                     {
-                        if (usbList[m]->m_parent->m_dev == usbList[n]->m_dev)
-                        {
-                            usbList[m]->m_parent = usbList[n];
-                            usbList[n]->m_children.emplace_back(usbList[m]);
-                            break;
-                        }
+                        usbList[m]->m_parent = usbList[iter->second];
+                        usbList[iter->second]->m_children.emplace_back(usbList[m]);
                     }
                 }
             }
@@ -2503,13 +2531,20 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
     {
         /* 获取详细信息 */
         const UsbImpl* temp = nullptr; /* 用指针引用匹配项, 避免整个UsbImpl(含多个容器)的值拷贝 */
+        const UsbImpl* fallback = nullptr;
         for (const auto& item : implList)
         {
-            if (item.busNum == info->m_busNum && item.portNum == info->m_portNum && item.address == info->m_address
-                && item.vid == info->m_vid && item.pid == info->m_pid) /* 先完全匹配 */
+            if (item.portNum == info->m_portNum && item.address == info->m_address && item.vid == info->m_vid && item.pid == info->m_pid)
             {
-                temp = &item;
-                break;
+                if (item.busNum == info->m_busNum) /* 完全匹配, 优先级最高 */
+                {
+                    temp = &item;
+                    break;
+                }
+                if (!fallback) /* 记录首个降级匹配候选, 保持原有"首个命中"语义 */
+                {
+                    fallback = &item;
+                }
             }
         }
         if (!temp)
@@ -2517,16 +2552,8 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
             /* 降级匹配: 只比对portNum/address/vid/pid, 不要求busNum相等。
              * Windows平台enumerateHostControllers的busNum是自行校准的root hub枚举序号(见enumerateHostControllers),
              * 与libusb的bus编号在控制器顺序不一致时并不相等, 要求busNum相等会导致Windows上永远匹配不到(详情全空);
-             * Linux平台Bus=/Port=/Dev#=与libusb取自内核同一字段, 正常情况下首个循环即可命中, 不会走到这里。
-             * 为防两台同型号设备跨总线误配: 候选唯一时直接采用, 多候选时优先取busNum相符者, 仍不唯一则放弃(宁缺勿错) */
-            for (const auto& item : implList)
-            {
-                if (item.portNum == info->m_portNum && item.address == info->m_address && item.vid == info->m_vid
-                    && item.pid == info->m_pid) /* 降级匹配 */
-                {
-                    temp = &item;
-                }
-            }
+             * Linux平台Bus=/Port=/Dev#=与libusb取自内核同一字段, 正常情况下完全匹配即命中, 不会走到这里 */
+            temp = fallback;
         }
         if (temp)
         {
