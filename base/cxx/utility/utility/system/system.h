@@ -10,22 +10,26 @@ class System final
 public:
     /**
      * @brief 执行命令
-     * @param cmd 命令内容, 说明: 接口只捕获stdout无法捕获stderr内容, 如果需要则Linux平台需要在命令内容后增加" 2>&1"
-     * @param outputFunc 输出回调, 参数: data-数据, count-数据长度, 返回值: true-继续获取数据, false-停止获取数据
-     * @return 执行结果, 0-成功, 非0-失败
+     * @param cmd 命令内容, 只捕获stdout, 在Linux平台stderr需在命令后加"2>&1", 还可在命令前加"timeout -k 1 秒 "用命令自身控制超时
+     * @param startedFunc 启动回调(选填), 子进程创建成功后调用
+     * @param outputFunc 输出回调(选填), 参数: data-数据, count-数据长度, 返回值: true-继续获取数据, false-停止获取数据
+     * @param timeoutMS 超时时间(毫秒, 选填), 0-不超时(命令启动的后台进程会持有管道写端, 接口将等到全部写端关闭才返回, 可能永久阻塞, 此类命令应重定向输出或设置超时), 大于0时超时后关闭管道并放弃等待子进程
+     * @return 0-成功, -1-命令为空, -2-创建子进程失败, -3-获取描述符失败, -4-超时, -5-回调主动停止; 超时/停止时只关闭管道不结束子进程, 命令可能仍在运行
      */
-    static int runCmd(const std::string& cmd, const std::function<bool(const char* data, size_t count)>& outputFunc);
+    static int runCmd(const std::string& cmd, const std::function<void()>& startedFunc,
+                      const std::function<bool(const char* data, size_t count)>& outputFunc, unsigned int timeoutMS = 0);
 
     /**
      * @brief 执行命令
-     * @param cmd 命令内容, 说明: 接口只捕获stdout无法捕获stderr内容, 如果需要则Linux平台需要在命令内容后增加" 2>&1"
-     * @param outStr [输出]过程输出的可打印内容(选填, 字符串)
-     * @param outVec [输出]过程输出的可打印内容(选填, 行列表)
+     * @param cmd 命令内容, 只捕获stdout, 在Linux平台stderr需在命令后加"2>&1", 还可在命令前加"timeout -k 1 秒 "用命令自身控制超时
+     * @param outStr [输出]全部输出(选填)
+     * @param outVec [输出]按行输出(选填)
      * @param ignoreBlankLine 是否忽略空行(选填), 为true时空行将不会添加到outVec行列表中
-     * @return 执行结果, 0-成功, 非0-失败
+     * @param timeoutMS 超时时间(毫秒, 选填), 0-不超时(命令启动的后台进程会持有管道写端, 接口将等到全部写端关闭才返回, 可能永久阻塞, 此类命令应重定向输出或设置超时), 大于0时超时后关闭管道并放弃等待子进程
+     * @return 0-成功, -1-命令为空, -2-创建子进程失败, -3-获取描述符失败, -4-超时, -5-回调主动停止;
      */
     static int runCmd(const std::string& cmd, std::string* outStr = nullptr, std::vector<std::string>* outVec = nullptr,
-                      bool ignoreBlankLine = false);
+                      bool ignoreBlankLine = false, unsigned int timeoutMS = 0);
 
 #ifdef _WIN32
     typedef void* HANDLE;
