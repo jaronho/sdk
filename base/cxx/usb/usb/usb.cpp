@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <codecvt>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -1115,64 +1116,24 @@ std::vector<UsbImpl> enumerateHostControllers()
     return usbList;
 }
 #else
-static void runCommand(const std::string& cmd, std::string* outStr, std::vector<std::string>* outVec)
-{
-    if (outStr)
-    {
-        outStr->clear();
-    }
-    if (outVec)
-    {
-        outVec->clear();
-    }
-    FILE* stream = popen(cmd.c_str(), "r");
-    if (stream)
-    {
-        if (outStr || outVec)
-        {
-            const size_t bufferSize = 1025;
-            char buffer[bufferSize] = {0};
-            std::string line;
-            while (fread(buffer, 1, bufferSize - 1, stream) > 0)
-            {
-                if (outStr)
-                {
-                    outStr->append(buffer);
-                }
-                if (outVec)
-                {
-                    line += buffer;
-                    while (1)
-                    {
-                        size_t pos = line.find("\r\n"), offset = 2;
-                        if (std::string::npos == pos)
-                        {
-                            pos = line.find("\n"), offset = 1;
-                        }
-                        if (std::string::npos == pos)
-                        {
-                            break;
-                        }
-                        outVec->emplace_back(line.substr(0, pos));
-                        line = line.substr(pos + offset, line.size() - pos - offset);
-                    }
-                }
-                memset(buffer, 0, bufferSize);
-            }
-            if (outVec && !line.empty())
-            {
-                outVec->emplace_back(line);
-            }
-        }
-        pclose(stream);
-    }
-}
-
 std::vector<UsbImpl> enumerateUsbDevices()
 {
     std::vector<UsbImpl> usbList;
     std::vector<std::string> outVec;
-    runCommand("cat /sys/kernel/debug/usb/devices", nullptr, &outVec);
+    std::ifstream file("/sys/kernel/debug/usb/devices");
+    if (!file.is_open())
+    {
+        return usbList; /* debugfs未挂载或无权限时读取失败, 返回空列表 */
+    }
+    std::string line;
+    while (std::getline(file, line))
+    {
+        if (!line.empty() && '\r' == line.back()) /* 兼容\r\n换行 */
+        {
+            line.pop_back();
+        }
+        outVec.emplace_back(line);
+    }
     UsbImpl info;
     for (const auto& line : outVec)
     {
@@ -1326,7 +1287,21 @@ struct UsbUdevImpl
     int address = -1;
     std::string devNodeName;
     bool isBlock = false;
+    /* 以下字段仅存储设备有效, 全部来自udev数据库/sysfs纯文本读取, 不涉及设备块级访问和文件系统系统调用 */
+    std::string devType; /* udev设备类型: disk-磁盘, partition-分区 */
+    std::string fstype; /* 文件系统类型, 来自udev属性ID_FS_TYPE(udevd后台探测填充, 刚插入时可能短暂为空) */
+    std::string label; /* 文件系统标签, 来自udev属性ID_FS_LABEL */
+    std::string partlabel; /* 分区标签, 来自udev属性ID_FS_PARTLABEL */
+    std::string model; /* 设备标识符, 来自udev属性ID_MODEL或sysfs device/model */
+    std::string vendor; /* 设备制造商, 来自udev属性ID_VENDOR或sysfs device/vendor */
+    size_t capacity = 0; /* 容量(字节), 来自sysfs size属性(512字节扇区数) */
 };
+
+/* 读取字符串属性, 空值返回空串 */
+static std::string getUdevStr(const char* value)
+{
+    return (value && *value) ? std::string(value) : std::string();
+}
 
 std::vector<UsbUdevImpl> enumerateUsbUdevs()
 {
@@ -1392,6 +1367,26 @@ std::vector<UsbUdevImpl> enumerateUsbUdevs()
                         }
                         info.devNodeName = devNode;
                         info.isBlock = (subSystemPtr && 0 == strcmp("block", subSystemPtr));
+                        if (info.isBlock) /* 存储设备, 从udev数据库/sysfs读取属性(纯文本读取, 不阻塞) */
+                        {
+                            info.devType = getUdevStr(udev_device_get_devtype(dev)); /* disk-磁盘, partition-分区 */
+                            info.fstype = getUdevStr(udev_device_get_property_value(dev, "ID_FS_TYPE"));
+                            info.label = getUdevStr(udev_device_get_property_value(dev, "ID_FS_LABEL"));
+                            info.partlabel = getUdevStr(udev_device_get_property_value(dev, "ID_FS_PARTLABEL"));
+                            info.model = getUdevStr(udev_device_get_property_value(dev, "ID_MODEL"));
+                            if (info.model.empty()) /* udev数据库无属性时回退sysfs(分区无device目录, 由磁盘行提供) */
+                            {
+                                info.model = getUdevStr(udev_device_get_sysattr_value(dev, "device/model"));
+                            }
+                            info.vendor = getUdevStr(udev_device_get_property_value(dev, "ID_VENDOR"));
+                            if (info.vendor.empty())
+                            {
+                                info.vendor = getUdevStr(udev_device_get_sysattr_value(dev, "device/vendor"));
+                            }
+                            /* size属性为512字节扇区数(内核get_capacity统一按512字节单位输出), 乘以512得到字节数 */
+                            auto sizeStr = getUdevStr(udev_device_get_sysattr_value(dev, "size"));
+                            info.capacity = sizeStr.empty() ? 0 : (std::atoll(sizeStr.c_str()) * 512);
+                        }
                         udevList.emplace_back(info);
                     }
                 }
@@ -1404,20 +1399,15 @@ std::vector<UsbUdevImpl> enumerateUsbUdevs()
     return udevList;
 }
 
-void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList, int timeoutS = 5)
+/**
+ * @brief 从udev枚举结果中收集USB设备的设备节点信息
+ * @param usbList [输入/输出]USB设备列表
+ */
+void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
 {
     if (usbList.empty())
     {
         return;
-    }
-    std::vector<std::string> outVec;
-    if (timeoutS > 0)
-    {
-        runCommand("timeout " + std::to_string(timeoutS) + " lsblk -abOPp", nullptr, &outVec);
-    }
-    else
-    {
-        runCommand("lsblk -abOPp", nullptr, &outVec);
     }
     auto udevList = enumerateUsbUdevs();
     for (const auto& info : udevList)
@@ -1431,118 +1421,31 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList, int timeoutS = 5)
         }
         if (info.isBlock) /* 存储设备 */
         {
-            auto it = std::find_if(outVec.begin(), outVec.end(), [&](const std::string& line) {
-                return (std::string::npos != line.find("NAME=\"" + info.devNodeName + "\"")); /* 找到设备节点对应信息 */
-            });
-            if (outVec.end() == it)
-            {
-                continue;
-            }
-            const auto& infoStr = (*it);
-            static const std::string TYPE_FLAG = " TYPE=\""; /* 设备类型 */
-            static const std::string FSTYPE_FLAG = " FSTYPE=\""; /* 文件系统类型 */
-            static const std::string LABEL_FLAG = " LABEL=\""; /* 文件系统标签 */
-            static const std::string PARTLABEL_FLAG = " PARTLABEL=\""; /* 分区标签 */
-            static const std::string MODEL_FLAG = " MODEL=\""; /* 设备标识符 */
-            static const std::string VENDOR_FLAG = " VENDOR=\""; /* 设备制造商 */
-            static const std::string SIZE_FLAG = " SIZE=\""; /* 大小 */
-            std::string type;
-            auto typePos = infoStr.find(TYPE_FLAG);
-            if (std::string::npos != typePos)
-            {
-                auto ep = infoStr.find('"', typePos + TYPE_FLAG.size());
-                if (std::string::npos != ep)
-                {
-                    type = infoStr.substr(typePos + TYPE_FLAG.size(), ep - typePos - TYPE_FLAG.size());
-                }
-            }
-            std::string fstype;
-            auto fstypePos = infoStr.find(FSTYPE_FLAG);
-            if (std::string::npos != fstypePos)
-            {
-                auto ep = infoStr.find('"', fstypePos + FSTYPE_FLAG.size());
-                if (std::string::npos != ep)
-                {
-                    fstype = infoStr.substr(fstypePos + FSTYPE_FLAG.size(), ep - fstypePos - FSTYPE_FLAG.size());
-                }
-            }
-            std::string label;
-            auto labelPos = infoStr.find(LABEL_FLAG);
-            if (std::string::npos != labelPos)
-            {
-                auto ep = infoStr.find('"', labelPos + LABEL_FLAG.size());
-                if (std::string::npos != ep)
-                {
-                    label = infoStr.substr(labelPos + LABEL_FLAG.size(), ep - labelPos - LABEL_FLAG.size());
-                }
-            }
-            std::string partlabel;
-            auto partlabelPos = infoStr.find(PARTLABEL_FLAG);
-            if (std::string::npos != partlabelPos)
-            {
-                auto ep = infoStr.find('"', partlabelPos + PARTLABEL_FLAG.size());
-                if (std::string::npos != ep)
-                {
-                    partlabel = infoStr.substr(partlabelPos + PARTLABEL_FLAG.size(), ep - partlabelPos - PARTLABEL_FLAG.size());
-                }
-            }
-            std::string model;
-            auto modelPos = infoStr.find(MODEL_FLAG);
-            if (std::string::npos != modelPos)
-            {
-                auto ep = infoStr.find('"', modelPos + MODEL_FLAG.size());
-                if (std::string::npos != ep)
-                {
-                    model = infoStr.substr(modelPos + MODEL_FLAG.size(), ep - modelPos - MODEL_FLAG.size());
-                }
-            }
-            std::string vendor;
-            auto vendorPos = infoStr.find(VENDOR_FLAG);
-            if (std::string::npos != vendorPos)
-            {
-                auto ep = infoStr.find('"', vendorPos + VENDOR_FLAG.size());
-                if (std::string::npos != ep)
-                {
-                    vendor = infoStr.substr(vendorPos + VENDOR_FLAG.size(), ep - vendorPos - VENDOR_FLAG.size());
-                }
-            }
-            size_t capacity = 0;
-            auto sizePos = infoStr.find(SIZE_FLAG);
-            if (std::string::npos != sizePos)
-            {
-                auto ep = infoStr.find('"', sizePos + SIZE_FLAG.size());
-                if (std::string::npos != ep)
-                {
-                    capacity = std::atoll(infoStr.substr(sizePos + SIZE_FLAG.size(), ep - sizePos - SIZE_FLAG.size()).c_str());
-                }
-            }
             if (iter->model.empty())
             {
-                iter->model = model;
+                iter->model = info.model;
             }
             if (iter->vendor.empty())
             {
-                iter->vendor = vendor;
+                iter->vendor = info.vendor;
             }
-            if ("disk" == type) /* 磁盘 */
+            if ("disk" == info.devType) /* 磁盘 */
             {
-                iter->storageType = type;
-                iter->blockDevRootNode = DevNode(info.devNodeName, "", fstype, label, partlabel, capacity);
+                if (0 == info.devNodeName.rfind("/dev/sr", 0)) /* 光驱 */
+                {
+                    iter->storageType = "cdrom";
+                    iter->blockDevNodes.emplace_back(DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity));
+                }
+                else
+                {
+                    iter->storageType = "disk";
+                    iter->blockDevRootNode = DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity);
+                }
             }
-            else if ("part" == type) /* 分区 */
+            else if ("partition" == info.devType) /* 分区 */
             {
-                iter->storageType = type;
-                iter->blockDevNodes.emplace_back(DevNode(info.devNodeName, "", fstype, label, partlabel, capacity));
-            }
-            else if ("rom" == type) /* 光驱 */
-            {
-                iter->storageType = "cdrom";
-                iter->blockDevNodes.emplace_back(DevNode(info.devNodeName, "", fstype, label, partlabel, capacity));
-            }
-            else /* 其他 */
-            {
-                iter->storageType = type;
-                iter->blockDevNodes.emplace_back(DevNode(info.devNodeName, "", fstype, label, partlabel, capacity));
+                iter->storageType = "part";
+                iter->blockDevNodes.emplace_back(DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity));
             }
         }
         else /* 非存储设备 */
@@ -1567,6 +1470,46 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList, int timeoutS = 5)
             }
         }
     }
+}
+
+/* 还原/proc/mounts中转义的特殊字符: 空格\040, 制表符\011, 换行\012, 反斜杠\134 */
+static std::string unescapeMountPath(const std::string& src)
+{
+    std::string dst;
+    for (std::string::size_type i = 0; i < src.size();)
+    {
+        if ('\\' == src[i] && i + 3 < src.size())
+        {
+            auto seq = src.substr(i + 1, 3);
+            if ("040" == seq)
+            {
+                dst.push_back(' ');
+                i += 4;
+                continue;
+            }
+            if ("011" == seq)
+            {
+                dst.push_back('\t');
+                i += 4;
+                continue;
+            }
+            if ("012" == seq)
+            {
+                dst.push_back('\n');
+                i += 4;
+                continue;
+            }
+            if ("134" == seq)
+            {
+                dst.push_back('\\');
+                i += 4;
+                continue;
+            }
+        }
+        dst.push_back(src[i]);
+        i += 1;
+    }
+    return dst;
 }
 #endif
 
@@ -1608,12 +1551,31 @@ bool isMountpoint(std::string path)
         }
     }
 #else
-    path.insert(0, " ");
-    std::vector<std::string> outVec;
-    runCommand("df | grep \"" + path + "\"", nullptr, &outVec);
-    if (1 == outVec.size() && (outVec[0].rfind(path) + path.size()) == outVec[0].size())
+    /* 直接解析/proc/mounts判断是否挂载, 纯读取procfs不触发文件系统系统调用 */
+    std::ifstream file("/proc/mounts");
+    if (!file.is_open())
     {
-        return true;
+        return false;
+    }
+    std::string line;
+    while (std::getline(file, line))
+    {
+        /* 格式: 设备 挂载点 文件系统 其他字段, 以空格分隔 */
+        auto mountStart = line.find_first_not_of(' ', line.find(' '));
+        if (std::string::npos == mountStart)
+        {
+            continue;
+        }
+        auto mountEnd = line.find(' ', mountStart);
+        if (std::string::npos == mountEnd)
+        {
+            continue;
+        }
+        /* /proc/mounts会对挂载点中的特殊字符转义, 这里还原后比较 */
+        if (unescapeMountPath(line.substr(mountStart, mountEnd - mountStart)) == path)
+        {
+            return true;
+        }
     }
 #endif
     return false;
@@ -1708,7 +1670,21 @@ std::vector<CdromInfo> getCdromInfoList(std::string& outStr)
 {
     std::vector<CdromInfo> infoList;
     std::vector<std::string> outVec;
-    runCommand("cat /proc/sys/dev/cdrom/info", &outStr, &outVec);
+    /* 直接按行读取procfs文件, 与cat效果一致, 但省去popen/fork子进程和shell解析(纯内核内存文本, 读取不阻塞) */
+    std::ifstream file("/proc/sys/dev/cdrom/info");
+    if (file.is_open())
+    {
+        std::string line;
+        while (std::getline(file, line))
+        {
+            if (!line.empty() && '\r' == line.back()) /* 兼容\r\n换行 */
+            {
+                line.pop_back();
+            }
+            outStr.append(line).append("\n"); /* 保留outStr输出原始信息的契约 */
+            outVec.emplace_back(line);
+        }
+    }
     for (const auto& line : outVec)
     {
         std::vector<std::string> vec;
@@ -1850,19 +1826,38 @@ std::string DevNode::getMountpoint() const
     if (0 == name.find("/dev/"))
     {
         auto pos = name.find_last_of("/");
-        auto basename = (pos < name.size()) ? name.substr(pos + 1, name.size() - 1) : name;
-        std::vector<std::string> outVec;
-        runCommand("lsblk | grep \"" + basename + " \"", nullptr, &outVec);
-        if (1 == outVec.size() && !outVec[0].empty())
+        auto basename = (pos < name.size()) ? name.substr(pos + 1) : name;
+        /* 通过按行解析/proc/mounts按设备名精确匹配挂载点, 纯读取procfs不触发文件系统系统调用 */
+        std::ifstream file("/proc/mounts");
+        if (file.is_open())
         {
-            auto line = outVec[0];
-            line.erase(0, line.find_first_not_of(' '));
-            line.erase(line.find_last_not_of(' ') + 1);
-            pos = line.find_last_of(' ');
-            if (std::string::npos != pos)
+            std::string line;
+            while (std::getline(file, line))
             {
-                mountpoint = (pos < line.size()) ? line.substr(pos + 1, line.size() - 1) : line;
-                mountpoint = (mountpoint.empty() || '/' != mountpoint[0]) ? std::string() : mountpoint;
+                /* 格式: 设备 挂载点 文件系统 其他字段, 以空格分隔 */
+                auto devEnd = line.find(' ');
+                if (std::string::npos == devEnd)
+                {
+                    continue;
+                }
+                auto dev = unescapeMountPath(line.substr(0, devEnd));
+                pos = dev.find_last_of('/');
+                if (std::string::npos != pos && basename == dev.substr(pos + 1)) /* 挂载源设备名精确匹配 */
+                {
+                    auto mountStart = line.find_first_not_of(' ', devEnd);
+                    if (std::string::npos == mountStart)
+                    {
+                        continue;
+                    }
+                    auto mountEnd = line.find(' ', mountStart);
+                    if (std::string::npos == mountEnd)
+                    {
+                        continue;
+                    }
+                    /* /proc/mounts会对挂载点中的特殊字符转义, 这里还原后返回 */
+                    mountpoint = unescapeMountPath(line.substr(mountStart, mountEnd - mountStart));
+                    break;
+                }
             }
         }
     }
@@ -2259,7 +2254,7 @@ std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
 #else
                 /* Linux平台下libusb打开设备可能会卡住, 因此通过读取系统内核文件获取详细信息 */
                 implList = enumerateUsbDevices();
-                enumerateUsbDevNodes(implList, 5);
+                enumerateUsbDevNodes(implList);
                 std::string outStr;
                 cdromList = getCdromInfoList(outStr);
 #endif
