@@ -34,13 +34,13 @@ std::string getDateTime()
 #endif
     char buf1[20] = {0};
     strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &t);
-    char buf2[4] = {0};
+    char buf2[8] = {0};
     struct timeb tb;
     ftime(&tb);
 #ifdef _WIN32
-    sprintf_s(buf2, sizeof(buf2), "%03d", tb.millitm);
+    sprintf_s(buf2, sizeof(buf2), "%03u", tb.millitm);
 #else
-    sprintf(buf2, "%03d", tb.millitm);
+    sprintf(buf2, "%03u", tb.millitm);
 #endif
     return std::string(buf1).append(".").append(buf2);
 }
