@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <set>
 #include <sstream>
 #include <string.h>
@@ -40,6 +41,108 @@
 namespace usb
 {
 #ifdef _WIN32
+/* 带超时上限的DeviceIoControl(句柄须以FILE_FLAG_OVERLAPPED打开, 本模块所有句柄均已如此):
+ * 内核异步IO + 定时等待 + 超时取消, 设备就绪时立即完成(数据即时可用, 无额外开销), 不响应时最多等待timeoutMs即取消本轮;
+ * 返回true: 在时限内完成; false: 失败或超时(超时结果已废弃), 调用方按失败处理, 下轮自动重试 */
+static bool boundedDeviceIoControl(HANDLE handle, DWORD ioControlCode, LPVOID inBuf, DWORD inBufSize, LPVOID outBuf, DWORD outBufSize,
+                                   DWORD* bytesReturned, DWORD timeoutMs)
+{
+    OVERLAPPED ov = {};
+    ov.hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+    if (NULL == ov.hEvent)
+    {
+        return false;
+    }
+    bool result = false;
+    DWORD transferred = 0;
+    /* 完成时事件已置位, 统一走GetOverlappedResult取结果 */
+    if (DeviceIoControl(handle, ioControlCode, inBuf, inBufSize, outBuf, outBufSize, NULL, &ov) || ERROR_IO_PENDING == GetLastError())
+    {
+        if (WAIT_OBJECT_0 == WaitForSingleObject(ov.hEvent, timeoutMs))
+        {
+            result = (FALSE != GetOverlappedResult(handle, &ov, &transferred, FALSE));
+        }
+        else /* 超时: 取消并等待取消完成(OVERLAPPED在栈上, 必须等内核结束对该缓冲区的写入) */
+        {
+            CancelIo(handle); /* 用CancelIo而非CancelIoEx: 后者要求_WIN32_WINNT>=0x0600; 单线程下该句柄同时只有一个未完成请求 */
+            GetOverlappedResult(handle, &ov, &transferred, TRUE);
+        }
+    }
+    if (bytesReturned && result)
+    {
+        *bytesReturned = transferred;
+    }
+    CloseHandle(ov.hEvent);
+    return result;
+}
+
+/* 拉取会话状态:
+ * 背景: 刚插入的卷可能还没完成挂载, 何时"就绪"没有可查询的非阻塞信号, 只能靠发起一次试探得知;
+ * 因此不猜测"需要几秒", 而是用真实结果驱动:
+ *   - 新会话首轮跳过(给它一个轮询周期稳定), 下一轮起探测;
+ *   - 一旦某次拉取成功 -> settled, 该会话此后永久放行(卷已就绪, 后续都是毫秒级);
+ *   - 拉取失败/超时 -> 本轮留空, 并跳过若干轮再试(按失败次数指数退避 1,2,4,8 轮封顶);
+ * 每轮探测成本由boundedDeviceIoControl的硬上限兜底; 详情出现时刻=卷首次应答的时刻 */
+struct UsbFetchSession
+{
+    bool settled = false; /* 已成功拉取过: 永久放行 */
+    int failCount = 0; /* 连续失败次数(用于退避) */
+    int skipLeft = 1; /* 剩余跳过轮数: 新会话首轮跳过 */
+};
+
+static std::mutex& getUsbFetchMutex()
+{
+    static std::mutex fetchMutex;
+    return fetchMutex;
+}
+
+static std::map<std::string, UsbFetchSession>& getUsbFetchSessions()
+{
+    static std::map<std::string, UsbFetchSession> sessions;
+    return sessions;
+}
+
+/* 本轮是否允许发起拉取 */
+static bool usbFetchSessionAllows(const std::string& key)
+{
+    std::lock_guard<std::mutex> lock(getUsbFetchMutex());
+    auto& sessions = getUsbFetchSessions();
+    if (sessions.size() > 256) /* 防御性上限: 极端场景(频繁插拔)防无限增长 */
+    {
+        sessions.clear();
+    }
+    UsbFetchSession& session = sessions[key];
+    if (session.settled)
+    {
+        return true;
+    }
+    if (session.skipLeft > 0)
+    {
+        --session.skipLeft;
+        return false;
+    }
+    return true;
+}
+
+/* 回报本轮拉取结果: 成功则永久放行, 失败则指数退避 */
+static void usbFetchSessionReport(const std::string& key, bool success)
+{
+    std::lock_guard<std::mutex> lock(getUsbFetchMutex());
+    UsbFetchSession& session = getUsbFetchSessions()[key];
+    if (success)
+    {
+        session.settled = true;
+        session.failCount = 0;
+        session.skipLeft = 0;
+        return;
+    }
+    if (session.failCount < 4)
+    {
+        ++session.failCount;
+    }
+    session.skipLeft = 1 << (session.failCount - 1); /* 1,2,4,8 轮封顶 */
+}
+
 struct LogicalDrive
 {
     std::string driver;
@@ -100,7 +203,7 @@ struct UsbImpl
 };
 
 #ifdef _WIN32
-std::string SafeArrayToString(SAFEARRAY* psa)
+static std::string SafeArrayToString(SAFEARRAY* psa)
 {
     BSTR bstr = NULL;
     if (psa)
@@ -139,48 +242,11 @@ std::string SafeArrayToString(SAFEARRAY* psa)
     https://github.com/microsoft/Windows-driver-samples
  */
 
-#define USB_IAD_DESCRIPTOR_TYPE 0x0B
-#define NUM_STRING_DESC_TO_GET 32
+static void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
+                         PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<LogicalDrive>& localDriveList,
+                         const std::vector<ComPortInfo>& comPortList, std::vector<UsbImpl>& usbList);
 
-typedef struct _STRING_DESCRIPTOR_NODE
-{
-    struct _STRING_DESCRIPTOR_NODE* Next;
-    UCHAR DescriptorIndex;
-    USHORT LanguageID;
-    USB_STRING_DESCRIPTOR StringDescriptor[1];
-} STRING_DESCRIPTOR_NODE, *PSTRING_DESCRIPTOR_NODE;
-
-typedef struct _USB_INTERFACE_DESCRIPTOR2
-{
-    UCHAR bLength; // offset 0, size 1
-    UCHAR bDescriptorType; // offset 1, size 1
-    UCHAR bInterfaceNumber; // offset 2, size 1
-    UCHAR bAlternateSetting; // offset 3, size 1
-    UCHAR bNumEndpoints; // offset 4, size 1
-    UCHAR bInterfaceClass; // offset 5, size 1
-    UCHAR bInterfaceSubClass; // offset 6, size 1
-    UCHAR bInterfaceProtocol; // offset 7, size 1
-    UCHAR iInterface; // offset 8, size 1
-    USHORT wNumClasses; // offset 9, size 2
-} USB_INTERFACE_DESCRIPTOR2, *PUSB_INTERFACE_DESCRIPTOR2;
-
-typedef struct _USB_IAD_DESCRIPTOR
-{
-    UCHAR bLength;
-    UCHAR bDescriptorType;
-    UCHAR bFirstInterface;
-    UCHAR bInterfaceCount;
-    UCHAR bFunctionClass;
-    UCHAR bFunctionSubClass;
-    UCHAR bFunctionProtocol;
-    UCHAR iFunction;
-} USB_IAD_DESCRIPTOR, *PUSB_IAD_DESCRIPTOR;
-
-void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
-                  PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<LogicalDrive>& localDriveList,
-                  const std::vector<ComPortInfo>& comPortList, std::vector<UsbImpl>& usbList);
-
-std::string guid2string(GUID guid)
+static std::string guid2string(GUID guid)
 {
     std::wostringstream oss;
     oss << std::hex << std::uppercase << std::setfill(L'0'); /* GUID 的数据结构为：Data1, Data2, Data3, Data4[2], Data4[6] */
@@ -207,11 +273,11 @@ std::string guid2string(GUID guid)
     return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(oss.str());
 }
 
-std::string getRootHubName(HANDLE hostController)
+static std::string getRootHubName(HANDLE hostController)
 {
     USB_ROOT_HUB_NAME rootHubName;
     ULONG nBytes = 0;
-    if (!DeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, 0, 0, &rootHubName, sizeof(rootHubName), &nBytes, NULL))
+    if (!boundedDeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, &rootHubName, sizeof(rootHubName), &nBytes, 1000))
     {
         return "";
     }
@@ -220,7 +286,7 @@ std::string getRootHubName(HANDLE hostController)
     PUSB_ROOT_HUB_NAME rootHubNameW = (PUSB_ROOT_HUB_NAME)GlobalAlloc(GPTR, nBytes);
     if (rootHubNameW)
     {
-        if (DeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, rootHubNameW, nBytes, &nBytes, NULL))
+        if (boundedDeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, rootHubNameW, nBytes, &nBytes, 1000))
         {
             rootHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
                 std::wstring(rootHubNameW->RootHubName, wcslen(rootHubNameW->RootHubName)));
@@ -230,13 +296,13 @@ std::string getRootHubName(HANDLE hostController)
     return rootHubNameA;
 }
 
-std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
+static std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
 {
     USB_NODE_CONNECTION_NAME extHubName;
     extHubName.ConnectionIndex = connectionIndex;
     ULONG nBytes = 0;
-    if (!DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, &extHubName, sizeof(extHubName), &extHubName, sizeof(extHubName), &nBytes,
-                         NULL))
+    if (!boundedDeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, &extHubName, sizeof(extHubName), &extHubName, sizeof(extHubName),
+                                &nBytes, 1000))
     {
         return "";
     }
@@ -250,7 +316,7 @@ std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
     if (extHubNameW)
     {
         extHubNameW->ConnectionIndex = connectionIndex;
-        if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, extHubNameW, nBytes, extHubNameW, nBytes, &nBytes, NULL))
+        if (boundedDeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, extHubNameW, nBytes, extHubNameW, nBytes, &nBytes, 1000))
         {
             extHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
                 std::wstring(extHubNameW->NodeName, wcslen(extHubNameW->NodeName)));
@@ -260,13 +326,13 @@ std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
     return extHubNameA;
 }
 
-std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
+static std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
 {
     USB_NODE_CONNECTION_DRIVERKEY_NAME driverKeyName;
     driverKeyName.ConnectionIndex = connectionIndex;
     ULONG nBytes = 0;
-    if (!DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, &driverKeyName, sizeof(driverKeyName), &driverKeyName,
-                         sizeof(driverKeyName), &nBytes, NULL))
+    if (!boundedDeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, &driverKeyName, sizeof(driverKeyName), &driverKeyName,
+                                sizeof(driverKeyName), &nBytes, 1000))
     {
         return "";
     }
@@ -280,8 +346,8 @@ std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
     if (driverKeyNameW)
     {
         driverKeyNameW->ConnectionIndex = connectionIndex;
-        if (DeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, driverKeyNameW, nBytes, driverKeyNameW, nBytes, &nBytes,
-                            NULL))
+        if (boundedDeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, driverKeyNameW, nBytes, driverKeyNameW, nBytes,
+                                   &nBytes, 1000))
         {
             driverKeyNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
                 std::wstring(driverKeyNameW->DriverKeyName, wcslen(driverKeyNameW->DriverKeyName)));
@@ -291,7 +357,7 @@ std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
     return driverKeyNameA;
 }
 
-std::string getDeviceProperty(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD property)
+static std::string getDeviceProperty(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD property)
 {
     CHAR buffer[1024] = {0};
     DWORD requiredSize;
@@ -302,293 +368,8 @@ std::string getDeviceProperty(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DW
     return buffer;
 }
 
-PUSB_DESCRIPTOR_REQUEST getConfigDescriptor(HANDLE hHubDevice, ULONG connectionIndex, UCHAR descriptorIndex)
-{
-    UCHAR configDescReqBuf[sizeof(USB_DESCRIPTOR_REQUEST) + sizeof(USB_CONFIGURATION_DESCRIPTOR)];
-    PUSB_DESCRIPTOR_REQUEST configDescReq = (PUSB_DESCRIPTOR_REQUEST)configDescReqBuf;
-    ULONG nBytes = sizeof(configDescReqBuf);
-    memset(configDescReq, 0, nBytes);
-    configDescReq->ConnectionIndex = connectionIndex;
-    configDescReq->SetupPacket.wValue = (USB_CONFIGURATION_DESCRIPTOR_TYPE << 8) | descriptorIndex;
-    configDescReq->SetupPacket.wLength = (USHORT)(nBytes - sizeof(USB_DESCRIPTOR_REQUEST));
-    ULONG nBytesReturned = 0;
-    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, configDescReq, nBytes, configDescReq, nBytes,
-                         &nBytesReturned, NULL))
-    {
-        return NULL;
-    }
-    if (nBytes != nBytesReturned)
-    {
-        return NULL;
-    }
-    PUSB_CONFIGURATION_DESCRIPTOR configDesc = (PUSB_CONFIGURATION_DESCRIPTOR)(configDescReq + 1);
-    if (configDesc->wTotalLength < sizeof(USB_CONFIGURATION_DESCRIPTOR))
-    {
-        return NULL;
-    }
-    nBytes = sizeof(USB_DESCRIPTOR_REQUEST) + configDesc->wTotalLength;
-    configDescReq = (PUSB_DESCRIPTOR_REQUEST)GlobalAlloc(GPTR, nBytes);
-    if (NULL == configDescReq)
-    {
-        return NULL;
-    }
-    configDesc = (PUSB_CONFIGURATION_DESCRIPTOR)(configDescReq + 1);
-    configDescReq->ConnectionIndex = connectionIndex;
-    configDescReq->SetupPacket.wValue = (USB_CONFIGURATION_DESCRIPTOR_TYPE << 8) | descriptorIndex;
-    configDescReq->SetupPacket.wLength = (USHORT)(nBytes - sizeof(USB_DESCRIPTOR_REQUEST));
-    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, configDescReq, nBytes, configDescReq, nBytes,
-                         &nBytesReturned, NULL))
-    {
-        GlobalFree(configDescReq);
-        return NULL;
-    }
-    if (nBytes != nBytesReturned)
-    {
-        GlobalFree(configDescReq);
-        return NULL;
-    }
-    if (configDesc->wTotalLength != (nBytes - sizeof(USB_DESCRIPTOR_REQUEST)))
-    {
-        GlobalFree(configDescReq);
-        return NULL;
-    }
-    return configDescReq;
-}
-
-BOOL areThereStringDescriptors(PUSB_DEVICE_DESCRIPTOR deviceDesc, PUSB_CONFIGURATION_DESCRIPTOR configDesc)
-{
-    if (deviceDesc->iManufacturer || deviceDesc->iProduct || deviceDesc->iSerialNumber)
-    {
-        return TRUE;
-    }
-    PUCHAR descEnd = (PUCHAR)configDesc + configDesc->wTotalLength;
-    PUSB_COMMON_DESCRIPTOR commonDesc = (PUSB_COMMON_DESCRIPTOR)configDesc;
-    while ((PUCHAR)commonDesc + sizeof(USB_COMMON_DESCRIPTOR) < descEnd && (PUCHAR)commonDesc + commonDesc->bLength <= descEnd)
-    {
-        switch (commonDesc->bDescriptorType)
-        {
-        case USB_CONFIGURATION_DESCRIPTOR_TYPE:
-        case USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_TYPE:
-            if (commonDesc->bLength != sizeof(USB_CONFIGURATION_DESCRIPTOR))
-            {
-                break;
-            }
-            if (((PUSB_CONFIGURATION_DESCRIPTOR)commonDesc)->iConfiguration)
-            {
-                return TRUE;
-            }
-            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
-            continue;
-        case USB_INTERFACE_DESCRIPTOR_TYPE:
-            if (commonDesc->bLength != sizeof(USB_INTERFACE_DESCRIPTOR) && commonDesc->bLength != sizeof(USB_INTERFACE_DESCRIPTOR2))
-            {
-                break;
-            }
-            if (((PUSB_INTERFACE_DESCRIPTOR)commonDesc)->iInterface)
-            {
-                return TRUE;
-            }
-            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
-            continue;
-        default:
-            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
-            continue;
-        }
-        break;
-    }
-    return FALSE;
-}
-
-PSTRING_DESCRIPTOR_NODE getStringDescriptor(HANDLE hHubDevice, ULONG connectionIndex, UCHAR descriptorIndex, USHORT languageID)
-{
-    UCHAR stringDescReqBuf[sizeof(USB_DESCRIPTOR_REQUEST) + MAXIMUM_USB_STRING_LENGTH];
-    PUSB_DESCRIPTOR_REQUEST stringDescReq = (PUSB_DESCRIPTOR_REQUEST)stringDescReqBuf;
-    ULONG nBytes = sizeof(stringDescReqBuf);
-    memset(stringDescReq, 0, nBytes);
-    stringDescReq->ConnectionIndex = connectionIndex;
-    stringDescReq->SetupPacket.wValue = (USB_STRING_DESCRIPTOR_TYPE << 8) | descriptorIndex;
-    stringDescReq->SetupPacket.wIndex = languageID;
-    stringDescReq->SetupPacket.wLength = (USHORT)(nBytes - sizeof(USB_DESCRIPTOR_REQUEST));
-    ULONG nBytesReturned = 0;
-    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, stringDescReq, nBytes, stringDescReq, nBytes,
-                         &nBytesReturned, NULL))
-    {
-        return NULL;
-    }
-    if (nBytesReturned < 2)
-    {
-        return NULL;
-    }
-    PUSB_STRING_DESCRIPTOR stringDesc = (PUSB_STRING_DESCRIPTOR)(stringDescReq + 1);
-    if (USB_STRING_DESCRIPTOR_TYPE != stringDesc->bDescriptorType)
-    {
-        return NULL;
-    }
-    if (stringDesc->bLength != nBytesReturned - sizeof(USB_DESCRIPTOR_REQUEST))
-    {
-        return NULL;
-    }
-    if (0 != stringDesc->bLength % 2)
-    {
-        return NULL;
-    }
-    PSTRING_DESCRIPTOR_NODE stringDescNode =
-        (PSTRING_DESCRIPTOR_NODE)GlobalAlloc(GPTR, sizeof(STRING_DESCRIPTOR_NODE) + stringDesc->bLength);
-    if (NULL == stringDescNode)
-    {
-        return NULL;
-    }
-    stringDescNode->DescriptorIndex = descriptorIndex;
-    stringDescNode->LanguageID = languageID;
-    memcpy(stringDescNode->StringDescriptor, stringDesc, stringDesc->bLength);
-    return stringDescNode;
-}
-
-HRESULT getStringDescriptors(HANDLE hHubDevice, ULONG connectionIndex, UCHAR descriptorIndex, ULONG numLanguageIDs, USHORT* languageIDs,
-                             PSTRING_DESCRIPTOR_NODE StringDescNodeHead)
-{
-    PSTRING_DESCRIPTOR_NODE tail = NULL;
-    PSTRING_DESCRIPTOR_NODE trailing = NULL;
-    for (tail = StringDescNodeHead; tail != NULL; tail = tail->Next)
-    {
-        if (tail->DescriptorIndex == descriptorIndex)
-        {
-            return S_OK;
-        }
-        trailing = tail;
-    }
-    tail = trailing;
-    for (ULONG i = 0; (tail != NULL) && (i < numLanguageIDs); i++)
-    {
-        if (tail->Next)
-        {
-            GlobalFree(tail->Next);
-        }
-        tail->Next = getStringDescriptor(hHubDevice, connectionIndex, descriptorIndex, languageIDs[i]);
-        tail = tail->Next;
-    }
-    if (tail == NULL)
-    {
-        return E_FAIL;
-    }
-    return S_OK;
-}
-
-PSTRING_DESCRIPTOR_NODE getAllStringDescriptors(HANDLE hHubDevice, ULONG connectionIndex, PUSB_DEVICE_DESCRIPTOR deviceDesc,
-                                                PUSB_CONFIGURATION_DESCRIPTOR configDesc)
-{
-    PSTRING_DESCRIPTOR_NODE supportedLanguagesString = getStringDescriptor(hHubDevice, connectionIndex, 0, 0);
-    if (supportedLanguagesString == NULL)
-    {
-        return NULL;
-    }
-    ULONG numLanguageIDs = (supportedLanguagesString->StringDescriptor->bLength - 2) / 2;
-    USHORT* languageIDs = (USHORT*)(&supportedLanguagesString->StringDescriptor->bString[0]);
-    if (deviceDesc->iManufacturer)
-    {
-        getStringDescriptors(hHubDevice, connectionIndex, deviceDesc->iManufacturer, numLanguageIDs, languageIDs, supportedLanguagesString);
-    }
-    if (deviceDesc->iProduct)
-    {
-        getStringDescriptors(hHubDevice, connectionIndex, deviceDesc->iProduct, numLanguageIDs, languageIDs, supportedLanguagesString);
-    }
-    if (deviceDesc->iSerialNumber)
-    {
-        getStringDescriptors(hHubDevice, connectionIndex, deviceDesc->iSerialNumber, numLanguageIDs, languageIDs, supportedLanguagesString);
-    }
-    PUCHAR descEnd = (PUCHAR)configDesc + configDesc->wTotalLength;
-    PUSB_COMMON_DESCRIPTOR commonDesc = (PUSB_COMMON_DESCRIPTOR)configDesc;
-    BOOL getMoreStrings = FALSE;
-    while ((PUCHAR)commonDesc + sizeof(USB_COMMON_DESCRIPTOR) < descEnd && (PUCHAR)commonDesc + commonDesc->bLength <= descEnd)
-    {
-        switch (commonDesc->bDescriptorType)
-        {
-        case USB_CONFIGURATION_DESCRIPTOR_TYPE:
-            if (commonDesc->bLength != sizeof(USB_CONFIGURATION_DESCRIPTOR))
-            {
-                break;
-            }
-            if (((PUSB_CONFIGURATION_DESCRIPTOR)commonDesc)->iConfiguration)
-            {
-                getStringDescriptors(hHubDevice, connectionIndex, ((PUSB_CONFIGURATION_DESCRIPTOR)commonDesc)->iConfiguration,
-                                     numLanguageIDs, languageIDs, supportedLanguagesString);
-            }
-            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
-            continue;
-        case USB_IAD_DESCRIPTOR_TYPE:
-            if (commonDesc->bLength < sizeof(USB_IAD_DESCRIPTOR))
-            {
-                break;
-            }
-            if (((PUSB_IAD_DESCRIPTOR)commonDesc)->iFunction)
-            {
-                getStringDescriptors(hHubDevice, connectionIndex, ((PUSB_IAD_DESCRIPTOR)commonDesc)->iFunction, numLanguageIDs, languageIDs,
-                                     supportedLanguagesString);
-            }
-            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
-            continue;
-        case USB_INTERFACE_DESCRIPTOR_TYPE:
-            if (commonDesc->bLength != sizeof(USB_INTERFACE_DESCRIPTOR) && commonDesc->bLength != sizeof(USB_INTERFACE_DESCRIPTOR2))
-            {
-                break;
-            }
-            if (((PUSB_INTERFACE_DESCRIPTOR)commonDesc)->iInterface)
-            {
-                getStringDescriptors(hHubDevice, connectionIndex, ((PUSB_INTERFACE_DESCRIPTOR)commonDesc)->iInterface, numLanguageIDs,
-                                     languageIDs, supportedLanguagesString);
-            }
-            if (USB_DEVICE_CLASS_VIDEO == ((PUSB_INTERFACE_DESCRIPTOR)commonDesc)->bInterfaceClass)
-            {
-                getMoreStrings = TRUE;
-            }
-            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
-            continue;
-        default:
-            commonDesc = (PUSB_COMMON_DESCRIPTOR)((PUCHAR)commonDesc + commonDesc->bLength);
-            continue;
-        }
-        break;
-    }
-    if (getMoreStrings)
-    {
-        for (UCHAR uIndex = 1; (uIndex < NUM_STRING_DESC_TO_GET); uIndex++)
-        {
-            HRESULT hr = getStringDescriptors(hHubDevice, connectionIndex, uIndex, numLanguageIDs, languageIDs, supportedLanguagesString);
-            if (FAILED(hr))
-            {
-                break;
-            }
-        }
-    }
-    return supportedLanguagesString;
-}
-
-std::string getDisplayString(UCHAR index, PSTRING_DESCRIPTOR_NODE stringDescs)
-{
-    std::string desc;
-    char pString[512];
-    while (stringDescs)
-    {
-        if (stringDescs->DescriptorIndex == index)
-        {
-            memset(pString, 0, 512);
-            if (stringDescs->StringDescriptor->bLength > sizeof(USHORT))
-            {
-                ULONG nBytes = WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, stringDescs->StringDescriptor->bString,
-                                                   (stringDescs->StringDescriptor->bLength - 2) / 2, pString, 512, NULL, NULL);
-                if (nBytes)
-                {
-                    desc += pString;
-                }
-            }
-        }
-        stringDescs = stringDescs->Next;
-    }
-    return desc;
-}
-
-void parseBusRelations(const std::string& buffer, std::string& model, std::string& vendor, std::string& storageType,
-                       std::string& devicePath)
+static void parseBusRelations(const std::string& buffer, std::string& model, std::string& vendor, std::string& storageType,
+                              std::string& devicePath)
 {
     model.clear();
     vendor.clear();
@@ -679,7 +460,8 @@ void parseBusRelations(const std::string& buffer, std::string& model, std::strin
     }
 }
 
-void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>& localDriveList, std::vector<DriverInfo>& driverList)
+static void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>& localDriveList,
+                               std::vector<DriverInfo>& driverList)
 {
     driverList.clear();
     int deviceType = -1, deviceNumber = -1;
@@ -691,7 +473,7 @@ void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>
         {
             DWORD nBytes = 0;
             STORAGE_DEVICE_NUMBER deviceNum;
-            if (DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes, NULL))
+            if (boundedDeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNum, sizeof(deviceNum), &nBytes, 1000))
             {
                 deviceType = deviceNum.DeviceType;
                 deviceNumber = deviceNum.DeviceNumber;
@@ -709,7 +491,22 @@ void parseStorageDriver(const std::string& devicePath, std::vector<LogicalDrive>
     }
 }
 
-std::vector<LogicalDrive> getLogicalDriveList()
+/* 读取设备字符串属性 */
+static std::string getDevicePropertyString(HDEVINFO devInfo, SP_DEVINFO_DATA* devInfoData, const DEVPROPKEY& propertyKey)
+{
+    DEVPROPTYPE propertyType = 0;
+    WCHAR buffer[512] = {0};
+    DWORD requiredSize = 0;
+    if (!SetupDiGetDevicePropertyW(devInfo, devInfoData, &propertyKey, &propertyType, reinterpret_cast<PBYTE>(buffer), sizeof(buffer),
+                                   &requiredSize, 0)
+        || DEVPROP_TYPE_STRING != propertyType)
+    {
+        return std::string();
+    }
+    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(buffer);
+}
+
+static std::vector<LogicalDrive> getLogicalDriveList()
 {
     std::vector<LogicalDrive> localDriveList;
     DWORD drives = GetLogicalDrives();
@@ -721,8 +518,8 @@ std::vector<LogicalDrive> getLogicalDriveList()
             char driverChar = 'A' + index;
             char drivePath[10] = {0};
             sprintf_s(drivePath, "\\\\.\\%c:", driverChar);
-            auto handle =
-                CreateFileA(drivePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+            /* 以0访问权打开卷设备: 不触发文件系统挂载绑定, 避免刚插入U盘的卷挂载窗口期打开阻塞数秒 */
+            HANDLE handle = CreateFileA(drivePath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
             if (INVALID_HANDLE_VALUE != handle)
             {
                 std::string driver = std::string(1, driverChar) + ":\\";
@@ -732,20 +529,36 @@ std::vector<LogicalDrive> getLogicalDriveList()
                 DWORD maximumComponentLength = 0;
                 DWORD fileSystemFlags = 0;
                 CHAR fileSystemName[bufferSize] = {0};
-                GetVolumeInformationA(driver.c_str(), volumeName, bufferSize, &volumeSerialNumber, &maximumComponentLength,
-                                      &fileSystemFlags, fileSystemName, bufferSize);
                 LogicalDrive info;
                 info.driver = driver;
-                info.driveType = GetDriveTypeA(driver.c_str());
-                info.fstype = fileSystemName;
-                info.label = volumeName;
+                /* 设备号查询(纯内核查询, 不受挂载影响): 提前执行, 同时作为卷信息会话抑制的键 */
                 DWORD nBytes = 0;
                 STORAGE_DEVICE_NUMBER devNum;
-                if (DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &devNum, sizeof(devNum), &nBytes, NULL))
+                if (boundedDeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &devNum, sizeof(devNum), &nBytes, 1000))
                 {
                     info.deviceType = devNum.DeviceType;
                     info.deviceNumber = devNum.DeviceNumber;
                 }
+                /* 卷信息门控
+                 * 1. 本卷是否允许本轮探测 — 成功过则永久放行; 刚失败过则跳过若干轮(指数退避);
+                 * 2. CHECK_VERIFY2限制在300ms内: 挂载窗口期超时即视为未就绪, 跳过GVI; 未就绪时fstype/label留空, 下次轮询卷应答后自动补全 */
+                const std::string volumeFetchKey =
+                    std::string(1, driverChar) + ":" + std::to_string(info.deviceType) + ":" + std::to_string(info.deviceNumber);
+                if (usbFetchSessionAllows(volumeFetchKey))
+                {
+                    bool volumeOk = false;
+                    DWORD bytesReturned = 0;
+                    if (boundedDeviceIoControl(handle, IOCTL_STORAGE_CHECK_VERIFY2, NULL, 0, NULL, 0, &bytesReturned, 300))
+                    {
+                        GetVolumeInformationA(driver.c_str(), volumeName, bufferSize, &volumeSerialNumber, &maximumComponentLength,
+                                              &fileSystemFlags, fileSystemName, bufferSize);
+                        volumeOk = (0 != fileSystemName[0]); /* 拿到文件系统名才算卷已就绪 */
+                    }
+                    usbFetchSessionReport(volumeFetchKey, volumeOk);
+                }
+                info.driveType = GetDriveTypeA(driver.c_str());
+                info.fstype = fileSystemName;
+                info.label = volumeName;
                 STORAGE_PROPERTY_QUERY query;
                 ZeroMemory(&query, sizeof(query));
                 query.PropertyId = StorageDeviceProperty;
@@ -753,7 +566,8 @@ std::vector<LogicalDrive> getLogicalDriveList()
                 CHAR buffer[sizeof(STORAGE_DEVICE_DESCRIPTOR) + 512 - 1] = {0};
                 STORAGE_DEVICE_DESCRIPTOR* pDevDesc = (STORAGE_DEVICE_DESCRIPTOR*)buffer;
                 pDevDesc->Size = sizeof(STORAGE_DEVICE_DESCRIPTOR) + 512 - 1;
-                if (DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), pDevDesc, pDevDesc->Size, &nBytes, NULL))
+                if (boundedDeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), pDevDesc, pDevDesc->Size, &nBytes,
+                                           1000))
                 {
                     info.serial = &buffer[pDevDesc->SerialNumberOffset];
                     if (std::all_of(info.serial.begin(), info.serial.end(), isspace)) /* 全部是空格 */
@@ -773,9 +587,9 @@ std::vector<LogicalDrive> getLogicalDriveList()
     return localDriveList;
 }
 
-void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, HANDLE hHubDevice,
-                       ULONG numPorts, std::vector<LogicalDrive>& localDriveList, const std::vector<ComPortInfo>& comPortList,
-                       std::vector<UsbImpl>& usbList)
+static void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, HANDLE hHubDevice,
+                              ULONG numPorts, std::vector<LogicalDrive>& localDriveList, const std::vector<ComPortInfo>& comPortList,
+                              std::vector<UsbImpl>& usbList)
 {
     bool recheckDriverFlag = false;
     for (ULONG index = 1; index <= numPorts; ++index)
@@ -787,32 +601,26 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
             break;
         }
         connectionInfoEx->ConnectionIndex = index;
-        if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION_EX, connectionInfoEx, nBytesEx, connectionInfoEx,
-                             nBytesEx, &nBytesEx, NULL))
+        if (!boundedDeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION_EX, connectionInfoEx, nBytesEx, connectionInfoEx,
+                                    nBytesEx, &nBytesEx, 1000))
         {
             ULONG nBytes = sizeof(USB_NODE_CONNECTION_INFORMATION) + sizeof(USB_PIPE_INFO) * 30;
             PUSB_NODE_CONNECTION_INFORMATION connectionInfo = (PUSB_NODE_CONNECTION_INFORMATION)GlobalAlloc(GPTR, nBytes);
             if (connectionInfo)
             {
                 connectionInfo->ConnectionIndex = index;
-                if (DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION, connectionInfo, nBytes, connectionInfo, nBytes,
-                                    &nBytes, NULL))
+                if (boundedDeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_CONNECTION_INFORMATION, connectionInfo, nBytes, connectionInfo,
+                                           nBytes, &nBytes, 1000))
                 {
                     memcpy(connectionInfoEx, connectionInfo, sizeof(USB_NODE_CONNECTION_INFORMATION));
                 }
                 GlobalFree(connectionInfo);
             }
         }
-        PUSB_DESCRIPTOR_REQUEST configDesc = NULL;
+        std::string driverName;
         if (DeviceConnected == connectionInfoEx->ConnectionStatus)
         {
-            configDesc = getConfigDescriptor(hHubDevice, index, 0);
-        }
-        PSTRING_DESCRIPTOR_NODE stringDescs = NULL;
-        if (configDesc && areThereStringDescriptors(&connectionInfoEx->DeviceDescriptor, (PUSB_CONFIGURATION_DESCRIPTOR)(configDesc + 1)))
-        {
-            stringDescs = getAllStringDescriptors(hHubDevice, index, &connectionInfoEx->DeviceDescriptor,
-                                                  (PUSB_CONFIGURATION_DESCRIPTOR)(configDesc + 1));
+            driverName = getDriverKeyName(hHubDevice, index);
         }
         if (DeviceConnected == connectionInfoEx->ConnectionStatus) /* Port Plugin Device */
         {
@@ -821,27 +629,16 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
             char pid[16] = {0};
             sprintf(pid, "%04x", connectionInfoEx->DeviceDescriptor.idProduct);
             std::string serial;
-            if (connectionInfoEx->DeviceDescriptor.iSerialNumber)
-            {
-                serial = getDisplayString(connectionInfoEx->DeviceDescriptor.iSerialNumber, stringDescs);
-            }
             std::string product;
-            if (connectionInfoEx->DeviceDescriptor.iProduct)
-            {
-                product = getDisplayString(connectionInfoEx->DeviceDescriptor.iProduct, stringDescs);
-            }
             std::string manufacturer;
-            if (connectionInfoEx->DeviceDescriptor.iManufacturer)
-            {
-                manufacturer = getDisplayString(connectionInfoEx->DeviceDescriptor.iManufacturer, stringDescs);
-            }
-            std::string driverName = getDriverKeyName(hHubDevice, index);
             std::string deviceId, model, vendor, storageType, devicePath;
             std::vector<DriverInfo> driverList;
             std::vector<ComPortInfo> comList;
             auto iter = devInfoDataList.find(driverName);
             if (devInfoDataList.end() != iter)
             {
+                product = getDevicePropertyString(devInfo, &(iter->second), DEVPKEY_Device_BusReportedDeviceDesc);
+                manufacturer = getDevicePropertyString(devInfo, &(iter->second), DEVPKEY_Device_Manufacturer);
                 CHAR instanceId[MAX_DEVICE_ID_LEN];
                 if (CR_SUCCESS == CM_Get_Device_ID(iter->second.DevInst, instanceId, MAX_PATH, 0))
                 {
@@ -915,16 +712,6 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
             enumerateHub(devInfo, devInfoDataList, rootIndex, getExternalHubName(hHubDevice, index), connectionInfoEx, localDriveList,
                          comPortList, usbList);
         }
-        if (configDesc)
-        {
-            GlobalFree(configDesc);
-        }
-        while (stringDescs)
-        {
-            PSTRING_DESCRIPTOR_NODE Next = stringDescs->Next;
-            GlobalFree(stringDescs);
-            stringDescs = Next;
-        }
         GlobalFree(connectionInfoEx);
     }
     if (recheckDriverFlag) /* 再次检测驱动器 */
@@ -947,9 +734,9 @@ void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> 
     }
 }
 
-void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
-                  PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<LogicalDrive>& localDriveList,
-                  const std::vector<ComPortInfo>& comPortList, std::vector<UsbImpl>& usbList)
+static void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
+                         PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<LogicalDrive>& localDriveList,
+                         const std::vector<ComPortInfo>& comPortList, std::vector<UsbImpl>& usbList)
 {
     if (hubName.empty())
     {
@@ -969,8 +756,8 @@ void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devIn
         return;
     }
     ULONG nBytes = 0;
-    if (!DeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_INFORMATION, hubInfo, sizeof(USB_NODE_INFORMATION), hubInfo,
-                         sizeof(USB_NODE_INFORMATION), &nBytes, NULL))
+    if (!boundedDeviceIoControl(hHubDevice, IOCTL_USB_GET_NODE_INFORMATION, hubInfo, sizeof(USB_NODE_INFORMATION), hubInfo,
+                                sizeof(USB_NODE_INFORMATION), &nBytes, 1000))
     {
         CloseHandle(hHubDevice);
         GlobalFree(hubInfo);
@@ -988,7 +775,7 @@ void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devIn
     GlobalFree(hubInfo);
 }
 
-std::vector<ComPortInfo> getComPortList(HDEVINFO hDevInfo)
+static std::vector<ComPortInfo> getComPortList(HDEVINFO hDevInfo)
 {
     std::vector<ComPortInfo> comPortList;
     if (INVALID_HANDLE_VALUE == hDevInfo)
@@ -1044,7 +831,7 @@ std::vector<ComPortInfo> getComPortList(HDEVINFO hDevInfo)
     return comPortList;
 }
 
-std::vector<UsbImpl> enumerateHostControllers()
+static std::vector<UsbImpl> enumerateHostControllers()
 {
     std::vector<UsbImpl> usbList;
     HDEVINFO devInfo = SetupDiGetClassDevsA(NULL, NULL, NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
@@ -1125,7 +912,7 @@ std::vector<UsbImpl> enumerateHostControllers()
     return usbList;
 }
 #else
-std::vector<UsbImpl> enumerateUsbDevices()
+static std::vector<UsbImpl> enumerateUsbDevices()
 {
     std::vector<UsbImpl> usbList;
     std::ifstream file("/sys/kernel/debug/usb/devices");
@@ -1263,7 +1050,7 @@ static std::string getUdevHex4(const char* value)
     return buf;
 }
 
-std::vector<UsbUdevImpl> enumerateUsbUdevs()
+static std::vector<UsbUdevImpl> enumerateUsbUdevs()
 {
     std::vector<UsbUdevImpl> udevList;
     struct udev* udev = udev_new();
@@ -1444,7 +1231,7 @@ static std::vector<UsbImpl> buildUsbImplFromUdev(const std::vector<UsbUdevImpl>&
  * @param udevList 已采集的udev枚举结果
  * @param usbList [输入/输出]USB设备列表
  */
-void enumerateUsbDevNodes(const std::vector<UsbUdevImpl>& udevList, std::vector<UsbImpl>& usbList)
+static void enumerateUsbDevNodes(const std::vector<UsbUdevImpl>& udevList, std::vector<UsbImpl>& usbList)
 {
     if (usbList.empty())
     {
@@ -1749,6 +1536,20 @@ bool isMountpoint(std::string path)
 std::vector<CdromInfo> getCdromInfoList()
 {
     std::vector<CdromInfo> infoList;
+    /* 无光驱时直接返回: IMAPI COM组件初始化与设备查询在存储栈繁忙时可能耗时数秒, 插入U盘等场景(无光驱)无需进入COM流程 */
+    HDEVINFO cdromDevInfo = SetupDiGetClassDevsA(&GUID_DEVINTERFACE_CDROM, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+    if (INVALID_HANDLE_VALUE == cdromDevInfo)
+    {
+        return infoList;
+    }
+    SP_DEVINFO_DATA cdromDevInfoData;
+    cdromDevInfoData.cbSize = sizeof(cdromDevInfoData);
+    const bool hasCdrom = (FALSE != SetupDiEnumDeviceInfo(cdromDevInfo, 0, &cdromDevInfoData));
+    SetupDiDestroyDeviceInfoList(cdromDevInfo);
+    if (!hasCdrom)
+    {
+        return infoList;
+    }
     if (SUCCEEDED(CoInitializeEx(NULL, COINIT_MULTITHREADED)))
     {
         IDiscMaster2* pDiscMaster;
