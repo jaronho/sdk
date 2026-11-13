@@ -242,6 +242,13 @@ public:
     std::string getVendor() const;
 
     /**
+     * @brief 获取输入类型(逗号分隔, 例如: "keyboard,mouse"), 为空表示非输入设备
+     * @return 输入类型, 值: accelerometer-加速度计, joystick-摇杆/游戏手柄, key-按键类设备(非标准键盘, 如电源键/音量键),
+     *         keyboard-键盘, mouse-鼠标, pointingstick-指点杆, switch-开关类, tablet-数位板/手写板, touchpad-触摸板, touchscreen-触摸屏
+     */
+    std::string getInputType() const;
+
+    /**
      * @brief 获取存储设备类型, 值: disk-磁盘(机械盘,SSD,U盘,NVMe,SD卡等), part-分区, cdrom-光驱(CD,DVD,BD,ISO loop设备等)
      * @return 组名
      */
@@ -372,6 +379,9 @@ private:
     std::string m_manufacturer; /* 厂商名称 */
     std::string m_model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
     std::string m_vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
+    /* 输入类型(逗号分隔), 值: accelerometer-加速度计, joystick-摇杆/游戏手柄, key-按键类设备(非标准键盘, 如电源键/音量键), keyboard-键盘,
+                               mouse-鼠标, pointingstick-指点杆, switch-开关类, tablet-数位板/手写板, touchpad-触摸板, touchscreen-触摸屏 */
+    std::string m_inputType;
     std::string m_storageType; /* 存储类型, 值: disk-磁盘(机械盘,SSD,U盘,NVMe,SD卡等), part-分区, cdrom-光驱(CD,DVD,BD,ISO loop设备等) */
     std::vector<DevNode> m_devNodes; /* 设备节点(Windows一般至多1个, Linux平台可能多个) */
     CdromInfo m_cdromInfo; /* 光驱设备信息 */

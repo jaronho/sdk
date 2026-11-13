@@ -3,13 +3,15 @@
 #include <algorithm>
 #include <cerrno>
 #include <codecvt>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cwchar>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <map>
 #include <mutex>
 #include <set>
-#include <sstream>
 #include <string.h>
 #include <tuple>
 #include <unordered_map>
@@ -189,6 +191,9 @@ struct UsbImpl
     std::string manufacturer; /* 厂商名称 */
     std::string model; /* 设备标识符(型号), 例如: "ELSKY_SSD_256GB", "CDRW_DVD_GCC4244", "DVD_A_DS8A5SH", "USB CARD READER " 等 */
     std::string vendor; /* 设备制造商, 例如: "FNK TECH", "HL-DT-ST", "Samsung " 等 */
+    /* 输入类型(逗号分隔), 值: accelerometer-加速度计, joystick-摇杆/游戏手柄, key-按键类设备(非标准键盘, 如电源键/音量键), keyboard-键盘,
+                               mouse-鼠标, pointingstick-指点杆, switch-开关类, tablet-数位板/手写板, touchpad-触摸板, touchscreen-触摸屏 */
+    std::string inputType;
     std::string storageType; /* 存储类型, 值: disk-磁盘(机械盘,SSD,U盘,NVMe,SD卡等), part-分区, cdrom-光驱(CD,DVD,BD,ISO loop设备等) */
 #ifdef _WIN32
     std::string driverName; /* 设备驱动名称 */
@@ -202,7 +207,84 @@ struct UsbImpl
 #endif
 };
 
+/* 判断类型串(逗号分隔)中是否包含指定类型(按完整token精确匹配, 避免"key"误匹配"keyboard") */
+static bool hasInputType(const std::string& inputType, const std::string& value)
+{
+    if (value.empty())
+    {
+        return false;
+    }
+    return (std::string::npos != ("," + inputType + ",").find("," + value + ","));
+}
+
+/* 聚合输入类型串: 把src中的各类型按完整token去重后追加到dst(同一USB设备的多个输入节点取并集) */
+static void mergeInputType(std::string& dst, const std::string& src)
+{
+    std::string::size_type pos = 0;
+    while (pos < src.size())
+    {
+        auto commaPos = src.find(',', pos);
+        auto endPos = (std::string::npos == commaPos) ? src.size() : commaPos;
+        auto token = src.substr(pos, endPos - pos);
+        if (!hasInputType(dst, token))
+        {
+            if (!dst.empty())
+            {
+                dst += ",";
+            }
+            dst += token;
+        }
+        if (std::string::npos == commaPos)
+        {
+            break;
+        }
+        pos = commaPos + 1;
+    }
+}
+
 #ifdef _WIN32
+/* 宽字符转UTF-8: 全文件唯一的编码转换点, 将来替换为WideCharToMultiByte只需改这里 */
+static std::string toUtf8(const wchar_t* wstr)
+{
+    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(std::wstring(wstr));
+}
+
+/* 解析注册表多字符串(REG_SZ/REG_MULTI_SZ)缓冲: 各串以NUL分隔, 双NUL结束;
+ * maxChars为缓冲字符数上限(防御被截断而无结束符的数据), upper为真时转大写便于比较 */
+static std::vector<std::string> parseMultiString(const wchar_t* buffer, size_t maxChars, bool upper)
+{
+    std::vector<std::string> valueList;
+    for (const wchar_t* ptr = buffer; (size_t)(ptr - buffer) < maxChars && L'\0' != *ptr; ptr += wcslen(ptr) + 1)
+    {
+        std::string value = toUtf8(ptr);
+        if (upper)
+        {
+            std::transform(value.begin(), value.end(), value.begin(), ::toupper);
+        }
+        valueList.emplace_back(value);
+    }
+    return valueList;
+}
+
+/* 读取注册表属性的原始多字符串缓冲(先探测长度再读, 以正确处理REG_MULTI_SZ), 失败返回空 */
+static std::vector<wchar_t> getRegPropertyRaw(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD property)
+{
+    DWORD propertyType = 0, requiredSize = 0;
+    SetupDiGetDeviceRegistryPropertyW(devInfo, devInfoData, property, &propertyType, NULL, 0, &requiredSize);
+    if (requiredSize < sizeof(WCHAR))
+    {
+        return std::vector<wchar_t>();
+    }
+    std::vector<wchar_t> buffer(requiredSize / sizeof(WCHAR) + 2, L'\0'); /* 预留结束符空间 */
+    if (FALSE
+        == SetupDiGetDeviceRegistryPropertyW(devInfo, devInfoData, property, &propertyType, reinterpret_cast<PBYTE>(buffer.data()),
+                                             (DWORD)(buffer.size() * sizeof(WCHAR)), &requiredSize))
+    {
+        return std::vector<wchar_t>();
+    }
+    return buffer;
+}
+
 static std::string SafeArrayToString(SAFEARRAY* psa)
 {
     BSTR bstr = NULL;
@@ -230,9 +312,9 @@ static std::string SafeArrayToString(SAFEARRAY* psa)
     }
     if (bstr)
     {
-        std::wstring wstr = bstr;
+        const std::string result = toUtf8(bstr);
         SysFreeString(bstr);
-        return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wstr);
+        return result;
     }
     return std::string();
 }
@@ -244,128 +326,86 @@ static std::string SafeArrayToString(SAFEARRAY* psa)
 
 static void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
                          PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<LogicalDrive>& localDriveList,
-                         const std::vector<ComPortInfo>& comPortList, std::vector<UsbImpl>& usbList);
+                         const std::vector<ComPortInfo>& comPortList, const std::map<std::string, std::string>& inputTypeMap,
+                         std::vector<UsbImpl>& usbList);
 
+/* GUID转字符串, 格式与Windows一致: {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}(大写十六进制) */
 static std::string guid2string(GUID guid)
 {
-    std::wostringstream oss;
-    oss << std::hex << std::uppercase << std::setfill(L'0'); /* GUID 的数据结构为：Data1, Data2, Data3, Data4[2], Data4[6] */
-    oss << L"{";
-    /* step1. 将 Data1 转换为字符串 */
-    oss << std::setw(8) << guid.Data1;
-    /* step2. 将 Data2 和 Data3 转换为字符串 */
-    oss << '-' << std::setw(4) << guid.Data2;
-    oss << '-' << std::setw(4) << guid.Data3;
-    /* step3. 处理 Data4 前2个短整型 */
-    oss << '-';
-    for (int i = 0; i < 2; ++i)
+    WCHAR buffer[64] = {0};
+    swprintf_s(buffer, ARRAYSIZE(buffer), L"{%08lX-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X}", guid.Data1, guid.Data2, guid.Data3,
+               guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+    return toUtf8(buffer);
+}
+
+/* 通用: 经IOCTL取节点名称(根Hub名/外部Hub名/驱动键名), 两次调用(先以结构体探测ActualLength, 再按实际长度取名);
+ * sendProbeInput控制首调用是否携带输入结构(根Hub名的IOCTL输入为NULL), init填入ConnectionIndex等入参,
+ * getName从返回结构取名称字段; 与原先三份复制的实现调用序列一致 */
+template<typename T, typename InitFunc, typename NameFunc>
+static std::string fetchUsbName(HANDLE handle, DWORD ioctlCode, bool sendProbeInput, InitFunc init, NameFunc getName)
+{
+    T probe = {};
+    init(probe);
+    ULONG nBytes = 0;
+    if (!boundedDeviceIoControl(handle, ioctlCode, sendProbeInput ? (LPVOID)&probe : NULL, sendProbeInput ? (DWORD)sizeof(probe) : 0,
+                                &probe, (DWORD)sizeof(probe), &nBytes, 1000))
     {
-        oss << std::setw(2) << (unsigned short)guid.Data4[i];
+        return "";
     }
-    /* step4. 处理 Data4 的其余6个字节 */
-    oss << '-';
-    for (int i = 2; i < 8; ++i)
+    nBytes = probe.ActualLength;
+    if (nBytes <= sizeof(T)) /* 名称为空 */
     {
-        oss << std::setw(2) << (unsigned char)guid.Data4[i];
+        return "";
     }
-    oss << L"}";
-    /* step5. 转为std::string */
-    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(oss.str());
+    T* result = static_cast<T*>(GlobalAlloc(GPTR, nBytes));
+    if (NULL == result)
+    {
+        return "";
+    }
+    std::string name;
+    init(*result);
+    if (boundedDeviceIoControl(handle, ioctlCode, sendProbeInput ? (LPVOID)result : NULL, sendProbeInput ? nBytes : 0, result, nBytes,
+                               &nBytes, 1000))
+    {
+        name = toUtf8(getName(*result));
+    }
+    GlobalFree(result);
+    return name;
 }
 
 static std::string getRootHubName(HANDLE hostController)
 {
-    USB_ROOT_HUB_NAME rootHubName;
-    ULONG nBytes = 0;
-    if (!boundedDeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, &rootHubName, sizeof(rootHubName), &nBytes, 1000))
-    {
-        return "";
-    }
-    nBytes = rootHubName.ActualLength;
-    std::string rootHubNameA;
-    PUSB_ROOT_HUB_NAME rootHubNameW = (PUSB_ROOT_HUB_NAME)GlobalAlloc(GPTR, nBytes);
-    if (rootHubNameW)
-    {
-        if (boundedDeviceIoControl(hostController, IOCTL_USB_GET_ROOT_HUB_NAME, NULL, 0, rootHubNameW, nBytes, &nBytes, 1000))
-        {
-            rootHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
-                std::wstring(rootHubNameW->RootHubName, wcslen(rootHubNameW->RootHubName)));
-        }
-        GlobalFree(rootHubNameW);
-    }
-    return rootHubNameA;
+    return fetchUsbName<USB_ROOT_HUB_NAME>(
+        hostController, IOCTL_USB_GET_ROOT_HUB_NAME, false, [](USB_ROOT_HUB_NAME&) {},
+        [](const USB_ROOT_HUB_NAME& info) { return info.RootHubName; });
 }
 
 static std::string getExternalHubName(HANDLE hub, ULONG connectionIndex)
 {
-    USB_NODE_CONNECTION_NAME extHubName;
-    extHubName.ConnectionIndex = connectionIndex;
-    ULONG nBytes = 0;
-    if (!boundedDeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, &extHubName, sizeof(extHubName), &extHubName, sizeof(extHubName),
-                                &nBytes, 1000))
-    {
-        return "";
-    }
-    nBytes = extHubName.ActualLength;
-    if (nBytes <= sizeof(extHubName))
-    {
-        return "";
-    }
-    std::string extHubNameA;
-    PUSB_NODE_CONNECTION_NAME extHubNameW = (PUSB_NODE_CONNECTION_NAME)GlobalAlloc(GPTR, nBytes);
-    if (extHubNameW)
-    {
-        extHubNameW->ConnectionIndex = connectionIndex;
-        if (boundedDeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, extHubNameW, nBytes, extHubNameW, nBytes, &nBytes, 1000))
-        {
-            extHubNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
-                std::wstring(extHubNameW->NodeName, wcslen(extHubNameW->NodeName)));
-        }
-        GlobalFree(extHubNameW);
-    }
-    return extHubNameA;
+    return fetchUsbName<USB_NODE_CONNECTION_NAME>(
+        hub, IOCTL_USB_GET_NODE_CONNECTION_NAME, true,
+        [connectionIndex](USB_NODE_CONNECTION_NAME& info) { info.ConnectionIndex = connectionIndex; },
+        [](const USB_NODE_CONNECTION_NAME& info) { return info.NodeName; });
 }
 
 static std::string getDriverKeyName(HANDLE hub, ULONG connectionIndex)
 {
-    USB_NODE_CONNECTION_DRIVERKEY_NAME driverKeyName;
-    driverKeyName.ConnectionIndex = connectionIndex;
-    ULONG nBytes = 0;
-    if (!boundedDeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, &driverKeyName, sizeof(driverKeyName), &driverKeyName,
-                                sizeof(driverKeyName), &nBytes, 1000))
-    {
-        return "";
-    }
-    nBytes = driverKeyName.ActualLength;
-    if (nBytes <= sizeof(driverKeyName))
-    {
-        return "";
-    }
-    std::string driverKeyNameA;
-    PUSB_NODE_CONNECTION_DRIVERKEY_NAME driverKeyNameW = (PUSB_NODE_CONNECTION_DRIVERKEY_NAME)GlobalAlloc(GPTR, nBytes);
-    if (driverKeyNameW)
-    {
-        driverKeyNameW->ConnectionIndex = connectionIndex;
-        if (boundedDeviceIoControl(hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, driverKeyNameW, nBytes, driverKeyNameW, nBytes,
-                                   &nBytes, 1000))
-        {
-            driverKeyNameA = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(
-                std::wstring(driverKeyNameW->DriverKeyName, wcslen(driverKeyNameW->DriverKeyName)));
-        }
-        GlobalFree(driverKeyNameW);
-    }
-    return driverKeyNameA;
+    return fetchUsbName<USB_NODE_CONNECTION_DRIVERKEY_NAME>(
+        hub, IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME, true,
+        [connectionIndex](USB_NODE_CONNECTION_DRIVERKEY_NAME& info) { info.ConnectionIndex = connectionIndex; },
+        [](const USB_NODE_CONNECTION_DRIVERKEY_NAME& info) { return info.DriverKeyName; });
 }
 
+/* 读取单值注册表属性(如SPDRP_DRIVER), 取首个字符串且保留原始大小写, 失败返回空 */
 static std::string getDeviceProperty(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD property)
 {
-    CHAR buffer[1024] = {0};
-    DWORD requiredSize;
-    if (FALSE == SetupDiGetDeviceRegistryPropertyA(devInfo, devInfoData, property, NULL, (PBYTE)buffer, sizeof(buffer), &requiredSize))
+    const auto buffer = getRegPropertyRaw(devInfo, devInfoData, property);
+    if (buffer.empty())
     {
         return std::string();
     }
-    return buffer;
+    const auto valueList = parseMultiString(buffer.data(), buffer.size(), false);
+    return valueList.empty() ? std::string() : valueList[0];
 }
 
 static void parseBusRelations(const std::string& buffer, std::string& model, std::string& vendor, std::string& storageType,
@@ -503,7 +543,513 @@ static std::string getDevicePropertyString(HDEVINFO devInfo, SP_DEVINFO_DATA* de
     {
         return std::string();
     }
-    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(buffer);
+    return toUtf8(buffer);
+}
+
+/* 读取设备注册表属性(REG_SZ或REG_MULTI_SZ), 统一按多串返回(已转大写便于比较), 失败返回空列表;
+ * 用宽字符版+两次调用(先探测长度再读)以正确处理REG_MULTI_SZ(SPDRP_COMPATIBLEIDS等) */
+static std::vector<std::string> getDevicePropertyStrings(HDEVINFO devInfo, PSP_DEVINFO_DATA devInfoData, DWORD property)
+{
+    const auto buffer = getRegPropertyRaw(devInfo, devInfoData, property);
+    if (buffer.empty())
+    {
+        return std::vector<std::string>();
+    }
+    return parseMultiString(buffer.data(), buffer.size(), true); /* REG_MULTI_SZ以空串结尾, REG_SZ只有一项 */
+}
+
+/* 把子设备的类名/兼容ID翻译为输入类型并聚合(Windows无udev的ID_INPUT_*属性, 改用设备类与HID兼容ID分类) */
+static void classifyWinInputType(const std::string& className, const std::vector<std::string>& compatibleIdList, std::string& inputType)
+{
+    if ("KEYBOARD" == className)
+    {
+        mergeInputType(inputType, "keyboard");
+    }
+    else if ("MOUSE" == className)
+    {
+        mergeInputType(inputType, "mouse");
+    }
+    for (const auto& compatibleId : compatibleIdList)
+    {
+        if (std::string::npos == compatibleId.find("HID_DEVICE"))
+        {
+            continue;
+        }
+        if (std::string::npos != compatibleId.find("SYSTEM_KEYBOARD") || std::string::npos != compatibleId.find("UP:0001_U:0006"))
+        {
+            mergeInputType(inputType, "keyboard");
+        }
+        else if (std::string::npos != compatibleId.find("SYSTEM_MOUSE") || std::string::npos != compatibleId.find("UP:0001_U:0002"))
+        {
+            mergeInputType(inputType, "mouse");
+        }
+        else if (std::string::npos != compatibleId.find("SYSTEM_GAME") || std::string::npos != compatibleId.find("UP:0001_U:0004")
+                 || std::string::npos != compatibleId.find("UP:0001_U:0005"))
+        {
+            mergeInputType(inputType, "joystick");
+        }
+        else if (std::string::npos != compatibleId.find("UP:000D_U:0004"))
+        {
+            mergeInputType(inputType, "touchscreen");
+        }
+        else if (std::string::npos != compatibleId.find("UP:000D_U:0005"))
+        {
+            mergeInputType(inputType, "touchpad");
+        }
+        else if (std::string::npos != compatibleId.find("UP:000D_U:0001") || std::string::npos != compatibleId.find("UP:000D_U:0002"))
+        {
+            mergeInputType(inputType, "tablet");
+        }
+        else if ((0 == compatibleId.rfind("HID_DEVICE_UP:", 0) || 0 == compatibleId.rfind("HID_DEVICE_SYSTEM_", 0))
+                 && std::string::npos == compatibleId.find("UP:000D_"))
+        {
+            /* 其余HID用途页(消费类0x0C/电话0x0B/按键0x09/设备控制0x0E/厂商自定义0xFFxx等)与其余系统集合
+             * (如HID_DEVICE_SYSTEM_CONSUMER/CONTROLS, 摄像头抓拍键即属此类)统一按按键类设备处理,
+             * 与Linux的ID_INPUT_KEY语义对齐: 有按键能力但不属于键盘/鼠标/触摸板/触摸屏/数位板/手柄 */
+            mergeInputType(inputType, "key");
+        }
+    }
+}
+
+/* 读取设备实例ID并转为大写(失败返回空) */
+static std::string getInstanceIdUpper(DEVINST devInst)
+{
+    CHAR instanceId[MAX_DEVICE_ID_LEN] = {0};
+    if (CR_SUCCESS != CM_Get_Device_IDA(devInst, instanceId, MAX_DEVICE_ID_LEN, 0))
+    {
+        return std::string();
+    }
+    std::string result(instanceId);
+    std::transform(result.begin(), result.end(), result.begin(), ::toupper);
+    return result;
+}
+
+/* 沿设备树向上找到所属顶层USB设备的实例ID(大写; 复合设备中间层为USB\VID_...&MI_xx接口节点), 非USB设备返回空 */
+static std::string getWinTopUsbInstanceId(DEVINST devInst)
+{
+    DEVINST current = devInst;
+    for (int depth = 0; depth < 8; ++depth) /* 设备树深度有限, 限制层数防御异常设备树 */
+    {
+        const std::string topInstanceId = getInstanceIdUpper(current);
+        if (topInstanceId.empty())
+        {
+            return std::string();
+        }
+        if (0 == topInstanceId.rfind("USB\\", 0) && std::string::npos == topInstanceId.find("&MI_")) /* 顶层USB设备 */
+        {
+            return topInstanceId;
+        }
+        DEVINST parent = 0;
+        if (CR_SUCCESS != CM_Get_Parent(&parent, current, 0))
+        {
+            return std::string();
+        }
+        current = parent;
+    }
+    return std::string();
+}
+
+/* 输入设备类GUID: HIDClass(devguid.h未定义), Keyboard, Mouse(键鼠PDO分别属于Keyboard/Mouse类, 不在HIDClass类中) */
+static const GUID winInputClassGuidList[] = {
+    {0x745A17A0, 0x74D3, 0x11D0, {0xB6, 0xFE, 0x00, 0xA0, 0xC9, 0x1E, 0xD3, 0x65}}, /* HIDClass */
+    {0x4D36E96B, 0xE325, 0x11CE, {0xBF, 0xC1, 0x08, 0x00, 0x2B, 0xE1, 0x03, 0x18}}, /* Keyboard */
+    {0x4D36E96F, 0xE325, 0x11CE, {0xBF, 0xC1, 0x08, 0x00, 0x2B, 0xE1, 0x03, 0x18}}, /* Mouse */
+};
+
+/**
+ * @brief 构建 顶层USB设备实例ID(大写) -> 输入类型 映射
+ * @return 映射表, 无USB输入设备时为空
+ * @note 依次枚举HIDClass/Keyboard/Mouse三类present设备(键鼠PDO分别属于Keyboard/Mouse类, 其余HID设备属于
+ *       HIDClass类), 按设备类与HID兼容ID(形如HID_DEVICE_SYSTEM_MOUSE、HID_DEVICE_UP:0001_U:0002)分类,
+ *       再沿设备树向上找到所属顶层USB设备的实例ID并取并集;
+ *       全部为SetupAPI/注册表读取, 不打开任何设备句柄, 不受设备权限影响
+ */
+static std::map<std::string, std::string> getWinInputTypeMap()
+{
+    std::map<std::string, std::string> inputTypeMap;
+    for (const auto& classGuid : winInputClassGuidList)
+    {
+        HDEVINFO devInfoSet = SetupDiGetClassDevsA(&classGuid, NULL, NULL, DIGCF_PRESENT);
+        if (INVALID_HANDLE_VALUE == devInfoSet)
+        {
+            continue;
+        }
+        SP_DEVINFO_DATA devInfoData;
+        devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+        for (DWORD index = 0; SetupDiEnumDeviceInfo(devInfoSet, index, &devInfoData); ++index)
+        {
+            std::string usbInstanceId = getWinTopUsbInstanceId(devInfoData.DevInst);
+            if (usbInstanceId.empty()) /* 非USB设备(如PS/2、蓝牙、I2C键鼠)不参与 */
+            {
+                continue;
+            }
+            auto classNameList = getDevicePropertyStrings(devInfoSet, &devInfoData, SPDRP_CLASS);
+            auto compatibleIdList = getDevicePropertyStrings(devInfoSet, &devInfoData, SPDRP_COMPATIBLEIDS);
+            std::string inputType;
+            classifyWinInputType(classNameList.empty() ? "" : classNameList[0], compatibleIdList, inputType);
+            if (!inputType.empty()) /* 同一USB复合设备的多个HID PDO取并集 */
+            {
+                mergeInputType(inputTypeMap[usbInstanceId], inputType);
+            }
+        }
+        SetupDiDestroyDeviceInfoList(devInfoSet);
+    }
+    return inputTypeMap;
+}
+
+/* 通过Hub句柄读取端口上设备的完整配置描述符(经Hub下发标准请求, 不打开设备, 不依赖驱动是否加载) */
+static std::vector<BYTE> getUsbConfigDescriptor(HANDLE hub, ULONG connectionIndex)
+{
+    /* 必须用offsetof取请求头长度: usb.h中USB_DESCRIPTOR_REQUEST的数据区是Data[0]/Data[1],
+     * sizeof会把数据区首字节(及对齐填充)也算进去, 据此校验返回长度会误判成失败 */
+    const DWORD headerSize = (DWORD)offsetof(USB_DESCRIPTOR_REQUEST, Data);
+    std::vector<BYTE> buffer(headerSize + sizeof(USB_CONFIGURATION_DESCRIPTOR), 0);
+    auto request = reinterpret_cast<PUSB_DESCRIPTOR_REQUEST>(buffer.data());
+    request->ConnectionIndex = connectionIndex;
+    request->SetupPacket.wValue = (USB_CONFIGURATION_DESCRIPTOR_TYPE << 8);
+    request->SetupPacket.wIndex = 0;
+    request->SetupPacket.wLength = sizeof(USB_CONFIGURATION_DESCRIPTOR);
+    DWORD bytesReturned = 0;
+    if (!boundedDeviceIoControl(hub, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, buffer.data(), (DWORD)buffer.size(), buffer.data(),
+                                (DWORD)buffer.size(), &bytesReturned, 1000)
+        || bytesReturned < headerSize + sizeof(USB_CONFIGURATION_DESCRIPTOR))
+    {
+        return std::vector<BYTE>();
+    }
+    const USHORT totalLength = reinterpret_cast<const USB_CONFIGURATION_DESCRIPTOR*>(request->Data)->wTotalLength;
+    if (totalLength <= sizeof(USB_CONFIGURATION_DESCRIPTOR)) /* 无接口 */
+    {
+        return std::vector<BYTE>(request->Data, request->Data + sizeof(USB_CONFIGURATION_DESCRIPTOR));
+    }
+    buffer.assign(headerSize + totalLength, 0); /* 重新分配, 上方描述符指针随即失效 */
+    request = reinterpret_cast<PUSB_DESCRIPTOR_REQUEST>(buffer.data());
+    request->ConnectionIndex = connectionIndex;
+    request->SetupPacket.wValue = (USB_CONFIGURATION_DESCRIPTOR_TYPE << 8);
+    request->SetupPacket.wIndex = 0;
+    request->SetupPacket.wLength = totalLength;
+    if (!boundedDeviceIoControl(hub, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, buffer.data(), (DWORD)buffer.size(), buffer.data(),
+                                (DWORD)buffer.size(), &bytesReturned, 1000)
+        || bytesReturned < headerSize + sizeof(USB_CONFIGURATION_DESCRIPTOR))
+    {
+        return std::vector<BYTE>();
+    }
+    return std::vector<BYTE>(buffer.data() + headerSize, buffer.data() + headerSize + totalLength); /* 去掉请求头 */
+}
+
+/* 从配置描述符中收集HID类接口号(bInterfaceClass=3, 多alt setting同号去重) */
+static std::set<BYTE> getHidInterfaceNumbers(const std::vector<BYTE>& configData)
+{
+    std::set<BYTE> interfaceNumbers;
+    size_t offset = 0;
+    while (offset + sizeof(USB_COMMON_DESCRIPTOR) <= configData.size())
+    {
+        const auto* common = reinterpret_cast<const USB_COMMON_DESCRIPTOR*>(&configData[offset]);
+        if (0 == common->bLength)
+        {
+            break;
+        }
+        if (USB_INTERFACE_DESCRIPTOR_TYPE == common->bDescriptorType && common->bLength >= sizeof(USB_INTERFACE_DESCRIPTOR))
+        {
+            const auto* interfaceDesc = reinterpret_cast<const USB_INTERFACE_DESCRIPTOR*>(common);
+            if (USB_DEVICE_CLASS_HUMAN_INTERFACE == interfaceDesc->bInterfaceClass)
+            {
+                interfaceNumbers.insert(interfaceDesc->bInterfaceNumber);
+            }
+        }
+        offset += common->bLength;
+    }
+    return interfaceNumbers;
+}
+
+/* 读取短项目数据(小端无符号) */
+static uint32_t readHidItemData(const BYTE* data, size_t size)
+{
+    uint32_t value = 0;
+    for (size_t i = 0; i < size && i < 4; ++i)
+    {
+        value |= ((uint32_t)data[i]) << (8 * i);
+    }
+    return value;
+}
+
+/* 用途(页+用途号)是否映射为按键: 白名单与Linux hid-input的EV_KEY映射一致,
+ * 0x01通用桌面只有系统控制(睡眠/唤醒/电源等0x80~0x93)映射为按键, X/Y/滚轮等为相对/绝对轴而非按键 */
+static bool isKeyUsage(uint16_t usagePage, uint32_t usage)
+{
+    switch (usagePage)
+    {
+    case 0x07: /* Keyboard/Keypad */
+    case 0x09: /* Button */
+    case 0x0B: /* Telephony Device */
+        return true;
+    case 0x0C: /* Consumer, 0x0000/0x0001为未分配/集合占位, 不产生按键 */
+        return (usage > 0x0001);
+    case 0x01: /* Generic Desktop, 仅系统控制 */
+        return (usage >= 0x0080 && usage <= 0x0093);
+    default:
+        return false;
+    }
+}
+
+/* 判断HID报告描述符中是否存在按键类Input字段(精确判定key):
+ * 逐项解析短项目, 追踪Usage Page(Push/Pop)、局部Usage与Usage Min/Max, 命中Input主项时:
+ * 1. 常量(Const)填充项一律跳过, 否则几乎所有描述符的字节对齐填充都会误命中;
+ * 2. 仅当该Input项的用途落在isKeyUsage白名单内才算按键 */
+static bool reportDescriptorHasKeyInput(const std::vector<BYTE>& descriptor)
+{
+    uint32_t usagePage = 0;
+    std::vector<uint32_t> usagePageStack; /* Push/Pop维护的全局状态栈 */
+    std::vector<std::pair<uint32_t, uint32_t>> usageList; /* 局部Usage(页, 用途号) */
+    bool hasUsageRange = false;
+    uint32_t usageMinPage = 0, usageMin = 0, usageMax = 0; /* 范围内的用途共用最小值的用途页 */
+    size_t offset = 0;
+    while (offset < descriptor.size())
+    {
+        const BYTE prefix = descriptor[offset];
+        if (0 == prefix) /* 描述符内填充字节 */
+        {
+            ++offset;
+            continue;
+        }
+        size_t dataSize = prefix & 0x03;
+        if (3 == dataSize) /* 尺寸码3表示4字节 */
+        {
+            dataSize = 4;
+        }
+        const BYTE type = (prefix >> 2) & 0x03;
+        const BYTE tag = (prefix >> 4) & 0x0F;
+        if (offset + 1 + dataSize > descriptor.size())
+        {
+            break; /* 描述符截断, 已解析部分为准 */
+        }
+        const uint32_t value = readHidItemData(descriptor.data() + offset + 1, dataSize);
+        offset += 1 + dataSize;
+        if (1 == type) /* 全局项 */
+        {
+            if (0 == tag) /* Usage Page */
+            {
+                usagePage = value;
+            }
+            else if (5 == tag) /* Push */
+            {
+                usagePageStack.emplace_back(usagePage);
+            }
+            else if (6 == tag && !usagePageStack.empty()) /* Pop */
+            {
+                usagePage = usagePageStack.back();
+                usagePageStack.pop_back();
+            }
+            continue;
+        }
+        if (2 == type) /* 局部项 */
+        {
+            if (0 == tag) /* Usage: 4字节形式的用途自带用途页(高16位) */
+            {
+                usageList.emplace_back((4 == dataSize) ? (value >> 16) : usagePage, (4 == dataSize) ? (value & 0xFFFF) : value);
+            }
+            else if (1 == tag) /* Usage Minimum */
+            {
+                usageMinPage = (4 == dataSize) ? (value >> 16) : usagePage;
+                usageMin = (4 == dataSize) ? (value & 0xFFFF) : value;
+                hasUsageRange = true;
+            }
+            else if (2 == tag) /* Usage Maximum */
+            {
+                usageMax = (4 == dataSize) ? (value & 0xFFFF) : value;
+            }
+            continue;
+        }
+        /* 主项: 命中后清空局部状态(规范要求每个主项后清空) */
+        if (8 == tag && 0 == (value & 0x0001)) /* Input且bit0=0(Data); bit0=1是Constant填充项, 跳过 */
+        {
+            for (const auto& usage : usageList)
+            {
+                if (isKeyUsage((uint16_t)usage.first, usage.second))
+                {
+                    return true;
+                }
+            }
+            if (hasUsageRange && usageMax >= usageMin)
+            {
+                if ((usageMax - usageMin) > 0x0400) /* 防御异常描述符的超大范围 */
+                {
+                    if (isKeyUsage((uint16_t)usageMinPage, usageMin))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    for (uint32_t usage = usageMin; usage <= usageMax; ++usage)
+                    {
+                        if (isKeyUsage((uint16_t)usageMinPage, usage))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        usageList.clear();
+        hasUsageRange = false;
+    }
+    return false;
+}
+
+/* 读取HID报告描述符(描述符类型0x22), wIndex为接口号; 经Hub下发, 不打开设备 */
+static bool getUsbHidReportDescriptor(HANDLE hub, ULONG connectionIndex, BYTE interfaceNumber, std::vector<BYTE>& reportDescriptor)
+{
+    const BYTE hidReportDescriptorType = 0x22;
+    const DWORD headerSize = (DWORD)offsetof(USB_DESCRIPTOR_REQUEST, Data);
+    const size_t maxDescriptorSize = 4096; /* HID描述符实际远小于该值, 截断防御异常设备 */
+    std::vector<BYTE> buffer(headerSize + 4, 0);
+    auto request = reinterpret_cast<PUSB_DESCRIPTOR_REQUEST>(buffer.data());
+    request->ConnectionIndex = connectionIndex;
+    request->SetupPacket.wValue = (USHORT)(hidReportDescriptorType << 8);
+    request->SetupPacket.wIndex = interfaceNumber;
+    request->SetupPacket.wLength = 4; /* 先取描述符头, 拿到wDescriptorLength */
+    DWORD bytesReturned = 0;
+    if (!boundedDeviceIoControl(hub, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, buffer.data(), (DWORD)buffer.size(), buffer.data(),
+                                (DWORD)buffer.size(), &bytesReturned, 1000)
+        || bytesReturned < headerSize + 4)
+    {
+        return false;
+    }
+    size_t descriptorLength = buffer[headerSize + 2] | ((size_t)buffer[headerSize + 3] << 8); /* bLength, bType, wDescriptorLength */
+    if (0 == descriptorLength)
+    {
+        return false;
+    }
+    if (descriptorLength > maxDescriptorSize)
+    {
+        descriptorLength = maxDescriptorSize;
+    }
+    buffer.assign(headerSize + descriptorLength, 0);
+    request = reinterpret_cast<PUSB_DESCRIPTOR_REQUEST>(buffer.data());
+    request->ConnectionIndex = connectionIndex;
+    request->SetupPacket.wValue = (USHORT)(hidReportDescriptorType << 8);
+    request->SetupPacket.wIndex = interfaceNumber;
+    request->SetupPacket.wLength = (USHORT)descriptorLength;
+    if (!boundedDeviceIoControl(hub, IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION, buffer.data(), (DWORD)buffer.size(), buffer.data(),
+                                (DWORD)buffer.size(), &bytesReturned, 1000)
+        || bytesReturned <= headerSize)
+    {
+        return false;
+    }
+    const size_t availableBytes = bytesReturned - headerSize;
+    reportDescriptor.assign(buffer.begin() + headerSize,
+                            buffer.begin() + headerSize + ((availableBytes < descriptorLength) ? availableBytes : descriptorLength));
+    return true;
+}
+
+/* HID按键能力判定结果: 区分“确认无按键”与“描述符不可读无法判断”(后者退回粗判) */
+enum HidKeyState
+{
+    HID_KEY_UNKNOWN = 0, /* 描述符不可读 */
+    HID_KEY_PRESENT, /* 存在按键类Input字段 */
+    HID_KEY_ABSENT, /* 无HID接口, 或HID接口的报告描述符中无按键字段 */
+};
+
+/* 按USB配置描述符+HID报告描述符判断设备的按键能力 */
+static HidKeyState getHidKeyState(HANDLE hub, ULONG connectionIndex)
+{
+    auto configData = getUsbConfigDescriptor(hub, connectionIndex);
+    if (configData.empty())
+    {
+        return HID_KEY_UNKNOWN;
+    }
+    const auto interfaceNumbers = getHidInterfaceNumbers(configData);
+    if (interfaceNumbers.empty())
+    {
+        return HID_KEY_ABSENT; /* 无HID类接口, 确定不是按键设备 */
+    }
+    bool descriptorUnreadable = false;
+    for (BYTE interfaceNumber : interfaceNumbers)
+    {
+        std::vector<BYTE> reportDescriptor;
+        if (!getUsbHidReportDescriptor(hub, connectionIndex, interfaceNumber, reportDescriptor))
+        {
+            descriptorUnreadable = true;
+            continue;
+        }
+        if (reportDescriptorHasKeyInput(reportDescriptor))
+        {
+            return HID_KEY_PRESENT;
+        }
+    }
+    return descriptorUnreadable ? HID_KEY_UNKNOWN : HID_KEY_ABSENT;
+}
+
+/* 判断设备节点自身的兼容ID是否包含指定标识(如CLASS_03); 固定缓冲区直接读取, 不做长度探测 */
+static bool devNodeHasCompatibleId(DEVINST devInst, const char* token)
+{
+    WCHAR buffer[512] = {0};
+    ULONG bufferSize = sizeof(buffer), valueType = 0;
+    if (CR_SUCCESS != CM_Get_DevNode_Registry_PropertyW(devInst, CM_DRP_COMPATIBLEIDS, &valueType, buffer, &bufferSize, 0))
+    {
+        return false;
+    }
+    for (const auto& value : parseMultiString(buffer, ARRAYSIZE(buffer), true))
+    {
+        if (std::string::npos != value.find(token))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* 判断本设备(自身或其接口节点USB\VID_...&MI_xx)是否为HID类接口: 接口节点即使未加载驱动也存在,
+ * 兼容ID形如USB\CLASS_03&SUBCLASS_00&PROT_00;
+ * 只看本设备的节点(实例ID前缀相同), 不向下游设备递归 —— 否则Hub会把插在其上的键鼠算成自己的输入类型 */
+static bool hasHidInterfaceByDevTree(DEVINST usbDevInst, const std::string& usbInstanceId)
+{
+    /* 必须带前导反斜杠匹配完整的类标识, 否则会命中SUBCLASS_03:
+     * 视频接口USB\CLASS_0E&SUBCLASS_03&PROT_00、音频MIDI接口USB\CLASS_01&SUBCLASS_03&PROT_00 都会被误判成HID */
+    if (devNodeHasCompatibleId(usbDevInst, "\\CLASS_03")) /* 非复合设备: 接口信息直接挂在设备节点上 */
+    {
+        return true;
+    }
+    auto slashPos = usbInstanceId.find('\\', 4); /* 跳过"USB\", 取设备段USB\VID_xxxx&PID_yyyy: 接口节点ID以其为前缀 */
+    const std::string devicePrefix = (std::string::npos == slashPos) ? usbInstanceId : usbInstanceId.substr(0, slashPos);
+    if (devicePrefix.empty())
+    {
+        return false;
+    }
+    DEVINST child = 0;
+    if (CR_SUCCESS != CM_Get_Child(&child, usbDevInst, 0))
+    {
+        return false;
+    }
+    for (int count = 0; count < 32 && 0 != child; ++count) /* 接口数量有限, 限制次数防御异常设备树 */
+    {
+        const std::string childInstanceId = getInstanceIdUpper(child);
+        if (0 == childInstanceId.rfind(devicePrefix, 0) && devNodeHasCompatibleId(child, "\\CLASS_03"))
+        {
+            return true; /* 本设备的接口节点为HID类 */
+        }
+        DEVINST sibling = 0;
+        child = (CR_SUCCESS == CM_Get_Sibling(&sibling, child, 0)) ? sibling : 0;
+    }
+    return false;
+}
+
+/* 判定未被分类的设备是否应按按键类(key)报告:
+ * 优先按HID报告描述符精确判定(有按键类Input字段才算); 描述符不可读时退回“存在HID类接口”的粗判,
+ * 避免因设备固件/权限异常漏判 */
+static bool isKeyClassDevice(HANDLE hub, ULONG connectionIndex, BYTE deviceClass, DEVINST usbDevInst, const std::string& usbInstanceId)
+{
+    const HidKeyState keyState = getHidKeyState(hub, connectionIndex);
+    if (HID_KEY_PRESENT == keyState)
+    {
+        return true;
+    }
+    if (HID_KEY_ABSENT == keyState)
+    {
+        return false;
+    }
+    /* HID_KEY_UNKNOWN: 描述符不可读, 退回粗判 */
+    return (USB_DEVICE_CLASS_HUMAN_INTERFACE == deviceClass) || (0 != usbDevInst && hasHidInterfaceByDevTree(usbDevInst, usbInstanceId));
 }
 
 static std::vector<LogicalDrive> getLogicalDriveList()
@@ -589,7 +1135,7 @@ static std::vector<LogicalDrive> getLogicalDriveList()
 
 static void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, HANDLE hHubDevice,
                               ULONG numPorts, std::vector<LogicalDrive>& localDriveList, const std::vector<ComPortInfo>& comPortList,
-                              std::vector<UsbImpl>& usbList)
+                              const std::map<std::string, std::string>& inputTypeMap, std::vector<UsbImpl>& usbList)
 {
     bool recheckDriverFlag = false;
     for (ULONG index = 1; index <= numPorts; ++index)
@@ -618,12 +1164,9 @@ static void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO
             }
         }
         std::string driverName;
-        if (DeviceConnected == connectionInfoEx->ConnectionStatus)
-        {
-            driverName = getDriverKeyName(hHubDevice, index);
-        }
         if (DeviceConnected == connectionInfoEx->ConnectionStatus) /* Port Plugin Device */
         {
+            driverName = getDriverKeyName(hHubDevice, index);
             char vid[16] = {0};
             sprintf(vid, "%04x", connectionInfoEx->DeviceDescriptor.idVendor);
             char pid[16] = {0};
@@ -634,25 +1177,25 @@ static void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO
             std::string deviceId, model, vendor, storageType, devicePath;
             std::vector<DriverInfo> driverList;
             std::vector<ComPortInfo> comList;
+            std::string usbInstanceId; /* USB设备实例ID(大写), 用于匹配输入类型映射 */
+            DEVINST usbDevInst = 0; /* USB设备在设备树上的节点, 用于向下检查HID类接口 */
             auto iter = devInfoDataList.find(driverName);
             if (devInfoDataList.end() != iter)
             {
+                usbDevInst = iter->second.DevInst;
                 product = getDevicePropertyString(devInfo, &(iter->second), DEVPKEY_Device_BusReportedDeviceDesc);
                 manufacturer = getDevicePropertyString(devInfo, &(iter->second), DEVPKEY_Device_Manufacturer);
                 CHAR instanceId[MAX_DEVICE_ID_LEN];
                 if (CR_SUCCESS == CM_Get_Device_ID(iter->second.DevInst, instanceId, MAX_PATH, 0))
                 {
-                    if (serial.empty())
+                    usbInstanceId = instanceId;
+                    std::transform(usbInstanceId.begin(), usbInstanceId.end(), usbInstanceId.begin(), ::toupper);
+                    if (serial.empty()) /* 实例ID末段不含'&'时即为设备序列号(保持原始大小写) */
                     {
-                        std::string str(instanceId);
-                        auto slashPos = str.rfind('\\');
-                        if (std::string::npos != slashPos)
+                        const char* lastSlash = strrchr(instanceId, '\\');
+                        if (NULL != lastSlash && '\0' != lastSlash[1] && NULL == strchr(lastSlash + 1, '&'))
                         {
-                            str = str.substr(slashPos + 1);
-                            if (std::string::npos == str.find('&'))
-                            {
-                                serial = str;
-                            }
+                            serial = lastSlash + 1;
                         }
                     }
                 }
@@ -662,7 +1205,7 @@ static void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO
                 if (SetupDiGetDevicePropertyW(devInfo, &(iter->second), &DEVPKEY_Device_BusRelations, &propertyType,
                                               reinterpret_cast<PBYTE>(propertyBuffer), sizeof(propertyBuffer), &requiredSize, 0))
                 {
-                    deviceId = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(propertyBuffer);
+                    deviceId = toUtf8(propertyBuffer);
                     parseBusRelations(deviceId, model, vendor, storageType, devicePath);
                     if (!devicePath.empty())
                     {
@@ -702,6 +1245,18 @@ static void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO
             info.deviceId = deviceId;
             info.model = model;
             info.vendor = vendor;
+            auto inputTypeIter = inputTypeMap.find(usbInstanceId); /* 输入类型: 同一USB设备的多个HID子设备已在映射表内取并集 */
+            if (inputTypeMap.end() != inputTypeIter)
+            {
+                info.inputType = inputTypeIter->second;
+            }
+            else if (!connectionInfoEx->DeviceIsHub
+                     && isKeyClassDevice(hHubDevice, index, connectionInfoEx->DeviceDescriptor.bDeviceClass, usbDevInst, usbInstanceId))
+            {
+                /* 兜底: 设备未被分类为键鼠/手柄/触摸类, 但HID报告描述符中存在按键类Input字段(如摄像头的抓拍键),
+                 * 按按键类设备处理, 与Linux上usbhid解析HID报告描述符后置ID_INPUT_KEY的语义对齐 */
+                info.inputType = "key";
+            }
             info.storageType = storageType;
             info.driverList = driverList;
             info.comList = comList;
@@ -710,7 +1265,7 @@ static void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO
         if (connectionInfoEx->DeviceIsHub) /* Hub Device */
         {
             enumerateHub(devInfo, devInfoDataList, rootIndex, getExternalHubName(hHubDevice, index), connectionInfoEx, localDriveList,
-                         comPortList, usbList);
+                         comPortList, inputTypeMap, usbList);
         }
         GlobalFree(connectionInfoEx);
     }
@@ -736,7 +1291,8 @@ static void enumerateHubPorts(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO
 
 static void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA> devInfoDataList, int rootIndex, std::string hubName,
                          PUSB_NODE_CONNECTION_INFORMATION_EX connectionInfo, std::vector<LogicalDrive>& localDriveList,
-                         const std::vector<ComPortInfo>& comPortList, std::vector<UsbImpl>& usbList)
+                         const std::vector<ComPortInfo>& comPortList, const std::map<std::string, std::string>& inputTypeMap,
+                         std::vector<UsbImpl>& usbList)
 {
     if (hubName.empty())
     {
@@ -763,14 +1319,8 @@ static void enumerateHub(HDEVINFO devInfo, std::map<std::string, SP_DEVINFO_DATA
         GlobalFree(hubInfo);
         return;
     }
-    if (NULL == connectionInfo) /* Root Hub */
-    {
-    }
-    else /* Extend Hub */
-    {
-    }
     enumerateHubPorts(devInfo, devInfoDataList, rootIndex, hHubDevice, hubInfo->u.HubInformation.HubDescriptor.bNumberOfPorts,
-                      localDriveList, comPortList, usbList);
+                      localDriveList, comPortList, inputTypeMap, usbList);
     CloseHandle(hHubDevice);
     GlobalFree(hubInfo);
 }
@@ -902,11 +1452,13 @@ static std::vector<UsbImpl> enumerateHostControllers()
     /* 遍历获取USB设备详情 */
     auto localDriveList = getLogicalDriveList();
     auto comPortList = getComPortList(devInfo);
+    auto inputTypeMap = getWinInputTypeMap(); /* 一次查询只建一次: 顶层USB设备实例ID -> 输入类型 */
     /* 按校准后的顺序枚举, 使用排序后的索引+1作为busNum, 与libusb保持一致 */
     for (size_t i = 0; i < controllers.size(); ++i)
     {
         int busNum = (int)(i + 1); /* 校准后的busNum */
-        enumerateHub(devInfo, devInfoDataList, busNum, controllers[i].rootHubName, NULL, localDriveList, comPortList, usbList);
+        enumerateHub(devInfo, devInfoDataList, busNum, controllers[i].rootHubName, NULL, localDriveList, comPortList, inputTypeMap,
+                     usbList);
     }
     SetupDiDestroyDeviceInfoList(devInfo);
     return usbList;
@@ -1021,7 +1573,10 @@ struct UsbUdevImpl
     std::string manufacturer; /* 厂商名称, 仅isUsbDevice有效, 来自sysfs manufacturer或udev属性ID_VENDOR */
     std::string devNodeName;
     bool isUsbDevice = false; /* 该记录是否为usb_device自身(用于提取设备详情, 替代debugfs解析) */
+    bool isInput = false; /* 是否输入设备 */
     bool isBlock = false; /* 是否存储设备 */
+    /* 以下字段仅isInput=true时有效, 全部来自udev属性(udevd的input_id内置程序根据evbit/absbit自动分类) */
+    std::string inputType; /* 输入类型串(逗号分隔) */
     /* 以下字段仅isBlock=true时有效, 全部来自udev数据库/sysfs纯文本读取, 不涉及设备块级访问和文件系统系统调用 */
     std::string devType; /* udev设备类型: disk-磁盘, partition-分区 */
     std::string fstype; /* 文件系统类型, 来自udev属性ID_FS_TYPE(udevd后台探测填充, 刚插入时可能短暂为空) */
@@ -1036,6 +1591,20 @@ struct UsbUdevImpl
 static std::string getUdevStr(const char* value)
 {
     return (value && *value) ? std::string(value) : std::string();
+}
+
+/* 读取udev输入分类属性, 属性值为"1"时把对应类型名追加到类型串(固定顺序追加, 同一节点内不会重复) */
+static void appendUdevInputType(struct udev_device* dev, const char* propertyName, const char* typeName, std::string& inputType)
+{
+    const char* valuePtr = udev_device_get_property_value(dev, propertyName);
+    if (valuePtr && 0 == strcmp("1", valuePtr))
+    {
+        if (!inputType.empty())
+        {
+            inputType += ",";
+        }
+        inputType += typeName;
+    }
 }
 
 /* 把hex字符串规整为4位小写hex(补前导0), 与parseUsb中"%04x"格式及debugfs解析结果一致 */
@@ -1162,27 +1731,45 @@ static std::vector<UsbUdevImpl> enumerateUsbUdevs()
                         }
                         else
                         {
-                            const auto isBlock = (subSystemPtr && 0 == strcmp("block", subSystemPtr));
-                            if (isBlock) /* 存储设备, 从udev数据库/sysfs读取属性(纯文本读取, 不阻塞) */
+                            const auto isInput = (subSystemPtr && 0 == strcmp("input", subSystemPtr));
+                            if (isInput) /* 输入设备, 读取内核/udevd的输入分类结果(udev的input_id内置程序根据evbit/absbit置位) */
                             {
-                                info.isBlock = isBlock;
-                                info.devType = getUdevStr(udev_device_get_devtype(dev)); /* disk-磁盘, partition-分区 */
-                                info.fstype = getUdevStr(udev_device_get_property_value(dev, "ID_FS_TYPE"));
-                                info.label = getUdevStr(udev_device_get_property_value(dev, "ID_FS_LABEL"));
-                                info.partlabel = getUdevStr(udev_device_get_property_value(dev, "ID_FS_PARTLABEL"));
-                                info.model = getUdevStr(udev_device_get_property_value(dev, "ID_MODEL"));
-                                if (info.model.empty()) /* udev数据库无属性时回退sysfs(分区无device目录, 由磁盘行提供) */
+                                info.isInput = isInput;
+                                appendUdevInputType(dev, "ID_INPUT_ACCELEROMETER", "accelerometer", info.inputType);
+                                appendUdevInputType(dev, "ID_INPUT_JOYSTICK", "joystick", info.inputType);
+                                appendUdevInputType(dev, "ID_INPUT_KEY", "key", info.inputType);
+                                appendUdevInputType(dev, "ID_INPUT_KEYBOARD", "keyboard", info.inputType);
+                                appendUdevInputType(dev, "ID_INPUT_MOUSE", "mouse", info.inputType);
+                                appendUdevInputType(dev, "ID_INPUT_POINTINGSTICK", "pointingstick", info.inputType);
+                                appendUdevInputType(dev, "ID_INPUT_SWITCH", "switch", info.inputType);
+                                appendUdevInputType(dev, "ID_INPUT_TABLET", "tablet", info.inputType);
+                                appendUdevInputType(dev, "ID_INPUT_TOUCHPAD", "touchpad", info.inputType);
+                                appendUdevInputType(dev, "ID_INPUT_TOUCHSCREEN", "touchscreen", info.inputType);
+                            }
+                            else
+                            {
+                                const auto isBlock = (subSystemPtr && 0 == strcmp("block", subSystemPtr));
+                                if (isBlock) /* 存储设备, 从udev数据库/sysfs读取属性(纯文本读取, 不阻塞) */
                                 {
-                                    info.model = getUdevStr(udev_device_get_sysattr_value(dev, "device/model"));
+                                    info.isBlock = isBlock;
+                                    info.devType = getUdevStr(udev_device_get_devtype(dev)); /* disk-磁盘, partition-分区 */
+                                    info.fstype = getUdevStr(udev_device_get_property_value(dev, "ID_FS_TYPE"));
+                                    info.label = getUdevStr(udev_device_get_property_value(dev, "ID_FS_LABEL"));
+                                    info.partlabel = getUdevStr(udev_device_get_property_value(dev, "ID_FS_PARTLABEL"));
+                                    info.model = getUdevStr(udev_device_get_property_value(dev, "ID_MODEL"));
+                                    if (info.model.empty()) /* udev数据库无属性时回退sysfs(分区无device目录, 由磁盘行提供) */
+                                    {
+                                        info.model = getUdevStr(udev_device_get_sysattr_value(dev, "device/model"));
+                                    }
+                                    info.vendor = getUdevStr(udev_device_get_property_value(dev, "ID_VENDOR"));
+                                    if (info.vendor.empty())
+                                    {
+                                        info.vendor = getUdevStr(udev_device_get_sysattr_value(dev, "device/vendor"));
+                                    }
+                                    /* size属性为512字节扇区数(内核get_capacity统一按512字节单位输出), 乘以512得到字节数 */
+                                    auto sizeStr = getUdevStr(udev_device_get_sysattr_value(dev, "size"));
+                                    info.capacity = sizeStr.empty() ? 0 : (std::atoll(sizeStr.c_str()) * 512);
                                 }
-                                info.vendor = getUdevStr(udev_device_get_property_value(dev, "ID_VENDOR"));
-                                if (info.vendor.empty())
-                                {
-                                    info.vendor = getUdevStr(udev_device_get_sysattr_value(dev, "device/vendor"));
-                                }
-                                /* size属性为512字节扇区数(内核get_capacity统一按512字节单位输出), 乘以512得到字节数 */
-                                auto sizeStr = getUdevStr(udev_device_get_sysattr_value(dev, "size"));
-                                info.capacity = sizeStr.empty() ? 0 : (std::atoll(sizeStr.c_str()) * 512);
                             }
                             info.devNodeName = devNode;
                         }
@@ -1284,6 +1871,10 @@ static void enumerateUsbDevNodes(const std::vector<UsbUdevImpl>& udevList, std::
         else /* 非存储设备 */
         {
             item.nonblockDevNodes.emplace_back(DevNode(info.devNodeName));
+            if (info.isInput) /* 输入设备, 聚合输入类型(同一USB设备可能有多个event输入节点, 取并集) */
+            {
+                mergeInputType(item.inputType, info.inputType);
+            }
         }
     }
     for (auto& item : usbList)
@@ -1810,10 +2401,11 @@ Usb::Usb(const Usb& src)
     m_pid = src.m_pid;
     m_serial = src.m_serial;
     m_product = src.m_product;
+    m_manufacturer = src.m_manufacturer;
     m_model = src.m_model;
     m_vendor = src.m_vendor;
+    m_inputType = src.m_inputType;
     m_storageType = src.m_storageType;
-    m_manufacturer = src.m_manufacturer;
     m_devNodes = src.m_devNodes;
     m_cdromInfo = src.m_cdromInfo;
 }
@@ -1986,6 +2578,11 @@ std::string Usb::getVendor() const
     return m_vendor;
 }
 
+std::string Usb::getInputType() const
+{
+    return m_inputType;
+}
+
 std::string Usb::getStorageType() const
 {
     return m_storageType;
@@ -2100,9 +2697,29 @@ std::string Usb::describeImpl(bool showChildren, int allIntend, int intend, cons
     appendStrField("manufacturer", m_manufacturer);
     appendStrField("model", m_model);
     appendStrField("vendor", m_vendor);
-    desc += "\"storageType\": \"";
-    desc += m_storageType;
-    desc += "\"";
+    bool hasOptionalField = false;
+    if (!m_inputType.empty())
+    {
+        desc += "\"inputType\": \"";
+        desc += m_inputType;
+        desc += '"';
+        hasOptionalField = true;
+    }
+    if (!m_storageType.empty())
+    {
+        if (hasOptionalField)
+        {
+            desc += ", ";
+        }
+        desc += "\"storageType\": \"";
+        desc += m_storageType;
+        desc += '"';
+        hasOptionalField = true;
+    }
+    if (!hasOptionalField)
+    {
+        desc.resize(desc.size() - 2); /* 两个字段都省略, 去掉上一字段遗留的", " */
+    }
     if (m_devNodes.size() > 0)
     {
         desc += ",";
@@ -2552,6 +3169,10 @@ std::shared_ptr<usb::Usb> Usb::parseUsb(libusb_device* dev, bool detailFlag, con
             if (info->m_vendor.empty())
             {
                 info->m_vendor = temp->vendor;
+            }
+            if (info->m_inputType.empty())
+            {
+                info->m_inputType = temp->inputType;
             }
             if (info->m_storageType.empty())
             {
