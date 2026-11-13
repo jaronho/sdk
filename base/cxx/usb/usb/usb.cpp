@@ -1,11 +1,13 @@
 #include "usb.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <codecvt>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <string.h>
 #include <tuple>
@@ -26,8 +28,13 @@
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "cfgmgr32.lib")
 #else
+#include <cstdio>
+#include <cstdlib>
 #include <libudev.h>
 #include <sys/select.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#include <sys/types.h>
 #endif
 
 namespace usb
@@ -1111,7 +1118,7 @@ std::vector<UsbImpl> enumerateHostControllers()
     /* 按校准后的顺序枚举, 使用排序后的索引+1作为busNum, 与libusb保持一致 */
     for (size_t i = 0; i < controllers.size(); ++i)
     {
-        int busNum = static_cast<int>(i + 1); /* 校准后的busNum */
+        int busNum = (int)(i + 1); /* 校准后的busNum */
         enumerateHub(devInfo, devInfoDataList, busNum, controllers[i].rootHubName, NULL, localDriveList, comPortList, usbList);
     }
     SetupDiDestroyDeviceInfoList(devInfo);
@@ -1121,12 +1128,35 @@ std::vector<UsbImpl> enumerateHostControllers()
 std::vector<UsbImpl> enumerateUsbDevices()
 {
     std::vector<UsbImpl> usbList;
-    std::vector<std::string> outVec;
     std::ifstream file("/sys/kernel/debug/usb/devices");
     if (!file.is_open())
     {
         return usbList; /* debugfs未挂载或无权限时读取失败, 返回空列表 */
     }
+    static const std::string BUS_FLAG = "Bus="; /* 总线号 */
+    static const std::string PRNT_FLAG = "Prnt="; /* 父设备数量, 如: XHCI控制器是root, 位于最顶层, 其Prnt=0 */
+    static const std::string PORT_FLAG = "Port="; /* 端口 */
+    static const std::string ADDRESS_FLAG = "Dev#="; /* 设备编号 */
+    static const std::string VID_FLAG = "Vendor="; /* VID */
+    static const std::string PID_FLAG = "ProdID="; /* PID */
+    static const std::string SERIAL_FLAG = "SerialNumber="; /* 序列号 */
+    static const std::string PRODUCT_FLAG = "Product="; /* 产品名称 */
+    static const std::string MANUFACTURER_FLAG = "Manufacturer="; /* 厂商名称 */
+    /* 提取标志后第一个空格分隔的字段 */
+    auto extractToken = [](const std::string& line, size_t start) {
+        auto begin = line.find_first_not_of(' ', start);
+        if (std::string::npos == begin)
+        {
+            return std::string();
+        }
+        auto end = line.find(' ', begin);
+        if (std::string::npos == end)
+        {
+            end = line.size();
+        }
+        return line.substr(begin, end - begin);
+    };
+    UsbImpl info;
     std::string line;
     while (std::getline(file, line))
     {
@@ -1134,123 +1164,33 @@ std::vector<UsbImpl> enumerateUsbDevices()
         {
             line.pop_back();
         }
-        outVec.emplace_back(line);
-    }
-    UsbImpl info;
-    for (const auto& line : outVec)
-    {
-        static const std::string BUS_FLAG = "Bus="; /* 总线号 */
-        static const std::string PRNT_FLAG = "Prnt="; /* 父设备数量, 如: XHCI控制器是root, 位于最顶层, 其Prnt=0 */
-        static const std::string PORT_FLAG = "Port="; /* 端口 */
-        static const std::string ADDRESS_FLAG = "Dev#="; /* 设备编号 */
-        static const std::string VID_FLAG = "Vendor="; /* VID */
-        static const std::string PID_FLAG = "ProdID="; /* PID */
-        static const std::string SERIAL_FLAG = "SerialNumber="; /* 序列号 */
-        static const std::string PRODUCT_FLAG = "Product="; /* 产品名称 */
-        static const std::string MANUFACTURER_FLAG = "Manufacturer="; /* 厂商名称 */
         auto busPos = line.find(BUS_FLAG);
         auto prntPos = line.find(PRNT_FLAG);
         auto portPos = line.find(PORT_FLAG);
         auto addressPos = line.find(ADDRESS_FLAG);
         if (std::string::npos != busPos && std::string::npos != prntPos && std::string::npos != portPos && std::string::npos != addressPos)
         {
-            if (info.busNum >= 0 && info.portNum >= 0 && info.address >= 0)
+            if (info.busNum >= 0 && info.portNum >= 0 && info.address >= 0) /* 遇到新T:行, 先flush上一条记录 */
             {
                 usbList.emplace_back(info);
                 info = UsbImpl();
             }
-            std::string busTmp;
-            for (size_t i = busPos + BUS_FLAG.size(); i < line.size(); ++i)
+            info.busNum = std::atoi(extractToken(line, busPos + BUS_FLAG.size()).c_str());
+            info.portNum = std::atoi(extractToken(line, portPos + PORT_FLAG.size()).c_str());
+            if (std::atoi(extractToken(line, prntPos + PRNT_FLAG.size()).c_str()) > 0) /* 非根HUB, 端口号需要加1 */
             {
-                if (' ' != line[i])
-                {
-                    busTmp.push_back(line[i]);
-                }
-                else if (!busTmp.empty())
-                {
-                    break;
-                }
+                info.portNum += 1;
             }
-            std::string prntTmp;
-            for (size_t i = prntPos + PRNT_FLAG.size(); i < line.size(); ++i)
-            {
-                if (' ' != line[i])
-                {
-                    prntTmp.push_back(line[i]);
-                }
-                else if (!prntTmp.empty())
-                {
-                    break;
-                }
-            }
-            std::string portTmp;
-            for (size_t i = portPos + PORT_FLAG.size(); i < line.size(); ++i)
-            {
-                if (' ' != line[i])
-                {
-                    portTmp.push_back(line[i]);
-                }
-                else if (!portTmp.empty())
-                {
-                    break;
-                }
-            }
-            std::string addressTmp;
-            for (size_t i = addressPos + ADDRESS_FLAG.size(); i < line.size(); ++i)
-            {
-                if (' ' != line[i])
-                {
-                    addressTmp.push_back(line[i]);
-                }
-                else if (!addressTmp.empty())
-                {
-                    break;
-                }
-            }
-            try
-            {
-                info.busNum = std::atoi(busTmp.c_str());
-                info.portNum = std::atoi(portTmp.c_str());
-                if (std::atoi(prntTmp.c_str()) > 0) /* 非根HUB, 端口号需要加1 */
-                {
-                    info.portNum += 1;
-                }
-                info.address = std::atoi(addressTmp.c_str());
-            }
-            catch (...)
-            {
-            }
+            info.address = std::atoi(extractToken(line, addressPos + ADDRESS_FLAG.size()).c_str());
             continue;
         }
         auto vidPos = line.find(VID_FLAG);
         auto pidPos = line.find(PID_FLAG);
         if (std::string::npos != vidPos && std::string::npos != pidPos)
         {
-            std::string vidTmp;
-            for (size_t i = vidPos + VID_FLAG.size(); i < line.size(); ++i)
-            {
-                if (' ' != line[i])
-                {
-                    vidTmp.push_back(line[i]);
-                }
-                else if (!vidTmp.empty())
-                {
-                    break;
-                }
-            }
+            auto vidTmp = extractToken(line, vidPos + VID_FLAG.size());
             std::transform(vidTmp.begin(), vidTmp.end(), vidTmp.begin(), tolower);
-            std::string pidTmp;
-            for (size_t i = pidPos + PID_FLAG.size(); i < line.size(); ++i)
-            {
-                if (' ' != line[i])
-                {
-                    pidTmp.push_back(line[i]);
-                }
-                else if (!pidTmp.empty())
-                {
-                    break;
-                }
-            }
+            auto pidTmp = extractToken(line, pidPos + PID_FLAG.size());
             std::transform(pidTmp.begin(), pidTmp.end(), pidTmp.begin(), tolower);
             info.vid = vidTmp;
             info.pid = pidTmp;
@@ -1287,9 +1227,15 @@ struct UsbUdevImpl
     int busNum = -1;
     int portNum = -1;
     int address = -1;
+    std::string vid; /* 厂商ID(4位小写hex), 仅isUsbDevice有效, 来自sysfs idVendor或udev属性ID_VENDOR_ID */
+    std::string pid; /* 产品ID(4位小写hex), 仅isUsbDevice有效 */
+    std::string serial; /* 序列号, 仅isUsbDevice有效, 来自sysfs serial或udev属性ID_SERIAL_SHORT */
+    std::string product; /* 产品名称, 仅isUsbDevice有效, 来自sysfs product或udev属性ID_MODEL */
+    std::string manufacturer; /* 厂商名称, 仅isUsbDevice有效, 来自sysfs manufacturer或udev属性ID_VENDOR */
     std::string devNodeName;
-    bool isBlock = false;
-    /* 以下字段仅存储设备有效, 全部来自udev数据库/sysfs纯文本读取, 不涉及设备块级访问和文件系统系统调用 */
+    bool isUsbDevice = false; /* 该记录是否为usb_device自身(用于提取设备详情, 替代debugfs解析) */
+    bool isBlock = false; /* 是否存储设备 */
+    /* 以下字段仅isBlock=true时有效, 全部来自udev数据库/sysfs纯文本读取, 不涉及设备块级访问和文件系统系统调用 */
     std::string devType; /* udev设备类型: disk-磁盘, partition-分区 */
     std::string fstype; /* 文件系统类型, 来自udev属性ID_FS_TYPE(udevd后台探测填充, 刚插入时可能短暂为空) */
     std::string label; /* 文件系统标签, 来自udev属性ID_FS_LABEL */
@@ -1303,6 +1249,18 @@ struct UsbUdevImpl
 static std::string getUdevStr(const char* value)
 {
     return (value && *value) ? std::string(value) : std::string();
+}
+
+/* 把hex字符串规整为4位小写hex(补前导0), 与parseUsb中"%04x"格式及debugfs解析结果一致 */
+static std::string getUdevHex4(const char* value)
+{
+    if (!value || !*value)
+    {
+        return std::string();
+    }
+    char buf[8] = {0};
+    snprintf(buf, sizeof(buf), "%04x", (unsigned int)(std::strtoul(value, nullptr, 16)));
+    return buf;
 }
 
 std::vector<UsbUdevImpl> enumerateUsbUdevs()
@@ -1320,12 +1278,13 @@ std::vector<UsbUdevImpl> enumerateUsbUdevs()
         return udevList;
     }
     udev_enumerate_add_match_is_initialized(enumerate);
-#if 0 /* 暂时屏蔽设备过滤类型 */
-    udev_enumerate_add_match_subsystem(enumerate, "block");
-    udev_enumerate_add_match_subsystem(enumerate, "hidraw");
-    udev_enumerate_add_match_subsystem(enumerate, "scsi");
-    udev_enumerate_add_match_subsystem(enumerate, "video4linux");
-#endif
+    /* 按子系统白名单扫描: 只遍历可能挂接在USB设备下并产生设备节点的子系统, 避免scan_devices遍历整个sysfs树;
+     * 白名单内各设备仍会用syspath含"/usb"做二次过滤, 非USB总线的同名子系统设备不会进入结果 */
+    static const char* usbDevSubsystems[] = {"block", "usb", "usbmisc", "tty", "hidraw", "input", "video4linux", "snd", "dvb", "scsi"};
+    for (const char* subsystem : usbDevSubsystems)
+    {
+        udev_enumerate_add_match_subsystem(enumerate, subsystem);
+    }
     udev_enumerate_scan_devices(enumerate);
     struct udev_list_entry* devEntryList = udev_enumerate_get_list_entry(enumerate);
     if (!devEntryList)
@@ -1353,15 +1312,19 @@ std::vector<UsbUdevImpl> enumerateUsbUdevs()
             const char* devNode = udev_device_get_devnode(dev);
             if (devNode)
             {
-                struct udev_device* pDev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
-                if (pDev)
+                const char* subSystemPtr = udev_device_get_subsystem(dev);
+                const char* devTypePtr = udev_device_get_devtype(dev);
+                /* usb_device自身记录用于提取设备详情(vid/pid/serial等, 替代debugfs解析), 其余记录用于收集设备节点 */
+                const bool isUsbDevice =
+                    (subSystemPtr && 0 == strcmp("usb", subSystemPtr) && devTypePtr && 0 == strcmp("usb_device", devTypePtr));
+                struct udev_device* usbDev = isUsbDevice ? dev : udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
+                if (usbDev)
                 {
-                    const char* busNumPtr = udev_device_get_property_value(pDev, "BUSNUM");
-                    const char* portNumPtr = udev_device_get_sysnum(pDev);
-                    const char* devNumPtr = udev_device_get_property_value(pDev, "DEVNUM");
+                    const char* busNumPtr = udev_device_get_property_value(usbDev, "BUSNUM");
+                    const char* portNumPtr = udev_device_get_sysnum(usbDev);
+                    const char* devNumPtr = udev_device_get_property_value(usbDev, "DEVNUM");
                     if (busNumPtr && portNumPtr && devNumPtr)
                     {
-                        const char* subSystemPtr = udev_device_get_subsystem(dev);
                         UsbUdevImpl info;
                         try
                         {
@@ -1372,27 +1335,69 @@ std::vector<UsbUdevImpl> enumerateUsbUdevs()
                         catch (...)
                         {
                         }
-                        info.devNodeName = devNode;
-                        info.isBlock = (subSystemPtr && 0 == strcmp("block", subSystemPtr));
-                        if (info.isBlock) /* 存储设备, 从udev数据库/sysfs读取属性(纯文本读取, 不阻塞) */
+                        /* root hub的sysname形如usbN(sysnum会取到N), 而libusb的root hub端口号为0 */
+                        const char* sysName = udev_device_get_sysname(usbDev);
+                        if (sysName && 0 == strncmp(sysName, "usb", 3) && '\0' != sysName[3])
                         {
-                            info.devType = getUdevStr(udev_device_get_devtype(dev)); /* disk-磁盘, partition-分区 */
-                            info.fstype = getUdevStr(udev_device_get_property_value(dev, "ID_FS_TYPE"));
-                            info.label = getUdevStr(udev_device_get_property_value(dev, "ID_FS_LABEL"));
-                            info.partlabel = getUdevStr(udev_device_get_property_value(dev, "ID_FS_PARTLABEL"));
-                            info.model = getUdevStr(udev_device_get_property_value(dev, "ID_MODEL"));
-                            if (info.model.empty()) /* udev数据库无属性时回退sysfs(分区无device目录, 由磁盘行提供) */
+                            info.portNum = 0;
+                        }
+                        if (isUsbDevice)
+                        {
+                            info.isUsbDevice = isUsbDevice;
+                            /* 设备详情: 优先读sysfs原始串(udevd枚举时已读取过, 内核已缓存, 命中缓存不触发USB控制传输),
+                             * udev数据库无值时回退属性(注意ID_MODEL/ID_VENDOR是下划线sanitize后的串) */
+                            info.vid = getUdevHex4(udev_device_get_sysattr_value(usbDev, "idVendor"));
+                            if (info.vid.empty())
                             {
-                                info.model = getUdevStr(udev_device_get_sysattr_value(dev, "device/model"));
+                                info.vid = getUdevHex4(udev_device_get_property_value(usbDev, "ID_VENDOR_ID"));
                             }
-                            info.vendor = getUdevStr(udev_device_get_property_value(dev, "ID_VENDOR"));
-                            if (info.vendor.empty())
+                            info.pid = getUdevHex4(udev_device_get_sysattr_value(usbDev, "idProduct"));
+                            if (info.pid.empty())
                             {
-                                info.vendor = getUdevStr(udev_device_get_sysattr_value(dev, "device/vendor"));
+                                info.pid = getUdevHex4(udev_device_get_property_value(usbDev, "ID_MODEL_ID"));
                             }
-                            /* size属性为512字节扇区数(内核get_capacity统一按512字节单位输出), 乘以512得到字节数 */
-                            auto sizeStr = getUdevStr(udev_device_get_sysattr_value(dev, "size"));
-                            info.capacity = sizeStr.empty() ? 0 : (std::atoll(sizeStr.c_str()) * 512);
+                            info.serial = getUdevStr(udev_device_get_sysattr_value(usbDev, "serial"));
+                            if (info.serial.empty())
+                            {
+                                info.serial = getUdevStr(udev_device_get_property_value(usbDev, "ID_SERIAL_SHORT"));
+                            }
+                            info.product = getUdevStr(udev_device_get_sysattr_value(usbDev, "product"));
+                            if (info.product.empty())
+                            {
+                                info.product = getUdevStr(udev_device_get_property_value(usbDev, "ID_MODEL"));
+                            }
+                            info.manufacturer = getUdevStr(udev_device_get_sysattr_value(usbDev, "manufacturer"));
+                            if (info.manufacturer.empty())
+                            {
+                                info.manufacturer = getUdevStr(udev_device_get_property_value(usbDev, "ID_VENDOR"));
+                            }
+                            info.devNodeName.clear(); /* 节点收集保持原有行为, usb_device自身节点(/dev/bus/usb)不混入devNodes */
+                        }
+                        else
+                        {
+                            const auto isBlock = (subSystemPtr && 0 == strcmp("block", subSystemPtr));
+                            if (isBlock) /* 存储设备, 从udev数据库/sysfs读取属性(纯文本读取, 不阻塞) */
+                            {
+                                info.isBlock = isBlock;
+                                info.devType = getUdevStr(udev_device_get_devtype(dev)); /* disk-磁盘, partition-分区 */
+                                info.fstype = getUdevStr(udev_device_get_property_value(dev, "ID_FS_TYPE"));
+                                info.label = getUdevStr(udev_device_get_property_value(dev, "ID_FS_LABEL"));
+                                info.partlabel = getUdevStr(udev_device_get_property_value(dev, "ID_FS_PARTLABEL"));
+                                info.model = getUdevStr(udev_device_get_property_value(dev, "ID_MODEL"));
+                                if (info.model.empty()) /* udev数据库无属性时回退sysfs(分区无device目录, 由磁盘行提供) */
+                                {
+                                    info.model = getUdevStr(udev_device_get_sysattr_value(dev, "device/model"));
+                                }
+                                info.vendor = getUdevStr(udev_device_get_property_value(dev, "ID_VENDOR"));
+                                if (info.vendor.empty())
+                                {
+                                    info.vendor = getUdevStr(udev_device_get_sysattr_value(dev, "device/vendor"));
+                                }
+                                /* size属性为512字节扇区数(内核get_capacity统一按512字节单位输出), 乘以512得到字节数 */
+                                auto sizeStr = getUdevStr(udev_device_get_sysattr_value(dev, "size"));
+                                info.capacity = sizeStr.empty() ? 0 : (std::atoll(sizeStr.c_str()) * 512);
+                            }
+                            info.devNodeName = devNode;
                         }
                         udevList.emplace_back(info);
                     }
@@ -1407,10 +1412,39 @@ std::vector<UsbUdevImpl> enumerateUsbUdevs()
 }
 
 /**
+ * @brief 从udev枚举结果的usb_device记录构建设备详情列表
+ * @param udevList udev枚举结果
+ * @return 设备详情列表
+ */
+static std::vector<UsbImpl> buildUsbImplFromUdev(const std::vector<UsbUdevImpl>& udevList)
+{
+    std::vector<UsbImpl> usbList;
+    for (const auto& info : udevList)
+    {
+        if (!info.isUsbDevice || info.busNum < 0 || info.portNum < 0 || info.address < 0)
+        {
+            continue;
+        }
+        UsbImpl item;
+        item.busNum = info.busNum;
+        item.portNum = info.portNum;
+        item.address = info.address;
+        item.vid = info.vid;
+        item.pid = info.pid;
+        item.serial = info.serial;
+        item.product = info.product;
+        item.manufacturer = info.manufacturer;
+        usbList.emplace_back(std::move(item));
+    }
+    return usbList;
+}
+
+/**
  * @brief 从udev枚举结果中收集USB设备的设备节点信息
+ * @param udevList 已采集的udev枚举结果
  * @param usbList [输入/输出]USB设备列表
  */
-void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
+void enumerateUsbDevNodes(const std::vector<UsbUdevImpl>& udevList, std::vector<UsbImpl>& usbList)
 {
     if (usbList.empty())
     {
@@ -1422,9 +1456,12 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
     {
         indexMap.emplace(std::make_tuple(usbList[i].busNum, usbList[i].portNum, usbList[i].address), i);
     }
-    auto udevList = enumerateUsbUdevs();
     for (const auto& info : udevList)
     {
+        if (info.isUsbDevice) /* 详情记录不参与节点收集 */
+        {
+            continue;
+        }
         auto iter = indexMap.find(std::make_tuple(info.busNum, info.portNum, info.address));
         if (indexMap.end() == iter)
         {
@@ -1441,18 +1478,15 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
             {
                 item.vendor = info.vendor;
             }
-            if ("disk" == info.devType) /* 磁盘 */
+            if (0 == info.devNodeName.rfind("/dev/sr", 0)) /* 光驱 */
             {
-                if (0 == info.devNodeName.rfind("/dev/sr", 0)) /* 光驱 */
-                {
-                    item.storageType = "cdrom";
-                    item.blockDevNodes.emplace_back(DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity));
-                }
-                else
-                {
-                    item.storageType = "disk";
-                    item.blockDevRootNode = DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity);
-                }
+                item.storageType = "cdrom";
+                item.blockDevNodes.emplace_back(DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity));
+            }
+            else if ("disk" == info.devType) /* 磁盘 */
+            {
+                item.storageType = "disk";
+                item.blockDevRootNode = DevNode(info.devNodeName, "", info.fstype, info.label, info.partlabel, info.capacity);
             }
             else if ("partition" == info.devType) /* 分区 */
             {
@@ -1484,7 +1518,7 @@ void enumerateUsbDevNodes(std::vector<UsbImpl>& usbList)
     }
 }
 
-/* 还原/proc/mounts中转义的特殊字符: 空格\040, 制表符\011, 换行\012, 反斜杠\134 */
+/* 还原procfs挂载表中转义的特殊字符: 空格\040, 制表符\011, 换行\012, 反斜杠\134 */
 static std::string unescapeMountPath(const std::string& src)
 {
     std::string dst;
@@ -1524,48 +1558,101 @@ static std::string unescapeMountPath(const std::string& src)
     return dst;
 }
 
-/* 挂载项: first-挂载源设备全路径(已还原转义), second-挂载点(已还原转义) */
-typedef std::pair<std::string, std::string> MountEntry;
+/* 挂载项 */
+struct MountEntry
+{
+    unsigned long long devId = 0; /* 设备号(major:minor), 伪文件系统为0 */
+    std::string devPath; /* 挂载源设备路径(已还原转义), 如: /dev/sdb1或/dev/disk/by-uuid/xxxx */
+    std::string mountpoint; /* 挂载点(已还原转义) */
+};
 
 /**
- * @brief 一次性解析/proc/mounts生成挂载快照
+ * @brief 一次性解析/proc/self/mountinfo生成挂载快照
  * @return 挂载项列表, 文件打不开时返回空列表
- * @note 纯读取procfs不触发文件系统系统调用, 不会阻塞; 供多个设备节点复用, 避免重复打开解析
  */
 static std::vector<MountEntry> getMountSnapshot()
 {
     std::vector<MountEntry> snapshot;
-    std::ifstream file("/proc/mounts");
+    std::ifstream file("/proc/self/mountinfo");
     if (!file.is_open())
     {
         return snapshot;
     }
+    auto nextToken = [](const std::string& line, size_t start, std::string& out) -> size_t {
+        auto begin = line.find_first_not_of(' ', start);
+        if (std::string::npos == begin)
+        {
+            out.clear();
+            return std::string::npos;
+        }
+        auto end = line.find(' ', begin);
+        if (std::string::npos == end)
+        {
+            out = line.substr(begin);
+            return std::string::npos;
+        }
+        out = line.substr(begin, end - begin);
+        return end + 1;
+    };
     std::string line;
     while (std::getline(file, line))
     {
-        /* 格式: 设备 挂载点 文件系统 其他字段, 以空格分隔 */
-        auto devEnd = line.find(' ');
-        if (std::string::npos == devEnd)
+        /* 格式: 挂载ID 父ID major:minor 根目录 挂载点 挂载选项 [可选字段...] - 文件系统类型 挂载源 超级块选项 */
+        std::string token, majMin, mountpoint, devPath;
+        size_t pos = 0;
+        pos = nextToken(line, pos, token); /* 挂载ID */
+        if (std::string::npos == pos)
         {
             continue;
         }
-        auto mountStart = line.find_first_not_of(' ', devEnd);
-        if (std::string::npos == mountStart)
+        pos = nextToken(line, pos, token); /* 父ID */
+        if (std::string::npos == pos)
         {
             continue;
         }
-        auto mountEnd = line.find(' ', mountStart);
-        if (std::string::npos == mountEnd)
+        pos = nextToken(line, pos, majMin); /* major:minor */
+        if (std::string::npos == pos)
         {
             continue;
         }
-        snapshot.emplace_back(unescapeMountPath(line.substr(0, devEnd)), unescapeMountPath(line.substr(mountStart, mountEnd - mountStart)));
+        pos = nextToken(line, pos, token); /* 根目录 */
+        if (std::string::npos == pos)
+        {
+            continue;
+        }
+        pos = nextToken(line, pos, mountpoint); /* 挂载点 */
+        auto sepPos = pos;
+        while (std::string::npos != sepPos) /* 向后扫描到"-"分隔符, 取挂载源 */
+        {
+            sepPos = nextToken(line, sepPos, token);
+            if ("-" == token)
+            {
+                std::string fstype;
+                sepPos = nextToken(line, sepPos, fstype); /* 文件系统类型 */
+                sepPos = nextToken(line, sepPos, devPath); /* 挂载源 */
+                break;
+            }
+        }
+        MountEntry entry;
+        auto colon = majMin.find(':');
+        if (std::string::npos != colon)
+        {
+            entry.devId = (std::strtoull(majMin.substr(0, colon).c_str(), nullptr, 10) << 32)
+                          | std::strtoull(majMin.substr(colon + 1).c_str(), nullptr, 10);
+        }
+        entry.devPath = unescapeMountPath(devPath);
+        entry.mountpoint = unescapeMountPath(mountpoint);
+        if (entry.mountpoint.empty())
+        {
+            continue;
+        }
+        snapshot.emplace_back(std::move(entry));
     }
     return snapshot;
 }
 
 /**
- * @brief 从挂载快照中按设备名查找挂载点
+ * @brief 从挂载快照中查找设备节点的挂载点
  * @param snapshot 挂载快照
  * @param devName 设备节点名, 如: /dev/sdb1
  * @return 挂载点, 未挂载时返回空串
@@ -1576,14 +1663,32 @@ static std::string findMountpoint(const std::vector<MountEntry>& snapshot, const
     {
         return std::string();
     }
+    /* 优先按设备号(major:minor)精确匹配: 挂载源写作/dev/disk/by-uuid或by-label等形式也能命中 */
+    struct stat st;
+    if (0 == ::stat(devName.c_str(), &st) && 0 != st.st_rdev)
+    {
+        const unsigned long long devId = ((unsigned long long)(major(st.st_rdev)) << 32) | minor(st.st_rdev);
+        for (const auto& entry : snapshot)
+        {
+            if (entry.devId == devId)
+            {
+                return entry.mountpoint;
+            }
+        }
+    }
+    /* 设备节点不存在时(如设备已拔出)回退按挂载源basename匹配, 保持原有行为; 伪文件系统(devId为0)不参与 */
     auto pos = devName.find_last_of("/");
     std::string basename = (std::string::npos != pos) ? devName.substr(pos + 1) : devName;
     for (const auto& entry : snapshot)
     {
-        auto devPos = entry.first.find_last_of('/');
-        if (std::string::npos != devPos && basename == entry.first.substr(devPos + 1)) /* 挂载源设备名精确匹配 */
+        if (0 == entry.devId)
         {
-            return entry.second;
+            continue;
+        }
+        auto devPos = entry.devPath.find_last_of('/');
+        if (std::string::npos != devPos && basename == entry.devPath.substr(devPos + 1)) /* 挂载源设备名精确匹配 */
+        {
+            return entry.mountpoint;
         }
     }
     return std::string();
@@ -1631,7 +1736,7 @@ bool isMountpoint(std::string path)
     const auto mountSnapshot = getMountSnapshot();
     for (const auto& entry : mountSnapshot)
     {
-        if (entry.second == path)
+        if (entry.mountpoint == path)
         {
             return true;
         }
@@ -1730,7 +1835,6 @@ std::vector<CdromInfo> getCdromInfoList(std::string& outStr)
     outStr.clear();
     std::vector<CdromInfo> infoList;
     std::vector<std::string> outVec;
-    /* 直接按行读取procfs文件, 与cat效果一致, 但省去popen/fork子进程和shell解析(纯内核内存文本, 读取不阻塞) */
     std::ifstream file("/proc/sys/dev/cdrom/info");
     if (file.is_open())
     {
@@ -2123,6 +2227,16 @@ bool Usb::isCdrom() const
 
 std::string Usb::describe(bool showChildren, int allIntend, int intend) const
 {
+#ifdef _WIN32
+    return describeImpl(showChildren, allIntend, intend, nullptr);
+#else
+    const auto mountSnapshot = getMountSnapshot();
+    return describeImpl(showChildren, allIntend, intend, &mountSnapshot);
+#endif
+}
+
+std::string Usb::describeImpl(bool showChildren, int allIntend, int intend, const std::vector<MountEntry>* mountSnapshot) const
+{
     std::string allIntendStr(allIntend, ' '), intendStr(intend, ' '), crlfStr(intend > 0 ? "\n" : "");
     /* 预构造换行缩进串, 避免每次拼接都临时构造string */
     const std::string newlineIndent = crlfStr + allIntendStr + intendStr;
@@ -2193,9 +2307,6 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
         desc += ",";
         desc += newlineIndent;
         desc += "\"devNodes\": [";
-#ifndef _WIN32
-        const auto mountSnapshot = getMountSnapshot(); /* 一次解析挂载表, 供全部设备节点复用 */
-#endif
         for (size_t i = 0; i < m_devNodes.size(); ++i)
         {
             if (i > 0)
@@ -2236,7 +2347,7 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
 #ifdef _WIN32
             auto mountpoint = m_devNodes[i].getMountpoint();
 #else
-            auto mountpoint = findMountpoint(mountSnapshot, m_devNodes[i].name);
+            auto mountpoint = findMountpoint(*mountSnapshot, m_devNodes[i].name);
 #endif
             if (!mountpoint.empty())
             {
@@ -2292,7 +2403,7 @@ std::string Usb::describe(bool showChildren, int allIntend, int intend) const
                 desc += firstChild ? "" : ",";
                 firstChild = false;
                 desc += crlfStr; /* 换行 */
-                desc += child->describe(showChildren, allIntend + intend + intend, intend);
+                desc += child->describeImpl(showChildren, allIntend + intend + intend, intend, mountSnapshot);
             }
         }
         desc += newlineIndent;
@@ -2312,8 +2423,19 @@ std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
     {
         libusb_device** devList = NULL;
         ssize_t count = libusb_get_device_list(ctx, &devList);
-        if (count > 0 && devList)
+        if (devList) /* count为0时devList也可能是空数组, 同样需要释放 */
         {
+            /* libusb资源守卫: 正常返回或异常退出时都保证释放设备列表并销毁context, 避免轮询场景下fd与context累积 */
+            struct DeviceListGuard
+            {
+                libusb_device** list;
+                libusb_context* context;
+                ~DeviceListGuard()
+                {
+                    libusb_free_device_list(list, 1);
+                    libusb_exit(context);
+                }
+            } guard = {devList, ctx};
             std::vector<UsbImpl> implList;
             std::vector<CdromInfo> cdromList;
             if (detailFlag)
@@ -2323,9 +2445,14 @@ std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
                 implList = enumerateHostControllers();
                 cdromList = getCdromInfoList();
 #else
-                /* Linux平台下libusb打开设备可能会卡住, 因此通过读取系统内核文件获取详细信息 */
-                implList = enumerateUsbDevices();
-                enumerateUsbDevNodes(implList);
+                /* Linux平台下libusb打开设备可能会卡住: 一次udev扫描同时产出设备详情(usb_device记录)与设备节点(block/tty等记录) */
+                auto udevList = enumerateUsbUdevs();
+                implList = buildUsbImplFromUdev(udevList);
+                if (implList.empty()) /* udev无usb_device记录(未运行udevd/数据库未初始化)时回退debugfs解析 */
+                {
+                    implList = enumerateUsbDevices();
+                }
+                enumerateUsbDevNodes(udevList, implList);
                 std::string outStr;
                 cdromList = getCdromInfoList(outStr);
 #endif
@@ -2367,9 +2494,11 @@ std::vector<std::shared_ptr<usb::Usb>> Usb::getAllUsbs(bool detailFlag)
                 }
                 usbList[k]->m_path = usbList[k]->calculatePath();
             }
-            libusb_free_device_list(devList, 1);
         }
-        libusb_exit(ctx);
+        else
+        {
+            libusb_exit(ctx); /* 获取设备列表失败, 仅销毁context */
+        }
     }
     return usbList;
 }
@@ -2401,7 +2530,7 @@ bool Usb::registerDeviceNotify(HANDLE handle)
 }
 #else
 void Usb::loopCheckDeviceNotify(const std::function<void(const std::string& devPath)>& addCb,
-                                const std::function<void(const std::string& devPath)>& removeCb)
+                                const std::function<void(const std::string& devPath)>& removeCb, const std::function<bool()>& stopFunc)
 {
     struct udev* udev = udev_new();
     if (!udev)
@@ -2415,46 +2544,92 @@ void Usb::loopCheckDeviceNotify(const std::function<void(const std::string& devP
         udev_unref(udev);
         return;
     }
-    /* step2. 过滤usb子系统, USB设备层 */
+    /* step2. 过滤usb子系统, USB设备层; 过滤器安装失败时由循环内的手动复核兜底 */
     udev_monitor_filter_add_match_subsystem_devtype(monitor, "usb", "usb_device");
     /* step3. 启用接收 */
     udev_monitor_enable_receiving(monitor);
     int fd = udev_monitor_get_fd(monitor);
+    if (fd < 0)
+    {
+        /* fd无效时无法监听, 直接回收退出: 避免FD_SET(-1)未定义行为和select立即返回导致的CPU空转 */
+        udev_monitor_unref(monitor);
+        udev_unref(udev);
+        return;
+    }
     /* step4. 事件循环 */
-    while (true)
+    /* 已通知过插入的syspath集合, 用于add/bind事件去重:
+     * 新内核(>=4.19)对usb_device会先后发出add与bind两个事件, 老内核只有add;
+     * 以syspath去重保证每次插入只回调一次addCb, 通知在add即发出(usb_new_device在device_add前已缓存描述符字符串) */
+    std::set<std::string> addedSet;
+    while (nullptr == stopFunc || !stopFunc()) /* 每轮循环判断一次退出条件 */
     {
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(fd, &fds);
-        if (select(fd + 1, &fds, nullptr, nullptr, nullptr) > 0)
+        /* 带超时select: 定时醒来检查退出条件, 避免无限阻塞导致线程无法退出 */
+        struct timeval tv = {0, 200 * 1000}; /* 200ms */
+        int ret = select(fd + 1, &fds, nullptr, nullptr, &tv);
+        if (ret < 0)
         {
-            struct udev_device* dev = udev_monitor_receive_device(monitor);
-            if (dev)
+            if (EINTR == errno) /* 信号打断, 继续监听 */
             {
-                const char* devPath = udev_device_get_devpath(dev);
-                const char* action = udev_device_get_action(dev);
-                if (devPath && action)
+                continue;
+            }
+            break; /* select异常, 退出监听并回收资源 */
+        }
+        else if (0 == ret)
+        {
+            continue; /* 超时, 回去检查退出条件 */
+        }
+        struct udev_device* dev = udev_monitor_receive_device(monitor);
+        if (!dev)
+        {
+            continue;
+        }
+        const char* devPath = udev_device_get_devpath(dev);
+        const char* action = udev_device_get_action(dev);
+        const char* subSystem = udev_device_get_subsystem(dev);
+        const char* devType = udev_device_get_devtype(dev);
+        if (devPath && action && subSystem && devType && 0 == strcmp("usb", subSystem)
+            && 0 == strcmp("usb_device", devType)) /* 手动复核事件类型, 过滤器失效时兜底 */
+        {
+            if (0 == strcmp("add", action) || 0 == strcmp("bind", action))
+            {
+                if (0 == strcmp("bind", action))
                 {
-                    if (0 == strcmp("bind", action))
+                    if (addedSet.end() != addedSet.find(devPath))
                     {
-                        if (addCb)
-                        {
-                            addCb(devPath);
-                        }
+                        addedSet.erase(devPath); /* add已通知过, bind仅消费去重标记(用后即删, 同口重复插拔不依赖remove事件) */
                     }
-                    else if (0 == strcmp("remove", action))
+                    else if (addCb)
                     {
-                        if (removeCb)
-                        {
-                            removeCb(devPath);
-                        }
+                        addCb(devPath); /* 无前置add的bind(如udev trigger重绑), 直接通知 */
                     }
                 }
-                udev_device_unref(dev);
+                else if (addedSet.insert(devPath).second) /* 首次出现该syspath才回调 */
+                {
+                    if (addCb)
+                    {
+                        addCb(devPath);
+                    }
+                }
+            }
+            else if (0 == strcmp("remove", action))
+            {
+                addedSet.erase(devPath);
+                if (removeCb)
+                {
+                    removeCb(devPath);
+                }
             }
         }
+        udev_device_unref(dev);
+        if (addedSet.size() > 1024) /* 极端场景(事件丢失导致remove未达)防集合无限增长 */
+        {
+            addedSet.clear();
+        }
     }
-    /* step5. 资源回收 */
+    /* step5. 资源回收(stopFlag置true或select异常后可达) */
     udev_monitor_unref(monitor);
     udev_unref(udev);
 }

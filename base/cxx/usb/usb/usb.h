@@ -94,6 +94,9 @@ private:
 
 struct UsbImpl;
 
+/* 挂载项(仅Linux平台使用, Windows下不完整也不使用) */
+struct MountEntry;
+
 /**
  * @brief USB类
  */
@@ -316,9 +319,11 @@ public:
      * @brief 循环检测设备通知(用于拔插检测), 注意: 内部循环阻塞(需要在独立线程中调用)
      * @param addCb 设备添加回调, 参数: devPath-设备路径, 注意: 回调中不要有阻塞逻辑
      * @param removeCb 设备移除回调, 参数: devPath-设备路径, 注意: 回调中不要有阻塞逻辑
+     * @param stopFunc 退出判断(可选): 每轮循环调用, 返回true时退出监听循环并回收资源; 不传时循环一直运行
      */
     static void loopCheckDeviceNotify(const std::function<void(const std::string& devPath)>& addCb,
-                                      const std::function<void(const std::string& devPath)>& removeCb);
+                                      const std::function<void(const std::string& devPath)>& removeCb,
+                                      const std::function<bool()>& stopFunc = nullptr);
 #endif
 
 private:
@@ -338,6 +343,13 @@ private:
      */
     static std::shared_ptr<usb::Usb> parseUsb(libusb_device* dev, bool detailFlag, const std::vector<UsbImpl>& implList,
                                               const std::vector<CdromInfo>& cdromList);
+
+    /**
+     * @brief describe递归实现
+     * @param mountSnapshot 挂载快照, 由顶层describe解析一次后随递归传给全部子孙节点(Windows下不使用, 传nullptr)
+     * @return 描述信息
+     */
+    std::string describeImpl(bool showChildren, int allIntend, int intend, const std::vector<MountEntry>* mountSnapshot) const;
 
 private:
     libusb_device* m_dev = NULL;
