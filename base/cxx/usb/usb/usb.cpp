@@ -1067,8 +1067,8 @@ static std::vector<UsbUdevImpl> enumerateUsbUdevs()
     udev_enumerate_add_match_is_initialized(enumerate);
     /* 按子系统白名单扫描: 只遍历可能挂接在USB设备下并产生设备节点的子系统, 避免scan_devices遍历整个sysfs树;
      * 白名单内各设备仍会用syspath含"/usb"做二次过滤, 非USB总线的同名子系统设备不会进入结果 */
-    static const char* usbDevSubsystems[] = {"block", "usb", "usbmisc", "tty", "hidraw", "input", "video4linux", "snd", "dvb", "scsi"};
-    for (const char* subsystem : usbDevSubsystems)
+    static const char* subsystemList[] = {"block", "dvb", "hidraw", "input", "scsi", "sound", "tty", "usb", "usbmisc", "video4linux"};
+    for (const char* subsystem : subsystemList)
     {
         udev_enumerate_add_match_subsystem(enumerate, subsystem);
     }
