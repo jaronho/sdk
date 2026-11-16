@@ -1,5 +1,6 @@
 #pragma once
 #define _XKEYCHECK_H /* 防止在Windows平台编译报错 */
+#include <condition_variable>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -69,7 +70,7 @@ public:
     void setDataCallback(const std::function<void(const unsigned char* data, unsigned int dataLen)>& cb);
 
     /**
-     * @brief 捕获单次(需要在循环调用)
+     * @brief 捕获单次(需要在循环调用, 只在单线程中调用, 不要跨线程并发调用)
      * @param count 指定期望处理的最大数据包数量, 值: 0-无数量限制, >0-最多处理count个数据包
      * @return <0-错误, >=0-实际处理的数据包数量
      */
@@ -108,13 +109,15 @@ private:
     static void onPacketArrived(uint8_t* user, const struct pcap_pkthdr* pkthdr, const uint8_t* packet);
 
 private:
+    std::recursive_mutex m_mutex;
     std::string m_name; /* 名字 */
     std::string m_describe; /* 描述 */
     std::string m_ipv4Address; /* IPv4地址 */
     bool m_isLoopback = false; /* 是否回环 */
-    std::recursive_mutex m_mutex;
-    pcap_t* m_pcap = nullptr; /* pcap指针 */
+    std::shared_ptr<pcap_t> m_pcap = nullptr; /* pcap指针 */
     bool m_captureStarted = false; /* 是否已经开始捕获 */
+    bool m_dispatching = false; /* 是否正在执行 */
+    std::condition_variable_any m_cvDispatch; /* 结束同步 */
     std::mutex m_mutexOnDataCallback;
     std::function<void(const unsigned char* data, unsigned int dataLen)> m_onDataCallback = nullptr; /* 数据回调 */
 };

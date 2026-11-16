@@ -1,24 +1,17 @@
 #pragma once
 #ifdef __linux__
 
-#include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
-#include <thread>
 #include <vector>
 
 namespace npacket
 {
 /**
  * @brief AF_PACKET设备(Linux平台高性能抓包)
- * 
- * 修复说明:
- * - 修复方向过滤功能(原PACKET_FANOUT误用)
- * - 修复字符串未终止导致的潜在越界
- * - 修复整数溢出和除零风险
- * - 优化锁粒度和V3处理效率
  */
 class AfPacketDevice final
 {
@@ -77,7 +70,7 @@ public:
     void setDataCallback(const std::function<void(const unsigned char* data, unsigned int dataLen)>& cb);
 
     /**
-     * @brief 捕获单次(需要在循环调用)
+     * @brief 捕获单次(需要在循环调用, 只在单线程中调用, 不要跨线程并发调用)
      * @param count 指定期望处理的最大数据包数量, 值: 0-无数量限制, >0-最多处理count个数据包
      * @return <0-错误, >=0-实际处理的数据包数量
      */
@@ -108,32 +101,54 @@ public:
 
 private:
     /**
-     * @brief 处理TPACKET_V3块
+     * @brief 打开会话的资源(套接字与环形缓冲等)
+     */
+    struct Resource
+    {
+        int sockfd = -1; /* AF_PACKET套接字描述符 */
+        int snapLen = 65536; /* 快照长度 */
+        int timeoutMs = 1000; /* 超时时间(毫秒) */
+        bool useV3 = false; /* 是否使用TPACKET_V3 */
+        std::vector<uint8_t> buffer; /* 普通模式数据缓冲区 */
+        uint8_t* ringBuffer = nullptr; /* 环形缓冲区映射地址 */
+        size_t ringBufferSize = 0; /* 环形缓冲区大小 */
+        size_t blockSize = 0; /* 单块大小 */
+        unsigned int blockCount = 0; /* 块总数 */
+    };
+
+    /**
+     * @brief 资源清理
+     * @param res 资源
+     */
+    static void destroyResource(Resource* res);
+
+    /**
+     * @brief 普通模式捕获
+     * @param res 资源
+     * @param count 指定期望处理的最大数据包数量, 值: 0-无数量限制, >0-最多处理count个数据包
      * @return 处理的包数量
      */
-    size_t processV3Block();
+    int captureNormal(Resource* res, unsigned int count);
+
+    /**
+     * @brief 处理TPACKET_V3块
+     * @param res 资源
+     * @return 处理的包数量
+     */
+    size_t processV3Block(Resource* res);
 
 private:
+    std::recursive_mutex m_mutex; /* 设备操作互斥锁 */
     std::string m_name; /* 设备名 */
     std::string m_describe; /* 设备描述 */
     std::string m_ipv4Address; /* IPv4地址 */
     bool m_isLoopback = false; /* 是否回环 */
-    std::recursive_mutex m_mutex; /* 设备操作互斥锁 */
-    int m_sockfd = -1; /* AF_PACKET套接字描述符 */
-    int m_snapLen = 65536; /* 快照长度 */
-    int m_timeoutMs = 0; /* 超时时间(毫秒) */
-    std::atomic<bool> m_captureStarted{false}; /* 是否已经开始捕获 */
-    std::vector<uint8_t> m_buffer; /* 普通模式数据缓冲区 */
+    std::shared_ptr<Resource> m_res; /* 当前打开会话的资源 */
+    bool m_captureStarted = false; /* 是否已经开始捕获 */
+    bool m_dispatching = false; /* 是否正在执行捕获 */
+    std::condition_variable_any m_cvDispatch; /* 捕获结束同步 */
     std::mutex m_mutexOnDataCallback;
     std::function<void(const unsigned char* data, unsigned int dataLen)> m_onDataCallback = nullptr; /* 数据回调 */
-
-    /* TPACKET_V3 相关成员 */
-    bool m_useV3 = false; /* 是否使用TPACKET_V3 */
-    uint8_t* m_ringBuffer = nullptr; /* 环形缓冲区映射地址 */
-    size_t m_ringBufferSize = 0; /* 环形缓冲区大小 */
-    struct tpacket_block_desc* m_currentBlock = nullptr; /* 当前块 */
-    unsigned int m_blockIndex = 0; /* 当前块索引 */
-    unsigned int m_blockCount = 0; /* 块总数 */
 };
 } // namespace npacket
 #endif

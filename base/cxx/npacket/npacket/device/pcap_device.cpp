@@ -40,6 +40,11 @@ void PcapDevice::onPacketArrived(uint8_t* user, const struct pcap_pkthdr* pkthdr
 PcapDevice::~PcapDevice()
 {
     close();
+    {
+        /* 等待执行结束, 保证句柄已在抓包线程侧安全关闭 */
+        std::unique_lock<std::recursive_mutex> locker(m_mutex);
+        m_cvDispatch.wait(locker, [this] { return !m_dispatching; });
+    }
 }
 
 std::string PcapDevice::getName()
@@ -78,26 +83,27 @@ bool PcapDevice::open(const std::string& name, int direction, int snapLen, int p
         return true;
     }
     char errbuf[PCAP_ERRBUF_SIZE] = {};
-    m_pcap = pcap_create(name.c_str(), errbuf);
-    if (!m_pcap)
+    pcap_t* pcap = pcap_create(name.c_str(), errbuf);
+    if (!pcap)
     {
         return false;
     }
-    pcap_set_snaplen(m_pcap, snapLen <= 0 ? 65536 : snapLen);
-    pcap_set_promisc(m_pcap, promisc);
-    pcap_set_timeout(m_pcap, timeout > 0 ? timeout : 1000);
+    pcap_set_snaplen(pcap, snapLen <= 0 ? 65536 : snapLen);
+    pcap_set_promisc(pcap, promisc);
+    pcap_set_timeout(pcap, timeout > 0 ? timeout : 1000);
     if (bufferSize >= 100)
     {
-        pcap_set_buffer_size(m_pcap, bufferSize);
+        pcap_set_buffer_size(pcap, bufferSize);
     }
-    if (0 != pcap_activate(m_pcap))
+    if (0 != pcap_activate(pcap))
     {
-        pcap_close(m_pcap);
-        m_pcap = nullptr;
+        pcap_close(pcap);
         return false;
     }
     direction = (direction < 0 || direction > 2) ? 0 : direction;
-    pcap_setdirection(m_pcap, (pcap_direction_t)direction); /* 设置方向接口必须得打开后调用才会生效 */
+    pcap_setdirection(pcap, (pcap_direction_t)direction); /* 设置方向接口必须得打开后调用才会生效 */
+    /* pcap_close作为删除器, 句柄最后一个引用释放时自动关闭(延迟关闭由引用计数保证) */
+    m_pcap = std::shared_ptr<pcap_t>(pcap, pcap_close);
     m_name = name;
     return true;
 }
@@ -109,12 +115,16 @@ bool PcapDevice::setFilter(const std::string& bpf, int optimize, int netmask)
     {
         return false;
     }
-    struct bpf_program filter;
-    if (0 != pcap_compile(m_pcap, &filter, bpf.c_str(), optimize, netmask))
+    if (m_dispatching)
     {
         return false;
     }
-    if (0 != pcap_setfilter(m_pcap, &filter))
+    struct bpf_program filter;
+    if (0 != pcap_compile(m_pcap.get(), &filter, bpf.c_str(), optimize, netmask))
+    {
+        return false;
+    }
+    if (0 != pcap_setfilter(m_pcap.get(), &filter))
     {
         pcap_freecode(&filter);
         return false;
@@ -131,16 +141,31 @@ void PcapDevice::setDataCallback(const std::function<void(const unsigned char* d
 
 int PcapDevice::captureOnce(unsigned int count)
 {
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
-    if (!m_pcap)
+    std::shared_ptr<pcap_t> pcap;
     {
-        return -1;
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        if (!m_pcap)
+        {
+            return -1;
+        }
+        if (!m_captureStarted)
+        {
+            return -1;
+        }
+        if (m_dispatching)
+        {
+            return 0;
+        }
+        pcap = m_pcap;
+        m_dispatching = true;
     }
-    if (!m_captureStarted)
+    int ret = pcap_dispatch(pcap.get(), count, onPacketArrived, (u_char*)this);
     {
-        return -1;
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        m_dispatching = false;
+        m_cvDispatch.notify_all();
     }
-    return pcap_dispatch(m_pcap, count, onPacketArrived, (u_char*)this);
+    return ret;
 }
 
 bool PcapDevice::startCapture()
@@ -163,11 +188,13 @@ void PcapDevice::stopCapture()
 void PcapDevice::close()
 {
     stopCapture();
-    std::lock_guard<std::recursive_mutex> locker(m_mutex);
-    if (m_pcap)
     {
-        pcap_close(m_pcap);
-        m_pcap = nullptr;
+        std::lock_guard<std::recursive_mutex> locker(m_mutex);
+        if (m_pcap)
+        {
+            pcap_breakloop(m_pcap.get());
+            m_pcap.reset();
+        }
     }
 }
 
