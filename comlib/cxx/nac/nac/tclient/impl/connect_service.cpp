@@ -33,20 +33,6 @@ void ConnectService::setDataChannel(const std::shared_ptr<DataChannel>& dataChan
                 self->onConnectStatusChanged(code);
             }
         }));
-        m_connections.emplace_back(dataChannel->sigUpdateRecvTime.connect([wpSelf](std::chrono::steady_clock::time_point ntp) -> void {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                self->onUpdateLastRecvTime(ntp);
-            }
-        }));
-        m_connections.emplace_back(dataChannel->sigUpdateSendTime.connect([wpSelf](std::chrono::steady_clock::time_point ntp) -> void {
-            const auto self = wpSelf.lock();
-            if (self)
-            {
-                self->onUpdateLastSendTime(ntp);
-            }
-        }));
     }
     m_wpDataChannel = dataChannel;
 }
@@ -246,10 +232,6 @@ void ConnectService::onConnectStatusChanged(const boost::system::error_code& cod
     }
     else /* 连接成功 */
     {
-        {
-            std::lock_guard<std::mutex> locker(m_mutexTimePoint);
-            m_lastRecvTime = m_lastSendTime = std::chrono::steady_clock::now();
-        }
         if (m_authBizCode > 0) /* 需要鉴权 */
         {
             if (ConnectState::connecting == m_connectState)
@@ -267,18 +249,6 @@ void ConnectService::onConnectStatusChanged(const boost::system::error_code& cod
             }
         }
     }
-}
-
-void ConnectService::onUpdateLastRecvTime(std::chrono::steady_clock::time_point ntp)
-{
-    std::lock_guard<std::mutex> locker(m_mutexTimePoint);
-    m_lastRecvTime = ntp;
-}
-
-void ConnectService::onUpdateLastSendTime(std::chrono::steady_clock::time_point ntp)
-{
-    std::lock_guard<std::mutex> locker(m_mutexTimePoint);
-    m_lastSendTime = ntp;
 }
 
 void ConnectService::sendAuthMsg()
@@ -373,7 +343,7 @@ void ConnectService::startTimetoutTimer()
                         self->onTimetoutTimer();
                     }
                 },
-                dataChannel ? dataChannel->getPktExecutor().lock() : nullptr);
+                dataChannel ? dataChannel->getTimerExecutor().lock() : nullptr);
         }
         m_timeoutTimer->start();
     }
@@ -411,7 +381,7 @@ void ConnectService::startHeartbeatTimer()
                         self->onHeartbeatTimer();
                     }
                 },
-                dataChannel ? dataChannel->getPktExecutor().lock() : nullptr);
+                dataChannel ? dataChannel->getTimerExecutor().lock() : nullptr);
         }
         m_heartbeatTimer->start();
     }
@@ -422,9 +392,15 @@ void ConnectService::onHeartbeatTimer()
     auto ntp = std::chrono::steady_clock::now();
     const int ELAPSED_DELTA = 500; /* 时间增量(毫秒), 这是由于定时器触发没办法精确到毫秒会有误差 */
     std::chrono::steady_clock::time_point lastTime;
+    if (m_heartbeatFixedSend)
     {
         std::lock_guard<std::mutex> locker(m_mutexTimePoint);
-        lastTime = m_heartbeatFixedSend ? m_lastHeartbeatTime : m_lastSendTime;
+        lastTime = m_lastHeartbeatTime;
+    }
+    else
+    {
+        const auto dataChannel = m_wpDataChannel.lock();
+        lastTime = dataChannel ? dataChannel->getLastSendTime() : ntp;
     }
     auto elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - lastTime).count();
     if ((elapsedLastSend + ELAPSED_DELTA) >= (m_heartbeatInterval * 1000))
@@ -485,7 +461,7 @@ void ConnectService::startOfflineCheckTimer()
                         self->onOfflineCheckTimer();
                     }
                 },
-                dataChannel ? dataChannel->getPktExecutor().lock() : nullptr);
+                dataChannel ? dataChannel->getTimerExecutor().lock() : nullptr);
         }
         m_offlineCheckTimer->start();
     }
@@ -498,21 +474,16 @@ void ConnectService::onOfflineCheckTimer()
     bool isUnSendServerData = false;
     std::string unRecvMsg, unSendMsg;
     /* 超过一定时间未收到服务端数据包(注意: 这里进行>判断, 不进行=判断), 表示掉线 */
-    long long elapsedLastRecv = 0;
-    {
-        std::lock_guard<std::mutex> locker(m_mutexTimePoint);
-        elapsedLastRecv = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastRecvTime).count();
-    }
+    const auto dataChannel = m_wpDataChannel.lock();
+    auto lastRecvTime = dataChannel ? dataChannel->getLastRecvTime() : ntp;
+    long long elapsedLastRecv = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - lastRecvTime).count();
     if (elapsedLastRecv > (m_offlineTime * 1000))
     {
         isUnRecvServerData = true;
         unRecvMsg = "超过[" + std::to_string(elapsedLastRecv) + "]毫秒未收到包)";
         /* 超过一定时间向服务端发送数据包 */
-        long long elapsedLastSend = 0;
-        {
-            std::lock_guard<std::mutex> locker(m_mutexTimePoint);
-            elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - m_lastSendTime).count();
-        }
+        auto lastSendTime = dataChannel ? dataChannel->getLastSendTime() : ntp;
+        long long elapsedLastSend = std::chrono::duration_cast<std::chrono::milliseconds>(ntp - lastSendTime).count();
         if (elapsedLastSend > (m_heartbeatInterval * 1000))
         {
             isUnSendServerData = true;
@@ -520,7 +491,6 @@ void ConnectService::onOfflineCheckTimer()
         }
     }
     bool isDataChannelClosed = false;
-    const auto dataChannel = m_wpDataChannel.lock();
     if (dataChannel)
     {
         isDataChannelClosed = !dataChannel->isOpened();

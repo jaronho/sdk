@@ -42,7 +42,7 @@ logger::Logger SessionManager::myLogger()
 std::shared_ptr<threading::Executor> SessionManager::myTimerExecutor()
 {
     const auto dataChannel = m_wpDataChannel.lock();
-    return dataChannel ? dataChannel->getPktExecutor().lock() : nullptr;
+    return dataChannel ? dataChannel->getTimerExecutor().lock() : nullptr;
 }
 
 int64_t SessionManager::sendImpl(int32_t bizCode, int64_t seqId, const std::string& data, int timeout, const SendCallback& callback)

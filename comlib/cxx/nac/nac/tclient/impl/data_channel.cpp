@@ -4,6 +4,11 @@ namespace nac
 {
 namespace tcli
 {
+std::weak_ptr<threading::Executor> DataChannel::getTimerExecutor()
+{
+    return m_timerExecutor;
+}
+
 std::weak_ptr<threading::Executor> DataChannel::getPktExecutor()
 {
     return m_pktExecutor;
@@ -62,12 +67,15 @@ bool DataChannel::connect(unsigned short localPort, const std::string& address, 
             const auto pktExecutor = wpPktExecutor.lock();
             if (pktExecutor)
             {
-                auto ntp = std::chrono::steady_clock::now();
-                auto func = [wpSelf, ntp, data, logger]() {
+                const auto self = wpSelf.lock();
+                if (self)
+                {
+                    self->updateLastRecvTime(std::chrono::steady_clock::now());
+                }
+                auto func = [wpSelf, data, logger]() {
                     const auto& self = wpSelf.lock();
                     if (self)
                     {
-                        self->sigUpdateRecvTime(ntp);
                         self->onRecvData(data);
                     }
                     else
@@ -159,6 +167,18 @@ boost::asio::ip::tcp::endpoint DataChannel::getLocalEndpoint()
     return (tcpClient ? tcpClient->getLocalEndpoint() : boost::asio::ip::tcp::endpoint());
 }
 
+std::chrono::steady_clock::time_point DataChannel::getLastRecvTime()
+{
+    std::lock_guard<std::mutex> locker(m_mutexLastTime);
+    return m_lastRecvTime;
+}
+
+std::chrono::steady_clock::time_point DataChannel::getLastSendTime()
+{
+    std::lock_guard<std::mutex> locker(m_mutexLastTime);
+    return m_lastSendTime;
+}
+
 bool DataChannel::sendData(const std::vector<unsigned char>& data, const nsocket::TCP_SEND_CALLBACK& callback)
 {
     try
@@ -183,26 +203,18 @@ bool DataChannel::sendData(const std::vector<unsigned char>& data, const nsocket
             const std::weak_ptr<threading::Executor> wpPktExecutor = m_pktExecutor;
             tcpClient->sendAsync(
                 data, [wpSelf, wpPktExecutor, callback, logger = m_logger](const boost::system::error_code& code, size_t length) {
+                    const auto self = wpSelf.lock();
+                    if (!code && self)
+                    {
+                        self->updateLastSendTime(std::chrono::steady_clock::now());
+                    }
                     const auto pktExecutor = wpPktExecutor.lock();
                     if (pktExecutor)
                     {
-                        auto ntp = std::chrono::steady_clock::now();
-                        auto func = [wpSelf, callback, ntp, code, length, logger]() {
-                            const auto self = wpSelf.lock();
+                        auto func = [callback, code, length, logger]() {
                             if (code)
                             {
                                 ERROR_LOG(logger, "数据发送错误: [{}] [{}].", code.value(), code.message());
-                            }
-                            else
-                            {
-                                if (self)
-                                {
-                                    self->sigUpdateSendTime(ntp);
-                                }
-                                else
-                                {
-                                    ERROR_LOG(logger, "数据发送错误: 数据通道为空.");
-                                }
                             }
                             if (callback)
                             {
@@ -272,6 +284,10 @@ void DataChannel::onConnected(const boost::system::error_code& code)
     }
     else
     {
+        /* 连接成功, 重置最近收发时间 */
+        auto ntp = std::chrono::steady_clock::now();
+        updateLastRecvTime(ntp);
+        updateLastSendTime(ntp);
         std::shared_ptr<nsocket::TcpClient> tcpClient;
         {
             std::lock_guard<std::mutex> locker(m_mutexTcpClient);
@@ -301,6 +317,18 @@ void DataChannel::onRecvData(const std::vector<unsigned char>& data)
             disconnectImpl();
         }
     }
+}
+
+void DataChannel::updateLastRecvTime(const std::chrono::steady_clock::time_point& tp)
+{
+    std::lock_guard<std::mutex> locker(m_mutexLastTime);
+    m_lastRecvTime = tp;
+}
+
+void DataChannel::updateLastSendTime(const std::chrono::steady_clock::time_point& tp)
+{
+    std::lock_guard<std::mutex> locker(m_mutexLastTime);
+    m_lastSendTime = tp;
 }
 } // namespace tcli
 } // namespace nac

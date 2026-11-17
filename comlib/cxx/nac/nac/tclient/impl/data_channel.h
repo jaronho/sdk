@@ -18,6 +18,11 @@ class DataChannel final : public std::enable_shared_from_this<DataChannel>
 {
 public:
     /**
+     * @brief 获取定时器执行线程
+     */
+    std::weak_ptr<threading::Executor> getTimerExecutor();
+
+    /**
      * @brief 获取报文处理线程
      */
     std::weak_ptr<threading::Executor> getPktExecutor();
@@ -60,6 +65,16 @@ public:
     boost::asio::ip::tcp::endpoint getLocalEndpoint();
 
     /**
+     * @brief 获取最近接收时间
+     */
+    std::chrono::steady_clock::time_point getLastRecvTime();
+
+    /**
+     * @brief 获取最近发送时间
+     */
+    std::chrono::steady_clock::time_point getLastSendTime();
+
+    /**
      * @brief 发送数据(异步)
      * @param data 数据
      * @param callback 回调
@@ -80,18 +95,6 @@ public:
      */
     threading::BasicSignal<bool(const std::vector<unsigned char>& data)> sigRecvData;
 
-    /**
-     * @brief 同步信号: 更新接收时间
-     * @param tp 时间点
-     */
-    threading::BasicSignal<void(std::chrono::steady_clock::time_point tp)> sigUpdateRecvTime;
-
-    /**
-     * @brief 同步信号: 更新发送时间
-     * @param tp 时间点
-     */
-    threading::BasicSignal<void(std::chrono::steady_clock::time_point tp)> sigUpdateSendTime;
-
 private:
     /**
      * @brief 断开连接
@@ -108,11 +111,25 @@ private:
      */
     void onRecvData(const std::vector<unsigned char>& data);
 
+    /**
+     * @brief 更新最近接收时间
+     */
+    void updateLastRecvTime(const std::chrono::steady_clock::time_point& tp);
+
+    /**
+     * @brief 更新最近发送时间
+     */
+    void updateLastSendTime(const std::chrono::steady_clock::time_point& tp);
+
 private:
     threading::ExecutorPtr m_tcpExecutor = threading::ThreadProxy::createAsioExecutor("tcli::loop", 1); /* TCP报文收发线程 */
+    threading::ExecutorPtr m_timerExecutor = threading::ThreadProxy::createAsioExecutor("tcli::timer", 1); /* 定时器执行线程 */
     threading::ExecutorPtr m_pktExecutor = threading::ThreadProxy::createAsioExecutor("tcli::pkt", 1); /* 报文处理线程 */
     std::mutex m_mutexTcpClient;
     std::shared_ptr<nsocket::TcpClient> m_tcpClient; /* TCP客户端 */
+    std::mutex m_mutexLastTime;
+    std::chrono::steady_clock::time_point m_lastRecvTime = std::chrono::steady_clock::now(); /* 最近接收时间 */
+    std::chrono::steady_clock::time_point m_lastSendTime = std::chrono::steady_clock::now(); /* 最近发送时间 */
     logger::Logger m_logger = logger::LoggerManager::getLogger("NAC");
 };
 } // namespace tcli

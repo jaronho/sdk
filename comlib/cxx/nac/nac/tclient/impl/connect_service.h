@@ -149,16 +149,6 @@ private:
     void onConnectStatusChanged(const boost::system::error_code& code);
 
     /**
-     * @brief 响应更新最后接收时间
-     */
-    void onUpdateLastRecvTime(std::chrono::steady_clock::time_point tp);
-
-    /**
-     * @brief 响应更新最后发送时间
-     */
-    void onUpdateLastSendTime(std::chrono::steady_clock::time_point tp);
-
-    /**
      * @brief 发送鉴权消息
      */
     void sendAuthMsg();
@@ -227,8 +217,6 @@ private:
     std::function<bool(const std::string& data)> m_authResultCb = nullptr; /* 鉴权结果回调 */
     std::function<std::string()> m_heartbeatDataGenerator = nullptr; /* 心跳数据生成器 */
     std::mutex m_mutexTimePoint;
-    std::chrono::steady_clock::time_point m_lastRecvTime = std::chrono::steady_clock::now(); /* 最近接收时间 */
-    std::chrono::steady_clock::time_point m_lastSendTime = std::chrono::steady_clock::now(); /* 最近发送时间 */
     std::chrono::steady_clock::time_point m_lastHeartbeatTime = std::chrono::steady_clock::now(); /* 最近心跳时间 */
     unsigned int m_localPort = 0; /* 本地端口 */
     std::string m_address; /* 服务器地址 */
