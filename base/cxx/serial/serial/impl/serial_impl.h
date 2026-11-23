@@ -18,7 +18,7 @@ public:
 
     /**
      * @brief 打开串口
-     * @return 0-成功, 1-端口为空, 2-打开失败, 3-配置失败, 4-串口已被其他进程打开(Linux)
+     * @return 0-成功, 1-端口为空, 2-打开失败, 3-配置失败, 4-串口被独占(Linux)
      */
     int open();
 
@@ -140,7 +140,7 @@ public:
      *        (3)触发异常
      * @param buffer 缓冲区
      * @param size 缓冲区大小(要读的字节数)
-     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
+     * @return 读到的字节数: 0-暂无数据或超时(需稍后重试), <0-表示致命错误(串口已关闭, 需重新打开串口)
      */
     ssize_t read(char* buffer, size_t size);
 
@@ -148,7 +148,7 @@ public:
      * @brief 写数据
      * @param data 数据内容
      * @param length 数据长度
-     * @return 写入的数据长度, 小于0表示异常(需要重新打开串口)
+     * @return 已写入的字节数: 0-串口暂时不可写(需稍后重试), <0-致命错误(串口已关闭, 需重新打开串口)
      */
     ssize_t write(const char* data, size_t length);
 

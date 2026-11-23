@@ -67,8 +67,8 @@ public:
         unsigned long long nsec = now.tv_nsec + (millis * 1e6);
         if (nsec >= 1e9)
         {
-            m_expiry.tv_sec = now.tv_sec + nsec / static_cast<unsigned int>(1e9);
-            m_expiry.tv_nsec = nsec % static_cast<unsigned int>(1e9);
+            m_expiry.tv_sec = now.tv_sec + nsec / (unsigned int)(1e9);
+            m_expiry.tv_nsec = nsec % (unsigned int)(1e9);
         }
         else
         {
@@ -202,27 +202,16 @@ int SerialImpl::open()
         return 2;
     }
 #else
-    bool portAlreadyOpened = false;
-    FILE* stream = popen(("fuser " + m_port).c_str(), "r"); /* 判断串口文件是否已被其他进程打开 */
-    if (stream)
-    {
-        char buf[1] = {0};
-        if (fread(buf, 1, 1, stream) > 0)
-        {
-            portAlreadyOpened = true;
-        }
-        pclose(stream);
-    }
-    if (portAlreadyOpened)
-    {
-        return 4;
-    }
     m_fd = ::open(m_port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK); /* 非阻塞 */
     if (INVALID_HANDLE_VALUE == m_fd)
     {
         if (EINTR == errno) /* 这里递归调用, 因为这是一个可恢复错误 */
         {
             return open();
+        }
+        if (EBUSY == errno) /* 串口被独占 */
+        {
+            return 4;
         }
         return 2;
     }
@@ -384,7 +373,9 @@ ssize_t SerialImpl::availableForRead()
     int count = 0;
     if (ioctl(m_fd, FIONREAD, &count) < 0)
     {
-        m_fd = INVALID_HANDLE_VALUE;
+        int err = errno;
+        close();
+        errno = err;
         return -1;
     }
     return count;
@@ -405,28 +396,34 @@ ssize_t SerialImpl::read(char* buffer, size_t size)
     ssize_t len = 0;
 #ifdef _WIN32
     DWORD count;
-    if (!ReadFile(m_fd, buffer, static_cast<DWORD>(size), &count, NULL))
+    if (!ReadFile(m_fd, buffer, (DWORD)(size), &count, NULL))
     {
-        m_fd = INVALID_HANDLE_VALUE;
+        close(); /* 释放句柄, 避免句柄泄漏 */
         return -1;
     }
     len = count;
 #else
     /* 计算总超时时间(单位:毫秒), 常数 + (乘数 * 请求字节数) */
-    unsigned int totalTimeout = m_timeout.readTimeoutConstant + m_timeout.readTimeoutMultiplier * static_cast<unsigned int>(size);
+    unsigned int totalTimeout = m_timeout.readTimeoutConstant + m_timeout.readTimeoutMultiplier * (unsigned int)(size);
     MillisecondTimer timeoutTimer(totalTimeout);
     while (len < size)
     {
         ssize_t count = ::read(m_fd, buffer + len, size - len);
         if (count < 0)
         {
-            m_fd = INVALID_HANDLE_VALUE;
+            int err = errno;
+            if (EAGAIN == err || EINTR == err) /* 暂时无数据, 保留fd供后续读取 */
+            {
+                return len;
+            }
+            close();
+            errno = err;
             return -1;
         }
         else if (0 == count)
         {
             /* 超时时间为剩余的总超时和字节间超时的最小值 */
-            if (std::min(timeoutTimer.remaining(), static_cast<long>(m_timeout.interByteTimeout)) <= 0)
+            if (std::min(timeoutTimer.remaining(), (long)(m_timeout.interByteTimeout)) <= 0)
             {
                 break;
             }
@@ -450,35 +447,41 @@ ssize_t SerialImpl::write(const char* data, size_t length)
     }
 #ifdef _WIN32
     DWORD len;
-    if (!WriteFile(m_fd, data, static_cast<DWORD>(length), &len, NULL))
+    if (!WriteFile(m_fd, data, (DWORD)(length), &len, NULL))
     {
-        m_fd = INVALID_HANDLE_VALUE;
+        close(); /* 释放句柄, 避免句柄泄漏 */
         return -1;
     }
     return len;
 #else
     ssize_t len = 0;
     /* 计算总超时时间(单位:毫秒), 常数 + (乘数 * 请求字节数) */
-    unsigned int totalTimeout = m_timeout.writeTimeoutConstant + m_timeout.writeTimeoutMultiplier * static_cast<unsigned int>(length);
+    unsigned int totalTimeout = m_timeout.writeTimeoutConstant + m_timeout.writeTimeoutMultiplier * (unsigned int)(length);
     MillisecondTimer timeoutTimer(totalTimeout);
     while (len < length)
     {
         ssize_t count = ::write(m_fd, data + len, length - len);
-        if (count < 0)
+        if (count > 0)
         {
-            m_fd = INVALID_HANDLE_VALUE;
-            return -1;
-        }
-        else if (0 == count)
-        {
-            /* 超时时间为剩余的总超时和字节间超时的最小值 */
-            if (std::min(timeoutTimer.remaining(), static_cast<long>(m_timeout.interByteTimeout)) <= 0)
-            {
-                break;
-            }
+            len += count; /* 更新已写字节数 */
             continue;
         }
-        len += count; /* 更新已写字节数 */
+        if (count < 0)
+        {
+            int err = errno;
+            if (EAGAIN == err || EINTR == err) /* 暂时不可写, 由调用方根据返回值决定重试 */
+            {
+                return len;
+            }
+            close(); /* 致命错误, 释放fd */
+            errno = err;
+            return -1;
+        }
+        /* 本次未写入任何数据, 超时时间为剩余的总超时和字节间超时的最小值 */
+        if (std::min(timeoutTimer.remaining(), (long)(m_timeout.interByteTimeout)) <= 0)
+        {
+            break;
+        }
     }
     return len;
 #endif
@@ -784,7 +787,7 @@ void SerialImpl::waitByteTimes(size_t count)
     /* 等待 */
     Sleep(byteTimeMS * count);
 #else
-    timespec waitTime = {0, static_cast<long>(m_byteTimeNS * count)};
+    timespec waitTime = {0, (long)(m_byteTimeNS * count)};
     pselect(0, NULL, NULL, NULL, &waitTime, NULL);
 #endif
 }
@@ -1470,7 +1473,7 @@ int SerialImpl::reconfig()
         /* Starting with Tiger, the IOSSIOSPEED ioctl can be used to flag arbitrary baud rates other than those specified by POSIX.
            The driver for the underlying serial hardware ultimately determines which baud rates can be used. This ioctl sets both 
            the input and output speed. */
-        speed_t newBaudrate = static_cast<speed_t>(m_baudrate);
+        speed_t newBaudrate = (speed_t)(m_baudrate);
         if (ioctl(m_fd, IOSSIOSPEED, &newBaudrate, 1) < 0) /* PySerial uses IOSSIOSPEED=0x80045402 */
         {
             return 8; /* 自定义波特率设置失败 */
@@ -1482,7 +1485,7 @@ int SerialImpl::reconfig()
             return 8; /* 自定义波特率设置失败 */
         }
         /* 设置自定义除数 */
-        ser.custom_divisor = ser.baud_base / static_cast<int>(m_baudrate);
+        ser.custom_divisor = ser.baud_base / (int)(m_baudrate);
         /* 更新标志位 */
         ser.flags &= ~ASYNC_SPD_MASK;
         ser.flags |= ASYNC_SPD_CUST;

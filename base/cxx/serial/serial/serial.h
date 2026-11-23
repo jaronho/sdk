@@ -21,7 +21,7 @@ public:
 
     /**
      * @brief 打开串口
-     * @return 0-成功, 1-端口为空, 2-打开失败, 3-配置失败, 4-串口已被其他进程打开(Linux)
+     * @return 0-成功, 1-端口为空, 2-打开失败, 3-配置失败, 4-串口被独占(Linux)
      */
     int open();
 
@@ -143,7 +143,7 @@ public:
      *        (3)触发异常
      * @param buffer [输出]缓冲区
      * @param size 缓冲区大小(要读的字节数)
-     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
+     * @return 读到的字节数: 0-暂无数据或超时(需稍后重试), <0-致命错误(串口已关闭, 需重新打开串口)
      */
     ssize_t read(char* buffer, size_t size);
 
@@ -151,14 +151,14 @@ public:
      * @brief 读数据
      * @param count 要读的字节数
      * @param bytes [输出]读到的数据
-     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
+     * @return 读到的字节数: 0-暂无数据或超时(需稍后重试), <0-致命错误(串口已关闭, 需重新打开串口)
      */
     ssize_t read(size_t count, std::string& bytes);
 
     /**
      * @brief 读取所有数据
      * @param bytes [输出]读到的数据
-     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
+     * @return 读到的字节数: 0-暂无数据或超时(需稍后重试), <0-致命错误(串口已关闭, 需重新打开串口)
      */
     ssize_t readAll(std::string& bytes);
 
@@ -167,7 +167,7 @@ public:
      * @param flag 标识, 为空时表示一直读取直到超时
      * @param msec 超时时间(毫秒), 为0表示一直等待
      * @param bytes [输出]读到的数据
-     * @return 读到的字节数, 小于0表示异常(需要重新打开串口)
+     * @return 读到的字节数: 0-暂无数据或超时(需稍后重试), <0-致命错误(串口已关闭, 需重新打开串口)
      */
     ssize_t readUntil(const std::string& flag, size_t msec, std::string& bytes);
 
@@ -175,21 +175,21 @@ public:
      * @brief 写数据
      * @param data 数据内容
      * @param length 数据长度
-     * @return 写入的数据长度, 小于0表示异常(需要重新打开串口)
+     * @return 已写入的字节数: 0-串口暂时不可写(需稍后重试), <0-致命错误(串口已关闭, 需重新打开串口)
      */
     ssize_t write(const char* data, size_t size);
 
     /**
      * @brief 写数据
      * @param data 数据内容
-     * @return 写入的数据长度, 小于0表示异常(需要重新打开串口)
+     * @return 已写入的字节数: 0-串口暂时不可写(需稍后重试), <0-致命错误(串口已关闭, 需重新打开串口)
      */
     ssize_t write(const std::string& data);
 
     /**
      * @brief 写数据
      * @param data 数据内容
-     * @return 写入的数据长度, 小于0表示异常(需要重新打开串口)
+     * @return 已写入的字节数: 0-串口暂时不可写(需稍后重试), <0-致命错误(串口已关闭, 需重新打开串口)
      */
     ssize_t write(const std::vector<char>& data);
 
